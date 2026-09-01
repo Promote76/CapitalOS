@@ -24,7 +24,36 @@ export const GetHouseholdResponse = zod.object({
   "name": zod.string(),
   "timezone": zod.string(),
   "role": zod.string(),
-  "permissions": zod.array(zod.string())
+  "permissions": zod.array(zod.string()),
+  "privacy": zod.object({
+  "financeDataPrivate": zod.boolean(),
+  "shareHealthSummary": zod.boolean(),
+  "credentialsStored": zod.boolean(),
+  "bankActionsEnabled": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Update household finance privacy controls
+ */
+export const UpdatePrivacySettingsBody = zod.object({
+  "financeDataPrivate": zod.boolean(),
+  "shareHealthSummary": zod.boolean()
+})
+
+export const UpdatePrivacySettingsResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "timezone": zod.string(),
+  "role": zod.string(),
+  "permissions": zod.array(zod.string()),
+  "privacy": zod.object({
+  "financeDataPrivate": zod.boolean(),
+  "shareHealthSummary": zod.boolean(),
+  "credentialsStored": zod.boolean(),
+  "bankActionsEnabled": zod.boolean()
+})
 })
 
 
@@ -37,7 +66,13 @@ export const GetDashboardResponse = zod.object({
   "name": zod.string(),
   "timezone": zod.string(),
   "role": zod.string(),
-  "permissions": zod.array(zod.string())
+  "permissions": zod.array(zod.string()),
+  "privacy": zod.object({
+  "financeDataPrivate": zod.boolean(),
+  "shareHealthSummary": zod.boolean(),
+  "credentialsStored": zod.boolean(),
+  "bankActionsEnabled": zod.boolean()
+})
 }),
   "goal": zod.object({
   "id": zod.string(),
@@ -622,6 +657,297 @@ export const GetBlockchainStatusResponse = zod.object({
 })),
   "privateDataOffChain": zod.boolean(),
   "liveTransactionsEnabled": zod.boolean()
+})
+
+
+/**
+ * @summary Get current household budget performance
+ */
+export const GetBudgetResponse = zod.object({
+  "month": zod.string(),
+  "categories": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "categoryType": zod.string(),
+  "essentialStatus": zod.string(),
+  "budgeted": zod.string(),
+  "actual": zod.string(),
+  "variance": zod.string(),
+  "percentageUsed": zod.number(),
+  "projectedMonthEnd": zod.string(),
+  "status": zod.string()
+})),
+  "totals": zod.object({
+  "budgeted": zod.string(),
+  "actual": zod.string(),
+  "remaining": zod.string(),
+  "percentageUsed": zod.number()
+}),
+  "notes": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Get household cash flow and financial health
+ */
+export const GetCashFlowResponse = zod.object({
+  "month": zod.string(),
+  "metrics": zod.object({
+  "grossInflow": zod.string(),
+  "essentialOutflow": zod.string(),
+  "discretionaryOutflow": zod.string(),
+  "debtService": zod.string(),
+  "savingsContributions": zod.string(),
+  "investmentContributions": zod.string(),
+  "propertyContributions": zod.string(),
+  "netCashFlow": zod.string(),
+  "freeCashFlow": zod.string(),
+  "savingsRate": zod.number(),
+  "investmentRate": zod.number()
+}),
+  "reserve": zod.object({
+  "target": zod.string(),
+  "current": zod.string(),
+  "gap": zod.string(),
+  "monthsCovered": zod.number(),
+  "targetMonths": zod.number()
+}),
+  "financialHealth": zod.object({
+  "score": zod.number(),
+  "label": zod.string(),
+  "disclaimer": zod.string()
+}),
+  "forecast": zod.object({
+  "nextMonthInflow": zod.string(),
+  "nextMonthEssentialOutflow": zod.string(),
+  "nextMonthNet": zod.string(),
+  "confidence": zod.number()
+})
+})
+
+
+/**
+ * @summary List read-only household financial accounts
+ */
+export const ListFinancialAccountsResponse = zod.object({
+  "readOnly": zod.boolean(),
+  "accounts": zod.array(zod.object({
+  "id": zod.string(),
+  "institution": zod.string(),
+  "nickname": zod.string(),
+  "accountType": zod.string(),
+  "currentBalance": zod.string().nullish(),
+  "availableBalance": zod.string().nullish(),
+  "connectionStatus": zod.string(),
+  "dataSource": zod.string(),
+  "lastSync": zod.coerce.date().nullish(),
+  "includedInNetWorth": zod.boolean(),
+  "includedInBudget": zod.boolean(),
+  "protected": zod.boolean(),
+  "restricted": zod.boolean()
+})),
+  "connections": zod.array(zod.object({
+  "id": zod.string(),
+  "provider": zod.string(),
+  "status": zod.string(),
+  "institutionName": zod.string(),
+  "lastSuccessfulSync": zod.coerce.date().nullish()
+})),
+  "totals": zod.object({
+  "visibleBalance": zod.string(),
+  "accountCount": zod.number()
+})
+})
+
+
+/**
+ * @summary Add a manual financial account
+ */
+export const createManualFinancialAccountBodyInstitutionMax = 120;
+
+export const createManualFinancialAccountBodyNicknameMax = 120;
+
+export const createManualFinancialAccountBodyCurrentBalanceRegExp = new RegExp('^-?[0-9]+(\\.[0-9]{1,2})?$');
+
+
+export const CreateManualFinancialAccountBody = zod.object({
+  "institution": zod.string().min(1).max(createManualFinancialAccountBodyInstitutionMax),
+  "nickname": zod.string().min(1).max(createManualFinancialAccountBodyNicknameMax),
+  "accountType": zod.string(),
+  "currentBalance": zod.string().regex(createManualFinancialAccountBodyCurrentBalanceRegExp).optional()
+})
+
+export const CreateManualFinancialAccountResponse = zod.object({
+  "id": zod.string(),
+  "institution": zod.string(),
+  "nickname": zod.string(),
+  "accountType": zod.string(),
+  "currentBalance": zod.string().nullish(),
+  "availableBalance": zod.string().nullish(),
+  "connectionStatus": zod.string(),
+  "dataSource": zod.string(),
+  "lastSync": zod.coerce.date().nullish(),
+  "includedInNetWorth": zod.boolean(),
+  "includedInBudget": zod.boolean(),
+  "protected": zod.boolean(),
+  "restricted": zod.boolean()
+})
+
+
+/**
+ * @summary Import read-only transactions from CSV
+ */
+export const importFinancialAccountCsvPathAccountIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ImportFinancialAccountCsvParams = zod.object({
+  "accountId": zod.coerce.string().regex(importFinancialAccountCsvPathAccountIdRegExp)
+})
+
+export const importFinancialAccountCsvBodyCsvMax = 100000;
+
+
+
+export const ImportFinancialAccountCsvBody = zod.object({
+  "csv": zod.string().min(1).max(importFinancialAccountCsvBodyCsvMax)
+})
+
+export const ImportFinancialAccountCsvResponse = zod.object({
+  "imported": zod.number(),
+  "skippedDuplicates": zod.number(),
+  "readOnly": zod.boolean()
+})
+
+
+/**
+ * @summary List upcoming household bills
+ */
+export const ListBillsResponseItem = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "billName": zod.string(),
+  "dueDate": zod.coerce.date(),
+  "expectedAmount": zod.string(),
+  "status": zod.string(),
+  "essential": zod.boolean(),
+  "autoPay": zod.boolean()
+})
+export const ListBillsResponse = zod.array(ListBillsResponseItem)
+
+
+/**
+ * @summary List known upcoming expenses
+ */
+export const ListUpcomingExpensesResponseItem = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "name": zod.string(),
+  "estimatedAmount": zod.string(),
+  "expectedDate": zod.coerce.date(),
+  "priority": zod.string(),
+  "required": zod.boolean(),
+  "fundedAmount": zod.string()
+})
+export const ListUpcomingExpensesResponse = zod.array(ListUpcomingExpensesResponseItem)
+
+
+/**
+ * @summary List household income sources
+ */
+export const ListIncomeSourcesResponseItem = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "name": zod.string(),
+  "sourceType": zod.string(),
+  "expectedMonthly": zod.string(),
+  "active": zod.boolean()
+})
+export const ListIncomeSourcesResponse = zod.array(ListIncomeSourcesResponseItem)
+
+
+/**
+ * @summary Get Capital Governor safe-to-deploy amount
+ */
+export const GetSafeToDeployResponse = zod.object({
+  "safeToDeploy": zod.string(),
+  "rawSafeToDeploy": zod.string(),
+  "confidence": zod.string(),
+  "confidenceScore": zod.number(),
+  "reason": zod.string(),
+  "breakdown": zod.object({
+  "liquidAvailableCash": zod.string(),
+  "billsDueBeforeNextIncome": zod.string(),
+  "requiredMonthlyExpenses": zod.string(),
+  "emergencyReserveShortfall": zod.string(),
+  "protectedGoalCommitments": zod.string(),
+  "knownUpcomingExpenses": zod.string(),
+  "requiredSafetyBuffer": zod.string(),
+  "maximumDeployableAmount": zod.string()
+})
+})
+
+
+/**
+ * @summary Get advisory household finance insights
+ */
+export const GetFinanceInsightsResponse = zod.object({
+  "insights": zod.array(zod.object({
+  "type": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "severity": zod.string()
+})),
+  "subscriptions": zod.array(zod.object({
+  "merchant": zod.string(),
+  "monthlyAmount": zod.string(),
+  "annualCost": zod.string(),
+  "essentialStatus": zod.string()
+})),
+  "anomalyCount": zod.number()
+})
+
+
+/**
+ * @summary List historical household finance snapshots
+ */
+export const ListFinanceSnapshotsResponseItem = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "snapshotDate": zod.coerce.date(),
+  "grossInflow": zod.string(),
+  "essentialOutflow": zod.string(),
+  "discretionaryOutflow": zod.string(),
+  "debtService": zod.string(),
+  "savingsContributions": zod.string(),
+  "investmentContributions": zod.string(),
+  "netCashFlow": zod.string(),
+  "freeCashFlow": zod.string(),
+  "safeToDeploy": zod.string(),
+  "safeToDeployConfidence": zod.number(),
+  "financialHealthScore": zod.number(),
+  "budgetPerformance": zod.object({
+  "month": zod.string(),
+  "source": zod.string()
+}),
+  "createdAt": zod.coerce.date()
+})
+export const ListFinanceSnapshotsResponse = zod.array(ListFinanceSnapshotsResponseItem)
+
+
+/**
+ * @summary Get provider-neutral read-only banking adapter status
+ */
+export const GetBankingStatusResponse = zod.object({
+  "readOnly": zod.boolean(),
+  "credentialsStored": zod.boolean(),
+  "transfersEnabled": zod.boolean(),
+  "billPayEnabled": zod.boolean(),
+  "message": zod.string(),
+  "adapters": zod.array(zod.object({
+  "provider": zod.string(),
+  "enabled": zod.boolean(),
+  "readOnly": zod.boolean()
+}))
 })
 
 

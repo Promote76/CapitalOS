@@ -1,0 +1,257 @@
+import {
+  boolean,
+  date,
+  index,
+  integer,
+  jsonb,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+import {
+  bankConnectionStatusEnum,
+  billStatusEnum,
+  budgetCategoryTypeEnum,
+  businessTagEnum,
+  essentialStatusEnum,
+  financialAccountTypeEnum,
+  financeDataSourceEnum,
+  financeReviewStatusEnum,
+  incomeSourceTypeEnum,
+  recurringFrequencyEnum,
+  upcomingExpensePriorityEnum,
+} from "./enums";
+import { households, users } from "./households";
+
+const money = (name: string) => numeric(name, { precision: 18, scale: 2 }).notNull().default("0");
+
+export const bankConnections = pgTable(
+  "bank_connections",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    status: bankConnectionStatusEnum("status").notNull().default("manual"),
+    institutionName: text("institution_name").notNull(),
+    providerConnectionRef: text("provider_connection_ref"),
+    lastSuccessfulSync: timestamp("last_successful_sync", { withTimezone: true }),
+    lastBalanceRefresh: timestamp("last_balance_refresh", { withTimezone: true }),
+    lastTransactionSync: timestamp("last_transaction_sync", { withTimezone: true }),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("bank_connections_household_idx").on(table.householdId),
+  }),
+);
+
+export const financialAccounts = pgTable(
+  "household_financial_accounts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    bankConnectionId: uuid("bank_connection_id").references(() => bankConnections.id, { onDelete: "set null" }),
+    institution: text("institution").notNull(),
+    nickname: text("nickname").notNull(),
+    accountType: financialAccountTypeEnum("account_type").notNull(),
+    currentBalance: money("current_balance"),
+    availableBalance: numeric("available_balance", { precision: 18, scale: 2 }),
+    lastSync: timestamp("last_sync", { withTimezone: true }),
+    connectionStatus: bankConnectionStatusEnum("connection_status").notNull().default("manual"),
+    includedInNetWorth: boolean("included_in_net_worth").notNull().default(true),
+    includedInBudget: boolean("included_in_budget").notNull().default(true),
+    protected: boolean("protected").notNull().default(false),
+    dataSource: financeDataSourceEnum("data_source").notNull().default("manual"),
+    lastSuccessfulSync: timestamp("last_successful_sync", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("household_financial_accounts_household_idx").on(table.householdId),
+  }),
+);
+
+export const financeCategories = pgTable(
+  "finance_categories",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    categoryType: budgetCategoryTypeEnum("category_type").notNull(),
+    essentialStatus: essentialStatusEnum("essential_status").notNull(),
+    monthlyTarget: money("monthly_target"),
+    warningThreshold: numeric("warning_threshold", { precision: 6, scale: 4 }).notNull().default("1.00"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdNameUnique: uniqueIndex("finance_categories_household_name_unique").on(table.householdId, table.name),
+  }),
+);
+
+export const financeTransactions = pgTable(
+  "finance_transactions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id").notNull().references(() => financialAccounts.id, { onDelete: "cascade" }),
+    externalId: text("external_id"),
+    transactionDate: date("transaction_date", { mode: "string" }).notNull(),
+    description: text("description").notNull(),
+    merchant: text("merchant"),
+    originalAmount: money("original_amount"),
+    amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
+    categoryId: uuid("category_id").references(() => financeCategories.id, { onDelete: "set null" }),
+    dataSource: financeDataSourceEnum("data_source").notNull().default("manual"),
+    reviewStatus: financeReviewStatusEnum("review_status").notNull().default("uncategorized"),
+    businessTag: businessTagEnum("business_tag").notNull().default("household"),
+    excludedFromBudget: boolean("excluded_from_budget").notNull().default(false),
+    pending: boolean("pending").notNull().default(false),
+    transferGroupId: text("transfer_group_id"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdDateIdx: index("finance_transactions_household_date_idx").on(table.householdId, table.transactionDate),
+    externalUnique: uniqueIndex("finance_transactions_account_external_unique").on(table.accountId, table.externalId),
+  }),
+);
+
+export const recurringTransactions = pgTable(
+  "recurring_finance_transactions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id").references(() => financialAccounts.id, { onDelete: "set null" }),
+    categoryId: uuid("category_id").references(() => financeCategories.id, { onDelete: "set null" }),
+    merchant: text("merchant").notNull(),
+    expectedAmount: money("expected_amount"),
+    averageAmount: money("average_amount"),
+    frequency: recurringFrequencyEnum("frequency").notNull(),
+    nextExpectedDate: date("next_expected_date", { mode: "string" }).notNull(),
+    confidence: numeric("confidence", { precision: 5, scale: 2 }).notNull().default("0"),
+    essentialStatus: essentialStatusEnum("essential_status").notNull(),
+    annualCost: money("annual_cost"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("recurring_finance_transactions_household_idx").on(table.householdId),
+  }),
+);
+
+export const financeBills = pgTable(
+  "finance_bills",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id").references(() => financialAccounts.id, { onDelete: "set null" }),
+    recurringTransactionId: uuid("recurring_transaction_id").references(() => recurringTransactions.id, { onDelete: "set null" }),
+    billName: text("bill_name").notNull(),
+    dueDate: date("due_date", { mode: "string" }).notNull(),
+    expectedAmount: money("expected_amount"),
+    status: billStatusEnum("status").notNull().default("upcoming"),
+    essential: boolean("essential").notNull().default(true),
+    autoPay: boolean("auto_pay").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdDueIdx: index("finance_bills_household_due_idx").on(table.householdId, table.dueDate),
+  }),
+);
+
+export const upcomingExpenses = pgTable(
+  "upcoming_finance_expenses",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    estimatedAmount: money("estimated_amount"),
+    expectedDate: date("expected_date", { mode: "string" }).notNull(),
+    priority: upcomingExpensePriorityEnum("priority").notNull().default("normal"),
+    required: boolean("required").notNull().default(false),
+    fundedAmount: money("funded_amount"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdDateIdx: index("upcoming_finance_expenses_household_date_idx").on(table.householdId, table.expectedDate),
+  }),
+);
+
+export const incomeSources = pgTable(
+  "income_sources",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    sourceType: incomeSourceTypeEnum("source_type").notNull(),
+    expectedMonthly: money("expected_monthly"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("income_sources_household_idx").on(table.householdId),
+  }),
+);
+
+export const emergencyReserves = pgTable(
+  "emergency_reserves",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    targetMonths: integer("target_months").notNull().default(6),
+    essentialMonthlyExpenses: money("essential_monthly_expenses"),
+    currentAmount: money("current_amount"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdUnique: uniqueIndex("emergency_reserves_household_unique").on(table.householdId),
+  }),
+);
+
+export const financeSnapshots = pgTable(
+  "finance_snapshots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    snapshotDate: date("snapshot_date", { mode: "string" }).notNull(),
+    grossInflow: money("gross_inflow"),
+    essentialOutflow: money("essential_outflow"),
+    discretionaryOutflow: money("discretionary_outflow"),
+    debtService: money("debt_service"),
+    savingsContributions: money("savings_contributions"),
+    investmentContributions: money("investment_contributions"),
+    netCashFlow: money("net_cash_flow"),
+    freeCashFlow: money("free_cash_flow"),
+    safeToDeploy: money("safe_to_deploy"),
+    safeToDeployConfidence: numeric("safe_to_deploy_confidence", { precision: 5, scale: 2 }).notNull().default("0"),
+    financialHealthScore: numeric("financial_health_score", { precision: 5, scale: 2 }).notNull().default("0"),
+    budgetPerformance: jsonb("budget_performance").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdDateUnique: uniqueIndex("finance_snapshots_household_date_unique").on(table.householdId, table.snapshotDate),
+  }),
+);
+
+export type BankConnection = typeof bankConnections.$inferSelect;
+export type FinancialAccount = typeof financialAccounts.$inferSelect;
+export type FinanceCategory = typeof financeCategories.$inferSelect;
+export type FinanceTransaction = typeof financeTransactions.$inferSelect;
+export type RecurringTransaction = typeof recurringTransactions.$inferSelect;
+export type FinanceBill = typeof financeBills.$inferSelect;
+export type UpcomingExpense = typeof upcomingExpenses.$inferSelect;
+export type IncomeSource = typeof incomeSources.$inferSelect;
+export type EmergencyReserve = typeof emergencyReserves.$inferSelect;
+export type FinanceSnapshot = typeof financeSnapshots.$inferSelect;

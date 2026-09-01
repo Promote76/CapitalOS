@@ -21,12 +21,25 @@ export interface ErrorResponse {
   details?: ErrorResponseDetails;
 }
 
+export type HouseholdSummaryPrivacy = {
+  financeDataPrivate: boolean;
+  shareHealthSummary: boolean;
+  credentialsStored: boolean;
+  bankActionsEnabled: boolean;
+};
+
 export interface HouseholdSummary {
   id: string;
   name: string;
   timezone: string;
   role: string;
   permissions: string[];
+  privacy: HouseholdSummaryPrivacy;
+}
+
+export interface PrivacySettingsInput {
+  financeDataPrivate: boolean;
+  shareHealthSummary: boolean;
 }
 
 export interface AccountSummary {
@@ -316,6 +329,250 @@ export interface DashboardSnapshot {
   recentActivity: AuditEventSummary[];
 }
 
+export type BudgetSummaryCategoriesItem = {
+  id: string;
+  name: string;
+  categoryType: string;
+  essentialStatus: string;
+  budgeted: string;
+  actual: string;
+  variance: string;
+  percentageUsed: number;
+  projectedMonthEnd: string;
+  status: string;
+};
+
+export type BudgetSummaryTotals = {
+  budgeted: string;
+  actual: string;
+  remaining: string;
+  percentageUsed: number;
+};
+
+export interface BudgetSummary {
+  month: string;
+  categories: BudgetSummaryCategoriesItem[];
+  totals: BudgetSummaryTotals;
+  notes: string[];
+}
+
+export type CashFlowSummaryMetrics = {
+  grossInflow: string;
+  essentialOutflow: string;
+  discretionaryOutflow: string;
+  debtService: string;
+  savingsContributions: string;
+  investmentContributions: string;
+  propertyContributions: string;
+  netCashFlow: string;
+  freeCashFlow: string;
+  savingsRate: number;
+  investmentRate: number;
+};
+
+export type CashFlowSummaryReserve = {
+  target: string;
+  current: string;
+  gap: string;
+  monthsCovered: number;
+  targetMonths: number;
+};
+
+export type CashFlowSummaryFinancialHealth = {
+  score: number;
+  label: string;
+  disclaimer: string;
+};
+
+export type CashFlowSummaryForecast = {
+  nextMonthInflow: string;
+  nextMonthEssentialOutflow: string;
+  nextMonthNet: string;
+  confidence: number;
+};
+
+export interface CashFlowSummary {
+  month: string;
+  metrics: CashFlowSummaryMetrics;
+  reserve: CashFlowSummaryReserve;
+  financialHealth: CashFlowSummaryFinancialHealth;
+  forecast: CashFlowSummaryForecast;
+}
+
+export interface FinancialAccount {
+  id: string;
+  institution: string;
+  nickname: string;
+  accountType: string;
+  /** @nullable */
+  currentBalance?: string | null;
+  /** @nullable */
+  availableBalance?: string | null;
+  connectionStatus: string;
+  dataSource: string;
+  /** @nullable */
+  lastSync?: string | null;
+  includedInNetWorth: boolean;
+  includedInBudget: boolean;
+  protected: boolean;
+  restricted: boolean;
+}
+
+export type FinancialAccountsSummaryConnectionsItem = {
+  id: string;
+  provider: string;
+  status: string;
+  institutionName: string;
+  /** @nullable */
+  lastSuccessfulSync?: string | null;
+};
+
+export type FinancialAccountsSummaryTotals = {
+  visibleBalance: string;
+  accountCount: number;
+};
+
+export interface FinancialAccountsSummary {
+  readOnly: boolean;
+  accounts: FinancialAccount[];
+  connections: FinancialAccountsSummaryConnectionsItem[];
+  totals: FinancialAccountsSummaryTotals;
+}
+
+export interface ManualFinancialAccountInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  institution: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  nickname: string;
+  accountType: string;
+  /** @pattern ^-?[0-9]+(\.[0-9]{1,2})?$ */
+  currentBalance?: string;
+}
+
+export interface CsvImportInput {
+  /**
+     * @minLength 1
+     * @maxLength 100000
+     */
+  csv: string;
+}
+
+export interface Bill {
+  id: string;
+  householdId: string;
+  billName: string;
+  dueDate: string;
+  expectedAmount: string;
+  status: string;
+  essential: boolean;
+  autoPay: boolean;
+}
+
+export interface UpcomingExpense {
+  id: string;
+  householdId: string;
+  name: string;
+  estimatedAmount: string;
+  expectedDate: string;
+  priority: string;
+  required: boolean;
+  fundedAmount: string;
+}
+
+export interface IncomeSource {
+  id: string;
+  householdId: string;
+  name: string;
+  sourceType: string;
+  expectedMonthly: string;
+  active: boolean;
+}
+
+export type SafeToDeployBreakdown = {
+  liquidAvailableCash: string;
+  billsDueBeforeNextIncome: string;
+  requiredMonthlyExpenses: string;
+  emergencyReserveShortfall: string;
+  protectedGoalCommitments: string;
+  knownUpcomingExpenses: string;
+  requiredSafetyBuffer: string;
+  maximumDeployableAmount: string;
+};
+
+export interface SafeToDeploy {
+  safeToDeploy: string;
+  rawSafeToDeploy: string;
+  confidence: string;
+  confidenceScore: number;
+  reason: string;
+  breakdown: SafeToDeployBreakdown;
+}
+
+export type FinanceInsightsInsightsItem = {
+  type: string;
+  title: string;
+  description: string;
+  severity: string;
+};
+
+export type FinanceInsightsSubscriptionsItem = {
+  merchant: string;
+  monthlyAmount: string;
+  annualCost: string;
+  essentialStatus: string;
+};
+
+export interface FinanceInsights {
+  insights: FinanceInsightsInsightsItem[];
+  subscriptions: FinanceInsightsSubscriptionsItem[];
+  anomalyCount: number;
+}
+
+export type BankingStatusAdaptersItem = {
+  provider: string;
+  enabled: boolean;
+  readOnly: boolean;
+};
+
+export interface BankingStatus {
+  readOnly: boolean;
+  credentialsStored: boolean;
+  transfersEnabled: boolean;
+  billPayEnabled: boolean;
+  message: string;
+  adapters: BankingStatusAdaptersItem[];
+}
+
+export type FinanceSnapshotBudgetPerformance = {
+  month: string;
+  source: string;
+};
+
+export interface FinanceSnapshot {
+  id: string;
+  householdId: string;
+  snapshotDate: string;
+  grossInflow: string;
+  essentialOutflow: string;
+  discretionaryOutflow: string;
+  debtService: string;
+  savingsContributions: string;
+  investmentContributions: string;
+  netCashFlow: string;
+  freeCashFlow: string;
+  safeToDeploy: string;
+  safeToDeployConfidence: number;
+  financialHealthScore: number;
+  budgetPerformance: FinanceSnapshotBudgetPerformance;
+  createdAt: string;
+}
+
 /**
  * Invalid request
  */
@@ -332,4 +589,10 @@ export type ForbiddenResponse = ErrorResponse;
 export type ConflictResponse = ErrorResponse;
 
 export type IdempotencyKeyParameter = string;
+
+export type ImportFinancialAccountCsv200 = {
+  imported: number;
+  skippedDuplicates: number;
+  readOnly: boolean;
+};
 

@@ -26,17 +26,30 @@ import type {
   AllocationSummary,
   AuditEventSummary,
   BadRequestResponse,
+  BankingStatus,
+  Bill,
   BlockchainStatus,
+  BudgetSummary,
+  CashFlowSummary,
   ConflictResponse,
   ContributionInput,
   ContributionSummary,
+  CsvImportInput,
   DashboardSnapshot,
   EmergencyStopInput,
+  FinanceInsights,
+  FinanceSnapshot,
+  FinancialAccount,
+  FinancialAccountsSummary,
   ForbiddenResponse,
   GoalSummary,
   HealthStatus,
   HouseholdSummary,
+  ImportFinancialAccountCsv200,
+  IncomeSource,
+  ManualFinancialAccountInput,
   PortfolioSummary,
+  PrivacySettingsInput,
   PropertyNote,
   PropertyNoteInput,
   PropertySummary,
@@ -44,11 +57,13 @@ import type {
   RecommendationSummary,
   ReportDescriptor,
   RiskSummary,
+  SafeToDeploy,
   StrategyAllocationInput,
   StrategyPromotionInput,
   StrategySummary,
   TransactionSummary,
-  TransferInput
+  TransferInput,
+  UpcomingExpense
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -231,6 +246,77 @@ export function useGetHousehold<TData = Awaited<ReturnType<typeof getHousehold>>
 
 
 
+
+export const getUpdatePrivacySettingsUrl = () => {
+
+
+
+
+  return `/api/household/privacy`
+}
+
+/**
+ * @summary Update household finance privacy controls
+ */
+export const updatePrivacySettings = async (privacySettingsInput: PrivacySettingsInput, options?: Parameters<typeof customFetch>[1]): Promise<HouseholdSummary> => {
+
+  return customFetch<HouseholdSummary>(getUpdatePrivacySettingsUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(privacySettingsInput)
+  }
+);}
+
+
+
+
+
+export const getUpdatePrivacySettingsMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePrivacySettings>>, TError,{data: BodyType<PrivacySettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePrivacySettings>>, TError,{data: BodyType<PrivacySettingsInput>}, TContext> => {
+
+const mutationKey = ['updatePrivacySettings'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePrivacySettings>>, {data: BodyType<PrivacySettingsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updatePrivacySettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePrivacySettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updatePrivacySettings>>>
+    export type UpdatePrivacySettingsMutationBody = BodyType<PrivacySettingsInput>
+    export type UpdatePrivacySettingsMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Update household finance privacy controls
+ */
+export const useUpdatePrivacySettings = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePrivacySettings>>, TError,{data: BodyType<PrivacySettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePrivacySettings>>,
+        TError,
+        {data: BodyType<PrivacySettingsInput>},
+        TContext
+      > => {
+      return useMutation(getUpdatePrivacySettingsMutationOptions(options));
+    }
 
 export const getGetDashboardUrl = () => {
 
@@ -1786,6 +1872,919 @@ export function useGetBlockchainStatus<TData = Awaited<ReturnType<typeof getBloc
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetBlockchainStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetBudgetUrl = () => {
+
+
+
+
+  return `/api/budget`
+}
+
+/**
+ * @summary Get current household budget performance
+ */
+export const getBudget = async ( options?: Parameters<typeof customFetch>[1]): Promise<BudgetSummary> => {
+
+  return customFetch<BudgetSummary>(getGetBudgetUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBudgetQueryKey = () => {
+    return [
+    `/api/budget`
+    ] as const;
+    }
+
+
+export const getGetBudgetQueryOptions = <TData = Awaited<ReturnType<typeof getBudget>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBudget>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBudgetQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBudget>>> = ({ signal }) => getBudget({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBudget>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBudgetQueryResult = NonNullable<Awaited<ReturnType<typeof getBudget>>>
+export type GetBudgetQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get current household budget performance
+ */
+
+export function useGetBudget<TData = Awaited<ReturnType<typeof getBudget>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBudget>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBudgetQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCashFlowUrl = () => {
+
+
+
+
+  return `/api/cash-flow`
+}
+
+/**
+ * @summary Get household cash flow and financial health
+ */
+export const getCashFlow = async ( options?: Parameters<typeof customFetch>[1]): Promise<CashFlowSummary> => {
+
+  return customFetch<CashFlowSummary>(getGetCashFlowUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCashFlowQueryKey = () => {
+    return [
+    `/api/cash-flow`
+    ] as const;
+    }
+
+
+export const getGetCashFlowQueryOptions = <TData = Awaited<ReturnType<typeof getCashFlow>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCashFlow>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCashFlowQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCashFlow>>> = ({ signal }) => getCashFlow({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCashFlow>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCashFlowQueryResult = NonNullable<Awaited<ReturnType<typeof getCashFlow>>>
+export type GetCashFlowQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get household cash flow and financial health
+ */
+
+export function useGetCashFlow<TData = Awaited<ReturnType<typeof getCashFlow>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCashFlow>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCashFlowQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListFinancialAccountsUrl = () => {
+
+
+
+
+  return `/api/financial-accounts`
+}
+
+/**
+ * @summary List read-only household financial accounts
+ */
+export const listFinancialAccounts = async ( options?: Parameters<typeof customFetch>[1]): Promise<FinancialAccountsSummary> => {
+
+  return customFetch<FinancialAccountsSummary>(getListFinancialAccountsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFinancialAccountsQueryKey = () => {
+    return [
+    `/api/financial-accounts`
+    ] as const;
+    }
+
+
+export const getListFinancialAccountsQueryOptions = <TData = Awaited<ReturnType<typeof listFinancialAccounts>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinancialAccounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFinancialAccountsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFinancialAccounts>>> = ({ signal }) => listFinancialAccounts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFinancialAccounts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFinancialAccountsQueryResult = NonNullable<Awaited<ReturnType<typeof listFinancialAccounts>>>
+export type ListFinancialAccountsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List read-only household financial accounts
+ */
+
+export function useListFinancialAccounts<TData = Awaited<ReturnType<typeof listFinancialAccounts>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinancialAccounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFinancialAccountsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateManualFinancialAccountUrl = () => {
+
+
+
+
+  return `/api/financial-accounts`
+}
+
+/**
+ * @summary Add a manual financial account
+ */
+export const createManualFinancialAccount = async (manualFinancialAccountInput: ManualFinancialAccountInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancialAccount> => {
+
+  return customFetch<FinancialAccount>(getCreateManualFinancialAccountUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(manualFinancialAccountInput)
+  }
+);}
+
+
+
+
+
+export const getCreateManualFinancialAccountMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createManualFinancialAccount>>, TError,{data: BodyType<ManualFinancialAccountInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createManualFinancialAccount>>, TError,{data: BodyType<ManualFinancialAccountInput>}, TContext> => {
+
+const mutationKey = ['createManualFinancialAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createManualFinancialAccount>>, {data: BodyType<ManualFinancialAccountInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createManualFinancialAccount(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateManualFinancialAccountMutationResult = NonNullable<Awaited<ReturnType<typeof createManualFinancialAccount>>>
+    export type CreateManualFinancialAccountMutationBody = BodyType<ManualFinancialAccountInput>
+    export type CreateManualFinancialAccountMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Add a manual financial account
+ */
+export const useCreateManualFinancialAccount = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createManualFinancialAccount>>, TError,{data: BodyType<ManualFinancialAccountInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createManualFinancialAccount>>,
+        TError,
+        {data: BodyType<ManualFinancialAccountInput>},
+        TContext
+      > => {
+      return useMutation(getCreateManualFinancialAccountMutationOptions(options));
+    }
+
+export const getImportFinancialAccountCsvUrl = (accountId: string,) => {
+
+
+
+
+  return `/api/financial-accounts/${accountId}/import-csv`
+}
+
+/**
+ * @summary Import read-only transactions from CSV
+ */
+export const importFinancialAccountCsv = async (accountId: string,
+    csvImportInput: CsvImportInput, options?: Parameters<typeof customFetch>[1]): Promise<ImportFinancialAccountCsv200> => {
+
+  return customFetch<ImportFinancialAccountCsv200>(getImportFinancialAccountCsvUrl(accountId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(csvImportInput)
+  }
+);}
+
+
+
+
+
+export const getImportFinancialAccountCsvMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importFinancialAccountCsv>>, TError,{accountId: string;data: BodyType<CsvImportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importFinancialAccountCsv>>, TError,{accountId: string;data: BodyType<CsvImportInput>}, TContext> => {
+
+const mutationKey = ['importFinancialAccountCsv'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importFinancialAccountCsv>>, {accountId: string;data: BodyType<CsvImportInput>}> = (props) => {
+          const {accountId,data} = props ?? {};
+
+          return  importFinancialAccountCsv(accountId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportFinancialAccountCsvMutationResult = NonNullable<Awaited<ReturnType<typeof importFinancialAccountCsv>>>
+    export type ImportFinancialAccountCsvMutationBody = BodyType<CsvImportInput>
+    export type ImportFinancialAccountCsvMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Import read-only transactions from CSV
+ */
+export const useImportFinancialAccountCsv = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importFinancialAccountCsv>>, TError,{accountId: string;data: BodyType<CsvImportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importFinancialAccountCsv>>,
+        TError,
+        {accountId: string;data: BodyType<CsvImportInput>},
+        TContext
+      > => {
+      return useMutation(getImportFinancialAccountCsvMutationOptions(options));
+    }
+
+export const getListBillsUrl = () => {
+
+
+
+
+  return `/api/bills`
+}
+
+/**
+ * @summary List upcoming household bills
+ */
+export const listBills = async ( options?: Parameters<typeof customFetch>[1]): Promise<Bill[]> => {
+
+  return customFetch<Bill[]>(getListBillsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBillsQueryKey = () => {
+    return [
+    `/api/bills`
+    ] as const;
+    }
+
+
+export const getListBillsQueryOptions = <TData = Awaited<ReturnType<typeof listBills>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBills>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBillsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBills>>> = ({ signal }) => listBills({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBills>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBillsQueryResult = NonNullable<Awaited<ReturnType<typeof listBills>>>
+export type ListBillsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List upcoming household bills
+ */
+
+export function useListBills<TData = Awaited<ReturnType<typeof listBills>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBills>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBillsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListUpcomingExpensesUrl = () => {
+
+
+
+
+  return `/api/upcoming-expenses`
+}
+
+/**
+ * @summary List known upcoming expenses
+ */
+export const listUpcomingExpenses = async ( options?: Parameters<typeof customFetch>[1]): Promise<UpcomingExpense[]> => {
+
+  return customFetch<UpcomingExpense[]>(getListUpcomingExpensesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListUpcomingExpensesQueryKey = () => {
+    return [
+    `/api/upcoming-expenses`
+    ] as const;
+    }
+
+
+export const getListUpcomingExpensesQueryOptions = <TData = Awaited<ReturnType<typeof listUpcomingExpenses>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUpcomingExpenses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListUpcomingExpensesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listUpcomingExpenses>>> = ({ signal }) => listUpcomingExpenses({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listUpcomingExpenses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListUpcomingExpensesQueryResult = NonNullable<Awaited<ReturnType<typeof listUpcomingExpenses>>>
+export type ListUpcomingExpensesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List known upcoming expenses
+ */
+
+export function useListUpcomingExpenses<TData = Awaited<ReturnType<typeof listUpcomingExpenses>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUpcomingExpenses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListUpcomingExpensesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListIncomeSourcesUrl = () => {
+
+
+
+
+  return `/api/income`
+}
+
+/**
+ * @summary List household income sources
+ */
+export const listIncomeSources = async ( options?: Parameters<typeof customFetch>[1]): Promise<IncomeSource[]> => {
+
+  return customFetch<IncomeSource[]>(getListIncomeSourcesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListIncomeSourcesQueryKey = () => {
+    return [
+    `/api/income`
+    ] as const;
+    }
+
+
+export const getListIncomeSourcesQueryOptions = <TData = Awaited<ReturnType<typeof listIncomeSources>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIncomeSources>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListIncomeSourcesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listIncomeSources>>> = ({ signal }) => listIncomeSources({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listIncomeSources>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListIncomeSourcesQueryResult = NonNullable<Awaited<ReturnType<typeof listIncomeSources>>>
+export type ListIncomeSourcesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List household income sources
+ */
+
+export function useListIncomeSources<TData = Awaited<ReturnType<typeof listIncomeSources>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listIncomeSources>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListIncomeSourcesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSafeToDeployUrl = () => {
+
+
+
+
+  return `/api/safe-to-deploy`
+}
+
+/**
+ * @summary Get Capital Governor safe-to-deploy amount
+ */
+export const getSafeToDeploy = async ( options?: Parameters<typeof customFetch>[1]): Promise<SafeToDeploy> => {
+
+  return customFetch<SafeToDeploy>(getGetSafeToDeployUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSafeToDeployQueryKey = () => {
+    return [
+    `/api/safe-to-deploy`
+    ] as const;
+    }
+
+
+export const getGetSafeToDeployQueryOptions = <TData = Awaited<ReturnType<typeof getSafeToDeploy>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafeToDeploy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSafeToDeployQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSafeToDeploy>>> = ({ signal }) => getSafeToDeploy({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSafeToDeploy>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSafeToDeployQueryResult = NonNullable<Awaited<ReturnType<typeof getSafeToDeploy>>>
+export type GetSafeToDeployQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get Capital Governor safe-to-deploy amount
+ */
+
+export function useGetSafeToDeploy<TData = Awaited<ReturnType<typeof getSafeToDeploy>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSafeToDeploy>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSafeToDeployQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFinanceInsightsUrl = () => {
+
+
+
+
+  return `/api/finance-insights`
+}
+
+/**
+ * @summary Get advisory household finance insights
+ */
+export const getFinanceInsights = async ( options?: Parameters<typeof customFetch>[1]): Promise<FinanceInsights> => {
+
+  return customFetch<FinanceInsights>(getGetFinanceInsightsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFinanceInsightsQueryKey = () => {
+    return [
+    `/api/finance-insights`
+    ] as const;
+    }
+
+
+export const getGetFinanceInsightsQueryOptions = <TData = Awaited<ReturnType<typeof getFinanceInsights>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinanceInsights>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFinanceInsightsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFinanceInsights>>> = ({ signal }) => getFinanceInsights({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFinanceInsights>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFinanceInsightsQueryResult = NonNullable<Awaited<ReturnType<typeof getFinanceInsights>>>
+export type GetFinanceInsightsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get advisory household finance insights
+ */
+
+export function useGetFinanceInsights<TData = Awaited<ReturnType<typeof getFinanceInsights>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinanceInsights>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFinanceInsightsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListFinanceSnapshotsUrl = () => {
+
+
+
+
+  return `/api/finance-snapshots`
+}
+
+/**
+ * @summary List historical household finance snapshots
+ */
+export const listFinanceSnapshots = async ( options?: Parameters<typeof customFetch>[1]): Promise<FinanceSnapshot[]> => {
+
+  return customFetch<FinanceSnapshot[]>(getListFinanceSnapshotsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFinanceSnapshotsQueryKey = () => {
+    return [
+    `/api/finance-snapshots`
+    ] as const;
+    }
+
+
+export const getListFinanceSnapshotsQueryOptions = <TData = Awaited<ReturnType<typeof listFinanceSnapshots>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinanceSnapshots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFinanceSnapshotsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFinanceSnapshots>>> = ({ signal }) => listFinanceSnapshots({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFinanceSnapshots>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFinanceSnapshotsQueryResult = NonNullable<Awaited<ReturnType<typeof listFinanceSnapshots>>>
+export type ListFinanceSnapshotsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List historical household finance snapshots
+ */
+
+export function useListFinanceSnapshots<TData = Awaited<ReturnType<typeof listFinanceSnapshots>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinanceSnapshots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFinanceSnapshotsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetBankingStatusUrl = () => {
+
+
+
+
+  return `/api/banking/status`
+}
+
+/**
+ * @summary Get provider-neutral read-only banking adapter status
+ */
+export const getBankingStatus = async ( options?: Parameters<typeof customFetch>[1]): Promise<BankingStatus> => {
+
+  return customFetch<BankingStatus>(getGetBankingStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBankingStatusQueryKey = () => {
+    return [
+    `/api/banking/status`
+    ] as const;
+    }
+
+
+export const getGetBankingStatusQueryOptions = <TData = Awaited<ReturnType<typeof getBankingStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBankingStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBankingStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBankingStatus>>> = ({ signal }) => getBankingStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBankingStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBankingStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getBankingStatus>>>
+export type GetBankingStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get provider-neutral read-only banking adapter status
+ */
+
+export function useGetBankingStatus<TData = Awaited<ReturnType<typeof getBankingStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBankingStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBankingStatusQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

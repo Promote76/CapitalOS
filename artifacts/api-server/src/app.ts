@@ -33,7 +33,7 @@ app.use(
 );
 app.use(cors({
   origin: process.env.CAPITAL_OS_ALLOWED_ORIGIN ?? true,
-  methods: ["GET", "POST"],
+  methods: ["GET", "POST", "PATCH"],
   allowedHeaders: ["Content-Type", "Idempotency-Key", "X-Household-Role"],
 }));
 app.use(express.json({ limit: "100kb" }));

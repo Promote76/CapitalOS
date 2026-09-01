@@ -5,6 +5,13 @@ import {
   aiRecommendations,
   allocationRules,
   auditEvents,
+  bankConnections,
+  emergencyReserves,
+  financeBills,
+  financeCategories,
+  financeSnapshots,
+  financeTransactions,
+  financialAccounts,
   goals,
   contributions,
   householdMembers,
@@ -15,13 +22,174 @@ import {
   propertyGoals,
   propertyMilestones,
   riskStates,
+  incomeSources,
+  recurringTransactions,
   strategyPerformance,
   strategyVersions,
   strategies,
   users,
+  upcomingExpenses,
 } from "@workspace/db";
 
 const DEMO_HOUSEHOLD_NAME = "Morgan household";
+
+async function ensureHouseholdFinanceSeed(householdId: string) {
+  const existingAccount = await db
+    .select({ id: financialAccounts.id })
+    .from(financialAccounts)
+    .where(eq(financialAccounts.householdId, householdId))
+    .limit(1);
+  if (existingAccount[0]) {
+    const existingSnapshot = await db
+      .select({ id: financeSnapshots.id })
+      .from(financeSnapshots)
+      .where(and(eq(financeSnapshots.householdId, householdId), eq(financeSnapshots.snapshotDate, "2026-08-31")))
+      .limit(1);
+    if (!existingSnapshot[0]) {
+      await db.insert(financeSnapshots).values({
+        householdId,
+        snapshotDate: "2026-08-31",
+        grossInflow: "8400.00",
+        essentialOutflow: "3148.00",
+        discretionaryOutflow: "403.00",
+        debtService: "350.00",
+        savingsContributions: "900.00",
+        investmentContributions: "100.00",
+        netCashFlow: "3499.00",
+        freeCashFlow: "3499.00",
+        safeToDeploy: "0.00",
+        safeToDeployConfidence: "86.00",
+        financialHealthScore: "83.00",
+        budgetPerformance: { month: "August 2026", source: "seeded household ledger" },
+      });
+    }
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    const [connection] = await tx
+      .insert(bankConnections)
+      .values({
+        householdId,
+        provider: "manual",
+        status: "manual",
+        institutionName: "Manual household ledger",
+      })
+      .returning({ id: bankConnections.id });
+    const [checking] = await tx.insert(financialAccounts).values({
+      householdId,
+      bankConnectionId: connection.id,
+      institution: "Community checking",
+      nickname: "Household checking",
+      accountType: "checking",
+      currentBalance: "5200.00",
+      availableBalance: "5200.00",
+      connectionStatus: "manual",
+      dataSource: "manual",
+      lastSync: new Date(),
+      lastSuccessfulSync: new Date(),
+    }).returning({ id: financialAccounts.id });
+    const [savings] = await tx.insert(financialAccounts).values({
+      householdId,
+      bankConnectionId: connection.id,
+      institution: "Community savings",
+      nickname: "Emergency reserve",
+      accountType: "savings",
+      currentBalance: "6400.00",
+      availableBalance: "6400.00",
+      connectionStatus: "manual",
+      dataSource: "manual",
+      lastSync: new Date(),
+      lastSuccessfulSync: new Date(),
+    }).returning({ id: financialAccounts.id });
+    const [card] = await tx.insert(financialAccounts).values({
+      householdId,
+      bankConnectionId: connection.id,
+      institution: "Community credit union",
+      nickname: "Everyday card",
+      accountType: "credit_card",
+      currentBalance: "-780.00",
+      availableBalance: "4220.00",
+      connectionStatus: "manual",
+      dataSource: "manual",
+      lastSync: new Date(),
+      lastSuccessfulSync: new Date(),
+    }).returning({ id: financialAccounts.id });
+
+    const categoryRows = await tx.insert(financeCategories).values([
+      { householdId, name: "Household income", categoryType: "income", essentialStatus: "essential", monthlyTarget: "8400.00", warningThreshold: "0.90" },
+      { householdId, name: "Housing", categoryType: "fixed_expense", essentialStatus: "essential", monthlyTarget: "1800.00", warningThreshold: "1.05" },
+      { householdId, name: "Food", categoryType: "variable_essential", essentialStatus: "essential", monthlyTarget: "600.00", warningThreshold: "1.05" },
+      { householdId, name: "Transportation", categoryType: "variable_essential", essentialStatus: "essential", monthlyTarget: "420.00", warningThreshold: "1.05" },
+      { householdId, name: "Utilities", categoryType: "fixed_expense", essentialStatus: "essential", monthlyTarget: "260.00", warningThreshold: "1.05" },
+      { householdId, name: "Insurance", categoryType: "fixed_expense", essentialStatus: "essential", monthlyTarget: "320.00", warningThreshold: "1.05" },
+      { householdId, name: "Debt payment", categoryType: "debt_payment", essentialStatus: "essential", monthlyTarget: "350.00", warningThreshold: "1.05" },
+      { householdId, name: "Personal", categoryType: "variable_discretionary", essentialStatus: "discretionary", monthlyTarget: "300.00", warningThreshold: "1.10" },
+      { householdId, name: "Entertainment", categoryType: "variable_discretionary", essentialStatus: "discretionary", monthlyTarget: "180.00", warningThreshold: "1.10" },
+      { householdId, name: "Duplex Fund", categoryType: "savings", essentialStatus: "essential", monthlyTarget: "800.00", warningThreshold: "0.95" },
+      { householdId, name: "Capital OS", categoryType: "investment", essentialStatus: "mixed", monthlyTarget: "100.00", warningThreshold: "0.95" },
+      { householdId, name: "Opportunity Reserve", categoryType: "savings", essentialStatus: "mixed", monthlyTarget: "100.00", warningThreshold: "0.95" },
+    ]).returning();
+    const categoryId = (name: string) => categoryRows.find((category) => category.name === name)!.id;
+    await tx.insert(financeTransactions).values([
+      { householdId, accountId: checking.id, externalId: "seed-income-aug", transactionDate: "2026-08-01", description: "Household payroll", merchant: "Household income", originalAmount: "8400.00", amount: "8400.00", categoryId: categoryId("Household income"), dataSource: "manual", reviewStatus: "approved" },
+      { householdId, accountId: checking.id, externalId: "seed-housing-aug", transactionDate: "2026-08-02", description: "Monthly housing payment", merchant: "Housing", originalAmount: "1800.00", amount: "-1800.00", categoryId: categoryId("Housing"), dataSource: "manual", reviewStatus: "approved" },
+      { householdId, accountId: checking.id, externalId: "seed-food-aug", transactionDate: "2026-08-08", description: "Groceries and household goods", merchant: "Food", originalAmount: "472.00", amount: "-472.00", categoryId: categoryId("Food"), dataSource: "manual", reviewStatus: "approved" },
+      { householdId, accountId: checking.id, externalId: "seed-transit-aug", transactionDate: "2026-08-10", description: "Fuel and transit", merchant: "Transportation", originalAmount: "312.00", amount: "-312.00", categoryId: categoryId("Transportation"), dataSource: "manual", reviewStatus: "approved" },
+      { householdId, accountId: checking.id, externalId: "seed-utilities-aug", transactionDate: "2026-08-12", description: "Utilities", merchant: "Utilities", originalAmount: "244.00", amount: "-244.00", categoryId: categoryId("Utilities"), dataSource: "manual", reviewStatus: "approved" },
+      { householdId, accountId: checking.id, externalId: "seed-insurance-aug", transactionDate: "2026-08-14", description: "Insurance premium", merchant: "Insurance", originalAmount: "320.00", amount: "-320.00", categoryId: categoryId("Insurance"), dataSource: "manual", reviewStatus: "approved" },
+      { householdId, accountId: card.id, externalId: "seed-debt-aug", transactionDate: "2026-08-16", description: "Card payment", merchant: "Debt payment", originalAmount: "350.00", amount: "-350.00", categoryId: categoryId("Debt payment"), dataSource: "manual", reviewStatus: "approved" },
+      { householdId, accountId: card.id, externalId: "seed-personal-aug", transactionDate: "2026-08-18", description: "Personal spending", merchant: "Personal", originalAmount: "265.00", amount: "-265.00", categoryId: categoryId("Personal"), dataSource: "manual", reviewStatus: "approved" },
+      { householdId, accountId: card.id, externalId: "seed-entertainment-aug", transactionDate: "2026-08-20", description: "Streaming and dining", merchant: "Entertainment", originalAmount: "138.00", amount: "-138.00", categoryId: categoryId("Entertainment"), dataSource: "manual", reviewStatus: "approved" },
+      { householdId, accountId: savings.id, externalId: "seed-duplex-aug", transactionDate: "2026-08-23", description: "Protected duplex contribution", merchant: "Duplex Fund", originalAmount: "800.00", amount: "-800.00", categoryId: categoryId("Duplex Fund"), dataSource: "manual", reviewStatus: "approved" },
+      { householdId, accountId: savings.id, externalId: "seed-capital-aug", transactionDate: "2026-08-24", description: "Capital OS contribution", merchant: "Capital OS", originalAmount: "100.00", amount: "-100.00", categoryId: categoryId("Capital OS"), dataSource: "manual", reviewStatus: "approved" },
+      { householdId, accountId: savings.id, externalId: "seed-opportunity-aug", transactionDate: "2026-08-25", description: "Opportunity reserve contribution", merchant: "Opportunity Reserve", originalAmount: "100.00", amount: "-100.00", categoryId: categoryId("Opportunity Reserve"), dataSource: "manual", reviewStatus: "approved" },
+    ]);
+    await tx.insert(recurringTransactions).values([
+      { householdId, accountId: checking.id, categoryId: categoryId("Housing"), merchant: "Housing payment", expectedAmount: "1800.00", averageAmount: "1800.00", frequency: "monthly", nextExpectedDate: "2026-09-02", confidence: "0.98", essentialStatus: "essential", annualCost: "21600.00" },
+      { householdId, accountId: checking.id, categoryId: categoryId("Insurance"), merchant: "Insurance premium", expectedAmount: "320.00", averageAmount: "320.00", frequency: "monthly", nextExpectedDate: "2026-09-14", confidence: "0.96", essentialStatus: "essential", annualCost: "3840.00" },
+      { householdId, accountId: card.id, categoryId: categoryId("Entertainment"), merchant: "Streaming bundle", expectedAmount: "82.00", averageAmount: "82.00", frequency: "monthly", nextExpectedDate: "2026-09-20", confidence: "0.91", essentialStatus: "discretionary", annualCost: "984.00" },
+      { householdId, accountId: savings.id, categoryId: categoryId("Duplex Fund"), merchant: "Weekly savings", expectedAmount: "200.00", averageAmount: "200.00", frequency: "weekly", nextExpectedDate: "2026-09-04", confidence: "0.99", essentialStatus: "essential", annualCost: "10400.00" },
+    ]);
+    await tx.insert(financeBills).values([
+      { householdId, accountId: checking.id, billName: "Housing payment", dueDate: "2026-09-02", expectedAmount: "1800.00", status: "due_soon", essential: true, autoPay: true },
+      { householdId, accountId: checking.id, billName: "Insurance premium", dueDate: "2026-09-14", expectedAmount: "320.00", status: "upcoming", essential: true, autoPay: true },
+      { householdId, accountId: card.id, billName: "Credit card payment", dueDate: "2026-09-18", expectedAmount: "350.00", status: "estimated", essential: true, autoPay: false },
+    ]);
+    await tx.insert(upcomingExpenses).values([
+      { householdId, name: "Vehicle repair buffer", estimatedAmount: "600.00", expectedDate: "2026-09-12", priority: "high", required: true, fundedAmount: "150.00" },
+      { householdId, name: "Duplex inspection planning", estimatedAmount: "450.00", expectedDate: "2026-10-15", priority: "normal", required: true, fundedAmount: "0.00" },
+    ]);
+    await tx.insert(incomeSources).values({
+      householdId,
+      name: "Household payroll",
+      sourceType: "employment",
+      expectedMonthly: "8400.00",
+    });
+    await tx.insert(emergencyReserves).values({
+      householdId,
+      targetMonths: 3,
+      essentialMonthlyExpenses: "3150.00",
+      currentAmount: "6400.00",
+    });
+    await tx.insert(financeSnapshots).values({
+      householdId,
+      snapshotDate: "2026-08-31",
+      grossInflow: "8400.00",
+      essentialOutflow: "3148.00",
+      discretionaryOutflow: "403.00",
+      debtService: "350.00",
+      savingsContributions: "900.00",
+      investmentContributions: "100.00",
+      netCashFlow: "3499.00",
+      freeCashFlow: "3499.00",
+      safeToDeploy: "0.00",
+      safeToDeployConfidence: "86.00",
+      financialHealthScore: "83.00",
+      budgetPerformance: { month: "August 2026", source: "seeded household ledger" },
+    });
+  });
+}
 
 export type SeedContext = {
   householdId: string;
@@ -138,6 +306,7 @@ export async function ensureSeedData(): Promise<SeedContext> {
         recommendationId: recommendation[0].id,
         riskStateId: risk[0].id,
       };
+      await ensureHouseholdFinanceSeed(seedContext.householdId);
       return seedContext;
     }
   }
@@ -430,5 +599,6 @@ export async function ensureSeedData(): Promise<SeedContext> {
   });
 
   seedContext = result;
+  await ensureHouseholdFinanceSeed(seedContext.householdId);
   return result;
 }

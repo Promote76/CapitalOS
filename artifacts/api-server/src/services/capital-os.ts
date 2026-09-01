@@ -8,6 +8,7 @@ import {
   contributions,
   goals,
   householdMembers,
+  householdSettings,
   households,
   ledgerEntries,
   ledgerTransactions,
@@ -127,6 +128,7 @@ async function accountRows(householdId: string): Promise<Account[]> {
 export async function getHousehold(actor: Actor) {
   const ids = await context();
   const [household] = await db.select().from(households).where(eq(households.id, ids.householdId)).limit(1);
+  const [settings] = await db.select().from(householdSettings).where(eq(householdSettings.householdId, ids.householdId)).limit(1);
   if (!household) throw new Error("Household was not found");
   return {
     id: household.id,
@@ -142,7 +144,24 @@ export async function getHousehold(actor: Actor) {
             ? ["read", "recommend"]
             : ["read"],
     ),
+    privacy: {
+      financeDataPrivate: settings?.settings?.financeDataPrivate !== false,
+      shareHealthSummary: settings?.settings?.shareHealthSummary === true,
+      credentialsStored: false,
+      bankActionsEnabled: false,
+    },
   };
+}
+
+export async function updatePrivacySettings(actor: Actor, input: { financeDataPrivate: boolean; shareHealthSummary: boolean }) {
+  assertPermission(actor.role, "approve");
+  const ids = await context();
+  const [settings] = await db.select().from(householdSettings).where(eq(householdSettings.householdId, ids.householdId)).limit(1);
+  await db.update(householdSettings).set({
+    settings: { ...(settings?.settings ?? {}), ...input, credentialsStored: false, bankActionsEnabled: false },
+    updatedAt: new Date(),
+  }).where(eq(householdSettings.householdId, ids.householdId));
+  return getHousehold(actor);
 }
 
 export async function getAccounts() {

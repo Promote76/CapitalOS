@@ -2,6 +2,14 @@ import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 're
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createContribution,
+  useGetCashFlow,
+  useGetFinanceInsights,
+  useGetSafeToDeploy,
+  useListFinancialAccounts,
+  useCreateManualFinancialAccount,
+  useGetBudget,
+  useGetHousehold,
+  useUpdatePrivacySettings,
   useGetDashboard,
   useListContributions,
   type DashboardSnapshot,
@@ -43,6 +51,8 @@ import {
   Sparkles,
   Target,
   WalletCards,
+  TrendingUp,
+  PiggyBank,
   X,
 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -70,6 +80,9 @@ function displayDate(value: string | undefined, fallback: string) {
 
 const primaryNav = [
   { href: '/', label: 'Overview', icon: LayoutDashboard },
+  { href: '/budget', label: 'Budget', icon: ClipboardList },
+  { href: '/cash-flow', label: 'Cash Flow', icon: TrendingUp },
+  { href: '/accounts', label: 'Accounts', icon: Landmark },
   { href: '/goals', label: 'Goals', icon: Target },
   { href: '/strategies', label: 'Strategies', icon: Compass },
   { href: '/portfolio', label: 'Portfolio', icon: BarChart3 },
@@ -207,6 +220,7 @@ function Dashboard({ onAction, onFeedback, transactions, dashboard, backendIssue
       </section>
     </div>
     <QuickActions onAction={onAction} />
+     <FinancePulse />
     <div className="capital-state-grid animate-in delay-3">
       <section className="capital-state-card protected" data-testid="card-protected-capital">
         <div className="state-icon"><ShieldCheck size={17} /></div>
@@ -335,14 +349,133 @@ function RiskPage({ onFeedback }: { onFeedback: (message: string) => void }) {
 
 function SettingsPage({ onFeedback }: { onFeedback: (message: string) => void }) {
   const [settings, setSettings] = useState({ weekly: true, reminders: true, insights: false });
+  const household = useGetHousehold();
+  const updatePrivacy = useUpdatePrivacySettings();
+  const [privacy, setPrivacy] = useState({ financeDataPrivate: true, shareHealthSummary: false });
   const toggle = (key: keyof typeof settings) => setSettings((current) => ({ ...current, [key]: !current[key] }));
+  useEffect(() => {
+    if (household.data?.privacy) {
+      setPrivacy({
+        financeDataPrivate: household.data.privacy.financeDataPrivate,
+        shareHealthSummary: household.data.privacy.shareHealthSummary,
+      });
+    }
+  }, [household.data?.privacy]);
+  const togglePrivacy = async (key: keyof typeof privacy) => {
+    const next = { ...privacy, [key]: !privacy[key] };
+    setPrivacy(next);
+    try {
+      await updatePrivacy.mutateAsync({ data: next });
+      onFeedback('Privacy controls saved to this household.');
+    } catch (error) {
+      setPrivacy(privacy);
+      onFeedback(error instanceof Error ? error.message : 'Privacy controls could not be saved.');
+    }
+  };
   return <main className="content">
     <PageHeading eyebrow="Workspace / settings" title={<>Set the room<br /><em>to support the habit.</em></>} description="Capital OS stays quiet by default. Choose the signals that help you keep your promise to the plan." />
     <div className="section-grid-wide">
       <section className="card card-pad animate-in delay-1"><CardTitle title="Preferences" subtitle="Your private workspace defaults." />{[['weekly', 'Weekly contribution rhythm', 'Keep the $250 Friday allocation active.', 'weekly'], ['reminders', 'Gentle reminders', 'A short note before an upcoming contribution.', 'reminders'], ['insights', 'Monthly insights', 'Receive a monthly reflection on your pace.', 'insights']].map(([key, title, desc, test]) => <div className="setting-row" key={key}><div><strong>{title}</strong><p>{desc}</p></div><button className={`toggle ${settings[key as keyof typeof settings] ? 'on' : ''}`} role="switch" aria-checked={settings[key as keyof typeof settings]} data-testid={`toggle-${test}`} onClick={() => toggle(key as keyof typeof settings)}><span /></button></div>)}</section>
       <section className="card card-pad animate-in delay-2"><CardTitle title="Account details" subtitle="A few useful anchors." /><div className="field" style={{ marginBottom:15 }}><label>Household</label><input data-testid="input-household" defaultValue="The Morgan household" /></div><div className="field" style={{ marginBottom:15 }}><label>Plan name</label><input data-testid="input-plan-name" defaultValue="First duplex" /></div><div className="field"><label>Review cadence</label><select data-testid="select-review-cadence" defaultValue="quarterly"><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="twice-yearly">Twice yearly</option></select></div><button className="btn btn-primary" style={{ marginTop:20 }} data-testid="button-save-settings" onClick={() => onFeedback('Workspace preferences saved locally.')}><Check size={14} /> Save changes</button></section>
     </div>
-    <section className="card card-pad page-section"><CardTitle title="Privacy & access" /><div className="setting-row"><div style={{ display:'flex', gap:12, alignItems:'center' }}><div className="activity-icon"><LockKeyhole size={14} /></div><div><strong>Private by design</strong><p>Your planning data is only visible in this household workspace.</p></div></div><span className="status">Protected</span></div><div className="setting-row"><div style={{ display:'flex', gap:12, alignItems:'center' }}><div className="activity-icon"><CircleHelp size={14} /></div><div><strong>Need a hand?</strong><p>Read the short guide to using Capital OS every week.</p></div></div><button className="btn" data-testid="button-open-guide" onClick={() => onFeedback('The weekly review guide is ready in your workspace.')} >Open guide <ArrowUpRight size={14} /></button></div></section>
+     <section className="card card-pad page-section"><CardTitle title="Privacy & access" subtitle={`${household.data?.role ?? 'household'} permissions · credentials stored: never`} /><div className="setting-row"><div style={{ display:'flex', gap:12, alignItems:'center' }}><div className="activity-icon"><LockKeyhole size={14} /></div><div><strong>Keep finance data private</strong><p>Account and household-finance details stay inside this household workspace.</p></div></div><button className={`toggle ${privacy.financeDataPrivate ? 'on' : ''}`} role="switch" aria-checked={privacy.financeDataPrivate} onClick={() => togglePrivacy('financeDataPrivate')}><span /></button></div><div className="setting-row"><div style={{ display:'flex', gap:12, alignItems:'center' }}><div className="activity-icon"><CircleHelp size={14} /></div><div><strong>Share health summary</strong><p>Allow a high-level financial health summary to be shared with household advisors.</p></div></div><button className={`toggle ${privacy.shareHealthSummary ? 'on' : ''}`} role="switch" aria-checked={privacy.shareHealthSummary} onClick={() => togglePrivacy('shareHealthSummary')}><span /></button></div><div className="setting-row"><div style={{ display:'flex', gap:12, alignItems:'center' }}><div className="activity-icon"><CircleHelp size={14} /></div><div><strong>Need a hand?</strong><p>Read the short guide to using Capital OS every week.</p></div></div><button className="btn" data-testid="button-open-guide" onClick={() => onFeedback('The weekly review guide is ready in your workspace.')} >Open guide <ArrowUpRight size={14} /></button></div></section>
+  </main>;
+}
+
+function FinanceMetric({ label, value, detail, tone = '' }: { label: string; value: string; detail: string; tone?: string }) {
+  return <div className={`metric-card ${tone}`}><div className="mono-label">{label}</div><div className="metric-value">{value}</div><div className="metric-detail">{detail}</div></div>;
+}
+
+function FinancePulse() {
+  const cashFlow = useGetCashFlow();
+  const safe = useGetSafeToDeploy();
+  if (cashFlow.isLoading || safe.isLoading) return null;
+  return <section className="finance-pulse animate-in delay-3">
+    <FinanceMetric label="Financial health" value={`${cashFlow.data?.financialHealth.score ?? 0} / 100`} detail={cashFlow.data?.financialHealth.label ?? 'Building'} tone="blue" />
+    <FinanceMetric label="Savings rate" value={`${cashFlow.data?.metrics.savingsRate ?? 0}%`} detail="of household inflow" tone="green" />
+    <FinanceMetric label="Safe to deploy" value={displayMoney(safe.data?.safeToDeploy, '$0')} detail={`${safe.data?.confidence ?? 'low'} Governor confidence`} tone="lavender" />
+    <FinanceMetric label="Cash runway" value={`${cashFlow.data?.reserve.monthsCovered ?? 0} mo`} detail={`of ${cashFlow.data?.reserve.targetMonths ?? 0}-month target`} tone="amber" />
+  </section>;
+}
+
+function BudgetPage() {
+  const query = useGetBudget();
+  const safe = useGetSafeToDeploy();
+  const data = query.data;
+  return <main className="content">
+    <PageHeading eyebrow="Household finance / budget" title={<>Give every dollar<br /><em>a clear job.</em></>} description="A calm view of what came in, what went out, and what remains available for the plan." actions={<Link className="btn btn-primary" href="/cash-flow"><TrendingUp size={15} /> View cash flow</Link>} />
+    {query.isError && <div className="card card-pad" role="alert">Budget data is temporarily unavailable.</div>}
+    <div className="finance-grid animate-in delay-1">
+      <FinanceMetric label="Month planned" value={displayMoney(data?.totals.budgeted, '$0')} detail="household categories" tone="blue" />
+      <FinanceMetric label="Spent so far" value={displayMoney(data?.totals.actual, '$0')} detail={`${data?.totals.percentageUsed ?? 0}% of planned`} tone="amber" />
+      <FinanceMetric label="Remaining" value={displayMoney(data?.totals.remaining, '$0')} detail="before the month closes" tone="green" />
+      <FinanceMetric label="Safe to deploy" value={displayMoney(safe.data?.safeToDeploy, '$0')} detail="Capital Governor limit" tone="lavender" />
+    </div>
+    <section className="card card-pad page-section animate-in delay-2">
+      <CardTitle title="Budget performance" subtitle="Projected pace helps surface pressure before it becomes a surprise." />
+      <div className="finance-table">
+        {(data?.categories ?? []).map((category) => <div className="finance-row" key={category.id}>
+          <div><strong>{category.name}</strong><span>{category.essentialStatus === 'essential' ? 'Essential' : category.essentialStatus === 'discretionary' ? 'Flexible' : 'Mixed'}</span></div>
+          <div className="finance-bar"><b style={{ width: `${Math.min(category.percentageUsed, 100)}%` }} /></div>
+          <div className="finance-amount"><strong>{displayMoney(category.actual, '$0')}</strong><span>of {displayMoney(category.budgeted, '$0')}</span></div>
+          <span className={`status ${category.status === 'above_pace' ? 'review' : category.status === 'on_pace' ? 'pending' : ''}`}>{category.status.replace('_', ' ')}</span>
+        </div>)}
+      </div>
+      <div className="finance-note"><ShieldCheck size={16} /><span>{data?.notes[0]}</span></div>
+    </section>
+  </main>;
+}
+
+function CashFlowPage() {
+  const query = useGetCashFlow();
+  const safe = useGetSafeToDeploy();
+  const data = query.data;
+  return <main className="content">
+    <PageHeading eyebrow="Household finance / cash flow" title={<>See the current<br /><em>room to breathe.</em></>} description="Cash flow connects everyday household choices to the protected capital plan—without asking you to predict markets." actions={<Link className="btn" href="/budget"><ClipboardList size={15} /> Open budget</Link>} />
+    <div className="finance-grid animate-in delay-1">
+      <FinanceMetric label="Net cash flow" value={displayMoney(data?.metrics.netCashFlow, '$0')} detail="current month" tone="green" />
+      <FinanceMetric label="Free cash flow" value={displayMoney(data?.metrics.freeCashFlow, '$0')} detail="after planned savings" tone="blue" />
+      <FinanceMetric label="Savings rate" value={`${data?.metrics.savingsRate ?? 0}%`} detail="steady is the goal" tone="lavender" />
+      <FinanceMetric label="Safe to deploy" value={displayMoney(safe.data?.safeToDeploy, '$0')} detail={`${safe.data?.confidence ?? 'low'} confidence`} tone="amber" />
+    </div>
+    <div className="section-grid page-section">
+      <section className="card card-pad animate-in delay-2"><CardTitle title="Where the month went" subtitle="Outflows are grouped by job, not by noise." /><div className="flow-list">{[['Essential costs', data?.metrics.essentialOutflow, 'var(--color-primary)'], ['Flexible costs', data?.metrics.discretionaryOutflow, 'var(--color-opportunity)'], ['Debt service', data?.metrics.debtService, 'var(--color-critical)'], ['Protected savings', data?.metrics.savingsContributions, 'var(--color-protected)']].map(([label, value, color]) => <div className="flow-row" key={label as string}><span><i style={{ background: color as string }} />{label as string}</span><strong>{displayMoney(value as string, '$0')}</strong></div>)}</div><div className="finance-note"><PiggyBank size={16} /><span>Protected savings are counted as an intentional outflow so the household plan stays honest.</span></div></section>
+      <section className="card card-pad animate-in delay-2"><CardTitle title="Reserve health" subtitle="Your emergency reserve is a household boundary, not idle cash." /><div className="reserve-figure"><strong>{data?.reserve.monthsCovered ?? 0}</strong><span>months covered</span></div><Progress value={data ? (data.reserve.monthsCovered / data.reserve.targetMonths) * 100 : 0} /><div className="reserve-meta"><span>{displayMoney(data?.reserve.current, '$0')} current</span><span>{displayMoney(data?.reserve.target, '$0')} target</span></div><div className="finance-note"><ShieldCheck size={16} /><span>{data?.reserve.gap === '0.00' ? 'Your target reserve is funded.' : `${displayMoney(data?.reserve.gap, '$0')} still to target.`}</span></div></section>
+    </div>
+    <section className="card card-pad page-section"><CardTitle title="Next month forecast" subtitle={`Confidence ${data?.forecast.confidence ?? 0} · based on recurring income and known commitments`} /><div className="forecast-grid"><FinanceMetric label="Expected inflow" value={displayMoney(data?.forecast.nextMonthInflow, '$0')} detail="income sources" tone="green" /><FinanceMetric label="Essential outflow" value={displayMoney(data?.forecast.nextMonthEssentialOutflow, '$0')} detail="expected commitments" tone="amber" /><FinanceMetric label="Expected net" value={displayMoney(data?.forecast.nextMonthNet, '$0')} detail="before new choices" tone="blue" /></div></section>
+  </main>;
+}
+
+function AccountsPage({ onFeedback }: { onFeedback: (message: string) => void }) {
+  const query = useListFinancialAccounts();
+  const create = useCreateManualFinancialAccount();
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ institution: '', nickname: '', accountType: 'checking', currentBalance: '' });
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    try {
+      await create.mutateAsync({ data: form });
+      await queryClient.invalidateQueries({ queryKey: ['/api/financial-accounts'] });
+      setForm({ institution: '', nickname: '', accountType: 'checking', currentBalance: '' });
+      setAdding(false);
+      onFeedback('Manual account added. Capital OS will only read and organize it.');
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'Account could not be added.');
+    }
+  };
+  return <main className="content">
+    <PageHeading eyebrow="Household finance / accounts" title={<>Know where the money<br /><em>is held.</em></>} description="Manual and imported accounts give the Capital Governor enough context to protect the household—without storing bank credentials or moving money." actions={<button className="btn btn-primary" onClick={() => setAdding(!adding)} data-testid="button-add-financial-account"><Plus size={15} /> Add manual account</button>} />
+    {adding && <section className="card card-pad page-section"><CardTitle title="Add a manual account" subtitle="Balances stay read-only after they are entered." /><form className="account-form" onSubmit={submit}><div className="field"><label>Institution</label><input required value={form.institution} onChange={(event) => setForm({ ...form, institution: event.target.value })} /></div><div className="field"><label>Nickname</label><input required value={form.nickname} onChange={(event) => setForm({ ...form, nickname: event.target.value })} /></div><div className="field"><label>Account type</label><select value={form.accountType} onChange={(event) => setForm({ ...form, accountType: event.target.value })}><option value="checking">Checking</option><option value="savings">Savings</option><option value="credit_card">Credit card</option><option value="loan">Loan</option></select></div><div className="field"><label>Current balance</label><input inputMode="decimal" value={form.currentBalance} onChange={(event) => setForm({ ...form, currentBalance: event.target.value })} placeholder="0.00" /></div><div className="modal-actions"><button type="button" className="btn" onClick={() => setAdding(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={create.isPending}><Check size={14} /> Save account</button></div></form></section>}
+    <section className="card card-pad animate-in delay-1"><CardTitle title="Connected financial accounts" subtitle={`${query.data?.totals.accountCount ?? 0} accounts · read-only by design`} /><div className="table-wrap"><table className="table"><thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>Source</th><th>Status</th></tr></thead><tbody>{(query.data?.accounts ?? []).map((account) => <tr key={account.id}><td><strong>{account.nickname}</strong><br /><span className="table-secondary">{account.institution}</span></td><td>{account.accountType.replace('_', ' ')}</td><td className="font-mono">{account.restricted ? 'Restricted' : displayMoney(account.currentBalance ?? undefined, '$0')}</td><td>{account.dataSource.replace('_', ' ')}</td><td><span className="status">{account.protected ? 'Protected' : 'Read only'}</span></td></tr>)}</tbody></table></div><div className="finance-note"><LockKeyhole size={16} /><span>Capital OS never stores bank credentials. Plaid is disabled; manual entry and CSV import are the active provider-neutral paths.</span></div></section>
+  </main>;
+}
+
+function FinanceInsightsPage() {
+  const query = useGetFinanceInsights();
+  return <main className="content">
+    <PageHeading eyebrow="Household finance / insights" title={<>Small signals,<br /><em>useful decisions.</em></>} description="Advisory observations from your cash flow, recurring expenses, and reserve posture. Nothing here can move money." />
+    <section className="card card-pad animate-in delay-1"><CardTitle title="This month’s signals" subtitle="Review, decide, and keep the human in the loop." /><div className="insight-list">{(query.data?.insights ?? []).map((insight) => <div className="insight-row" key={insight.title}><div className={`insight-icon ${insight.type}`}><Lightbulb size={15} /></div><div><strong>{insight.title}</strong><p>{insight.description}</p></div><span className={`status ${insight.severity === 'medium' ? 'pending' : ''}`}>{insight.severity}</span></div>)}</div></section>
+    <section className="card card-pad page-section"><CardTitle title="Recurring expenses" subtitle="A clear annual view makes optional costs easier to discuss." /><div className="table-wrap"><table className="table"><thead><tr><th>Expense</th><th>Monthly</th><th>Annual</th><th>Role</th></tr></thead><tbody>{(query.data?.subscriptions ?? []).map((subscription) => <tr key={subscription.merchant}><td><strong>{subscription.merchant}</strong></td><td className="font-mono">{displayMoney(subscription.monthlyAmount, '$0')}</td><td className="font-mono">{displayMoney(subscription.annualCost, '$0')}</td><td><span className="status pending">{subscription.essentialStatus}</span></td></tr>)}</tbody></table></div></section>
   </main>;
 }
 
@@ -383,6 +516,9 @@ function ActionModal({ kind, close, onComplete }: { kind: Exclude<ModalKind, nul
 function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void; transactions: Transaction[]; dashboard?: DashboardSnapshot; backendIssue?: boolean }) {
   return <Switch>
     <Route path="/" component={() => <Dashboard onAction={onAction} onFeedback={onFeedback} transactions={transactions} dashboard={dashboard} backendIssue={backendIssue} />} />
+    <Route path="/budget" component={BudgetPage} />
+    <Route path="/cash-flow" component={CashFlowPage} />
+    <Route path="/accounts" component={() => <AccountsPage onFeedback={onFeedback} />} />
     <Route path="/goals" component={() => <GoalsPage onAction={onAction} />} />
     <Route path="/strategies" component={() => <StrategiesPage onAction={onAction} />} />
     <Route path="/portfolio" component={() => <PortfolioPage onFeedback={onFeedback} />} />
@@ -393,7 +529,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue
     <Route path="/contributions" component={() => <UtilityPage kind="contributions" onAction={onAction} transactions={transactions} />} />
     <Route path="/reports" component={() => <UtilityPage kind="reports" onAction={onAction} transactions={transactions} />} />
     <Route path="/documents" component={() => <UtilityPage kind="documents" onAction={onAction} transactions={transactions} />} />
-    <Route path="/insights" component={() => <UtilityPage kind="insights" onAction={onAction} transactions={transactions} />} />
+    <Route path="/insights" component={FinanceInsightsPage} />
     <Route component={NotFound} />
   </Switch>;
 }

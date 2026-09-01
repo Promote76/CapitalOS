@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.2.0
  */
+import type { HouseholdSummaryPrivacy } from './householdSummaryPrivacy';
 
 export interface HouseholdSummary {
   id: string;
@@ -12,4 +13,5 @@ export interface HouseholdSummary {
   timezone: string;
   role: string;
   permissions: string[];
+  privacy: HouseholdSummaryPrivacy;
 }

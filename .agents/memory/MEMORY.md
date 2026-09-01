@@ -1,2 +1,3 @@
 - [Financial safety boundaries](capital-os-financial-safety.md) — keep financial decisions in integer-cents domain functions and commit idempotency, ledger, balance, and audit writes atomically.
 - [Additive development seeding](capital-os-seed-evolution.md) — evolve an existing development household in place when new seed capabilities are added; never recreate it because one sleeve is missing.
+- [OpenAPI and pinned Zod](openapi-zod-compatibility.md) — avoid unconstrained object schemas that generate APIs newer than the workspace’s pinned Zod version supports.

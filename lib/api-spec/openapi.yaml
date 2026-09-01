@@ -14,6 +14,7 @@ tags:
   - name: planning
   - name: governance
   - name: blockchain
+  - name: household-finance
 paths:
   /healthz:
     get:
@@ -39,6 +40,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HouseholdSummary"
+  /household/privacy:
+    patch:
+      operationId: updatePrivacySettings
+      tags: [household]
+      summary: Update household finance privacy controls
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PrivacySettingsInput" }
+      responses:
+        "200":
+          description: Updated household workspace
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HouseholdSummary" }
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /dashboard:
     get:
       operationId: getDashboard
@@ -402,6 +421,163 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/BlockchainStatus"
+  /budget:
+    get:
+      operationId: getBudget
+      tags: [household-finance]
+      summary: Get current household budget performance
+      responses:
+        "200":
+          description: Budget performance
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BudgetSummary" }
+  /cash-flow:
+    get:
+      operationId: getCashFlow
+      tags: [household-finance]
+      summary: Get household cash flow and financial health
+      responses:
+        "200":
+          description: Cash flow snapshot
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CashFlowSummary" }
+  /financial-accounts:
+    get:
+      operationId: listFinancialAccounts
+      tags: [household-finance]
+      summary: List read-only household financial accounts
+      responses:
+        "200":
+          description: Financial accounts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinancialAccountsSummary" }
+    post:
+      operationId: createManualFinancialAccount
+      tags: [household-finance]
+      summary: Add a manual financial account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ManualFinancialAccountInput" }
+      responses:
+        "201":
+          description: Financial account created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinancialAccount" }
+  /financial-accounts/{accountId}/import-csv:
+    post:
+      operationId: importFinancialAccountCsv
+      tags: [household-finance]
+      summary: Import read-only transactions from CSV
+      parameters:
+        - $ref: "#/components/parameters/FinancialAccountId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CsvImportInput" }
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [imported, skippedDuplicates, readOnly]
+                properties:
+                  imported: { type: number }
+                  skippedDuplicates: { type: number }
+                  readOnly: { type: boolean }
+  /bills:
+    get:
+      operationId: listBills
+      tags: [household-finance]
+      summary: List upcoming household bills
+      responses:
+        "200":
+          description: Bills
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Bill" }
+  /upcoming-expenses:
+    get:
+      operationId: listUpcomingExpenses
+      tags: [household-finance]
+      summary: List known upcoming expenses
+      responses:
+        "200":
+          description: Upcoming expenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/UpcomingExpense" }
+  /income:
+    get:
+      operationId: listIncomeSources
+      tags: [household-finance]
+      summary: List household income sources
+      responses:
+        "200":
+          description: Income sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/IncomeSource" }
+  /safe-to-deploy:
+    get:
+      operationId: getSafeToDeploy
+      tags: [household-finance]
+      summary: Get Capital Governor safe-to-deploy amount
+      responses:
+        "200":
+          description: Safe-to-deploy result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SafeToDeploy" }
+  /finance-insights:
+    get:
+      operationId: getFinanceInsights
+      tags: [household-finance]
+      summary: Get advisory household finance insights
+      responses:
+        "200":
+          description: Finance insights
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinanceInsights" }
+  /finance-snapshots:
+    get:
+      operationId: listFinanceSnapshots
+      tags: [household-finance]
+      summary: List historical household finance snapshots
+      responses:
+        "200":
+          description: Historical snapshots
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FinanceSnapshot" }
+  /banking/status:
+    get:
+      operationId: getBankingStatus
+      tags: [household-finance]
+      summary: Get provider-neutral read-only banking adapter status
+      responses:
+        "200":
+          description: Banking status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BankingStatus" }
 components:
   parameters:
     IdempotencyKey:
@@ -421,6 +597,13 @@ components:
         pattern: "^[0-9a-fA-F-]{36}$"
     RecommendationId:
       name: recommendationId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[0-9a-fA-F-]{36}$"
+    FinancialAccountId:
+      name: accountId
       in: path
       required: true
       schema:
@@ -463,7 +646,7 @@ components:
           additionalProperties: true
     HouseholdSummary:
       type: object
-      required: [id, name, timezone, role, permissions]
+      required: [id, name, timezone, role, permissions, privacy]
       properties:
         id: { type: string }
         name: { type: string }
@@ -472,6 +655,20 @@ components:
         permissions:
           type: array
           items: { type: string }
+        privacy:
+          type: object
+          required: [financeDataPrivate, shareHealthSummary, credentialsStored, bankActionsEnabled]
+          properties:
+            financeDataPrivate: { type: boolean }
+            shareHealthSummary: { type: boolean }
+            credentialsStored: { type: boolean }
+            bankActionsEnabled: { type: boolean }
+    PrivacySettingsInput:
+      type: object
+      required: [financeDataPrivate, shareHealthSummary]
+      properties:
+        financeDataPrivate: { type: boolean }
+        shareHealthSummary: { type: boolean }
     AccountSummary:
       type: object
       required: [id, name, accountType, balance, protected, riskClass]
@@ -760,3 +957,257 @@ components:
         recentActivity:
           type: array
           items: { $ref: "#/components/schemas/AuditEventSummary" }
+    BudgetSummary:
+      type: object
+      required: [month, categories, totals, notes]
+      properties:
+        month: { type: string }
+        categories:
+          type: array
+          items:
+            type: object
+            required: [id, name, categoryType, essentialStatus, budgeted, actual, variance, percentageUsed, projectedMonthEnd, status]
+            properties:
+              id: { type: string }
+              name: { type: string }
+              categoryType: { type: string }
+              essentialStatus: { type: string }
+              budgeted: { type: string }
+              actual: { type: string }
+              variance: { type: string }
+              percentageUsed: { type: number }
+              projectedMonthEnd: { type: string }
+              status: { type: string }
+        totals:
+          type: object
+          required: [budgeted, actual, remaining, percentageUsed]
+          properties:
+            budgeted: { type: string }
+            actual: { type: string }
+            remaining: { type: string }
+            percentageUsed: { type: number }
+        notes:
+          type: array
+          items: { type: string }
+    CashFlowSummary:
+      type: object
+      required: [month, metrics, reserve, financialHealth, forecast]
+      properties:
+        month: { type: string }
+        metrics:
+          type: object
+          required: [grossInflow, essentialOutflow, discretionaryOutflow, debtService, savingsContributions, investmentContributions, propertyContributions, netCashFlow, freeCashFlow, savingsRate, investmentRate]
+          properties:
+            grossInflow: { type: string }
+            essentialOutflow: { type: string }
+            discretionaryOutflow: { type: string }
+            debtService: { type: string }
+            savingsContributions: { type: string }
+            investmentContributions: { type: string }
+            propertyContributions: { type: string }
+            netCashFlow: { type: string }
+            freeCashFlow: { type: string }
+            savingsRate: { type: number }
+            investmentRate: { type: number }
+        reserve:
+          type: object
+          required: [target, current, gap, monthsCovered, targetMonths]
+          properties:
+            target: { type: string }
+            current: { type: string }
+            gap: { type: string }
+            monthsCovered: { type: number }
+            targetMonths: { type: number }
+        financialHealth:
+          type: object
+          required: [score, label, disclaimer]
+          properties:
+            score: { type: number }
+            label: { type: string }
+            disclaimer: { type: string }
+        forecast:
+          type: object
+          required: [nextMonthInflow, nextMonthEssentialOutflow, nextMonthNet, confidence]
+          properties:
+            nextMonthInflow: { type: string }
+            nextMonthEssentialOutflow: { type: string }
+            nextMonthNet: { type: string }
+            confidence: { type: number }
+    FinancialAccount:
+      type: object
+      required: [id, institution, nickname, accountType, connectionStatus, dataSource, includedInNetWorth, includedInBudget, protected, restricted]
+      properties:
+        id: { type: string }
+        institution: { type: string }
+        nickname: { type: string }
+        accountType: { type: string }
+        currentBalance: { type: ["string", "null"] }
+        availableBalance: { type: ["string", "null"] }
+        connectionStatus: { type: string }
+        dataSource: { type: string }
+        lastSync: { type: ["string", "null"], format: date-time }
+        includedInNetWorth: { type: boolean }
+        includedInBudget: { type: boolean }
+        protected: { type: boolean }
+        restricted: { type: boolean }
+    FinancialAccountsSummary:
+      type: object
+      required: [readOnly, accounts, connections, totals]
+      properties:
+        readOnly: { type: boolean }
+        accounts:
+          type: array
+          items: { $ref: "#/components/schemas/FinancialAccount" }
+        connections:
+          type: array
+          items:
+            type: object
+            required: [id, provider, status, institutionName]
+            properties:
+              id: { type: string }
+              provider: { type: string }
+              status: { type: string }
+              institutionName: { type: string }
+              lastSuccessfulSync: { type: ["string", "null"], format: date-time }
+        totals:
+          type: object
+          required: [visibleBalance, accountCount]
+          properties:
+            visibleBalance: { type: string }
+            accountCount: { type: number }
+    ManualFinancialAccountInput:
+      type: object
+      required: [institution, nickname, accountType]
+      properties:
+        institution: { type: string, minLength: 1, maxLength: 120 }
+        nickname: { type: string, minLength: 1, maxLength: 120 }
+        accountType: { type: string }
+        currentBalance: { type: string, pattern: "^-?[0-9]+(\\.[0-9]{1,2})?$" }
+    CsvImportInput:
+      type: object
+      required: [csv]
+      properties:
+        csv: { type: string, minLength: 1, maxLength: 100000 }
+    Bill:
+      type: object
+      required: [id, householdId, billName, dueDate, expectedAmount, status, essential, autoPay]
+      properties:
+        id: { type: string }
+        householdId: { type: string }
+        billName: { type: string }
+        dueDate: { type: string, format: date }
+        expectedAmount: { type: string }
+        status: { type: string }
+        essential: { type: boolean }
+        autoPay: { type: boolean }
+    UpcomingExpense:
+      type: object
+      required: [id, householdId, name, estimatedAmount, expectedDate, priority, required, fundedAmount]
+      properties:
+        id: { type: string }
+        householdId: { type: string }
+        name: { type: string }
+        estimatedAmount: { type: string }
+        expectedDate: { type: string, format: date }
+        priority: { type: string }
+        required: { type: boolean }
+        fundedAmount: { type: string }
+    IncomeSource:
+      type: object
+      required: [id, householdId, name, sourceType, expectedMonthly, active]
+      properties:
+        id: { type: string }
+        householdId: { type: string }
+        name: { type: string }
+        sourceType: { type: string }
+        expectedMonthly: { type: string }
+        active: { type: boolean }
+    SafeToDeploy:
+      type: object
+      required: [safeToDeploy, rawSafeToDeploy, confidence, confidenceScore, breakdown, reason]
+      properties:
+        safeToDeploy: { type: string }
+        rawSafeToDeploy: { type: string }
+        confidence: { type: string }
+        confidenceScore: { type: number }
+        reason: { type: string }
+        breakdown:
+          type: object
+          required: [liquidAvailableCash, billsDueBeforeNextIncome, requiredMonthlyExpenses, emergencyReserveShortfall, protectedGoalCommitments, knownUpcomingExpenses, requiredSafetyBuffer, maximumDeployableAmount]
+          properties:
+            liquidAvailableCash: { type: string }
+            billsDueBeforeNextIncome: { type: string }
+            requiredMonthlyExpenses: { type: string }
+            emergencyReserveShortfall: { type: string }
+            protectedGoalCommitments: { type: string }
+            knownUpcomingExpenses: { type: string }
+            requiredSafetyBuffer: { type: string }
+            maximumDeployableAmount: { type: string }
+    FinanceInsights:
+      type: object
+      required: [insights, subscriptions, anomalyCount]
+      properties:
+        insights:
+          type: array
+          items:
+            type: object
+            required: [type, title, description, severity]
+            properties:
+              type: { type: string }
+              title: { type: string }
+              description: { type: string }
+              severity: { type: string }
+        subscriptions:
+          type: array
+          items:
+            type: object
+            required: [merchant, monthlyAmount, annualCost, essentialStatus]
+            properties:
+              merchant: { type: string }
+              monthlyAmount: { type: string }
+              annualCost: { type: string }
+              essentialStatus: { type: string }
+        anomalyCount: { type: number }
+    BankingStatus:
+      type: object
+      required: [readOnly, credentialsStored, transfersEnabled, billPayEnabled, adapters, message]
+      properties:
+        readOnly: { type: boolean }
+        credentialsStored: { type: boolean }
+        transfersEnabled: { type: boolean }
+        billPayEnabled: { type: boolean }
+        message: { type: string }
+        adapters:
+          type: array
+          items:
+            type: object
+            required: [provider, enabled, readOnly]
+            properties:
+              provider: { type: string }
+              enabled: { type: boolean }
+              readOnly: { type: boolean }
+    FinanceSnapshot:
+      type: object
+      required: [id, householdId, snapshotDate, grossInflow, essentialOutflow, discretionaryOutflow, debtService, savingsContributions, investmentContributions, netCashFlow, freeCashFlow, safeToDeploy, safeToDeployConfidence, financialHealthScore, budgetPerformance, createdAt]
+      properties:
+        id: { type: string }
+        householdId: { type: string }
+        snapshotDate: { type: string, format: date }
+        grossInflow: { type: string }
+        essentialOutflow: { type: string }
+        discretionaryOutflow: { type: string }
+        debtService: { type: string }
+        savingsContributions: { type: string }
+        investmentContributions: { type: string }
+        netCashFlow: { type: string }
+        freeCashFlow: { type: string }
+        safeToDeploy: { type: string }
+        safeToDeployConfidence: { type: number }
+        financialHealthScore: { type: number }
+        budgetPerformance:
+          type: object
+          required: [month, source]
+          properties:
+            month: { type: string }
+            source: { type: string }
+        createdAt: { type: string, format: date-time }

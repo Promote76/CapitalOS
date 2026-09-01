@@ -1,0 +1,1651 @@
+Replit Prompt: Add Household Budget, Banking Integration & Cash Flow Intelligence to Capital OS
+
+Continue building the existing Capital OS project.
+
+Do not redesign the approved UI.
+
+Do not replace or remove the existing:
+
+- Duplex goal system
+- Capital Governor
+- Protected Capital architecture
+- Portfolio module
+- Strategy system
+- Property module
+- Risk Governor
+- AI CIO
+- Audit ledger
+- Blockchain-ready architecture
+
+This phase adds a new foundational layer:
+
+HOUSEHOLD FINANCE OS
+
+Capital OS must now understand the household's real financial position before recommending savings, investment, property, or capital-allocation decisions.
+
+The new system should connect:
+
+Income
+↓
+Bank Accounts
+↓
+Transactions
+↓
+Household Budget
+↓
+Bills & Obligations
+↓
+Cash Flow
+↓
+Emergency Reserves
+↓
+Duplex Contribution
+↓
+Available Surplus
+↓
+Capital Governor
+↓
+Investment / Opportunity Capital
+
+The objective is to make Capital OS capable of answering:
+
+«How much money can this household safely save, invest, or deploy without jeopardizing bills, reserves, or the duplex acquisition goal?»
+
+---
+
+1. CORE PRINCIPLE
+
+The household financial system sits UPSTREAM from the investment system.
+
+Capital OS must never assume:
+
+Bank Balance = Investable Capital
+
+Instead:
+
+Safe-to-Deploy Capital
+=
+Available Cash
+- Upcoming Obligations
+- Required Bills
+- Reserve Requirements
+- Protected Goal Contributions
+- Known Upcoming Expenses
+- Safety Buffer
+
+The Capital Governor, not the AI, determines this amount.
+
+AI may explain or recommend.
+
+AI may NOT redefine protected obligations or bypass Capital Governor rules.
+
+---
+
+2. NAVIGATION UPDATE
+
+Add the following major navigation items where appropriate:
+
+Dashboard
+Budget
+Cash Flow
+Goals
+Portfolio
+Strategies
+Properties
+Risk
+Accounts
+Settings
+
+The existing sidebar may continue to include:
+
+Overview
+Transactions
+Contributions
+Reports
+Documents
+Insights
+
+Do not overcrowd navigation.
+
+Use logical grouping and responsive behavior.
+
+---
+
+3. BUDGET PAGE
+
+Create a dedicated "/budget" page.
+
+The page should match the approved Capital OS light-theme design system.
+
+Include:
+
+Monthly Budget Summary
+
+Show:
+
+- Average Monthly Income
+- Budgeted Expenses
+- Actual Expenses
+- Monthly Savings
+- Duplex Contribution
+- Investment Contribution
+- Remaining Free Cash Flow
+
+---
+
+Budget Categories
+
+Support categories such as:
+
+Housing
+Food
+Transportation
+Insurance
+Utilities
+Debt
+Business
+Healthcare
+Personal
+Entertainment
+Subscriptions
+Savings
+Investments
+Real Estate
+Duplex Fund
+Opportunity Reserve
+Miscellaneous
+Uncategorized
+
+Allow users to:
+
+- create categories
+- edit categories
+- assign monthly targets
+- recategorize transactions
+- exclude transactions from budget calculations
+- mark categories as essential or discretionary
+
+---
+
+4. BUDGET TYPE MODEL
+
+Support:
+
+Fixed Expense
+Variable Essential
+Variable Discretionary
+Savings
+Investment
+Debt Payment
+Transfer
+Income
+One-Time Expense
+
+Every category should support:
+
+category_type
+essential_status
+monthly_target
+warning_threshold
+household_id
+
+---
+
+5. BUDGET PERFORMANCE
+
+For each category calculate:
+
+Budgeted
+Actual
+Variance
+Percentage Used
+Projected Month-End
+
+Example:
+
+Food
+
+Budget:              $600
+Actual:              $472
+Remaining:           $128
+Month Used:           65%
+Projected Month-End: $675
+
+Status: Above Pace
+
+Use amber when spending is running moderately above plan.
+
+Do not use red unless there is a meaningful financial risk.
+
+---
+
+6. CASH FLOW PAGE
+
+Create "/cash-flow".
+
+The page should answer:
+
+«Where is money coming from and where is it going?»
+
+Display:
+
+Income
+↓
+Required Expenses
+↓
+Variable Expenses
+↓
+Savings
+↓
+Investment Contributions
+↓
+Net Free Cash Flow
+
+Include:
+
+- monthly income trend
+- expense trend
+- savings trend
+- free cash-flow trend
+- rolling 30-day cash flow
+- rolling 90-day cash flow
+- rolling 12-month view when sufficient data exists
+
+---
+
+7. CASH FLOW METRICS
+
+Calculate:
+
+Gross Cash Inflow
+Essential Outflow
+Discretionary Outflow
+Debt Service
+Savings Contributions
+Investment Contributions
+Property Contributions
+Net Cash Flow
+Free Cash Flow
+Savings Rate
+Investment Rate
+
+Example:
+
+Monthly Income             $8,400
+Essential Expenses         $3,100
+Discretionary Expenses       $800
+Savings                    $1,500
+Investment Contributions     $300
+--------------------------------
+Free Cash Flow             $2,700
+
+---
+
+8. BANKING INTEGRATION ARCHITECTURE
+
+Create a provider-agnostic banking integration layer.
+
+Do not hard-code the application exclusively to one provider.
+
+Suggested architecture:
+
+interface BankingProvider {
+  createConnectionSession(): Promise<ConnectionSession>;
+  exchangePublicToken(input: TokenExchangeRequest): Promise<void>;
+  syncAccounts(): Promise<BankAccount[]>;
+  syncTransactions(options?: SyncOptions): Promise<BankTransaction[]>;
+  refreshBalances(): Promise<AccountBalance[]>;
+  syncLiabilities?(): Promise<Liability[]>;
+  disconnectAccount(accountId: string): Promise<void>;
+}
+
+Create an adapter structure that can support:
+
+Plaid
+Future Provider
+Manual Account
+CSV Import
+
+Plaid may be the preferred first integration provider.
+
+---
+
+9. READ-ONLY BANKING POLICY
+
+Banking integration is READ ONLY in this phase.
+
+Allowed:
+
+READ ACCOUNTS
+READ BALANCES
+READ TRANSACTIONS
+READ LIABILITIES
+READ INVESTMENT ACCOUNT INFORMATION
+
+Not allowed:
+
+ACH TRANSFERS
+WIRE TRANSFERS
+BANK-TO-BANK MOVEMENT
+WITHDRAWALS
+AUTOMATED STRATEGY FUNDING
+AUTOMATED DUPLEX FUND TRANSFERS
+
+Capital OS must not move real money through the banking integration during this phase.
+
+---
+
+10. ACCOUNT CONNECTION PAGE
+
+Create "/accounts".
+
+Show all connected and manually tracked financial accounts.
+
+Possible account types:
+
+Checking
+Savings
+Money Market
+Credit Card
+Loan
+Mortgage
+Brokerage
+Retirement
+Crypto
+Business Checking
+Protected Duplex Account
+Opportunity Reserve
+Other
+
+Each account should show:
+
+- Institution
+- Account nickname
+- Account type
+- Current balance
+- Available balance if applicable
+- Last sync
+- Connection status
+- Included in net worth?
+- Included in budget?
+- Protected?
+- Data source
+
+---
+
+11. ACCOUNT CONNECTION STATUS
+
+Use statuses:
+
+Connected
+Healthy
+Needs Reauthentication
+Syncing
+Delayed
+Disconnected
+Manual
+Error
+
+Never silently use stale financial data as if current.
+
+---
+
+12. DATA FRESHNESS
+
+Every linked account must track:
+
+last_successful_sync
+last_balance_refresh
+last_transaction_sync
+connection_status
+
+If data is stale:
+
+BANK DATA STALE
+
+Capital OS should visibly indicate reduced confidence.
+
+Safe-to-Invest calculations should become more conservative when critical accounts are stale.
+
+---
+
+13. TRANSACTION ENGINE
+
+Expand the existing transaction system.
+
+Create:
+
+BankTransaction
+InternalLedgerTransaction
+TransactionCategory
+TransactionMerchant
+TransactionRule
+RecurringTransaction
+TransactionReview
+
+Bank transactions and internal Capital OS ledger transactions must remain distinguishable.
+
+Do not mutate original bank transaction data.
+
+Store normalized/categorized information separately.
+
+---
+
+14. TRANSACTION CATEGORIZATION
+
+Automatically categorize imported transactions.
+
+Use:
+
+merchant
+description
+historical user corrections
+transaction amount
+account
+recurring pattern
+existing rules
+
+The system should learn from user corrections.
+
+Example:
+
+Original:
+WALMART SUPERCENTER #6097
+
+Suggested:
+Food / Household
+
+User changes:
+Business Expense
+
+Future matching transactions:
+Suggest Business Expense
+
+Do not overwrite user-approved categorization rules without permission.
+
+---
+
+15. TRANSACTION REVIEW QUEUE
+
+Create a queue for transactions requiring review.
+
+Examples:
+
+Unknown Merchant
+Large Unusual Transaction
+Possible Duplicate
+Uncategorized
+Possible Transfer
+Possible Business Expense
+Possible Property Expense
+
+Include:
+
+Approve
+Recategorize
+Create Rule
+Exclude
+Mark Transfer
+
+---
+
+16. RECURRING TRANSACTION DETECTION
+
+Detect recurring obligations.
+
+Examples:
+
+Rent / Mortgage
+Insurance
+Phone
+Internet
+Utilities
+Subscriptions
+Loan Payments
+Weekly Savings
+Business Charges
+
+Track:
+
+merchant
+expected_amount
+frequency
+next_expected_date
+average_amount
+confidence
+essential_status
+
+---
+
+17. BILL CALENDAR
+
+Create a bill and obligation calendar.
+
+Display:
+
+Bill
+Due Date
+Expected Amount
+Status
+Account
+Essential?
+Auto-Pay?
+
+Statuses:
+
+Upcoming
+Due Soon
+Paid
+Overdue
+Estimated
+Skipped
+
+The system should use known upcoming obligations when calculating Safe-to-Invest capital.
+
+---
+
+18. UPCOMING EXPENSES
+
+Allow the household to manually enter known future expenses.
+
+Examples:
+
+Vehicle Repair
+Insurance Renewal
+Property Inspection
+Trip
+Tuition
+Taxes
+Medical
+Closing Costs
+Furniture
+Business Expense
+
+Store:
+
+name
+estimated_amount
+expected_date
+priority
+required
+funded_amount
+
+These expenses must influence available capital calculations when appropriate.
+
+---
+
+19. INCOME ENGINE
+
+Detect and track household income.
+
+Create:
+
+IncomeSource
+IncomeTransaction
+IncomePattern
+IncomeForecast
+
+Support:
+
+Employment
+1099 / Contract
+Business
+Rental Income
+Investment Income
+Interest
+Other
+
+Calculate:
+
+30-Day Income
+90-Day Average Income
+6-Month Average Income
+12-Month Average Income
+Income Volatility
+
+Do not assume irregular income is fixed salary.
+
+---
+
+20. VARIABLE-INCOME SUPPORT
+
+Capital OS must work well for households with variable weekly/monthly income.
+
+Create income stability metrics such as:
+
+Average Income
+Median Income
+Minimum Observed Income
+Income Standard Deviation
+Income Volatility
+Income Confidence
+
+Budget recommendations should use conservative income assumptions when volatility is high.
+
+---
+
+21. SAFE-TO-INVEST ENGINE
+
+Create one of the core Capital OS modules:
+
+SAFE-TO-INVEST
+
+This must be a deterministic financial calculation service.
+
+Suggested formula:
+
+SafeToInvest =
+LiquidAvailableCash
+- BillsDueBeforeNextIncome
+- RequiredMonthlyExpenses
+- EmergencyReserveShortfall
+- ProtectedGoalCommitments
+- KnownUpcomingExpenses
+- RequiredSafetyBuffer
+
+Then:
+
+SafeToInvest = MAX(0, SafeToInvest)
+
+Never return a negative investable amount.
+
+Instead display:
+
+Safe to Invest: $0
+
+Reason:
+Current obligations exceed deployable surplus.
+
+---
+
+22. SAFE-TO-INVEST CARD
+
+Add a prominent dashboard card.
+
+Example:
+
+SAFE TO DEPLOY
+
+$1,050
+
+Available Cash             $7,400
+Bills Before Next Income  -$2,250
+Required Reserve          -$2,500
+Duplex Commitment         -$1,000
+Upcoming Expenses           -$600
+---------------------------------
+Safe to Deploy             $1,050
+
+Include:
+
+View Calculation
+
+Every number must be explainable.
+
+---
+
+23. SAFE-TO-INVEST GUARDRAILS
+
+The Capital Governor must be able to impose:
+
+Minimum Checking Buffer
+Minimum Emergency Reserve
+Minimum Protected Goal Contribution
+Maximum Deployable Percentage
+Minimum Days of Expenses on Hand
+
+Example:
+
+Even if calculated Safe-to-Invest = $2,000
+
+Rule:
+Never deploy more than 50% of discretionary surplus.
+
+Authorized amount = $1,000
+
+---
+
+24. DUPLEX GOAL PROTECTION
+
+The existing Duplex Goal remains a critical priority.
+
+The household budget engine must track whether the planned:
+
+$250/week
+
+contribution is financially sustainable.
+
+Default allocation:
+
+Duplex Reserve       $200/week
+Capital OS            $25/week
+Opportunity Reserve   $25/week
+
+If cash flow deteriorates:
+
+AI may recommend changes.
+
+Capital Governor should first attempt to protect the Duplex Reserve.
+
+The system should show:
+
+Duplex Contribution Health
+
+Required:      $200/week
+Current:       $200/week
+Affordability: Healthy
+Goal Status:   On Track
+
+---
+
+25. CONTRIBUTION AFFORDABILITY ENGINE
+
+Calculate:
+
+Required Weekly Contribution
+Actual Weekly Contribution
+Average Weekly Surplus
+Contribution Coverage Ratio
+
+Example:
+
+Average Weekly Surplus      $640
+Goal Contribution           $250
+
+Coverage Ratio:
+2.56x
+
+Status:
+Strong
+
+If:
+
+Average Weekly Surplus < Planned Contribution
+
+show a warning and project the impact.
+
+---
+
+26. EMERGENCY RESERVE MODULE
+
+Create an Emergency Reserve goal.
+
+Allow the household to choose:
+
+1 Month
+3 Months
+6 Months
+9 Months
+12 Months
+
+of essential expenses.
+
+Calculate:
+
+Essential Monthly Expenses
+×
+Target Months
+=
+Emergency Reserve Target
+
+Example:
+
+Essential Monthly Expenses: $3,200
+Target: 3 months
+
+Required Reserve:
+$9,600
+
+---
+
+27. RESERVE HEALTH
+
+Create:
+
+Emergency Reserve Current
+Emergency Reserve Target
+Months of Coverage
+Reserve Gap
+
+Example:
+
+Emergency Reserve
+
+$6,400 / $9,600
+
+2.0 months funded
+Target: 3 months
+
+This must influence Safe-to-Invest calculations.
+
+---
+
+28. FINANCIAL HEALTH SCORE
+
+Create a Household Financial Health Score.
+
+Range:
+
+0–100
+
+Potential inputs:
+
+Cash Flow
+Savings Consistency
+Emergency Reserves
+Debt Burden
+Budget Stability
+Duplex Goal Progress
+Liquidity
+Capital Risk
+Income Stability
+
+Example:
+
+HOUSEHOLD FINANCIAL HEALTH
+
+87 / 100
+
+Cash Flow              91
+Savings Consistency    96
+Emergency Reserve      72
+Debt Load              95
+Duplex Progress        88
+Budget Stability       84
+Liquidity              86
+Capital Risk           92
+
+This is NOT a credit score.
+
+Include tooltip:
+
+«This score summarizes household financial stability using Capital OS data. It is not a lender credit score or guarantee of financial outcomes.»
+
+---
+
+29. SAVINGS RATE
+
+Calculate:
+
+Savings Rate =
+Savings Contributions / Net Household Income
+
+Track over:
+
+30 days
+90 days
+6 months
+12 months
+
+---
+
+30. DUPLEX READINESS ENHANCEMENT
+
+Enhance the existing Property Readiness system using household cash-flow data.
+
+Display:
+
+Down Payment Fund
+Closing Cost Reserve
+Emergency Reserve
+Average Monthly Income
+Average Monthly Expenses
+Free Cash Flow
+Savings Consistency
+Duplex Contribution Consistency
+
+Do not present these metrics as formal mortgage approval.
+
+Use wording:
+
+Capital OS Readiness
+
+not:
+
+Mortgage Approved
+
+---
+
+31. CASH FLOW FORECASTING
+
+Create a rolling short-term forecast.
+
+Forecast:
+
+7 days
+14 days
+30 days
+60 days
+90 days
+
+Inputs:
+
+Current balances
+Recurring income
+Expected bills
+Recurring expenses
+Goal contributions
+Known upcoming expenses
+
+Display projected account balance.
+
+Example:
+
+Checking Balance Today
+$5,430
+
+Projected:
+7 Days     $4,920
+14 Days    $6,180
+30 Days    $5,740
+
+---
+
+32. LOW-BALANCE FORECASTING
+
+If projected cash falls below configured safety threshold:
+
+Projected Cash Warning
+
+Checking account expected to fall below
+$1,500 minimum buffer in 12 days.
+
+Do not automatically move funds.
+
+Provide recommendations only.
+
+---
+
+33. SPENDING ANOMALY DETECTION
+
+Identify unusual spending patterns.
+
+Examples:
+
+Expense 3x larger than normal
+Category spending 25% above trailing average
+Unexpected recurring charge
+Duplicate-looking transaction
+Subscription increase
+Unusual cash withdrawal
+
+Use advisory alerts.
+
+---
+
+34. SUBSCRIPTION DETECTION
+
+Create a recurring-subscription view.
+
+Show:
+
+Service
+Amount
+Frequency
+Annual Cost
+Last Charge
+
+Calculate:
+
+Monthly Subscription Total
+Annual Subscription Cost
+
+Allow:
+
+Keep
+Review
+Mark Essential
+Ignore
+
+Capital OS should NOT automatically cancel subscriptions.
+
+---
+
+35. CASH LEAKAGE INSIGHTS
+
+AI CIO may identify:
+
+Spending increase
+Duplicated subscriptions
+High recurring charges
+Underused services
+Unusual discretionary growth
+
+Example:
+
+INSIGHT
+
+Three recurring subscriptions total
+$82/month.
+
+Potential annual savings:
+$984
+
+Applying this amount to the Duplex Reserve
+could improve the acquisition timeline.
+
+AI is advisory only.
+
+---
+
+36. HOUSEHOLD DASHBOARD UPDATE
+
+Enhance the main dashboard with:
+
+Monthly Cash Flow
+Safe to Deploy
+Financial Health Score
+Bills Due
+Income This Month
+Expenses This Month
+Savings Rate
+Duplex Contribution Health
+
+Do not overwhelm the existing dashboard.
+
+Prioritize:
+
+1. Duplex Goal
+2. Protected Capital
+3. Cash Flow Health
+4. Safe-to-Deploy Capital
+5. Property Readiness
+6. Investment Strategies
+
+---
+
+37. ACCOUNT BALANCE PRIVACY
+
+Implement display privacy controls.
+
+Allow balances to be:
+
+Visible
+Hidden
+Masked
+
+Example:
+
+Checking
+•••• 1842
+$••••••
+
+Useful for shared screens.
+
+---
+
+38. HOUSEHOLD MEMBER PERMISSIONS
+
+Extend household roles.
+
+Permissions should support:
+
+View Bank Balances
+View Transactions
+View Budget
+Edit Budget
+Categorize Transactions
+View Portfolio
+Change Contributions
+View Strategy Data
+Approve Capital Changes
+Manage Banking Connections
+
+A Viewer should not automatically receive every financial permission.
+
+---
+
+39. BANKING TOKEN SECURITY
+
+Banking provider credentials and access tokens must:
+
+Never appear in frontend code
+Never appear in logs
+Never be included in AI prompts
+Never be stored unencrypted
+Never be exposed through API responses
+
+Store provider tokens only in secure server-side storage.
+
+---
+
+40. DATA MINIMIZATION
+
+Store only the financial data necessary for Capital OS functionality.
+
+Do not unnecessarily persist:
+
+full bank credentials
+login passwords
+security questions
+raw provider secrets
+
+Capital OS should never ask users for online banking passwords directly.
+
+---
+
+41. DATA SOURCE LABELS
+
+Financial data should show its origin where useful.
+
+Examples:
+
+Plaid
+Manual
+CSV Import
+Capital OS Ledger
+User Entered
+Calculated
+
+This improves auditability.
+
+---
+
+42. MANUAL MODE
+
+Capital OS must function even without bank integration.
+
+Allow:
+
+Manual Account
+Manual Balance
+Manual Transaction
+CSV Upload
+
+Bank connectivity should enhance the platform, not become a hard dependency.
+
+---
+
+43. CSV IMPORT
+
+Prepare a basic transaction import architecture.
+
+Support fields such as:
+
+date
+description
+amount
+account
+category
+
+Use a preview and validation step before importing.
+
+Prevent duplicate imports.
+
+---
+
+44. RECONCILIATION
+
+Build a reconciliation process between:
+
+External Bank Balance
+Capital OS Tracked Balance
+Internal Ledger
+
+If discrepancies exist:
+
+RECONCILIATION REVIEW REQUIRED
+
+Do not silently alter ledger history.
+
+---
+
+45. TRANSFER DETECTION
+
+Detect probable transfers between household accounts.
+
+Example:
+
+-$500 Checking
++$500 Savings
+
+These should generally be classified as:
+
+Internal Transfer
+
+not:
+
+Expense + Income
+
+Prevent double-counting.
+
+---
+
+46. CREDIT CARD HANDLING
+
+Credit-card purchases count as expenses when incurred.
+
+Credit-card payments should generally be treated as transfers/payment of liability rather than a second expense.
+
+Prevent double-counting.
+
+---
+
+47. REFUND HANDLING
+
+Associate refunds with original spending when possible.
+
+Example:
+
+Purchase: -$120
+Refund:    +$120
+
+Budget effect:
+
+Net $0
+
+Maintain both transactions in the audit trail.
+
+---
+
+48. BUSINESS VS HOUSEHOLD EXPENSES
+
+Support tagging:
+
+Household
+Business
+Mixed
+Reimbursable
+
+Do not automatically treat all account transactions as personal household expenses.
+
+---
+
+49. GOAL FUNDING PRIORITIES
+
+Create configurable funding priority.
+
+Default example:
+
+1. Required Bills
+2. Emergency Minimum
+3. Duplex Reserve
+4. Required Debt Payments
+5. Opportunity Reserve
+6. Capital OS Strategies
+7. Discretionary Investment
+
+Capital Governor uses this priority order when assessing cash availability.
+
+---
+
+50. SAFE-TO-DEPLOY CONFIDENCE
+
+Safe-to-Invest calculations should include a confidence rating.
+
+Example:
+
+Safe to Deploy
+$1,050
+
+Confidence:
+HIGH
+
+Confidence inputs:
+
+Bank data freshness
+Income predictability
+Bill prediction quality
+Transaction coverage
+Upcoming expense completeness
+
+If data quality is poor:
+
+Safe-to-Deploy Confidence:
+LOW
+
+Recommendation:
+Do not increase active capital until
+account data is refreshed.
+
+---
+
+51. AI CIO CASH FLOW CAPABILITIES
+
+AI CIO may:
+
+Explain spending patterns
+Identify excess spending
+Recommend budget changes
+Recommend savings increases
+Identify contribution risks
+Forecast goal impact
+Explain Safe-to-Deploy calculations
+Suggest reserve increases
+
+AI CIO may NOT:
+
+Move money
+Change bank accounts
+Initiate ACH
+Modify protected rules
+Change Duplex Reserve without approval
+Increase strategy capital directly
+
+---
+
+52. AI RECOMMENDATION EXAMPLE
+
+Example:
+
+AI CIO RECOMMENDATION
+
+Observation:
+Average free cash flow over the last
+90 days is $2,150/month.
+
+Current Capital OS contribution:
+$25/week.
+
+Recommendation:
+Consider increasing Capital OS contribution
+to $40/week.
+
+Duplex impact:
+No projected delay.
+
+Emergency reserve:
+Remains above required minimum.
+
+Risk Impact:
+Low
+
+STATUS:
+Pending Human Approval
+
+---
+
+53. CAPITAL GOVERNOR DECISION
+
+Even approved AI suggestions must pass Capital Governor rules.
+
+Example:
+
+AI recommends:
+$100 additional strategy allocation
+
+Capital Governor evaluates:
+
+Bills funded?               YES
+Emergency reserve?          YES
+Duplex contribution?        YES
+Safety buffer?              YES
+Safe-to-Deploy capital?     $220
+
+Maximum permitted:
+$100
+
+APPROVED FOR HUMAN ACTION
+
+The system still does not move money automatically.
+
+---
+
+54. AUDIT EVENTS
+
+Expand audit events to include:
+
+BankAccountConnected
+BankAccountDisconnected
+BankSyncCompleted
+BankSyncFailed
+BudgetCreated
+BudgetUpdated
+TransactionCategorized
+TransactionRuleCreated
+RecurringExpenseDetected
+IncomeSourceDetected
+SafeToInvestCalculated
+FinancialHealthUpdated
+UpcomingExpenseAdded
+BudgetAlertTriggered
+
+---
+
+55. DATABASE ENTITIES
+
+Add entities such as:
+
+BankConnection
+BankAccount
+BankBalanceSnapshot
+BankTransaction
+TransactionCategory
+TransactionRule
+RecurringTransaction
+Budget
+BudgetCategory
+BudgetPeriod
+BudgetActual
+IncomeSource
+IncomeForecast
+Bill
+UpcomingExpense
+CashFlowSnapshot
+SafeToInvestSnapshot
+FinancialHealthSnapshot
+EmergencyReserve
+
+Follow the existing household ownership model.
+
+---
+
+56. HISTORICAL SNAPSHOTS
+
+Store periodic snapshots for:
+
+Account Balances
+Net Worth
+Cash Flow
+Safe-to-Invest
+Financial Health Score
+Budget Performance
+Savings Rate
+
+This enables historical charts without recalculating everything from raw data every time.
+
+---
+
+57. REPORTING
+
+Add future report foundations for:
+
+Monthly Household Budget Report
+Cash Flow Statement
+Household Financial Health Report
+Savings Progress Report
+Duplex Funding Report
+Account Summary
+Recurring Expense Report
+Annual Household Financial Review
+
+---
+
+58. DASHBOARD EXAMPLE
+
+The updated Capital OS dashboard should conceptually answer:
+
+FIRST DUPLEX ACQUISITION
+
+$7,181 / $13,000
+On Track
+
+
+HOUSEHOLD CASH FLOW
+
+Income This Month       $8,400
+Expenses                $4,350
+Savings                 $1,450
+Free Cash Flow          $2,600
+
+
+SAFE TO DEPLOY
+
+$1,050
+
+
+PROTECTED CAPITAL
+
+$7,181
+Locked
+
+
+WEEKLY CONTRIBUTION
+
+$250
+On Schedule
+
+
+FINANCIAL HEALTH
+
+87 / 100
+Healthy
+
+
+CAPITAL OS ENGINE
+
+$1,027
+Micro-Live
+Advisory Only
+
+---
+
+59. DO NOT IMPLEMENT
+
+Do not implement during this phase:
+
+Automated ACH
+Automatic bank transfers
+Bill payment
+Credit-card payment initiation
+Automatic brokerage transfers
+Live trading
+Crypto withdrawals
+Smart-contract capital movement
+AI-controlled bank actions
+
+---
+
+60. TESTING REQUIREMENTS
+
+Add automated tests for:
+
+Transfers are not double-counted as income/expense
+Credit-card payment does not duplicate original expense
+Refunds reduce category spending correctly
+Budget totals calculate correctly
+Safe-to-Invest cannot become negative
+Protected Duplex contribution is included in cash obligations
+Stale account data reduces confidence
+AI cannot change budget or capital directly
+Unauthorized household members cannot view restricted accounts
+Duplicate bank transactions are not imported twice
+Recurring transaction detection behaves correctly
+Cash-flow calculations reconcile
+
+---
+
+61. PRIVACY & SECURITY REVIEW
+
+Before marking the phase complete, verify:
+
+No banking tokens in frontend
+No secrets in logs
+No financial credentials in AI prompts
+All household data properly tenant-scoped
+Role permissions enforced server-side
+Financial calculations validated server-side
+Read-only banking policy enforced
+Audit events generated correctly
+
+---
+
+62. SYSTEM PRIORITY HIERARCHY
+
+Capital OS should now operate using:
+
+1. Required Household Obligations
+2. Emergency Liquidity
+3. Protected Duplex Goal
+4. Capital Preservation
+5. Opportunity Reserve
+6. Validated Investment Strategies
+7. Additional Wealth Growth
+
+Do not optimize investment returns ahead of household stability.
+
+---
+
+63. UPDATED CAPITAL OS ARCHITECTURE
+
+The application should evolve toward:
+
+                    CAPITAL OS
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+        ▼                ▼                ▼
+ HOUSEHOLD FINANCE   CAPITAL ENGINE   WEALTH BUILDING
+        │                │                │
+ Bank Accounts       Capital Governor  Duplex
+ Transactions        Risk Governor     Future Properties
+ Income              Portfolio         Businesses
+ Budget              Strategies        Real Assets
+ Bills               AI CIO
+ Cash Flow
+        │                │                │
+        └────────────────┼────────────────┘
+                         ▼
+                   FAMILY NET WORTH
+
+---
+
+64. FINAL VALIDATION
+
+Before declaring this phase complete, verify:
+
+1. Existing Capital OS design remains intact.
+2. Budget page works with realistic mock data.
+3. Cash Flow page works.
+4. Accounts page works.
+5. Manual accounts work without bank integration.
+6. Provider adapter architecture exists.
+7. Banking access remains read-only.
+8. Transactions categorize correctly.
+9. Transfers are not double-counted.
+10. Bills and recurring expenses affect forecasts.
+11. Income trends calculate correctly.
+12. Safe-to-Invest calculates correctly.
+13. Emergency Reserve affects available capital.
+14. Duplex goal remains protected.
+15. $250 weekly contribution remains accurately represented.
+16. Financial Health Score works.
+17. Capital Governor blocks unsafe recommendations.
+18. AI CIO remains advisory only.
+19. Audit events are generated.
+20. Critical household financial calculations have tests.
+
+---
+
+FINAL PRODUCT DIRECTION
+
+Capital OS is becoming:
+
+«A household financial operating system that determines how money flows from income → expenses → reserves → protected goals → investments → assets → family net worth.»
+
+The investment engine is only one component.
+
+The household financial system must determine whether investment capital is actually available before strategies can receive additional allocation.
+
+The system must prioritize:
+
+Stability
+→ Protection
+→ Savings
+→ Property Acquisition
+→ Controlled Investment
+→ Compounding Wealth
+
+Build accordingly.
+
+Do not sacrifice household financial security in order to maximize investment activity.

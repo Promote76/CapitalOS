@@ -26,6 +26,8 @@ import {
   useRunMicroLiveRehearsal,
   useRunMicroLiveReconciliation,
   useReviewMicroLiveEnablement,
+  useApproveMicroLiveVenue,
+  useArmMicroLive,
   useCreateMicroLiveIncidentReview,
   useCompleteMicroLiveReactivationRequirement,
   getGetMicroLiveQueryKey,
@@ -73,6 +75,7 @@ import {
   type CreateResearchStrategyInput,
   type RunStrategyExperimentInput,
   type MicroLiveSnapshot,
+  type MicroLiveVenueApprovalRequest,
   type MicroLiveIncidentReviewInput,
 } from '@workspace/api-client-react';
 import {
@@ -1109,13 +1112,29 @@ function TransactionTable({ transactions }: { transactions: Transaction[] }) {
 
 function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }) {
   const queryClient = useQueryClient();
+  const household = useGetHousehold();
   const query = useGetMicroLive();
   const rehearsal = useRunMicroLiveRehearsal();
   const reconciliationRun = useRunMicroLiveReconciliation();
   const review = useReviewMicroLiveEnablement();
+  const approveVenue = useApproveMicroLiveVenue();
+  const armSession = useArmMicroLive();
   const incidentReview = useCreateMicroLiveIncidentReview();
   const completeRequirement = useCompleteMicroLiveReactivationRequirement();
   const snapshot = query.data as MicroLiveSnapshot | undefined;
+  const isOwner = household.data?.role === 'owner';
+  const [reviewingVenueId, setReviewingVenueId] = useState<string | null>(null);
+  const [venueApprovalDraft, setVenueApprovalDraft] = useState<MicroLiveVenueApprovalRequest>({
+    credentialsReference: '',
+    jurisdictionConfirmed: false,
+    termsReviewed: false,
+    marketPermissions: [],
+    withdrawalReviewed: false,
+    withdrawalDisabled: true,
+  });
+  const [marketPermissionsText, setMarketPermissionsText] = useState('');
+  const [armingVenueId, setArmingVenueId] = useState<string | null>(null);
+  const [armingConfirmed, setArmingConfirmed] = useState(false);
   const [reviewingIncidentId, setReviewingIncidentId] = useState<string | null>(null);
   const [reviewDraft, setReviewDraft] = useState<MicroLiveIncidentReviewInput>({
     rootCause: '',
@@ -1127,6 +1146,53 @@ function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }
   });
   const [reviewText, setReviewText] = useState({ safeguardsWorked: '', requiredFixes: '', reactivationRequirements: '' });
   const refresh = async () => { await queryClient.invalidateQueries({ queryKey: getGetMicroLiveQueryKey() }); };
+  const startVenueApproval = (venue: MicroLiveSnapshot['venues'][number]) => {
+    setReviewingVenueId(venue.id);
+    setVenueApprovalDraft({
+      credentialsReference: '',
+      jurisdictionConfirmed: venue.jurisdictionConfirmed,
+      termsReviewed: venue.termsReviewed,
+      marketPermissions: venue.marketPermissions,
+      withdrawalReviewed: venue.withdrawalReviewed,
+      withdrawalDisabled: venue.withdrawalDisabled,
+    });
+    setMarketPermissionsText(venue.marketPermissions.join(', '));
+    setArmingVenueId(null);
+  };
+  const submitVenueApproval = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!reviewingVenueId) return;
+    const marketPermissions = marketPermissionsText.split(/[,\n]/).map((market) => market.trim()).filter(Boolean);
+    try {
+      await approveVenue.mutateAsync({
+        venueId: reviewingVenueId,
+        data: { ...venueApprovalDraft, marketPermissions },
+      });
+      await refresh();
+      setReviewingVenueId(null);
+      onFeedback('Venue approval review recorded. Live execution remains disabled.');
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'The venue approval review could not be saved.');
+    }
+  };
+  const startArming = (venueId: string) => {
+    setArmingVenueId(venueId);
+    setArmingConfirmed(false);
+    setReviewingVenueId(null);
+  };
+  const submitArming = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!armingVenueId || !armingConfirmed) return;
+    try {
+      const result = await armSession.mutateAsync({ data: { venueId: armingVenueId } });
+      await refresh();
+      setArmingVenueId(null);
+      setArmingConfirmed(false);
+      onFeedback(result.liveExecutionEnabled ? 'Session armed.' : 'Arming recorded without enabling live execution.');
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'Human arming was blocked by the safety gates.');
+    }
+  };
   const startIncidentReview = (incidentId: string) => {
     setReviewingIncidentId(incidentId);
     setReviewDraft({ rootCause: '', capitalImpact: '0.00', safeguardsWorked: [], requiredFixes: [], reactivationRequirements: [], notes: '' });
@@ -1158,14 +1224,34 @@ function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }
   const openRequirements = snapshot.reactivationRequirements.filter((requirement) => requirement.status !== 'COMPLETE');
   return <main className="content">
     <PageHeading eyebrow="Execution / Micro-Live" title={<>Containment before <span className="accent-text">connectivity.</span></>} description="A small, reviewable control plane for future Micro-Live experiments. This workspace transmits no orders and cannot access household capital." actions={<button className="btn btn-primary" onClick={async () => { await rehearsal.mutateAsync(); await refresh(); onFeedback('Live rehearsal completed without transmitting an order.'); }} disabled={rehearsal.isPending}><RotateCcw size={14} /> {rehearsal.isPending ? 'Running…' : 'Run live rehearsal'}</button>} />
-    <section className="micro-live-banner"><div className="micro-live-banner-icon"><Lock size={19} /></div><div><strong>Live execution is disabled</strong><span>Rehearsal mode only · no venue credentials · no order transmission</span></div><span className="status review">DISABLED</span></section>
+    <section className="micro-live-banner"><div className="micro-live-banner-icon"><Lock size={19} /></div><div><strong>Live execution is disabled</strong><span>Rehearsal mode only · credential values never displayed · no order transmission</span></div><span className="status review">DISABLED</span></section>
     <section className="micro-live-grid">
       <div className="card card-pad micro-live-status-card"><CardTitle title="Execution status" subtitle="Global fail-closed state" action={<Activity size={17} color="var(--blue)" />} /><div className="micro-live-status-value"><span className="status-pill">{snapshot.status}</span><strong>0</strong><small>open orders</small></div><div className="micro-live-stat-row"><span>Capital allocated</span><b>{money(snapshot.session.capitalAllocated)}</b></div><div className="micro-live-stat-row"><span>Current position</span><b>{snapshot.session.currentPosition}</b></div><div className="micro-live-stat-row"><span>Net P&amp;L</span><b>{money(snapshot.session.netPnl)}</b></div></div>
       <div className="card card-pad"><CardTitle title="Micro-Live sandbox" subtitle="Configurable policy · no leverage" action={<Gauge size={17} color="var(--green)" />} /><div className="micro-live-limit-grid"><div><span>Max venue</span><strong>{money(String(Number(snapshot.policy.limits.maxVenueCapitalCents ?? 1000) / 100))}</strong></div><div><span>Max strategy</span><strong>{money(String(Number(snapshot.policy.limits.maxStrategyCapitalCents ?? 1000) / 100))}</strong></div><div><span>Max order</span><strong>{money(String(Number(snapshot.policy.limits.maxIndividualOrderCents ?? 100) / 100))}</strong></div><div><span>Hard daily loss</span><strong>{money(String(Number(snapshot.policy.limits.hardDailyLossCents ?? 150) / 100))}</strong></div></div><div className="safety-inline"><CheckCircle2 size={15} /> Leverage, margin, borrowing, and auto-scale are off</div></div>
     </section>
     <section className="card card-pad page-section"><CardTitle title="Readiness gates" subtitle={`Live readiness ${snapshot.readiness.score}/100 · a high score never guarantees profitability`} action={<button className="btn" onClick={async () => { await review.mutateAsync(); onFeedback('Enablement review recorded. Live execution remains disabled.'); }} disabled={review.isPending}>{review.isPending ? 'Reviewing…' : 'Review gates'}</button>} /><div className="readiness-grid">{snapshot.readiness.checks.map((check) => <div className={`readiness-check ${check.passed ? 'passed' : 'blocked'}`} key={check.name}><span>{check.passed ? <CheckCircle2 size={15} /> : <ShieldAlert size={15} />}</span><span>{check.name}</span><b>{check.passed ? 'Pass' : 'Blocked'}</b></div>)}</div></section>
     <section className="micro-live-columns">
-      <div className="card card-pad"><CardTitle title="Venue registry" subtitle="Only explicitly approved venues may ever receive orders" action={<Landmark size={17} color="var(--ink-soft)" />} /><div className="micro-live-list">{snapshot.venues.map((venue) => <div className="micro-live-list-row" key={venue.id}><div><strong>{venue.name}</strong><span>{venue.adapterType} · {venue.status}</span></div><span className={`status ${venue.health === 'HEALTHY' ? '' : 'review'}`}>{venue.health}</span></div>)}</div></div>
+      <div className="card card-pad"><CardTitle title="Venue approval review" subtitle="Review every boundary before a venue can be considered for Micro-Live" action={<Landmark size={17} color="var(--ink-soft)" />} /><div className="venue-review-list">{snapshot.venues.map((venue) => <article className="venue-review-card" key={venue.id}>
+        <div className="venue-review-header"><div><strong>{venue.name}</strong><span>{venue.adapterType} · {venue.status}</span></div><span className={`status ${venue.approval.approved ? '' : 'review'}`}>{venue.approval.approved ? 'Approved' : 'Not approved'}</span></div>
+        <div className="venue-facts"><div><span>Permitted markets</span><strong>{venue.marketPermissions.length ? venue.marketPermissions.join(' · ') : 'None recorded'}</strong></div><div><span>Withdrawals</span><strong>{venue.withdrawalDisabled ? 'Disabled' : 'Not disabled'}</strong></div><div><span>Credentials</span><strong>{venue.credentialsConfigured ? 'Configured · value hidden' : 'Not configured'}</strong></div><div><span>Health</span><strong>{venue.health}</strong></div></div>
+        <div className="venue-checks">{venue.approval.checks.map((check) => <div className={`venue-check ${check.passed ? 'passed' : 'blocked'}`} key={check.name}><span>{check.passed ? <CheckCircle2 size={14} /> : <ShieldAlert size={14} />}</span><span>{check.name}</span><b>{check.passed ? 'Pass' : 'Open'}</b></div>)}</div>
+        <div className="safety-inline"><LockKeyhole size={15} /> Credential values are never displayed; only a server-side reference and the approval evidence are retained.</div>
+        {isOwner && <div className="venue-operator-actions">
+          <div className="operator-actions-row"><button className="btn" onClick={() => startVenueApproval(venue)} disabled={approveVenue.isPending}>Review approval</button>{venue.approval.approved && <button className="btn btn-primary" onClick={() => startArming(venue.id)} disabled={armSession.isPending}>Arm session</button>}</div>
+          {reviewingVenueId === venue.id && <form className="venue-approval-form" onSubmit={submitVenueApproval}>
+            <div className="operator-form-note"><ShieldCheck size={15} /><span>Owner review only. Enter a reference to credentials held by the server; never paste a key, token, or secret here.</span></div>
+            <div className="field"><label>Server-side credential reference</label><input required value={venueApprovalDraft.credentialsReference} onChange={(event) => setVenueApprovalDraft({ ...venueApprovalDraft, credentialsReference: event.target.value })} placeholder="vault reference, not a credential value" /></div>
+            <div className="field"><label>Permitted markets <span>(comma or line separated)</span></label><textarea required rows={2} value={marketPermissionsText} onChange={(event) => setMarketPermissionsText(event.target.value)} placeholder="spot" /></div>
+            <div className="venue-review-toggles"><label><input type="checkbox" checked={venueApprovalDraft.jurisdictionConfirmed} onChange={(event) => setVenueApprovalDraft({ ...venueApprovalDraft, jurisdictionConfirmed: event.target.checked })} /> Jurisdiction and account eligibility confirmed</label><label><input type="checkbox" checked={venueApprovalDraft.termsReviewed} onChange={(event) => setVenueApprovalDraft({ ...venueApprovalDraft, termsReviewed: event.target.checked })} /> Venue terms reviewed</label><label><input type="checkbox" checked={venueApprovalDraft.withdrawalReviewed} onChange={(event) => setVenueApprovalDraft({ ...venueApprovalDraft, withdrawalReviewed: event.target.checked })} /> Withdrawal permissions reviewed</label><label><input type="checkbox" checked={venueApprovalDraft.withdrawalDisabled} onChange={(event) => setVenueApprovalDraft({ ...venueApprovalDraft, withdrawalDisabled: event.target.checked })} /> Withdrawals disabled for this execution account</label></div>
+            <div className="modal-actions"><button type="button" className="btn" onClick={() => setReviewingVenueId(null)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={approveVenue.isPending}><Check size={14} /> {approveVenue.isPending ? 'Saving…' : 'Submit approval review'}</button></div>
+          </form>}
+          {armingVenueId === venue.id && <form className="venue-arming-form" onSubmit={submitArming}>
+            <div className="operator-form-note warning"><AlertTriangle size={15} /><span>This is a human arming request, not a readiness shortcut. The server will fail closed if any strategy, risk, venue, or reconciliation gate is open.</span></div>
+            <label className="arming-confirmation"><input type="checkbox" checked={armingConfirmed} onChange={(event) => setArmingConfirmed(event.target.checked)} /> I explicitly confirm this venue and understand that any permitted session remains bounded, expires, and cannot access household or protected capital.</label>
+            <div className="modal-actions"><button type="button" className="btn" onClick={() => setArmingVenueId(null)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={!armingConfirmed || armSession.isPending}><ShieldCheck size={14} /> {armSession.isPending ? 'Checking gates…' : 'Confirm human arming'}</button></div>
+          </form>}
+        </div>}
+      </article>)}</div></div>
       <div className="card card-pad"><CardTitle title="Independent Guardian" subtitle="Separate process boundary · authority is containment only" action={<ShieldCheck size={17} color="var(--green)" />} /><div className="guardian-state"><span className="status">{snapshot.guardian.status}</span><strong>{snapshot.guardian.decision}</strong><p>{snapshot.guardian.reason}. {snapshot.guardian.independentDeployment}</p></div><div className="safety-inline"><LockKeyhole size={15} /> Guardian cannot run strategies, increase capital, withdraw funds, or change risk rules.</div></div>
     </section>
      <section className="micro-live-columns page-section">

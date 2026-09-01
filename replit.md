@@ -1,6 +1,6 @@
-# [Project name]
+# Capital OS
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Capital OS is a light-theme family-capital workspace for disciplined saving, protected reserves, strategy experiments, and a first duplex acquisition.
 
 ## Run & Operate
 
@@ -22,15 +22,25 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/capital-os/src/App.tsx` — route-aware application shell, page views, mock data, and local interactions
+- `artifacts/capital-os/src/index.css` — shared light-theme design tokens and responsive component styling
+- `attached_assets/Pasted-Capital-OS-Design-System-Specification-1-Design-Princip_1788226967597.txt` — product design-system specification
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The first release is frontend-only and uses realistic local mock data so the product surface can be reviewed before persistence and integrations are added.
+- The app is organized around protected family capital, not trading activity; green communicates protection/progress, blue active capital, lavender research/opportunity, amber review, and red critical safeguards.
+- All primary and secondary destinations share one responsive shell with local state for contribution, transfer, strategy, property-note, settings, and risk-review interactions.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Dashboard overview for the First Duplex Acquisition goal
+- Goals, contributions, transactions, reports, documents, and insights views
+- Strategy graduation pipeline with Capital Confidence and Advisory Only AI recommendations
+- Portfolio allocation and growth views
+- Property readiness milestones, market shortlist, and acquisition planning
+- Risk Governor safeguards with protected-capital lock and Emergency Stop confirmation
+- Family account, contribution, protection, strategy permission, AI, and security settings
 
 ## User preferences
 

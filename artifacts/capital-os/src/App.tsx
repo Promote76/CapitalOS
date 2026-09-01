@@ -116,6 +116,13 @@ function AppShell({
             <button className="mobile-menu" aria-label="Open navigation" data-testid="button-open-mobile-nav" onClick={() => setMenuOpen(true)}><Menu size={17} /></button>
             <span>Capital OS</span><ChevronRight size={13} /><strong>{location === '/' ? 'Overview' : (primaryNav.concat(secondaryNav).find((item) => item.href === location)?.label || 'Workspace')}</strong>
           </div>
+          <nav className="topnav" aria-label="Primary navigation">
+            {[...primaryNav, { href: '/settings', label: 'Settings', icon: SettingsIcon }].map((item) => (
+              <Link key={item.href} href={item.href} className={`topnav-link ${isActive(item.href) ? 'active' : ''}`} data-testid={`link-topnav-${item.label.toLowerCase().replaceAll(' ', '-')}`}>
+                {item.label === 'Overview' ? 'Dashboard' : item.label.replace('Risk & readiness', 'Risk')}
+              </Link>
+            ))}
+          </nav>
           <div className="top-actions">
             <button className="icon-btn" aria-label="Search" data-testid="button-search" onClick={() => onFeedback('Search is ready when your workspace grows.') }><Search size={16} /></button>
             <button className="icon-btn" aria-label="Notifications" data-testid="button-notifications" onClick={() => onFeedback('No new plan reminders. You are clear for this week.')}><Bell size={16} /></button>

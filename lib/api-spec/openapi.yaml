@@ -1027,12 +1027,13 @@ components:
             disclaimer: { type: string }
         forecast:
           type: object
-          required: [nextMonthInflow, nextMonthEssentialOutflow, nextMonthNet, confidence]
+          required: [nextMonthInflow, nextMonthEssentialOutflow, nextMonthNet, confidence, nextIncomeDate]
           properties:
             nextMonthInflow: { type: string }
             nextMonthEssentialOutflow: { type: string }
             nextMonthNet: { type: string }
             confidence: { type: number }
+            nextIncomeDate: { type: ["string", "null"], format: date }
     FinancialAccount:
       type: object
       required: [id, institution, nickname, accountType, connectionStatus, dataSource, includedInNetWorth, includedInBudget, protected, restricted]
@@ -1114,13 +1115,15 @@ components:
         fundedAmount: { type: string }
     IncomeSource:
       type: object
-      required: [id, householdId, name, sourceType, expectedMonthly, active]
+      required: [id, householdId, name, sourceType, expectedMonthly, cadence, nextPayDate, active]
       properties:
         id: { type: string }
         householdId: { type: string }
         name: { type: string }
         sourceType: { type: string }
         expectedMonthly: { type: string }
+        cadence: { type: string }
+        nextPayDate: { type: string, format: date }
         active: { type: boolean }
     SafeToDeploy:
       type: object

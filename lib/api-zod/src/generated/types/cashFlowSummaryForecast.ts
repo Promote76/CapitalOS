@@ -11,4 +11,6 @@ export type CashFlowSummaryForecast = {
   nextMonthEssentialOutflow: string;
   nextMonthNet: string;
   confidence: number;
+  /** @nullable */
+  nextIncomeDate: Date | null;
 };

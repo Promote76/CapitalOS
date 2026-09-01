@@ -721,7 +721,8 @@ export const GetCashFlowResponse = zod.object({
   "nextMonthInflow": zod.string(),
   "nextMonthEssentialOutflow": zod.string(),
   "nextMonthNet": zod.string(),
-  "confidence": zod.number()
+  "confidence": zod.number(),
+  "nextIncomeDate": zod.coerce.date().nullable()
 })
 })
 
@@ -860,6 +861,8 @@ export const ListIncomeSourcesResponseItem = zod.object({
   "name": zod.string(),
   "sourceType": zod.string(),
   "expectedMonthly": zod.string(),
+  "cadence": zod.string(),
+  "nextPayDate": zod.coerce.date(),
   "active": zod.boolean()
 })
 export const ListIncomeSourcesResponse = zod.array(ListIncomeSourcesResponseItem)

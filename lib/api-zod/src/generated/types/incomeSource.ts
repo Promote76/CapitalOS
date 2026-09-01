@@ -12,5 +12,7 @@ export interface IncomeSource {
   name: string;
   sourceType: string;
   expectedMonthly: string;
+  cadence: string;
+  nextPayDate: Date;
   active: boolean;
 }

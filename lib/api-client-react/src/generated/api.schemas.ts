@@ -389,6 +389,8 @@ export type CashFlowSummaryForecast = {
   nextMonthEssentialOutflow: string;
   nextMonthNet: string;
   confidence: number;
+  /** @nullable */
+  nextIncomeDate: string | null;
 };
 
 export interface CashFlowSummary {
@@ -491,6 +493,8 @@ export interface IncomeSource {
   name: string;
   sourceType: string;
   expectedMonthly: string;
+  cadence: string;
+  nextPayDate: string;
   active: boolean;
 }
 

@@ -195,6 +195,8 @@ export const incomeSources = pgTable(
     name: text("name").notNull(),
     sourceType: incomeSourceTypeEnum("source_type").notNull(),
     expectedMonthly: money("expected_monthly"),
+    cadence: recurringFrequencyEnum("cadence").notNull().default("monthly"),
+    nextPayDate: date("next_pay_date", { mode: "string" }).notNull().default("2026-09-15"),
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

@@ -165,6 +165,8 @@ async function ensureHouseholdFinanceSeed(householdId: string) {
       name: "Household payroll",
       sourceType: "employment",
       expectedMonthly: "8400.00",
+      cadence: "monthly",
+      nextPayDate: "2026-09-15",
     });
     await tx.insert(emergencyReserves).values({
       householdId,

@@ -33,6 +33,63 @@ import { assertPermission } from "../domain/governance";
 const numeric = (value: string | number | null | undefined) => Number(value ?? 0);
 const cents = (value: string | number | null | undefined) => Math.round(numeric(value) * 100);
 const nowMonth = () => new Date().toISOString().slice(0, 7);
+const calendarToday = () => new Date().toISOString().slice(0, 10);
+
+type IncomeTimingSource = {
+  active: boolean;
+  cadence: string;
+  nextPayDate: string;
+};
+
+function addCadence(dateValue: string, cadence: string) {
+  const date = new Date(`${dateValue}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  if (cadence === "weekly") date.setUTCDate(date.getUTCDate() + 7);
+  else if (cadence === "biweekly") date.setUTCDate(date.getUTCDate() + 14);
+  else if (cadence === "quarterly") date.setUTCMonth(date.getUTCMonth() + 3);
+  else if (cadence === "annual") date.setUTCFullYear(date.getUTCFullYear() + 1);
+  else date.setUTCMonth(date.getUTCMonth() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
+function nextPayDate(source: IncomeTimingSource, asOf = calendarToday()) {
+  if (!source.nextPayDate) return null;
+  let next = source.nextPayDate;
+  for (let attempts = 0; next < asOf && attempts < 120; attempts += 1) {
+    const following = addCadence(next, source.cadence);
+    if (!following) return null;
+    next = following;
+  }
+  return next >= asOf ? next : null;
+}
+
+function nextIncomeDate(sources: IncomeTimingSource[], asOf = calendarToday()) {
+  return sources
+    .filter((source) => source.active)
+    .map((source) => nextPayDate(source, asOf))
+    .filter((date): date is string => Boolean(date))
+    .sort()[0] ?? null;
+}
+
+function nextMonthPeriod(asOf = calendarToday()) {
+  const current = new Date(`${asOf}T00:00:00.000Z`);
+  if (Number.isNaN(current.getTime())) return null;
+  const start = new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + 1, 1));
+  const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
+  return {
+    start: start.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10),
+  };
+}
+
+function hasPayDateInPeriod(source: IncomeTimingSource, start: string, end: string, asOf = calendarToday()) {
+  let next = nextPayDate(source, asOf);
+  for (let attempts = 0; next && next < end && attempts < 120; attempts += 1) {
+    if (next >= start) return true;
+    next = addCadence(next, source.cadence);
+  }
+  return false;
+}
 
 async function householdId() {
   return (await ensureSeedData()).householdId;
@@ -165,24 +222,40 @@ export async function getCashFlow() {
     capitalRisk: 92,
     incomeStability: 90,
   });
+  const asOf = calendarToday();
+  const incomeDate = nextIncomeDate(data.income, asOf);
+  const nextMonth = nextMonthPeriod(asOf);
+  const nextMonthInflow = nextMonth
+    ? data.income
+      .filter((source) => source.active && hasPayDateInPeriod(source, nextMonth.start, nextMonth.end, asOf))
+      .reduce((sum, source) => sum + numeric(source.expectedMonthly), 0)
+    : 0;
+  const nextMonthEssentialOutflow = data.categories
+    .filter((category) => category.essentialStatus === "essential" && category.categoryType !== "income")
+    .reduce((sum, category) => sum + numeric(category.monthlyTarget), 0);
   return {
     month: "August 2026",
     metrics: cashFlow,
     reserve,
     financialHealth: health,
     forecast: {
-      nextMonthInflow: data.income.reduce((sum, source) => sum + numeric(source.expectedMonthly), 0).toFixed(2),
-      nextMonthEssentialOutflow: data.categories.filter((category) => category.essentialStatus === "essential" && category.categoryType !== "income").reduce((sum, category) => sum + numeric(category.monthlyTarget), 0).toFixed(2),
-      nextMonthNet: "1750.00",
+      nextMonthInflow: nextMonthInflow.toFixed(2),
+      nextMonthEssentialOutflow: nextMonthEssentialOutflow.toFixed(2),
+      nextMonthNet: (nextMonthInflow - nextMonthEssentialOutflow).toFixed(2),
       confidence: 86,
+      nextIncomeDate: incomeDate,
     },
   };
 }
 
 export async function getSafeToDeploy() {
   const data = await loadFinanceData();
+  const asOf = calendarToday();
+  const incomeDate = nextIncomeDate(data.income, asOf);
   const liquid = data.capitalAccounts.filter((account) => ["checking", "savings", "money_market"].includes(account.accountType)).reduce((sum, account) => sum + cents(account.availableBalance ?? account.currentBalance), 0);
-  const bills = data.bills.reduce((sum, bill) => sum + cents(bill.expectedAmount), 0);
+  const bills = data.bills
+    .filter((bill) => !incomeDate || bill.dueDate < incomeDate)
+    .reduce((sum, bill) => sum + cents(bill.expectedAmount), 0);
   const essential = data.categories.filter((category) => category.essentialStatus === "essential" && category.categoryType !== "income").reduce((sum, category) => sum + cents(category.monthlyTarget), 0);
   const reserveTarget = cents(data.reserve?.essentialMonthlyExpenses) * (data.reserve?.targetMonths ?? 3);
   const reserveShortfall = Math.max(0, reserveTarget - cents(data.reserve?.currentAmount));

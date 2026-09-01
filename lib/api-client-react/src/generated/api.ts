@@ -75,6 +75,8 @@ import type {
   MicroLiveSnapshot,
   MicroLiveVenueApproval,
   MicroLiveVenueApprovalRequest,
+  MicroLiveVenueReview,
+  MicroLiveVenueReviewRequest,
   PortfolioSummary,
   PrivacySettingsInput,
   PropertyAnalysis,
@@ -1909,6 +1911,80 @@ export const useApproveMicroLiveVenue = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getApproveMicroLiveVenueMutationOptions(options));
+    }
+
+export const getRecordMicroLiveVenueReviewUrl = (venueId: string,
+    kind: 'security' | 'jurisdiction',) => {
+
+
+
+
+  return `/api/micro-live/venues/${venueId}/reviews/${kind}`
+}
+
+/**
+ * @summary Record an independent venue security or jurisdiction review
+ */
+export const recordMicroLiveVenueReview = async (venueId: string,
+    kind: 'security' | 'jurisdiction',
+    microLiveVenueReviewRequest: MicroLiveVenueReviewRequest, options?: Parameters<typeof customFetch>[1]): Promise<MicroLiveVenueReview> => {
+
+  return customFetch<MicroLiveVenueReview>(getRecordMicroLiveVenueReviewUrl(venueId,kind),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(microLiveVenueReviewRequest)
+  }
+);}
+
+
+
+
+
+export const getRecordMicroLiveVenueReviewMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordMicroLiveVenueReview>>, TError,{venueId: string;kind: 'security' | 'jurisdiction';data: BodyType<MicroLiveVenueReviewRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordMicroLiveVenueReview>>, TError,{venueId: string;kind: 'security' | 'jurisdiction';data: BodyType<MicroLiveVenueReviewRequest>}, TContext> => {
+
+const mutationKey = ['recordMicroLiveVenueReview'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordMicroLiveVenueReview>>, {venueId: string;kind: 'security' | 'jurisdiction';data: BodyType<MicroLiveVenueReviewRequest>}> = (props) => {
+          const {venueId,kind,data} = props ?? {};
+
+          return  recordMicroLiveVenueReview(venueId,kind,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordMicroLiveVenueReviewMutationResult = NonNullable<Awaited<ReturnType<typeof recordMicroLiveVenueReview>>>
+    export type RecordMicroLiveVenueReviewMutationBody = BodyType<MicroLiveVenueReviewRequest>
+    export type RecordMicroLiveVenueReviewMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Record an independent venue security or jurisdiction review
+ */
+export const useRecordMicroLiveVenueReview = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordMicroLiveVenueReview>>, TError,{venueId: string;kind: 'security' | 'jurisdiction';data: BodyType<MicroLiveVenueReviewRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordMicroLiveVenueReview>>,
+        TError,
+        {venueId: string;kind: 'security' | 'jurisdiction';data: BodyType<MicroLiveVenueReviewRequest>},
+        TContext
+      > => {
+      return useMutation(getRecordMicroLiveVenueReviewMutationOptions(options));
     }
 
 export const getArmMicroLiveUrl = () => {

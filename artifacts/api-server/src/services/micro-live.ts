@@ -20,10 +20,17 @@ import {
   defaultMicroLivePolicy,
   evaluateLiveEnablement,
   guardianDecision,
+  recoverExecutionState,
   reconcileExecutionState,
   runLiveRehearsal,
 } from "../domain/execution-oms";
-import { evaluateVenueApproval } from "../domain/execution-adapters";
+import {
+  evaluateVenueApproval,
+  isIndependentReviewReference,
+  isReviewedVenueAdapterRegistered,
+  isServerCredentialReference,
+  SimulatedVenueAdapter,
+} from "../domain/execution-adapters";
 import { assertPermission, GovernanceError } from "../domain/governance";
 import { ensureSeedData } from "./seed";
 import type { Actor } from "./capital-os";
@@ -248,7 +255,11 @@ export async function getMicroLiveSnapshot() {
     policy: { version: policy.policyVersion, limits: policy.limits, autoScale: policy.autoScale, leverageEnabled: policy.leverageEnabled, marginEnabled: policy.marginEnabled, borrowingEnabled: policy.borrowingEnabled },
     session: { id: session.id, mode: session.mode, capitalAllocated: session.capitalAllocated, currentPosition: "0.00", openOrders: 0, netPnl: "0.00", lossLimit: session.sessionLossLimit, exposureCap: session.sessionExposureCap, expiresAt: session.authorizationExpiresAt },
     venues: venues.map((venue) => {
-      const approval = evaluateVenueApproval(venue);
+      const approval = evaluateVenueApproval({
+        ...venue,
+        adapterRegistered: isReviewedVenueAdapterRegistered(venue.adapterType),
+        approvingActorId: venue.approvedBy ?? undefined,
+      });
       return {
         id: venue.id,
         name: venue.name,
@@ -257,7 +268,7 @@ export async function getMicroLiveSnapshot() {
         capabilities: venue.capabilities,
         jurisdictionConfirmed: venue.jurisdictionConfirmed,
         integrationApproved: venue.integrationApproved,
-        credentialsConfigured: Boolean(venue.credentialsReference?.trim()),
+        credentialsConfigured: isServerCredentialReference(venue.credentialsReference),
         termsReviewed: venue.termsReviewed,
         marketPermissions: venue.marketPermissions,
         withdrawalReviewed: venue.withdrawalReviewed,
@@ -328,16 +339,88 @@ export type VenueApprovalRequest = {
   withdrawalDisabled: boolean;
 };
 
+export type VenueReviewRequest = {
+  reviewReference: string;
+};
+
+function isVenueReviewRequest(value: unknown, kind: "security" | "jurisdiction"): value is VenueReviewRequest {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return isIndependentReviewReference(candidate.reviewReference, kind);
+}
+
 function isVenueApprovalRequest(value: unknown): value is VenueApprovalRequest {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Record<string, unknown>;
-  return typeof candidate.credentialsReference === "string" &&
+  return isServerCredentialReference(candidate.credentialsReference) &&
     typeof candidate.jurisdictionConfirmed === "boolean" &&
     typeof candidate.termsReviewed === "boolean" &&
     Array.isArray(candidate.marketPermissions) &&
     candidate.marketPermissions.every((market) => typeof market === "string") &&
     typeof candidate.withdrawalReviewed === "boolean" &&
-    typeof candidate.withdrawalDisabled === "boolean";
+    typeof candidate.withdrawalDisabled === "boolean" &&
+    !Object.prototype.hasOwnProperty.call(candidate, "securityReviewReference") &&
+    !Object.prototype.hasOwnProperty.call(candidate, "jurisdictionReviewReference");
+}
+
+async function loadMicroLiveVenue(venueId: string) {
+  const { householdId } = await ensureSeedData();
+  const [venue] = await db.select().from(venueRegistry).where(and(
+    eq(venueRegistry.id, venueId),
+    eq(venueRegistry.householdId, householdId),
+  )).limit(1);
+  if (!venue) throw new GovernanceError("INVALID_STATE", "Venue is not registered for this household");
+  return { householdId, venue };
+}
+
+export async function recordMicroLiveVenueReview(
+  actor: Actor,
+  venueId: string,
+  kind: "security" | "jurisdiction",
+  request: unknown,
+) {
+  assertPermission(actor.role, kind === "security" ? "review_venue_security" : "review_venue_jurisdiction");
+  if (!isVenueReviewRequest(request, kind)) {
+    throw new GovernanceError("INVALID_STATE", "A valid independent review reference is required");
+  }
+  const { householdId } = await loadMicroLiveVenue(venueId);
+  const review = {
+    reference: request.reviewReference,
+    reviewerId: actor.userId,
+    reviewedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+  };
+  const reviewColumn = kind === "security" ? "securityReview" : "jurisdictionReview";
+  const [updatedVenue] = await db.update(venueRegistry).set({
+    [reviewColumn]: review,
+    status: "Review in progress",
+    updatedAt: new Date(),
+  }).where(and(
+    eq(venueRegistry.id, venueId),
+    eq(venueRegistry.householdId, householdId),
+  )).returning();
+  await db.insert(auditEvents).values({
+    householdId,
+    eventType: `micro_live_venue_${kind}_reviewed`,
+    actor: actor.userId,
+    entity: "venue_registry",
+    entityId: venueId,
+    reason: `Independent ${kind} review recorded; venue approval remains blocked until all gates pass`,
+    metadata: {
+      reviewReference: request.reviewReference,
+      reviewerId: actor.userId,
+      expiresAt: review.expiresAt,
+      liveExecutionEnabled: false,
+    },
+  });
+  return {
+    venueId: updatedVenue.id,
+    reviewType: kind,
+    reviewedBy: actor.userId,
+    reviewedAt: review.reviewedAt,
+    expiresAt: review.expiresAt,
+    liveExecutionEnabled: false,
+  };
 }
 
 export async function approveMicroLiveVenue(
@@ -359,13 +442,17 @@ export async function approveMicroLiveVenue(
 
   const approval = evaluateVenueApproval({
     adapterType: venue.adapterType,
-    integrationApproved: true,
+    integrationApproved: isReviewedVenueAdapterRegistered(venue.adapterType),
+    adapterRegistered: isReviewedVenueAdapterRegistered(venue.adapterType),
     credentialsReference: request.credentialsReference,
     jurisdictionConfirmed: request.jurisdictionConfirmed,
     termsReviewed: request.termsReviewed,
     marketPermissions: request.marketPermissions,
     withdrawalReviewed: request.withdrawalReviewed,
     withdrawalDisabled: request.withdrawalDisabled,
+    securityReview: venue.securityReview,
+    jurisdictionReview: venue.jurisdictionReview,
+    approvingActorId: actor.userId,
   });
   if (!approval.approved) {
     throw new GovernanceError("INVALID_STATE", "Venue approval is incomplete; no live enablement was granted");
@@ -374,7 +461,7 @@ export async function approveMicroLiveVenue(
   const [approvedVenue] = await db.update(venueRegistry)
     .set({
       integrationApproved: true,
-      credentialsReference: request.credentialsReference.trim(),
+      credentialsReference: request.credentialsReference,
       jurisdictionConfirmed: request.jurisdictionConfirmed,
       termsReviewed: request.termsReviewed,
       marketPermissions: request.marketPermissions.map((market) => market.trim()),
@@ -412,7 +499,11 @@ export async function approveMicroLiveVenue(
       adapterType: approvedVenue.adapterType,
       status: approvedVenue.status,
       marketPermissions: approvedVenue.marketPermissions,
-      approval: evaluateVenueApproval(approvedVenue),
+      approval: evaluateVenueApproval({
+        ...approvedVenue,
+        adapterRegistered: isReviewedVenueAdapterRegistered(approvedVenue.adapterType),
+        approvingActorId: actor.userId,
+      }),
     },
     liveExecutionEnabled: false,
     householdCapitalAccessible: false,
@@ -478,27 +569,31 @@ export async function armMicroLive(actor: Actor, venueId: string) {
 export async function runMicroLiveReconciliation(actor: Actor) {
   assertPermission(actor.role, "contribute");
   const { householdId, session } = await ensureMicroLiveSeed();
+  const [sessionVenue] = await db.select().from(venueRegistry).where(and(
+    eq(venueRegistry.id, session.venueId ?? ""),
+    eq(venueRegistry.householdId, householdId),
+  )).limit(1);
+  if (sessionVenue && sessionVenue.adapterType !== "simulated") {
+    throw new GovernanceError("INVALID_STATE", "Real venue reconciliation is disabled until its separately reviewed server adapter is registered");
+  }
+  const rehearsalAdapter = new SimulatedVenueAdapter();
+  await rehearsalAdapter.connect();
   const capturedAt = new Date();
   const [internalPosition] = await db.select().from(positionSnapshots)
     .where(and(eq(positionSnapshots.householdId, householdId), eq(positionSnapshots.source, "INTERNAL")))
     .orderBy(desc(positionSnapshots.capturedAt)).limit(1);
-  const [venuePosition] = await db.select().from(positionSnapshots)
-    .where(and(eq(positionSnapshots.householdId, householdId), eq(positionSnapshots.source, "VENUE")))
-    .orderBy(desc(positionSnapshots.capturedAt)).limit(1);
   const internalFills = await db.select({ externalFillId: executionFills.externalFillId }).from(executionFills)
     .where(eq(executionFills.householdId, householdId));
-  const venueFills = await db.select({ externalFillId: fillSnapshots.externalFillId }).from(fillSnapshots)
-    .where(and(eq(fillSnapshots.householdId, householdId), eq(fillSnapshots.source, "VENUE")));
   const internalPositionCents = asCents(internalPosition?.notional);
-  const venuePositionCents = asCents(venuePosition?.notional);
-  const result = reconcileExecutionState({
+  const recovery = await recoverExecutionState(rehearsalAdapter, {
     internalPositionCents,
-    venuePositionCents,
     internalOpenOrders: 0,
-    venueOpenOrders: 0,
     internalFillIds: internalFills.map((fill) => fill.externalFillId),
-    venueFillIds: venueFills.map((fill) => fill.externalFillId),
   });
+  await rehearsalAdapter.disconnect();
+  const venuePositionCents = recovery.venuePositionCents;
+  const venueFills = recovery.fills;
+  const result = recovery.reconciliation;
   const internalState = {
     positionCents: internalPositionCents,
     openOrders: 0,
@@ -507,9 +602,11 @@ export async function runMicroLiveReconciliation(actor: Actor) {
   };
   const venueState = {
     positionCents: venuePositionCents,
-    openOrders: 0,
+    openOrders: recovery.openOrders.length,
     fillIds: venueFills.map((fill) => fill.externalFillId),
-    source: "venue_authoritative_snapshot",
+    source: "simulated_rehearsal_adapter",
+    venueHealth: recovery.venueHealth,
+    balances: recovery.balances,
   };
   const [run] = await db.insert(reconciliationRuns).values({
     householdId,

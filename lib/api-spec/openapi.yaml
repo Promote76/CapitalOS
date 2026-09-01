@@ -393,6 +393,31 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/MicroLiveVenueApproval" }
+  /micro-live/venues/{venueId}/reviews/{kind}:
+    post:
+      operationId: recordMicroLiveVenueReview
+      tags: [planning]
+      summary: Record an independent venue security or jurisdiction review
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: kind
+          in: path
+          required: true
+          schema: { type: string, enum: [security, jurisdiction] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MicroLiveVenueReviewRequest" }
+      responses:
+        "201":
+          description: Independent review record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MicroLiveVenueReview" }
   /micro-live/arm:
     post:
       operationId: armMicroLive
@@ -1983,12 +2008,27 @@ components:
       type: object
       required: [credentialsReference, jurisdictionConfirmed, termsReviewed, marketPermissions, withdrawalReviewed, withdrawalDisabled]
       properties:
-        credentialsReference: { type: string, minLength: 1 }
+        credentialsReference: { type: string, pattern: "^secret://capital-os/venues/[A-Za-z0-9_-]{8,128}$" }
         jurisdictionConfirmed: { type: boolean }
         termsReviewed: { type: boolean }
         marketPermissions: { type: array, minItems: 1, items: { type: string, minLength: 1 } }
         withdrawalReviewed: { type: boolean }
         withdrawalDisabled: { type: boolean }
+    MicroLiveVenueReviewRequest:
+      type: object
+      required: [reviewReference]
+      properties:
+        reviewReference: { type: string, pattern: "^review://capital-os/(security|jurisdiction)/[A-Za-z0-9_-]{8,128}$" }
+    MicroLiveVenueReview:
+      type: object
+      required: [venueId, reviewType, reviewedBy, reviewedAt, expiresAt, liveExecutionEnabled]
+      properties:
+        venueId: { type: string }
+        reviewType: { type: string, enum: [security, jurisdiction] }
+        reviewedBy: { type: string }
+        reviewedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        liveExecutionEnabled: { type: boolean }
     MicroLiveVenueApproval:
       type: object
       required: [venue, liveExecutionEnabled, householdCapitalAccessible, protectedCapitalAccessible]

@@ -1170,13 +1170,13 @@ export const ApproveMicroLiveVenueParams = zod.object({
   "venueId": zod.coerce.string()
 })
 
-
+export const approveMicroLiveVenueBodyCredentialsReferenceRegExp = new RegExp('^secret://capital-os/venues/[A-Za-z0-9_-]{8,128}$');
 
 
 
 
 export const ApproveMicroLiveVenueBody = zod.object({
-  "credentialsReference": zod.string().min(1),
+  "credentialsReference": zod.string().regex(approveMicroLiveVenueBodyCredentialsReferenceRegExp),
   "jurisdictionConfirmed": zod.boolean(),
   "termsReviewed": zod.boolean(),
   "marketPermissions": zod.array(zod.string().min(1)).min(1),
@@ -1204,6 +1204,31 @@ export const ApproveMicroLiveVenueResponse = zod.object({
   "liveExecutionEnabled": zod.boolean(),
   "householdCapitalAccessible": zod.boolean(),
   "protectedCapitalAccessible": zod.boolean()
+})
+
+
+/**
+ * @summary Record an independent venue security or jurisdiction review
+ */
+export const RecordMicroLiveVenueReviewParams = zod.object({
+  "venueId": zod.coerce.string(),
+  "kind": zod.enum(['security', 'jurisdiction'])
+})
+
+export const recordMicroLiveVenueReviewBodyReviewReferenceRegExp = new RegExp('^review://capital-os/(security|jurisdiction)/[A-Za-z0-9_-]{8,128}$');
+
+
+export const RecordMicroLiveVenueReviewBody = zod.object({
+  "reviewReference": zod.string().regex(recordMicroLiveVenueReviewBodyReviewReferenceRegExp)
+})
+
+export const RecordMicroLiveVenueReviewResponse = zod.object({
+  "venueId": zod.string(),
+  "reviewType": zod.enum(['security', 'jurisdiction']),
+  "reviewedBy": zod.string(),
+  "reviewedAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "liveExecutionEnabled": zod.boolean()
 })
 
 

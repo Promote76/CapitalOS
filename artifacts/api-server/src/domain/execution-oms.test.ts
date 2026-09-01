@@ -16,7 +16,13 @@ import {
   validatePreTrade,
 } from "./execution-oms.ts";
 import type { OrderValidationInput } from "./execution-oms.ts";
-import { evaluateVenueApproval, SimulatedVenueAdapter } from "./execution-adapters.ts";
+import {
+  evaluateVenueApproval,
+  registerReviewedVenueAdapter,
+  ServerConfiguredVenueAdapter,
+  SimulatedVenueAdapter,
+} from "./execution-adapters.ts";
+import type { VenueCapability, VenueTransport } from "./execution-adapters.ts";
 
 function validValidationInput(overrides: Partial<OrderValidationInput> = {}): OrderValidationInput {
   return {
@@ -75,12 +81,16 @@ test("real venue approval requires integration, review evidence, and disabled wi
   const incomplete = evaluateVenueApproval({
     adapterType: "provider-neutral",
     integrationApproved: true,
-    credentialsReference: "secret://capital-os/trading",
+    adapterRegistered: true,
+    credentialsReference: "secret://capital-os/venues/test-venue",
     jurisdictionConfirmed: true,
     termsReviewed: true,
     marketPermissions: ["sandbox"],
     withdrawalReviewed: true,
     withdrawalDisabled: true,
+    securityReview: { reference: "review://capital-os/security/test-review", reviewerId: "security-reviewer", reviewedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86_400_000).toISOString() },
+    jurisdictionReview: { reference: "review://capital-os/jurisdiction/test-review", reviewerId: "jurisdiction-reviewer", reviewedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86_400_000).toISOString() },
+    approvingActorId: "approver",
   });
   assert.equal(incomplete.approved, false);
   assert.ok(incomplete.checks.some((check) => check.name.includes("integration") && !check.passed));
@@ -88,15 +98,116 @@ test("real venue approval requires integration, review evidence, and disabled wi
   const approved = evaluateVenueApproval({
     adapterType: "approved-exchange",
     integrationApproved: true,
-    credentialsReference: "secret://capital-os/trading",
+    adapterRegistered: true,
+    credentialsReference: "secret://capital-os/venues/test-venue",
     jurisdictionConfirmed: true,
     termsReviewed: true,
     marketPermissions: ["BTC-USD"],
     withdrawalReviewed: true,
     withdrawalDisabled: true,
+    securityReview: { reference: "review://capital-os/security/test-review", reviewerId: "security-reviewer", reviewedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86_400_000).toISOString() },
+    jurisdictionReview: { reference: "review://capital-os/jurisdiction/test-review", reviewerId: "jurisdiction-reviewer", reviewedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86_400_000).toISOString() },
+    approvingActorId: "approver",
   });
   assert.equal(approved.approved, true);
   assert.equal(approved.status, "APPROVED_FOR_MICRO_LIVE");
+});
+
+test("real venue approval rejects raw credentials and non-independent reviewers", () => {
+  const base = {
+    adapterType: "reviewed-exchange",
+    integrationApproved: true,
+    adapterRegistered: true,
+    jurisdictionConfirmed: true,
+    termsReviewed: true,
+    marketPermissions: ["BTC-USD"],
+    withdrawalReviewed: true,
+    withdrawalDisabled: true,
+    approvingActorId: "approver",
+  };
+  const rawCredential = evaluateVenueApproval({
+    ...base,
+    credentialsReference: "sk_live_not-a-vault-reference",
+    securityReview: { reference: "review://capital-os/security/test-review", reviewerId: "security-reviewer", reviewedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86_400_000).toISOString() },
+    jurisdictionReview: { reference: "review://capital-os/jurisdiction/test-review", reviewerId: "jurisdiction-reviewer", reviewedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86_400_000).toISOString() },
+  });
+  assert.equal(rawCredential.approved, false);
+  assert.ok(rawCredential.checks.some((check) => check.name.includes("credential") && !check.passed));
+
+  const sameReviewer = evaluateVenueApproval({
+    ...base,
+    credentialsReference: "secret://capital-os/venues/test-venue",
+    securityReview: { reference: "review://capital-os/security/test-review", reviewerId: "same-reviewer", reviewedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86_400_000).toISOString() },
+    jurisdictionReview: { reference: "review://capital-os/jurisdiction/test-review", reviewerId: "same-reviewer", reviewedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 86_400_000).toISOString() },
+  });
+  assert.equal(sameReviewer.approved, false);
+  assert.ok(sameReviewer.checks.some((check) => check.name.includes("distinct") && !check.passed));
+});
+
+test("server-configured venue adapter is isolated, allowlisted, and credential-server-side", async () => {
+  const capabilities: VenueCapability = {
+    spot: true, derivative: false, predictionMarket: false, onChain: false,
+    makerOrders: true, marketOrders: true, postOnly: true, reduceOnly: false,
+    clientOrderIds: true, bulkCancel: true, positionApi: true, balanceApi: true,
+  };
+  let connectedWith: { credential: string; accountId: string } | null = null;
+  let placeCalls = 0;
+  const order = {
+    externalOrderId: "external-1",
+    clientOrderId: "client-1",
+    marketId: "BTC-USD",
+    state: "ACKNOWLEDGED" as const,
+    quantity: 1,
+    filledQuantity: 0,
+  };
+  const transport: VenueTransport = {
+    async connect(input) { connectedWith = input; },
+    async disconnect() {},
+    async healthCheck() { return { status: "HEALTHY" as const, lastExchangeTimestamp: null, lastReceiveTimestamp: null, sequence: 1 }; },
+    async getOrderBook() { return { bid: 99, ask: 101, depth: 10 }; },
+    async getBalances() { return [{ asset: "USD", available: 20, committed: 0 }]; },
+    async getPositions() { return []; },
+    async getOpenOrders() { return [order]; },
+    async getRecentFills() { return []; },
+    async placeOrder() { placeCalls += 1; return order; },
+    async cancelOrder() { return { ...order, state: "CANCELLED" as const }; },
+    async cancelAllOrders() {},
+    async getOrder() { return order; },
+  };
+  registerReviewedVenueAdapter({
+    adapterType: "reviewed-exchange",
+    reviewReference: "review://capital-os/security/test-registration",
+    create: (options) => new ServerConfiguredVenueAdapter(options),
+  });
+  const adapter = new ServerConfiguredVenueAdapter({
+    name: "Reviewed exchange test double",
+    capabilities,
+    account: {
+      venueId: "venue-1",
+      accountId: "micro-live-account",
+      capitalClass: "micro_live",
+      householdCapitalAccessible: false,
+      protectedCapitalAccessible: false,
+      allowedAssets: ["USD"],
+    },
+    allowedMarkets: ["BTC-USD"],
+    credentialsReference: "secret://capital-os/venues/test-venue",
+    resolveCredential: async (reference) => {
+      assert.equal(reference, "secret://capital-os/venues/test-venue");
+      return "server-only-credential";
+    },
+    transport,
+  });
+
+  await assert.rejects(() => adapter.getBalances(), /not connected/);
+  await adapter.connect();
+  assert.deepEqual(connectedWith, { credential: "server-only-credential", accountId: "micro-live-account" });
+  assert.deepEqual(await adapter.getOpenOrders(), [order]);
+  await assert.rejects(() => adapter.getOrderBook("ETH-USD"), /not allowlisted/);
+  await assert.rejects(() => adapter.placeOrder({ clientOrderId: "client-2", marketId: "ETH-USD", side: "buy", orderType: "market", quantity: 1 }), /not allowlisted/);
+  await adapter.placeOrder({ clientOrderId: "client-2", marketId: "BTC-USD", side: "buy", orderType: "market", quantity: 1 });
+  assert.equal(placeCalls, 1);
+  await adapter.disconnect();
 });
 
 test("live enablement cannot pass when household or protected capital is reachable", () => {

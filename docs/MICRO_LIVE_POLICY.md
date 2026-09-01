@@ -28,23 +28,39 @@ The checked-in adapter is a simulated rehearsal adapter. Its `placeOrder` method
 
 ## Real venue approval boundary
 
-No real venue is connected in this phase. A future real adapter may not become
-eligible by merely implementing `VenueAdapter`. An owner-controlled approval
-review must record all of the following in the venue registry:
+No real venue is connected in this phase. The server-side reviewed adapter
+registry is intentionally empty; changing `adapterType` in the database or
+posting an approval request cannot create a connection. A future real adapter
+must implement `VenueAdapter` through the server-configured adapter boundary and
+be registered in a separately reviewed deployment change.
+
+Before an owner-controlled approval review can pass, the venue registry must
+record all of the following:
 
 1. An explicitly approved provider integration (the simulated and
    provider-neutral adapters can never satisfy this gate).
-2. A server-side credential reference only. Secret values must never enter
+2. A server-side credential reference only, matching the approved opaque
+   secret-reference format. Secret values must never enter
    request bodies, frontend state, AI prompts, logs, or source control.
-3. Jurisdiction and account eligibility confirmation.
-4. Terms review.
-5. The exact permitted markets.
-6. Withdrawal-permission review, with withdrawals disabled for the execution
+3. A current independent security review, recorded through the security-review
+   endpoint, with a reviewer distinct from the eventual approver.
+4. A current independent jurisdiction and account-eligibility review, with a
+   reviewer distinct from the eventual approver and the security reviewer.
+5. Jurisdiction and account eligibility confirmation.
+6. Terms review.
+7. The exact permitted markets.
+8. Withdrawal-permission review, with withdrawals disabled for the execution
    account.
 
 Approval is separately audited and does not enable order transmission. The
-approval endpoint cannot approve an incomplete review, and it never accepts
-household or protected-capital identifiers as funding sources.
+approval endpoint cannot approve an incomplete review, cannot accept review
+evidence or funding-account identifiers from its request body, and never
+accepts household or protected-capital identifiers as funding sources.
+
+The concrete server adapter also requires a dedicated `micro_live` execution
+account, an explicit asset and market allowlist, and a provider transport
+injected server-side. It rejects balances, positions, orders, and fills outside
+those allowlists before exposing them to the OMS. It has no withdrawal method.
 
 ## Reconciliation and recovery
 
@@ -58,7 +74,12 @@ The Guardian is modeled as an independent service boundary so it can later run o
 
 ## Security and human controls
 
-Any future credential integration must keep credentials server-side, out of frontend payloads, AI prompts, logs, and source control. Prefer read/trade/cancel permissions without withdrawals or security-setting access. Venue jurisdiction, account eligibility, terms review, and withdrawal permission review must be audited before approval.
+Any future credential integration must resolve credentials only through a
+server-side provider mechanism. The adapter receives the resolved value only
+inside the server transport call and does not retain or return it. Prefer
+read/trade/cancel permissions without withdrawals or security-setting access.
+Venue jurisdiction, account eligibility, terms review, and withdrawal
+permission review must be audited before approval.
 
 Micro-Live eligibility is separate from activation. The explicit human arming
 flow must display strategy, venue, markets, capital, max order, max loss, and
@@ -78,7 +99,8 @@ secrets, move household funds, enable leverage or margin, scale capital
 automatically, place AI-generated trades, or allow automated withdrawals. A
 future real integration requires the approval record above, security review,
 jurisdiction and terms review, market permissions, withdrawal review,
-server-side credential handling, a separate deployment boundary, and
-human-controlled enablement. Duplex Reserve, Emergency Reserve, household
-accounts, and all other protected capital remain inaccessible regardless of
-venue approval or arming state.
+server-side credential handling, an isolated execution account, a separately
+reviewed adapter registration, a separate deployment boundary,
+venue-authoritative reconciliation, and human-controlled enablement. Duplex
+Reserve, Emergency Reserve, household accounts, and all other protected capital
+remain inaccessible regardless of venue approval or arming state.

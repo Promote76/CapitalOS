@@ -781,7 +781,7 @@ export interface MicroLiveIncidentReview {
 }
 
 export interface MicroLiveVenueApprovalRequest {
-  /** @minLength 1 */
+  /** @pattern ^secret://capital-os/venues/[A-Za-z0-9_-]{8,128}$ */
   credentialsReference: string;
   jurisdictionConfirmed: boolean;
   termsReviewed: boolean;
@@ -792,6 +792,28 @@ export interface MicroLiveVenueApprovalRequest {
   marketPermissions: string[];
   withdrawalReviewed: boolean;
   withdrawalDisabled: boolean;
+}
+
+export interface MicroLiveVenueReviewRequest {
+  /** @pattern ^review://capital-os/(security|jurisdiction)/[A-Za-z0-9_-]{8,128}$ */
+  reviewReference: string;
+}
+
+export type MicroLiveVenueReviewReviewType = typeof MicroLiveVenueReviewReviewType[keyof typeof MicroLiveVenueReviewReviewType];
+
+
+export const MicroLiveVenueReviewReviewType = {
+  security: 'security',
+  jurisdiction: 'jurisdiction',
+} as const;
+
+export interface MicroLiveVenueReview {
+  venueId: string;
+  reviewType: MicroLiveVenueReviewReviewType;
+  reviewedBy: string;
+  reviewedAt: string;
+  expiresAt: string;
+  liveExecutionEnabled: boolean;
 }
 
 export type MicroLiveVenueApprovalVenueApproval = {

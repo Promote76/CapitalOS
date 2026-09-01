@@ -13,6 +13,7 @@ import {
   listMicroLivePositionSnapshots,
   listMicroLiveReactivationRequirements,
   listMicroLiveReconciliationRuns,
+  recordMicroLiveVenueReview,
   reviewMicroLiveEnablement,
   runMicroLiveReconciliation,
   runMicroLiveRehearsal,
@@ -35,6 +36,16 @@ router.post("/micro-live/enablement-review", asyncRoute(async (_req, res) => {
 router.post("/micro-live/venues/:venueId/approve", asyncRoute(async (req, res) => {
   const venueId = typeof req.params.venueId === "string" ? req.params.venueId : "";
   res.json(await approveMicroLiveVenue(actorFrom(res), venueId, req.body));
+}));
+
+router.post("/micro-live/venues/:venueId/reviews/:kind", asyncRoute(async (req, res) => {
+  const venueId = typeof req.params.venueId === "string" ? req.params.venueId : "";
+  const kind = req.params.kind === "security" || req.params.kind === "jurisdiction" ? req.params.kind : null;
+  if (!kind) {
+    res.status(400).json({ code: "INVALID_STATE", message: "Venue review kind must be security or jurisdiction" });
+    return;
+  }
+  res.status(201).json(await recordMicroLiveVenueReview(actorFrom(res), venueId, kind, req.body));
 }));
 
 router.post("/micro-live/arm", asyncRoute(async (req, res) => {

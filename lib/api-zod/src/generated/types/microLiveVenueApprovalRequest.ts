@@ -7,7 +7,7 @@
  */
 
 export interface MicroLiveVenueApprovalRequest {
-  /** @minLength 1 */
+  /** @pattern ^secret://capital-os/venues/[A-Za-z0-9_-]{8,128}$ */
   credentialsReference: string;
   jurisdictionConfirmed: boolean;
   termsReviewed: boolean;

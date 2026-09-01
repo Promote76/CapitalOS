@@ -13,6 +13,13 @@ import {
 import { households, users } from "./households";
 import { strategies, strategyVersions } from "./property-strategy";
 
+export type StoredIndependentVenueReview = {
+  reference: string;
+  reviewerId: string;
+  reviewedAt: string;
+  expiresAt: string;
+};
+
 export const microLivePolicies = pgTable(
   "micro_live_policies",
   {
@@ -45,6 +52,8 @@ export const venueRegistry = pgTable(
     marketPermissions: jsonb("market_permissions").$type<string[]>().notNull().default([]),
     withdrawalReviewed: boolean("withdrawal_reviewed").notNull().default(false),
     withdrawalDisabled: boolean("withdrawal_disabled").notNull().default(false),
+    securityReview: jsonb("security_review").$type<StoredIndependentVenueReview | null>(),
+    jurisdictionReview: jsonb("jurisdiction_review").$type<StoredIndependentVenueReview | null>(),
     approvedBy: uuid("approved_by").references(() => users.id, { onDelete: "set null" }),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

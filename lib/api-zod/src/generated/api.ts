@@ -930,7 +930,21 @@ export const GetMicroLiveResponse = zod.object({
   "status": zod.string(),
   "capabilities": zod.record(zod.string(), zod.boolean()),
   "jurisdictionConfirmed": zod.boolean(),
+  "integrationApproved": zod.boolean(),
+  "credentialsConfigured": zod.boolean(),
+  "termsReviewed": zod.boolean(),
+  "marketPermissions": zod.array(zod.string()),
+  "withdrawalReviewed": zod.boolean(),
   "withdrawalDisabled": zod.boolean(),
+  "approval": zod.object({
+  "approved": zod.boolean(),
+  "status": zod.string(),
+  "checks": zod.array(zod.object({
+  "name": zod.string(),
+  "passed": zod.boolean()
+})),
+  "note": zod.string()
+}),
   "health": zod.string()
 })),
   "readiness": zod.object({
@@ -1056,6 +1070,65 @@ export const ReviewMicroLiveEnablementResponse = zod.object({
 })),
   "note": zod.string()
 }),
+  "liveExecutionEnabled": zod.boolean()
+})
+
+
+/**
+ * @summary Record an owner-controlled real venue approval review
+ */
+export const ApproveMicroLiveVenueParams = zod.object({
+  "venueId": zod.coerce.string()
+})
+
+
+
+
+
+
+export const ApproveMicroLiveVenueBody = zod.object({
+  "credentialsReference": zod.string().min(1),
+  "jurisdictionConfirmed": zod.boolean(),
+  "termsReviewed": zod.boolean(),
+  "marketPermissions": zod.array(zod.string().min(1)).min(1),
+  "withdrawalReviewed": zod.boolean(),
+  "withdrawalDisabled": zod.boolean()
+})
+
+export const ApproveMicroLiveVenueResponse = zod.object({
+  "venue": zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "adapterType": zod.string(),
+  "status": zod.string(),
+  "marketPermissions": zod.array(zod.string()),
+  "approval": zod.object({
+  "approved": zod.boolean(),
+  "status": zod.string(),
+  "checks": zod.array(zod.object({
+  "name": zod.string(),
+  "passed": zod.boolean()
+})),
+  "note": zod.string()
+})
+}),
+  "liveExecutionEnabled": zod.boolean(),
+  "householdCapitalAccessible": zod.boolean(),
+  "protectedCapitalAccessible": zod.boolean()
+})
+
+
+/**
+ * @summary Arm a Micro-Live session through the human-controlled boundary
+ */
+export const ArmMicroLiveBody = zod.object({
+  "venueId": zod.string()
+})
+
+export const ArmMicroLiveResponse = zod.object({
+  "status": zod.string(),
+  "sessionId": zod.string(),
+  "authorizationExpiresAt": zod.coerce.date(),
   "liveExecutionEnabled": zod.boolean()
 })
 

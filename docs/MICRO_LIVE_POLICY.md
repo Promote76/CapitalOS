@@ -26,6 +26,26 @@ The execution boundary is split into:
 
 The checked-in adapter is a simulated rehearsal adapter. Its `placeOrder` method always refuses transmission.
 
+## Real venue approval boundary
+
+No real venue is connected in this phase. A future real adapter may not become
+eligible by merely implementing `VenueAdapter`. An owner-controlled approval
+review must record all of the following in the venue registry:
+
+1. An explicitly approved provider integration (the simulated and
+   provider-neutral adapters can never satisfy this gate).
+2. A server-side credential reference only. Secret values must never enter
+   request bodies, frontend state, AI prompts, logs, or source control.
+3. Jurisdiction and account eligibility confirmation.
+4. Terms review.
+5. The exact permitted markets.
+6. Withdrawal-permission review, with withdrawals disabled for the execution
+   account.
+
+Approval is separately audited and does not enable order transmission. The
+approval endpoint cannot approve an incomplete review, and it never accepts
+household or protected-capital identifiers as funding sources.
+
 ## Reconciliation and recovery
 
 Reconciliation is required after fills, cancel anomalies, reconnects, restarts, and periodic health checks. A mismatch stops new exposure, cancels open orders, fetches venue state, rebuilds internal state, and requires verification before resuming.
@@ -40,7 +60,12 @@ The Guardian is modeled as an independent service boundary so it can later run o
 
 Any future credential integration must keep credentials server-side, out of frontend payloads, AI prompts, logs, and source control. Prefer read/trade/cancel permissions without withdrawals or security-setting access. Venue jurisdiction, account eligibility, terms review, and withdrawal permission review must be audited before approval.
 
-Micro-Live eligibility is separate from activation. The explicit human arming flow must display strategy, venue, markets, capital, max order, max loss, and max drawdown. Authorization expires and each session receives independent loss and exposure caps.
+Micro-Live eligibility is separate from activation. The explicit human arming
+flow must display strategy, venue, markets, capital, max order, max loss, and
+max drawdown. Arming is a separate owner-controlled action, requires every
+enablement gate plus clean reconciliation, expires after the policy window,
+and gives each session independent loss and exposure caps. No automated,
+AI-generated, or readiness-based action can arm a session.
 
 ## Incident response
 
@@ -48,4 +73,12 @@ Critical failures default to no new exposure. Reconciliation mismatch, stale mar
 
 ## Explicitly not implemented
 
-This phase does not connect a real venue, transmit real orders, store trading secrets, move household funds, enable leverage or margin, scale capital automatically, place AI-generated trades, or allow automated withdrawals. A future real integration requires a separate venue approval, security review, jurisdiction review, deployment boundary, and human-controlled enablement.
+This phase does not connect a real venue, transmit real orders, store trading
+secrets, move household funds, enable leverage or margin, scale capital
+automatically, place AI-generated trades, or allow automated withdrawals. A
+future real integration requires the approval record above, security review,
+jurisdiction and terms review, market permissions, withdrawal review,
+server-side credential handling, a separate deployment boundary, and
+human-controlled enablement. Duplex Reserve, Emergency Reserve, household
+accounts, and all other protected capital remain inaccessible regardless of
+venue approval or arming state.

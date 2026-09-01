@@ -16,7 +16,7 @@ import {
   validatePreTrade,
 } from "./execution-oms.ts";
 import type { OrderValidationInput } from "./execution-oms.ts";
-import { SimulatedVenueAdapter } from "./execution-adapters.ts";
+import { evaluateVenueApproval, SimulatedVenueAdapter } from "./execution-adapters.ts";
 
 function validValidationInput(overrides: Partial<OrderValidationInput> = {}): OrderValidationInput {
   return {
@@ -69,6 +69,58 @@ test("live enablement fails closed until every gate is explicitly passed", () =>
   });
   assert.equal(result.enabled, false);
   assert.equal(result.status, "DISABLED");
+});
+
+test("real venue approval requires integration, review evidence, and disabled withdrawals", () => {
+  const incomplete = evaluateVenueApproval({
+    adapterType: "provider-neutral",
+    integrationApproved: true,
+    credentialsReference: "secret://capital-os/trading",
+    jurisdictionConfirmed: true,
+    termsReviewed: true,
+    marketPermissions: ["sandbox"],
+    withdrawalReviewed: true,
+    withdrawalDisabled: true,
+  });
+  assert.equal(incomplete.approved, false);
+  assert.ok(incomplete.checks.some((check) => check.name.includes("integration") && !check.passed));
+
+  const approved = evaluateVenueApproval({
+    adapterType: "approved-exchange",
+    integrationApproved: true,
+    credentialsReference: "secret://capital-os/trading",
+    jurisdictionConfirmed: true,
+    termsReviewed: true,
+    marketPermissions: ["BTC-USD"],
+    withdrawalReviewed: true,
+    withdrawalDisabled: true,
+  });
+  assert.equal(approved.approved, true);
+  assert.equal(approved.status, "APPROVED_FOR_MICRO_LIVE");
+});
+
+test("live enablement cannot pass when household or protected capital is reachable", () => {
+  const result = evaluateLiveEnablement({
+    strategyMicroLiveEligible: true,
+    humanApproval: true,
+    capitalGovernorPass: true,
+    riskGovernorPass: true,
+    venueHealthy: true,
+    reconciliationClean: true,
+    venueApproved: true,
+    marketApproved: true,
+    jurisdictionConfirmed: true,
+    credentialsConfigured: true,
+    approvedIntegration: true,
+    termsReviewed: true,
+    marketPermissionsConfigured: true,
+    withdrawalReviewed: true,
+    withdrawalDisabled: true,
+    householdCapitalAccessible: true,
+    protectedCapitalAccessible: false,
+  });
+  assert.equal(result.enabled, false);
+  assert.ok(result.gates.some((gate) => gate.name === "Household capital is inaccessible" && !gate.passed));
 });
 
 test("pre-trade validation blocks stale data and oversized orders", () => {

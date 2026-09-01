@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.2.0
  */
+import type { MicroLiveSnapshotVenuesItemApproval } from './microLiveSnapshotVenuesItemApproval';
 import type { MicroLiveSnapshotVenuesItemCapabilities } from './microLiveSnapshotVenuesItemCapabilities';
 
 export type MicroLiveSnapshotVenuesItem = {
@@ -14,6 +15,12 @@ export type MicroLiveSnapshotVenuesItem = {
   status: string;
   capabilities: MicroLiveSnapshotVenuesItemCapabilities;
   jurisdictionConfirmed: boolean;
+  integrationApproved: boolean;
+  credentialsConfigured: boolean;
+  termsReviewed: boolean;
+  marketPermissions: string[];
+  withdrawalReviewed: boolean;
   withdrawalDisabled: boolean;
+  approval: MicroLiveSnapshotVenuesItemApproval;
   health: string;
 };

@@ -639,6 +639,47 @@ export interface MicroLiveGate {
   passed: boolean;
 }
 
+export interface MicroLiveVenueApprovalRequest {
+  /** @minLength 1 */
+  credentialsReference: string;
+  jurisdictionConfirmed: boolean;
+  termsReviewed: boolean;
+  /**
+     * @minItems 1
+     * @items.minLength 1
+     */
+  marketPermissions: string[];
+  withdrawalReviewed: boolean;
+  withdrawalDisabled: boolean;
+}
+
+export type MicroLiveVenueApprovalVenueApproval = {
+  approved: boolean;
+  status: string;
+  checks: MicroLiveGate[];
+  note: string;
+};
+
+export type MicroLiveVenueApprovalVenue = {
+  id: string;
+  name: string;
+  adapterType: string;
+  status: string;
+  marketPermissions: string[];
+  approval: MicroLiveVenueApprovalVenueApproval;
+};
+
+export interface MicroLiveVenueApproval {
+  venue: MicroLiveVenueApprovalVenue;
+  liveExecutionEnabled: boolean;
+  householdCapitalAccessible: boolean;
+  protectedCapitalAccessible: boolean;
+}
+
+export interface MicroLiveArmRequest {
+  venueId: string;
+}
+
 export type MicroLivePolicyLimits = {[key: string]: string | number | boolean};
 
 export interface MicroLivePolicy {
@@ -694,6 +735,13 @@ export type MicroLiveSnapshotSession = {
 
 export type MicroLiveSnapshotVenuesItemCapabilities = {[key: string]: boolean};
 
+export type MicroLiveSnapshotVenuesItemApproval = {
+  approved: boolean;
+  status: string;
+  checks: MicroLiveGate[];
+  note: string;
+};
+
 export type MicroLiveSnapshotVenuesItem = {
   id: string;
   name: string;
@@ -701,7 +749,13 @@ export type MicroLiveSnapshotVenuesItem = {
   status: string;
   capabilities: MicroLiveSnapshotVenuesItemCapabilities;
   jurisdictionConfirmed: boolean;
+  integrationApproved: boolean;
+  credentialsConfigured: boolean;
+  termsReviewed: boolean;
+  marketPermissions: string[];
+  withdrawalReviewed: boolean;
   withdrawalDisabled: boolean;
+  approval: MicroLiveSnapshotVenuesItemApproval;
   health: string;
 };
 
@@ -1613,6 +1667,13 @@ export type ForbiddenResponse = ErrorResponse;
 export type ConflictResponse = ErrorResponse;
 
 export type IdempotencyKeyParameter = string;
+
+export type ArmMicroLive200 = {
+  status: string;
+  sessionId: string;
+  authorizationExpiresAt: string;
+  liveExecutionEnabled: boolean;
+};
 
 export type ImportFinancialAccountCsv200 = {
   imported: number;

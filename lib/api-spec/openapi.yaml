@@ -372,6 +372,51 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/MicroLiveEnablementReview" }
+  /micro-live/venues/{venueId}/approve:
+    post:
+      operationId: approveMicroLiveVenue
+      tags: [planning]
+      summary: Record an owner-controlled real venue approval review
+      parameters:
+        - name: venueId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MicroLiveVenueApprovalRequest" }
+      responses:
+        "200":
+          description: Venue approval record
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MicroLiveVenueApproval" }
+  /micro-live/arm:
+    post:
+      operationId: armMicroLive
+      tags: [planning]
+      summary: Arm a Micro-Live session through the human-controlled boundary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MicroLiveArmRequest"
+      responses:
+        "200":
+          description: Armed session or fail-closed rejection
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, sessionId, authorizationExpiresAt, liveExecutionEnabled]
+                properties:
+                  status: { type: string }
+                  sessionId: { type: string }
+                  authorizationExpiresAt: { type: string, format: date-time }
+                  liveExecutionEnabled: { type: boolean }
   /strategy-lab/strategies:
     post:
       operationId: createResearchStrategy
@@ -1690,6 +1735,47 @@ components:
       properties:
         name: { type: string }
         passed: { type: boolean }
+    MicroLiveVenueApprovalRequest:
+      type: object
+      required: [credentialsReference, jurisdictionConfirmed, termsReviewed, marketPermissions, withdrawalReviewed, withdrawalDisabled]
+      properties:
+        credentialsReference: { type: string, minLength: 1 }
+        jurisdictionConfirmed: { type: boolean }
+        termsReviewed: { type: boolean }
+        marketPermissions: { type: array, minItems: 1, items: { type: string, minLength: 1 } }
+        withdrawalReviewed: { type: boolean }
+        withdrawalDisabled: { type: boolean }
+    MicroLiveVenueApproval:
+      type: object
+      required: [venue, liveExecutionEnabled, householdCapitalAccessible, protectedCapitalAccessible]
+      properties:
+        venue:
+          type: object
+          required: [id, name, adapterType, status, marketPermissions, approval]
+          properties:
+            id: { type: string }
+            name: { type: string }
+            adapterType: { type: string }
+            status: { type: string }
+            marketPermissions: { type: array, items: { type: string } }
+            approval:
+              type: object
+              required: [approved, status, checks, note]
+              properties:
+                approved: { type: boolean }
+                status: { type: string }
+                checks:
+                  type: array
+                  items: { $ref: "#/components/schemas/MicroLiveGate" }
+                note: { type: string }
+        liveExecutionEnabled: { type: boolean }
+        householdCapitalAccessible: { type: boolean }
+        protectedCapitalAccessible: { type: boolean }
+    MicroLiveArmRequest:
+      type: object
+      required: [venueId]
+      properties:
+        venueId: { type: string }
     MicroLivePolicy:
       type: object
       required: [version, limits, autoScale, leverageEnabled, marginEnabled, borrowingEnabled]
@@ -1760,7 +1846,7 @@ components:
           type: array
           items:
             type: object
-            required: [id, name, adapterType, status, capabilities, jurisdictionConfirmed, withdrawalDisabled, health]
+            required: [id, name, adapterType, status, capabilities, jurisdictionConfirmed, integrationApproved, credentialsConfigured, termsReviewed, marketPermissions, withdrawalReviewed, withdrawalDisabled, approval, health]
             properties:
               id: { type: string }
               name: { type: string }
@@ -1770,7 +1856,22 @@ components:
                 type: object
                 additionalProperties: { type: boolean }
               jurisdictionConfirmed: { type: boolean }
+              integrationApproved: { type: boolean }
+              credentialsConfigured: { type: boolean }
+              termsReviewed: { type: boolean }
+              marketPermissions: { type: array, items: { type: string } }
+              withdrawalReviewed: { type: boolean }
               withdrawalDisabled: { type: boolean }
+              approval:
+                type: object
+                required: [approved, status, checks, note]
+                properties:
+                  approved: { type: boolean }
+                  status: { type: string }
+                  checks:
+                    type: array
+                    items: { $ref: "#/components/schemas/MicroLiveGate" }
+                  note: { type: string }
               health: { type: string }
         readiness: { $ref: "#/components/schemas/MicroLiveReadiness" }
         enablement:

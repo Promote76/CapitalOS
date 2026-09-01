@@ -24,6 +24,7 @@ import type {
   AllocationImpact,
   AllocationInput,
   AllocationSummary,
+  ArmMicroLive200,
   AuditEventSummary,
   BadRequestResponse,
   BankingStatus,
@@ -61,9 +62,12 @@ import type {
   IntelligenceScenarioInput,
   IntelligenceSnapshot,
   ManualFinancialAccountInput,
+  MicroLiveArmRequest,
   MicroLiveEnablementReview,
   MicroLiveRehearsal,
   MicroLiveSnapshot,
+  MicroLiveVenueApproval,
+  MicroLiveVenueApprovalRequest,
   PortfolioSummary,
   PrivacySettingsInput,
   PropertyAnalysis,
@@ -1826,6 +1830,149 @@ export const useReviewMicroLiveEnablement = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getReviewMicroLiveEnablementMutationOptions(options));
+    }
+
+export const getApproveMicroLiveVenueUrl = (venueId: string,) => {
+
+
+
+
+  return `/api/micro-live/venues/${venueId}/approve`
+}
+
+/**
+ * @summary Record an owner-controlled real venue approval review
+ */
+export const approveMicroLiveVenue = async (venueId: string,
+    microLiveVenueApprovalRequest: MicroLiveVenueApprovalRequest, options?: Parameters<typeof customFetch>[1]): Promise<MicroLiveVenueApproval> => {
+
+  return customFetch<MicroLiveVenueApproval>(getApproveMicroLiveVenueUrl(venueId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(microLiveVenueApprovalRequest)
+  }
+);}
+
+
+
+
+
+export const getApproveMicroLiveVenueMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveMicroLiveVenue>>, TError,{venueId: string;data: BodyType<MicroLiveVenueApprovalRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveMicroLiveVenue>>, TError,{venueId: string;data: BodyType<MicroLiveVenueApprovalRequest>}, TContext> => {
+
+const mutationKey = ['approveMicroLiveVenue'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveMicroLiveVenue>>, {venueId: string;data: BodyType<MicroLiveVenueApprovalRequest>}> = (props) => {
+          const {venueId,data} = props ?? {};
+
+          return  approveMicroLiveVenue(venueId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveMicroLiveVenueMutationResult = NonNullable<Awaited<ReturnType<typeof approveMicroLiveVenue>>>
+    export type ApproveMicroLiveVenueMutationBody = BodyType<MicroLiveVenueApprovalRequest>
+    export type ApproveMicroLiveVenueMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Record an owner-controlled real venue approval review
+ */
+export const useApproveMicroLiveVenue = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveMicroLiveVenue>>, TError,{venueId: string;data: BodyType<MicroLiveVenueApprovalRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveMicroLiveVenue>>,
+        TError,
+        {venueId: string;data: BodyType<MicroLiveVenueApprovalRequest>},
+        TContext
+      > => {
+      return useMutation(getApproveMicroLiveVenueMutationOptions(options));
+    }
+
+export const getArmMicroLiveUrl = () => {
+
+
+
+
+  return `/api/micro-live/arm`
+}
+
+/**
+ * @summary Arm a Micro-Live session through the human-controlled boundary
+ */
+export const armMicroLive = async (microLiveArmRequest: MicroLiveArmRequest, options?: Parameters<typeof customFetch>[1]): Promise<ArmMicroLive200> => {
+
+  return customFetch<ArmMicroLive200>(getArmMicroLiveUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(microLiveArmRequest)
+  }
+);}
+
+
+
+
+
+export const getArmMicroLiveMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof armMicroLive>>, TError,{data: BodyType<MicroLiveArmRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof armMicroLive>>, TError,{data: BodyType<MicroLiveArmRequest>}, TContext> => {
+
+const mutationKey = ['armMicroLive'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof armMicroLive>>, {data: BodyType<MicroLiveArmRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  armMicroLive(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ArmMicroLiveMutationResult = NonNullable<Awaited<ReturnType<typeof armMicroLive>>>
+    export type ArmMicroLiveMutationBody = BodyType<MicroLiveArmRequest>
+    export type ArmMicroLiveMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Arm a Micro-Live session through the human-controlled boundary
+ */
+export const useArmMicroLive = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof armMicroLive>>, TError,{data: BodyType<MicroLiveArmRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof armMicroLive>>,
+        TError,
+        {data: BodyType<MicroLiveArmRequest>},
+        TContext
+      > => {
+      return useMutation(getArmMicroLiveMutationOptions(options));
     }
 
 export const getCreateResearchStrategyUrl = () => {

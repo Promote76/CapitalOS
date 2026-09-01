@@ -53,6 +53,65 @@ export interface TradingAdapter {
 
 export type VenueAdapter = MarketDataAdapter & TradingAdapter;
 
+export type VenueApprovalInput = {
+  adapterType: string;
+  integrationApproved: boolean;
+  credentialsReference?: string | null;
+  jurisdictionConfirmed: boolean;
+  termsReviewed: boolean;
+  marketPermissions: string[];
+  withdrawalReviewed: boolean;
+  withdrawalDisabled: boolean;
+};
+
+/**
+ * A real adapter is not eligible merely because it implements the trading
+ * interface. Approval is an explicit, auditable operation and simulated or
+ * provider-neutral placeholders can never satisfy it.
+ */
+export function evaluateVenueApproval(input: VenueApprovalInput) {
+  const checks = [
+    {
+      name: "Explicit real venue integration approved",
+      passed: input.adapterType !== "simulated" &&
+        input.adapterType !== "provider-neutral" &&
+        input.integrationApproved,
+    },
+    {
+      name: "Server-side credential reference configured",
+      passed: Boolean(input.credentialsReference?.trim()),
+    },
+    {
+      name: "Jurisdiction and account eligibility confirmed",
+      passed: input.jurisdictionConfirmed,
+    },
+    {
+      name: "Venue terms reviewed",
+      passed: input.termsReviewed,
+    },
+    {
+      name: "Market permissions recorded",
+      passed: input.marketPermissions.length > 0 &&
+        input.marketPermissions.every((market) => market.trim().length > 0),
+    },
+    {
+      name: "Withdrawal permissions reviewed",
+      passed: input.withdrawalReviewed,
+    },
+    {
+      name: "Withdrawals disabled for the execution account",
+      passed: input.withdrawalDisabled,
+    },
+  ];
+  const approved = checks.every((check) => check.passed);
+  return {
+    approved,
+    status: approved ? "APPROVED_FOR_MICRO_LIVE" as const : "NOT_APPROVED" as const,
+    checks,
+    note: "Venue approval never grants access to household or protected capital.",
+  };
+}
+
 /**
  * Rehearsal adapter. It intentionally refuses to transmit orders so an
  * environment cannot accidentally turn a preview into a trading venue.

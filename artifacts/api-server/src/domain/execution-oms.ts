@@ -71,6 +71,12 @@ export type EnablementInput = {
   jurisdictionConfirmed: boolean;
   credentialsConfigured: boolean;
   withdrawalDisabled: boolean;
+  approvedIntegration?: boolean;
+  termsReviewed?: boolean;
+  marketPermissionsConfigured?: boolean;
+  withdrawalReviewed?: boolean;
+  householdCapitalAccessible?: boolean;
+  protectedCapitalAccessible?: boolean;
 };
 
 export function evaluateLiveEnablement(input: EnablementInput) {
@@ -85,7 +91,13 @@ export function evaluateLiveEnablement(input: EnablementInput) {
     { name: "Market is allowlisted", passed: input.marketApproved },
     { name: "Jurisdiction and account eligibility confirmed", passed: input.jurisdictionConfirmed },
     { name: "Server-side credential reference configured", passed: input.credentialsConfigured },
-    { name: "Withdrawal permission is disabled or reviewed", passed: input.withdrawalDisabled },
+    { name: "Explicit real venue integration approved", passed: input.approvedIntegration === true },
+    { name: "Venue terms reviewed", passed: input.termsReviewed === true },
+    { name: "Market permissions recorded", passed: input.marketPermissionsConfigured === true },
+    { name: "Withdrawal permissions reviewed", passed: input.withdrawalReviewed === true },
+    { name: "Withdrawals disabled for the execution account", passed: input.withdrawalDisabled },
+    { name: "Household capital is inaccessible", passed: input.householdCapitalAccessible === false },
+    { name: "Protected capital is inaccessible", passed: input.protectedCapitalAccessible === false },
   ];
   return {
     enabled: gates.every((gate) => gate.passed),

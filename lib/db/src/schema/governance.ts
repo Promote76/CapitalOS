@@ -57,9 +57,14 @@ export const aiRecommendations = pgTable(
       .notNull()
       .references(() => households.id, { onDelete: "cascade" }),
     recommendation: text("recommendation").notNull(),
+    analyst: text("analyst").notNull().default("AI CIO"),
+    priority: text("priority").notNull().default("medium"),
     rationale: text("rationale").notNull(),
     expectedBenefit: text("expected_benefit").notNull(),
+    potentialDownside: text("potential_downside").notNull().default("No material downside identified."),
     riskImpact: text("risk_impact").notNull(),
+    dataQuality: text("data_quality").notNull().default("medium"),
+    suggestedNextAction: text("suggested_next_action"),
     affectedGoalId: uuid("affected_goal_id"),
     affectedCapital: text("affected_capital"),
     evidence: jsonb("evidence").$type<string[]>().notNull().default([]),
@@ -71,6 +76,58 @@ export const aiRecommendations = pgTable(
   },
   (table) => ({
     householdIdx: index("ai_recommendations_household_idx").on(table.householdId),
+  }),
+);
+
+export const aiAnalyses = pgTable(
+  "ai_analyses",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    analyst: text("analyst").notNull(),
+    scope: text("scope").notNull(),
+    summary: text("summary").notNull(),
+    dataQuality: text("data_quality").notNull().default("medium"),
+    confidence: numeric("confidence", { precision: 5, scale: 2 }).notNull().default("0"),
+    evidence: jsonb("evidence").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("ai_analyses_household_idx").on(table.householdId),
+  }),
+);
+
+export const aiInsights = pgTable(
+  "ai_insights",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    scope: text("scope").notNull(),
+    title: text("title").notNull(),
+    description: text("description").notNull(),
+    severity: text("severity").notNull().default("low"),
+    evidence: jsonb("evidence").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("ai_insights_household_idx").on(table.householdId),
+  }),
+);
+
+export const recommendationFeedback = pgTable(
+  "recommendation_feedback",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    recommendationId: uuid("recommendation_id").notNull().references(() => aiRecommendations.id, { onDelete: "cascade" }),
+    feedback: text("feedback").notNull(),
+    note: text("note"),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("recommendation_feedback_household_idx").on(table.householdId),
+    recommendationIdx: index("recommendation_feedback_recommendation_idx").on(table.recommendationId),
   }),
 );
 
@@ -117,4 +174,7 @@ export const idempotencyKeys = pgTable(
 
 export type RiskState = typeof riskStates.$inferSelect;
 export type AIRecommendation = typeof aiRecommendations.$inferSelect;
+export type AIAnalysis = typeof aiAnalyses.$inferSelect;
+export type AIInsight = typeof aiInsights.$inferSelect;
+export type RecommendationFeedback = typeof recommendationFeedback.$inferSelect;
 export type AuditEvent = typeof auditEvents.$inferSelect;

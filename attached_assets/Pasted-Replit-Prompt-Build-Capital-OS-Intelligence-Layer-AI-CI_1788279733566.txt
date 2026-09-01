@@ -1,0 +1,1622 @@
+Replit Prompt: Build Capital OS Intelligence Layer — AI CIO, Household Analyst, Property Analyst, Strategy Analyst & Risk Advisor
+
+Continue building the existing Capital OS application.
+
+Do not redesign the approved UI.
+
+Preserve all existing modules, including:
+
+- Household Budget
+- Cash Flow
+- Accounts
+- Wells Fargo / Plaid integration
+- Safe-to-Deploy Engine
+- Capital Governor
+- Protected Capital
+- Duplex Goal
+- Duplex Acquisition OS
+- Property Readiness
+- Buy Box
+- Deal Analyzer
+- Portfolio
+- Strategy System
+- Risk Governor
+- Audit Ledger
+- Blockchain-ready architecture
+
+This phase adds the coordinated intelligence layer:
+
+CAPITAL OS INTELLIGENCE
+
+The purpose is to transform Capital OS from a passive financial dashboard into an intelligent family-capital advisory system.
+
+The system should continuously help answer:
+
+- What should the household prioritize next?
+- Are we still on track for the duplex?
+- Is spending affecting the acquisition timeline?
+- How much capital is truly safe to deploy?
+- Which investment strategies deserve attention?
+- Which strategies should receive less capital?
+- Which property candidate is strongest?
+- What risks are increasing?
+- What changed since the last review?
+- What action would have the greatest positive impact on family net worth?
+
+AI must remain ADVISORY ONLY.
+
+AI must never have direct authority to:
+
+- move money
+- initiate bank transfers
+- submit trades
+- withdraw assets
+- approve mortgages
+- submit property offers
+- change protected capital
+- disable hard risk rules
+- deploy smart contracts
+- modify credentials
+
+---
+
+1. INTELLIGENCE ARCHITECTURE
+
+Create a coordinated advisory architecture.
+
+Conceptually:
+
+                     CAPITAL OS INTELLIGENCE
+                              │
+                              ▼
+                            AI CIO
+                              │
+       ┌──────────────────────┼──────────────────────┐
+       │                      │                      │
+       ▼                      ▼                      ▼
+Household Analyst      Property Analyst       Strategy Analyst
+       │                      │                      │
+       └──────────────┬───────┴──────────────┬──────┘
+                      ▼                      ▼
+                Portfolio Analyst       Risk Advisor
+                      │                      │
+                      └──────────┬───────────┘
+                                 ▼
+                       CIO RECOMMENDATION
+                                 │
+                                 ▼
+                       CAPITAL GOVERNOR
+                                 │
+                                 ▼
+                          HUMAN DECISION
+
+The AI CIO coordinates recommendations across domains.
+
+Do not create five independent agents that can contradict one another without resolution.
+
+Create specialist analysis modules feeding one coordinated recommendation layer.
+
+---
+
+2. AI CIO
+
+Create the primary advisory role:
+
+AI CIO
+
+The AI CIO is responsible for synthesizing:
+
+- household cash flow
+- budget performance
+- Safe-to-Deploy
+- duplex goal progress
+- property readiness
+- property candidates
+- portfolio allocations
+- strategy performance
+- risk status
+- liquidity
+- upcoming obligations
+- financial health
+
+The AI CIO should produce concise, evidence-backed recommendations.
+
+---
+
+3. AI CIO OUTPUT FORMAT
+
+Every recommendation must contain:
+
+Recommendation
+
+Reason
+
+Evidence
+
+Expected Benefit
+
+Potential Downside
+
+Impact on Duplex Goal
+
+Impact on Household Liquidity
+
+Risk Level
+
+Confidence
+
+Required Approval
+
+Suggested Next Action
+
+Example:
+
+AI CIO RECOMMENDATION
+
+Recommendation:
+Maintain current $250 weekly contribution.
+
+Reason:
+Household free cash flow remains comfortably above planned contributions.
+
+Evidence:
+90-day average free cash flow: $2,140/month
+Emergency reserve coverage: 3.2 months
+Duplex goal: On Track
+Safe-to-Deploy: $980
+
+Expected Benefit:
+Keeps duplex acquisition timeline unchanged.
+
+Risk:
+Low
+
+Confidence:
+91%
+
+Required Approval:
+None
+
+Next Action:
+Continue current allocation.
+
+---
+
+4. RECOMMENDATION PRIORITY
+
+Create recommendation priority levels:
+
+CRITICAL
+HIGH
+MEDIUM
+LOW
+INFORMATIONAL
+
+Examples:
+
+CRITICAL
+
+Protected capital at risk.
+
+HIGH
+
+Projected cash shortfall may affect duplex contribution.
+
+MEDIUM
+
+Property candidate requires additional insurance estimate.
+
+LOW
+
+Consider reducing recurring subscription spending.
+
+INFORMATIONAL
+
+Duplex goal reached 50%.
+
+---
+
+5. RECOMMENDATION STATUS
+
+Support:
+
+Proposed
+Pending Review
+Approved
+Rejected
+Deferred
+Implemented
+Expired
+Superseded
+
+Track whether recommendations were followed.
+
+Do not assume recommendation implementation occurred unless confirmed.
+
+---
+
+6. HOUSEHOLD FINANCIAL ANALYST
+
+Create:
+
+HOUSEHOLD ANALYST
+
+It analyzes:
+
+- income
+- income volatility
+- fixed expenses
+- variable expenses
+- discretionary spending
+- savings rate
+- emergency reserve
+- free cash flow
+- recurring bills
+- unusual transactions
+- future obligations
+- duplex contribution affordability
+
+It should generate insights such as:
+
+Average household spending increased 14% over the last 60 days.
+
+Primary drivers:
+Food +8%
+Subscriptions +22%
+Transportation +11%
+
+---
+
+7. HOUSEHOLD ANALYST RECOMMENDATIONS
+
+Examples:
+
+Reduce discretionary spending by $120/month.
+
+Potential Duplex Impact:
+Approximately $1,440 additional annual savings.
+
+or:
+
+Do not increase investment contributions this month.
+
+Reason:
+Insurance renewal and vehicle expense are expected within 30 days.
+
+---
+
+8. SPENDING INTELLIGENCE
+
+Create trend analysis for:
+
+7 days
+30 days
+90 days
+6 months
+12 months
+
+Compare:
+
+Current Period
+vs
+Previous Period
+
+Current Period
+vs
+Rolling Average
+
+Current Period
+vs
+Budget
+
+Identify:
+
+Spending acceleration
+Spending reduction
+Category drift
+New recurring charges
+Unusual large expenses
+
+---
+
+9. SAVINGS OPTIMIZER
+
+Create a module that identifies potential savings opportunities.
+
+Examples:
+
+Unused subscriptions
+Duplicate services
+Recurring price increases
+Discretionary category overspend
+Cash sitting idle
+
+Recommendations must be practical.
+
+Do not repeatedly recommend unrealistic austerity.
+
+---
+
+10. DUPLEX GOAL ANALYST
+
+Create a dedicated analysis layer for:
+
+First Duplex Acquisition
+
+Monitor:
+
+Contribution consistency
+Current reserve
+Cash-to-close gap
+Closing cost reserve
+Emergency reserve
+Projected completion
+Income stability
+Property readiness
+
+Generate:
+
+On Track
+Ahead
+At Risk
+Behind
+
+with explanation.
+
+---
+
+11. DUPLEX TIMELINE INTELLIGENCE
+
+If the contribution rate changes, calculate impact.
+
+Example:
+
+Current:
+$250/week
+
+Proposed:
+$300/week
+
+Estimated effect:
+Duplex target reached approximately X weeks earlier.
+
+Or:
+
+Reducing contributions to $200/week may delay the target approximately X weeks.
+
+All calculations must come from deterministic financial services.
+
+AI explains the calculation.
+
+AI does not calculate authoritative values itself.
+
+---
+
+12. PROPERTY ANALYST
+
+Create:
+
+AI PROPERTY ANALYST
+
+It reads:
+
+- Buy Box
+- Property candidate data
+- rent assumptions
+- financing scenarios
+- cash-to-close
+- post-close liquidity
+- stress tests
+- household readiness
+- Deal Quality Score
+- Data Confidence
+
+It may recommend:
+
+Reject
+Research Further
+Watch
+Tour
+Financing Review
+Offer Candidate
+
+Advisory only.
+
+---
+
+13. PROPERTY COMPARISON INTELLIGENCE
+
+Allow AI to compare candidates.
+
+Example:
+
+PROPERTY A
+
+Buy Box Match       92
+Deal Quality        84
+Data Confidence     81
+Cash to Close       $14,500
+
+
+PROPERTY B
+
+Buy Box Match       83
+Deal Quality        91
+Data Confidence     64
+Cash to Close       $18,900
+
+AI recommendation:
+
+Prioritize Property A.
+
+Reason:
+Slightly lower modeled return but stronger liquidity profile and materially higher data confidence.
+
+This is preferable to simply choosing the highest projected return.
+
+---
+
+14. INVESTMENT MEMO GENERATION
+
+Allow:
+
+Generate Property Investment Memo
+
+Memo sections:
+
+Executive Summary
+Household Readiness
+Property Overview
+Buy Box Match
+Financing
+Cash to Close
+Projected Cash Flow
+House Hack Impact
+Stress Test
+Risks
+Missing Information
+Recommendation
+
+---
+
+15. STRATEGY ANALYST
+
+Create:
+
+STRATEGY ANALYST
+
+It analyzes:
+
+- research strategies
+- backtests
+- shadow results
+- paper trading
+- micro-live results
+- approved strategies
+- production strategies
+
+Metrics may include:
+
+Return
+Expectancy
+Profit Factor
+Maximum Drawdown
+Sharpe
+Sortino
+Hit Rate
+Average Win
+Average Loss
+Exposure
+Adverse Selection
+Fill Quality
+Execution Error Rate
+Runtime
+Sample Size
+
+---
+
+16. STRATEGY EVIDENCE REVIEW
+
+The Strategy Analyst must distinguish:
+
+Performance
+from
+Statistical Confidence
+
+Example:
+
+Strategy Return:
++8.2%
+
+Sample:
+34 fills
+
+Assessment:
+Insufficient evidence to increase capital.
+
+Do not recommend scaling based only on high short-term returns.
+
+---
+
+17. STRATEGY SCALING RECOMMENDATIONS
+
+Potential outputs:
+
+Do Not Scale
+Continue Testing
+Increase Slightly
+Scale Candidate
+Reduce Allocation
+Pause
+Retire
+
+Example:
+
+Recommendation:
+Continue Micro-Live.
+
+Reason:
+Positive expectancy but insufficient sample size.
+
+Capital Increase:
+Denied.
+
+---
+
+18. PORTFOLIO ANALYST
+
+Create:
+
+PORTFOLIO ANALYST
+
+Monitor:
+
+Total Net Worth
+Liquid Capital
+Protected Capital
+Active Capital
+Real Estate
+Cash
+Treasury
+Strategies
+Opportunity Reserve
+
+Calculate concentration by:
+
+Asset
+Strategy
+Venue
+Blockchain
+Stablecoin
+Property
+Market
+Risk Factor
+
+---
+
+19. CAPITAL ALLOCATION ANALYSIS
+
+Portfolio Analyst should identify:
+
+Over-allocation
+Under-allocation
+Idle cash
+Concentration
+Liquidity shortfall
+Strategy crowding
+
+Example:
+
+Observation:
+72% of active capital depends on one venue.
+
+Recommendation:
+Do not increase that venue allocation until concentration falls below configured limit.
+
+---
+
+20. RISK ADVISOR
+
+Create:
+
+RISK ADVISOR
+
+It reads the deterministic Risk Governor.
+
+The Risk Advisor may explain:
+
+Why a rule triggered
+What changed
+What could happen
+How to reduce risk
+
+The Risk Advisor cannot override the Risk Governor.
+
+---
+
+21. RISK TRENDING
+
+Monitor trends in:
+
+Household liquidity
+Emergency reserve
+Strategy drawdown
+Loss velocity
+Property concentration
+Venue health
+Data confidence
+Banking freshness
+Income volatility
+
+Generate early-warning recommendations before hard risk thresholds are reached.
+
+---
+
+22. RISK EXPLANATION
+
+Example:
+
+RISK ADVISOR
+
+Status:
+REVIEW
+
+Reason:
+Safe-to-Deploy capital fell 28% this month.
+
+Primary Drivers:
+Insurance renewal
+Higher transportation spending
+Lower weekly income
+
+Recommendation:
+Maintain Duplex contribution but pause any increase in strategy capital.
+
+---
+
+23. DAILY BRIEF
+
+Create a:
+
+DAILY CAPITAL BRIEF
+
+It should be short.
+
+Example:
+
+DAILY CAPITAL BRIEF
+
+Duplex Goal
+On Track
+
+Cash Flow
+Healthy
+
+Safe to Deploy
+$840
+
+Bills Due Next 7 Days
+$620
+
+Property Pipeline
+2 active candidates
+
+Strategies
+1 Micro-Live
+2 Paper
+
+Risk
+Normal
+
+Top Recommendation:
+No allocation changes today.
+
+---
+
+24. WEEKLY CIO REPORT
+
+Create:
+
+WEEKLY CIO REPORT
+
+Sections:
+
+Executive Summary
+Household Cash Flow
+Budget
+Savings
+Duplex Progress
+Property Readiness
+Portfolio
+Strategies
+Risk
+AI Recommendations
+Next Week Priorities
+
+---
+
+25. MONTHLY FAMILY CAPITAL REVIEW
+
+Create:
+
+MONTHLY CAPITAL REVIEW
+
+Include:
+
+Opening Net Worth
+Closing Net Worth
+Change
+
+Income
+Expenses
+Savings
+Investments
+
+Duplex Progress
+
+Portfolio Performance
+
+Property Progress
+
+Risk Review
+
+Top Financial Decisions
+
+Next-Month Priorities
+
+This should feel similar to a family-office monthly review.
+
+---
+
+26. CHANGE DETECTION ENGINE
+
+AI should focus on changes, not repeatedly summarize static data.
+
+Track:
+
+What changed since yesterday?
+What changed since last week?
+What changed since last month?
+
+Examples:
+
+Safe-to-Deploy increased by $210.
+
+Duplex funding is 2 weeks ahead of plan.
+
+Property B's insurance estimate increased 18%.
+
+Strategy confidence fell from 81 to 74.
+
+---
+
+27. NEXT BEST ACTION ENGINE
+
+Create:
+
+NEXT BEST ACTION
+
+This should identify the highest-priority action available.
+
+Examples:
+
+Maintain current plan.
+
+Review 3 uncategorized transactions.
+
+Increase closing reserve.
+
+Get insurance quote for top property.
+
+Do not scale investment capital this week.
+
+Review strategy drawdown.
+
+The system should avoid generating unnecessary actions.
+
+Sometimes:
+
+No Action Required
+
+is the correct recommendation.
+
+---
+
+28. DECISION IMPACT PREVIEW
+
+Before important decisions, AI should explain impacts.
+
+Example:
+
+PROPOSED CHANGE
+
+Increase Capital OS contribution:
+$25 → $50/week
+
+DUPLEX IMPACT
+Projected delay: 0 weeks
+
+HOUSEHOLD LIQUIDITY
+Remains Healthy
+
+EMERGENCY RESERVE
+No impact
+
+EXPECTED BENEFIT
+Additional $1,300 annual strategy funding
+
+RISK
+Low
+
+Values must be calculated by deterministic engines.
+
+---
+
+29. SCENARIO ANALYSIS
+
+Allow users to ask:
+
+What if income falls 20%?
+
+What if I increase duplex savings to $300/week?
+
+What if this duplex costs $250,000?
+
+What if insurance rises 25%?
+
+What if Capital OS loses 10% of active capital?
+
+Create a scenario service.
+
+Scenario calculations should NOT modify production data.
+
+Use temporary isolated models.
+
+---
+
+30. SCENARIO SAVE
+
+Allow scenarios to be saved.
+
+Create:
+
+Scenario
+ScenarioVersion
+ScenarioResult
+
+Examples:
+
+Income Downturn
+Accelerated Duplex
+Property A Purchase
+Higher Insurance
+Strategy Drawdown
+
+---
+
+31. WHAT-IF COMPARISON
+
+Compare:
+
+Current Plan
+vs
+Scenario A
+vs
+Scenario B
+
+Display:
+
+Duplex Date
+Cash Reserve
+Safe-to-Deploy
+Net Worth
+Monthly Free Cash Flow
+Risk Level
+
+---
+
+32. AI EVIDENCE REQUIREMENT
+
+Every material recommendation must reference the underlying evidence.
+
+Example:
+
+Evidence:
+
+90-day average free cash flow
+$2,140
+
+Emergency reserve
+3.2 months
+
+Duplex funding
+On Track
+
+Strategy drawdown
+2.1%
+
+Do not allow:
+
+AI recommends this because it seems better.
+
+---
+
+33. DATA CONFIDENCE
+
+Recommendations must have:
+
+Confidence
+
+and:
+
+Data Quality
+
+Example:
+
+AI Confidence:
+88%
+
+Data Quality:
+High
+
+If important data is stale:
+
+Data Quality:
+Low
+
+Recommendation:
+Refresh Wells Fargo connection before changing allocation.
+
+---
+
+34. UNCERTAINTY HANDLING
+
+AI must explicitly recognize:
+
+Missing information
+Estimated values
+Stale data
+Small sample sizes
+Conflicting indicators
+
+When uncertainty is high, prefer:
+
+Research Further
+
+rather than false confidence.
+
+---
+
+35. RECOMMENDATION CONFLICT RESOLUTION
+
+If specialist modules conflict:
+
+Example:
+
+Strategy Analyst:
+Increase allocation.
+
+Household Analyst:
+Cash flow weakening.
+
+Risk Advisor:
+Liquidity declining.
+
+The AI CIO should prioritize:
+
+Household stability
+and
+Capital protection
+
+over investment growth.
+
+Result:
+
+Recommendation:
+Do not increase strategy capital.
+
+---
+
+36. CAPITAL OS PRIORITY HIERARCHY
+
+Intelligence must follow:
+
+1. Required Household Obligations
+2. Emergency Liquidity
+3. Protected Duplex Goal
+4. Capital Preservation
+5. Property Acquisition Readiness
+6. Opportunity Reserve
+7. Validated Investment Strategies
+8. Additional Wealth Growth
+
+AI cannot reorder this unless the authorized user changes policy.
+
+---
+
+37. AI PERMISSION MODEL
+
+Create explicit permissions:
+
+AI_READ
+AI_ANALYZE
+AI_RECOMMEND
+AI_SIMULATE
+
+Do NOT grant:
+
+AI_TRANSFER
+AI_TRADE
+AI_WITHDRAW
+AI_DEPLOY_CONTRACT
+AI_CHANGE_CREDENTIALS
+AI_OVERRIDE_RISK
+
+These permissions should not exist in production at this phase.
+
+---
+
+38. AI TOOL BOUNDARIES
+
+AI may call safe internal read services such as:
+
+PortfolioRead
+BudgetRead
+CashFlowRead
+GoalRead
+PropertyRead
+StrategyRead
+RiskRead
+ScenarioCalculate
+ReportGenerate
+
+AI should not directly query raw bank provider secrets or private credentials.
+
+---
+
+39. SENSITIVE DATA REDACTION
+
+Before financial data enters AI context, redact or minimize:
+
+Full account numbers
+Authentication tokens
+Bank credentials
+SSNs
+Sensitive identity data
+Private encryption keys
+
+AI receives only necessary financial values.
+
+---
+
+40. PROMPT-INJECTION DEFENSE
+
+Treat external content as untrusted data.
+
+Examples:
+
+Listing descriptions
+Documents
+Web pages
+News
+Market descriptions
+Imported notes
+
+External text must never gain authority to:
+
+Change risk rules
+Move funds
+Change credentials
+Alter AI permissions
+Override policies
+
+---
+
+41. AI ACTIVITY LOG
+
+Record:
+
+AI analysis requested
+AI report generated
+Recommendation generated
+Recommendation viewed
+Recommendation approved
+Recommendation rejected
+Scenario run
+
+Do not store hidden model reasoning.
+
+Store:
+
+final recommendation
+evidence
+summary rationale
+confidence
+decision
+
+---
+
+42. INSIGHTS PAGE
+
+Enhance "/insights".
+
+Include:
+
+Top Recommendation
+Financial Health Changes
+Duplex Insights
+Cash Flow Insights
+Property Insights
+Strategy Insights
+Risk Insights
+
+Allow filtering:
+
+Household
+Duplex
+Property
+Portfolio
+Strategy
+Risk
+
+---
+
+43. AI CIO DASHBOARD CARD
+
+Add a small dashboard card:
+
+AI CIO
+
+Status
+Monitoring
+
+Top Recommendation
+Maintain current allocation.
+
+Confidence
+91%
+
+Last Review
+Today
+
+Include:
+
+View Analysis
+
+Keep compact.
+
+---
+
+44. FAMILY-FRIENDLY EXPLANATIONS
+
+Provide:
+
+Simple View
+
+and:
+
+Detailed View
+
+Simple View explains:
+
+What happened?
+Why does it matter?
+What should we do?
+
+Detailed View shows metrics.
+
+---
+
+45. RECOMMENDATION FEEDBACK
+
+Allow user feedback:
+
+Helpful
+Not Helpful
+Implemented
+Dismissed
+
+Use feedback for future recommendation quality.
+
+Do not silently change hard financial policies based on feedback.
+
+---
+
+46. USER PREFERENCE LEARNING
+
+AI may learn preferences such as:
+
+Preferred risk level
+Property priorities
+Preferred reporting style
+Goal importance
+
+But explicit Capital Governor policies remain authoritative.
+
+---
+
+47. NO AUTOMATIC POLICY CHANGES
+
+AI may recommend:
+
+Increase emergency reserve target.
+
+But cannot automatically change:
+
+Emergency Reserve Target
+
+without user approval.
+
+---
+
+48. ALERT FATIGUE PREVENTION
+
+Do not notify about every minor change.
+
+Rank alerts based on:
+
+Financial impact
+Urgency
+Confidence
+Risk
+User relevance
+
+Suppress repetitive low-value alerts.
+
+---
+
+49. CRITICAL ALERTS
+
+Critical alerts may include:
+
+Bank connection stale during major capital decision
+
+Projected bill shortfall
+
+Protected capital violation attempt
+
+Property post-close liquidity failure
+
+Strategy exceeds risk limit
+
+Reconciliation error
+
+Major drop in Safe-to-Deploy
+
+These should be highly visible.
+
+---
+
+50. AUTOMATED REVIEW SCHEDULE
+
+Prepare scheduled intelligence runs:
+
+Daily Brief
+Weekly CIO Review
+Monthly Capital Review
+Quarterly Strategy Review
+Quarterly Property Readiness Review
+
+The application may generate reports automatically.
+
+Do not initiate financial transactions.
+
+---
+
+51. HOUSEHOLD FINANCIAL FORECAST
+
+Create:
+
+3-Month Forecast
+6-Month Forecast
+12-Month Forecast
+
+Estimate:
+
+Income
+Expenses
+Savings
+Duplex Reserve
+Emergency Reserve
+Portfolio
+Net Worth
+
+Clearly mark projections as estimates.
+
+---
+
+52. NET-WORTH INTELLIGENCE
+
+Track:
+
+Assets
+Liabilities
+Net Worth
+Net Worth Change
+
+Identify drivers.
+
+Example:
+
+Net worth increased $1,420 this month.
+
+Primary drivers:
+
+Savings +$1,083
+Investment gains +$122
+Debt reduction +$215
+
+---
+
+53. CAPITAL EFFICIENCY
+
+Create analytics such as:
+
+Savings per $1 Income
+Net Worth Growth per $1 Saved
+Return on Active Capital
+Duplex Progress per Month
+
+Use as informational metrics.
+
+---
+
+54. GOAL CONFLICT DETECTION
+
+Detect when goals compete.
+
+Example:
+
+Increasing strategy funding by $100/week
+would reduce duplex contribution capacity.
+
+Display:
+
+GOAL CONFLICT
+
+with impact.
+
+---
+
+55. PROPERTY VS INVESTMENT DECISION SUPPORT
+
+Capital OS should eventually compare:
+
+Deploy $10,000 toward property acquisition
+vs
+Keep $10,000 liquid
+vs
+Deploy part to validated strategies
+
+Do not make deterministic claims about future return.
+
+Use scenario assumptions.
+
+---
+
+56. STRATEGY VS TREASURY DECISION SUPPORT
+
+Compare:
+
+Active Strategy
+vs
+Cash
+vs
+Treasury Yield
+
+based on:
+
+Expected return
+Risk
+Liquidity
+Drawdown
+Goal horizon
+
+---
+
+57. DECISION JOURNAL
+
+Create:
+
+DecisionJournalEntry
+
+Track:
+
+Decision
+Date
+Reason
+Data at Time
+Expected Outcome
+Actual Outcome
+Lessons
+
+Examples:
+
+Increased Duplex contribution.
+Rejected Property B.
+Paused Strategy A.
+
+This becomes a valuable long-term family-office record.
+
+---
+
+58. OUTCOME REVIEW
+
+After major decisions, prompt later:
+
+Review Outcome
+
+Example:
+
+Decision:
+Increase Duplex Contribution to $300/week
+
+Expected:
+Reach goal 6 weeks earlier.
+
+Actual:
+Goal now 5.5 weeks ahead.
+
+Assessment:
+Successful.
+
+---
+
+59. RECOMMENDATION QUALITY ANALYTICS
+
+Track:
+
+Recommendations made
+Accepted
+Rejected
+Implemented
+Positive outcomes
+Negative outcomes
+No material outcome
+
+This helps evaluate whether AI advice is actually useful.
+
+---
+
+60. REPORT EXPORT FOUNDATION
+
+Prepare structured exports for:
+
+Daily Brief
+Weekly CIO Report
+Monthly Capital Review
+Property Investment Memo
+Strategy Review
+Financial Health Review
+
+Do not require PDF yet unless existing architecture supports it cleanly.
+
+---
+
+61. DATABASE ENTITIES
+
+Create or expand:
+
+AIAdvisor
+AIAnalysis
+AIRecommendation
+AIRecommendationEvidence
+AIRecommendationDecision
+AIInsight
+AIReport
+Scenario
+ScenarioResult
+DecisionJournalEntry
+OutcomeReview
+RecommendationFeedback
+
+All records must be household-scoped.
+
+---
+
+62. TESTING
+
+Add tests ensuring:
+
+AI cannot move funds
+AI cannot alter Capital Governor rules
+AI cannot change protected capital
+AI cannot approve property offers
+AI cannot submit trades
+Risk Governor overrides conflicting AI recommendations
+Deterministic values are not replaced by AI-generated calculations
+Recommendations contain evidence
+Stale data reduces confidence
+Missing data is disclosed
+Goal conflicts are detected
+Scenario runs do not modify production data
+
+---
+
+63. SECURITY REVIEW
+
+Before completion verify:
+
+No bank access tokens sent to AI
+No private credentials in prompts
+No sensitive account numbers exposed unnecessarily
+No AI write access to financial execution systems
+No external document instructions can alter system rules
+No cross-household data exposure
+
+---
+
+64. FINAL VALIDATION
+
+Before declaring this phase complete verify:
+
+1. Existing UI remains intact.
+2. AI CIO is operational in advisory mode.
+3. Household Analyst works.
+4. Duplex Goal Analyst works.
+5. Property Analyst works.
+6. Strategy Analyst works.
+7. Portfolio Analyst works.
+8. Risk Advisor works.
+9. Daily Brief works.
+10. Weekly CIO Report works.
+11. Monthly Capital Review works.
+12. Next Best Action works.
+13. Scenario analysis works without modifying real data.
+14. All recommendations contain evidence.
+15. Confidence and data quality are shown.
+16. Capital Governor remains authoritative.
+17. Risk Governor remains authoritative.
+18. AI cannot move funds.
+19. AI cannot trade.
+20. AI cannot change protected capital.
+21. Audit records are generated.
+22. Critical AI boundaries have automated tests.
+
+---
+
+FINAL PRODUCT DIRECTION
+
+Capital OS should now function conceptually as:
+
+                       FAMILY CAPITAL
+                             │
+                             ▼
+                       CAPITAL OS
+                             │
+          ┌──────────────────┼──────────────────┐
+          ▼                  ▼                  ▼
+ HOUSEHOLD FINANCE       REAL ESTATE         INVESTMENTS
+          │                  │                  │
+          └──────────────────┼──────────────────┘
+                             ▼
+                         AI CIO
+                             │
+                Analysis + Recommendations
+                             │
+                             ▼
+                    CAPITAL GOVERNOR
+                             │
+                             ▼
+                    RISK GOVERNOR
+                             │
+                             ▼
+                       HUMAN OWNER
+                             │
+                             ▼
+                          ACTION
+
+The purpose of AI is not to control the family's money.
+
+The purpose of AI is to help the household make better, faster, more evidence-based capital decisions.
+
+Maintain this hierarchy:
+
+Household Stability
+→ Capital Protection
+→ Duplex Acquisition
+→ Property Readiness
+→ Controlled Investment
+→ Long-Term Compounding
+
+Build accordingly.

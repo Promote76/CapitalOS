@@ -16,6 +16,12 @@ import {
   getGetPropertyUnderwritingQueryKey,
   useUpdatePrivacySettings,
   useGetDashboard,
+  useGetIntelligence,
+  useRefreshIntelligence,
+  useRunIntelligenceScenario,
+  useDecideRecommendation,
+  useRecordIntelligenceFeedback,
+  getGetIntelligenceQueryKey,
   useListContributions,
   useListBills,
   useListUpcomingExpenses,
@@ -47,6 +53,8 @@ import {
   type IncomeSourceInput,
   type DashboardSnapshot,
   type CreatePropertyCandidateInput,
+  type IntelligenceSnapshot,
+  type ContributionScenario,
 } from '@workspace/api-client-react';
 import {
   ArrowDownLeft,
@@ -237,6 +245,65 @@ function QuickActions({ onAction }: { onAction: (kind: Exclude<ModalKind, null>)
   </div>;
 }
 
+function intelligenceStatusClass(value: string) {
+  if (value === 'critical' || value === 'high') return 'critical';
+  if (value === 'medium' || value === 'review' || value === 'proposed') return 'pending';
+  return '';
+}
+
+function ConfidenceLabel({ confidence, dataQuality }: { confidence: number; dataQuality: string }) {
+  return <span className="intelligence-confidence"><Gauge size={12} /> {confidence.toFixed(0)}% confidence · {dataQuality} data</span>;
+}
+
+function IntelligenceRecommendationCard({ snapshot, onFeedback }: { snapshot: IntelligenceSnapshot; onFeedback: (message: string) => void }) {
+  const decision = useDecideRecommendation();
+  const feedback = useRecordIntelligenceFeedback();
+  const recommendation = snapshot.recommendation;
+  const decide = async (value: 'approved' | 'rejected') => {
+    try {
+      await decision.mutateAsync({
+        recommendationId: recommendation.id,
+        data: { decision: value, reason: value === 'approved' ? 'Accepted for human review.' : 'Rejected after household review.' },
+      });
+      await queryClient.invalidateQueries({ queryKey: getGetIntelligenceQueryKey() });
+      onFeedback(value === 'approved' ? 'Recommendation accepted for human review.' : 'Recommendation rejected and recorded.');
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'The recommendation decision could not be recorded.');
+    }
+  };
+  return <section className="ai-card intelligence-recommendation" data-testid="card-intelligence-recommendation">
+    <div className="intelligence-card-header">
+      <div className="intelligence-title-wrap">
+        <div className="state-icon intelligence-icon"><Sparkles size={17} /></div>
+        <div><div className="state-label">AI CIO recommendation <span className="status" style={{ marginLeft: 6 }}>Advisory only</span></div><ConfidenceLabel confidence={recommendation.confidence} dataQuality={recommendation.dataQuality} /></div>
+      </div>
+      <span className={`status ${intelligenceStatusClass(recommendation.priority)}`}>{recommendation.priority}</span>
+    </div>
+    <h3>{recommendation.recommendation}</h3>
+    <p className="intelligence-reason">{recommendation.reason}</p>
+    <div className="intelligence-detail-grid">
+      <div><strong>Expected benefit</strong><span>{recommendation.expectedBenefit}</span></div>
+      <div><strong>Potential downside</strong><span>{recommendation.potentialDownside}</span></div>
+      <div><strong>Next action</strong><span>{recommendation.suggestedNextAction}</span></div>
+    </div>
+    <div className="intelligence-evidence"><strong>Evidence</strong>{recommendation.evidence.map((item) => <span key={item}>• {item}</span>)}</div>
+    <div className="intelligence-card-footer"><span>{recommendation.requiredApproval}</span>{recommendation.status === 'proposed' && <div className="heading-actions"><button className="btn btn-primary" onClick={() => { void decide('approved'); }} disabled={decision.isPending} data-testid="button-accept-intelligence"><Check size={14} /> Accept for review</button><button className="btn" onClick={() => { void decide('rejected'); }} disabled={decision.isPending} data-testid="button-reject-intelligence">Reject</button></div>}</div>
+    <div className="feedback-bar"><span>Was this useful?</span><div>{(['helpful', 'not_helpful', 'implemented', 'dismissed'] as const).map((value) => <button key={value} className={`feedback-button ${feedback.isPending ? 'disabled' : ''}`} disabled={feedback.isPending} onClick={() => { void feedback.mutateAsync({ data: { recommendationId: recommendation.id, feedback: value } }).then(() => onFeedback(`Feedback recorded: ${value.replace('_', ' ')}.`)).catch((error) => onFeedback(error instanceof Error ? error.message : 'Feedback could not be recorded.')); }} data-testid={`button-feedback-${value}`}>{value === 'not_helpful' ? 'Not helpful' : value.charAt(0).toUpperCase() + value.slice(1)}</button>)}</div></div>
+  </section>;
+}
+
+function DashboardIntelligence({ onFeedback }: { onFeedback: (message: string) => void }) {
+  const query = useGetIntelligence();
+  const snapshot = query.data;
+  return <section className="card card-pad intelligence-dashboard-card animate-in delay-2" data-testid="card-dashboard-intelligence">
+    <CardTitle title="AI CIO / today’s read" subtitle="Evidence-backed guidance for the next household decision." action={<Link href="/insights" className="text-link">Open Intelligence <ArrowUpRight size={13} /></Link>} />
+    {query.isLoading && <div className="intelligence-loading">Preparing the latest household read…</div>}
+    {query.isError && <div className="intelligence-empty"><ShieldAlert size={17} /><span>Intelligence is temporarily unavailable. Your capital plan remains unchanged.</span><button className="text-link" onClick={() => { void query.refetch(); }}>Try again</button></div>}
+    {snapshot && <div className="dashboard-intelligence-content"><div><span className={`status ${intelligenceStatusClass(snapshot.recommendation.priority)}`}>{snapshot.recommendation.priority} priority</span><h3>{snapshot.recommendation.recommendation}</h3><p>{snapshot.recommendation.reason}</p></div><div className="dashboard-intelligence-meta"><strong>{displayMoney(snapshot.dailyBrief.safeToDeploy, '$0')}</strong><span>safe to deploy</span><ConfidenceLabel confidence={snapshot.recommendation.confidence} dataQuality={snapshot.recommendation.dataQuality} /></div></div>}
+    {snapshot && <button className="btn" style={{ marginTop: 14 }} onClick={() => onFeedback('The AI CIO remains advisory-only. Review the full evidence before changing the plan.')}>Why this matters <CircleHelp size={14} /></button>}
+  </section>;
+}
+
 function Dashboard({ onAction, onFeedback, transactions, dashboard, backendIssue }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void; transactions: Transaction[]; dashboard?: DashboardSnapshot; backendIssue?: boolean }) {
   const monthTotal = transactions.reduce((sum, item) => sum + item.amount, 0);
   const goal = dashboard?.goal;
@@ -264,6 +331,7 @@ function Dashboard({ onAction, onFeedback, transactions, dashboard, backendIssue
       </section>
     </div>
     <QuickActions onAction={onAction} />
+     <DashboardIntelligence onFeedback={onFeedback} />
      <FinancePulse />
     <div className="capital-state-grid animate-in delay-3">
       <section className="capital-state-card protected" data-testid="card-protected-capital">
@@ -314,9 +382,9 @@ function GoalsPage({ onAction }: { onAction: (kind: Exclude<ModalKind, null>) =>
   </main>;
 }
 
-function StrategiesPage({ onAction }: { onAction: (kind: Exclude<ModalKind, null>) => void }) {
+function StrategiesPage({ onAction, onFeedback }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void }) {
   const [filter, setFilter] = useState('All strategies');
-  const [recommendation, setRecommendation] = useState('pending');
+  const intelligence = useGetIntelligence();
   const cards = [
     { title: 'Duplex first', type: 'Core plan', icon: Home, copy: 'Keep the reserve liquid, visible, and pointed at one acquisition window.', featured: true },
     { title: 'The steady climb', type: 'Contribution rhythm', icon: Gauge, copy: 'A $250 weekly rhythm with room to increase after each annual review.', featured: false },
@@ -327,15 +395,12 @@ function StrategiesPage({ onAction }: { onAction: (kind: Exclude<ModalKind, null
     <PageHeading eyebrow="Plan / strategies" title={<>Quiet conviction<br /><em>beats busy money.</em></>} description="A handful of strategies, each with a job. Keep the set small enough to remember." actions={<button className="btn btn-primary" data-testid="button-start-strategy" onClick={() => onAction('strategy')}><Sparkles size={15} /> Start a strategy</button>} />
     <div className="filter-bar"><SlidersHorizontal size={14} color="var(--ink-soft)" />{['All strategies', 'Core plan', 'Optionality', 'Planning note'].map((label) => <button className={`filter-chip ${filter === label ? 'active' : ''}`} key={label} onClick={() => setFilter(label)} data-testid={`button-strategy-filter-${label.toLowerCase().replaceAll(' ', '-')}`}>{label}</button>)}</div>
     <div className="strategy-grid">{cards.filter((card) => filter === 'All strategies' || card.type === filter).map((card, index) => { const Icon = card.icon; return <section className={`card strategy-card ${card.featured ? 'featured' : ''} animate-in delay-${Math.min(index + 1, 3)}`} key={card.title}><div className="strategy-icon"><Icon size={18} /></div><div className="mono-label">{card.type}</div><h3>{card.title}</h3><p>{card.copy}</p><button className={`btn ${card.featured ? 'btn-gold' : ''}`} data-testid={`button-open-strategy-${index}`} onClick={() => onAction('strategy')}>{card.featured ? 'Review plan' : 'View details'} <ArrowUpRight size={14} /></button></section>; })}</div>
-    <section className="card card-pad page-section animate-in delay-2">
+     <section className="card card-pad page-section animate-in delay-2">
       <CardTitle title="Strategy graduation" subtitle="Capital earns its way forward. No strategy skips a stage." />
       <div className="stage-stepper" data-testid="strategy-stage-stepper">{['Research', 'Backtest', 'Shadow', 'Paper', 'Micro-Live', 'Approved', 'Production'].map((stage, index) => <div className={`stage-step ${index < 3 ? 'complete' : index === 3 ? 'current' : ''}`} key={stage} data-testid={`stage-${stage.toLowerCase().replaceAll('-', '-')}`}>{stage}</div>)}</div>
-      <div className="ai-card" style={{ marginTop: 22 }} data-testid="card-ai-recommendation">
-        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:14 }}><div style={{ display:'flex', gap:11 }}><div className="state-icon" style={{ background:'var(--color-opportunity-soft)', color:'var(--color-opportunity)', marginBottom:0 }}><Sparkles size={17} /></div><div><div className="state-label">AI CIO recommendation <span className="status" style={{ marginLeft:6 }}>Advisory Only</span></div><strong style={{ display:'block', fontSize:15, marginTop:7 }}>Keep the duplex reserve untouched</strong></div></div><span className={`status ${recommendation === 'pending' ? 'pending' : ''}`}>{recommendation === 'pending' ? 'Recommendation pending approval' : recommendation === 'accepted' ? 'Accepted for review' : 'Rejected'}</span></div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:16, margin:'18px 0', color:'var(--text-secondary)', fontSize:11, lineHeight:1.5 }}><div><strong style={{ display:'block', color:'var(--text-primary)', marginBottom:4 }}>Reason</strong>Reserve pace is already aligned with the June 2027 window.</div><div><strong style={{ display:'block', color:'var(--text-primary)', marginBottom:4 }}>Risk impact</strong>Lower exposure to accidental strategy allocation.</div><div><strong style={{ display:'block', color:'var(--text-primary)', marginBottom:4 }}>Expected benefit</strong>More confidence when the right property appears.</div></div>
-        <div style={{ color:'var(--text-muted)', fontSize:10, marginBottom:12 }}>Evidence: contribution consistency, liquidity review, and protected-capital threshold. You remain in control.</div>
-        <div style={{ display:'flex', gap:8 }}><button className="btn btn-primary" data-testid="button-accept-ai-recommendation" onClick={() => setRecommendation('accepted')}><Check size={14} /> Accept for review</button><button className="btn" data-testid="button-reject-ai-recommendation" onClick={() => setRecommendation('rejected')}>Reject</button></div>
-      </div>
+       {intelligence.isLoading && <div className="intelligence-loading" style={{ marginTop: 22 }}>Preparing the latest CIO recommendation…</div>}
+       {intelligence.isError && <div className="intelligence-empty" style={{ marginTop: 22 }}><ShieldAlert size={17} /><span>Recommendation data is unavailable right now.</span><button className="text-link" onClick={() => { void intelligence.refetch(); }}>Try again</button></div>}
+       {intelligence.data && <div style={{ marginTop: 22 }}><IntelligenceRecommendationCard snapshot={intelligence.data} onFeedback={onFeedback} /></div>}
     </section>
     <section className="card card-pad page-section"><CardTitle title="A note from your plan" subtitle="Last reviewed 07 October 2024" /><div style={{ display:'flex', gap:15, alignItems:'flex-start' }}><div className="activity-icon" style={{ background:'var(--marigold)', flex:'0 0 auto' }}><Lightbulb size={15} /></div><p style={{ margin:0, color:'var(--ink-soft)', fontSize:13, lineHeight:1.65, maxWidth:720 }}>“The best next move is not always the fastest one. Your current reserve pace keeps a June 2027 window realistic without asking the rest of life to wait.”</p></div></section>
   </main>;
@@ -841,6 +906,74 @@ function FinanceInsightsPage() {
   </main>;
 }
 
+function IntelligencePage({ onFeedback }: { onFeedback: (message: string) => void }) {
+  const query = useGetIntelligence();
+  const refresh = useRefreshIntelligence();
+  const scenario = useRunIntelligenceScenario();
+  const [proposedWeekly, setProposedWeekly] = useState('250');
+  const [scenarioResult, setScenarioResult] = useState<ContributionScenario | null>(null);
+  const snapshot = query.data;
+  const refreshNow = async () => {
+    try {
+      const next = await refresh.mutateAsync();
+      queryClient.setQueryData(getGetIntelligenceQueryKey(), next);
+      onFeedback('Intelligence refreshed from the latest household and property data.');
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'Intelligence could not be refreshed.');
+    }
+  };
+  const runScenario = async (event: FormEvent) => {
+    event.preventDefault();
+    try {
+      const result = await scenario.mutateAsync({ data: { proposedWeekly } });
+      setScenarioResult(result);
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'The scenario could not be calculated.');
+    }
+  };
+  return <main className="content">
+    <PageHeading eyebrow="Keep track / intelligence" title={<>A clearer read on<br /><em>the next right move.</em></>} description="Specialist signals are combined into an explainable CIO view. Every recommendation is advisory, evidence-backed, and kept behind the Capital and Risk Governors." actions={<button className="btn btn-primary" onClick={() => { void refreshNow(); }} disabled={refresh.isPending} data-testid="button-refresh-intelligence"><RotateCcw size={14} className={refresh.isPending ? 'spin' : ''} /> {refresh.isPending ? 'Refreshing…' : 'Refresh intelligence'}</button>} />
+    {query.isLoading && <section className="card card-pad intelligence-loading" data-testid="state-intelligence-loading">Preparing the latest household read…</section>}
+    {query.isError && <section className="card card-pad intelligence-empty" data-testid="state-intelligence-error"><ShieldAlert size={18} /><div><strong>Intelligence is unavailable</strong><span>The underlying plan remains safe and unchanged. Try again when the household service is available.</span></div><button className="btn" onClick={() => { void query.refetch(); }}>Try again</button></section>}
+    {snapshot && <>
+      <section className="intelligence-brief-grid animate-in delay-1">
+        <div className="intelligence-brief-card primary"><div className="eyebrow">Daily brief</div><div className="brief-value">{snapshot.dailyBrief.status}</div><p>Current posture across liquidity, risk, and the property pipeline.</p></div>
+        <div className="intelligence-brief-card"><div className="mono-label">Safe to deploy</div><div className="brief-value">{displayMoney(snapshot.dailyBrief.safeToDeploy, '$0')}</div><p>Discretionary room after obligations and protected reserves.</p></div>
+        <div className="intelligence-brief-card"><div className="mono-label">Emergency reserve</div><div className="brief-value">{snapshot.dailyBrief.emergencyReserveMonths.toFixed(1)} <small>months</small></div><p>Household buffer used by the readiness signal.</p></div>
+        <div className="intelligence-brief-card"><div className="mono-label">Property pipeline</div><div className="brief-value">{snapshot.dailyBrief.propertyCandidates}</div><p>Candidate{snapshot.dailyBrief.propertyCandidates === 1 ? '' : 's'} available for comparison.</p></div>
+      </section>
+      <IntelligenceRecommendationCard snapshot={snapshot} onFeedback={onFeedback} />
+      <section className="card card-pad page-section">
+        <CardTitle title="Specialist analyst desk" subtitle="Each analyst owns a narrow view so strong signals do not hide weak ones." />
+        <div className="analyst-grid">{snapshot.analysts.map((analyst) => <article className="analyst-card" key={analyst.id}><div className="analyst-card-header"><div><div className="mono-label">{analyst.scope.replaceAll('_', ' ')}</div><h3>{analyst.analyst}</h3></div><span className={`status ${analyst.dataQuality === 'low' ? 'critical' : analyst.dataQuality === 'medium' ? 'pending' : ''}`}>{analyst.dataQuality}</span></div><p>{analyst.summary}</p><ConfidenceLabel confidence={analyst.confidence} dataQuality={analyst.dataQuality} /><div className="analyst-evidence">{analyst.evidence.slice(0, 3).map((item) => <span key={item}>• {item}</span>)}</div></article>)}</div>
+      </section>
+      <div className="section-grid page-section">
+        <section className="card card-pad">
+          <CardTitle title="Persisted insights" subtitle="Advisory observations retained for the next review." />
+          <div className="insight-list">{snapshot.insights.map((insight) => <div className="insight-row" key={insight.id}><div className={`insight-icon ${insight.severity === 'high' ? 'review' : insight.severity === 'medium' ? 'advisory' : 'positive'}`}><Lightbulb size={15} /></div><div><strong>{insight.title}</strong><p>{insight.description}</p><div className="insight-evidence">{insight.evidence.join(' · ')}</div></div><span className={`status ${insight.severity === 'high' ? 'critical' : insight.severity === 'medium' ? 'pending' : ''}`}>{insight.severity}</span></div>)}</div>
+          {snapshot.insights.length === 0 && <div className="empty-state"><Lightbulb size={20} /><h3>No persisted insights yet</h3><p>Refresh intelligence after the next household update.</p></div>}
+        </section>
+        <section className="card card-pad">
+          <CardTitle title="What-if contribution" subtitle="Plan pace only. This never changes the live allocation." />
+          <form className="scenario-form" onSubmit={runScenario}><div className="field"><label>Proposed weekly duplex contribution</label><div className="scenario-input"><span>$</span><input inputMode="decimal" pattern="[0-9]+(\\.[0-9]{1,2})?" value={proposedWeekly} onChange={(event) => setProposedWeekly(event.target.value)} required data-testid="input-intelligence-scenario" /></div></div><button className="btn btn-primary" type="submit" disabled={scenario.isPending} data-testid="button-run-intelligence-scenario"><Sparkles size={14} /> {scenario.isPending ? 'Calculating…' : 'Compare pace'}</button></form>
+          {scenarioResult && <div className="scenario-result" data-testid="card-intelligence-scenario-result"><div><strong>{scenarioResult.proposedWeeks === null ? 'No completion date' : `${scenarioResult.proposedWeeks} weeks`}</strong><span>at the proposed pace</span></div><div><strong>{scenarioResult.weeksEarlier === null ? '—' : `${scenarioResult.weeksEarlier} weeks`}</strong><span>earlier than current</span></div><p>{scenarioResult.productionDataChanged ? 'Production data changed.' : 'Planning-only result; production data was not changed.'}</p></div>}
+        </section>
+      </div>
+      <section className="card card-pad page-section">
+        <CardTitle title={snapshot.weeklyReport.title} subtitle={`Generated ${displayDate(snapshot.weeklyReport.generatedAt, 'today')}`} />
+        <p className="report-summary">{snapshot.weeklyReport.summary}</p>
+        <div className="report-sections">{snapshot.weeklyReport.sections.map((section) => <span key={section}><Check size={13} /> {section}</span>)}</div>
+      </section>
+      <section className="card card-pad page-section">
+        <CardTitle title="Monthly Family Capital Review" subtitle="A slower, family-office-style read of the current tracked picture." />
+        <div className="monthly-stat-grid">{[['Opening net worth', snapshot.monthlyReview.openingNetWorth], ['Closing net worth', snapshot.monthlyReview.closingNetWorth], ['Change', snapshot.monthlyReview.change], ['Income', snapshot.monthlyReview.income], ['Expenses', snapshot.monthlyReview.expenses], ['Savings', snapshot.monthlyReview.savings], ['Investments', snapshot.monthlyReview.investments]].map(([label, value]) => <div className="monthly-stat" key={label}><span>{label}</span><strong>{label === 'Change' && value.startsWith('$') ? value : label === 'Change' ? value : displayMoney(value, '$0')}</strong></div>)}</div>
+        <div className="monthly-review-grid"><div><strong>Duplex progress</strong><span>{snapshot.monthlyReview.duplexProgress}</span></div><div><strong>Portfolio performance</strong><span>{snapshot.monthlyReview.portfolioPerformance}</span></div><div><strong>Property progress</strong><span>{snapshot.monthlyReview.propertyProgress}</span></div><div><strong>Risk review</strong><span>{snapshot.monthlyReview.riskReview}</span></div></div>
+        <div className="monthly-review-lists"><div><strong>Top financial decisions</strong>{snapshot.monthlyReview.topFinancialDecisions.map((item) => <span key={item}>• {item}</span>)}</div><div><strong>Next-month priorities</strong>{snapshot.monthlyReview.nextMonthPriorities.map((item) => <span key={item}>• {item}</span>)}</div></div>
+      </section>
+    </>}
+  </main>;
+}
+
 function UtilityPage({ kind, onAction, transactions }: { kind: string; onAction: (kind: Exclude<ModalKind, null>) => void; transactions: Transaction[] }) {
   const meta: Record<string, { eyebrow: string; title: ReactNode; description: string; icon: typeof ReceiptText }> = {
     transactions: { eyebrow: 'Keep track / transactions', title: <>A clean record of<br /><em>the small decisions.</em></>, description: 'Every contribution and transfer has a place, so the plan never depends on memory.', icon: ReceiptText },
@@ -885,7 +1018,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue
     <Route path="/income" component={() => <IncomePage onFeedback={onFeedback} />} />
     <Route path="/accounts" component={() => <AccountsPage onFeedback={onFeedback} />} />
     <Route path="/goals" component={() => <GoalsPage onAction={onAction} />} />
-    <Route path="/strategies" component={() => <StrategiesPage onAction={onAction} />} />
+     <Route path="/strategies" component={() => <StrategiesPage onAction={onAction} onFeedback={onFeedback} />} />
     <Route path="/portfolio" component={() => <PortfolioPage onFeedback={onFeedback} />} />
     <Route path="/properties" component={() => <PropertiesPage onAction={onAction} />} />
     <Route path="/risk" component={() => <RiskPage onFeedback={onFeedback} />} />
@@ -894,7 +1027,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue
     <Route path="/contributions" component={() => <UtilityPage kind="contributions" onAction={onAction} transactions={transactions} />} />
     <Route path="/reports" component={() => <UtilityPage kind="reports" onAction={onAction} transactions={transactions} />} />
     <Route path="/documents" component={() => <UtilityPage kind="documents" onAction={onAction} transactions={transactions} />} />
-    <Route path="/insights" component={FinanceInsightsPage} />
+     <Route path="/insights" component={() => <IntelligencePage onFeedback={onFeedback} />} />
     <Route component={NotFound} />
   </Switch>;
 }

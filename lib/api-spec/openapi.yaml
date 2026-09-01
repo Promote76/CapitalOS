@@ -446,6 +446,66 @@ paths:
                 $ref: "#/components/schemas/RecommendationSummary"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /intelligence:
+    get:
+      operationId: getIntelligence
+      tags: [governance]
+      summary: Get the explainable household intelligence snapshot
+      responses:
+        "200":
+          description: Intelligence snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntelligenceSnapshot"
+  /intelligence/refresh:
+    post:
+      operationId: refreshIntelligence
+      tags: [governance]
+      summary: Refresh persisted advisory intelligence
+      responses:
+        "200":
+          description: Refreshed intelligence snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntelligenceSnapshot"
+  /intelligence/scenario:
+    post:
+      operationId: runIntelligenceScenario
+      tags: [governance]
+      summary: Run a non-mutating contribution pace scenario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IntelligenceScenarioInput"
+      responses:
+        "200":
+          description: Contribution scenario
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContributionScenario"
+  /intelligence/feedback:
+    post:
+      operationId: recordIntelligenceFeedback
+      tags: [governance]
+      summary: Record human feedback on an advisory recommendation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IntelligenceFeedbackInput"
+      responses:
+        "201":
+          description: Recorded recommendation feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationFeedback"
   /audit:
     get:
       operationId: listAuditEvents
@@ -1424,6 +1484,136 @@ components:
       properties:
         decision: { type: string, enum: [approved, rejected] }
         reason: { type: string, minLength: 1, maxLength: 500 }
+    IntelligenceSnapshot:
+      type: object
+      required: [recommendation, analysts, insights, dailyBrief, weeklyReport, monthlyReview]
+      properties:
+        recommendation: { $ref: "#/components/schemas/IntelligenceRecommendation" }
+        analysts:
+          type: array
+          items: { $ref: "#/components/schemas/IntelligenceAnalyst" }
+        insights:
+          type: array
+          items: { $ref: "#/components/schemas/IntelligenceInsight" }
+        dailyBrief: { $ref: "#/components/schemas/DailyBrief" }
+        weeklyReport: { $ref: "#/components/schemas/WeeklyIntelligenceReport" }
+        monthlyReview: { $ref: "#/components/schemas/MonthlyFamilyCapitalReview" }
+    IntelligenceRecommendation:
+      type: object
+      required: [id, analyst, priority, recommendation, reason, evidence, expectedBenefit, potentialDownside, impactOnDuplexGoal, impactOnHouseholdLiquidity, riskLevel, confidence, dataQuality, status, requiredApproval, suggestedNextAction, advisoryOnly, createdAt]
+      properties:
+        id: { type: string }
+        analyst: { type: string }
+        priority: { type: string }
+        recommendation: { type: string }
+        reason: { type: string }
+        evidence: { type: array, items: { type: string } }
+        expectedBenefit: { type: string }
+        potentialDownside: { type: string }
+        impactOnDuplexGoal: { type: string }
+        impactOnHouseholdLiquidity: { type: string }
+        riskLevel: { type: string }
+        confidence: { type: number }
+        dataQuality: { type: string }
+        status: { type: string }
+        requiredApproval: { type: string }
+        suggestedNextAction: { type: string }
+        advisoryOnly: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    IntelligenceAnalyst:
+      type: object
+      required: [id, analyst, scope, summary, dataQuality, confidence, evidence, createdAt]
+      properties:
+        id: { type: string }
+        analyst: { type: string }
+        scope: { type: string }
+        summary: { type: string }
+        dataQuality: { type: string }
+        confidence: { type: number }
+        evidence: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+    IntelligenceInsight:
+      type: object
+      required: [id, scope, title, description, severity, evidence, createdAt]
+      properties:
+        id: { type: string }
+        scope: { type: string }
+        title: { type: string }
+        description: { type: string }
+        severity: { type: string }
+        evidence: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+    DailyBrief:
+      type: object
+      required: [status, safeToDeploy, emergencyReserveMonths, propertyCandidates, topRecommendation]
+      properties:
+        status: { type: string }
+        safeToDeploy: { type: string }
+        emergencyReserveMonths: { type: number }
+        propertyCandidates: { type: number }
+        topRecommendation: { type: string }
+    WeeklyIntelligenceReport:
+      type: object
+      required: [title, summary, sections, generatedAt]
+      properties:
+        title: { type: string }
+        summary: { type: string }
+        sections: { type: array, items: { type: string } }
+        generatedAt: { type: string, format: date-time }
+    MonthlyFamilyCapitalReview:
+      type: object
+      required: [openingNetWorth, closingNetWorth, change, income, expenses, savings, investments, duplexProgress, portfolioPerformance, propertyProgress, riskReview, topFinancialDecisions, nextMonthPriorities]
+      properties:
+        openingNetWorth: { type: string }
+        closingNetWorth: { type: string }
+        change: { type: string }
+        income: { type: string }
+        expenses: { type: string }
+        savings: { type: string }
+        investments: { type: string }
+        duplexProgress: { type: string }
+        portfolioPerformance: { type: string }
+        propertyProgress: { type: string }
+        riskReview: { type: string }
+        topFinancialDecisions: { type: array, items: { type: string } }
+        nextMonthPriorities: { type: array, items: { type: string } }
+    IntelligenceFeedbackInput:
+      type: object
+      required: [recommendationId, feedback]
+      properties:
+        recommendationId: { type: string }
+        feedback: { type: string, enum: [helpful, not_helpful, implemented, dismissed] }
+        note: { type: string, maxLength: 500 }
+    RecommendationFeedback:
+      type: object
+      required: [id, recommendationId, feedback, createdAt, advisoryOnly]
+      properties:
+        id: { type: string }
+        recommendationId: { type: string }
+        feedback: { type: string }
+        note: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        advisoryOnly: { type: boolean }
+    IntelligenceScenarioInput:
+      type: object
+      required: [proposedWeekly]
+      properties:
+        proposedWeekly:
+          type: string
+          pattern: "^[0-9]+(\\.[0-9]{1,2})?$"
+    ContributionScenario:
+      type: object
+      required: [name, proposedWeekly, currentWeeks, proposedWeeks, weeksEarlier, weeklyChangeCents, currentSafeToDeploy, productionDataChanged, householdId]
+      properties:
+        name: { type: string }
+        proposedWeekly: { type: string }
+        currentWeeks: { type: ["number", "null"] }
+        proposedWeeks: { type: ["number", "null"] }
+        weeksEarlier: { type: ["number", "null"] }
+        weeklyChangeCents: { type: number }
+        currentSafeToDeploy: { type: string }
+        productionDataChanged: { type: boolean }
+        householdId: { type: string }
     AuditEventSummary:
       type: object
       required: [id, eventType, actor, entity, entityId, timestamp]

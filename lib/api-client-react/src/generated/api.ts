@@ -36,6 +36,7 @@ import type {
   CashFlowSummary,
   ConflictResponse,
   ContributionInput,
+  ContributionScenario,
   ContributionSummary,
   CreatePropertyCandidateInput,
   CsvImportInput,
@@ -53,6 +54,9 @@ import type {
   IncomeSource,
   IncomeSourceInput,
   IncomeSourceUpdateInput,
+  IntelligenceFeedbackInput,
+  IntelligenceScenarioInput,
+  IntelligenceSnapshot,
   ManualFinancialAccountInput,
   PortfolioSummary,
   PrivacySettingsInput,
@@ -63,6 +67,7 @@ import type {
   PropertySummary,
   PropertyUnderwriting,
   RecommendationDecisionInput,
+  RecommendationFeedback,
   RecommendationSummary,
   ReportDescriptor,
   RiskSummary,
@@ -1953,6 +1958,296 @@ export const useDecideRecommendation = <TError = ErrorType<ForbiddenResponse>,
         TContext
       > => {
       return useMutation(getDecideRecommendationMutationOptions(options));
+    }
+
+export const getGetIntelligenceUrl = () => {
+
+
+
+
+  return `/api/intelligence`
+}
+
+/**
+ * @summary Get the explainable household intelligence snapshot
+ */
+export const getIntelligence = async ( options?: Parameters<typeof customFetch>[1]): Promise<IntelligenceSnapshot> => {
+
+  return customFetch<IntelligenceSnapshot>(getGetIntelligenceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetIntelligenceQueryKey = () => {
+    return [
+    `/api/intelligence`
+    ] as const;
+    }
+
+
+export const getGetIntelligenceQueryOptions = <TData = Awaited<ReturnType<typeof getIntelligence>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getIntelligence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetIntelligenceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getIntelligence>>> = ({ signal }) => getIntelligence({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getIntelligence>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetIntelligenceQueryResult = NonNullable<Awaited<ReturnType<typeof getIntelligence>>>
+export type GetIntelligenceQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the explainable household intelligence snapshot
+ */
+
+export function useGetIntelligence<TData = Awaited<ReturnType<typeof getIntelligence>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getIntelligence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetIntelligenceQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRefreshIntelligenceUrl = () => {
+
+
+
+
+  return `/api/intelligence/refresh`
+}
+
+/**
+ * @summary Refresh persisted advisory intelligence
+ */
+export const refreshIntelligence = async ( options?: Parameters<typeof customFetch>[1]): Promise<IntelligenceSnapshot> => {
+
+  return customFetch<IntelligenceSnapshot>(getRefreshIntelligenceUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRefreshIntelligenceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshIntelligence>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof refreshIntelligence>>, TError,void, TContext> => {
+
+const mutationKey = ['refreshIntelligence'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshIntelligence>>, void> = () => {
+
+
+          return  refreshIntelligence(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RefreshIntelligenceMutationResult = NonNullable<Awaited<ReturnType<typeof refreshIntelligence>>>
+
+    export type RefreshIntelligenceMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Refresh persisted advisory intelligence
+ */
+export const useRefreshIntelligence = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshIntelligence>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof refreshIntelligence>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRefreshIntelligenceMutationOptions(options));
+    }
+
+export const getRunIntelligenceScenarioUrl = () => {
+
+
+
+
+  return `/api/intelligence/scenario`
+}
+
+/**
+ * @summary Run a non-mutating contribution pace scenario
+ */
+export const runIntelligenceScenario = async (intelligenceScenarioInput: IntelligenceScenarioInput, options?: Parameters<typeof customFetch>[1]): Promise<ContributionScenario> => {
+
+  return customFetch<ContributionScenario>(getRunIntelligenceScenarioUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(intelligenceScenarioInput)
+  }
+);}
+
+
+
+
+
+export const getRunIntelligenceScenarioMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runIntelligenceScenario>>, TError,{data: BodyType<IntelligenceScenarioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runIntelligenceScenario>>, TError,{data: BodyType<IntelligenceScenarioInput>}, TContext> => {
+
+const mutationKey = ['runIntelligenceScenario'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runIntelligenceScenario>>, {data: BodyType<IntelligenceScenarioInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  runIntelligenceScenario(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunIntelligenceScenarioMutationResult = NonNullable<Awaited<ReturnType<typeof runIntelligenceScenario>>>
+    export type RunIntelligenceScenarioMutationBody = BodyType<IntelligenceScenarioInput>
+    export type RunIntelligenceScenarioMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Run a non-mutating contribution pace scenario
+ */
+export const useRunIntelligenceScenario = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runIntelligenceScenario>>, TError,{data: BodyType<IntelligenceScenarioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runIntelligenceScenario>>,
+        TError,
+        {data: BodyType<IntelligenceScenarioInput>},
+        TContext
+      > => {
+      return useMutation(getRunIntelligenceScenarioMutationOptions(options));
+    }
+
+export const getRecordIntelligenceFeedbackUrl = () => {
+
+
+
+
+  return `/api/intelligence/feedback`
+}
+
+/**
+ * @summary Record human feedback on an advisory recommendation
+ */
+export const recordIntelligenceFeedback = async (intelligenceFeedbackInput: IntelligenceFeedbackInput, options?: Parameters<typeof customFetch>[1]): Promise<RecommendationFeedback> => {
+
+  return customFetch<RecommendationFeedback>(getRecordIntelligenceFeedbackUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(intelligenceFeedbackInput)
+  }
+);}
+
+
+
+
+
+export const getRecordIntelligenceFeedbackMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordIntelligenceFeedback>>, TError,{data: BodyType<IntelligenceFeedbackInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordIntelligenceFeedback>>, TError,{data: BodyType<IntelligenceFeedbackInput>}, TContext> => {
+
+const mutationKey = ['recordIntelligenceFeedback'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordIntelligenceFeedback>>, {data: BodyType<IntelligenceFeedbackInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordIntelligenceFeedback(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordIntelligenceFeedbackMutationResult = NonNullable<Awaited<ReturnType<typeof recordIntelligenceFeedback>>>
+    export type RecordIntelligenceFeedbackMutationBody = BodyType<IntelligenceFeedbackInput>
+    export type RecordIntelligenceFeedbackMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Record human feedback on an advisory recommendation
+ */
+export const useRecordIntelligenceFeedback = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordIntelligenceFeedback>>, TError,{data: BodyType<IntelligenceFeedbackInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordIntelligenceFeedback>>,
+        TError,
+        {data: BodyType<IntelligenceFeedbackInput>},
+        TContext
+      > => {
+      return useMutation(getRecordIntelligenceFeedbackMutationOptions(options));
     }
 
 export const getListAuditEventsUrl = () => {

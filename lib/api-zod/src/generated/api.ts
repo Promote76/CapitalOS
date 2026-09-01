@@ -875,6 +875,200 @@ export const DecideRecommendationResponse = zod.object({
 
 
 /**
+ * @summary Get the explainable household intelligence snapshot
+ */
+export const GetIntelligenceResponse = zod.object({
+  "recommendation": zod.object({
+  "id": zod.string(),
+  "analyst": zod.string(),
+  "priority": zod.string(),
+  "recommendation": zod.string(),
+  "reason": zod.string(),
+  "evidence": zod.array(zod.string()),
+  "expectedBenefit": zod.string(),
+  "potentialDownside": zod.string(),
+  "impactOnDuplexGoal": zod.string(),
+  "impactOnHouseholdLiquidity": zod.string(),
+  "riskLevel": zod.string(),
+  "confidence": zod.number(),
+  "dataQuality": zod.string(),
+  "status": zod.string(),
+  "requiredApproval": zod.string(),
+  "suggestedNextAction": zod.string(),
+  "advisoryOnly": zod.boolean(),
+  "createdAt": zod.coerce.date()
+}),
+  "analysts": zod.array(zod.object({
+  "id": zod.string(),
+  "analyst": zod.string(),
+  "scope": zod.string(),
+  "summary": zod.string(),
+  "dataQuality": zod.string(),
+  "confidence": zod.number(),
+  "evidence": zod.array(zod.string()),
+  "createdAt": zod.coerce.date()
+})),
+  "insights": zod.array(zod.object({
+  "id": zod.string(),
+  "scope": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "severity": zod.string(),
+  "evidence": zod.array(zod.string()),
+  "createdAt": zod.coerce.date()
+})),
+  "dailyBrief": zod.object({
+  "status": zod.string(),
+  "safeToDeploy": zod.string(),
+  "emergencyReserveMonths": zod.number(),
+  "propertyCandidates": zod.number(),
+  "topRecommendation": zod.string()
+}),
+  "weeklyReport": zod.object({
+  "title": zod.string(),
+  "summary": zod.string(),
+  "sections": zod.array(zod.string()),
+  "generatedAt": zod.coerce.date()
+}),
+  "monthlyReview": zod.object({
+  "openingNetWorth": zod.string(),
+  "closingNetWorth": zod.string(),
+  "change": zod.string(),
+  "income": zod.string(),
+  "expenses": zod.string(),
+  "savings": zod.string(),
+  "investments": zod.string(),
+  "duplexProgress": zod.string(),
+  "portfolioPerformance": zod.string(),
+  "propertyProgress": zod.string(),
+  "riskReview": zod.string(),
+  "topFinancialDecisions": zod.array(zod.string()),
+  "nextMonthPriorities": zod.array(zod.string())
+})
+})
+
+
+/**
+ * @summary Refresh persisted advisory intelligence
+ */
+export const RefreshIntelligenceResponse = zod.object({
+  "recommendation": zod.object({
+  "id": zod.string(),
+  "analyst": zod.string(),
+  "priority": zod.string(),
+  "recommendation": zod.string(),
+  "reason": zod.string(),
+  "evidence": zod.array(zod.string()),
+  "expectedBenefit": zod.string(),
+  "potentialDownside": zod.string(),
+  "impactOnDuplexGoal": zod.string(),
+  "impactOnHouseholdLiquidity": zod.string(),
+  "riskLevel": zod.string(),
+  "confidence": zod.number(),
+  "dataQuality": zod.string(),
+  "status": zod.string(),
+  "requiredApproval": zod.string(),
+  "suggestedNextAction": zod.string(),
+  "advisoryOnly": zod.boolean(),
+  "createdAt": zod.coerce.date()
+}),
+  "analysts": zod.array(zod.object({
+  "id": zod.string(),
+  "analyst": zod.string(),
+  "scope": zod.string(),
+  "summary": zod.string(),
+  "dataQuality": zod.string(),
+  "confidence": zod.number(),
+  "evidence": zod.array(zod.string()),
+  "createdAt": zod.coerce.date()
+})),
+  "insights": zod.array(zod.object({
+  "id": zod.string(),
+  "scope": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "severity": zod.string(),
+  "evidence": zod.array(zod.string()),
+  "createdAt": zod.coerce.date()
+})),
+  "dailyBrief": zod.object({
+  "status": zod.string(),
+  "safeToDeploy": zod.string(),
+  "emergencyReserveMonths": zod.number(),
+  "propertyCandidates": zod.number(),
+  "topRecommendation": zod.string()
+}),
+  "weeklyReport": zod.object({
+  "title": zod.string(),
+  "summary": zod.string(),
+  "sections": zod.array(zod.string()),
+  "generatedAt": zod.coerce.date()
+}),
+  "monthlyReview": zod.object({
+  "openingNetWorth": zod.string(),
+  "closingNetWorth": zod.string(),
+  "change": zod.string(),
+  "income": zod.string(),
+  "expenses": zod.string(),
+  "savings": zod.string(),
+  "investments": zod.string(),
+  "duplexProgress": zod.string(),
+  "portfolioPerformance": zod.string(),
+  "propertyProgress": zod.string(),
+  "riskReview": zod.string(),
+  "topFinancialDecisions": zod.array(zod.string()),
+  "nextMonthPriorities": zod.array(zod.string())
+})
+})
+
+
+/**
+ * @summary Run a non-mutating contribution pace scenario
+ */
+export const runIntelligenceScenarioBodyProposedWeeklyRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+
+
+export const RunIntelligenceScenarioBody = zod.object({
+  "proposedWeekly": zod.string().regex(runIntelligenceScenarioBodyProposedWeeklyRegExp)
+})
+
+export const RunIntelligenceScenarioResponse = zod.object({
+  "name": zod.string(),
+  "proposedWeekly": zod.string(),
+  "currentWeeks": zod.number().nullable(),
+  "proposedWeeks": zod.number().nullable(),
+  "weeksEarlier": zod.number().nullable(),
+  "weeklyChangeCents": zod.number(),
+  "currentSafeToDeploy": zod.string(),
+  "productionDataChanged": zod.boolean(),
+  "householdId": zod.string()
+})
+
+
+/**
+ * @summary Record human feedback on an advisory recommendation
+ */
+export const recordIntelligenceFeedbackBodyNoteMax = 500;
+
+
+
+export const RecordIntelligenceFeedbackBody = zod.object({
+  "recommendationId": zod.string(),
+  "feedback": zod.enum(['helpful', 'not_helpful', 'implemented', 'dismissed']),
+  "note": zod.string().max(recordIntelligenceFeedbackBodyNoteMax).optional()
+})
+
+export const RecordIntelligenceFeedbackResponse = zod.object({
+  "id": zod.string(),
+  "recommendationId": zod.string(),
+  "feedback": zod.string(),
+  "note": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "advisoryOnly": zod.boolean()
+})
+
+
+/**
  * @summary List append-only audit events
  */
 export const ListAuditEventsResponseItem = zod.object({

@@ -517,6 +517,135 @@ export interface RecommendationDecisionInput {
   reason: string;
 }
 
+export interface IntelligenceRecommendation {
+  id: string;
+  analyst: string;
+  priority: string;
+  recommendation: string;
+  reason: string;
+  evidence: string[];
+  expectedBenefit: string;
+  potentialDownside: string;
+  impactOnDuplexGoal: string;
+  impactOnHouseholdLiquidity: string;
+  riskLevel: string;
+  confidence: number;
+  dataQuality: string;
+  status: string;
+  requiredApproval: string;
+  suggestedNextAction: string;
+  advisoryOnly: boolean;
+  createdAt: string;
+}
+
+export interface IntelligenceAnalyst {
+  id: string;
+  analyst: string;
+  scope: string;
+  summary: string;
+  dataQuality: string;
+  confidence: number;
+  evidence: string[];
+  createdAt: string;
+}
+
+export interface IntelligenceInsight {
+  id: string;
+  scope: string;
+  title: string;
+  description: string;
+  severity: string;
+  evidence: string[];
+  createdAt: string;
+}
+
+export interface DailyBrief {
+  status: string;
+  safeToDeploy: string;
+  emergencyReserveMonths: number;
+  propertyCandidates: number;
+  topRecommendation: string;
+}
+
+export interface WeeklyIntelligenceReport {
+  title: string;
+  summary: string;
+  sections: string[];
+  generatedAt: string;
+}
+
+export interface MonthlyFamilyCapitalReview {
+  openingNetWorth: string;
+  closingNetWorth: string;
+  change: string;
+  income: string;
+  expenses: string;
+  savings: string;
+  investments: string;
+  duplexProgress: string;
+  portfolioPerformance: string;
+  propertyProgress: string;
+  riskReview: string;
+  topFinancialDecisions: string[];
+  nextMonthPriorities: string[];
+}
+
+export interface IntelligenceSnapshot {
+  recommendation: IntelligenceRecommendation;
+  analysts: IntelligenceAnalyst[];
+  insights: IntelligenceInsight[];
+  dailyBrief: DailyBrief;
+  weeklyReport: WeeklyIntelligenceReport;
+  monthlyReview: MonthlyFamilyCapitalReview;
+}
+
+export type IntelligenceFeedbackInputFeedback = typeof IntelligenceFeedbackInputFeedback[keyof typeof IntelligenceFeedbackInputFeedback];
+
+
+export const IntelligenceFeedbackInputFeedback = {
+  helpful: 'helpful',
+  not_helpful: 'not_helpful',
+  implemented: 'implemented',
+  dismissed: 'dismissed',
+} as const;
+
+export interface IntelligenceFeedbackInput {
+  recommendationId: string;
+  feedback: IntelligenceFeedbackInputFeedback;
+  /** @maxLength 500 */
+  note?: string;
+}
+
+export interface RecommendationFeedback {
+  id: string;
+  recommendationId: string;
+  feedback: string;
+  /** @nullable */
+  note?: string | null;
+  createdAt: string;
+  advisoryOnly: boolean;
+}
+
+export interface IntelligenceScenarioInput {
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  proposedWeekly: string;
+}
+
+export interface ContributionScenario {
+  name: string;
+  proposedWeekly: string;
+  /** @nullable */
+  currentWeeks: number | null;
+  /** @nullable */
+  proposedWeeks: number | null;
+  /** @nullable */
+  weeksEarlier: number | null;
+  weeklyChangeCents: number;
+  currentSafeToDeploy: string;
+  productionDataChanged: boolean;
+  householdId: string;
+}
+
 export interface AuditEventSummary {
   id: string;
   eventType: string;

@@ -3,3 +3,4 @@
 - [Additive development seeding](capital-os-seed-evolution.md) — evolve an existing development household in place when new seed capabilities are added; never recreate it because one sleeve is missing.
 - [OpenAPI and pinned Zod](openapi-zod-compatibility.md) — avoid unconstrained object schemas that generate APIs newer than the workspace’s pinned Zod version supports.
 - [Generated query hook options](query-hook-options.md) — custom React Query options need the matching generated query key supplied explicitly.
+- [Derived intelligence hydration](capital-os-intelligence-hydration.md) — derived advisory records must self-hydrate once after schema evolution so a first read is never an empty intelligence view.

@@ -1207,6 +1207,43 @@ body { background: var(--surface-page); }
 .protection-grid div { display:grid; gap:5px; padding:11px; border:1px solid var(--border-default); border-radius:8px; background:var(--surface-soft); }
 .protection-grid span { color:var(--text-muted); font-size:10px; }
 .protection-grid strong { color:var(--text-primary); font-size:11px; }
+.reconciliation-summary { display:grid; gap:8px; margin:18px 0 14px; }
+.reconciliation-summary > strong { color:var(--text-primary); font:500 18px var(--app-font-display); letter-spacing:-.03em; }
+.reconciliation-summary p { margin:0; color:var(--text-secondary); font-size:11px; line-height:1.5; }
+.micro-live-history { display:grid; gap:0; border-top:1px solid var(--border-default); }
+.micro-live-history-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--border-default); }
+.micro-live-history-row > div { display:grid; gap:3px; }
+.micro-live-history-row strong { color:var(--text-primary); font-size:11px; }
+.micro-live-history-row span { color:var(--text-muted); font-size:10px; }
+.snapshot-facts { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:18px 0 3px; }
+.snapshot-facts div { display:grid; gap:4px; padding:10px; border:1px solid var(--border-default); border-radius:8px; background:var(--surface-soft); }
+.snapshot-facts span { color:var(--text-muted); font-size:10px; }
+.snapshot-facts strong { color:var(--text-primary); font:600 13px var(--app-font-mono); }
+.micro-live-snapshot-list { display:grid; gap:0; }
+.micro-live-empty { display:flex; align-items:flex-start; gap:8px; padding:18px 0 2px; color:var(--text-secondary); font-size:11px; line-height:1.5; }
+.micro-live-empty svg { flex:0 0 auto; color:var(--color-success); }
+.micro-live-empty div { display:grid; gap:3px; }
+.micro-live-empty strong { color:var(--text-primary); }
+.incident-list, .review-list, .requirement-list { display:grid; gap:10px; margin-top:16px; }
+.incident-card { padding:14px; border:1px solid #F3D0C8; border-radius:10px; background:#FFF9F7; }
+.incident-card-header { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
+.incident-card-header > div { display:grid; gap:8px; }
+.incident-card-header h3 { margin:0; color:var(--text-primary); font-size:14px; }
+.incident-card-header .btn { flex:0 0 auto; min-height:31px; font-size:10px; }
+.incident-card > p { margin:12px 0; color:var(--text-secondary); font-size:11px; line-height:1.5; }
+.incident-meta { display:flex; flex-wrap:wrap; gap:8px 16px; color:var(--text-muted); font:10px var(--app-font-mono); text-transform:uppercase; }
+.incident-review-form { display:grid; gap:10px; margin-top:14px; padding-top:14px; border-top:1px solid #F3D0C8; }
+.incident-review-form .field { display:grid; gap:5px; }
+.incident-review-form label { color:var(--text-primary); font-size:10px; font-weight:600; }
+.incident-review-form label span { color:var(--text-muted); font-weight:400; }
+.incident-review-form input, .incident-review-form textarea { width:100%; padding:9px 10px; border:1px solid var(--border-default); border-radius:7px; background:#fff; color:var(--text-primary); font:11px var(--app-font-sans); }
+.incident-review-form textarea { resize:vertical; }
+.review-row, .requirement-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:11px 0; border-top:1px solid var(--border-default); }
+.review-row > div, .requirement-row > div { display:grid; gap:4px; min-width:0; }
+.review-row strong, .requirement-row strong { color:var(--text-primary); font-size:11px; line-height:1.4; }
+.review-row span:not(.status), .requirement-row span:not(.status) { color:var(--text-muted); font-size:10px; }
+.requirement-row .status { width:max-content; margin-top:2px; }
+.requirement-row .text-link { flex:0 0 auto; padding-top:2px; font-size:10px; }
 .loading-card, .error-card { display:flex; align-items:center; gap:10px; color:var(--text-secondary); font-size:12px; }
 .error-card strong { flex:1; color:var(--text-primary); }
 @media (max-width: 700px) {
@@ -1218,4 +1255,6 @@ body { background: var(--surface-page); }
   .execution-timeline { display:grid; gap:9px; }
   .timeline-step svg { display:none; }
   .timeline-step strong { white-space:normal; }
+  .incident-card-header { display:grid; }
+  .incident-card-header .btn { justify-self:start; }
 }

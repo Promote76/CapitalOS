@@ -64,6 +64,13 @@ import type {
   ManualFinancialAccountInput,
   MicroLiveArmRequest,
   MicroLiveEnablementReview,
+  MicroLiveFillSnapshot,
+  MicroLiveIncident,
+  MicroLiveIncidentReview,
+  MicroLiveIncidentReviewInput,
+  MicroLivePositionSnapshot,
+  MicroLiveReactivationRequirement,
+  MicroLiveReconciliationRun,
   MicroLiveRehearsal,
   MicroLiveSnapshot,
   MicroLiveVenueApproval,
@@ -1973,6 +1980,682 @@ export const useArmMicroLive = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getArmMicroLiveMutationOptions(options));
+    }
+
+export const getListMicroLiveReconciliationRunsUrl = () => {
+
+
+
+
+  return `/api/micro-live/reconciliation-runs`
+}
+
+/**
+ * @summary List persisted Micro-Live reconciliation runs
+ */
+export const listMicroLiveReconciliationRuns = async ( options?: Parameters<typeof customFetch>[1]): Promise<MicroLiveReconciliationRun[]> => {
+
+  return customFetch<MicroLiveReconciliationRun[]>(getListMicroLiveReconciliationRunsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMicroLiveReconciliationRunsQueryKey = () => {
+    return [
+    `/api/micro-live/reconciliation-runs`
+    ] as const;
+    }
+
+
+export const getListMicroLiveReconciliationRunsQueryOptions = <TData = Awaited<ReturnType<typeof listMicroLiveReconciliationRuns>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMicroLiveReconciliationRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMicroLiveReconciliationRunsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMicroLiveReconciliationRuns>>> = ({ signal }) => listMicroLiveReconciliationRuns({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMicroLiveReconciliationRuns>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMicroLiveReconciliationRunsQueryResult = NonNullable<Awaited<ReturnType<typeof listMicroLiveReconciliationRuns>>>
+export type ListMicroLiveReconciliationRunsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List persisted Micro-Live reconciliation runs
+ */
+
+export function useListMicroLiveReconciliationRuns<TData = Awaited<ReturnType<typeof listMicroLiveReconciliationRuns>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMicroLiveReconciliationRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMicroLiveReconciliationRunsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRunMicroLiveReconciliationUrl = () => {
+
+
+
+
+  return `/api/micro-live/reconciliation-runs`
+}
+
+/**
+ * @summary Persist a venue-authoritative Micro-Live reconciliation run
+ */
+export const runMicroLiveReconciliation = async ( options?: Parameters<typeof customFetch>[1]): Promise<MicroLiveReconciliationRun> => {
+
+  return customFetch<MicroLiveReconciliationRun>(getRunMicroLiveReconciliationUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRunMicroLiveReconciliationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runMicroLiveReconciliation>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runMicroLiveReconciliation>>, TError,void, TContext> => {
+
+const mutationKey = ['runMicroLiveReconciliation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runMicroLiveReconciliation>>, void> = () => {
+
+
+          return  runMicroLiveReconciliation(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunMicroLiveReconciliationMutationResult = NonNullable<Awaited<ReturnType<typeof runMicroLiveReconciliation>>>
+
+    export type RunMicroLiveReconciliationMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Persist a venue-authoritative Micro-Live reconciliation run
+ */
+export const useRunMicroLiveReconciliation = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runMicroLiveReconciliation>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runMicroLiveReconciliation>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRunMicroLiveReconciliationMutationOptions(options));
+    }
+
+export const getListMicroLivePositionSnapshotsUrl = () => {
+
+
+
+
+  return `/api/micro-live/position-snapshots`
+}
+
+/**
+ * @summary List persisted Micro-Live position snapshots
+ */
+export const listMicroLivePositionSnapshots = async ( options?: Parameters<typeof customFetch>[1]): Promise<MicroLivePositionSnapshot[]> => {
+
+  return customFetch<MicroLivePositionSnapshot[]>(getListMicroLivePositionSnapshotsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMicroLivePositionSnapshotsQueryKey = () => {
+    return [
+    `/api/micro-live/position-snapshots`
+    ] as const;
+    }
+
+
+export const getListMicroLivePositionSnapshotsQueryOptions = <TData = Awaited<ReturnType<typeof listMicroLivePositionSnapshots>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMicroLivePositionSnapshots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMicroLivePositionSnapshotsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMicroLivePositionSnapshots>>> = ({ signal }) => listMicroLivePositionSnapshots({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMicroLivePositionSnapshots>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMicroLivePositionSnapshotsQueryResult = NonNullable<Awaited<ReturnType<typeof listMicroLivePositionSnapshots>>>
+export type ListMicroLivePositionSnapshotsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List persisted Micro-Live position snapshots
+ */
+
+export function useListMicroLivePositionSnapshots<TData = Awaited<ReturnType<typeof listMicroLivePositionSnapshots>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMicroLivePositionSnapshots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMicroLivePositionSnapshotsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListMicroLiveFillSnapshotsUrl = () => {
+
+
+
+
+  return `/api/micro-live/fill-snapshots`
+}
+
+/**
+ * @summary List persisted Micro-Live fill snapshots
+ */
+export const listMicroLiveFillSnapshots = async ( options?: Parameters<typeof customFetch>[1]): Promise<MicroLiveFillSnapshot[]> => {
+
+  return customFetch<MicroLiveFillSnapshot[]>(getListMicroLiveFillSnapshotsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMicroLiveFillSnapshotsQueryKey = () => {
+    return [
+    `/api/micro-live/fill-snapshots`
+    ] as const;
+    }
+
+
+export const getListMicroLiveFillSnapshotsQueryOptions = <TData = Awaited<ReturnType<typeof listMicroLiveFillSnapshots>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMicroLiveFillSnapshots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMicroLiveFillSnapshotsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMicroLiveFillSnapshots>>> = ({ signal }) => listMicroLiveFillSnapshots({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMicroLiveFillSnapshots>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMicroLiveFillSnapshotsQueryResult = NonNullable<Awaited<ReturnType<typeof listMicroLiveFillSnapshots>>>
+export type ListMicroLiveFillSnapshotsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List persisted Micro-Live fill snapshots
+ */
+
+export function useListMicroLiveFillSnapshots<TData = Awaited<ReturnType<typeof listMicroLiveFillSnapshots>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMicroLiveFillSnapshots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMicroLiveFillSnapshotsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListMicroLiveIncidentsUrl = () => {
+
+
+
+
+  return `/api/micro-live/incidents`
+}
+
+/**
+ * @summary List open Micro-Live incidents
+ */
+export const listMicroLiveIncidents = async ( options?: Parameters<typeof customFetch>[1]): Promise<MicroLiveIncident[]> => {
+
+  return customFetch<MicroLiveIncident[]>(getListMicroLiveIncidentsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMicroLiveIncidentsQueryKey = () => {
+    return [
+    `/api/micro-live/incidents`
+    ] as const;
+    }
+
+
+export const getListMicroLiveIncidentsQueryOptions = <TData = Awaited<ReturnType<typeof listMicroLiveIncidents>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMicroLiveIncidents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMicroLiveIncidentsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMicroLiveIncidents>>> = ({ signal }) => listMicroLiveIncidents({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMicroLiveIncidents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMicroLiveIncidentsQueryResult = NonNullable<Awaited<ReturnType<typeof listMicroLiveIncidents>>>
+export type ListMicroLiveIncidentsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List open Micro-Live incidents
+ */
+
+export function useListMicroLiveIncidents<TData = Awaited<ReturnType<typeof listMicroLiveIncidents>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMicroLiveIncidents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMicroLiveIncidentsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateMicroLiveIncidentReviewUrl = (incidentId: string,) => {
+
+
+
+
+  return `/api/micro-live/incidents/${incidentId}/reviews`
+}
+
+/**
+ * @summary Record a human post-incident review
+ */
+export const createMicroLiveIncidentReview = async (incidentId: string,
+    microLiveIncidentReviewInput: MicroLiveIncidentReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<MicroLiveIncidentReview> => {
+
+  return customFetch<MicroLiveIncidentReview>(getCreateMicroLiveIncidentReviewUrl(incidentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(microLiveIncidentReviewInput)
+  }
+);}
+
+
+
+
+
+export const getCreateMicroLiveIncidentReviewMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMicroLiveIncidentReview>>, TError,{incidentId: string;data: BodyType<MicroLiveIncidentReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMicroLiveIncidentReview>>, TError,{incidentId: string;data: BodyType<MicroLiveIncidentReviewInput>}, TContext> => {
+
+const mutationKey = ['createMicroLiveIncidentReview'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMicroLiveIncidentReview>>, {incidentId: string;data: BodyType<MicroLiveIncidentReviewInput>}> = (props) => {
+          const {incidentId,data} = props ?? {};
+
+          return  createMicroLiveIncidentReview(incidentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMicroLiveIncidentReviewMutationResult = NonNullable<Awaited<ReturnType<typeof createMicroLiveIncidentReview>>>
+    export type CreateMicroLiveIncidentReviewMutationBody = BodyType<MicroLiveIncidentReviewInput>
+    export type CreateMicroLiveIncidentReviewMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Record a human post-incident review
+ */
+export const useCreateMicroLiveIncidentReview = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMicroLiveIncidentReview>>, TError,{incidentId: string;data: BodyType<MicroLiveIncidentReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMicroLiveIncidentReview>>,
+        TError,
+        {incidentId: string;data: BodyType<MicroLiveIncidentReviewInput>},
+        TContext
+      > => {
+      return useMutation(getCreateMicroLiveIncidentReviewMutationOptions(options));
+    }
+
+export const getListMicroLiveIncidentReviewsUrl = () => {
+
+
+
+
+  return `/api/micro-live/incident-reviews`
+}
+
+/**
+ * @summary List persisted human post-incident reviews
+ */
+export const listMicroLiveIncidentReviews = async ( options?: Parameters<typeof customFetch>[1]): Promise<MicroLiveIncidentReview[]> => {
+
+  return customFetch<MicroLiveIncidentReview[]>(getListMicroLiveIncidentReviewsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMicroLiveIncidentReviewsQueryKey = () => {
+    return [
+    `/api/micro-live/incident-reviews`
+    ] as const;
+    }
+
+
+export const getListMicroLiveIncidentReviewsQueryOptions = <TData = Awaited<ReturnType<typeof listMicroLiveIncidentReviews>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMicroLiveIncidentReviews>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMicroLiveIncidentReviewsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMicroLiveIncidentReviews>>> = ({ signal }) => listMicroLiveIncidentReviews({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMicroLiveIncidentReviews>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMicroLiveIncidentReviewsQueryResult = NonNullable<Awaited<ReturnType<typeof listMicroLiveIncidentReviews>>>
+export type ListMicroLiveIncidentReviewsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List persisted human post-incident reviews
+ */
+
+export function useListMicroLiveIncidentReviews<TData = Awaited<ReturnType<typeof listMicroLiveIncidentReviews>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMicroLiveIncidentReviews>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMicroLiveIncidentReviewsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListMicroLiveReactivationRequirementsUrl = () => {
+
+
+
+
+  return `/api/micro-live/reactivation-requirements`
+}
+
+/**
+ * @summary List human reactivation requirements
+ */
+export const listMicroLiveReactivationRequirements = async ( options?: Parameters<typeof customFetch>[1]): Promise<MicroLiveReactivationRequirement[]> => {
+
+  return customFetch<MicroLiveReactivationRequirement[]>(getListMicroLiveReactivationRequirementsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMicroLiveReactivationRequirementsQueryKey = () => {
+    return [
+    `/api/micro-live/reactivation-requirements`
+    ] as const;
+    }
+
+
+export const getListMicroLiveReactivationRequirementsQueryOptions = <TData = Awaited<ReturnType<typeof listMicroLiveReactivationRequirements>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMicroLiveReactivationRequirements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMicroLiveReactivationRequirementsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMicroLiveReactivationRequirements>>> = ({ signal }) => listMicroLiveReactivationRequirements({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMicroLiveReactivationRequirements>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMicroLiveReactivationRequirementsQueryResult = NonNullable<Awaited<ReturnType<typeof listMicroLiveReactivationRequirements>>>
+export type ListMicroLiveReactivationRequirementsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List human reactivation requirements
+ */
+
+export function useListMicroLiveReactivationRequirements<TData = Awaited<ReturnType<typeof listMicroLiveReactivationRequirements>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMicroLiveReactivationRequirements>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMicroLiveReactivationRequirementsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCompleteMicroLiveReactivationRequirementUrl = (requirementId: string,) => {
+
+
+
+
+  return `/api/micro-live/reactivation-requirements/${requirementId}/complete`
+}
+
+/**
+ * @summary Complete a human reactivation requirement
+ */
+export const completeMicroLiveReactivationRequirement = async (requirementId: string, options?: Parameters<typeof customFetch>[1]): Promise<MicroLiveReactivationRequirement> => {
+
+  return customFetch<MicroLiveReactivationRequirement>(getCompleteMicroLiveReactivationRequirementUrl(requirementId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCompleteMicroLiveReactivationRequirementMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeMicroLiveReactivationRequirement>>, TError,{requirementId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof completeMicroLiveReactivationRequirement>>, TError,{requirementId: string}, TContext> => {
+
+const mutationKey = ['completeMicroLiveReactivationRequirement'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof completeMicroLiveReactivationRequirement>>, {requirementId: string}> = (props) => {
+          const {requirementId} = props ?? {};
+
+          return  completeMicroLiveReactivationRequirement(requirementId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CompleteMicroLiveReactivationRequirementMutationResult = NonNullable<Awaited<ReturnType<typeof completeMicroLiveReactivationRequirement>>>
+
+    export type CompleteMicroLiveReactivationRequirementMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Complete a human reactivation requirement
+ */
+export const useCompleteMicroLiveReactivationRequirement = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof completeMicroLiveReactivationRequirement>>, TError,{requirementId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof completeMicroLiveReactivationRequirement>>,
+        TError,
+        {requirementId: string},
+        TContext
+      > => {
+      return useMutation(getCompleteMicroLiveReactivationRequirementMutationOptions(options));
     }
 
 export const getCreateResearchStrategyUrl = () => {

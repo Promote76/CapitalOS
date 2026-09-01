@@ -6,9 +6,9 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type MicroLiveSnapshotReconciliationMismatches = {
+export interface MicroLiveReconciliationMismatches {
   positionMismatch: boolean;
   orderMismatch: boolean;
   missingInternalFills: string[];
   orphanedInternalFills: string[];
-};
+}

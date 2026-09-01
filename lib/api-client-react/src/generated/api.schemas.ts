@@ -639,6 +639,147 @@ export interface MicroLiveGate {
   passed: boolean;
 }
 
+export type MicroLivePositionSnapshotMetadata = { [key: string]: unknown };
+
+export interface MicroLivePositionSnapshot {
+  id: string;
+  householdId: string;
+  /** @nullable */
+  sessionId?: string | null;
+  /** @nullable */
+  venueId?: string | null;
+  marketId: string;
+  source: string;
+  quantity: string;
+  averagePrice: string;
+  markPrice: string;
+  notional: string;
+  metadata?: MicroLivePositionSnapshotMetadata;
+  capturedAt: string;
+}
+
+export type MicroLiveFillSnapshotMetadata = { [key: string]: unknown };
+
+export interface MicroLiveFillSnapshot {
+  id: string;
+  householdId: string;
+  /** @nullable */
+  sessionId?: string | null;
+  /** @nullable */
+  venueId?: string | null;
+  externalFillId: string;
+  marketId: string;
+  source: string;
+  side: string;
+  quantity: string;
+  price: string;
+  fee: string;
+  metadata?: MicroLiveFillSnapshotMetadata;
+  capturedAt: string;
+}
+
+export interface MicroLiveReconciliationMismatches {
+  positionMismatch: boolean;
+  orderMismatch: boolean;
+  missingInternalFills: string[];
+  orphanedInternalFills: string[];
+}
+
+export type MicroLiveReconciliationRunInternalState = { [key: string]: unknown };
+
+export type MicroLiveReconciliationRunVenueState = { [key: string]: unknown };
+
+export interface MicroLiveReconciliationRun {
+  id: string;
+  householdId: string;
+  /** @nullable */
+  sessionId?: string | null;
+  status: string;
+  mismatches: MicroLiveReconciliationMismatches;
+  internalState: MicroLiveReconciliationRunInternalState;
+  venueState: MicroLiveReconciliationRunVenueState;
+  completedAt: string;
+}
+
+export interface MicroLiveIncident {
+  id: string;
+  householdId: string;
+  /** @nullable */
+  sessionId?: string | null;
+  severity: string;
+  incidentType: string;
+  title: string;
+  timeline: string[];
+  capitalImpact: string;
+  status: string;
+  createdAt: string;
+  /** @nullable */
+  resolvedAt: string | null;
+  hasReview: boolean;
+  openRequirementCount: number;
+}
+
+export interface MicroLiveIncidentReviewInput {
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  rootCause: string;
+  /** @pattern ^-?[0-9]+(\.[0-9]{1,2})?$ */
+  capitalImpact: string;
+  /**
+     * @maxItems 20
+     * @items.minLength 1
+     */
+  safeguardsWorked: string[];
+  /**
+     * @maxItems 20
+     * @items.minLength 1
+     */
+  requiredFixes: string[];
+  /**
+     * @minItems 1
+     * @maxItems 20
+     * @items.minLength 1
+     */
+  reactivationRequirements: string[];
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
+}
+
+export interface MicroLiveReactivationRequirement {
+  id: string;
+  householdId: string;
+  incidentId: string;
+  reviewId: string;
+  requirement: string;
+  status: string;
+  /** @nullable */
+  completedBy?: string | null;
+  /** @nullable */
+  completedAt?: string | null;
+  createdAt: string;
+}
+
+export interface MicroLiveIncidentReview {
+  id: string;
+  householdId: string;
+  incidentId: string;
+  reviewedBy: string;
+  rootCause: string;
+  capitalImpact: string;
+  safeguardsWorked: string[];
+  requiredFixes: string[];
+  reactivationRequirements: string[];
+  /** @nullable */
+  notes?: string | null;
+  reviewedAt: string;
+  requirements: MicroLiveReactivationRequirement[];
+}
+
 export interface MicroLiveVenueApprovalRequest {
   /** @minLength 1 */
   credentialsReference: string;
@@ -775,25 +916,14 @@ export type MicroLiveSnapshotGuardian = {
   independentDeployment: string;
 };
 
-export type MicroLiveSnapshotReconciliationMismatches = {
-  positionMismatch: boolean;
-  orderMismatch: boolean;
-  missingInternalFills: string[];
-  orphanedInternalFills: string[];
-};
-
 export type MicroLiveSnapshotReconciliation = {
+  /** @nullable */
+  runId: string | null;
   status: string;
   action: string;
-  mismatches: MicroLiveSnapshotReconciliationMismatches;
-};
-
-export type MicroLiveSnapshotIncidentsItem = {
-  id?: string;
-  severity?: string;
-  incidentType?: string;
-  title?: string;
-  status?: string;
+  mismatches: MicroLiveReconciliationMismatches;
+  /** @nullable */
+  completedAt: string | null;
 };
 
 export type MicroLiveSnapshotEventsItem = {
@@ -824,9 +954,14 @@ export interface MicroLiveSnapshot {
   enablement: MicroLiveSnapshotEnablement;
   guardian: MicroLiveSnapshotGuardian;
   reconciliation: MicroLiveSnapshotReconciliation;
+  reconciliationRuns: MicroLiveReconciliationRun[];
+  positionSnapshots: MicroLivePositionSnapshot[];
+  fillSnapshots: MicroLiveFillSnapshot[];
   rehearsal: MicroLiveRehearsal;
   timeline: string[];
-  incidents: MicroLiveSnapshotIncidentsItem[];
+  incidents: MicroLiveIncident[];
+  incidentReviews: MicroLiveIncidentReview[];
+  reactivationRequirements: MicroLiveReactivationRequirement[];
   events: MicroLiveSnapshotEventsItem[];
   safety: MicroLiveSnapshotSafety;
 }

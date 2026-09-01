@@ -1,10 +1,16 @@
 import { and, desc, eq } from "drizzle-orm";
 import {
   auditEvents,
+  executionFills,
+  fillSnapshots,
   guardianHeartbeats,
   microLivePolicies,
   microLiveSessions,
   orderEvents,
+  positionSnapshots,
+  postIncidentReviews,
+  reactivationRequirements,
+  reconciliationRuns,
   tradingIncidents,
   venueRegistry,
 } from "@workspace/db";
@@ -90,17 +96,101 @@ async function ensureMicroLiveSeed() {
   return { ...ids, policy, venues, session };
 }
 
+const emptyMismatches = {
+  positionMismatch: false,
+  orderMismatch: false,
+  missingInternalFills: [] as string[],
+  orphanedInternalFills: [] as string[],
+};
+
+function asCents(value: string | null | undefined) {
+  const parsed = Number(value ?? "0");
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string" && item.trim().length > 0);
+}
+
+function toReconciliationRun(run: typeof reconciliationRuns.$inferSelect) {
+  return {
+    ...run,
+    mismatches: { ...emptyMismatches, ...(run.mismatches as Record<string, unknown>) },
+  };
+}
+
+function toIncident(
+  incident: typeof tradingIncidents.$inferSelect,
+  reviews: Array<typeof postIncidentReviews.$inferSelect>,
+  requirements: Array<typeof reactivationRequirements.$inferSelect>,
+) {
+  const incidentRequirements = requirements.filter((requirement) => requirement.incidentId === incident.id);
+  return {
+    ...incident,
+    hasReview: reviews.some((review) => review.incidentId === incident.id),
+    openRequirementCount: incidentRequirements.filter((requirement) => requirement.status !== "COMPLETE").length,
+  };
+}
+
+function toIncidentReview(
+  review: typeof postIncidentReviews.$inferSelect,
+  requirements: Array<typeof reactivationRequirements.$inferSelect>,
+) {
+  return {
+    ...review,
+    requirements: requirements.filter((requirement) => requirement.reviewId === review.id),
+  };
+}
+
+async function ensureMicroLiveBaseline(session: typeof microLiveSessions.$inferSelect) {
+  const [existingRun] = await db
+    .select()
+    .from(reconciliationRuns)
+    .where(and(eq(reconciliationRuns.householdId, session.householdId), eq(reconciliationRuns.sessionId, session.id)))
+    .orderBy(desc(reconciliationRuns.completedAt))
+    .limit(1);
+  if (existingRun) return existingRun;
+
+  const capturedAt = new Date();
+  const positionValues = [
+    { source: "INTERNAL", metadata: { authority: "capital_os_oms", baseline: true } },
+    { source: "VENUE", metadata: { authority: "simulated_rehearsal_adapter", baseline: true } },
+  ].map((position) => ({
+    householdId: session.householdId,
+    sessionId: session.id,
+    venueId: session.venueId,
+    marketId: "sandbox",
+    source: position.source,
+    quantity: "0",
+    averagePrice: "0",
+    markPrice: "0",
+    notional: "0",
+    metadata: position.metadata,
+    capturedAt,
+  }));
+  await db.insert(positionSnapshots).values(positionValues);
+  const [run] = await db.insert(reconciliationRuns).values({
+    householdId: session.householdId,
+    sessionId: session.id,
+    status: "CLEAN",
+    mismatches: emptyMismatches,
+    internalState: { positionCents: 0, openOrders: 0, fillIds: [], source: "capital_os_oms" },
+    venueState: { positionCents: 0, openOrders: 0, fillIds: [], source: "simulated_rehearsal_adapter" },
+    completedAt: capturedAt,
+  }).returning();
+  return run;
+}
+
 export async function getMicroLiveSnapshot() {
   const { policy, venues, session } = await ensureMicroLiveSeed();
+  await ensureMicroLiveBaseline(session);
   const rehearsal = runLiveRehearsal();
-  const reconciliation = reconcileExecutionState({
-    internalPositionCents: 0,
-    venuePositionCents: 0,
-    internalOpenOrders: 0,
-    venueOpenOrders: 0,
-    internalFillIds: [],
-    venueFillIds: [],
-  });
+  const [latestReconciliation] = await db.select().from(reconciliationRuns)
+    .where(and(eq(reconciliationRuns.householdId, session.householdId), eq(reconciliationRuns.sessionId, session.id)))
+    .orderBy(desc(reconciliationRuns.completedAt)).limit(1);
+  const reconciliation = latestReconciliation
+    ? { ...reconcileExecutionState({ internalPositionCents: 0, venuePositionCents: 0, internalOpenOrders: 0, venueOpenOrders: 0, internalFillIds: [], venueFillIds: [] }), clean: latestReconciliation.status === "CLEAN", mismatches: { ...emptyMismatches, ...(latestReconciliation.mismatches as Record<string, unknown>) }, action: latestReconciliation.status === "CLEAN" ? "CONTINUE" as const : "STOP_CANCEL_FETCH_REBUILD_VERIFY" as const }
+    : reconcileExecutionState({ internalPositionCents: 0, venuePositionCents: 0, internalOpenOrders: 0, venueOpenOrders: 0, internalFillIds: [], venueFillIds: [] });
   const guardian = guardianDecision({
     liveStatus: session.status as "DISABLED" | "ARMED" | "ACTIVE" | "SAFE_MODE" | "STOP" | "EVACUATE" | "LOCKED",
     heartbeatAgeMs: 0,
@@ -143,7 +233,15 @@ export async function getMicroLiveSnapshot() {
     protectedCapitalAccessible: false,
   });
   const [heartbeat] = await db.select().from(guardianHeartbeats).where(eq(guardianHeartbeats.householdId, session.householdId)).orderBy(desc(guardianHeartbeats.lastHeartbeatAt)).limit(1);
-  const incidents = await db.select().from(tradingIncidents).where(eq(tradingIncidents.householdId, session.householdId)).orderBy(desc(tradingIncidents.createdAt)).limit(10);
+  const [allIncidents, reviews, requirements, reconciliationHistory, positions, fills] = await Promise.all([
+    db.select().from(tradingIncidents).where(and(eq(tradingIncidents.householdId, session.householdId), eq(tradingIncidents.status, "OPEN"))).orderBy(desc(tradingIncidents.createdAt)).limit(20),
+    db.select().from(postIncidentReviews).where(eq(postIncidentReviews.householdId, session.householdId)).orderBy(desc(postIncidentReviews.reviewedAt)).limit(20),
+    db.select().from(reactivationRequirements).where(eq(reactivationRequirements.householdId, session.householdId)).orderBy(desc(reactivationRequirements.createdAt)).limit(50),
+    db.select().from(reconciliationRuns).where(eq(reconciliationRuns.householdId, session.householdId)).orderBy(desc(reconciliationRuns.completedAt)).limit(20),
+    db.select().from(positionSnapshots).where(eq(positionSnapshots.householdId, session.householdId)).orderBy(desc(positionSnapshots.capturedAt)).limit(50),
+    db.select().from(fillSnapshots).where(eq(fillSnapshots.householdId, session.householdId)).orderBy(desc(fillSnapshots.capturedAt)).limit(50),
+  ]);
+  const incidents = allIncidents.map((incident) => toIncident(incident, reviews, requirements));
   const events = await db.select().from(orderEvents).where(eq(orderEvents.orderIntentId, session.id)).orderBy(desc(orderEvents.createdAt)).limit(20);
   return {
     status: session.status,
@@ -171,7 +269,10 @@ export async function getMicroLiveSnapshot() {
     readiness,
     enablement,
     guardian: { status: heartbeat?.status ?? "HEALTHY", lastHeartbeatAt: heartbeat?.lastHeartbeatAt ?? null, decision: guardian.action, reason: guardian.reason, independentDeployment: "Guardian is modeled as a separate process boundary for future independent hosting." },
-    reconciliation: { status: reconciliation.clean ? "CLEAN" : "FAILURE", action: reconciliation.action, mismatches: reconciliation.mismatches },
+    reconciliation: { runId: latestReconciliation?.id ?? null, status: latestReconciliation?.status ?? (reconciliation.clean ? "CLEAN" : "FAILURE"), action: reconciliation.action, mismatches: reconciliation.mismatches, completedAt: latestReconciliation?.completedAt ?? null },
+    reconciliationRuns: reconciliationHistory.map(toReconciliationRun),
+    positionSnapshots: positions,
+    fillSnapshots: fills,
     rehearsal,
     timeline: [
       "Live execution starts DISABLED after every application restart.",
@@ -179,6 +280,8 @@ export async function getMicroLiveSnapshot() {
       "Reconciliation and hard risk checks must pass before human arming.",
     ],
     incidents,
+    incidentReviews: reviews.map((review) => toIncidentReview(review, requirements)),
+    reactivationRequirements: requirements,
     events,
     safety: { liveOrderTransmissionEnabled: false, householdCapitalAccessible: false, protectedCapitalAccessible: false, autoScale: false, aiCanPlaceOrders: false, aiCanChangeRisk: false },
   };
@@ -370,4 +473,247 @@ export async function armMicroLive(actor: Actor, venueId: string) {
     metadata: { venueId, authorizationExpiresAt: expiresAt.toISOString(), liveExecutionEnabled: false },
   });
   return { status: session.status, sessionId: session.id, authorizationExpiresAt: expiresAt, liveExecutionEnabled: false };
+}
+
+export async function runMicroLiveReconciliation(actor: Actor) {
+  assertPermission(actor.role, "contribute");
+  const { householdId, session } = await ensureMicroLiveSeed();
+  const capturedAt = new Date();
+  const [internalPosition] = await db.select().from(positionSnapshots)
+    .where(and(eq(positionSnapshots.householdId, householdId), eq(positionSnapshots.source, "INTERNAL")))
+    .orderBy(desc(positionSnapshots.capturedAt)).limit(1);
+  const [venuePosition] = await db.select().from(positionSnapshots)
+    .where(and(eq(positionSnapshots.householdId, householdId), eq(positionSnapshots.source, "VENUE")))
+    .orderBy(desc(positionSnapshots.capturedAt)).limit(1);
+  const internalFills = await db.select({ externalFillId: executionFills.externalFillId }).from(executionFills)
+    .where(eq(executionFills.householdId, householdId));
+  const venueFills = await db.select({ externalFillId: fillSnapshots.externalFillId }).from(fillSnapshots)
+    .where(and(eq(fillSnapshots.householdId, householdId), eq(fillSnapshots.source, "VENUE")));
+  const internalPositionCents = asCents(internalPosition?.notional);
+  const venuePositionCents = asCents(venuePosition?.notional);
+  const result = reconcileExecutionState({
+    internalPositionCents,
+    venuePositionCents,
+    internalOpenOrders: 0,
+    venueOpenOrders: 0,
+    internalFillIds: internalFills.map((fill) => fill.externalFillId),
+    venueFillIds: venueFills.map((fill) => fill.externalFillId),
+  });
+  const internalState = {
+    positionCents: internalPositionCents,
+    openOrders: 0,
+    fillIds: internalFills.map((fill) => fill.externalFillId),
+    source: "capital_os_oms",
+  };
+  const venueState = {
+    positionCents: venuePositionCents,
+    openOrders: 0,
+    fillIds: venueFills.map((fill) => fill.externalFillId),
+    source: "venue_authoritative_snapshot",
+  };
+  const [run] = await db.insert(reconciliationRuns).values({
+    householdId,
+    sessionId: session.id,
+    status: result.clean ? "CLEAN" : "FAILURE",
+    mismatches: result.mismatches,
+    internalState,
+    venueState,
+    completedAt: capturedAt,
+  }).returning();
+
+  if (!result.clean) {
+    const [existingIncident] = await db.select({ id: tradingIncidents.id }).from(tradingIncidents).where(and(
+      eq(tradingIncidents.householdId, householdId),
+      eq(tradingIncidents.incidentType, "RECONCILIATION_MISMATCH"),
+      eq(tradingIncidents.status, "OPEN"),
+    )).limit(1);
+    if (!existingIncident) {
+      await db.insert(tradingIncidents).values({
+        householdId,
+        sessionId: session.id,
+        severity: "CRITICAL",
+        incidentType: "RECONCILIATION_MISMATCH",
+        title: "Venue and internal execution state disagree",
+        timeline: [
+          `Reconciliation run ${run.id} found a position, order, or fill mismatch.`,
+          "New exposure is blocked until venue-authoritative state is fetched and rebuilt.",
+          "A human post-incident review is required before reactivation.",
+        ],
+        capitalImpact: ((venuePositionCents - internalPositionCents) / 100).toFixed(2),
+        status: "OPEN",
+      });
+    }
+  }
+
+  await db.insert(auditEvents).values({
+    householdId,
+    eventType: "micro_live_reconciliation_completed",
+    actor: actor.userId,
+    entity: "reconciliation_run",
+    entityId: run.id,
+    reason: result.clean ? "Venue-authoritative reconciliation completed cleanly" : "Reconciliation mismatch contained; new exposure remains blocked",
+    metadata: { status: run.status, mismatches: result.mismatches, liveExecutionEnabled: false },
+  });
+  return toReconciliationRun(run);
+}
+
+export async function listMicroLiveReconciliationRuns() {
+  const { householdId } = await ensureMicroLiveSeed();
+  const runs = await db.select().from(reconciliationRuns)
+    .where(eq(reconciliationRuns.householdId, householdId))
+    .orderBy(desc(reconciliationRuns.completedAt)).limit(50);
+  return runs.map(toReconciliationRun);
+}
+
+export async function listMicroLivePositionSnapshots() {
+  const { householdId } = await ensureMicroLiveSeed();
+  return db.select().from(positionSnapshots)
+    .where(eq(positionSnapshots.householdId, householdId))
+    .orderBy(desc(positionSnapshots.capturedAt)).limit(50);
+}
+
+export async function listMicroLiveFillSnapshots() {
+  const { householdId } = await ensureMicroLiveSeed();
+  return db.select().from(fillSnapshots)
+    .where(eq(fillSnapshots.householdId, householdId))
+    .orderBy(desc(fillSnapshots.capturedAt)).limit(50);
+}
+
+export async function listMicroLiveIncidents() {
+  const { householdId } = await ensureMicroLiveSeed();
+  const [incidents, reviews, requirements] = await Promise.all([
+    db.select().from(tradingIncidents).where(and(eq(tradingIncidents.householdId, householdId), eq(tradingIncidents.status, "OPEN"))).orderBy(desc(tradingIncidents.createdAt)).limit(50),
+    db.select().from(postIncidentReviews).where(eq(postIncidentReviews.householdId, householdId)),
+    db.select().from(reactivationRequirements).where(eq(reactivationRequirements.householdId, householdId)),
+  ]);
+  return incidents.map((incident) => toIncident(incident, reviews, requirements));
+}
+
+export async function listMicroLiveIncidentReviews() {
+  const { householdId } = await ensureMicroLiveSeed();
+  const [reviews, requirements] = await Promise.all([
+    db.select().from(postIncidentReviews)
+    .where(eq(postIncidentReviews.householdId, householdId))
+    .orderBy(desc(postIncidentReviews.reviewedAt)).limit(50),
+    db.select().from(reactivationRequirements).where(eq(reactivationRequirements.householdId, householdId)),
+  ]);
+  return reviews.map((review) => toIncidentReview(review, requirements));
+}
+
+export async function listMicroLiveReactivationRequirements() {
+  const { householdId } = await ensureMicroLiveSeed();
+  return db.select().from(reactivationRequirements)
+    .where(eq(reactivationRequirements.householdId, householdId))
+    .orderBy(desc(reactivationRequirements.createdAt)).limit(100);
+}
+
+type IncidentReviewRequest = {
+  rootCause: string;
+  capitalImpact: string;
+  safeguardsWorked: string[];
+  requiredFixes: string[];
+  reactivationRequirements: string[];
+  notes?: string | null;
+};
+
+function isIncidentReviewRequest(value: unknown): value is IncidentReviewRequest {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.rootCause === "string" && candidate.rootCause.trim().length > 0 &&
+    typeof candidate.capitalImpact === "string" && /^-?[0-9]+(\.[0-9]{1,2})?$/.test(candidate.capitalImpact) &&
+    isStringArray(candidate.safeguardsWorked) && isStringArray(candidate.requiredFixes) &&
+    isStringArray(candidate.reactivationRequirements) && candidate.reactivationRequirements.length > 0 &&
+    (candidate.notes === undefined || candidate.notes === null || typeof candidate.notes === "string");
+}
+
+export async function createMicroLiveIncidentReview(actor: Actor, incidentId: string, request: unknown) {
+  assertPermission(actor.role, "approve");
+  if (!isIncidentReviewRequest(request)) {
+    throw new GovernanceError("INVALID_STATE", "A complete human post-incident review is required");
+  }
+  const { householdId } = await ensureSeedData();
+  const [incident] = await db.select().from(tradingIncidents).where(and(
+    eq(tradingIncidents.id, incidentId),
+    eq(tradingIncidents.householdId, householdId),
+  )).limit(1);
+  if (!incident) throw new GovernanceError("INVALID_STATE", "Incident is not registered for this household");
+  const [existingReview] = await db.select({ id: postIncidentReviews.id }).from(postIncidentReviews)
+    .where(eq(postIncidentReviews.incidentId, incidentId)).limit(1);
+  if (existingReview) throw new GovernanceError("INVALID_STATE", "This incident already has a post-incident review");
+
+  const result = await db.transaction(async (tx) => {
+    const [review] = await tx.insert(postIncidentReviews).values({
+      householdId,
+      incidentId,
+      reviewedBy: actor.userId,
+      rootCause: request.rootCause.trim(),
+      capitalImpact: request.capitalImpact,
+      safeguardsWorked: request.safeguardsWorked.map((item) => item.trim()),
+      requiredFixes: request.requiredFixes.map((item) => item.trim()),
+      reactivationRequirements: request.reactivationRequirements.map((item) => item.trim()),
+      notes: request.notes?.trim() || null,
+    }).returning();
+    const requirements = await tx.insert(reactivationRequirements).values(
+      request.reactivationRequirements.map((requirement) => ({
+        householdId,
+        incidentId,
+        reviewId: review.id,
+        requirement: requirement.trim(),
+        status: "OPEN",
+      })),
+    ).returning();
+    return { review, requirements };
+  });
+  await db.insert(auditEvents).values({
+    householdId,
+    eventType: "micro_live_incident_review_recorded",
+    actor: actor.userId,
+    entity: "trading_incident",
+    entityId: incidentId,
+    reason: "Human post-incident review recorded; reactivation remains blocked until requirements are complete",
+    metadata: { reviewId: result.review.id, requirementCount: result.requirements.length, liveExecutionEnabled: false },
+  });
+  return {
+    ...result.review,
+    requirements: result.requirements,
+  };
+}
+
+export async function completeMicroLiveReactivationRequirement(actor: Actor, requirementId: string) {
+  assertPermission(actor.role, "approve");
+  const { householdId } = await ensureSeedData();
+  const [requirement] = await db.select().from(reactivationRequirements).where(and(
+    eq(reactivationRequirements.id, requirementId),
+    eq(reactivationRequirements.householdId, householdId),
+  )).limit(1);
+  if (!requirement) throw new GovernanceError("INVALID_STATE", "Reactivation requirement is not registered for this household");
+  const completedAt = requirement.status === "COMPLETE" ? requirement.completedAt ?? new Date() : new Date();
+  const [completed] = await db.update(reactivationRequirements).set({
+    status: "COMPLETE",
+    completedBy: actor.userId,
+    completedAt,
+  }).where(and(
+    eq(reactivationRequirements.id, requirementId),
+    eq(reactivationRequirements.householdId, householdId),
+  )).returning();
+  const remaining = await db.select({ id: reactivationRequirements.id }).from(reactivationRequirements).where(and(
+    eq(reactivationRequirements.incidentId, completed.incidentId),
+    eq(reactivationRequirements.status, "OPEN"),
+  ));
+  if (remaining.length === 0) {
+    await db.update(tradingIncidents).set({ status: "RESOLVED", resolvedAt: new Date() }).where(and(
+      eq(tradingIncidents.id, completed.incidentId),
+      eq(tradingIncidents.householdId, householdId),
+    ));
+  }
+  await db.insert(auditEvents).values({
+    householdId,
+    eventType: "micro_live_reactivation_requirement_completed",
+    actor: actor.userId,
+    entity: "reactivation_requirement",
+    entityId: requirementId,
+    reason: remaining.length === 0 ? "All human reactivation requirements completed; incident resolved" : "Human reactivation requirement completed; incident remains blocked",
+    metadata: { incidentId: completed.incidentId, remainingRequirements: remaining.length, liveExecutionEnabled: false },
+  });
+  return completed;
 }

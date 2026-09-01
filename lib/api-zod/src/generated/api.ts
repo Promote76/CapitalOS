@@ -973,6 +973,7 @@ export const GetMicroLiveResponse = zod.object({
   "independentDeployment": zod.string()
 }),
   "reconciliation": zod.object({
+  "runId": zod.string().nullable(),
   "status": zod.string(),
   "action": zod.string(),
   "mismatches": zod.object({
@@ -980,8 +981,53 @@ export const GetMicroLiveResponse = zod.object({
   "orderMismatch": zod.boolean(),
   "missingInternalFills": zod.array(zod.string()),
   "orphanedInternalFills": zod.array(zod.string())
-})
 }),
+  "completedAt": zod.coerce.date().nullable()
+}),
+  "reconciliationRuns": zod.array(zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "sessionId": zod.string().nullish(),
+  "status": zod.string(),
+  "mismatches": zod.object({
+  "positionMismatch": zod.boolean(),
+  "orderMismatch": zod.boolean(),
+  "missingInternalFills": zod.array(zod.string()),
+  "orphanedInternalFills": zod.array(zod.string())
+}),
+  "internalState": zod.record(zod.string(), zod.unknown()),
+  "venueState": zod.record(zod.string(), zod.unknown()),
+  "completedAt": zod.coerce.date()
+})),
+  "positionSnapshots": zod.array(zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "sessionId": zod.string().nullish(),
+  "venueId": zod.string().nullish(),
+  "marketId": zod.string(),
+  "source": zod.string(),
+  "quantity": zod.string(),
+  "averagePrice": zod.string(),
+  "markPrice": zod.string(),
+  "notional": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "capturedAt": zod.coerce.date()
+})),
+  "fillSnapshots": zod.array(zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "sessionId": zod.string().nullish(),
+  "venueId": zod.string().nullish(),
+  "externalFillId": zod.string(),
+  "marketId": zod.string(),
+  "source": zod.string(),
+  "side": zod.string(),
+  "quantity": zod.string(),
+  "price": zod.string(),
+  "fee": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "capturedAt": zod.coerce.date()
+})),
   "rehearsal": zod.object({
   "mode": zod.string(),
   "status": zod.string(),
@@ -1001,11 +1047,54 @@ export const GetMicroLiveResponse = zod.object({
 }),
   "timeline": zod.array(zod.string()),
   "incidents": zod.array(zod.object({
-  "id": zod.string().optional(),
-  "severity": zod.string().optional(),
-  "incidentType": zod.string().optional(),
-  "title": zod.string().optional(),
-  "status": zod.string().optional()
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "sessionId": zod.string().nullish(),
+  "severity": zod.string(),
+  "incidentType": zod.string(),
+  "title": zod.string(),
+  "timeline": zod.array(zod.string()),
+  "capitalImpact": zod.string(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "hasReview": zod.boolean(),
+  "openRequirementCount": zod.number()
+})),
+  "incidentReviews": zod.array(zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "incidentId": zod.string(),
+  "reviewedBy": zod.string(),
+  "rootCause": zod.string(),
+  "capitalImpact": zod.string(),
+  "safeguardsWorked": zod.array(zod.string()),
+  "requiredFixes": zod.array(zod.string()),
+  "reactivationRequirements": zod.array(zod.string()),
+  "notes": zod.string().nullish(),
+  "reviewedAt": zod.coerce.date(),
+  "requirements": zod.array(zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "incidentId": zod.string(),
+  "reviewId": zod.string(),
+  "requirement": zod.string(),
+  "status": zod.string(),
+  "completedBy": zod.string().nullish(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+}))
+})),
+  "reactivationRequirements": zod.array(zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "incidentId": zod.string(),
+  "reviewId": zod.string(),
+  "requirement": zod.string(),
+  "status": zod.string(),
+  "completedBy": zod.string().nullish(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
 })),
   "events": zod.array(zod.object({
   "id": zod.string().optional(),
@@ -1130,6 +1219,240 @@ export const ArmMicroLiveResponse = zod.object({
   "sessionId": zod.string(),
   "authorizationExpiresAt": zod.coerce.date(),
   "liveExecutionEnabled": zod.boolean()
+})
+
+
+/**
+ * @summary List persisted Micro-Live reconciliation runs
+ */
+export const ListMicroLiveReconciliationRunsResponseItem = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "sessionId": zod.string().nullish(),
+  "status": zod.string(),
+  "mismatches": zod.object({
+  "positionMismatch": zod.boolean(),
+  "orderMismatch": zod.boolean(),
+  "missingInternalFills": zod.array(zod.string()),
+  "orphanedInternalFills": zod.array(zod.string())
+}),
+  "internalState": zod.record(zod.string(), zod.unknown()),
+  "venueState": zod.record(zod.string(), zod.unknown()),
+  "completedAt": zod.coerce.date()
+})
+export const ListMicroLiveReconciliationRunsResponse = zod.array(ListMicroLiveReconciliationRunsResponseItem)
+
+
+/**
+ * @summary Persist a venue-authoritative Micro-Live reconciliation run
+ */
+export const RunMicroLiveReconciliationResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "sessionId": zod.string().nullish(),
+  "status": zod.string(),
+  "mismatches": zod.object({
+  "positionMismatch": zod.boolean(),
+  "orderMismatch": zod.boolean(),
+  "missingInternalFills": zod.array(zod.string()),
+  "orphanedInternalFills": zod.array(zod.string())
+}),
+  "internalState": zod.record(zod.string(), zod.unknown()),
+  "venueState": zod.record(zod.string(), zod.unknown()),
+  "completedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List persisted Micro-Live position snapshots
+ */
+export const ListMicroLivePositionSnapshotsResponseItem = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "sessionId": zod.string().nullish(),
+  "venueId": zod.string().nullish(),
+  "marketId": zod.string(),
+  "source": zod.string(),
+  "quantity": zod.string(),
+  "averagePrice": zod.string(),
+  "markPrice": zod.string(),
+  "notional": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "capturedAt": zod.coerce.date()
+})
+export const ListMicroLivePositionSnapshotsResponse = zod.array(ListMicroLivePositionSnapshotsResponseItem)
+
+
+/**
+ * @summary List persisted Micro-Live fill snapshots
+ */
+export const ListMicroLiveFillSnapshotsResponseItem = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "sessionId": zod.string().nullish(),
+  "venueId": zod.string().nullish(),
+  "externalFillId": zod.string(),
+  "marketId": zod.string(),
+  "source": zod.string(),
+  "side": zod.string(),
+  "quantity": zod.string(),
+  "price": zod.string(),
+  "fee": zod.string(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "capturedAt": zod.coerce.date()
+})
+export const ListMicroLiveFillSnapshotsResponse = zod.array(ListMicroLiveFillSnapshotsResponseItem)
+
+
+/**
+ * @summary List open Micro-Live incidents
+ */
+export const ListMicroLiveIncidentsResponseItem = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "sessionId": zod.string().nullish(),
+  "severity": zod.string(),
+  "incidentType": zod.string(),
+  "title": zod.string(),
+  "timeline": zod.array(zod.string()),
+  "capitalImpact": zod.string(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "hasReview": zod.boolean(),
+  "openRequirementCount": zod.number()
+})
+export const ListMicroLiveIncidentsResponse = zod.array(ListMicroLiveIncidentsResponseItem)
+
+
+/**
+ * @summary Record a human post-incident review
+ */
+export const createMicroLiveIncidentReviewPathIncidentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const CreateMicroLiveIncidentReviewParams = zod.object({
+  "incidentId": zod.coerce.string().regex(createMicroLiveIncidentReviewPathIncidentIdRegExp)
+})
+
+export const createMicroLiveIncidentReviewBodyRootCauseMax = 2000;
+
+export const createMicroLiveIncidentReviewBodyCapitalImpactRegExp = new RegExp('^-?[0-9]+(\\.[0-9]{1,2})?$');
+
+export const createMicroLiveIncidentReviewBodySafeguardsWorkedMax = 20;
+
+
+export const createMicroLiveIncidentReviewBodyRequiredFixesMax = 20;
+
+
+export const createMicroLiveIncidentReviewBodyReactivationRequirementsMax = 20;
+
+export const createMicroLiveIncidentReviewBodyNotesMax = 2000;
+
+
+
+export const CreateMicroLiveIncidentReviewBody = zod.object({
+  "rootCause": zod.string().min(1).max(createMicroLiveIncidentReviewBodyRootCauseMax),
+  "capitalImpact": zod.string().regex(createMicroLiveIncidentReviewBodyCapitalImpactRegExp),
+  "safeguardsWorked": zod.array(zod.string().min(1)).max(createMicroLiveIncidentReviewBodySafeguardsWorkedMax),
+  "requiredFixes": zod.array(zod.string().min(1)).max(createMicroLiveIncidentReviewBodyRequiredFixesMax),
+  "reactivationRequirements": zod.array(zod.string().min(1)).min(1).max(createMicroLiveIncidentReviewBodyReactivationRequirementsMax),
+  "notes": zod.string().max(createMicroLiveIncidentReviewBodyNotesMax).nullish()
+})
+
+export const CreateMicroLiveIncidentReviewResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "incidentId": zod.string(),
+  "reviewedBy": zod.string(),
+  "rootCause": zod.string(),
+  "capitalImpact": zod.string(),
+  "safeguardsWorked": zod.array(zod.string()),
+  "requiredFixes": zod.array(zod.string()),
+  "reactivationRequirements": zod.array(zod.string()),
+  "notes": zod.string().nullish(),
+  "reviewedAt": zod.coerce.date(),
+  "requirements": zod.array(zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "incidentId": zod.string(),
+  "reviewId": zod.string(),
+  "requirement": zod.string(),
+  "status": zod.string(),
+  "completedBy": zod.string().nullish(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary List persisted human post-incident reviews
+ */
+export const ListMicroLiveIncidentReviewsResponseItem = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "incidentId": zod.string(),
+  "reviewedBy": zod.string(),
+  "rootCause": zod.string(),
+  "capitalImpact": zod.string(),
+  "safeguardsWorked": zod.array(zod.string()),
+  "requiredFixes": zod.array(zod.string()),
+  "reactivationRequirements": zod.array(zod.string()),
+  "notes": zod.string().nullish(),
+  "reviewedAt": zod.coerce.date(),
+  "requirements": zod.array(zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "incidentId": zod.string(),
+  "reviewId": zod.string(),
+  "requirement": zod.string(),
+  "status": zod.string(),
+  "completedBy": zod.string().nullish(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+}))
+})
+export const ListMicroLiveIncidentReviewsResponse = zod.array(ListMicroLiveIncidentReviewsResponseItem)
+
+
+/**
+ * @summary List human reactivation requirements
+ */
+export const ListMicroLiveReactivationRequirementsResponseItem = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "incidentId": zod.string(),
+  "reviewId": zod.string(),
+  "requirement": zod.string(),
+  "status": zod.string(),
+  "completedBy": zod.string().nullish(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListMicroLiveReactivationRequirementsResponse = zod.array(ListMicroLiveReactivationRequirementsResponseItem)
+
+
+/**
+ * @summary Complete a human reactivation requirement
+ */
+export const completeMicroLiveReactivationRequirementPathRequirementIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const CompleteMicroLiveReactivationRequirementParams = zod.object({
+  "requirementId": zod.coerce.string().regex(completeMicroLiveReactivationRequirementPathRequirementIdRegExp)
+})
+
+export const CompleteMicroLiveReactivationRequirementResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "incidentId": zod.string(),
+  "reviewId": zod.string(),
+  "requirement": zod.string(),
+  "status": zod.string(),
+  "completedBy": zod.string().nullish(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
 })
 
 

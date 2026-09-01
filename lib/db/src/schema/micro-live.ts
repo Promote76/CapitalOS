@@ -156,6 +156,52 @@ export const executionFills = pgTable(
   }),
 );
 
+export const positionSnapshots = pgTable(
+  "position_snapshots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").references(() => microLiveSessions.id, { onDelete: "set null" }),
+    venueId: uuid("venue_id").references(() => venueRegistry.id, { onDelete: "set null" }),
+    marketId: text("market_id").notNull(),
+    source: text("source").notNull().default("INTERNAL"),
+    quantity: numeric("quantity", { precision: 18, scale: 8 }).notNull().default("0"),
+    averagePrice: numeric("average_price", { precision: 18, scale: 8 }).notNull().default("0"),
+    markPrice: numeric("mark_price", { precision: 18, scale: 8 }).notNull().default("0"),
+    notional: numeric("notional", { precision: 18, scale: 2 }).notNull().default("0"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    capturedAt: timestamp("captured_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("position_snapshots_household_idx").on(table.householdId),
+    capturedIdx: index("position_snapshots_captured_idx").on(table.householdId, table.capturedAt),
+  }),
+);
+
+export const fillSnapshots = pgTable(
+  "fill_snapshots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").references(() => microLiveSessions.id, { onDelete: "set null" }),
+    venueId: uuid("venue_id").references(() => venueRegistry.id, { onDelete: "set null" }),
+    externalFillId: text("external_fill_id").notNull(),
+    marketId: text("market_id").notNull(),
+    source: text("source").notNull().default("VENUE"),
+    side: text("side").notNull(),
+    quantity: numeric("quantity", { precision: 18, scale: 8 }).notNull(),
+    price: numeric("price", { precision: 18, scale: 8 }).notNull(),
+    fee: numeric("fee", { precision: 18, scale: 8 }).notNull().default("0"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    capturedAt: timestamp("captured_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("fill_snapshots_household_idx").on(table.householdId),
+    externalFillIdx: uniqueIndex("fill_snapshots_external_source_idx").on(table.externalFillId, table.source),
+    capturedIdx: index("fill_snapshots_captured_idx").on(table.householdId, table.capturedAt),
+  }),
+);
+
 export const reconciliationRuns = pgTable(
   "reconciliation_runs",
   {
@@ -205,6 +251,53 @@ export const tradingIncidents = pgTable(
   (table) => ({ householdIdx: index("trading_incidents_household_idx").on(table.householdId) }),
 );
 
+export const postIncidentReviews = pgTable(
+  "post_incident_reviews",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    incidentId: uuid("incident_id").notNull().unique().references(() => tradingIncidents.id, { onDelete: "cascade" }),
+    reviewedBy: uuid("reviewed_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+    rootCause: text("root_cause").notNull(),
+    capitalImpact: numeric("capital_impact", { precision: 18, scale: 2 }).notNull().default("0"),
+    safeguardsWorked: jsonb("safeguards_worked").$type<string[]>().notNull().default([]),
+    requiredFixes: jsonb("required_fixes").$type<string[]>().notNull().default([]),
+    reactivationRequirements: jsonb("reactivation_requirements").$type<string[]>().notNull().default([]),
+    notes: text("notes"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("post_incident_reviews_household_idx").on(table.householdId),
+    incidentIdx: uniqueIndex("post_incident_reviews_incident_idx").on(table.incidentId),
+  }),
+);
+
+export const reactivationRequirements = pgTable(
+  "reactivation_requirements",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    incidentId: uuid("incident_id").notNull().references(() => tradingIncidents.id, { onDelete: "cascade" }),
+    reviewId: uuid("review_id").notNull().references(() => postIncidentReviews.id, { onDelete: "cascade" }),
+    requirement: text("requirement").notNull(),
+    status: text("status").notNull().default("OPEN"),
+    completedBy: uuid("completed_by").references(() => users.id, { onDelete: "set null" }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("reactivation_requirements_household_idx").on(table.householdId),
+    incidentIdx: index("reactivation_requirements_incident_idx").on(table.incidentId),
+  }),
+);
+
 export type MicroLivePolicy = typeof microLivePolicies.$inferSelect;
 export type VenueRegistryEntry = typeof venueRegistry.$inferSelect;
 export type MicroLiveSession = typeof microLiveSessions.$inferSelect;
+export type PositionSnapshot = typeof positionSnapshots.$inferSelect;
+export type FillSnapshot = typeof fillSnapshots.$inferSelect;
+export type ReconciliationRun = typeof reconciliationRuns.$inferSelect;
+export type TradingIncident = typeof tradingIncidents.$inferSelect;
+export type PostIncidentReview = typeof postIncidentReviews.$inferSelect;
+export type ReactivationRequirement = typeof reactivationRequirements.$inferSelect;

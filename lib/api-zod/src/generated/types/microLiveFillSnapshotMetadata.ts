@@ -6,10 +6,4 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type MicroLiveSnapshotIncidentsItem = {
-  id?: string;
-  severity?: string;
-  incidentType?: string;
-  title?: string;
-  status?: string;
-};
+export type MicroLiveFillSnapshotMetadata = { [key: string]: unknown };

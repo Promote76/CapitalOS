@@ -24,7 +24,10 @@ import {
   useGetStrategyLab,
   useGetMicroLive,
   useRunMicroLiveRehearsal,
+  useRunMicroLiveReconciliation,
   useReviewMicroLiveEnablement,
+  useCreateMicroLiveIncidentReview,
+  useCompleteMicroLiveReactivationRequirement,
   getGetMicroLiveQueryKey,
   useCreateResearchStrategy,
   useCreateStrategyVersion,
@@ -70,6 +73,7 @@ import {
   type CreateResearchStrategyInput,
   type RunStrategyExperimentInput,
   type MicroLiveSnapshot,
+  type MicroLiveIncidentReviewInput,
 } from '@workspace/api-client-react';
 import {
   ArrowDownLeft,
@@ -1107,12 +1111,51 @@ function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }
   const queryClient = useQueryClient();
   const query = useGetMicroLive();
   const rehearsal = useRunMicroLiveRehearsal();
+  const reconciliationRun = useRunMicroLiveReconciliation();
   const review = useReviewMicroLiveEnablement();
+  const incidentReview = useCreateMicroLiveIncidentReview();
+  const completeRequirement = useCompleteMicroLiveReactivationRequirement();
   const snapshot = query.data as MicroLiveSnapshot | undefined;
-  const refresh = () => queryClient.invalidateQueries({ queryKey: getGetMicroLiveQueryKey() });
+  const [reviewingIncidentId, setReviewingIncidentId] = useState<string | null>(null);
+  const [reviewDraft, setReviewDraft] = useState<MicroLiveIncidentReviewInput>({
+    rootCause: '',
+    capitalImpact: '0.00',
+    safeguardsWorked: [],
+    requiredFixes: [],
+    reactivationRequirements: [],
+    notes: '',
+  });
+  const [reviewText, setReviewText] = useState({ safeguardsWorked: '', requiredFixes: '', reactivationRequirements: '' });
+  const refresh = async () => { await queryClient.invalidateQueries({ queryKey: getGetMicroLiveQueryKey() }); };
+  const startIncidentReview = (incidentId: string) => {
+    setReviewingIncidentId(incidentId);
+    setReviewDraft({ rootCause: '', capitalImpact: '0.00', safeguardsWorked: [], requiredFixes: [], reactivationRequirements: [], notes: '' });
+    setReviewText({ safeguardsWorked: '', requiredFixes: '', reactivationRequirements: '' });
+  };
+  const submitIncidentReview = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!reviewingIncidentId) return;
+    const lines = (value: string) => value.split('\n').map((item) => item.trim()).filter(Boolean);
+    const data: MicroLiveIncidentReviewInput = {
+      ...reviewDraft,
+      safeguardsWorked: lines(reviewText.safeguardsWorked),
+      requiredFixes: lines(reviewText.requiredFixes),
+      reactivationRequirements: lines(reviewText.reactivationRequirements),
+    };
+    try {
+      await incidentReview.mutateAsync({ incidentId: reviewingIncidentId, data });
+      await refresh();
+      setReviewingIncidentId(null);
+      onFeedback('Post-incident review saved. Human reactivation requirements remain open.');
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'The incident review could not be saved.');
+    }
+  };
   if (query.isLoading) return <main className="content"><PageHeading eyebrow="Execution / Micro-Live" title="Controlled execution." description="Loading the fail-closed control plane." /><div className="card card-pad loading-card">Checking readiness, reconciliation, and Guardian health…</div></main>;
   if (query.isError || !snapshot) return <main className="content"><PageHeading eyebrow="Execution / Micro-Live" title="The monitor is unavailable." description="No execution state is shown until the control plane can be read safely." /><div className="card card-pad error-card"><ShieldAlert size={20} /><strong>Execution remains disabled.</strong><button className="btn" onClick={() => query.refetch()}>Try again</button></div></main>;
   const money = (value: string) => `$${Number(value).toFixed(2)}`;
+  const latestRun = snapshot.reconciliationRuns[0];
+  const openRequirements = snapshot.reactivationRequirements.filter((requirement) => requirement.status !== 'COMPLETE');
   return <main className="content">
     <PageHeading eyebrow="Execution / Micro-Live" title={<>Containment before <span className="accent-text">connectivity.</span></>} description="A small, reviewable control plane for future Micro-Live experiments. This workspace transmits no orders and cannot access household capital." actions={<button className="btn btn-primary" onClick={async () => { await rehearsal.mutateAsync(); await refresh(); onFeedback('Live rehearsal completed without transmitting an order.'); }} disabled={rehearsal.isPending}><RotateCcw size={14} /> {rehearsal.isPending ? 'Running…' : 'Run live rehearsal'}</button>} />
     <section className="micro-live-banner"><div className="micro-live-banner-icon"><Lock size={19} /></div><div><strong>Live execution is disabled</strong><span>Rehearsal mode only · no venue credentials · no order transmission</span></div><span className="status review">DISABLED</span></section>
@@ -1125,6 +1168,28 @@ function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }
       <div className="card card-pad"><CardTitle title="Venue registry" subtitle="Only explicitly approved venues may ever receive orders" action={<Landmark size={17} color="var(--ink-soft)" />} /><div className="micro-live-list">{snapshot.venues.map((venue) => <div className="micro-live-list-row" key={venue.id}><div><strong>{venue.name}</strong><span>{venue.adapterType} · {venue.status}</span></div><span className={`status ${venue.health === 'HEALTHY' ? '' : 'review'}`}>{venue.health}</span></div>)}</div></div>
       <div className="card card-pad"><CardTitle title="Independent Guardian" subtitle="Separate process boundary · authority is containment only" action={<ShieldCheck size={17} color="var(--green)" />} /><div className="guardian-state"><span className="status">{snapshot.guardian.status}</span><strong>{snapshot.guardian.decision}</strong><p>{snapshot.guardian.reason}. {snapshot.guardian.independentDeployment}</p></div><div className="safety-inline"><LockKeyhole size={15} /> Guardian cannot run strategies, increase capital, withdraw funds, or change risk rules.</div></div>
     </section>
+     <section className="micro-live-columns page-section">
+       <div className="card card-pad">
+         <CardTitle title="Persistent reconciliation" subtitle={`Latest venue-authoritative run · ${latestRun ? new Date(latestRun.completedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'not recorded'}`} action={<button className="btn" onClick={async () => { try { await reconciliationRun.mutateAsync(); await refresh(); onFeedback('Reconciliation run persisted. No order transmission occurred.'); } catch (error) { onFeedback(error instanceof Error ? error.message : 'Reconciliation could not be recorded.'); } }} disabled={reconciliationRun.isPending}><RotateCcw size={13} /> {reconciliationRun.isPending ? 'Running…' : 'Run reconciliation'}</button>} />
+         <div className="reconciliation-summary"><span className={`status ${snapshot.reconciliation.status === 'CLEAN' ? '' : 'critical'}`}>{snapshot.reconciliation.status}</span><strong>{snapshot.reconciliation.action}</strong><p>{snapshot.reconciliation.status === 'CLEAN' ? 'Internal OMS state matches the persisted venue snapshot. New exposure remains disabled by policy.' : 'Mismatch contained. New exposure is blocked until state is rebuilt and reviewed.'}</p></div>
+         <div className="micro-live-history">{snapshot.reconciliationRuns.slice(0, 5).map((run) => <div className="micro-live-history-row" key={run.id}><div><strong>{run.status}</strong><span>{new Date(run.completedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span></div><span className="mono-label">{run.id.slice(0, 8)}</span></div>)}</div>
+       </div>
+       <div className="card card-pad">
+         <CardTitle title="Position & fill snapshots" subtitle="Persisted evidence used for reconciliation" action={<Database size={17} color="var(--ink-soft)" />} />
+         <div className="snapshot-facts"><div><span>Position snapshots</span><strong>{snapshot.positionSnapshots.length}</strong></div><div><span>Fill snapshots</span><strong>{snapshot.fillSnapshots.length}</strong></div><div><span>Last position</span><strong>{snapshot.positionSnapshots[0] ? new Date(snapshot.positionSnapshots[0].capturedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—'}</strong></div><div><span>Last fill</span><strong>{snapshot.fillSnapshots[0] ? new Date(snapshot.fillSnapshots[0].capturedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '—'}</strong></div></div>
+         <div className="micro-live-snapshot-list">{snapshot.positionSnapshots.slice(0, 4).map((position) => <div className="micro-live-list-row" key={position.id}><div><strong>{position.source} · {position.marketId}</strong><span>{position.quantity} units · {money(position.notional)} notional</span></div><span className="status">{position.source === 'VENUE' ? 'Authoritative' : 'Internal'}</span></div>)}{snapshot.positionSnapshots.length === 0 && <div className="micro-live-empty">No position snapshots recorded.</div>}</div>
+         {snapshot.fillSnapshots.length === 0 && <div className="micro-live-empty">No fills recorded in rehearsal mode.</div>}
+       </div>
+     </section>
+     <section className="card card-pad page-section">
+       <CardTitle title="Open incidents" subtitle="Major and critical incidents remain open until a human review and every reactivation requirement are complete" action={<span className={`status ${snapshot.incidents.length ? 'critical' : ''}`}>{snapshot.incidents.length} open</span>} />
+       {snapshot.incidents.length === 0 && <div className="micro-live-empty"><CheckCircle2 size={17} /><div><strong>No open incidents</strong><span>Reconciliation, Guardian, and rehearsal checks are currently contained.</span></div></div>}
+       <div className="incident-list">{snapshot.incidents.map((incident) => <article className="incident-card" key={incident.id}><div className="incident-card-header"><div><span className={`status ${incident.severity === 'CRITICAL' ? 'critical' : 'pending'}`}>{incident.severity}</span><h3>{incident.title}</h3></div>{!incident.hasReview && <button className="btn btn-primary" onClick={() => startIncidentReview(incident.id)}>Record human review</button>}</div><p>{incident.timeline[0]}</p><div className="incident-meta"><span>{incident.incidentType.replaceAll('_', ' ')}</span><span>Capital impact {money(incident.capitalImpact)}</span><span>{incident.openRequirementCount} requirements open</span></div>{reviewingIncidentId === incident.id && <form className="incident-review-form" onSubmit={submitIncidentReview}><div className="field"><label>Root cause</label><textarea required rows={3} value={reviewDraft.rootCause} onChange={(event) => setReviewDraft({ ...reviewDraft, rootCause: event.target.value })} /></div><div className="field"><label>Capital impact</label><input required inputMode="decimal" pattern="-?[0-9]+(\\.[0-9]{1,2})?" value={reviewDraft.capitalImpact} onChange={(event) => setReviewDraft({ ...reviewDraft, capitalImpact: event.target.value })} /></div><div className="field"><label>Safeguards that worked <span>(one per line)</span></label><textarea rows={2} value={reviewText.safeguardsWorked} onChange={(event) => setReviewText({ ...reviewText, safeguardsWorked: event.target.value })} /></div><div className="field"><label>Required fixes <span>(one per line)</span></label><textarea required rows={2} value={reviewText.requiredFixes} onChange={(event) => setReviewText({ ...reviewText, requiredFixes: event.target.value })} /></div><div className="field"><label>Reactivation requirements <span>(one per line)</span></label><textarea required rows={3} value={reviewText.reactivationRequirements} onChange={(event) => setReviewText({ ...reviewText, reactivationRequirements: event.target.value })} /></div><div className="field"><label>Review notes <span>(optional)</span></label><textarea rows={2} value={reviewDraft.notes ?? ''} onChange={(event) => setReviewDraft({ ...reviewDraft, notes: event.target.value })} /></div><div className="modal-actions"><button type="button" className="btn" onClick={() => setReviewingIncidentId(null)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={incidentReview.isPending}><Check size={14} /> {incidentReview.isPending ? 'Saving…' : 'Save review'}</button></div></form>}</article>)}</div>
+     </section>
+     <section className="micro-live-columns page-section">
+       <div className="card card-pad"><CardTitle title="Post-incident reviews" subtitle="A review records what happened without granting permission to trade" action={<ScrollText size={17} color="var(--ink-soft)" />} />{snapshot.incidentReviews.length === 0 && <div className="micro-live-empty">No post-incident reviews recorded.</div>}<div className="review-list">{snapshot.incidentReviews.map((item) => <div className="review-row" key={item.id}><div><strong>{item.rootCause}</strong><span>{new Date(item.reviewedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {item.requiredFixes.length} fixes recorded</span></div><span className="status review">Human review</span></div>)}</div></div>
+       <div className="card card-pad"><CardTitle title="Human reactivation requirements" subtitle="Completing these records does not arm or enable live execution" action={<ShieldAlert size={17} color="var(--amber)" />} />{openRequirements.length === 0 && <div className="micro-live-empty"><CheckCircle2 size={17} /><div><strong>No open requirements</strong><span>Any future reactivation still requires a separate human arming review.</span></div></div>}<div className="requirement-list">{snapshot.reactivationRequirements.map((requirement) => <div className="requirement-row" key={requirement.id}><div><strong>{requirement.requirement}</strong><span className={`status ${requirement.status === 'COMPLETE' ? '' : 'pending'}`}>{requirement.status}</span></div>{requirement.status !== 'COMPLETE' && <button className="text-link" onClick={async () => { try { await completeRequirement.mutateAsync({ requirementId: requirement.id }); await refresh(); onFeedback('Reactivation requirement marked complete. Live execution remains disabled.'); } catch (error) { onFeedback(error instanceof Error ? error.message : 'The requirement could not be completed.'); } }} disabled={completeRequirement.isPending}>Mark complete</button>}</div>)}</div></div>
+     </section>
     <section className="card card-pad page-section"><CardTitle title="Rehearsal timeline" subtitle="Production-shaped flow with no order transmission" action={<History size={17} color="var(--ink-soft)" />} /><div className="execution-timeline">{snapshot.rehearsal.sequence.map((event, index) => <div className="timeline-step" key={event}><span>{String(index + 1).padStart(2, '0')}</span><strong>{event.replaceAll(/([A-Z])/g, ' $1').trim()}</strong>{index < snapshot.rehearsal.sequence.length - 1 && <ChevronRight size={14} />}</div>)}</div><div className="rehearsal-note"><CheckCircle2 size={16} /> {snapshot.rehearsal.note}</div></section>
     <section className="card card-pad page-section"><CardTitle title="Protection summary" subtitle="The order of priorities remains containment, state accuracy, risk, reliability, execution, then return." /><div className="protection-grid">{[['Household capital', snapshot.safety.householdCapitalAccessible ? 'Accessible' : 'Inaccessible'], ['Protected capital', snapshot.safety.protectedCapitalAccessible ? 'Accessible' : 'Inaccessible'], ['AI order authority', snapshot.safety.aiCanPlaceOrders ? 'Allowed' : 'Not allowed'], ['Risk rule changes', snapshot.safety.aiCanChangeRisk ? 'Allowed' : 'Not allowed'], ['Auto scaling', snapshot.safety.autoScale ? 'Enabled' : 'Disabled'], ['Order transmission', snapshot.safety.liveOrderTransmissionEnabled ? 'Enabled' : 'Disabled']].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div></section>
   </main>;

@@ -5,13 +5,18 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.2.0
  */
+import type { MicroLiveFillSnapshot } from './microLiveFillSnapshot';
+import type { MicroLiveIncident } from './microLiveIncident';
+import type { MicroLiveIncidentReview } from './microLiveIncidentReview';
 import type { MicroLivePolicy } from './microLivePolicy';
+import type { MicroLivePositionSnapshot } from './microLivePositionSnapshot';
+import type { MicroLiveReactivationRequirement } from './microLiveReactivationRequirement';
 import type { MicroLiveReadiness } from './microLiveReadiness';
+import type { MicroLiveReconciliationRun } from './microLiveReconciliationRun';
 import type { MicroLiveRehearsal } from './microLiveRehearsal';
 import type { MicroLiveSnapshotEnablement } from './microLiveSnapshotEnablement';
 import type { MicroLiveSnapshotEventsItem } from './microLiveSnapshotEventsItem';
 import type { MicroLiveSnapshotGuardian } from './microLiveSnapshotGuardian';
-import type { MicroLiveSnapshotIncidentsItem } from './microLiveSnapshotIncidentsItem';
 import type { MicroLiveSnapshotReconciliation } from './microLiveSnapshotReconciliation';
 import type { MicroLiveSnapshotSafety } from './microLiveSnapshotSafety';
 import type { MicroLiveSnapshotSession } from './microLiveSnapshotSession';
@@ -26,9 +31,14 @@ export interface MicroLiveSnapshot {
   enablement: MicroLiveSnapshotEnablement;
   guardian: MicroLiveSnapshotGuardian;
   reconciliation: MicroLiveSnapshotReconciliation;
+  reconciliationRuns: MicroLiveReconciliationRun[];
+  positionSnapshots: MicroLivePositionSnapshot[];
+  fillSnapshots: MicroLiveFillSnapshot[];
   rehearsal: MicroLiveRehearsal;
   timeline: string[];
-  incidents: MicroLiveSnapshotIncidentsItem[];
+  incidents: MicroLiveIncident[];
+  incidentReviews: MicroLiveIncidentReview[];
+  reactivationRequirements: MicroLiveReactivationRequirement[];
   events: MicroLiveSnapshotEventsItem[];
   safety: MicroLiveSnapshotSafety;
 }

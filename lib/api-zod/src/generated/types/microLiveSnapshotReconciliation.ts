@@ -5,10 +5,14 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.2.0
  */
-import type { MicroLiveSnapshotReconciliationMismatches } from './microLiveSnapshotReconciliationMismatches';
+import type { MicroLiveReconciliationMismatches } from './microLiveReconciliationMismatches';
 
 export type MicroLiveSnapshotReconciliation = {
+  /** @nullable */
+  runId: string | null;
   status: string;
   action: string;
-  mismatches: MicroLiveSnapshotReconciliationMismatches;
+  mismatches: MicroLiveReconciliationMismatches;
+  /** @nullable */
+  completedAt: Date | null;
 };

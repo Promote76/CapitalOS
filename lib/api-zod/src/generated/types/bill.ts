@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.2.0
  */
+import type { BillStatus } from './billStatus';
 
 export interface Bill {
   id: string;
@@ -12,7 +13,8 @@ export interface Bill {
   billName: string;
   dueDate: Date;
   expectedAmount: string;
-  status: string;
+  status: BillStatus;
   essential: boolean;
   autoPay: boolean;
+  active: boolean;
 }

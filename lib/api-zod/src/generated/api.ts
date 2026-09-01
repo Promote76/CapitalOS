@@ -829,11 +829,138 @@ export const ListBillsResponseItem = zod.object({
   "billName": zod.string(),
   "dueDate": zod.coerce.date(),
   "expectedAmount": zod.string(),
-  "status": zod.string(),
+  "status": zod.enum(['upcoming', 'due_soon', 'paid', 'overdue', 'estimated', 'skipped']),
   "essential": zod.boolean(),
-  "autoPay": zod.boolean()
+  "autoPay": zod.boolean(),
+  "active": zod.boolean()
 })
 export const ListBillsResponse = zod.array(ListBillsResponseItem)
+
+
+/**
+ * @summary Add a household bill
+ */
+export const createBillBodyBillNameMax = 160;
+
+export const createBillBodyExpectedAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+
+
+export const CreateBillBody = zod.object({
+  "billName": zod.string().min(1).max(createBillBodyBillNameMax),
+  "dueDate": zod.coerce.date(),
+  "expectedAmount": zod.string().regex(createBillBodyExpectedAmountRegExp),
+  "status": zod.enum(['upcoming', 'due_soon', 'paid', 'overdue', 'estimated', 'skipped']).optional(),
+  "essential": zod.boolean().optional(),
+  "autoPay": zod.boolean().optional()
+})
+
+export const CreateBillResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "billName": zod.string(),
+  "dueDate": zod.coerce.date(),
+  "expectedAmount": zod.string(),
+  "status": zod.enum(['upcoming', 'due_soon', 'paid', 'overdue', 'estimated', 'skipped']),
+  "essential": zod.boolean(),
+  "autoPay": zod.boolean(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Update a household bill
+ */
+export const updateBillPathBillIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const UpdateBillParams = zod.object({
+  "billId": zod.coerce.string().regex(updateBillPathBillIdRegExp)
+})
+
+export const updateBillBodyBillNameMax = 160;
+
+export const updateBillBodyExpectedAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+
+
+export const UpdateBillBody = zod.object({
+  "billName": zod.string().min(1).max(updateBillBodyBillNameMax).optional(),
+  "dueDate": zod.coerce.date().optional(),
+  "expectedAmount": zod.string().regex(updateBillBodyExpectedAmountRegExp).optional(),
+  "status": zod.enum(['upcoming', 'due_soon', 'paid', 'overdue', 'estimated', 'skipped']).optional(),
+  "essential": zod.boolean().optional(),
+  "autoPay": zod.boolean().optional()
+})
+
+export const UpdateBillResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "billName": zod.string(),
+  "dueDate": zod.coerce.date(),
+  "expectedAmount": zod.string(),
+  "status": zod.enum(['upcoming', 'due_soon', 'paid', 'overdue', 'estimated', 'skipped']),
+  "essential": zod.boolean(),
+  "autoPay": zod.boolean(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Delete a household bill
+ */
+export const deleteBillPathBillIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const DeleteBillParams = zod.object({
+  "billId": zod.coerce.string().regex(deleteBillPathBillIdRegExp)
+})
+
+export const DeleteBillResponse = zod.void()
+
+
+/**
+ * @summary Pause a household bill
+ */
+export const pauseBillPathBillIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const PauseBillParams = zod.object({
+  "billId": zod.coerce.string().regex(pauseBillPathBillIdRegExp)
+})
+
+export const PauseBillResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "billName": zod.string(),
+  "dueDate": zod.coerce.date(),
+  "expectedAmount": zod.string(),
+  "status": zod.enum(['upcoming', 'due_soon', 'paid', 'overdue', 'estimated', 'skipped']),
+  "essential": zod.boolean(),
+  "autoPay": zod.boolean(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Resume a household bill
+ */
+export const resumeBillPathBillIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ResumeBillParams = zod.object({
+  "billId": zod.coerce.string().regex(resumeBillPathBillIdRegExp)
+})
+
+export const ResumeBillResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "billName": zod.string(),
+  "dueDate": zod.coerce.date(),
+  "expectedAmount": zod.string(),
+  "status": zod.enum(['upcoming', 'due_soon', 'paid', 'overdue', 'estimated', 'skipped']),
+  "essential": zod.boolean(),
+  "autoPay": zod.boolean(),
+  "active": zod.boolean()
+})
 
 
 /**
@@ -845,11 +972,140 @@ export const ListUpcomingExpensesResponseItem = zod.object({
   "name": zod.string(),
   "estimatedAmount": zod.string(),
   "expectedDate": zod.coerce.date(),
-  "priority": zod.string(),
+  "priority": zod.enum(['low', 'normal', 'high', 'critical']),
   "required": zod.boolean(),
-  "fundedAmount": zod.string()
+  "fundedAmount": zod.string(),
+  "active": zod.boolean()
 })
 export const ListUpcomingExpensesResponse = zod.array(ListUpcomingExpensesResponseItem)
+
+
+/**
+ * @summary Add a known upcoming expense
+ */
+export const createUpcomingExpenseBodyNameMax = 160;
+
+export const createUpcomingExpenseBodyEstimatedAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createUpcomingExpenseBodyFundedAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+
+
+export const CreateUpcomingExpenseBody = zod.object({
+  "name": zod.string().min(1).max(createUpcomingExpenseBodyNameMax),
+  "estimatedAmount": zod.string().regex(createUpcomingExpenseBodyEstimatedAmountRegExp),
+  "expectedDate": zod.coerce.date(),
+  "priority": zod.enum(['low', 'normal', 'high', 'critical']).optional(),
+  "required": zod.boolean().optional(),
+  "fundedAmount": zod.string().regex(createUpcomingExpenseBodyFundedAmountRegExp).optional()
+})
+
+export const CreateUpcomingExpenseResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "name": zod.string(),
+  "estimatedAmount": zod.string(),
+  "expectedDate": zod.coerce.date(),
+  "priority": zod.enum(['low', 'normal', 'high', 'critical']),
+  "required": zod.boolean(),
+  "fundedAmount": zod.string(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Update a known upcoming expense
+ */
+export const updateUpcomingExpensePathExpenseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const UpdateUpcomingExpenseParams = zod.object({
+  "expenseId": zod.coerce.string().regex(updateUpcomingExpensePathExpenseIdRegExp)
+})
+
+export const updateUpcomingExpenseBodyNameMax = 160;
+
+export const updateUpcomingExpenseBodyEstimatedAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const updateUpcomingExpenseBodyFundedAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+
+
+export const UpdateUpcomingExpenseBody = zod.object({
+  "name": zod.string().min(1).max(updateUpcomingExpenseBodyNameMax).optional(),
+  "estimatedAmount": zod.string().regex(updateUpcomingExpenseBodyEstimatedAmountRegExp).optional(),
+  "expectedDate": zod.coerce.date().optional(),
+  "priority": zod.enum(['low', 'normal', 'high', 'critical']).optional(),
+  "required": zod.boolean().optional(),
+  "fundedAmount": zod.string().regex(updateUpcomingExpenseBodyFundedAmountRegExp).optional()
+})
+
+export const UpdateUpcomingExpenseResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "name": zod.string(),
+  "estimatedAmount": zod.string(),
+  "expectedDate": zod.coerce.date(),
+  "priority": zod.enum(['low', 'normal', 'high', 'critical']),
+  "required": zod.boolean(),
+  "fundedAmount": zod.string(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Delete a known upcoming expense
+ */
+export const deleteUpcomingExpensePathExpenseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const DeleteUpcomingExpenseParams = zod.object({
+  "expenseId": zod.coerce.string().regex(deleteUpcomingExpensePathExpenseIdRegExp)
+})
+
+export const DeleteUpcomingExpenseResponse = zod.void()
+
+
+/**
+ * @summary Pause a known upcoming expense
+ */
+export const pauseUpcomingExpensePathExpenseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const PauseUpcomingExpenseParams = zod.object({
+  "expenseId": zod.coerce.string().regex(pauseUpcomingExpensePathExpenseIdRegExp)
+})
+
+export const PauseUpcomingExpenseResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "name": zod.string(),
+  "estimatedAmount": zod.string(),
+  "expectedDate": zod.coerce.date(),
+  "priority": zod.enum(['low', 'normal', 'high', 'critical']),
+  "required": zod.boolean(),
+  "fundedAmount": zod.string(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Resume a known upcoming expense
+ */
+export const resumeUpcomingExpensePathExpenseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ResumeUpcomingExpenseParams = zod.object({
+  "expenseId": zod.coerce.string().regex(resumeUpcomingExpensePathExpenseIdRegExp)
+})
+
+export const ResumeUpcomingExpenseResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "name": zod.string(),
+  "estimatedAmount": zod.string(),
+  "expectedDate": zod.coerce.date(),
+  "priority": zod.enum(['low', 'normal', 'high', 'critical']),
+  "required": zod.boolean(),
+  "fundedAmount": zod.string(),
+  "active": zod.boolean()
+})
 
 
 /**
@@ -866,6 +1122,126 @@ export const ListIncomeSourcesResponseItem = zod.object({
   "active": zod.boolean()
 })
 export const ListIncomeSourcesResponse = zod.array(ListIncomeSourcesResponseItem)
+
+
+/**
+ * @summary Add a household income source
+ */
+export const createIncomeSourceBodyNameMax = 160;
+
+export const createIncomeSourceBodyExpectedMonthlyRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+
+
+export const CreateIncomeSourceBody = zod.object({
+  "name": zod.string().min(1).max(createIncomeSourceBodyNameMax),
+  "sourceType": zod.enum(['employment', 'contract', 'business', 'rental', 'investment', 'interest', 'other']),
+  "expectedMonthly": zod.string().regex(createIncomeSourceBodyExpectedMonthlyRegExp),
+  "cadence": zod.enum(['weekly', 'biweekly', 'monthly', 'quarterly', 'annual']),
+  "nextPayDate": zod.coerce.date()
+})
+
+export const CreateIncomeSourceResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "name": zod.string(),
+  "sourceType": zod.string(),
+  "expectedMonthly": zod.string(),
+  "cadence": zod.string(),
+  "nextPayDate": zod.coerce.date(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Update a household income source
+ */
+export const updateIncomeSourcePathIncomeIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const UpdateIncomeSourceParams = zod.object({
+  "incomeId": zod.coerce.string().regex(updateIncomeSourcePathIncomeIdRegExp)
+})
+
+export const updateIncomeSourceBodyNameMax = 160;
+
+export const updateIncomeSourceBodyExpectedMonthlyRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+
+
+export const UpdateIncomeSourceBody = zod.object({
+  "name": zod.string().min(1).max(updateIncomeSourceBodyNameMax).optional(),
+  "sourceType": zod.enum(['employment', 'contract', 'business', 'rental', 'investment', 'interest', 'other']).optional(),
+  "expectedMonthly": zod.string().regex(updateIncomeSourceBodyExpectedMonthlyRegExp).optional(),
+  "cadence": zod.enum(['weekly', 'biweekly', 'monthly', 'quarterly', 'annual']).optional(),
+  "nextPayDate": zod.coerce.date().optional()
+})
+
+export const UpdateIncomeSourceResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "name": zod.string(),
+  "sourceType": zod.string(),
+  "expectedMonthly": zod.string(),
+  "cadence": zod.string(),
+  "nextPayDate": zod.coerce.date(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Delete a household income source
+ */
+export const deleteIncomeSourcePathIncomeIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const DeleteIncomeSourceParams = zod.object({
+  "incomeId": zod.coerce.string().regex(deleteIncomeSourcePathIncomeIdRegExp)
+})
+
+export const DeleteIncomeSourceResponse = zod.void()
+
+
+/**
+ * @summary Pause a household income source
+ */
+export const pauseIncomeSourcePathIncomeIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const PauseIncomeSourceParams = zod.object({
+  "incomeId": zod.coerce.string().regex(pauseIncomeSourcePathIncomeIdRegExp)
+})
+
+export const PauseIncomeSourceResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "name": zod.string(),
+  "sourceType": zod.string(),
+  "expectedMonthly": zod.string(),
+  "cadence": zod.string(),
+  "nextPayDate": zod.coerce.date(),
+  "active": zod.boolean()
+})
+
+
+/**
+ * @summary Resume a household income source
+ */
+export const resumeIncomeSourcePathIncomeIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ResumeIncomeSourceParams = zod.object({
+  "incomeId": zod.coerce.string().regex(resumeIncomeSourcePathIncomeIdRegExp)
+})
+
+export const ResumeIncomeSourceResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "name": zod.string(),
+  "sourceType": zod.string(),
+  "expectedMonthly": zod.string(),
+  "cadence": zod.string(),
+  "nextPayDate": zod.coerce.date(),
+  "active": zod.boolean()
+})
 
 
 /**

@@ -15,12 +15,31 @@ import {
   useListBills,
   useListUpcomingExpenses,
   useListIncomeSources,
+  useCreateBill,
+  useUpdateBill,
+  usePauseBill,
+  useResumeBill,
+  useDeleteBill,
+  useCreateUpcomingExpense,
+  useUpdateUpcomingExpense,
+  usePauseUpcomingExpense,
+  useResumeUpcomingExpense,
+  useDeleteUpcomingExpense,
+  useCreateIncomeSource,
+  useUpdateIncomeSource,
+  usePauseIncomeSource,
+  useResumeIncomeSource,
+  useDeleteIncomeSource,
   getGetSafeToDeployQueryKey,
   getListBillsQueryKey,
   getListUpcomingExpensesQueryKey,
   getListIncomeSourcesQueryKey,
   type UpcomingExpense,
   type IncomeSource,
+  type Bill,
+  type BillInput,
+  type UpcomingExpenseInput,
+  type IncomeSourceInput,
   type DashboardSnapshot,
 } from '@workspace/api-client-react';
 import {
@@ -515,66 +534,167 @@ function SafeToDeployContext({ focus }: { focus: 'bills' | 'upcoming' | 'income'
   </section>;
 }
 
-function BillsPage() {
+async function refreshPlanningQueries(listKey: readonly string[]) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: listKey }),
+    queryClient.invalidateQueries({ queryKey: getGetSafeToDeployQueryKey() }),
+    queryClient.invalidateQueries({ queryKey: ['/api/cash-flow'] }),
+  ]);
+}
+
+function PlanningFormFrame({ title, subtitle, onCancel, children }: { title: string; subtitle: string; onCancel: () => void; children: ReactNode }) {
+  return <section className="card card-pad page-section planning-form-card"><CardTitle title={title} subtitle={subtitle} /><button className="icon-btn planning-form-close" aria-label="Close form" onClick={onCancel}><X size={15} /></button>{children}</section>;
+}
+
+function BillsPage({ onFeedback }: { onFeedback: (message: string) => void }) {
   const query = useListBills({ query: { queryKey: getListBillsQueryKey(), staleTime: 5 * 60 * 1000 } });
+  const create = useCreateBill();
+  const update = useUpdateBill();
+  const pause = usePauseBill();
+  const resume = useResumeBill();
+  const remove = useDeleteBill();
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<BillInput>({ billName: '', dueDate: '', expectedAmount: '', essential: true, autoPay: false });
   const bills = query.data ?? [];
-  const orderedBills = [...bills].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-  const total = bills.reduce((sum, bill) => sum + Number(bill.expectedAmount), 0);
-  const attentionCount = bills.filter((bill) => ['overdue', 'review', 'attention'].some((term) => bill.status.toLowerCase().includes(term))).length;
+  const activeBills = bills.filter((bill) => bill.active);
+  const orderedBills = [...bills].sort((a, b) => Number(b.active) - Number(a.active) || new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+  const total = activeBills.reduce((sum, bill) => sum + Number(bill.expectedAmount), 0);
+  const attentionCount = activeBills.filter((bill) => ['overdue', 'review', 'attention'].some((term) => bill.status.toLowerCase().includes(term))).length;
+  const startCreate = () => { setEditingId(null); setForm({ billName: '', dueDate: '', expectedAmount: '', essential: true, autoPay: false }); setFormOpen(true); };
+  const startEdit = (bill: Bill) => { setEditingId(bill.id); setForm({ billName: bill.billName, dueDate: bill.dueDate.slice(0, 10), expectedAmount: bill.expectedAmount, status: bill.status, essential: bill.essential, autoPay: bill.autoPay }); setFormOpen(true); };
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    try {
+      if (editingId) await update.mutateAsync({ billId: editingId, data: form });
+      else await create.mutateAsync({ data: form });
+      await refreshPlanningQueries(getListBillsQueryKey());
+      setFormOpen(false);
+      onFeedback(editingId ? 'Bill updated. Safe-to-deploy context refreshed.' : 'Bill added. Safe-to-deploy context refreshed.');
+    } catch (error) { onFeedback(error instanceof Error ? error.message : 'Bill could not be saved.'); }
+  };
+  const togglePause = async (bill: Bill) => {
+    try { if (bill.active) await pause.mutateAsync({ billId: bill.id }); else await resume.mutateAsync({ billId: bill.id }); await refreshPlanningQueries(getListBillsQueryKey()); onFeedback(bill.active ? 'Bill paused and removed from Governor commitments.' : 'Bill resumed and added to Governor commitments.'); } catch (error) { onFeedback(error instanceof Error ? error.message : 'Bill status could not be changed.'); }
+  };
+  const deleteRow = async (bill: Bill) => {
+    if (!window.confirm(`Delete ${bill.billName}?`)) return;
+    try { await remove.mutateAsync({ billId: bill.id }); await refreshPlanningQueries(getListBillsQueryKey()); onFeedback('Bill deleted. Safe-to-deploy context refreshed.'); } catch (error) { onFeedback(error instanceof Error ? error.message : 'Bill could not be deleted.'); }
+  };
+  const pending = create.isPending || update.isPending || pause.isPending || resume.isPending || remove.isPending;
   return <main className="content">
-    <PageHeading eyebrow="Household finance / bills" title={<>Keep the<br /><em>must-pay list clear.</em></>} description="Known household bills stay visible here so timing and essential commitments are accounted for before new capital decisions." actions={<><Link className="btn" href="/upcoming-expenses" data-testid="link-bills-upcoming-expenses"><CalendarDays size={15} /> Upcoming expenses</Link><Link className="btn btn-primary" href="/income" data-testid="link-bills-income"><CircleDollarSign size={15} /> View income</Link></>} />
+    <PageHeading eyebrow="Household finance / bills" title={<>Keep the<br /><em>must-pay list clear.</em></>} description="Known household bills stay visible here so timing and essential commitments are accounted for before new capital decisions." actions={<><Link className="btn" href="/upcoming-expenses" data-testid="link-bills-upcoming-expenses"><CalendarDays size={15} /> Upcoming expenses</Link><button className="btn btn-primary" onClick={startCreate} data-testid="button-add-bill"><Plus size={15} /> Add bill</button></>} />
     <PlanningDataState label="bills" isLoading={query.isLoading} isError={query.isError} isFetching={query.isFetching} isStale={query.isStale} dataUpdatedAt={query.dataUpdatedAt} hasData={bills.length > 0} onRetry={() => { void query.refetch(); }} />
+    {formOpen && <PlanningFormFrame title={editingId ? 'Edit household bill' : 'Add a household bill'} subtitle="Active bills are included in the Capital Governor’s commitment view." onCancel={() => setFormOpen(false)}><form className="planning-form" onSubmit={submit}><div className="field"><label>Bill name</label><input required value={form.billName} onChange={(event) => setForm({ ...form, billName: event.target.value })} data-testid="input-bill-name" /></div><div className="field"><label>Due date</label><input required type="date" value={form.dueDate} onChange={(event) => setForm({ ...form, dueDate: event.target.value })} data-testid="input-bill-due-date" /></div><div className="field"><label>Expected amount</label><input required inputMode="decimal" pattern="[0-9]+(\\.[0-9]{1,2})?" value={form.expectedAmount} onChange={(event) => setForm({ ...form, expectedAmount: event.target.value })} data-testid="input-bill-amount" /></div>{editingId && <div className="field"><label>Status</label><select value={form.status ?? 'upcoming'} onChange={(event) => setForm({ ...form, status: event.target.value as BillInput['status'] })}><option value="upcoming">Upcoming</option><option value="due_soon">Due soon</option><option value="estimated">Estimated</option><option value="paid">Paid</option><option value="overdue">Overdue</option><option value="skipped">Skipped</option></select></div>}<label className="planning-check"><input type="checkbox" checked={form.essential ?? true} onChange={(event) => setForm({ ...form, essential: event.target.checked })} /> Essential commitment</label><label className="planning-check"><input type="checkbox" checked={form.autoPay ?? false} onChange={(event) => setForm({ ...form, autoPay: event.target.checked })} /> Autopay enabled</label><div className="modal-actions"><button type="button" className="btn" onClick={() => setFormOpen(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={pending}><Check size={14} /> {editingId ? 'Save changes' : 'Add bill'}</button></div></form></PlanningFormFrame>}
     <div className="finance-grid animate-in delay-1">
       <FinanceMetric label="Planned bill total" value={query.data ? displayMoney(total.toFixed(2), 'Not available') : 'Not available'} detail="known commitments" tone="amber" />
       <FinanceMetric label="Next due" value={query.data ? formatPlanningDate(orderedBills[0]?.dueDate, 'No bills') : 'Not available'} detail={orderedBills[0]?.billName ?? 'waiting for data'} tone="blue" />
-      <FinanceMetric label="Essential bills" value={query.data ? `${bills.filter((bill) => bill.essential).length}` : 'Not available'} detail="priority commitments" tone="green" />
+       <FinanceMetric label="Essential bills" value={query.data ? `${activeBills.filter((bill) => bill.essential).length}` : 'Not available'} detail="active commitments" tone="green" />
       <FinanceMetric label="Needs attention" value={query.data ? `${attentionCount}` : 'Not available'} detail="review before deploying" tone="lavender" />
     </div>
     <section className="card card-pad page-section animate-in delay-2">
       <CardTitle title="Upcoming bills" subtitle="Due date, priority, and payment status at a glance." action={<Link className="text-link" href="/cash-flow" data-testid="link-bills-cash-flow">See cash flow <ArrowUpRight size={13} /></Link>} />
       {!query.isLoading && !query.isError && bills.length === 0 && <div className="empty-state" data-testid="empty-bills"><CalendarDays size={25} /><h3>No bills recorded</h3><p>Add known recurring obligations when the household is ready. They will be included in the Governor’s conservative planning context.</p></div>}
-      {bills.length > 0 && <div className="planning-table bills-table" role="table" aria-label="Household bills"><div className="planning-table-header" role="row"><span>Bill</span><span>Timing</span><span>Priority</span><span>Amount</span><span>Status</span></div>{orderedBills.map((bill) => <div className="planning-table-row" role="row" key={bill.id} data-testid={`row-bill-${bill.id}`}><div><strong>{bill.billName}</strong><span>{bill.autoPay ? 'Autopay enabled' : 'Manual payment'}</span></div><span>{formatPlanningDate(bill.dueDate)}</span><span className={`status ${bill.essential ? '' : 'review'}`}>{bill.essential ? 'Essential' : 'Flexible'}</span><strong className="planning-amount">{displayMoney(bill.expectedAmount, 'Not available')}</strong><span className={`status ${planningStatusClass(bill.status)}`}>{humanize(bill.status)}</span></div>)}</div>}
+       {bills.length > 0 && <div className="planning-table bills-table" role="table" aria-label="Household bills"><div className="planning-table-header" role="row"><span>Bill</span><span>Timing</span><span>Priority</span><span>Amount</span><span>Status</span></div>{orderedBills.map((bill) => <div className={`planning-table-row ${bill.active ? '' : 'planning-row-paused'}`} role="row" key={bill.id} data-testid={`row-bill-${bill.id}`}><div><strong>{bill.billName}</strong><span>{bill.autoPay ? 'Autopay enabled' : 'Manual payment'}</span></div><span>{formatPlanningDate(bill.dueDate)}</span><span className={`status ${bill.essential ? '' : 'review'}`}>{bill.essential ? 'Essential' : 'Flexible'}</span><strong className="planning-amount">{displayMoney(bill.expectedAmount, 'Not available')}</strong><div className="planning-row-status"><span className={`status ${bill.active ? planningStatusClass(bill.status) : 'critical'}`}>{bill.active ? humanize(bill.status) : 'Paused'}</span><div className="planning-actions"><button className="text-link" onClick={() => startEdit(bill)} data-testid={`button-edit-bill-${bill.id}`}><Pencil size={12} /> Edit</button><button className="text-link" onClick={() => { void togglePause(bill); }} disabled={pending} data-testid={`${bill.active ? 'button-pause' : 'button-resume'}-bill-${bill.id}`}>{bill.active ? 'Pause' : 'Resume'}</button><button className="text-link danger" onClick={() => { void deleteRow(bill); }} disabled={pending} data-testid={`button-delete-bill-${bill.id}`}>Delete</button></div></div></div>)}</div>}
       <div className="finance-note"><ShieldCheck size={16} /><span>Bills are treated as known commitments in Safe-to-Deploy, so a new or changed obligation reduces available room automatically after the next refresh.</span></div>
     </section>
     <SafeToDeployContext focus="bills" />
   </main>;
 }
 
-function UpcomingExpensesPage() {
+function UpcomingExpensesPage({ onFeedback }: { onFeedback: (message: string) => void }) {
   const query = useListUpcomingExpenses({ query: { queryKey: getListUpcomingExpensesQueryKey(), staleTime: 5 * 60 * 1000 } });
+  const create = useCreateUpcomingExpense();
+  const update = useUpdateUpcomingExpense();
+  const pause = usePauseUpcomingExpense();
+  const resume = useResumeUpcomingExpense();
+  const remove = useDeleteUpcomingExpense();
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<UpcomingExpenseInput>({ name: '', estimatedAmount: '', expectedDate: '', priority: 'normal', required: false, fundedAmount: '0.00' });
   const expenses = query.data ?? [];
-  const orderedExpenses = [...expenses].sort((a, b) => new Date(a.expectedDate).getTime() - new Date(b.expectedDate).getTime());
+  const activeExpenses = expenses.filter((expense) => expense.active);
+  const orderedExpenses = [...expenses].sort((a, b) => Number(b.active) - Number(a.active) || new Date(a.expectedDate).getTime() - new Date(b.expectedDate).getTime());
   const remaining = (expense: UpcomingExpense) => Math.max(0, Number(expense.estimatedAmount) - Number(expense.fundedAmount));
-  const requiredRemaining = expenses.reduce((sum, expense) => sum + (expense.required ? remaining(expense) : 0), 0);
+  const requiredRemaining = activeExpenses.reduce((sum, expense) => sum + (expense.required ? remaining(expense) : 0), 0);
+  const startCreate = () => { setEditingId(null); setForm({ name: '', estimatedAmount: '', expectedDate: '', priority: 'normal', required: false, fundedAmount: '0.00' }); setFormOpen(true); };
+  const startEdit = (expense: UpcomingExpense) => { setEditingId(expense.id); setForm({ name: expense.name, estimatedAmount: expense.estimatedAmount, expectedDate: expense.expectedDate.slice(0, 10), priority: expense.priority, required: expense.required, fundedAmount: expense.fundedAmount }); setFormOpen(true); };
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    try {
+      if (editingId) await update.mutateAsync({ expenseId: editingId, data: form });
+      else await create.mutateAsync({ data: form });
+      await refreshPlanningQueries(getListUpcomingExpensesQueryKey());
+      setFormOpen(false);
+      onFeedback(editingId ? 'Upcoming expense updated. Safe-to-deploy context refreshed.' : 'Upcoming expense added. Safe-to-deploy context refreshed.');
+    } catch (error) { onFeedback(error instanceof Error ? error.message : 'Upcoming expense could not be saved.'); }
+  };
+  const togglePause = async (expense: UpcomingExpense) => {
+    try { if (expense.active) await pause.mutateAsync({ expenseId: expense.id }); else await resume.mutateAsync({ expenseId: expense.id }); await refreshPlanningQueries(getListUpcomingExpensesQueryKey()); onFeedback(expense.active ? 'Upcoming expense paused and removed from Governor commitments.' : 'Upcoming expense resumed and added to Governor commitments.'); } catch (error) { onFeedback(error instanceof Error ? error.message : 'Upcoming expense status could not be changed.'); }
+  };
+  const deleteRow = async (expense: UpcomingExpense) => {
+    if (!window.confirm(`Delete ${expense.name}?`)) return;
+    try { await remove.mutateAsync({ expenseId: expense.id }); await refreshPlanningQueries(getListUpcomingExpensesQueryKey()); onFeedback('Upcoming expense deleted. Safe-to-deploy context refreshed.'); } catch (error) { onFeedback(error instanceof Error ? error.message : 'Upcoming expense could not be deleted.'); }
+  };
+  const pending = create.isPending || update.isPending || pause.isPending || resume.isPending || remove.isPending;
   return <main className="content">
-    <PageHeading eyebrow="Household finance / upcoming expenses" title={<>Make room for<br /><em>what is next.</em></>} description="One-time and known future expenses have a place of their own, separate from recurring bills and everyday transactions." actions={<><Link className="btn" href="/bills" data-testid="link-upcoming-bills"><ReceiptText size={15} /> View bills</Link><Link className="btn btn-primary" href="/income" data-testid="link-upcoming-income"><CircleDollarSign size={15} /> View income</Link></>} />
+    <PageHeading eyebrow="Household finance / upcoming expenses" title={<>Make room for<br /><em>what is next.</em></>} description="One-time and known future expenses have a place of their own, separate from recurring bills and everyday transactions." actions={<><Link className="btn" href="/bills" data-testid="link-upcoming-bills"><ReceiptText size={15} /> View bills</Link><button className="btn btn-primary" onClick={startCreate} data-testid="button-add-upcoming-expense"><Plus size={15} /> Add expense</button></>} />
     <PlanningDataState label="upcoming expenses" isLoading={query.isLoading} isError={query.isError} isFetching={query.isFetching} isStale={query.isStale} dataUpdatedAt={query.dataUpdatedAt} hasData={expenses.length > 0} onRetry={() => { void query.refetch(); }} />
+    {formOpen && <PlanningFormFrame title={editingId ? 'Edit upcoming expense' : 'Add an upcoming expense'} subtitle="Required, unfunded expenses reduce the Capital Governor’s commitment room." onCancel={() => setFormOpen(false)}><form className="planning-form" onSubmit={submit}><div className="field"><label>Expense name</label><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} data-testid="input-upcoming-expense-name" /></div><div className="field"><label>Expected date</label><input required type="date" value={form.expectedDate} onChange={(event) => setForm({ ...form, expectedDate: event.target.value })} data-testid="input-upcoming-expense-date" /></div><div className="field"><label>Estimated amount</label><input required inputMode="decimal" pattern="[0-9]+(\\.[0-9]{1,2})?" value={form.estimatedAmount} onChange={(event) => setForm({ ...form, estimatedAmount: event.target.value })} data-testid="input-upcoming-expense-amount" /></div><div className="field"><label>Already funded</label><input required inputMode="decimal" pattern="[0-9]+(\\.[0-9]{1,2})?" value={form.fundedAmount ?? '0.00'} onChange={(event) => setForm({ ...form, fundedAmount: event.target.value })} data-testid="input-upcoming-expense-funded" /></div><div className="field"><label>Priority</label><select value={form.priority ?? 'normal'} onChange={(event) => setForm({ ...form, priority: event.target.value as UpcomingExpenseInput['priority'] })}><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="critical">Critical</option></select></div><label className="planning-check"><input type="checkbox" checked={form.required ?? false} onChange={(event) => setForm({ ...form, required: event.target.checked })} /> Required commitment</label><div className="modal-actions"><button type="button" className="btn" onClick={() => setFormOpen(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={pending}><Check size={14} /> {editingId ? 'Save changes' : 'Add expense'}</button></div></form></PlanningFormFrame>}
     <div className="finance-grid animate-in delay-1">
       <FinanceMetric label="Required still to fund" value={query.data ? displayMoney(requiredRemaining.toFixed(2), 'Not available') : 'Not available'} detail="reduces safe-to-deploy room" tone="amber" />
       <FinanceMetric label="Next expected" value={query.data ? formatPlanningDate(orderedExpenses[0]?.expectedDate, 'No expenses') : 'Not available'} detail={orderedExpenses[0]?.name ?? 'waiting for data'} tone="blue" />
-      <FinanceMetric label="Required items" value={query.data ? `${expenses.filter((expense) => expense.required).length}` : 'Not available'} detail="must be planned" tone="green" />
-      <FinanceMetric label="High priority" value={query.data ? `${expenses.filter((expense) => ['high', 'urgent'].includes(expense.priority.toLowerCase())).length}` : 'Not available'} detail="reviewed first" tone="lavender" />
+       <FinanceMetric label="Required items" value={query.data ? `${activeExpenses.filter((expense) => expense.required).length}` : 'Not available'} detail="active commitments" tone="green" />
+       <FinanceMetric label="High priority" value={query.data ? `${activeExpenses.filter((expense) => ['high', 'urgent'].includes(expense.priority.toLowerCase())).length}` : 'Not available'} detail="reviewed first" tone="lavender" />
     </div>
     <section className="card card-pad page-section animate-in delay-2">
       <CardTitle title="Known upcoming expenses" subtitle="Funding progress keeps future choices visible without mixing them into recurring bills." action={<Link className="text-link" href="/cash-flow" data-testid="link-upcoming-cash-flow">See forecast <ArrowUpRight size={13} /></Link>} />
       {!query.isLoading && !query.isError && expenses.length === 0 && <div className="empty-state" data-testid="empty-upcoming-expenses"><CalendarDays size={25} /><h3>No upcoming expenses recorded</h3><p>Known future choices and one-time costs will appear here when they are added to the household plan.</p></div>}
-      {expenses.length > 0 && <div className="planning-table expenses-table" role="table" aria-label="Known upcoming expenses"><div className="planning-table-header" role="row"><span>Expense</span><span>Timing</span><span>Priority</span><span>Funding</span><span>Status</span></div>{orderedExpenses.map((expense) => { const percent = Number(expense.estimatedAmount) > 0 ? (Number(expense.fundedAmount) / Number(expense.estimatedAmount)) * 100 : 0; return <div className="planning-table-row" role="row" key={expense.id} data-testid={`row-upcoming-expense-${expense.id}`}><div><strong>{expense.name}</strong><span>{expense.required ? 'Required commitment' : 'Optional choice'}</span></div><span>{formatPlanningDate(expense.expectedDate)}</span><span className={`status ${planningStatusClass(expense.priority)}`}>{humanize(expense.priority)}</span><div className="planning-funding"><div><strong>{displayMoney(expense.estimatedAmount, 'Not available')}</strong><span>{displayMoney(expense.fundedAmount, 'Not available')} funded · {displayMoney(remaining(expense).toFixed(2), 'Not available')} left</span></div><Progress value={percent} /></div><span className={`status ${expense.required ? 'pending' : 'review'}`}>{expense.required ? 'Required' : 'Optional'}</span></div>; })}</div>}
+       {expenses.length > 0 && <div className="planning-table expenses-table" role="table" aria-label="Known upcoming expenses"><div className="planning-table-header" role="row"><span>Expense</span><span>Timing</span><span>Priority</span><span>Funding</span><span>Status</span></div>{orderedExpenses.map((expense) => { const percent = Number(expense.estimatedAmount) > 0 ? (Number(expense.fundedAmount) / Number(expense.estimatedAmount)) * 100 : 0; return <div className={`planning-table-row ${expense.active ? '' : 'planning-row-paused'}`} role="row" key={expense.id} data-testid={`row-upcoming-expense-${expense.id}`}><div><strong>{expense.name}</strong><span>{expense.required ? 'Required commitment' : 'Optional choice'}</span></div><span>{formatPlanningDate(expense.expectedDate)}</span><span className={`status ${planningStatusClass(expense.priority)}`}>{humanize(expense.priority)}</span><div className="planning-funding"><div><strong>{displayMoney(expense.estimatedAmount, 'Not available')}</strong><span>{displayMoney(expense.fundedAmount, 'Not available')} funded · {displayMoney(remaining(expense).toFixed(2), 'Not available')} left</span></div><Progress value={percent} /></div><div className="planning-row-status"><span className={`status ${expense.active ? (expense.required ? 'pending' : 'review') : 'critical'}`}>{expense.active ? (expense.required ? 'Required' : 'Optional') : 'Paused'}</span><div className="planning-actions"><button className="text-link" onClick={() => startEdit(expense)} data-testid={`button-edit-upcoming-expense-${expense.id}`}><Pencil size={12} /> Edit</button><button className="text-link" onClick={() => { void togglePause(expense); }} disabled={pending} data-testid={`${expense.active ? 'button-pause' : 'button-resume'}-upcoming-expense-${expense.id}`}>{expense.active ? 'Pause' : 'Resume'}</button><button className="text-link danger" onClick={() => { void deleteRow(expense); }} disabled={pending} data-testid={`button-delete-upcoming-expense-${expense.id}`}>Delete</button></div></div></div>; })}</div>}
       <div className="finance-note"><ShieldCheck size={16} /><span>Only the unfunded remainder of required expenses is deducted from Safe-to-Deploy. Optional choices stay visible without being treated as obligations.</span></div>
     </section>
     <SafeToDeployContext focus="upcoming" />
   </main>;
 }
 
-function IncomePage() {
+function IncomePage({ onFeedback }: { onFeedback: (message: string) => void }) {
   const query = useListIncomeSources({ query: { queryKey: getListIncomeSourcesQueryKey(), staleTime: 5 * 60 * 1000 } });
+  const create = useCreateIncomeSource();
+  const update = useUpdateIncomeSource();
+  const pause = usePauseIncomeSource();
+  const resume = useResumeIncomeSource();
+  const remove = useDeleteIncomeSource();
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<IncomeSourceInput>({ name: '', sourceType: 'employment', expectedMonthly: '', cadence: 'monthly', nextPayDate: '' });
   const sources = query.data ?? [];
   const activeSources = sources.filter((source) => source.active);
   const monthlyInflow = activeSources.reduce((sum, source) => sum + Number(source.expectedMonthly), 0);
   const cadenceSummary = [...new Set(activeSources.map((source) => humanize(source.cadence)))].join(' · ') || 'Not scheduled';
   const nextPayDate = [...activeSources].map((source) => source.nextPayDate).filter(Boolean).sort()[0];
+  const startCreate = () => { setEditingId(null); setForm({ name: '', sourceType: 'employment', expectedMonthly: '', cadence: 'monthly', nextPayDate: '' }); setFormOpen(true); };
+  const startEdit = (source: IncomeSource) => { setEditingId(source.id); setForm({ name: source.name, sourceType: source.sourceType as IncomeSourceInput['sourceType'], expectedMonthly: source.expectedMonthly, cadence: source.cadence as IncomeSourceInput['cadence'], nextPayDate: source.nextPayDate.slice(0, 10) }); setFormOpen(true); };
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    try {
+      if (editingId) await update.mutateAsync({ incomeId: editingId, data: form });
+      else await create.mutateAsync({ data: form });
+      await refreshPlanningQueries(getListIncomeSourcesQueryKey());
+      setFormOpen(false);
+      onFeedback(editingId ? 'Income source updated. Forecast refreshed.' : 'Income source added. Forecast refreshed.');
+    } catch (error) { onFeedback(error instanceof Error ? error.message : 'Income source could not be saved.'); }
+  };
+  const togglePause = async (source: IncomeSource) => {
+    try { if (source.active) await pause.mutateAsync({ incomeId: source.id }); else await resume.mutateAsync({ incomeId: source.id }); await refreshPlanningQueries(getListIncomeSourcesQueryKey()); onFeedback(source.active ? 'Income source paused and removed from the forecast.' : 'Income source resumed and added to the forecast.'); } catch (error) { onFeedback(error instanceof Error ? error.message : 'Income source status could not be changed.'); }
+  };
+  const deleteRow = async (source: IncomeSource) => {
+    if (!window.confirm(`Delete ${source.name}?`)) return;
+    try { await remove.mutateAsync({ incomeId: source.id }); await refreshPlanningQueries(getListIncomeSourcesQueryKey()); onFeedback('Income source deleted. Forecast refreshed.'); } catch (error) { onFeedback(error instanceof Error ? error.message : 'Income source could not be deleted.'); }
+  };
+  const pending = create.isPending || update.isPending || pause.isPending || resume.isPending || remove.isPending;
   return <main className="content">
-    <PageHeading eyebrow="Household finance / income" title={<>Know what keeps<br /><em>the plan moving.</em></>} description="Expected income sources anchor the forward-looking forecast. Keep active and paused sources clear so commitments are not mistaken for spendable cash." actions={<><Link className="btn" href="/cash-flow" data-testid="link-income-cash-flow"><TrendingUp size={15} /> View cash flow</Link><Link className="btn btn-primary" href="/bills" data-testid="link-income-bills"><ReceiptText size={15} /> View bills</Link></>} />
+    <PageHeading eyebrow="Household finance / income" title={<>Know what keeps<br /><em>the plan moving.</em></>} description="Expected income sources anchor the forward-looking forecast. Keep active and paused sources clear so commitments are not mistaken for spendable cash." actions={<><Link className="btn" href="/cash-flow" data-testid="link-income-cash-flow"><TrendingUp size={15} /> View cash flow</Link><button className="btn btn-primary" onClick={startCreate} data-testid="button-add-income"><Plus size={15} /> Add income</button></>} />
     <PlanningDataState label="income" isLoading={query.isLoading} isError={query.isError} isFetching={query.isFetching} isStale={query.isStale} dataUpdatedAt={query.dataUpdatedAt} hasData={sources.length > 0} onRetry={() => { void query.refetch(); }} />
+    {formOpen && <PlanningFormFrame title={editingId ? 'Edit income source' : 'Add an income source'} subtitle="Only active sources are used for forward-looking cash-flow timing." onCancel={() => setFormOpen(false)}><form className="planning-form" onSubmit={submit}><div className="field"><label>Source name</label><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} data-testid="input-income-name" /></div><div className="field"><label>Source type</label><select value={form.sourceType} onChange={(event) => setForm({ ...form, sourceType: event.target.value as IncomeSourceInput['sourceType'] })}><option value="employment">Employment</option><option value="contract">Contract</option><option value="business">Business</option><option value="rental">Rental</option><option value="investment">Investment</option><option value="interest">Interest</option><option value="other">Other</option></select></div><div className="field"><label>Expected monthly</label><input required inputMode="decimal" pattern="[0-9]+(\\.[0-9]{1,2})?" value={form.expectedMonthly} onChange={(event) => setForm({ ...form, expectedMonthly: event.target.value })} data-testid="input-income-amount" /></div><div className="field"><label>Cadence</label><select value={form.cadence} onChange={(event) => setForm({ ...form, cadence: event.target.value as IncomeSourceInput['cadence'] })}><option value="weekly">Weekly</option><option value="biweekly">Biweekly</option><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="annual">Annual</option></select></div><div className="field"><label>Next pay date</label><input required type="date" value={form.nextPayDate} onChange={(event) => setForm({ ...form, nextPayDate: event.target.value })} data-testid="input-income-pay-date" /></div><div className="modal-actions"><button type="button" className="btn" onClick={() => setFormOpen(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={pending}><Check size={14} /> {editingId ? 'Save changes' : 'Add income'}</button></div></form></PlanningFormFrame>}
     <div className="finance-grid animate-in delay-1">
       <FinanceMetric label="Expected monthly inflow" value={query.data ? displayMoney(monthlyInflow.toFixed(2), 'Not available') : 'Not available'} detail="active sources only" tone="green" />
       <FinanceMetric label="Active sources" value={query.data ? `${activeSources.length}` : 'Not available'} detail="included in forecast" tone="blue" />
@@ -584,7 +704,7 @@ function IncomePage() {
     <section className="card card-pad page-section animate-in delay-2">
       <CardTitle title="Income sources" subtitle="Status, cadence, priority, and expected amount for each source." action={<Link className="text-link" href="/upcoming-expenses" data-testid="link-income-upcoming-expenses">Plan upcoming expenses <ArrowUpRight size={13} /></Link>} />
       {!query.isLoading && !query.isError && sources.length === 0 && <div className="empty-state" data-testid="empty-income"><CircleDollarSign size={25} /><h3>No income sources recorded</h3><p>Add expected sources so the monthly forecast can show how household commitments are covered.</p></div>}
-      {sources.length > 0 && <div className="planning-table income-table" role="table" aria-label="Household income sources"><div className="planning-table-header" role="row"><span>Source</span><span>Timing</span><span>Priority</span><span>Amount</span><span>Status</span></div>{sources.map((source: IncomeSource) => <div className="planning-table-row" role="row" key={source.id} data-testid={`row-income-${source.id}`}><div><strong>{source.name}</strong><span>{humanize(source.sourceType)} income</span></div><div style={{ display: 'grid', gap: 3 }}><strong>{humanize(source.cadence)}</strong><span>Next pay {formatPlanningDate(source.nextPayDate)}</span></div><span className={`status ${source.active ? '' : 'review'}`}>{source.active ? 'In forecast' : 'Paused'}</span><strong className="planning-amount">{displayMoney(source.expectedMonthly, 'Not available')}</strong><span className={`status ${source.active ? '' : 'critical'}`}>{source.active ? 'Active' : 'Inactive'}</span></div>)}</div>}
+       {sources.length > 0 && <div className="planning-table income-table" role="table" aria-label="Household income sources"><div className="planning-table-header" role="row"><span>Source</span><span>Timing</span><span>Priority</span><span>Amount</span><span>Status</span></div>{sources.map((source: IncomeSource) => <div className={`planning-table-row ${source.active ? '' : 'planning-row-paused'}`} role="row" key={source.id} data-testid={`row-income-${source.id}`}><div><strong>{source.name}</strong><span>{humanize(source.sourceType)} income</span></div><div style={{ display: 'grid', gap: 3 }}><strong>{humanize(source.cadence)}</strong><span>Next pay {formatPlanningDate(source.nextPayDate)}</span></div><span className={`status ${source.active ? '' : 'review'}`}>{source.active ? 'In forecast' : 'Paused'}</span><strong className="planning-amount">{displayMoney(source.expectedMonthly, 'Not available')}</strong><div className="planning-row-status"><span className={`status ${source.active ? '' : 'critical'}`}>{source.active ? 'Active' : 'Paused'}</span><div className="planning-actions"><button className="text-link" onClick={() => startEdit(source)} data-testid={`button-edit-income-${source.id}`}><Pencil size={12} /> Edit</button><button className="text-link" onClick={() => { void togglePause(source); }} disabled={pending} data-testid={`${source.active ? 'button-pause' : 'button-resume'}-income-${source.id}`}>{source.active ? 'Pause' : 'Resume'}</button><button className="text-link danger" onClick={() => { void deleteRow(source); }} disabled={pending} data-testid={`button-delete-income-${source.id}`}>Delete</button></div></div></div>)}</div>}
       <div className="finance-note"><CircleDollarSign size={16} /><span>Income supports the next-month forecast and bill coverage view. It does not turn every dollar into deployable cash—the Governor still preserves commitments, reserves, and a safety buffer.</span></div>
     </section>
     <SafeToDeployContext focus="income" />
@@ -683,9 +803,9 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue
     <Route path="/" component={() => <Dashboard onAction={onAction} onFeedback={onFeedback} transactions={transactions} dashboard={dashboard} backendIssue={backendIssue} />} />
     <Route path="/budget" component={BudgetPage} />
     <Route path="/cash-flow" component={CashFlowPage} />
-    <Route path="/bills" component={BillsPage} />
-    <Route path="/upcoming-expenses" component={UpcomingExpensesPage} />
-    <Route path="/income" component={IncomePage} />
+    <Route path="/bills" component={() => <BillsPage onFeedback={onFeedback} />} />
+    <Route path="/upcoming-expenses" component={() => <UpcomingExpensesPage onFeedback={onFeedback} />} />
+    <Route path="/income" component={() => <IncomePage onFeedback={onFeedback} />} />
     <Route path="/accounts" component={() => <AccountsPage onFeedback={onFeedback} />} />
     <Route path="/goals" component={() => <GoalsPage onAction={onAction} />} />
     <Route path="/strategies" component={() => <StrategiesPage onAction={onAction} />} />

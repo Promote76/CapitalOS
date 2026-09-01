@@ -506,6 +506,74 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/Bill" }
+    post:
+      operationId: createBill
+      tags: [household-finance]
+      summary: Add a household bill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BillInput" }
+      responses:
+        "201":
+          description: Bill created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Bill" }
+  /bills/{billId}:
+    patch:
+      operationId: updateBill
+      tags: [household-finance]
+      summary: Update a household bill
+      parameters:
+        - $ref: "#/components/parameters/BillId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BillUpdateInput" }
+      responses:
+        "200":
+          description: Bill updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Bill" }
+    delete:
+      operationId: deleteBill
+      tags: [household-finance]
+      summary: Delete a household bill
+      parameters:
+        - $ref: "#/components/parameters/BillId"
+      responses:
+        "204":
+          description: Bill deleted
+  /bills/{billId}/pause:
+    post:
+      operationId: pauseBill
+      tags: [household-finance]
+      summary: Pause a household bill
+      parameters:
+        - $ref: "#/components/parameters/BillId"
+      responses:
+        "200":
+          description: Bill paused
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Bill" }
+  /bills/{billId}/resume:
+    post:
+      operationId: resumeBill
+      tags: [household-finance]
+      summary: Resume a household bill
+      parameters:
+        - $ref: "#/components/parameters/BillId"
+      responses:
+        "200":
+          description: Bill resumed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Bill" }
   /upcoming-expenses:
     get:
       operationId: listUpcomingExpenses
@@ -519,6 +587,74 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/UpcomingExpense" }
+    post:
+      operationId: createUpcomingExpense
+      tags: [household-finance]
+      summary: Add a known upcoming expense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpcomingExpenseInput" }
+      responses:
+        "201":
+          description: Upcoming expense created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UpcomingExpense" }
+  /upcoming-expenses/{expenseId}:
+    patch:
+      operationId: updateUpcomingExpense
+      tags: [household-finance]
+      summary: Update a known upcoming expense
+      parameters:
+        - $ref: "#/components/parameters/UpcomingExpenseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpcomingExpenseUpdateInput" }
+      responses:
+        "200":
+          description: Upcoming expense updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UpcomingExpense" }
+    delete:
+      operationId: deleteUpcomingExpense
+      tags: [household-finance]
+      summary: Delete a known upcoming expense
+      parameters:
+        - $ref: "#/components/parameters/UpcomingExpenseId"
+      responses:
+        "204":
+          description: Upcoming expense deleted
+  /upcoming-expenses/{expenseId}/pause:
+    post:
+      operationId: pauseUpcomingExpense
+      tags: [household-finance]
+      summary: Pause a known upcoming expense
+      parameters:
+        - $ref: "#/components/parameters/UpcomingExpenseId"
+      responses:
+        "200":
+          description: Upcoming expense paused
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UpcomingExpense" }
+  /upcoming-expenses/{expenseId}/resume:
+    post:
+      operationId: resumeUpcomingExpense
+      tags: [household-finance]
+      summary: Resume a known upcoming expense
+      parameters:
+        - $ref: "#/components/parameters/UpcomingExpenseId"
+      responses:
+        "200":
+          description: Upcoming expense resumed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UpcomingExpense" }
   /income:
     get:
       operationId: listIncomeSources
@@ -532,6 +668,74 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/IncomeSource" }
+    post:
+      operationId: createIncomeSource
+      tags: [household-finance]
+      summary: Add a household income source
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IncomeSourceInput" }
+      responses:
+        "201":
+          description: Income source created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IncomeSource" }
+  /income/{incomeId}:
+    patch:
+      operationId: updateIncomeSource
+      tags: [household-finance]
+      summary: Update a household income source
+      parameters:
+        - $ref: "#/components/parameters/IncomeSourceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IncomeSourceUpdateInput" }
+      responses:
+        "200":
+          description: Income source updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IncomeSource" }
+    delete:
+      operationId: deleteIncomeSource
+      tags: [household-finance]
+      summary: Delete a household income source
+      parameters:
+        - $ref: "#/components/parameters/IncomeSourceId"
+      responses:
+        "204":
+          description: Income source deleted
+  /income/{incomeId}/pause:
+    post:
+      operationId: pauseIncomeSource
+      tags: [household-finance]
+      summary: Pause a household income source
+      parameters:
+        - $ref: "#/components/parameters/IncomeSourceId"
+      responses:
+        "200":
+          description: Income source paused
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IncomeSource" }
+  /income/{incomeId}/resume:
+    post:
+      operationId: resumeIncomeSource
+      tags: [household-finance]
+      summary: Resume a household income source
+      parameters:
+        - $ref: "#/components/parameters/IncomeSourceId"
+      responses:
+        "200":
+          description: Income source resumed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/IncomeSource" }
   /safe-to-deploy:
     get:
       operationId: getSafeToDeploy
@@ -604,6 +808,27 @@ components:
         pattern: "^[0-9a-fA-F-]{36}$"
     FinancialAccountId:
       name: accountId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[0-9a-fA-F-]{36}$"
+    BillId:
+      name: billId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[0-9a-fA-F-]{36}$"
+    UpcomingExpenseId:
+      name: expenseId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[0-9a-fA-F-]{36}$"
+    IncomeSourceId:
+      name: incomeId
       in: path
       required: true
       schema:
@@ -1091,28 +1316,68 @@ components:
         csv: { type: string, minLength: 1, maxLength: 100000 }
     Bill:
       type: object
-      required: [id, householdId, billName, dueDate, expectedAmount, status, essential, autoPay]
+      required: [id, householdId, billName, dueDate, expectedAmount, status, essential, autoPay, active]
       properties:
         id: { type: string }
         householdId: { type: string }
         billName: { type: string }
         dueDate: { type: string, format: date }
         expectedAmount: { type: string }
-        status: { type: string }
+        status: { type: string, enum: [upcoming, due_soon, paid, overdue, estimated, skipped] }
+        essential: { type: boolean }
+        autoPay: { type: boolean }
+        active: { type: boolean }
+    BillInput:
+      type: object
+      required: [billName, dueDate, expectedAmount]
+      properties:
+        billName: { type: string, minLength: 1, maxLength: 160 }
+        dueDate: { type: string, format: date }
+        expectedAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        status: { type: string, enum: [upcoming, due_soon, paid, overdue, estimated, skipped] }
+        essential: { type: boolean }
+        autoPay: { type: boolean }
+    BillUpdateInput:
+      type: object
+      properties:
+        billName: { type: string, minLength: 1, maxLength: 160 }
+        dueDate: { type: string, format: date }
+        expectedAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        status: { type: string, enum: [upcoming, due_soon, paid, overdue, estimated, skipped] }
         essential: { type: boolean }
         autoPay: { type: boolean }
     UpcomingExpense:
       type: object
-      required: [id, householdId, name, estimatedAmount, expectedDate, priority, required, fundedAmount]
+      required: [id, householdId, name, estimatedAmount, expectedDate, priority, required, fundedAmount, active]
       properties:
         id: { type: string }
         householdId: { type: string }
         name: { type: string }
         estimatedAmount: { type: string }
         expectedDate: { type: string, format: date }
-        priority: { type: string }
+        priority: { type: string, enum: [low, normal, high, critical] }
         required: { type: boolean }
         fundedAmount: { type: string }
+        active: { type: boolean }
+    UpcomingExpenseInput:
+      type: object
+      required: [name, estimatedAmount, expectedDate]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 160 }
+        estimatedAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        expectedDate: { type: string, format: date }
+        priority: { type: string, enum: [low, normal, high, critical] }
+        required: { type: boolean }
+        fundedAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+    UpcomingExpenseUpdateInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 160 }
+        estimatedAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        expectedDate: { type: string, format: date }
+        priority: { type: string, enum: [low, normal, high, critical] }
+        required: { type: boolean }
+        fundedAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
     IncomeSource:
       type: object
       required: [id, householdId, name, sourceType, expectedMonthly, cadence, nextPayDate, active]
@@ -1125,6 +1390,23 @@ components:
         cadence: { type: string }
         nextPayDate: { type: string, format: date }
         active: { type: boolean }
+    IncomeSourceInput:
+      type: object
+      required: [name, sourceType, expectedMonthly, cadence, nextPayDate]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 160 }
+        sourceType: { type: string, enum: [employment, contract, business, rental, investment, interest, other] }
+        expectedMonthly: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        cadence: { type: string, enum: [weekly, biweekly, monthly, quarterly, annual] }
+        nextPayDate: { type: string, format: date }
+    IncomeSourceUpdateInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 160 }
+        sourceType: { type: string, enum: [employment, contract, business, rental, investment, interest, other] }
+        expectedMonthly: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        cadence: { type: string, enum: [weekly, biweekly, monthly, quarterly, annual] }
+        nextPayDate: { type: string, format: date }
     SafeToDeploy:
       type: object
       required: [safeToDeploy, rawSafeToDeploy, confidence, confidenceScore, breakdown, reason]

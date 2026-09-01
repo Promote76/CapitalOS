@@ -465,16 +465,91 @@ export interface CsvImportInput {
   csv: string;
 }
 
+export type BillStatus = typeof BillStatus[keyof typeof BillStatus];
+
+
+export const BillStatus = {
+  upcoming: 'upcoming',
+  due_soon: 'due_soon',
+  paid: 'paid',
+  overdue: 'overdue',
+  estimated: 'estimated',
+  skipped: 'skipped',
+} as const;
+
 export interface Bill {
   id: string;
   householdId: string;
   billName: string;
   dueDate: string;
   expectedAmount: string;
-  status: string;
+  status: BillStatus;
   essential: boolean;
   autoPay: boolean;
+  active: boolean;
 }
+
+export type BillInputStatus = typeof BillInputStatus[keyof typeof BillInputStatus];
+
+
+export const BillInputStatus = {
+  upcoming: 'upcoming',
+  due_soon: 'due_soon',
+  paid: 'paid',
+  overdue: 'overdue',
+  estimated: 'estimated',
+  skipped: 'skipped',
+} as const;
+
+export interface BillInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  billName: string;
+  dueDate: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  expectedAmount: string;
+  status?: BillInputStatus;
+  essential?: boolean;
+  autoPay?: boolean;
+}
+
+export type BillUpdateInputStatus = typeof BillUpdateInputStatus[keyof typeof BillUpdateInputStatus];
+
+
+export const BillUpdateInputStatus = {
+  upcoming: 'upcoming',
+  due_soon: 'due_soon',
+  paid: 'paid',
+  overdue: 'overdue',
+  estimated: 'estimated',
+  skipped: 'skipped',
+} as const;
+
+export interface BillUpdateInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  billName?: string;
+  dueDate?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  expectedAmount?: string;
+  status?: BillUpdateInputStatus;
+  essential?: boolean;
+  autoPay?: boolean;
+}
+
+export type UpcomingExpensePriority = typeof UpcomingExpensePriority[keyof typeof UpcomingExpensePriority];
+
+
+export const UpcomingExpensePriority = {
+  low: 'low',
+  normal: 'normal',
+  high: 'high',
+  critical: 'critical',
+} as const;
 
 export interface UpcomingExpense {
   id: string;
@@ -482,9 +557,60 @@ export interface UpcomingExpense {
   name: string;
   estimatedAmount: string;
   expectedDate: string;
-  priority: string;
+  priority: UpcomingExpensePriority;
   required: boolean;
   fundedAmount: string;
+  active: boolean;
+}
+
+export type UpcomingExpenseInputPriority = typeof UpcomingExpenseInputPriority[keyof typeof UpcomingExpenseInputPriority];
+
+
+export const UpcomingExpenseInputPriority = {
+  low: 'low',
+  normal: 'normal',
+  high: 'high',
+  critical: 'critical',
+} as const;
+
+export interface UpcomingExpenseInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  name: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  estimatedAmount: string;
+  expectedDate: string;
+  priority?: UpcomingExpenseInputPriority;
+  required?: boolean;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  fundedAmount?: string;
+}
+
+export type UpcomingExpenseUpdateInputPriority = typeof UpcomingExpenseUpdateInputPriority[keyof typeof UpcomingExpenseUpdateInputPriority];
+
+
+export const UpcomingExpenseUpdateInputPriority = {
+  low: 'low',
+  normal: 'normal',
+  high: 'high',
+  critical: 'critical',
+} as const;
+
+export interface UpcomingExpenseUpdateInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  name?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  estimatedAmount?: string;
+  expectedDate?: string;
+  priority?: UpcomingExpenseUpdateInputPriority;
+  required?: boolean;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  fundedAmount?: string;
 }
 
 export interface IncomeSource {
@@ -496,6 +622,80 @@ export interface IncomeSource {
   cadence: string;
   nextPayDate: string;
   active: boolean;
+}
+
+export type IncomeSourceInputSourceType = typeof IncomeSourceInputSourceType[keyof typeof IncomeSourceInputSourceType];
+
+
+export const IncomeSourceInputSourceType = {
+  employment: 'employment',
+  contract: 'contract',
+  business: 'business',
+  rental: 'rental',
+  investment: 'investment',
+  interest: 'interest',
+  other: 'other',
+} as const;
+
+export type IncomeSourceInputCadence = typeof IncomeSourceInputCadence[keyof typeof IncomeSourceInputCadence];
+
+
+export const IncomeSourceInputCadence = {
+  weekly: 'weekly',
+  biweekly: 'biweekly',
+  monthly: 'monthly',
+  quarterly: 'quarterly',
+  annual: 'annual',
+} as const;
+
+export interface IncomeSourceInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  name: string;
+  sourceType: IncomeSourceInputSourceType;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  expectedMonthly: string;
+  cadence: IncomeSourceInputCadence;
+  nextPayDate: string;
+}
+
+export type IncomeSourceUpdateInputSourceType = typeof IncomeSourceUpdateInputSourceType[keyof typeof IncomeSourceUpdateInputSourceType];
+
+
+export const IncomeSourceUpdateInputSourceType = {
+  employment: 'employment',
+  contract: 'contract',
+  business: 'business',
+  rental: 'rental',
+  investment: 'investment',
+  interest: 'interest',
+  other: 'other',
+} as const;
+
+export type IncomeSourceUpdateInputCadence = typeof IncomeSourceUpdateInputCadence[keyof typeof IncomeSourceUpdateInputCadence];
+
+
+export const IncomeSourceUpdateInputCadence = {
+  weekly: 'weekly',
+  biweekly: 'biweekly',
+  monthly: 'monthly',
+  quarterly: 'quarterly',
+  annual: 'annual',
+} as const;
+
+export interface IncomeSourceUpdateInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  name?: string;
+  sourceType?: IncomeSourceUpdateInputSourceType;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  expectedMonthly?: string;
+  cadence?: IncomeSourceUpdateInputCadence;
+  nextPayDate?: string;
 }
 
 export type SafeToDeployBreakdown = {

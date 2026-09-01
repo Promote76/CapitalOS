@@ -254,13 +254,13 @@ export async function getSafeToDeploy() {
   const incomeDate = nextIncomeDate(data.income, asOf);
   const liquid = data.capitalAccounts.filter((account) => ["checking", "savings", "money_market"].includes(account.accountType)).reduce((sum, account) => sum + cents(account.availableBalance ?? account.currentBalance), 0);
   const bills = data.bills
-    .filter((bill) => !incomeDate || bill.dueDate < incomeDate)
+    .filter((bill) => bill.active && (!incomeDate || bill.dueDate < incomeDate))
     .reduce((sum, bill) => sum + cents(bill.expectedAmount), 0);
   const essential = data.categories.filter((category) => category.essentialStatus === "essential" && category.categoryType !== "income").reduce((sum, category) => sum + cents(category.monthlyTarget), 0);
   const reserveTarget = cents(data.reserve?.essentialMonthlyExpenses) * (data.reserve?.targetMonths ?? 3);
   const reserveShortfall = Math.max(0, reserveTarget - cents(data.reserve?.currentAmount));
   const protectedCommitments = data.goalsRows.reduce((sum, goal) => sum + cents(goal.weeklyContribution) * 4, 0);
-  const upcoming = data.expenses.filter((expense) => expense.required).reduce((sum, expense) => sum + Math.max(0, cents(expense.estimatedAmount) - cents(expense.fundedAmount)), 0);
+  const upcoming = data.expenses.filter((expense) => expense.active && expense.required).reduce((sum, expense) => sum + Math.max(0, cents(expense.estimatedAmount) - cents(expense.fundedAmount)), 0);
   return calculateSafeToDeploy({
     liquidAvailableCash: liquid,
     billsDueBeforeNextIncome: bills,
@@ -298,6 +298,193 @@ export async function getFinanceLists() {
     incomeSources: data.income,
     recurring: data.recurring,
   };
+}
+
+function planningNotFound(resource: string): never {
+  throw new Error(`${resource} was not found`);
+}
+
+export async function createBill(actor: Actor, input: {
+  billName: string;
+  dueDate: string;
+  expectedAmount: string;
+  status?: "upcoming" | "due_soon" | "paid" | "overdue" | "estimated" | "skipped";
+  essential?: boolean;
+  autoPay?: boolean;
+}) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId();
+  const [bill] = await db.insert(financeBills).values({
+    householdId: id,
+    billName: input.billName,
+    dueDate: input.dueDate,
+    expectedAmount: input.expectedAmount,
+    status: input.status ?? "upcoming",
+    essential: input.essential ?? true,
+    autoPay: input.autoPay ?? false,
+    active: true,
+  }).returning();
+  return bill;
+}
+
+export async function updateBill(actor: Actor, billId: string, input: {
+  billName?: string;
+  dueDate?: string;
+  expectedAmount?: string;
+  status?: "upcoming" | "due_soon" | "paid" | "overdue" | "estimated" | "skipped";
+  essential?: boolean;
+  autoPay?: boolean;
+}) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId();
+  const [bill] = await db.update(financeBills)
+    .set({ ...input, updatedAt: new Date() })
+    .where(and(eq(financeBills.id, billId), eq(financeBills.householdId, id)))
+    .returning();
+  return bill ?? planningNotFound("Bill");
+}
+
+async function setBillActive(actor: Actor, billId: string, active: boolean) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId();
+  const [bill] = await db.update(financeBills)
+    .set({ active, updatedAt: new Date() })
+    .where(and(eq(financeBills.id, billId), eq(financeBills.householdId, id)))
+    .returning();
+  return bill ?? planningNotFound("Bill");
+}
+
+export const pauseBill = (actor: Actor, billId: string) => setBillActive(actor, billId, false);
+export const resumeBill = (actor: Actor, billId: string) => setBillActive(actor, billId, true);
+
+export async function deleteBill(actor: Actor, billId: string) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId();
+  const [bill] = await db.delete(financeBills)
+    .where(and(eq(financeBills.id, billId), eq(financeBills.householdId, id)))
+    .returning({ id: financeBills.id });
+  if (!bill) planningNotFound("Bill");
+}
+
+export async function createUpcomingExpense(actor: Actor, input: {
+  name: string;
+  estimatedAmount: string;
+  expectedDate: string;
+  priority?: "low" | "normal" | "high" | "critical";
+  required?: boolean;
+  fundedAmount?: string;
+}) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId();
+  const [expense] = await db.insert(upcomingExpenses).values({
+    householdId: id,
+    name: input.name,
+    estimatedAmount: input.estimatedAmount,
+    expectedDate: input.expectedDate,
+    priority: input.priority ?? "normal",
+    required: input.required ?? false,
+    fundedAmount: input.fundedAmount ?? "0.00",
+    active: true,
+  }).returning();
+  return expense;
+}
+
+export async function updateUpcomingExpense(actor: Actor, expenseId: string, input: {
+  name?: string;
+  estimatedAmount?: string;
+  expectedDate?: string;
+  priority?: "low" | "normal" | "high" | "critical";
+  required?: boolean;
+  fundedAmount?: string;
+}) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId();
+  const [expense] = await db.update(upcomingExpenses)
+    .set({ ...input, updatedAt: new Date() })
+    .where(and(eq(upcomingExpenses.id, expenseId), eq(upcomingExpenses.householdId, id)))
+    .returning();
+  return expense ?? planningNotFound("Upcoming expense");
+}
+
+async function setUpcomingExpenseActive(actor: Actor, expenseId: string, active: boolean) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId();
+  const [expense] = await db.update(upcomingExpenses)
+    .set({ active, updatedAt: new Date() })
+    .where(and(eq(upcomingExpenses.id, expenseId), eq(upcomingExpenses.householdId, id)))
+    .returning();
+  return expense ?? planningNotFound("Upcoming expense");
+}
+
+export const pauseUpcomingExpense = (actor: Actor, expenseId: string) => setUpcomingExpenseActive(actor, expenseId, false);
+export const resumeUpcomingExpense = (actor: Actor, expenseId: string) => setUpcomingExpenseActive(actor, expenseId, true);
+
+export async function deleteUpcomingExpense(actor: Actor, expenseId: string) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId();
+  const [expense] = await db.delete(upcomingExpenses)
+    .where(and(eq(upcomingExpenses.id, expenseId), eq(upcomingExpenses.householdId, id)))
+    .returning({ id: upcomingExpenses.id });
+  if (!expense) planningNotFound("Upcoming expense");
+}
+
+export async function createIncomeSource(actor: Actor, input: {
+  name: string;
+  sourceType: "employment" | "contract" | "business" | "rental" | "investment" | "interest" | "other";
+  expectedMonthly: string;
+  cadence: "weekly" | "biweekly" | "monthly" | "quarterly" | "annual";
+  nextPayDate: string;
+}) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId();
+  const [source] = await db.insert(incomeSources).values({
+    householdId: id,
+    name: input.name,
+    sourceType: input.sourceType,
+    expectedMonthly: input.expectedMonthly,
+    cadence: input.cadence,
+    nextPayDate: input.nextPayDate,
+    active: true,
+  }).returning();
+  return source;
+}
+
+export async function updateIncomeSource(actor: Actor, incomeId: string, input: {
+  name?: string;
+  sourceType?: "employment" | "contract" | "business" | "rental" | "investment" | "interest" | "other";
+  expectedMonthly?: string;
+  cadence?: "weekly" | "biweekly" | "monthly" | "quarterly" | "annual";
+  nextPayDate?: string;
+}) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId();
+  const [source] = await db.update(incomeSources)
+    .set({ ...input, updatedAt: new Date() })
+    .where(and(eq(incomeSources.id, incomeId), eq(incomeSources.householdId, id)))
+    .returning();
+  return source ?? planningNotFound("Income source");
+}
+
+async function setIncomeSourceActive(actor: Actor, incomeId: string, active: boolean) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId();
+  const [source] = await db.update(incomeSources)
+    .set({ active, updatedAt: new Date() })
+    .where(and(eq(incomeSources.id, incomeId), eq(incomeSources.householdId, id)))
+    .returning();
+  return source ?? planningNotFound("Income source");
+}
+
+export const pauseIncomeSource = (actor: Actor, incomeId: string) => setIncomeSourceActive(actor, incomeId, false);
+export const resumeIncomeSource = (actor: Actor, incomeId: string) => setIncomeSourceActive(actor, incomeId, true);
+
+export async function deleteIncomeSource(actor: Actor, incomeId: string) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId();
+  const [source] = await db.delete(incomeSources)
+    .where(and(eq(incomeSources.id, incomeId), eq(incomeSources.householdId, id)))
+    .returning({ id: incomeSources.id });
+  if (!source) planningNotFound("Income source");
 }
 
 export async function createManualFinancialAccount(actor: Actor, input: {

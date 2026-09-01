@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.2.0
  */
+import type { UpcomingExpensePriority } from './upcomingExpensePriority';
 
 export interface UpcomingExpense {
   id: string;
@@ -12,7 +13,8 @@ export interface UpcomingExpense {
   name: string;
   estimatedAmount: string;
   expectedDate: Date;
-  priority: string;
+  priority: UpcomingExpensePriority;
   required: boolean;
   fundedAmount: string;
+  active: boolean;
 }

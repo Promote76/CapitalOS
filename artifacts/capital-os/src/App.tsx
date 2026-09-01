@@ -12,6 +12,15 @@ import {
   useUpdatePrivacySettings,
   useGetDashboard,
   useListContributions,
+  useListBills,
+  useListUpcomingExpenses,
+  useListIncomeSources,
+  getGetSafeToDeployQueryKey,
+  getListBillsQueryKey,
+  getListUpcomingExpensesQueryKey,
+  getListIncomeSourcesQueryKey,
+  type UpcomingExpense,
+  type IncomeSource,
   type DashboardSnapshot,
 } from '@workspace/api-client-react';
 import {
@@ -89,6 +98,11 @@ const primaryNav = [
   { href: '/properties', label: 'Properties', icon: Building2 },
   { href: '/risk', label: 'Risk & readiness', icon: ShieldCheck },
 ];
+const planningNav = [
+  { href: '/bills', label: 'Bills', icon: ReceiptText },
+  { href: '/upcoming-expenses', label: 'Upcoming expenses', icon: CalendarDays },
+  { href: '/income', label: 'Income', icon: CircleDollarSign },
+];
 const secondaryNav = [
   { href: '/transactions', label: 'Transactions', icon: ReceiptText },
   { href: '/contributions', label: 'Contributions', icon: WalletCards },
@@ -125,6 +139,11 @@ function AppShell({
             const Icon = item.icon;
             return <Link key={item.href} href={item.href} className={`nav-link ${isActive(item.href) ? 'active' : ''}`} data-testid={`link-nav-${item.label.toLowerCase().replaceAll(' ', '-')}`} onClick={() => setMenuOpen(false)}><Icon /><span>{item.label}</span></Link>;
           })}
+          <div className="nav-label nav-label-sub">Plan ahead</div>
+          {planningNav.map((item) => {
+            const Icon = item.icon;
+            return <Link key={item.href} href={item.href} className={`nav-link ${isActive(item.href) ? 'active' : ''}`} data-testid={`link-nav-${item.label.toLowerCase().replaceAll(' ', '-')}`} onClick={() => setMenuOpen(false)}><Icon /><span>{item.label}</span></Link>;
+          })}
         </div>
         <div className="nav-group">
           <div className="nav-label">Keep track</div>
@@ -145,7 +164,7 @@ function AppShell({
         <header className="topbar">
           <div className="breadcrumb">
             <button className="mobile-menu" aria-label="Open navigation" data-testid="button-open-mobile-nav" onClick={() => setMenuOpen(true)}><Menu size={17} /></button>
-            <span>Capital OS</span><ChevronRight size={13} /><strong>{location === '/' ? 'Overview' : (primaryNav.concat(secondaryNav).find((item) => item.href === location)?.label || 'Workspace')}</strong>
+            <span>Capital OS</span><ChevronRight size={13} /><strong>{location === '/' ? 'Overview' : (primaryNav.concat(planningNav, secondaryNav).find((item) => item.href === location)?.label || 'Workspace')}</strong>
           </div>
           <nav className="topnav" aria-label="Primary navigation">
             {[...primaryNav, { href: '/settings', label: 'Settings', icon: SettingsIcon }].map((item) => (
@@ -426,6 +445,150 @@ function BudgetPage() {
   </main>;
 }
 
+function formatPlanningDate(value: string | undefined, fallback = 'Not scheduled') {
+  if (!value) return fallback;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? fallback : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function humanize(value: string | undefined, fallback = 'Not set') {
+  if (!value) return fallback;
+  return value.replaceAll('_', ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function planningStatusClass(value: string | undefined) {
+  const normalized = value?.toLowerCase() ?? '';
+  if (normalized.includes('overdue') || normalized.includes('blocked') || normalized.includes('inactive')) return 'critical';
+  if (normalized.includes('review') || normalized.includes('optional') || normalized.includes('high') || normalized.includes('urgent')) return 'review';
+  if (normalized.includes('upcoming') || normalized.includes('estimated') || normalized.includes('pending')) return 'pending';
+  return '';
+}
+
+function PlanningDataState({
+  label,
+  isLoading,
+  isError,
+  isFetching,
+  isStale,
+  dataUpdatedAt,
+  hasData,
+  onRetry,
+}: {
+  label: string;
+  isLoading: boolean;
+  isError: boolean;
+  isFetching: boolean;
+  isStale: boolean;
+  dataUpdatedAt: number;
+  hasData: boolean;
+  onRetry: () => void;
+}) {
+  if (isLoading) {
+    return <div className="planning-state" role="status" data-testid={`status-${label}-loading`}><RotateCcw size={15} className="spin" /><span>Loading {label}…</span></div>;
+  }
+  if (isError) {
+    return <div className="planning-state planning-state-error" role="alert" data-testid={`status-${label}-error`}><ShieldAlert size={16} /><div><strong>{label} data is temporarily unavailable.</strong><span>{hasData ? 'Showing the last saved view while we try to reconnect.' : 'Retry to load the household plan.'}</span></div><button className="btn" onClick={onRetry} data-testid={`button-retry-${label}`}>Try again</button></div>;
+  }
+  if (isFetching) {
+    return <div className="data-freshness refreshing" role="status" data-testid={`status-${label}-refreshing`}><RotateCcw size={13} className="spin" /> Refreshing {label}…</div>;
+  }
+  if (isStale) {
+    return <div className="data-freshness stale" role="status" data-testid={`status-${label}-stale`}><ShieldAlert size={13} /> This view may be out of date. <button onClick={onRetry} data-testid={`button-refresh-${label}`}>Refresh now</button></div>;
+  }
+  return <div className="data-freshness" data-testid={`status-${label}-updated`}>Updated {dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'not yet'}</div>;
+}
+
+function SafeToDeployContext({ focus }: { focus: 'bills' | 'upcoming' | 'income' }) {
+  const query = useGetSafeToDeploy({ query: { queryKey: getGetSafeToDeployQueryKey(), staleTime: 5 * 60 * 1000 } });
+  const data = query.data;
+  const focusCopy = {
+    bills: 'Bill commitments are deducted before Capital Governor names room to deploy.',
+    upcoming: 'Required, unfunded upcoming expenses are deducted before Capital Governor names room to deploy.',
+    income: 'Current income sources keep the forward-looking plan grounded; safe-to-deploy remains a conservative limit.',
+  }[focus];
+  return <section className="card card-pad planning-safe-card animate-in delay-2" data-testid={`card-safe-to-deploy-${focus}`}>
+    <div className="planning-safe-heading"><div><div className="mono-label">Capital Governor / live context</div><h2>Safe to deploy</h2></div><span className="status">{data?.confidence ? `${data.confidence} confidence` : 'Calculating'}</span></div>
+    {query.isLoading && <div className="planning-inline-state" role="status">Calculating from the current household plan…</div>}
+    {query.isError && <div className="planning-inline-state planning-inline-error" role="alert">Safe-to-deploy context could not be refreshed. Review the list above and <button className="text-link" onClick={() => { void query.refetch(); }} data-testid={`button-refresh-safe-to-deploy-${focus}`}>try again</button>.</div>}
+    {data && <><div className="planning-safe-amount">{displayMoney(data.safeToDeploy, 'Not available')}</div><p>{data.reason}</p><div className="safe-breakdown"><div><span>Bill commitments</span><strong>{displayMoney(data.breakdown.billsDueBeforeNextIncome, 'Not available')}</strong></div><div><span>Required upcoming</span><strong>{displayMoney(data.breakdown.knownUpcomingExpenses, 'Not available')}</strong></div><div><span>Reserve shortfall</span><strong>{displayMoney(data.breakdown.emergencyReserveShortfall, 'Not available')}</strong></div><div><span>Safety buffer</span><strong>{displayMoney(data.breakdown.requiredSafetyBuffer, 'Not available')}</strong></div></div></>}
+    <div className="finance-note"><ShieldCheck size={16} /><span>{focusCopy}</span></div>
+  </section>;
+}
+
+function BillsPage() {
+  const query = useListBills({ query: { queryKey: getListBillsQueryKey(), staleTime: 5 * 60 * 1000 } });
+  const bills = query.data ?? [];
+  const orderedBills = [...bills].sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+  const total = bills.reduce((sum, bill) => sum + Number(bill.expectedAmount), 0);
+  const attentionCount = bills.filter((bill) => ['overdue', 'review', 'attention'].some((term) => bill.status.toLowerCase().includes(term))).length;
+  return <main className="content">
+    <PageHeading eyebrow="Household finance / bills" title={<>Keep the<br /><em>must-pay list clear.</em></>} description="Known household bills stay visible here so timing and essential commitments are accounted for before new capital decisions." actions={<><Link className="btn" href="/upcoming-expenses" data-testid="link-bills-upcoming-expenses"><CalendarDays size={15} /> Upcoming expenses</Link><Link className="btn btn-primary" href="/income" data-testid="link-bills-income"><CircleDollarSign size={15} /> View income</Link></>} />
+    <PlanningDataState label="bills" isLoading={query.isLoading} isError={query.isError} isFetching={query.isFetching} isStale={query.isStale} dataUpdatedAt={query.dataUpdatedAt} hasData={bills.length > 0} onRetry={() => { void query.refetch(); }} />
+    <div className="finance-grid animate-in delay-1">
+      <FinanceMetric label="Planned bill total" value={query.data ? displayMoney(total.toFixed(2), 'Not available') : 'Not available'} detail="known commitments" tone="amber" />
+      <FinanceMetric label="Next due" value={query.data ? formatPlanningDate(orderedBills[0]?.dueDate, 'No bills') : 'Not available'} detail={orderedBills[0]?.billName ?? 'waiting for data'} tone="blue" />
+      <FinanceMetric label="Essential bills" value={query.data ? `${bills.filter((bill) => bill.essential).length}` : 'Not available'} detail="priority commitments" tone="green" />
+      <FinanceMetric label="Needs attention" value={query.data ? `${attentionCount}` : 'Not available'} detail="review before deploying" tone="lavender" />
+    </div>
+    <section className="card card-pad page-section animate-in delay-2">
+      <CardTitle title="Upcoming bills" subtitle="Due date, priority, and payment status at a glance." action={<Link className="text-link" href="/cash-flow" data-testid="link-bills-cash-flow">See cash flow <ArrowUpRight size={13} /></Link>} />
+      {!query.isLoading && !query.isError && bills.length === 0 && <div className="empty-state" data-testid="empty-bills"><CalendarDays size={25} /><h3>No bills recorded</h3><p>Add known recurring obligations when the household is ready. They will be included in the Governor’s conservative planning context.</p></div>}
+      {bills.length > 0 && <div className="planning-table bills-table" role="table" aria-label="Household bills"><div className="planning-table-header" role="row"><span>Bill</span><span>Timing</span><span>Priority</span><span>Amount</span><span>Status</span></div>{orderedBills.map((bill) => <div className="planning-table-row" role="row" key={bill.id} data-testid={`row-bill-${bill.id}`}><div><strong>{bill.billName}</strong><span>{bill.autoPay ? 'Autopay enabled' : 'Manual payment'}</span></div><span>{formatPlanningDate(bill.dueDate)}</span><span className={`status ${bill.essential ? '' : 'review'}`}>{bill.essential ? 'Essential' : 'Flexible'}</span><strong className="planning-amount">{displayMoney(bill.expectedAmount, 'Not available')}</strong><span className={`status ${planningStatusClass(bill.status)}`}>{humanize(bill.status)}</span></div>)}</div>}
+      <div className="finance-note"><ShieldCheck size={16} /><span>Bills are treated as known commitments in Safe-to-Deploy, so a new or changed obligation reduces available room automatically after the next refresh.</span></div>
+    </section>
+    <SafeToDeployContext focus="bills" />
+  </main>;
+}
+
+function UpcomingExpensesPage() {
+  const query = useListUpcomingExpenses({ query: { queryKey: getListUpcomingExpensesQueryKey(), staleTime: 5 * 60 * 1000 } });
+  const expenses = query.data ?? [];
+  const orderedExpenses = [...expenses].sort((a, b) => new Date(a.expectedDate).getTime() - new Date(b.expectedDate).getTime());
+  const remaining = (expense: UpcomingExpense) => Math.max(0, Number(expense.estimatedAmount) - Number(expense.fundedAmount));
+  const requiredRemaining = expenses.reduce((sum, expense) => sum + (expense.required ? remaining(expense) : 0), 0);
+  return <main className="content">
+    <PageHeading eyebrow="Household finance / upcoming expenses" title={<>Make room for<br /><em>what is next.</em></>} description="One-time and known future expenses have a place of their own, separate from recurring bills and everyday transactions." actions={<><Link className="btn" href="/bills" data-testid="link-upcoming-bills"><ReceiptText size={15} /> View bills</Link><Link className="btn btn-primary" href="/income" data-testid="link-upcoming-income"><CircleDollarSign size={15} /> View income</Link></>} />
+    <PlanningDataState label="upcoming expenses" isLoading={query.isLoading} isError={query.isError} isFetching={query.isFetching} isStale={query.isStale} dataUpdatedAt={query.dataUpdatedAt} hasData={expenses.length > 0} onRetry={() => { void query.refetch(); }} />
+    <div className="finance-grid animate-in delay-1">
+      <FinanceMetric label="Required still to fund" value={query.data ? displayMoney(requiredRemaining.toFixed(2), 'Not available') : 'Not available'} detail="reduces safe-to-deploy room" tone="amber" />
+      <FinanceMetric label="Next expected" value={query.data ? formatPlanningDate(orderedExpenses[0]?.expectedDate, 'No expenses') : 'Not available'} detail={orderedExpenses[0]?.name ?? 'waiting for data'} tone="blue" />
+      <FinanceMetric label="Required items" value={query.data ? `${expenses.filter((expense) => expense.required).length}` : 'Not available'} detail="must be planned" tone="green" />
+      <FinanceMetric label="High priority" value={query.data ? `${expenses.filter((expense) => ['high', 'urgent'].includes(expense.priority.toLowerCase())).length}` : 'Not available'} detail="reviewed first" tone="lavender" />
+    </div>
+    <section className="card card-pad page-section animate-in delay-2">
+      <CardTitle title="Known upcoming expenses" subtitle="Funding progress keeps future choices visible without mixing them into recurring bills." action={<Link className="text-link" href="/cash-flow" data-testid="link-upcoming-cash-flow">See forecast <ArrowUpRight size={13} /></Link>} />
+      {!query.isLoading && !query.isError && expenses.length === 0 && <div className="empty-state" data-testid="empty-upcoming-expenses"><CalendarDays size={25} /><h3>No upcoming expenses recorded</h3><p>Known future choices and one-time costs will appear here when they are added to the household plan.</p></div>}
+      {expenses.length > 0 && <div className="planning-table expenses-table" role="table" aria-label="Known upcoming expenses"><div className="planning-table-header" role="row"><span>Expense</span><span>Timing</span><span>Priority</span><span>Funding</span><span>Status</span></div>{orderedExpenses.map((expense) => { const percent = Number(expense.estimatedAmount) > 0 ? (Number(expense.fundedAmount) / Number(expense.estimatedAmount)) * 100 : 0; return <div className="planning-table-row" role="row" key={expense.id} data-testid={`row-upcoming-expense-${expense.id}`}><div><strong>{expense.name}</strong><span>{expense.required ? 'Required commitment' : 'Optional choice'}</span></div><span>{formatPlanningDate(expense.expectedDate)}</span><span className={`status ${planningStatusClass(expense.priority)}`}>{humanize(expense.priority)}</span><div className="planning-funding"><div><strong>{displayMoney(expense.estimatedAmount, 'Not available')}</strong><span>{displayMoney(expense.fundedAmount, 'Not available')} funded · {displayMoney(remaining(expense).toFixed(2), 'Not available')} left</span></div><Progress value={percent} /></div><span className={`status ${expense.required ? 'pending' : 'review'}`}>{expense.required ? 'Required' : 'Optional'}</span></div>; })}</div>}
+      <div className="finance-note"><ShieldCheck size={16} /><span>Only the unfunded remainder of required expenses is deducted from Safe-to-Deploy. Optional choices stay visible without being treated as obligations.</span></div>
+    </section>
+    <SafeToDeployContext focus="upcoming" />
+  </main>;
+}
+
+function IncomePage() {
+  const query = useListIncomeSources({ query: { queryKey: getListIncomeSourcesQueryKey(), staleTime: 5 * 60 * 1000 } });
+  const sources = query.data ?? [];
+  const activeSources = sources.filter((source) => source.active);
+  const monthlyInflow = activeSources.reduce((sum, source) => sum + Number(source.expectedMonthly), 0);
+  return <main className="content">
+    <PageHeading eyebrow="Household finance / income" title={<>Know what keeps<br /><em>the plan moving.</em></>} description="Expected income sources anchor the forward-looking forecast. Keep active and paused sources clear so commitments are not mistaken for spendable cash." actions={<><Link className="btn" href="/cash-flow" data-testid="link-income-cash-flow"><TrendingUp size={15} /> View cash flow</Link><Link className="btn btn-primary" href="/bills" data-testid="link-income-bills"><ReceiptText size={15} /> View bills</Link></>} />
+    <PlanningDataState label="income" isLoading={query.isLoading} isError={query.isError} isFetching={query.isFetching} isStale={query.isStale} dataUpdatedAt={query.dataUpdatedAt} hasData={sources.length > 0} onRetry={() => { void query.refetch(); }} />
+    <div className="finance-grid animate-in delay-1">
+      <FinanceMetric label="Expected monthly inflow" value={query.data ? displayMoney(monthlyInflow.toFixed(2), 'Not available') : 'Not available'} detail="active sources only" tone="green" />
+      <FinanceMetric label="Active sources" value={query.data ? `${activeSources.length}` : 'Not available'} detail="included in forecast" tone="blue" />
+      <FinanceMetric label="Paused sources" value={query.data ? `${sources.length - activeSources.length}` : 'Not available'} detail="not counted forward" tone="lavender" />
+      <FinanceMetric label="Timing" value={query.data ? 'Monthly' : 'Not available'} detail="expected cadence" tone="amber" />
+    </div>
+    <section className="card card-pad page-section animate-in delay-2">
+      <CardTitle title="Income sources" subtitle="Status, cadence, priority, and expected amount for each source." action={<Link className="text-link" href="/upcoming-expenses" data-testid="link-income-upcoming-expenses">Plan upcoming expenses <ArrowUpRight size={13} /></Link>} />
+      {!query.isLoading && !query.isError && sources.length === 0 && <div className="empty-state" data-testid="empty-income"><CircleDollarSign size={25} /><h3>No income sources recorded</h3><p>Add expected sources so the monthly forecast can show how household commitments are covered.</p></div>}
+      {sources.length > 0 && <div className="planning-table income-table" role="table" aria-label="Household income sources"><div className="planning-table-header" role="row"><span>Source</span><span>Timing</span><span>Priority</span><span>Amount</span><span>Status</span></div>{sources.map((source: IncomeSource) => <div className="planning-table-row" role="row" key={source.id} data-testid={`row-income-${source.id}`}><div><strong>{source.name}</strong><span>{humanize(source.sourceType)} income</span></div><span>Monthly</span><span className={`status ${source.active ? '' : 'review'}`}>{source.active ? 'In forecast' : 'Paused'}</span><strong className="planning-amount">{displayMoney(source.expectedMonthly, 'Not available')}</strong><span className={`status ${source.active ? '' : 'critical'}`}>{source.active ? 'Active' : 'Inactive'}</span></div>)}</div>}
+      <div className="finance-note"><CircleDollarSign size={16} /><span>Income supports the next-month forecast and bill coverage view. It does not turn every dollar into deployable cash—the Governor still preserves commitments, reserves, and a safety buffer.</span></div>
+    </section>
+    <SafeToDeployContext focus="income" />
+  </main>;
+}
+
 function CashFlowPage() {
   const query = useGetCashFlow();
   const safe = useGetSafeToDeploy();
@@ -518,6 +681,9 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue
     <Route path="/" component={() => <Dashboard onAction={onAction} onFeedback={onFeedback} transactions={transactions} dashboard={dashboard} backendIssue={backendIssue} />} />
     <Route path="/budget" component={BudgetPage} />
     <Route path="/cash-flow" component={CashFlowPage} />
+    <Route path="/bills" component={BillsPage} />
+    <Route path="/upcoming-expenses" component={UpcomingExpensesPage} />
+    <Route path="/income" component={IncomePage} />
     <Route path="/accounts" component={() => <AccountsPage onFeedback={onFeedback} />} />
     <Route path="/goals" component={() => <GoalsPage onAction={onAction} />} />
     <Route path="/strategies" component={() => <StrategiesPage onAction={onAction} />} />

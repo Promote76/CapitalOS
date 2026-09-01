@@ -4,3 +4,4 @@
 - [OpenAPI and pinned Zod](openapi-zod-compatibility.md) — avoid unconstrained object schemas that generate APIs newer than the workspace’s pinned Zod version supports.
 - [Generated query hook options](query-hook-options.md) — custom React Query options need the matching generated query key supplied explicitly.
 - [Derived intelligence hydration](capital-os-intelligence-hydration.md) — derived advisory records must self-hydrate once after schema evolution so a first read is never an empty intelligence view.
+- [Strategy Lab safety boundary](strategy-lab-simulation-boundary.md) — research evidence can inform eligibility review, but no Strategy Lab state may submit orders or access household capital.

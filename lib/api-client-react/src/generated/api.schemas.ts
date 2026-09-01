@@ -444,6 +444,314 @@ export interface StrategySummary {
   graduationEvidence?: StrategySummaryGraduationEvidence;
 }
 
+export type CreateResearchStrategyInputExecutionModel = typeof CreateResearchStrategyInputExecutionModel[keyof typeof CreateResearchStrategyInputExecutionModel];
+
+
+export const CreateResearchStrategyInputExecutionModel = {
+  optimistic: 'optimistic',
+  moderate: 'moderate',
+  conservative: 'conservative',
+  queue_aware: 'queue_aware',
+} as const;
+
+export interface CreateResearchStrategyInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  strategyType: string;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  description: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  hypothesis: string;
+  executionModel?: CreateResearchStrategyInputExecutionModel;
+}
+
+export interface ResearchStrategyCreated {
+  id: string;
+  versionId: string;
+  name: string;
+  stage: string;
+  hypothesis: string;
+}
+
+export interface CreateStrategyVersionInput {
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  version: string;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  reason: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  logicChanges: string;
+}
+
+export type StrategyVersionCreatedConfiguration = {
+  reason?: string;
+  logicChanges?: string;
+  immutable?: boolean;
+};
+
+export interface StrategyVersionCreated {
+  id: string;
+  strategyId: string;
+  version: string;
+  configuration: StrategyVersionCreatedConfiguration;
+  createdAt: string;
+}
+
+export type RunStrategyExperimentInputMode = typeof RunStrategyExperimentInputMode[keyof typeof RunStrategyExperimentInputMode];
+
+
+export const RunStrategyExperimentInputMode = {
+  backtest: 'backtest',
+  walk_forward: 'walk_forward',
+  shadow: 'shadow',
+  paper: 'paper',
+} as const;
+
+export type RunStrategyExperimentInputExecutionModel = typeof RunStrategyExperimentInputExecutionModel[keyof typeof RunStrategyExperimentInputExecutionModel];
+
+
+export const RunStrategyExperimentInputExecutionModel = {
+  optimistic: 'optimistic',
+  moderate: 'moderate',
+  conservative: 'conservative',
+  queue_aware: 'queue_aware',
+} as const;
+
+export interface RunStrategyExperimentInput {
+  strategyId: string;
+  strategyVersionId: string;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  name: string;
+  mode: RunStrategyExperimentInputMode;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  datasetVersion: string;
+  executionModel: RunStrategyExperimentInputExecutionModel;
+  /** @minimum 1 */
+  randomSeed: number;
+}
+
+export interface StrategyLabMetrics {
+  orders: number;
+  fills: number;
+  trades: number;
+  marketDays: number;
+  independentEvents?: number;
+  totalReturnPct: number;
+  annualizedReturnPct?: number;
+  profitFactor: number;
+  winRatePct?: number;
+  averageWinBps?: number;
+  averageLossBps?: number;
+  expectancyBps: number;
+  maxDrawdownPct: number;
+  averageDrawdownPct?: number;
+  recoveryTimeDays?: number;
+  sharpeRatio?: number;
+  sortinoRatio?: number;
+  calmarRatio?: number;
+  volatilityPct?: number;
+  exposurePct?: number;
+  turnover?: number;
+  fillRatePct: number;
+  partialFillRatePct: number;
+  adverseSelectionBps: number;
+  grossSpreadCaptureBps?: number;
+  rebatesBps?: number;
+  feeBps?: number;
+  slippageBps?: number;
+  hedgeCostBps?: number;
+  inventoryLossBps?: number;
+  netEdgeBps: number;
+  latencyMs?: number;
+  inventoryPeak?: number;
+  inventoryLimitBreaches?: number;
+  averageHoldingMinutes?: number;
+  evidenceScore: number;
+  dataQuality?: string;
+  criticalModelErrors: number;
+  warning: string;
+}
+
+export interface StrategyGraduationGate {
+  name: string;
+  passed: boolean;
+}
+
+export interface StrategyGraduationReview {
+  strategyId: string;
+  strategyName: string;
+  eligible: boolean;
+  decision: string;
+  nextStage: string;
+  gates: StrategyGraduationGate[];
+  liveTradingEnabled: boolean;
+  note: string;
+}
+
+export interface StrategyLabExperiment {
+  id: string;
+  strategyId: string;
+  strategyName: string;
+  strategyVersionId: string;
+  name: string;
+  mode: string;
+  datasetVersion: string;
+  status: string;
+  randomSeed: number;
+  softwareVersion: string;
+  metrics: StrategyLabMetrics;
+  /** @nullable */
+  failureReason?: string | null;
+  createdAt: string;
+  /** @nullable */
+  completedAt?: string | null;
+}
+
+export interface StrategyLabStrategy {
+  id: string;
+  name: string;
+  description: string;
+  strategyType: string;
+  stage: string;
+  status: string;
+  owner: string;
+  version: string;
+  /** @nullable */
+  versionId?: string | null;
+  hypothesis: string;
+  markets: string[];
+  venues: string[];
+  assets: string[];
+  timeHorizon: string;
+  requiredData: string[];
+  assumptions: string[];
+  knownRisks: string[];
+  confidenceScore: number;
+  allocation: string;
+  enabled: boolean;
+  /** @nullable */
+  latestExperimentId: string | null;
+  latestMetrics?: StrategyLabMetrics;
+  graduation: StrategyGraduationReview;
+}
+
+export interface ResearchJournalEntry {
+  id: string;
+  strategyId: string;
+  entryType: string;
+  title: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface CreateResearchJournalEntryInput {
+  strategyId: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  entryType: string;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 3000
+     */
+  body: string;
+}
+
+export type StrategyLabSnapshotOverview = {
+  totalStrategiesTested: number;
+  researchStrategies: number;
+  backtestsRunning: number;
+  shadowStrategies: number;
+  paperStrategies: number;
+  microLiveEligible: number;
+  approvedStrategies: number;
+  retiredStrategies: number;
+  profitableExperiments: number;
+  unprofitableExperiments: number;
+  bestRiskAdjustedStrategy: string;
+  highestConfidenceStrategy: string;
+  lowestDrawdownStrategy: string;
+  mostDataCollected: string;
+  latestFailure: string;
+};
+
+export type StrategyLabSnapshotStageCounts = {
+  research?: number;
+  backtest?: number;
+  shadow?: number;
+  paper?: number;
+  micro_live?: number;
+  approved?: number;
+  production?: number;
+  paused?: number;
+  retired?: number;
+};
+
+export type StrategyLabSnapshotPaperAccount = {
+  startingCapital: string;
+  virtualCash: string;
+  virtualPositions: number;
+  virtualOrders: number;
+  virtualFills: number;
+  maxOrder: string;
+  maxMarketExposure: string;
+  maxStrategyExposure: string;
+  maxDailyLoss: string;
+  maxTotalDrawdownPct: number;
+  killSwitch: string;
+};
+
+export type StrategyLabSnapshotSafety = {
+  liveExecutionEnabled: boolean;
+  liveCredentialsRequired: boolean;
+  realOrderSubmissionEnabled: boolean;
+  protectedCapitalAccessible: boolean;
+  note: string;
+};
+
+export interface StrategyLabSnapshot {
+  overview: StrategyLabSnapshotOverview;
+  stageCounts: StrategyLabSnapshotStageCounts;
+  strategies: StrategyLabStrategy[];
+  experiments: StrategyLabExperiment[];
+  journal: ResearchJournalEntry[];
+  paperAccount: StrategyLabSnapshotPaperAccount;
+  safety: StrategyLabSnapshotSafety;
+}
+
 export type StrategyPromotionInputEvidence = {
   minimumObservations: boolean;
   reconciliationAccurate: boolean;

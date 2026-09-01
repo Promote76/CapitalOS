@@ -327,6 +327,106 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/StrategySummary"
+  /strategy-lab:
+    get:
+      operationId: getStrategyLab
+      tags: [planning]
+      summary: Get the research-only Strategy Lab snapshot
+      responses:
+        "200":
+          description: Strategy Lab snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StrategyLabSnapshot"
+  /strategy-lab/strategies:
+    post:
+      operationId: createResearchStrategy
+      tags: [planning]
+      summary: Create an unproven research strategy with a required hypothesis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateResearchStrategyInput"
+      responses:
+        "201":
+          description: Research strategy created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchStrategyCreated"
+  /strategy-lab/strategies/{strategyId}/versions:
+    post:
+      operationId: createStrategyVersion
+      tags: [planning]
+      summary: Create an immutable strategy version
+      parameters:
+        - $ref: "#/components/parameters/StrategyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStrategyVersionInput"
+      responses:
+        "201":
+          description: Immutable strategy version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StrategyVersionCreated"
+  /strategy-lab/experiments:
+    post:
+      operationId: runStrategyExperiment
+      tags: [planning]
+      summary: Run a deterministic simulated Strategy Lab experiment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RunStrategyExperimentInput"
+      responses:
+        "201":
+          description: Simulated experiment result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StrategyLabExperiment"
+  /strategy-lab/strategies/{strategyId}/graduation:
+    post:
+      operationId: evaluateStrategyGraduation
+      tags: [planning]
+      summary: Evaluate strategy evidence gates without enabling live trading
+      parameters:
+        - $ref: "#/components/parameters/StrategyId"
+      responses:
+        "200":
+          description: Graduation eligibility review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StrategyGraduationReview"
+  /strategy-lab/journal:
+    post:
+      operationId: createResearchJournalEntry
+      tags: [planning]
+      summary: Add a Strategy Lab research journal entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateResearchJournalEntryInput"
+      responses:
+        "201":
+          description: Research journal entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResearchJournalEntry"
   /strategies/{strategyId}/promote:
     post:
       operationId: promoteStrategy
@@ -1420,6 +1520,250 @@ components:
             minimumObservations: { type: boolean }
             reconciliationAccurate: { type: boolean }
             noCriticalErrors: { type: boolean }
+    CreateResearchStrategyInput:
+      type: object
+      required: [name, strategyType, description, hypothesis]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        strategyType: { type: string, minLength: 1, maxLength: 80 }
+        description: { type: string, minLength: 1, maxLength: 1000 }
+        hypothesis: { type: string, minLength: 1, maxLength: 2000 }
+        executionModel: { type: string, enum: [optimistic, moderate, conservative, queue_aware] }
+    ResearchStrategyCreated:
+      type: object
+      required: [id, versionId, name, stage, hypothesis]
+      properties:
+        id: { type: string }
+        versionId: { type: string }
+        name: { type: string }
+        stage: { type: string }
+        hypothesis: { type: string }
+    CreateStrategyVersionInput:
+      type: object
+      required: [version, reason, logicChanges]
+      properties:
+        version: { type: string, minLength: 1, maxLength: 40 }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+        logicChanges: { type: string, minLength: 1, maxLength: 2000 }
+    StrategyVersionCreated:
+      type: object
+      required: [id, strategyId, version, configuration, createdAt]
+      properties:
+        id: { type: string }
+        strategyId: { type: string }
+        version: { type: string }
+        configuration:
+          type: object
+          properties:
+            reason: { type: string }
+            logicChanges: { type: string }
+            immutable: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    RunStrategyExperimentInput:
+      type: object
+      required: [strategyId, strategyVersionId, name, mode, datasetVersion, executionModel, randomSeed]
+      properties:
+        strategyId: { type: string }
+        strategyVersionId: { type: string }
+        name: { type: string, minLength: 1, maxLength: 160 }
+        mode: { type: string, enum: [backtest, walk_forward, shadow, paper] }
+        datasetVersion: { type: string, minLength: 1, maxLength: 120 }
+        executionModel: { type: string, enum: [optimistic, moderate, conservative, queue_aware] }
+        randomSeed: { type: number, minimum: 1 }
+    StrategyLabMetrics:
+      type: object
+      required: [orders, fills, trades, marketDays, totalReturnPct, profitFactor, expectancyBps, maxDrawdownPct, fillRatePct, partialFillRatePct, adverseSelectionBps, netEdgeBps, evidenceScore, criticalModelErrors, warning]
+      properties:
+        orders: { type: number }
+        fills: { type: number }
+        trades: { type: number }
+        marketDays: { type: number }
+        independentEvents: { type: number }
+        totalReturnPct: { type: number }
+        annualizedReturnPct: { type: number }
+        profitFactor: { type: number }
+        winRatePct: { type: number }
+        averageWinBps: { type: number }
+        averageLossBps: { type: number }
+        expectancyBps: { type: number }
+        maxDrawdownPct: { type: number }
+        averageDrawdownPct: { type: number }
+        recoveryTimeDays: { type: number }
+        sharpeRatio: { type: number }
+        sortinoRatio: { type: number }
+        calmarRatio: { type: number }
+        volatilityPct: { type: number }
+        exposurePct: { type: number }
+        turnover: { type: number }
+        fillRatePct: { type: number }
+        partialFillRatePct: { type: number }
+        adverseSelectionBps: { type: number }
+        grossSpreadCaptureBps: { type: number }
+        rebatesBps: { type: number }
+        feeBps: { type: number }
+        slippageBps: { type: number }
+        hedgeCostBps: { type: number }
+        inventoryLossBps: { type: number }
+        netEdgeBps: { type: number }
+        latencyMs: { type: number }
+        inventoryPeak: { type: number }
+        inventoryLimitBreaches: { type: number }
+        averageHoldingMinutes: { type: number }
+        evidenceScore: { type: number }
+        dataQuality: { type: string }
+        criticalModelErrors: { type: number }
+        warning: { type: string }
+    StrategyGraduationGate:
+      type: object
+      required: [name, passed]
+      properties:
+        name: { type: string }
+        passed: { type: boolean }
+    StrategyGraduationReview:
+      type: object
+      required: [strategyId, strategyName, eligible, decision, nextStage, gates, liveTradingEnabled, note]
+      properties:
+        strategyId: { type: string }
+        strategyName: { type: string }
+        eligible: { type: boolean }
+        decision: { type: string }
+        nextStage: { type: string }
+        gates:
+          type: array
+          items: { $ref: "#/components/schemas/StrategyGraduationGate" }
+        liveTradingEnabled: { type: boolean }
+        note: { type: string }
+    StrategyLabExperiment:
+      type: object
+      required: [id, strategyId, strategyName, strategyVersionId, name, mode, datasetVersion, status, randomSeed, softwareVersion, metrics, createdAt]
+      properties:
+        id: { type: string }
+        strategyId: { type: string }
+        strategyName: { type: string }
+        strategyVersionId: { type: string }
+        name: { type: string }
+        mode: { type: string }
+        datasetVersion: { type: string }
+        status: { type: string }
+        randomSeed: { type: number }
+        softwareVersion: { type: string }
+        metrics: { $ref: "#/components/schemas/StrategyLabMetrics" }
+        failureReason: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: ["string", "null"], format: date-time }
+    StrategyLabStrategy:
+      type: object
+      required: [id, name, description, strategyType, stage, status, owner, version, hypothesis, markets, venues, assets, timeHorizon, requiredData, assumptions, knownRisks, confidenceScore, allocation, enabled, latestExperimentId, graduation]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        strategyType: { type: string }
+        stage: { type: string }
+        status: { type: string }
+        owner: { type: string }
+        version: { type: string }
+        versionId: { type: ["string", "null"] }
+        hypothesis: { type: string }
+        markets: { type: array, items: { type: string } }
+        venues: { type: array, items: { type: string } }
+        assets: { type: array, items: { type: string } }
+        timeHorizon: { type: string }
+        requiredData: { type: array, items: { type: string } }
+        assumptions: { type: array, items: { type: string } }
+        knownRisks: { type: array, items: { type: string } }
+        confidenceScore: { type: number }
+        allocation: { type: string }
+        enabled: { type: boolean }
+        latestExperimentId: { type: ["string", "null"] }
+        latestMetrics: { $ref: "#/components/schemas/StrategyLabMetrics" }
+        graduation: { $ref: "#/components/schemas/StrategyGraduationReview" }
+    ResearchJournalEntry:
+      type: object
+      required: [id, strategyId, entryType, title, body, createdAt]
+      properties:
+        id: { type: string }
+        strategyId: { type: string }
+        entryType: { type: string }
+        title: { type: string }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+    CreateResearchJournalEntryInput:
+      type: object
+      required: [strategyId, entryType, title, body]
+      properties:
+        strategyId: { type: string }
+        entryType: { type: string, minLength: 1, maxLength: 40 }
+        title: { type: string, minLength: 1, maxLength: 160 }
+        body: { type: string, minLength: 1, maxLength: 3000 }
+    StrategyLabSnapshot:
+      type: object
+      required: [overview, stageCounts, strategies, experiments, journal, paperAccount, safety]
+      properties:
+        overview:
+          type: object
+          required: [totalStrategiesTested, researchStrategies, backtestsRunning, shadowStrategies, paperStrategies, microLiveEligible, approvedStrategies, retiredStrategies, profitableExperiments, unprofitableExperiments, bestRiskAdjustedStrategy, highestConfidenceStrategy, lowestDrawdownStrategy, mostDataCollected, latestFailure]
+          properties:
+            totalStrategiesTested: { type: number }
+            researchStrategies: { type: number }
+            backtestsRunning: { type: number }
+            shadowStrategies: { type: number }
+            paperStrategies: { type: number }
+            microLiveEligible: { type: number }
+            approvedStrategies: { type: number }
+            retiredStrategies: { type: number }
+            profitableExperiments: { type: number }
+            unprofitableExperiments: { type: number }
+            bestRiskAdjustedStrategy: { type: string }
+            highestConfidenceStrategy: { type: string }
+            lowestDrawdownStrategy: { type: string }
+            mostDataCollected: { type: string }
+            latestFailure: { type: string }
+        stageCounts:
+          type: object
+          properties:
+            research: { type: number }
+            backtest: { type: number }
+            shadow: { type: number }
+            paper: { type: number }
+            micro_live: { type: number }
+            approved: { type: number }
+            production: { type: number }
+            paused: { type: number }
+            retired: { type: number }
+        strategies:
+          type: array
+          items: { $ref: "#/components/schemas/StrategyLabStrategy" }
+        experiments:
+          type: array
+          items: { $ref: "#/components/schemas/StrategyLabExperiment" }
+        journal:
+          type: array
+          items: { $ref: "#/components/schemas/ResearchJournalEntry" }
+        paperAccount:
+          type: object
+          required: [startingCapital, virtualCash, virtualPositions, virtualOrders, virtualFills, maxOrder, maxMarketExposure, maxStrategyExposure, maxDailyLoss, maxTotalDrawdownPct, killSwitch]
+          properties:
+            startingCapital: { type: string }
+            virtualCash: { type: string }
+            virtualPositions: { type: number }
+            virtualOrders: { type: number }
+            virtualFills: { type: number }
+            maxOrder: { type: string }
+            maxMarketExposure: { type: string }
+            maxStrategyExposure: { type: string }
+            maxDailyLoss: { type: string }
+            maxTotalDrawdownPct: { type: number }
+            killSwitch: { type: string }
+        safety:
+          type: object
+          required: [liveExecutionEnabled, liveCredentialsRequired, realOrderSubmissionEnabled, protectedCapitalAccessible, note]
+          properties:
+            liveExecutionEnabled: { type: boolean }
+            liveCredentialsRequired: { type: boolean }
+            realOrderSubmissionEnabled: { type: boolean }
+            protectedCapitalAccessible: { type: boolean }
+            note: { type: string }
     StrategyPromotionInput:
       type: object
       required: [toStage, evidence]

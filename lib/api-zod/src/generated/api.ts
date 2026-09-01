@@ -704,6 +704,400 @@ export const ListStrategiesResponse = zod.array(ListStrategiesResponseItem)
 
 
 /**
+ * @summary Get the research-only Strategy Lab snapshot
+ */
+export const GetStrategyLabResponse = zod.object({
+  "overview": zod.object({
+  "totalStrategiesTested": zod.number(),
+  "researchStrategies": zod.number(),
+  "backtestsRunning": zod.number(),
+  "shadowStrategies": zod.number(),
+  "paperStrategies": zod.number(),
+  "microLiveEligible": zod.number(),
+  "approvedStrategies": zod.number(),
+  "retiredStrategies": zod.number(),
+  "profitableExperiments": zod.number(),
+  "unprofitableExperiments": zod.number(),
+  "bestRiskAdjustedStrategy": zod.string(),
+  "highestConfidenceStrategy": zod.string(),
+  "lowestDrawdownStrategy": zod.string(),
+  "mostDataCollected": zod.string(),
+  "latestFailure": zod.string()
+}),
+  "stageCounts": zod.object({
+  "research": zod.number().optional(),
+  "backtest": zod.number().optional(),
+  "shadow": zod.number().optional(),
+  "paper": zod.number().optional(),
+  "micro_live": zod.number().optional(),
+  "approved": zod.number().optional(),
+  "production": zod.number().optional(),
+  "paused": zod.number().optional(),
+  "retired": zod.number().optional()
+}),
+  "strategies": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "strategyType": zod.string(),
+  "stage": zod.string(),
+  "status": zod.string(),
+  "owner": zod.string(),
+  "version": zod.string(),
+  "versionId": zod.string().nullish(),
+  "hypothesis": zod.string(),
+  "markets": zod.array(zod.string()),
+  "venues": zod.array(zod.string()),
+  "assets": zod.array(zod.string()),
+  "timeHorizon": zod.string(),
+  "requiredData": zod.array(zod.string()),
+  "assumptions": zod.array(zod.string()),
+  "knownRisks": zod.array(zod.string()),
+  "confidenceScore": zod.number(),
+  "allocation": zod.string(),
+  "enabled": zod.boolean(),
+  "latestExperimentId": zod.string().nullable(),
+  "latestMetrics": zod.object({
+  "orders": zod.number(),
+  "fills": zod.number(),
+  "trades": zod.number(),
+  "marketDays": zod.number(),
+  "independentEvents": zod.number().optional(),
+  "totalReturnPct": zod.number(),
+  "annualizedReturnPct": zod.number().optional(),
+  "profitFactor": zod.number(),
+  "winRatePct": zod.number().optional(),
+  "averageWinBps": zod.number().optional(),
+  "averageLossBps": zod.number().optional(),
+  "expectancyBps": zod.number(),
+  "maxDrawdownPct": zod.number(),
+  "averageDrawdownPct": zod.number().optional(),
+  "recoveryTimeDays": zod.number().optional(),
+  "sharpeRatio": zod.number().optional(),
+  "sortinoRatio": zod.number().optional(),
+  "calmarRatio": zod.number().optional(),
+  "volatilityPct": zod.number().optional(),
+  "exposurePct": zod.number().optional(),
+  "turnover": zod.number().optional(),
+  "fillRatePct": zod.number(),
+  "partialFillRatePct": zod.number(),
+  "adverseSelectionBps": zod.number(),
+  "grossSpreadCaptureBps": zod.number().optional(),
+  "rebatesBps": zod.number().optional(),
+  "feeBps": zod.number().optional(),
+  "slippageBps": zod.number().optional(),
+  "hedgeCostBps": zod.number().optional(),
+  "inventoryLossBps": zod.number().optional(),
+  "netEdgeBps": zod.number(),
+  "latencyMs": zod.number().optional(),
+  "inventoryPeak": zod.number().optional(),
+  "inventoryLimitBreaches": zod.number().optional(),
+  "averageHoldingMinutes": zod.number().optional(),
+  "evidenceScore": zod.number(),
+  "dataQuality": zod.string().optional(),
+  "criticalModelErrors": zod.number(),
+  "warning": zod.string()
+}).optional(),
+  "graduation": zod.object({
+  "strategyId": zod.string(),
+  "strategyName": zod.string(),
+  "eligible": zod.boolean(),
+  "decision": zod.string(),
+  "nextStage": zod.string(),
+  "gates": zod.array(zod.object({
+  "name": zod.string(),
+  "passed": zod.boolean()
+})),
+  "liveTradingEnabled": zod.boolean(),
+  "note": zod.string()
+})
+})),
+  "experiments": zod.array(zod.object({
+  "id": zod.string(),
+  "strategyId": zod.string(),
+  "strategyName": zod.string(),
+  "strategyVersionId": zod.string(),
+  "name": zod.string(),
+  "mode": zod.string(),
+  "datasetVersion": zod.string(),
+  "status": zod.string(),
+  "randomSeed": zod.number(),
+  "softwareVersion": zod.string(),
+  "metrics": zod.object({
+  "orders": zod.number(),
+  "fills": zod.number(),
+  "trades": zod.number(),
+  "marketDays": zod.number(),
+  "independentEvents": zod.number().optional(),
+  "totalReturnPct": zod.number(),
+  "annualizedReturnPct": zod.number().optional(),
+  "profitFactor": zod.number(),
+  "winRatePct": zod.number().optional(),
+  "averageWinBps": zod.number().optional(),
+  "averageLossBps": zod.number().optional(),
+  "expectancyBps": zod.number(),
+  "maxDrawdownPct": zod.number(),
+  "averageDrawdownPct": zod.number().optional(),
+  "recoveryTimeDays": zod.number().optional(),
+  "sharpeRatio": zod.number().optional(),
+  "sortinoRatio": zod.number().optional(),
+  "calmarRatio": zod.number().optional(),
+  "volatilityPct": zod.number().optional(),
+  "exposurePct": zod.number().optional(),
+  "turnover": zod.number().optional(),
+  "fillRatePct": zod.number(),
+  "partialFillRatePct": zod.number(),
+  "adverseSelectionBps": zod.number(),
+  "grossSpreadCaptureBps": zod.number().optional(),
+  "rebatesBps": zod.number().optional(),
+  "feeBps": zod.number().optional(),
+  "slippageBps": zod.number().optional(),
+  "hedgeCostBps": zod.number().optional(),
+  "inventoryLossBps": zod.number().optional(),
+  "netEdgeBps": zod.number(),
+  "latencyMs": zod.number().optional(),
+  "inventoryPeak": zod.number().optional(),
+  "inventoryLimitBreaches": zod.number().optional(),
+  "averageHoldingMinutes": zod.number().optional(),
+  "evidenceScore": zod.number(),
+  "dataQuality": zod.string().optional(),
+  "criticalModelErrors": zod.number(),
+  "warning": zod.string()
+}),
+  "failureReason": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish()
+})),
+  "journal": zod.array(zod.object({
+  "id": zod.string(),
+  "strategyId": zod.string(),
+  "entryType": zod.string(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "paperAccount": zod.object({
+  "startingCapital": zod.string(),
+  "virtualCash": zod.string(),
+  "virtualPositions": zod.number(),
+  "virtualOrders": zod.number(),
+  "virtualFills": zod.number(),
+  "maxOrder": zod.string(),
+  "maxMarketExposure": zod.string(),
+  "maxStrategyExposure": zod.string(),
+  "maxDailyLoss": zod.string(),
+  "maxTotalDrawdownPct": zod.number(),
+  "killSwitch": zod.string()
+}),
+  "safety": zod.object({
+  "liveExecutionEnabled": zod.boolean(),
+  "liveCredentialsRequired": zod.boolean(),
+  "realOrderSubmissionEnabled": zod.boolean(),
+  "protectedCapitalAccessible": zod.boolean(),
+  "note": zod.string()
+})
+})
+
+
+/**
+ * @summary Create an unproven research strategy with a required hypothesis
+ */
+export const createResearchStrategyBodyNameMax = 120;
+
+export const createResearchStrategyBodyStrategyTypeMax = 80;
+
+export const createResearchStrategyBodyDescriptionMax = 1000;
+
+export const createResearchStrategyBodyHypothesisMax = 2000;
+
+
+
+export const CreateResearchStrategyBody = zod.object({
+  "name": zod.string().min(1).max(createResearchStrategyBodyNameMax),
+  "strategyType": zod.string().min(1).max(createResearchStrategyBodyStrategyTypeMax),
+  "description": zod.string().min(1).max(createResearchStrategyBodyDescriptionMax),
+  "hypothesis": zod.string().min(1).max(createResearchStrategyBodyHypothesisMax),
+  "executionModel": zod.enum(['optimistic', 'moderate', 'conservative', 'queue_aware']).optional()
+})
+
+export const CreateResearchStrategyResponse = zod.object({
+  "id": zod.string(),
+  "versionId": zod.string(),
+  "name": zod.string(),
+  "stage": zod.string(),
+  "hypothesis": zod.string()
+})
+
+
+/**
+ * @summary Create an immutable strategy version
+ */
+export const createStrategyVersionPathStrategyIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const CreateStrategyVersionParams = zod.object({
+  "strategyId": zod.coerce.string().regex(createStrategyVersionPathStrategyIdRegExp)
+})
+
+export const createStrategyVersionBodyVersionMax = 40;
+
+export const createStrategyVersionBodyReasonMax = 500;
+
+export const createStrategyVersionBodyLogicChangesMax = 2000;
+
+
+
+export const CreateStrategyVersionBody = zod.object({
+  "version": zod.string().min(1).max(createStrategyVersionBodyVersionMax),
+  "reason": zod.string().min(1).max(createStrategyVersionBodyReasonMax),
+  "logicChanges": zod.string().min(1).max(createStrategyVersionBodyLogicChangesMax)
+})
+
+export const CreateStrategyVersionResponse = zod.object({
+  "id": zod.string(),
+  "strategyId": zod.string(),
+  "version": zod.string(),
+  "configuration": zod.object({
+  "reason": zod.string().optional(),
+  "logicChanges": zod.string().optional(),
+  "immutable": zod.boolean().optional()
+}),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Run a deterministic simulated Strategy Lab experiment
+ */
+export const runStrategyExperimentBodyNameMax = 160;
+
+export const runStrategyExperimentBodyDatasetVersionMax = 120;
+
+
+
+
+export const RunStrategyExperimentBody = zod.object({
+  "strategyId": zod.string(),
+  "strategyVersionId": zod.string(),
+  "name": zod.string().min(1).max(runStrategyExperimentBodyNameMax),
+  "mode": zod.enum(['backtest', 'walk_forward', 'shadow', 'paper']),
+  "datasetVersion": zod.string().min(1).max(runStrategyExperimentBodyDatasetVersionMax),
+  "executionModel": zod.enum(['optimistic', 'moderate', 'conservative', 'queue_aware']),
+  "randomSeed": zod.number().min(1)
+})
+
+export const RunStrategyExperimentResponse = zod.object({
+  "id": zod.string(),
+  "strategyId": zod.string(),
+  "strategyName": zod.string(),
+  "strategyVersionId": zod.string(),
+  "name": zod.string(),
+  "mode": zod.string(),
+  "datasetVersion": zod.string(),
+  "status": zod.string(),
+  "randomSeed": zod.number(),
+  "softwareVersion": zod.string(),
+  "metrics": zod.object({
+  "orders": zod.number(),
+  "fills": zod.number(),
+  "trades": zod.number(),
+  "marketDays": zod.number(),
+  "independentEvents": zod.number().optional(),
+  "totalReturnPct": zod.number(),
+  "annualizedReturnPct": zod.number().optional(),
+  "profitFactor": zod.number(),
+  "winRatePct": zod.number().optional(),
+  "averageWinBps": zod.number().optional(),
+  "averageLossBps": zod.number().optional(),
+  "expectancyBps": zod.number(),
+  "maxDrawdownPct": zod.number(),
+  "averageDrawdownPct": zod.number().optional(),
+  "recoveryTimeDays": zod.number().optional(),
+  "sharpeRatio": zod.number().optional(),
+  "sortinoRatio": zod.number().optional(),
+  "calmarRatio": zod.number().optional(),
+  "volatilityPct": zod.number().optional(),
+  "exposurePct": zod.number().optional(),
+  "turnover": zod.number().optional(),
+  "fillRatePct": zod.number(),
+  "partialFillRatePct": zod.number(),
+  "adverseSelectionBps": zod.number(),
+  "grossSpreadCaptureBps": zod.number().optional(),
+  "rebatesBps": zod.number().optional(),
+  "feeBps": zod.number().optional(),
+  "slippageBps": zod.number().optional(),
+  "hedgeCostBps": zod.number().optional(),
+  "inventoryLossBps": zod.number().optional(),
+  "netEdgeBps": zod.number(),
+  "latencyMs": zod.number().optional(),
+  "inventoryPeak": zod.number().optional(),
+  "inventoryLimitBreaches": zod.number().optional(),
+  "averageHoldingMinutes": zod.number().optional(),
+  "evidenceScore": zod.number(),
+  "dataQuality": zod.string().optional(),
+  "criticalModelErrors": zod.number(),
+  "warning": zod.string()
+}),
+  "failureReason": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary Evaluate strategy evidence gates without enabling live trading
+ */
+export const evaluateStrategyGraduationPathStrategyIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const EvaluateStrategyGraduationParams = zod.object({
+  "strategyId": zod.coerce.string().regex(evaluateStrategyGraduationPathStrategyIdRegExp)
+})
+
+export const EvaluateStrategyGraduationResponse = zod.object({
+  "strategyId": zod.string(),
+  "strategyName": zod.string(),
+  "eligible": zod.boolean(),
+  "decision": zod.string(),
+  "nextStage": zod.string(),
+  "gates": zod.array(zod.object({
+  "name": zod.string(),
+  "passed": zod.boolean()
+})),
+  "liveTradingEnabled": zod.boolean(),
+  "note": zod.string()
+})
+
+
+/**
+ * @summary Add a Strategy Lab research journal entry
+ */
+export const createResearchJournalEntryBodyEntryTypeMax = 40;
+
+export const createResearchJournalEntryBodyTitleMax = 160;
+
+export const createResearchJournalEntryBodyBodyMax = 3000;
+
+
+
+export const CreateResearchJournalEntryBody = zod.object({
+  "strategyId": zod.string(),
+  "entryType": zod.string().min(1).max(createResearchJournalEntryBodyEntryTypeMax),
+  "title": zod.string().min(1).max(createResearchJournalEntryBodyTitleMax),
+  "body": zod.string().min(1).max(createResearchJournalEntryBodyBodyMax)
+})
+
+export const CreateResearchJournalEntryResponse = zod.object({
+  "id": zod.string(),
+  "strategyId": zod.string(),
+  "entryType": zod.string(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Promote a strategy by one validated stage
  */
 export const promoteStrategyPathStrategyIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');

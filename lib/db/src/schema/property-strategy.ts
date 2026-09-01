@@ -293,8 +293,24 @@ export const strategies = pgTable(
       .notNull()
       .references(() => households.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    description: text("description"),
     strategyType: text("strategy_type").notNull(),
     stage: strategyStageEnum("stage").notNull().default("research"),
+    owner: text("owner"),
+    hypothesis: text("hypothesis"),
+    markets: jsonb("markets").$type<string[]>().notNull().default([]),
+    venues: jsonb("venues").$type<string[]>().notNull().default([]),
+    assets: jsonb("assets").$type<string[]>().notNull().default([]),
+    timeHorizon: text("time_horizon"),
+    entryLogic: text("entry_logic"),
+    exitLogic: text("exit_logic"),
+    positionSizingLogic: text("position_sizing_logic"),
+    riskLogic: text("risk_logic"),
+    executionModel: text("execution_model"),
+    requiredData: jsonb("required_data").$type<string[]>().notNull().default([]),
+    parameters: jsonb("parameters").$type<Record<string, unknown>>().notNull().default({}),
+    assumptions: jsonb("assumptions").$type<string[]>().notNull().default([]),
+    knownRisks: jsonb("known_risks").$type<string[]>().notNull().default([]),
     allocation: money("allocation"),
     expectedEdge: numeric("expected_edge", { precision: 8, scale: 4 }).notNull().default("0"),
     maxDrawdown: numeric("max_drawdown", { precision: 8, scale: 4 }).notNull().default("0"),
@@ -347,7 +363,55 @@ export const strategyApprovals = pgTable("strategy_approvals", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const strategyExperiments = pgTable(
+  "strategy_experiments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    strategyId: uuid("strategy_id").notNull().references(() => strategies.id, { onDelete: "cascade" }),
+    strategyVersionId: uuid("strategy_version_id").notNull().references(() => strategyVersions.id, { onDelete: "restrict" }),
+    name: text("name").notNull(),
+    mode: text("mode").notNull().default("backtest"),
+    datasetVersion: text("dataset_version").notNull(),
+    status: text("status").notNull().default("completed"),
+    parameters: jsonb("parameters").$type<Record<string, unknown>>().notNull().default({}),
+    executionAssumptions: jsonb("execution_assumptions").$type<Record<string, unknown>>().notNull().default({}),
+    riskLimits: jsonb("risk_limits").$type<Record<string, unknown>>().notNull().default({}),
+    randomSeed: numeric("random_seed", { precision: 12, scale: 0 }).notNull().default("0"),
+    softwareVersion: text("software_version").notNull().default("capital-os-lab-1"),
+    metrics: jsonb("metrics").$type<Record<string, unknown>>().notNull().default({}),
+    failureReason: text("failure_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => ({
+    householdIdx: index("strategy_experiments_household_idx").on(table.householdId),
+    strategyIdx: index("strategy_experiments_strategy_idx").on(table.strategyId),
+    createdAtIdx: index("strategy_experiments_created_at_idx").on(table.createdAt),
+  }),
+);
+
+export const researchJournalEntries = pgTable(
+  "research_journal_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    strategyId: uuid("strategy_id").notNull().references(() => strategies.id, { onDelete: "cascade" }),
+    entryType: text("entry_type").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("research_journal_entries_household_idx").on(table.householdId),
+    strategyIdx: index("research_journal_entries_strategy_idx").on(table.strategyId),
+  }),
+);
+
 export type PropertyGoal = typeof propertyGoals.$inferSelect;
 export type PropertyMilestone = typeof propertyMilestones.$inferSelect;
 export type PropertyCandidate = typeof propertyCandidates.$inferSelect;
 export type Strategy = typeof strategies.$inferSelect;
+export type StrategyExperiment = typeof strategyExperiments.$inferSelect;
+export type ResearchJournalEntry = typeof researchJournalEntries.$inferSelect;

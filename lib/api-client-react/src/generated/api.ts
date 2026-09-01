@@ -39,6 +39,9 @@ import type {
   ContributionScenario,
   ContributionSummary,
   CreatePropertyCandidateInput,
+  CreateResearchJournalEntryInput,
+  CreateResearchStrategyInput,
+  CreateStrategyVersionInput,
   CsvImportInput,
   DashboardSnapshot,
   EmergencyStopInput,
@@ -70,11 +73,18 @@ import type {
   RecommendationFeedback,
   RecommendationSummary,
   ReportDescriptor,
+  ResearchJournalEntry,
+  ResearchStrategyCreated,
   RiskSummary,
+  RunStrategyExperimentInput,
   SafeToDeploy,
   StrategyAllocationInput,
+  StrategyGraduationReview,
+  StrategyLabExperiment,
+  StrategyLabSnapshot,
   StrategyPromotionInput,
   StrategySummary,
+  StrategyVersionCreated,
   TransactionSummary,
   TransferInput,
   UpcomingExpense,
@@ -1518,6 +1528,439 @@ export function useListStrategies<TData = Awaited<ReturnType<typeof listStrategi
 
 
 
+
+export const getGetStrategyLabUrl = () => {
+
+
+
+
+  return `/api/strategy-lab`
+}
+
+/**
+ * @summary Get the research-only Strategy Lab snapshot
+ */
+export const getStrategyLab = async ( options?: Parameters<typeof customFetch>[1]): Promise<StrategyLabSnapshot> => {
+
+  return customFetch<StrategyLabSnapshot>(getGetStrategyLabUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetStrategyLabQueryKey = () => {
+    return [
+    `/api/strategy-lab`
+    ] as const;
+    }
+
+
+export const getGetStrategyLabQueryOptions = <TData = Awaited<ReturnType<typeof getStrategyLab>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStrategyLab>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetStrategyLabQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getStrategyLab>>> = ({ signal }) => getStrategyLab({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getStrategyLab>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetStrategyLabQueryResult = NonNullable<Awaited<ReturnType<typeof getStrategyLab>>>
+export type GetStrategyLabQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the research-only Strategy Lab snapshot
+ */
+
+export function useGetStrategyLab<TData = Awaited<ReturnType<typeof getStrategyLab>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getStrategyLab>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetStrategyLabQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateResearchStrategyUrl = () => {
+
+
+
+
+  return `/api/strategy-lab/strategies`
+}
+
+/**
+ * @summary Create an unproven research strategy with a required hypothesis
+ */
+export const createResearchStrategy = async (createResearchStrategyInput: CreateResearchStrategyInput, options?: Parameters<typeof customFetch>[1]): Promise<ResearchStrategyCreated> => {
+
+  return customFetch<ResearchStrategyCreated>(getCreateResearchStrategyUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createResearchStrategyInput)
+  }
+);}
+
+
+
+
+
+export const getCreateResearchStrategyMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createResearchStrategy>>, TError,{data: BodyType<CreateResearchStrategyInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createResearchStrategy>>, TError,{data: BodyType<CreateResearchStrategyInput>}, TContext> => {
+
+const mutationKey = ['createResearchStrategy'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createResearchStrategy>>, {data: BodyType<CreateResearchStrategyInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createResearchStrategy(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateResearchStrategyMutationResult = NonNullable<Awaited<ReturnType<typeof createResearchStrategy>>>
+    export type CreateResearchStrategyMutationBody = BodyType<CreateResearchStrategyInput>
+    export type CreateResearchStrategyMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create an unproven research strategy with a required hypothesis
+ */
+export const useCreateResearchStrategy = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createResearchStrategy>>, TError,{data: BodyType<CreateResearchStrategyInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createResearchStrategy>>,
+        TError,
+        {data: BodyType<CreateResearchStrategyInput>},
+        TContext
+      > => {
+      return useMutation(getCreateResearchStrategyMutationOptions(options));
+    }
+
+export const getCreateStrategyVersionUrl = (strategyId: string,) => {
+
+
+
+
+  return `/api/strategy-lab/strategies/${strategyId}/versions`
+}
+
+/**
+ * @summary Create an immutable strategy version
+ */
+export const createStrategyVersion = async (strategyId: string,
+    createStrategyVersionInput: CreateStrategyVersionInput, options?: Parameters<typeof customFetch>[1]): Promise<StrategyVersionCreated> => {
+
+  return customFetch<StrategyVersionCreated>(getCreateStrategyVersionUrl(strategyId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createStrategyVersionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateStrategyVersionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStrategyVersion>>, TError,{strategyId: string;data: BodyType<CreateStrategyVersionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createStrategyVersion>>, TError,{strategyId: string;data: BodyType<CreateStrategyVersionInput>}, TContext> => {
+
+const mutationKey = ['createStrategyVersion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createStrategyVersion>>, {strategyId: string;data: BodyType<CreateStrategyVersionInput>}> = (props) => {
+          const {strategyId,data} = props ?? {};
+
+          return  createStrategyVersion(strategyId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateStrategyVersionMutationResult = NonNullable<Awaited<ReturnType<typeof createStrategyVersion>>>
+    export type CreateStrategyVersionMutationBody = BodyType<CreateStrategyVersionInput>
+    export type CreateStrategyVersionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create an immutable strategy version
+ */
+export const useCreateStrategyVersion = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStrategyVersion>>, TError,{strategyId: string;data: BodyType<CreateStrategyVersionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createStrategyVersion>>,
+        TError,
+        {strategyId: string;data: BodyType<CreateStrategyVersionInput>},
+        TContext
+      > => {
+      return useMutation(getCreateStrategyVersionMutationOptions(options));
+    }
+
+export const getRunStrategyExperimentUrl = () => {
+
+
+
+
+  return `/api/strategy-lab/experiments`
+}
+
+/**
+ * @summary Run a deterministic simulated Strategy Lab experiment
+ */
+export const runStrategyExperiment = async (runStrategyExperimentInput: RunStrategyExperimentInput, options?: Parameters<typeof customFetch>[1]): Promise<StrategyLabExperiment> => {
+
+  return customFetch<StrategyLabExperiment>(getRunStrategyExperimentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(runStrategyExperimentInput)
+  }
+);}
+
+
+
+
+
+export const getRunStrategyExperimentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runStrategyExperiment>>, TError,{data: BodyType<RunStrategyExperimentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runStrategyExperiment>>, TError,{data: BodyType<RunStrategyExperimentInput>}, TContext> => {
+
+const mutationKey = ['runStrategyExperiment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runStrategyExperiment>>, {data: BodyType<RunStrategyExperimentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  runStrategyExperiment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunStrategyExperimentMutationResult = NonNullable<Awaited<ReturnType<typeof runStrategyExperiment>>>
+    export type RunStrategyExperimentMutationBody = BodyType<RunStrategyExperimentInput>
+    export type RunStrategyExperimentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Run a deterministic simulated Strategy Lab experiment
+ */
+export const useRunStrategyExperiment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runStrategyExperiment>>, TError,{data: BodyType<RunStrategyExperimentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runStrategyExperiment>>,
+        TError,
+        {data: BodyType<RunStrategyExperimentInput>},
+        TContext
+      > => {
+      return useMutation(getRunStrategyExperimentMutationOptions(options));
+    }
+
+export const getEvaluateStrategyGraduationUrl = (strategyId: string,) => {
+
+
+
+
+  return `/api/strategy-lab/strategies/${strategyId}/graduation`
+}
+
+/**
+ * @summary Evaluate strategy evidence gates without enabling live trading
+ */
+export const evaluateStrategyGraduation = async (strategyId: string, options?: Parameters<typeof customFetch>[1]): Promise<StrategyGraduationReview> => {
+
+  return customFetch<StrategyGraduationReview>(getEvaluateStrategyGraduationUrl(strategyId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getEvaluateStrategyGraduationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof evaluateStrategyGraduation>>, TError,{strategyId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof evaluateStrategyGraduation>>, TError,{strategyId: string}, TContext> => {
+
+const mutationKey = ['evaluateStrategyGraduation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof evaluateStrategyGraduation>>, {strategyId: string}> = (props) => {
+          const {strategyId} = props ?? {};
+
+          return  evaluateStrategyGraduation(strategyId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EvaluateStrategyGraduationMutationResult = NonNullable<Awaited<ReturnType<typeof evaluateStrategyGraduation>>>
+
+    export type EvaluateStrategyGraduationMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Evaluate strategy evidence gates without enabling live trading
+ */
+export const useEvaluateStrategyGraduation = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof evaluateStrategyGraduation>>, TError,{strategyId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof evaluateStrategyGraduation>>,
+        TError,
+        {strategyId: string},
+        TContext
+      > => {
+      return useMutation(getEvaluateStrategyGraduationMutationOptions(options));
+    }
+
+export const getCreateResearchJournalEntryUrl = () => {
+
+
+
+
+  return `/api/strategy-lab/journal`
+}
+
+/**
+ * @summary Add a Strategy Lab research journal entry
+ */
+export const createResearchJournalEntry = async (createResearchJournalEntryInput: CreateResearchJournalEntryInput, options?: Parameters<typeof customFetch>[1]): Promise<ResearchJournalEntry> => {
+
+  return customFetch<ResearchJournalEntry>(getCreateResearchJournalEntryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createResearchJournalEntryInput)
+  }
+);}
+
+
+
+
+
+export const getCreateResearchJournalEntryMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createResearchJournalEntry>>, TError,{data: BodyType<CreateResearchJournalEntryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createResearchJournalEntry>>, TError,{data: BodyType<CreateResearchJournalEntryInput>}, TContext> => {
+
+const mutationKey = ['createResearchJournalEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createResearchJournalEntry>>, {data: BodyType<CreateResearchJournalEntryInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createResearchJournalEntry(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateResearchJournalEntryMutationResult = NonNullable<Awaited<ReturnType<typeof createResearchJournalEntry>>>
+    export type CreateResearchJournalEntryMutationBody = BodyType<CreateResearchJournalEntryInput>
+    export type CreateResearchJournalEntryMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Add a Strategy Lab research journal entry
+ */
+export const useCreateResearchJournalEntry = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createResearchJournalEntry>>, TError,{data: BodyType<CreateResearchJournalEntryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createResearchJournalEntry>>,
+        TError,
+        {data: BodyType<CreateResearchJournalEntryInput>},
+        TContext
+      > => {
+      return useMutation(getCreateResearchJournalEntryMutationOptions(options));
+    }
 
 export const getPromoteStrategyUrl = (strategyId: string,) => {
 

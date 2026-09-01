@@ -21,7 +21,14 @@ import {
   useRunIntelligenceScenario,
   useDecideRecommendation,
   useRecordIntelligenceFeedback,
+  useGetStrategyLab,
+  useCreateResearchStrategy,
+  useCreateStrategyVersion,
+  useRunStrategyExperiment,
+  useEvaluateStrategyGraduation,
+  useCreateResearchJournalEntry,
   getGetIntelligenceQueryKey,
+  getGetStrategyLabQueryKey,
   useListContributions,
   useListBills,
   useListUpcomingExpenses,
@@ -55,12 +62,16 @@ import {
   type CreatePropertyCandidateInput,
   type IntelligenceSnapshot,
   type ContributionScenario,
+  type StrategyLabStrategy,
+  type CreateResearchStrategyInput,
+  type RunStrategyExperimentInput,
 } from '@workspace/api-client-react';
 import {
   ArrowDownLeft,
   ArrowRightLeft,
   ArrowUpRight,
   BarChart3,
+  BookOpen,
   Bell,
   Building2,
   CalendarDays,
@@ -85,6 +96,14 @@ import {
   Plus,
   ReceiptText,
   RotateCcw,
+  FlaskConical,
+  GitBranch,
+  History,
+  Lock,
+  AlertTriangle,
+  CheckCircle2,
+  Database,
+  ScrollText,
   Search,
   Settings as SettingsIcon,
   ShieldAlert,
@@ -382,27 +401,110 @@ function GoalsPage({ onAction }: { onAction: (kind: Exclude<ModalKind, null>) =>
   </main>;
 }
 
-function StrategiesPage({ onAction, onFeedback }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void }) {
-  const [filter, setFilter] = useState('All strategies');
-  const intelligence = useGetIntelligence();
-  const cards = [
-    { title: 'Duplex first', type: 'Core plan', icon: Home, copy: 'Keep the reserve liquid, visible, and pointed at one acquisition window.', featured: true },
-    { title: 'The steady climb', type: 'Contribution rhythm', icon: Gauge, copy: 'A $250 weekly rhythm with room to increase after each annual review.', featured: false },
-    { title: 'Room to move', type: 'Optionality', icon: Compass, copy: 'A separate reserve keeps a great inspection report from becoming a scramble.', featured: false },
-    { title: 'Tax-aware timing', type: 'Planning note', icon: Landmark, copy: 'A simple view of account location and timing before a future closing.', featured: false },
+function strategyStageClass(stage: string) {
+  return stage.toLowerCase().replaceAll('_', '-').replaceAll(' ', '-');
+}
+
+function metricValue(value: number | undefined, suffix = '') {
+  return value === undefined || value === null || Number.isNaN(value) ? '—' : `${value.toFixed(1)}${suffix}`;
+}
+
+function StrategyMetrics({ strategy }: { strategy?: StrategyLabStrategy }) {
+  const metrics = strategy?.latestMetrics;
+  const values = [
+    ['Evidence score', metricValue(metrics?.evidenceScore, '/100')],
+    ['Net edge', metricValue(metrics?.netEdgeBps, ' bps')],
+    ['Max drawdown', metricValue(metrics?.maxDrawdownPct, '%')],
+    ['Fill rate', metricValue(metrics?.fillRatePct, '%')],
+    ['Profit factor', metricValue(metrics?.profitFactor)],
+    ['Critical errors', metrics ? String(metrics.criticalModelErrors) : '—'],
   ];
-  return <main className="content">
-    <PageHeading eyebrow="Plan / strategies" title={<>Quiet conviction<br /><em>beats busy money.</em></>} description="A handful of strategies, each with a job. Keep the set small enough to remember." actions={<button className="btn btn-primary" data-testid="button-start-strategy" onClick={() => onAction('strategy')}><Sparkles size={15} /> Start a strategy</button>} />
-    <div className="filter-bar"><SlidersHorizontal size={14} color="var(--ink-soft)" />{['All strategies', 'Core plan', 'Optionality', 'Planning note'].map((label) => <button className={`filter-chip ${filter === label ? 'active' : ''}`} key={label} onClick={() => setFilter(label)} data-testid={`button-strategy-filter-${label.toLowerCase().replaceAll(' ', '-')}`}>{label}</button>)}</div>
-    <div className="strategy-grid">{cards.filter((card) => filter === 'All strategies' || card.type === filter).map((card, index) => { const Icon = card.icon; return <section className={`card strategy-card ${card.featured ? 'featured' : ''} animate-in delay-${Math.min(index + 1, 3)}`} key={card.title}><div className="strategy-icon"><Icon size={18} /></div><div className="mono-label">{card.type}</div><h3>{card.title}</h3><p>{card.copy}</p><button className={`btn ${card.featured ? 'btn-gold' : ''}`} data-testid={`button-open-strategy-${index}`} onClick={() => onAction('strategy')}>{card.featured ? 'Review plan' : 'View details'} <ArrowUpRight size={14} /></button></section>; })}</div>
-     <section className="card card-pad page-section animate-in delay-2">
-      <CardTitle title="Strategy graduation" subtitle="Capital earns its way forward. No strategy skips a stage." />
-      <div className="stage-stepper" data-testid="strategy-stage-stepper">{['Research', 'Backtest', 'Shadow', 'Paper', 'Micro-Live', 'Approved', 'Production'].map((stage, index) => <div className={`stage-step ${index < 3 ? 'complete' : index === 3 ? 'current' : ''}`} key={stage} data-testid={`stage-${stage.toLowerCase().replaceAll('-', '-')}`}>{stage}</div>)}</div>
-       {intelligence.isLoading && <div className="intelligence-loading" style={{ marginTop: 22 }}>Preparing the latest CIO recommendation…</div>}
-       {intelligence.isError && <div className="intelligence-empty" style={{ marginTop: 22 }}><ShieldAlert size={17} /><span>Recommendation data is unavailable right now.</span><button className="text-link" onClick={() => { void intelligence.refetch(); }}>Try again</button></div>}
-       {intelligence.data && <div style={{ marginTop: 22 }}><IntelligenceRecommendationCard snapshot={intelligence.data} onFeedback={onFeedback} /></div>}
-    </section>
-    <section className="card card-pad page-section"><CardTitle title="A note from your plan" subtitle="Last reviewed 07 October 2024" /><div style={{ display:'flex', gap:15, alignItems:'flex-start' }}><div className="activity-icon" style={{ background:'var(--marigold)', flex:'0 0 auto' }}><Lightbulb size={15} /></div><p style={{ margin:0, color:'var(--ink-soft)', fontSize:13, lineHeight:1.65, maxWidth:720 }}>“The best next move is not always the fastest one. Your current reserve pace keeps a June 2027 window realistic without asking the rest of life to wait.”</p></div></section>
+  return <div className="strategy-score-grid">{values.map(([label, value]) => <div className="strategy-score" key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>;
+}
+
+function StrategiesPage({ onFeedback }: { onFeedback: (message: string) => void }) {
+  const query = useGetStrategyLab();
+  const createStrategy = useCreateResearchStrategy();
+  const createVersion = useCreateStrategyVersion();
+  const runExperiment = useRunStrategyExperiment();
+  const evaluateGraduation = useEvaluateStrategyGraduation();
+  const createJournal = useCreateResearchJournalEntry();
+  const [selectedId, setSelectedId] = useState('');
+  const [panel, setPanel] = useState<'strategy' | 'version' | 'experiment' | 'journal' | null>(null);
+  const [strategyDraft, setStrategyDraft] = useState({ name: '', strategyType: 'systematic', description: '', hypothesis: '', executionModel: 'conservative' as CreateResearchStrategyInput['executionModel'] });
+  const [versionDraft, setVersionDraft] = useState({ version: '', reason: '', logicChanges: '' });
+  const [experimentDraft, setExperimentDraft] = useState({ name: '', mode: 'backtest' as RunStrategyExperimentInput['mode'], datasetVersion: 'market-history-2024.10', executionModel: 'moderate' as RunStrategyExperimentInput['executionModel'], randomSeed: '17' });
+  const [journalDraft, setJournalDraft] = useState({ entryType: 'observation', title: '', body: '' });
+  const data = query.data;
+  const strategies = data?.strategies ?? [];
+  const selected = strategies.find((strategy) => strategy.id === selectedId) ?? strategies[0];
+
+  useEffect(() => {
+    if (selected && !selectedId) setSelectedId(selected.id);
+  }, [selected, selectedId]);
+
+  const refresh = async () => { await queryClient.invalidateQueries({ queryKey: getGetStrategyLabQueryKey() }); };
+  const submitStrategy = async (event: FormEvent) => {
+    event.preventDefault();
+    try {
+      await createStrategy.mutateAsync({ data: strategyDraft });
+      setStrategyDraft({ name: '', strategyType: 'systematic', description: '', hypothesis: '', executionModel: 'conservative' });
+      setPanel(null); await refresh(); onFeedback('Research strategy added to the lab.');
+    } catch (error) { onFeedback(error instanceof Error ? error.message : 'The strategy could not be saved.'); }
+  };
+  const submitVersion = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!selected) return;
+    try {
+      await createVersion.mutateAsync({ strategyId: selected.id, data: versionDraft });
+      setVersionDraft({ version: '', reason: '', logicChanges: '' }); setPanel(null); await refresh(); onFeedback('Immutable strategy version recorded.');
+    } catch (error) { onFeedback(error instanceof Error ? error.message : 'The version could not be saved.'); }
+  };
+  const submitExperiment = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!selected || !selected.versionId) { onFeedback('Select a strategy with a version before running an experiment.'); return; }
+    try {
+      await runExperiment.mutateAsync({ data: { strategyId: selected.id, strategyVersionId: selected.versionId, ...experimentDraft, randomSeed: Number(experimentDraft.randomSeed) } });
+      setExperimentDraft({ name: '', mode: 'backtest', datasetVersion: 'market-history-2024.10', executionModel: 'moderate', randomSeed: '17' }); setPanel(null); await refresh(); onFeedback('Simulated experiment completed and recorded.');
+    } catch (error) { onFeedback(error instanceof Error ? error.message : 'The experiment could not be run.'); }
+  };
+  const submitJournal = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!selected) return;
+    try {
+      await createJournal.mutateAsync({ data: { ...journalDraft, strategyId: selected.id } });
+      setJournalDraft({ entryType: 'observation', title: '', body: '' }); setPanel(null); await refresh(); onFeedback('Research note added to the journal.');
+    } catch (error) { onFeedback(error instanceof Error ? error.message : 'The journal entry could not be saved.'); }
+  };
+  const evaluate = async () => {
+    if (!selected) return;
+    try {
+      const result = await evaluateGraduation.mutateAsync({ strategyId: selected.id });
+      await refresh(); onFeedback(result.eligible ? 'Evidence gates passed for review. Live trading remains disabled.' : 'Evidence gates reviewed. More research is required.');
+    } catch (error) { onFeedback(error instanceof Error ? error.message : 'Graduation evidence could not be evaluated.'); }
+  };
+  const formBusy = createStrategy.isPending || createVersion.isPending || runExperiment.isPending || createJournal.isPending;
+  const openPanel = (next: typeof panel) => setPanel(panel === next ? null : next);
+
+  if (query.isLoading) return <main className="content"><PageHeading eyebrow="Research / Strategy Lab" title={<>Evidence before<br /><em>exposure.</em></>} description="Loading the household research room." /><div className="strategy-lab-loading"><span /><span /><span /><span /></div></main>;
+  if (query.isError || !data) return <main className="content"><PageHeading eyebrow="Research / Strategy Lab" title={<>The lab is<br /><em>resting.</em></>} description="The saved research snapshot could not be loaded." /><section className="card card-pad strategy-lab-error"><AlertTriangle size={19} /><div><strong>Research data unavailable</strong><p>Nothing has been changed. Try again when the household service is ready.</p><button className="btn btn-primary" onClick={() => { void query.refetch(); }}><RotateCcw size={14} /> Try again</button></div></section></main>;
+
+  const overview = data.overview;
+  return <main className="content strategy-lab-page">
+    <PageHeading eyebrow="Research / Strategy Lab" title={<>Evidence before<br /><em>exposure.</em></>} description="A quiet room for testing ideas under honest assumptions. Every result is simulated, versioned, and reviewable." actions={<button className="btn btn-primary" data-testid="button-start-strategy" onClick={() => openPanel('strategy')}><Plus size={15} /> Add hypothesis</button>} />
+    <section className="lab-safety-banner" data-testid="strategy-lab-safety"><div className="lab-safety-icon"><Lock size={17} /></div><div><strong>Live trading is disabled</strong><p>{data.safety.note || 'The Strategy Lab cannot submit real orders or access protected household capital.'}</p></div><span className="status">Research only</span></section>
+    <section className="card card-pad lab-overview-strip animate-in delay-1"><div><span className="mono-label">Research inventory</span><strong>{overview.totalStrategiesTested}</strong><small>strategies tested</small></div><div><span className="mono-label">Evidence</span><strong>{overview.profitableExperiments}</strong><small>profitable experiments</small></div><div><span className="mono-label">Watch list</span><strong>{overview.unprofitableExperiments}</strong><small>unprofitable experiments</small></div><div><span className="mono-label">Latest failure</span><strong className="lab-stat-text">{overview.latestFailure || 'None recorded'}</strong><small>visible, not hidden</small></div></section>
+    <section className="lab-stage-row card card-pad animate-in delay-2"><CardTitle title="The evidence ladder" subtitle="Progression is earned in order. There is no shortcut to production." /><div className="lab-stage-track">{['research', 'backtest', 'walk_forward', 'shadow', 'paper', 'micro_live', 'approved', 'production'].map((stage) => <div className={`lab-stage ${strategyStageClass(stage)} ${(data.stageCounts[stage as keyof typeof data.stageCounts] ?? 0) > 0 ? 'has-count' : ''}`} key={stage}><span>{stage.replaceAll('_', ' ')}</span><b>{data.stageCounts[stage as keyof typeof data.stageCounts] ?? 0}</b></div>)}</div><div className="lab-stage-foot"><span><CheckCircle2 size={14} /> Backtests and walk-forwards are simulated</span><span><ShieldCheck size={14} /> Capital access stays locked</span></div></section>
+    {panel && <section className="card card-pad strategy-lab-form animate-in" aria-labelledby="research-form-title"><CardTitle title={panel === 'strategy' ? 'Write a falsifiable hypothesis' : panel === 'version' ? 'Create an immutable version' : panel === 'experiment' ? 'Run a controlled experiment' : 'Add to the research journal'} subtitle={panel === 'experiment' ? 'Results use a named dataset, deterministic seed, and realistic execution model.' : 'Research records are persisted and remain separate from household capital.'} action={<button className="icon-btn" onClick={() => setPanel(null)} aria-label="Close research form"><X size={15} /></button>} />
+      {panel === 'strategy' && <form onSubmit={submitStrategy} className="lab-form-grid"><label>Name<input required maxLength={120} value={strategyDraft.name} onChange={(event) => setStrategyDraft({ ...strategyDraft, name: event.target.value })} /></label><label>Strategy type<input required value={strategyDraft.strategyType} onChange={(event) => setStrategyDraft({ ...strategyDraft, strategyType: event.target.value })} /></label><label className="wide">Description<textarea required maxLength={1000} rows={2} value={strategyDraft.description} onChange={(event) => setStrategyDraft({ ...strategyDraft, description: event.target.value })} /></label><label className="wide">Hypothesis<textarea required maxLength={2000} rows={3} placeholder="If this condition holds, then..." value={strategyDraft.hypothesis} onChange={(event) => setStrategyDraft({ ...strategyDraft, hypothesis: event.target.value })} /></label><label>Execution assumption<select value={strategyDraft.executionModel} onChange={(event) => setStrategyDraft({ ...strategyDraft, executionModel: event.target.value as CreateResearchStrategyInput['executionModel'] })}><option value="conservative">Conservative</option><option value="moderate">Moderate</option><option value="queue_aware">Queue aware</option><option value="optimistic">Optimistic</option></select></label><div className="form-actions"><button className="btn btn-primary" disabled={formBusy}>{formBusy ? 'Saving…' : 'Save hypothesis'}</button></div></form>}
+      {panel === 'version' && <form onSubmit={submitVersion} className="lab-form-grid"><label>Version label<input required maxLength={40} placeholder="v0.2" value={versionDraft.version} onChange={(event) => setVersionDraft({ ...versionDraft, version: event.target.value })} /></label><label>Reason<input required maxLength={500} placeholder="Clarify exit rule" value={versionDraft.reason} onChange={(event) => setVersionDraft({ ...versionDraft, reason: event.target.value })} /></label><label className="wide">Logic changes<textarea required maxLength={2000} rows={3} value={versionDraft.logicChanges} onChange={(event) => setVersionDraft({ ...versionDraft, logicChanges: event.target.value })} /></label><div className="form-actions"><button className="btn btn-primary" disabled={formBusy}>{formBusy ? 'Saving…' : 'Create locked version'}</button></div></form>}
+      {panel === 'experiment' && <form onSubmit={submitExperiment} className="lab-form-grid"><label>Experiment name<input required maxLength={160} value={experimentDraft.name} onChange={(event) => setExperimentDraft({ ...experimentDraft, name: event.target.value })} /></label><label>Mode<select value={experimentDraft.mode} onChange={(event) => setExperimentDraft({ ...experimentDraft, mode: event.target.value as RunStrategyExperimentInput['mode'] })}><option value="backtest">Backtest</option><option value="walk_forward">Walk-forward</option><option value="shadow">Shadow</option><option value="paper">Paper</option></select></label><label>Dataset version<input required maxLength={120} value={experimentDraft.datasetVersion} onChange={(event) => setExperimentDraft({ ...experimentDraft, datasetVersion: event.target.value })} /></label><label>Execution model<select value={experimentDraft.executionModel} onChange={(event) => setExperimentDraft({ ...experimentDraft, executionModel: event.target.value as RunStrategyExperimentInput['executionModel'] })}><option value="moderate">Moderate</option><option value="conservative">Conservative</option><option value="queue_aware">Queue aware</option><option value="optimistic">Optimistic</option></select></label><label>Random seed<input required min="1" type="number" value={experimentDraft.randomSeed} onChange={(event) => setExperimentDraft({ ...experimentDraft, randomSeed: event.target.value })} /></label><div className="form-actions"><button className="btn btn-primary" disabled={formBusy || !selected?.versionId}>{formBusy ? 'Running…' : 'Run simulated test'}</button></div></form>}
+      {panel === 'journal' && <form onSubmit={submitJournal} className="lab-form-grid"><label>Entry type<select value={journalDraft.entryType} onChange={(event) => setJournalDraft({ ...journalDraft, entryType: event.target.value })}><option value="observation">Observation</option><option value="decision">Decision</option><option value="failure">Failure</option><option value="review">Review</option></select></label><label className="wide">Title<input required maxLength={160} value={journalDraft.title} onChange={(event) => setJournalDraft({ ...journalDraft, title: event.target.value })} /></label><label className="wide">Note<textarea required maxLength={3000} rows={4} value={journalDraft.body} onChange={(event) => setJournalDraft({ ...journalDraft, body: event.target.value })} /></label><div className="form-actions"><button className="btn btn-primary" disabled={formBusy}>{formBusy ? 'Saving…' : 'Save journal entry'}</button></div></form>}
+    </section>}
+    <section className="lab-workspace animate-in delay-3"><div className="lab-library card card-pad"><CardTitle title="Research library" subtitle={`${strategies.length} household strategies · select one to inspect`} action={<BookOpen size={17} color="var(--ink-soft)" />} /><div className="lab-library-list">{strategies.length === 0 && <div className="lab-empty"><FlaskConical size={21} /><strong>No hypotheses yet</strong><p>Start with an idea you can disprove.</p><button className="btn" onClick={() => openPanel('strategy')}>Add first hypothesis</button></div>}{strategies.map((strategy) => <button className={`lab-library-item ${selected?.id === strategy.id ? 'selected' : ''}`} key={strategy.id} onClick={() => setSelectedId(strategy.id)}><span className="library-mark"><FlaskConical size={15} /></span><span><strong>{strategy.name}</strong><small>{strategy.strategyType} · {strategy.version || 'unversioned'}</small></span><span className={`status ${strategy.status === 'failed' ? 'review' : ''}`}>{strategy.stage.replaceAll('_', ' ')}</span></button>)}</div></div>
+      <div className="lab-detail">{selected ? <><section className="card card-pad lab-detail-card"><div className="lab-detail-header"><div><span className="mono-label">{selected.strategyType} / {selected.owner}</span><h2>{selected.name}</h2><p>{selected.description}</p></div><span className={`status ${selected.status === 'failed' ? 'review' : ''}`}>{selected.status}</span></div><div className="hypothesis-box"><span className="mono-label">Hypothesis</span><p>{selected.hypothesis}</p></div><div className="lab-detail-actions"><button className="btn" onClick={() => openPanel('version')}><GitBranch size={14} /> New version</button><button className="btn" onClick={() => openPanel('experiment')} disabled={!selected.versionId}><FlaskConical size={14} /> Run experiment</button><button className="btn" onClick={() => openPanel('journal')}><NotebookPen size={14} /> Journal</button></div></section><section className="card card-pad"><CardTitle title="Logic & guardrails" subtitle="The assumptions that make the result interpretable." /><div className="logic-grid">{[['Markets', selected.markets], ['Venues', selected.venues], ['Assets', selected.assets], ['Time horizon', [selected.timeHorizon]], ['Required data', selected.requiredData], ['Assumptions', selected.assumptions], ['Known risks', selected.knownRisks]].map(([label, items]) => <div key={label as string}><span>{label as string}</span><p>{(items as string[]).length ? (items as string[]).join(' · ') : 'Not recorded'}</p></div>)}</div></section><section className="card card-pad"><CardTitle title="Latest scorecard" subtitle="Performance is evidence, not permission." /><StrategyMetrics strategy={selected} />{selected.latestMetrics?.warning && <div className="metric-warning"><AlertTriangle size={14} />{selected.latestMetrics.warning}</div>}</section><section className="card card-pad"><CardTitle title="Graduation review" subtitle={selected.graduation.note} action={<button className="btn" onClick={() => { void evaluate(); }} disabled={evaluateGraduation.isPending}>{evaluateGraduation.isPending ? 'Reviewing…' : 'Evaluate gates'}</button>} /><div className="graduation-gates">{selected.graduation.gates.map((gate) => <div key={gate.name}><span className={gate.passed ? 'gate-pass' : 'gate-fail'}>{gate.passed ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}</span><span>{gate.name}</span><strong>{gate.passed ? 'Passed' : 'Open'}</strong></div>)}</div><div className="lab-disabled-note"><Lock size={13} /> This review cannot enable live trading.</div></section></> : <section className="card card-pad lab-empty"><FlaskConical size={26} /><strong>Select a strategy to inspect</strong><p>The library will hold its hypothesis, assumptions, experiments, and review history.</p></section>}</div></section>
+    <section className="lab-lower-grid"><section className="card card-pad"><CardTitle title="Experiment history" subtitle="Failures stay visible so evidence cannot become mythology." action={<History size={17} color="var(--ink-soft)" />} /><div className="table-wrap"><table className="table lab-experiment-table"><thead><tr><th>Experiment</th><th>Mode / data</th><th>Result</th><th>Return</th><th>Drawdown</th></tr></thead><tbody>{data.experiments.length === 0 && <tr><td colSpan={5}>No experiments recorded yet.</td></tr>}{data.experiments.map((experiment) => <tr key={experiment.id}><td><strong>{experiment.name}</strong><small>{experiment.strategyName} · seed {experiment.randomSeed}</small></td><td>{experiment.mode.replaceAll('_', ' ')}<small>{experiment.datasetVersion}</small></td><td><span className={`status ${experiment.status === 'failed' ? 'review' : experiment.status === 'completed' ? '' : 'pending'}`}>{experiment.status}</span>{experiment.failureReason && <small className="failure-text">{experiment.failureReason}</small>}</td><td className="font-mono">{metricValue(experiment.metrics.totalReturnPct, '%')}</td><td className="font-mono">{metricValue(experiment.metrics.maxDrawdownPct, '%')}</td></tr>)}</tbody></table></div></section><section className="card card-pad paper-account-card"><CardTitle title="Paper account" subtitle="A bounded rehearsal account, never a route to household capital." action={<Database size={17} color="var(--ink-soft)" />} /><div className="paper-account-head"><strong>{displayMoney(data.paperAccount.virtualCash, '$0')}</strong><span>virtual cash</span></div><div className="paper-facts"><div><span>Orders</span><strong>{data.paperAccount.virtualOrders}</strong></div><div><span>Fills</span><strong>{data.paperAccount.virtualFills}</strong></div><div><span>Positions</span><strong>{data.paperAccount.virtualPositions}</strong></div></div><div className="paper-limits"><span>Order cap <b>{data.paperAccount.maxOrder}</b></span><span>Strategy exposure <b>{data.paperAccount.maxStrategyExposure}</b></span><span>Daily loss <b>{data.paperAccount.maxDailyLoss}</b></span></div><div className="lab-disabled-note"><ShieldCheck size={13} /> Kill switch: {data.paperAccount.killSwitch}. No brokerage connection.</div></section></section>
+    <section className="card card-pad page-section"><CardTitle title="Research journal" subtitle="Decisions and failures are part of the dataset." action={<button className="btn" onClick={() => openPanel('journal')} disabled={!selected}><NotebookPen size={14} /> Add note</button>} /><div className="journal-list">{data.journal.length === 0 && <div className="lab-empty compact"><ScrollText size={19} /><span>No journal entries yet.</span></div>}{data.journal.slice(0, 6).map((entry) => <article key={entry.id}><div className="journal-date">{new Date(entry.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div><div><span className="status">{entry.entryType}</span><h3>{entry.title}</h3><p>{entry.body}</p></div></article>)}</div></section>
   </main>;
 }
 
@@ -1018,7 +1120,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue
     <Route path="/income" component={() => <IncomePage onFeedback={onFeedback} />} />
     <Route path="/accounts" component={() => <AccountsPage onFeedback={onFeedback} />} />
     <Route path="/goals" component={() => <GoalsPage onAction={onAction} />} />
-     <Route path="/strategies" component={() => <StrategiesPage onAction={onAction} onFeedback={onFeedback} />} />
+    <Route path="/strategies" component={() => <StrategiesPage onFeedback={onFeedback} />} />
     <Route path="/portfolio" component={() => <PortfolioPage onFeedback={onFeedback} />} />
     <Route path="/properties" component={() => <PropertiesPage onAction={onAction} />} />
     <Route path="/risk" component={() => <RiskPage onFeedback={onFeedback} />} />

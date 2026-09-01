@@ -9,6 +9,7 @@ import blockchainRouter from "./blockchain";
 import reportsRouter from "./reports";
 import financeRouter from "./finance";
 import intelligenceRouter from "./intelligence";
+import strategyLabRouter from "./strategy-lab";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(blockchainRouter);
 router.use(reportsRouter);
 router.use(financeRouter);
 router.use(intelligenceRouter);
+router.use(strategyLabRouter);
 
 export default router;

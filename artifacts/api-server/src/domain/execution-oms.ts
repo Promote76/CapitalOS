@@ -1,3 +1,5 @@
+import type { VenueAdapter, VenueFill, VenueOrder } from "./execution-adapters.ts";
+
 export const LIVE_STATUSES = ["DISABLED", "ARMED", "ACTIVE", "SAFE_MODE", "STOP", "EVACUATE", "LOCKED"] as const;
 export type LiveStatus = typeof LIVE_STATUSES[number];
 
@@ -141,6 +143,10 @@ export type OrderValidationInput = {
   cancelsInMinute: number;
   notionalInMinuteCents: number;
   positionChangeInMinuteCents: number;
+  openOrderReserveCents?: number;
+  lossPerMinuteCents?: number;
+  sessionLossCents?: number;
+  protectedCapitalAttempted?: boolean;
 };
 
 export function validatePreTrade(policy: MicroLivePolicy, input: OrderValidationInput) {
@@ -167,6 +173,11 @@ export function validatePreTrade(policy: MicroLivePolicy, input: OrderValidation
   if (input.cancelsInMinute >= policy.maxCancelsPerMinute) failures.push("cancels-per-minute velocity limit has been reached");
   if (input.notionalInMinuteCents + input.orderNotionalCents > policy.maxNotionalPerMinuteCents) failures.push("notional-per-minute velocity limit has been reached");
   if (input.positionChangeInMinuteCents + input.orderNotionalCents > policy.maxPositionChangePerMinuteCents) failures.push("position-change velocity limit has been reached");
+  if ((input.openOrderReserveCents ?? 0) + input.orderNotionalCents > policy.maxMarketExposureCents - input.marketExposureCents) failures.push("open-order reserve and new order would exceed the market exposure cap");
+  if ((input.openOrderReserveCents ?? 0) + input.orderNotionalCents > policy.maxVenueCapitalCents - input.venueExposureCents) failures.push("open-order reserve and new order would exceed the venue capital cap");
+  if ((input.lossPerMinuteCents ?? 0) >= policy.maxLossPerMinuteCents) failures.push("loss-per-minute velocity limit has been reached");
+  if ((input.sessionLossCents ?? 0) >= policy.sessionLossLimitCents) failures.push("session loss limit has been reached");
+  if (input.protectedCapitalAttempted) failures.push("protected capital is not available to experimental strategies");
   return { accepted: failures.length === 0, failures, state: failures.length === 0 ? "VALIDATED" as const : "REJECTED" as const };
 }
 
@@ -192,6 +203,138 @@ export function reconcileExecutionState(input: {
     mismatches: { positionMismatch, orderMismatch, missingInternalFills, orphanedInternalFills },
     action: clean ? "CONTINUE" as const : "STOP_CANCEL_FETCH_REBUILD_VERIFY" as const,
   };
+}
+
+export function calculateOpenOrderReserveCents(
+  orders: Array<Pick<VenueOrder, "quantity" | "filledQuantity"> & { price?: number; reservedNotionalCents?: number }>,
+) {
+  return orders.reduce((reserve, order) => {
+    if (order.reservedNotionalCents !== undefined) return reserve + Math.max(0, Math.round(order.reservedNotionalCents));
+    const remainingQuantity = Math.max(0, order.quantity - order.filledQuantity);
+    return reserve + Math.max(0, Math.round(remainingQuantity * (order.price ?? 0) * 100));
+  }, 0);
+}
+
+export function duplicateClientOrderIds(orders: Pick<VenueOrder, "clientOrderId">[]) {
+  const counts = new Map<string, number>();
+  for (const order of orders) counts.set(order.clientOrderId, (counts.get(order.clientOrderId) ?? 0) + 1);
+  return [...counts.entries()].filter(([, count]) => count > 1).map(([clientOrderId]) => clientOrderId);
+}
+
+export function deduplicateVenueFills(fills: VenueFill[]) {
+  const seen = new Set<string>();
+  const unique: VenueFill[] = [];
+  const duplicateFillIds: string[] = [];
+  for (const fill of fills) {
+    if (seen.has(fill.externalFillId)) {
+      duplicateFillIds.push(fill.externalFillId);
+      continue;
+    }
+    seen.add(fill.externalFillId);
+    unique.push(fill);
+  }
+  return { fills: unique, duplicateFillIds };
+}
+
+export type ExecutionRecoveryInput = {
+  internalPositionCents: number;
+  internalOpenOrders: number;
+  internalFillIds: string[];
+};
+
+/**
+ * Rebuilds the OMS view from venue-authoritative state after a restart.
+ * Any health failure, unknown order, duplicate client order, or reconciliation
+ * mismatch keeps the system stopped until an operator resolves it.
+ */
+export async function recoverExecutionState(
+  adapter: Pick<VenueAdapter, "healthCheck" | "getBalances" | "getPositions" | "getOpenOrders" | "getRecentFills">,
+  input: ExecutionRecoveryInput,
+) {
+  try {
+    const [health, balances, positions, openOrders, rawFills] = await Promise.all([
+      adapter.healthCheck(),
+      adapter.getBalances(),
+      adapter.getPositions(),
+      adapter.getOpenOrders(),
+      adapter.getRecentFills(),
+    ]);
+    const { fills, duplicateFillIds } = deduplicateVenueFills(rawFills);
+    const duplicateOrderIds = duplicateClientOrderIds(openOrders);
+    const unknownOrderIds = openOrders
+      .filter((order) => order.state === "UNKNOWN")
+      .map((order) => order.externalOrderId);
+    const venuePositionCents = positions.reduce(
+      (total, position) => total + Math.round(position.quantity * position.averagePrice * 100),
+      0,
+    );
+    const baseReconciliation = reconcileExecutionState({
+      internalPositionCents: input.internalPositionCents,
+      venuePositionCents,
+      internalOpenOrders: input.internalOpenOrders,
+      venueOpenOrders: openOrders.length,
+      internalFillIds: input.internalFillIds,
+      venueFillIds: fills.map((fill) => fill.externalFillId),
+    });
+    const clean =
+      baseReconciliation.clean &&
+      duplicateOrderIds.length === 0 &&
+      unknownOrderIds.length === 0;
+    const reconciliation = clean
+      ? baseReconciliation
+      : {
+          ...baseReconciliation,
+          clean: false,
+          action: "STOP_CANCEL_FETCH_REBUILD_VERIFY" as const,
+        };
+    const safeToContinue = health.status === "HEALTHY" && clean;
+    return {
+      venueHealth: health.status,
+      balances,
+      positions,
+      openOrders,
+      fills,
+      duplicateFillIds,
+      duplicateOrderIds,
+      unknownOrderIds,
+      openOrderReserveCents: calculateOpenOrderReserveCents(openOrders),
+      venuePositionCents,
+      reconciliation,
+      safeToContinue,
+      action: safeToContinue
+        ? "CONTINUE" as const
+        : health.status === "FAILED"
+          ? "STOP" as const
+          : "STOP_CANCEL_FETCH_REBUILD_VERIFY" as const,
+    };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "venue recovery failed";
+    return {
+      venueHealth: "FAILED" as const,
+      balances: [],
+      positions: [],
+      openOrders: [],
+      fills: [],
+      duplicateFillIds: [],
+      duplicateOrderIds: [],
+      unknownOrderIds: [],
+      openOrderReserveCents: 0,
+      venuePositionCents: 0,
+      reconciliation: {
+        clean: false,
+        mismatches: {
+          positionMismatch: false,
+          orderMismatch: false,
+          missingInternalFills: [],
+          orphanedInternalFills: [],
+        },
+        action: "STOP_CANCEL_FETCH_REBUILD_VERIFY" as const,
+      },
+      safeToContinue: false,
+      action: "STOP" as const,
+      error: reason,
+    };
+  }
 }
 
 export function guardianDecision(input: {
@@ -269,10 +412,19 @@ export function runLiveRehearsal(policy = defaultMicroLivePolicy) {
     ],
     validation,
     chaosTests: [
+      { name: "restart recovery", result: "rebuilt from venue-authoritative state", expectedState: "SAFE_MODE" },
+      { name: "duplicate order", result: "stopped for operator review", expectedState: "STOP" },
       { name: "stale market data", result: "contained", expectedState: "SAFE_MODE" },
       { name: "duplicate fill", result: "deduplicated", expectedState: "SAFE_MODE" },
+      { name: "partial fill", result: "reconciled", expectedState: "SAFE_MODE" },
       { name: "cancel timeout then fill", result: "resolved through venue query", expectedState: "SAFE_MODE" },
+      { name: "unknown order state", result: "stopped for operator review", expectedState: "STOP" },
+      { name: "open-order reserve", result: "rejected before transmission", expectedState: "SAFE_MODE" },
+      { name: "loss velocity", result: "rejected before transmission", expectedState: "SAFE_MODE" },
+      { name: "venue failure", result: "contained", expectedState: "STOP" },
       { name: "Guardian heartbeat failure", result: "contained", expectedState: "STOP" },
+      { name: "Guardian disagreement", result: "locked", expectedState: "LOCKED" },
+      { name: "protected-capital attempt", result: "rejected before transmission", expectedState: "SAFE_MODE" },
     ],
     note: "This rehearsal uses the production-shaped control flow but transmits no orders and touches no funds.",
   };

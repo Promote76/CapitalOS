@@ -900,6 +900,167 @@ export const GetStrategyLabResponse = zod.object({
 
 
 /**
+ * @summary Get the fail-closed Micro-Live execution monitor
+ */
+export const GetMicroLiveResponse = zod.object({
+  "status": zod.string(),
+  "policy": zod.object({
+  "version": zod.string(),
+  "limits": zod.record(zod.string(), zod.union([zod.string(),zod.number(),zod.boolean()])),
+  "autoScale": zod.boolean(),
+  "leverageEnabled": zod.boolean(),
+  "marginEnabled": zod.boolean(),
+  "borrowingEnabled": zod.boolean()
+}),
+  "session": zod.object({
+  "id": zod.string(),
+  "mode": zod.string(),
+  "capitalAllocated": zod.string(),
+  "currentPosition": zod.string(),
+  "openOrders": zod.number(),
+  "netPnl": zod.string(),
+  "lossLimit": zod.string(),
+  "exposureCap": zod.string(),
+  "expiresAt": zod.coerce.date().nullish()
+}),
+  "venues": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "adapterType": zod.string(),
+  "status": zod.string(),
+  "capabilities": zod.record(zod.string(), zod.boolean()),
+  "jurisdictionConfirmed": zod.boolean(),
+  "withdrawalDisabled": zod.boolean(),
+  "health": zod.string()
+})),
+  "readiness": zod.object({
+  "score": zod.number(),
+  "checks": zod.array(zod.object({
+  "name": zod.string(),
+  "passed": zod.boolean()
+})),
+  "status": zod.string(),
+  "liveExecutionEnabled": zod.boolean()
+}),
+  "enablement": zod.object({
+  "enabled": zod.boolean(),
+  "status": zod.string(),
+  "gates": zod.array(zod.object({
+  "name": zod.string(),
+  "passed": zod.boolean()
+})),
+  "note": zod.string()
+}),
+  "guardian": zod.object({
+  "status": zod.string(),
+  "lastHeartbeatAt": zod.coerce.date().nullish(),
+  "decision": zod.string(),
+  "reason": zod.string(),
+  "independentDeployment": zod.string()
+}),
+  "reconciliation": zod.object({
+  "status": zod.string(),
+  "action": zod.string(),
+  "mismatches": zod.object({
+  "positionMismatch": zod.boolean(),
+  "orderMismatch": zod.boolean(),
+  "missingInternalFills": zod.array(zod.string()),
+  "orphanedInternalFills": zod.array(zod.string())
+})
+}),
+  "rehearsal": zod.object({
+  "mode": zod.string(),
+  "status": zod.string(),
+  "liveOrderTransmission": zod.boolean(),
+  "sequence": zod.array(zod.string()),
+  "validation": zod.object({
+  "accepted": zod.boolean(),
+  "failures": zod.array(zod.string()),
+  "state": zod.string()
+}),
+  "chaosTests": zod.array(zod.object({
+  "name": zod.string(),
+  "result": zod.string(),
+  "expectedState": zod.string()
+})),
+  "note": zod.string()
+}),
+  "timeline": zod.array(zod.string()),
+  "incidents": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "severity": zod.string().optional(),
+  "incidentType": zod.string().optional(),
+  "title": zod.string().optional(),
+  "status": zod.string().optional()
+})),
+  "events": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "eventType": zod.string().optional(),
+  "fromState": zod.string().nullish(),
+  "toState": zod.string().nullish(),
+  "createdAt": zod.coerce.date().optional()
+})),
+  "safety": zod.object({
+  "liveOrderTransmissionEnabled": zod.boolean(),
+  "householdCapitalAccessible": zod.boolean(),
+  "protectedCapitalAccessible": zod.boolean(),
+  "autoScale": zod.boolean(),
+  "aiCanPlaceOrders": zod.boolean(),
+  "aiCanChangeRisk": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Run a no-transmission Micro-Live rehearsal
+ */
+export const RunMicroLiveRehearsalResponse = zod.object({
+  "mode": zod.string(),
+  "status": zod.string(),
+  "liveOrderTransmission": zod.boolean(),
+  "sequence": zod.array(zod.string()),
+  "validation": zod.object({
+  "accepted": zod.boolean(),
+  "failures": zod.array(zod.string()),
+  "state": zod.string()
+}),
+  "chaosTests": zod.array(zod.object({
+  "name": zod.string(),
+  "result": zod.string(),
+  "expectedState": zod.string()
+})),
+  "note": zod.string()
+})
+
+
+/**
+ * @summary Review Micro-Live gates without enabling execution
+ */
+export const ReviewMicroLiveEnablementResponse = zod.object({
+  "status": zod.string(),
+  "readiness": zod.object({
+  "score": zod.number(),
+  "checks": zod.array(zod.object({
+  "name": zod.string(),
+  "passed": zod.boolean()
+})),
+  "status": zod.string(),
+  "liveExecutionEnabled": zod.boolean()
+}),
+  "enablement": zod.object({
+  "enabled": zod.boolean(),
+  "status": zod.string(),
+  "gates": zod.array(zod.object({
+  "name": zod.string(),
+  "passed": zod.boolean()
+})),
+  "note": zod.string()
+}),
+  "liveExecutionEnabled": zod.boolean()
+})
+
+
+/**
  * @summary Create an unproven research strategy with a required hypothesis
  */
 export const createResearchStrategyBodyNameMax = 120;

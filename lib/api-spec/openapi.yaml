@@ -339,6 +339,39 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StrategyLabSnapshot"
+  /micro-live:
+    get:
+      operationId: getMicroLive
+      tags: [planning]
+      summary: Get the fail-closed Micro-Live execution monitor
+      responses:
+        "200":
+          description: Micro-Live control-plane snapshot
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MicroLiveSnapshot" }
+  /micro-live/rehearsal:
+    post:
+      operationId: runMicroLiveRehearsal
+      tags: [planning]
+      summary: Run a no-transmission Micro-Live rehearsal
+      responses:
+        "201":
+          description: Rehearsal result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MicroLiveRehearsal" }
+  /micro-live/enablement-review:
+    post:
+      operationId: reviewMicroLiveEnablement
+      tags: [planning]
+      summary: Review Micro-Live gates without enabling execution
+      responses:
+        "200":
+          description: Enablement review
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MicroLiveEnablementReview" }
   /strategy-lab/strategies:
     post:
       operationId: createResearchStrategy
@@ -1651,6 +1684,177 @@ components:
         failureReason: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
         completedAt: { type: ["string", "null"], format: date-time }
+    MicroLiveGate:
+      type: object
+      required: [name, passed]
+      properties:
+        name: { type: string }
+        passed: { type: boolean }
+    MicroLivePolicy:
+      type: object
+      required: [version, limits, autoScale, leverageEnabled, marginEnabled, borrowingEnabled]
+      properties:
+        version: { type: string }
+        limits:
+          type: object
+          additionalProperties: { type: [string, number, boolean] }
+        autoScale: { type: boolean }
+        leverageEnabled: { type: boolean }
+        marginEnabled: { type: boolean }
+        borrowingEnabled: { type: boolean }
+    MicroLiveReadiness:
+      type: object
+      required: [score, checks, status, liveExecutionEnabled]
+      properties:
+        score: { type: number }
+        checks:
+          type: array
+          items: { $ref: "#/components/schemas/MicroLiveGate" }
+        status: { type: string }
+        liveExecutionEnabled: { type: boolean }
+    MicroLiveRehearsal:
+      type: object
+      required: [mode, status, liveOrderTransmission, sequence, validation, chaosTests, note]
+      properties:
+        mode: { type: string }
+        status: { type: string }
+        liveOrderTransmission: { type: boolean }
+        sequence: { type: array, items: { type: string } }
+        validation:
+          type: object
+          required: [accepted, failures, state]
+          properties:
+            accepted: { type: boolean }
+            failures: { type: array, items: { type: string } }
+            state: { type: string }
+        chaosTests:
+          type: array
+          items:
+            type: object
+            required: [name, result, expectedState]
+            properties:
+              name: { type: string }
+              result: { type: string }
+              expectedState: { type: string }
+        note: { type: string }
+    MicroLiveSnapshot:
+      type: object
+      required: [status, policy, session, venues, readiness, enablement, guardian, reconciliation, rehearsal, timeline, incidents, events, safety]
+      properties:
+        status: { type: string }
+        policy: { $ref: "#/components/schemas/MicroLivePolicy" }
+        session:
+          type: object
+          required: [id, mode, capitalAllocated, currentPosition, openOrders, netPnl, lossLimit, exposureCap]
+          properties:
+            id: { type: string }
+            mode: { type: string }
+            capitalAllocated: { type: string }
+            currentPosition: { type: string }
+            openOrders: { type: number }
+            netPnl: { type: string }
+            lossLimit: { type: string }
+            exposureCap: { type: string }
+            expiresAt: { type: ["string", "null"], format: date-time }
+        venues:
+          type: array
+          items:
+            type: object
+            required: [id, name, adapterType, status, capabilities, jurisdictionConfirmed, withdrawalDisabled, health]
+            properties:
+              id: { type: string }
+              name: { type: string }
+              adapterType: { type: string }
+              status: { type: string }
+              capabilities:
+                type: object
+                additionalProperties: { type: boolean }
+              jurisdictionConfirmed: { type: boolean }
+              withdrawalDisabled: { type: boolean }
+              health: { type: string }
+        readiness: { $ref: "#/components/schemas/MicroLiveReadiness" }
+        enablement:
+          type: object
+          required: [enabled, status, gates, note]
+          properties:
+            enabled: { type: boolean }
+            status: { type: string }
+            gates:
+              type: array
+              items: { $ref: "#/components/schemas/MicroLiveGate" }
+            note: { type: string }
+        guardian:
+          type: object
+          required: [status, decision, reason, independentDeployment]
+          properties:
+            status: { type: string }
+            lastHeartbeatAt: { type: ["string", "null"], format: date-time }
+            decision: { type: string }
+            reason: { type: string }
+            independentDeployment: { type: string }
+        reconciliation:
+          type: object
+          required: [status, action, mismatches]
+          properties:
+            status: { type: string }
+            action: { type: string }
+            mismatches:
+              type: object
+              required: [positionMismatch, orderMismatch, missingInternalFills, orphanedInternalFills]
+              properties:
+                positionMismatch: { type: boolean }
+                orderMismatch: { type: boolean }
+                missingInternalFills: { type: array, items: { type: string } }
+                orphanedInternalFills: { type: array, items: { type: string } }
+        rehearsal: { $ref: "#/components/schemas/MicroLiveRehearsal" }
+        timeline: { type: array, items: { type: string } }
+        incidents:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              severity: { type: string }
+              incidentType: { type: string }
+              title: { type: string }
+              status: { type: string }
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              eventType: { type: string }
+              fromState: { type: ["string", "null"] }
+              toState: { type: ["string", "null"] }
+              createdAt: { type: string, format: date-time }
+        safety:
+          type: object
+          required: [liveOrderTransmissionEnabled, householdCapitalAccessible, protectedCapitalAccessible, autoScale, aiCanPlaceOrders, aiCanChangeRisk]
+          properties:
+            liveOrderTransmissionEnabled: { type: boolean }
+            householdCapitalAccessible: { type: boolean }
+            protectedCapitalAccessible: { type: boolean }
+            autoScale: { type: boolean }
+            aiCanPlaceOrders: { type: boolean }
+            aiCanChangeRisk: { type: boolean }
+    MicroLiveEnablementReview:
+      type: object
+      required: [status, readiness, enablement, liveExecutionEnabled]
+      properties:
+        status: { type: string }
+        readiness: { $ref: "#/components/schemas/MicroLiveReadiness" }
+        enablement:
+          type: object
+          required: [enabled, status, gates, note]
+          properties:
+            enabled: { type: boolean }
+            status: { type: string }
+            gates:
+              type: array
+              items: { $ref: "#/components/schemas/MicroLiveGate" }
+            note: { type: string }
+        liveExecutionEnabled: { type: boolean }
     StrategyLabStrategy:
       type: object
       required: [id, name, description, strategyType, stage, status, owner, version, hypothesis, markets, venues, assets, timeHorizon, requiredData, assumptions, knownRisks, confidenceScore, allocation, enabled, latestExperimentId, graduation]

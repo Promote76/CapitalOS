@@ -1,0 +1,2077 @@
+Replit Prompt: Build Capital OS Micro-Live Execution, OMS, Reconciliation & Independent Guardian Layer
+
+Continue building the existing Capital OS application.
+
+Do not redesign the approved UI.
+
+Preserve all existing modules, including:
+
+- Household Budget
+- Cash Flow
+- Accounts
+- Wells Fargo / Plaid
+- Safe-to-Deploy
+- Capital Governor
+- Protected Capital
+- Duplex Goal
+- Duplex Acquisition OS
+- Portfolio
+- Risk Governor
+- AI CIO
+- Strategy Lab
+- Backtesting
+- Shadow Trading
+- Paper Trading
+- Strategy Graduation
+- Audit Ledger
+- Blockchain-ready architecture
+
+This phase builds:
+
+CAPITAL OS MICRO-LIVE EXECUTION LAYER
+
+The objective is to prepare Capital OS to execute very small, tightly controlled real-money strategy experiments.
+
+This is NOT a full production trading system.
+
+This phase exists to validate:
+
+- real venue connectivity
+- real order lifecycle behavior
+- real fills
+- reconciliation
+- latency
+- adverse selection
+- transaction costs
+- risk controls
+- operational reliability
+
+The first real-money environment must be intentionally constrained.
+
+---
+
+1. CORE PRINCIPLE
+
+Assume:
+
+Strategy logic can fail.
+Market data can fail.
+Venue APIs can fail.
+Replit can fail.
+The database can fail.
+The Risk Engine can fail.
+Orders can fill during cancellation.
+The venue can disagree with internal state.
+
+Therefore:
+
+«No single software component may have enough authority to create a catastrophic loss.»
+
+Build around:
+
+PREVENT
+↓
+DETECT
+↓
+CONTAIN
+↓
+RECOVER
+
+---
+
+2. CAPITAL SANDBOX
+
+Create a dedicated Micro-Live capital allocation.
+
+Default test configuration:
+
+Total Household Capital:
+NOT ACCESSIBLE
+
+Protected Duplex Capital:
+NOT ACCESSIBLE
+
+Emergency Reserve:
+NOT ACCESSIBLE
+
+Micro-Live Trading Capital:
+$20
+
+Configurable initial limits:
+
+Max Venue Capital:        $10
+Max Strategy Capital:     $10
+Max Market Exposure:       $5
+Max Individual Order:      $1
+Max Inventory:             $5
+
+Soft Daily Loss:        $0.75
+Hard Daily Loss:        $1.50
+
+Soft Drawdown:             4%
+Hard Drawdown:             6%
+
+Leverage:                  NONE
+Margin:                    NONE
+Borrowing:                 NONE
+
+Do not hard-code these values permanently.
+
+Make them configurable policies.
+
+---
+
+3. CAPITAL ISOLATION
+
+Micro-Live execution must be unable to access:
+
+Duplex Reserve
+Emergency Reserve
+Household Checking
+Household Savings
+Property Closing Capital
+Opportunity Reserve unless specifically allocated
+
+Only explicitly authorized Micro-Live capital may be used.
+
+Capital Governor must enforce this before the execution system sees capital.
+
+---
+
+4. LIVE ENABLEMENT GATE
+
+A strategy may enter Micro-Live only when:
+
+Strategy Stage = Micro-Live Eligible
+AND
+Human Approval = TRUE
+AND
+Capital Governor = PASS
+AND
+Risk Governor = PASS
+AND
+Venue Health = HEALTHY
+AND
+Reconciliation = CLEAN
+
+Otherwise:
+
+LIVE EXECUTION DISABLED
+
+---
+
+5. LIVE EXECUTION STATUS
+
+Create global states:
+
+DISABLED
+ARMED
+ACTIVE
+SAFE_MODE
+STOP
+EVACUATE
+LOCKED
+
+Definitions:
+
+DISABLED
+No live execution allowed.
+
+ARMED
+All checks passed but no strategy currently submitting orders.
+
+ACTIVE
+Authorized Micro-Live strategy operating.
+
+SAFE_MODE
+No new orders; monitoring and reconciliation continue.
+
+STOP
+Cancel open orders and prevent new exposure.
+
+EVACUATE
+Controlled reduction of existing exposure.
+
+LOCKED
+Human intervention required before restart.
+
+---
+
+6. VENUE ADAPTER ARCHITECTURE
+
+Create provider-agnostic venue interfaces.
+
+Do not tightly couple Capital OS to one exchange.
+
+Conceptual interface:
+
+VenueAdapter
+
+connect
+disconnect
+healthCheck
+getBalances
+getPositions
+getOpenOrders
+getRecentFills
+getOrderBook
+placeOrder
+cancelOrder
+cancelAllOrders
+getOrder
+
+Separate:
+
+Market Data Adapter
+
+from:
+
+Trading Adapter
+
+where practical.
+
+---
+
+7. VENUE CAPABILITY MODEL
+
+Each venue should declare capabilities:
+
+Spot
+Derivative
+Prediction Market
+On-Chain
+Maker Orders
+Market Orders
+Post-Only
+Reduce-Only
+Client Order IDs
+Bulk Cancel
+Position API
+Balance API
+
+Capital OS strategies may only use supported functionality.
+
+---
+
+8. VENUE ALLOWLIST
+
+Only explicitly approved venues may be enabled.
+
+Create:
+
+VenueRegistry
+
+Statuses:
+
+Research
+Approved for Read Only
+Approved for Paper
+Approved for Micro-Live
+Suspended
+Blocked
+
+A venue cannot receive real orders unless:
+
+Approved for Micro-Live
+
+---
+
+9. JURISDICTION / ELIGIBILITY GATE
+
+Create an administrative eligibility gate.
+
+Before enabling any real venue, require explicit confirmation that:
+
+User is permitted to use venue
+Required account is established
+Venue terms allow intended activity
+Applicable geographic restrictions reviewed
+
+Capital OS must not bypass geographic or account restrictions.
+
+Record the confirmation in the audit log.
+
+---
+
+10. API CREDENTIAL SECURITY
+
+Trading credentials must:
+
+remain server-side
+never appear in frontend
+never appear in AI prompts
+never appear in logs
+never be committed to source control
+
+Where venue permissions support it, trading credentials should allow:
+
+READ
+TRADE
+CANCEL
+
+and NOT:
+
+WITHDRAW
+CHANGE SECURITY
+CHANGE WITHDRAWAL ADDRESS
+
+---
+
+11. ORDER MANAGEMENT SYSTEM
+
+Build a deterministic OMS.
+
+Every order must have a full lifecycle.
+
+States:
+
+CREATED
+VALIDATING
+SUBMITTING
+ACKNOWLEDGED
+PARTIALLY_FILLED
+FILLED
+CANCEL_REQUESTED
+CANCEL_PENDING
+CANCELLED
+REJECTED
+UNKNOWN
+EXPIRED
+
+Never simplify real orders into only:
+
+OPEN / CLOSED
+
+---
+
+12. CLIENT ORDER IDS
+
+Generate unique client order IDs.
+
+The ID should allow Capital OS to identify:
+
+Strategy
+Venue
+Market
+Quote Cycle
+Order Intent
+
+Use them for idempotency where supported.
+
+Retries must not create accidental duplicate orders.
+
+---
+
+13. ORDER INTENT
+
+Separate:
+
+OrderIntent
+
+from:
+
+VenueOrder
+
+OrderIntent means:
+
+«Strategy wants to perform this action.»
+
+VenueOrder means:
+
+«Venue received this actual order.»
+
+This creates a clear audit boundary.
+
+---
+
+14. PRE-TRADE VALIDATOR
+
+Before any order reaches a venue, validate:
+
+Live mode enabled?
+Strategy authorized?
+Venue authorized?
+Market authorized?
+Market data fresh?
+Venue health normal?
+Position reconciled?
+Balance reconciled?
+Order size valid?
+Price valid?
+Exposure within limit?
+Drawdown within limit?
+Loss velocity acceptable?
+Inventory acceptable?
+Order frequency acceptable?
+
+Any failure:
+
+ORDER REJECTED
+
+---
+
+15. PRICE SANITY CHECK
+
+Before submission:
+
+Reference Price
+vs
+Requested Order Price
+
+must fall within configured deviation.
+
+Prevent:
+
+Decimal mistakes
+Unit mistakes
+Stale prices
+Corrupt model outputs
+Malformed market data
+
+Orders significantly outside allowed deviation must be blocked.
+
+---
+
+16. SIZE SANITY CHECK
+
+Reject orders exceeding:
+
+Max Order Size
+Max Market Exposure
+Max Strategy Exposure
+Max Venue Exposure
+Max Total Active Exposure
+
+Validate server-side.
+
+Do not trust strategy-provided values.
+
+---
+
+17. ORDER VELOCITY LIMITS
+
+Create independent limits:
+
+Max Orders / Second
+Max Orders / Minute
+Max Cancels / Minute
+Max Notional / Minute
+Max Position Change / Minute
+
+These should contain runaway logic even when everything else appears valid.
+
+---
+
+18. LOSS VELOCITY
+
+Track:
+
+PnL change / time
+
+Examples:
+
+Loss per 10 seconds
+Loss per minute
+Loss per 5 minutes
+
+If loss velocity exceeds configured thresholds:
+
+STOP
+
+or:
+
+SAFE_MODE
+
+without waiting for the daily drawdown limit.
+
+---
+
+19. MARKET DATA HEARTBEAT
+
+Every live market feed must maintain:
+
+Last Exchange Timestamp
+Last Receive Timestamp
+Last Sequence
+Last Successful Update
+
+Calculate:
+
+DATA AGE
+
+If stale beyond threshold:
+
+CANCEL OPEN QUOTES
+DISABLE NEW ORDERS
+
+---
+
+20. SECONDARY REFERENCE PRICE
+
+Where practical, support a secondary independent market reference.
+
+Use it for:
+
+Sanity checking
+Detecting corrupted venue data
+Detecting extreme divergence
+
+Do not automatically trade based on the secondary source unless the strategy explicitly supports it.
+
+---
+
+21. MARKET DATA DIVERGENCE
+
+If:
+
+Primary Market Price
+
+and:
+
+Reference Price
+
+diverge beyond configured tolerance:
+
+SAFE_MODE
+
+and investigate.
+
+---
+
+22. QUOTE TTL
+
+Every resting quote should have a maximum intended age.
+
+Track:
+
+Quote Created
+Quote Last Updated
+Quote Age
+
+If quote age exceeds threshold:
+
+Cancel
+
+This protects against forgotten/stale orders.
+
+---
+
+23. RECONCILIATION ENGINE
+
+The venue is authoritative for:
+
+Actual fills
+Actual open orders
+Actual balances
+Actual positions
+
+Continuously reconcile:
+
+Internal Position
+vs
+Venue Position
+
+Internal Orders
+vs
+Venue Orders
+
+Internal Fills
+vs
+Venue Fills
+
+---
+
+24. RECONCILIATION FAILURE
+
+If discrepancy exceeds tolerance:
+
+RECONCILIATION FAILURE
+↓
+STOP NEW ORDERS
+↓
+CANCEL OPEN ORDERS
+↓
+FETCH VENUE STATE
+↓
+REBUILD INTERNAL STATE
+↓
+VERIFY
+↓
+REQUIRE SAFE-TO-RESUME CHECK
+
+Do not allow AI to decide whether reconciliation matters.
+
+---
+
+25. RECONCILIATION FREQUENCY
+
+Support:
+
+Continuous event reconciliation
++
+Periodic full reconciliation
+
+For example:
+
+After fills
+After cancel anomalies
+After reconnect
+After restart
+Periodic health check
+
+---
+
+26. POSITION AUTHORITY
+
+Do not rely only on:
+
+Position stored in database
+
+Use:
+
+Venue Position
++
+Internal Event Ledger
+
+to verify state.
+
+Unknown discrepancies must halt exposure growth.
+
+---
+
+27. RESTART RECOVERY
+
+On application restart:
+
+TRADING DISABLED
+
+Then:
+
+Connect Venue
+↓
+Get Balance
+↓
+Get Positions
+↓
+Get Open Orders
+↓
+Get Recent Fills
+↓
+Reconstruct State
+↓
+Reconcile
+↓
+Risk Check
+↓
+Human / Policy Enablement
+
+Never automatically resume from local cached state.
+
+---
+
+28. EVENT-SOURCED ORDER LEDGER
+
+Create an append-only execution event history.
+
+Examples:
+
+OrderIntentCreated
+OrderValidationPassed
+OrderValidationFailed
+OrderSubmitted
+OrderAcknowledged
+OrderPartiallyFilled
+OrderFilled
+CancelRequested
+OrderCancelled
+OrderRejected
+OrderStateUnknown
+ReconciliationMismatch
+
+This should allow post-event reconstruction.
+
+---
+
+29. BLACK BOX RECORDER
+
+For every live trading decision record:
+
+Timestamp
+Strategy Version
+Market State
+Reference Price
+Bid
+Ask
+Inventory
+Volatility
+Risk State
+Order Intent
+OMS State
+Venue Response
+Fill
+Post-Fill Markout
+PnL
+
+Never delete live execution history through ordinary workflows.
+
+---
+
+30. INVENTORY GOVERNOR
+
+Create independent inventory zones:
+
+NORMAL
+WARNING
+CRITICAL
+HARD LIMIT
+
+As inventory increases:
+
+Reduce inventory-increasing order size
+Widen inventory-increasing side
+Improve inventory-reducing side
+
+At hard limit:
+
+DISABLE ORDERS THAT INCREASE EXPOSURE
+
+---
+
+31. DIRECTIONAL CONTAINMENT
+
+Market-making logic must not accidentally turn into unrestricted directional trading.
+
+Set:
+
+Maximum Net Inventory
+Maximum Inventory Duration
+Maximum Directional Exposure
+
+---
+
+32. ADVERSE SELECTION MONITOR
+
+After every real fill calculate markouts at:
+
+1s
+5s
+15s
+30s
+60s
+5m
+
+Track:
+
+Realized Spread
+Markout
+Net Edge
+
+---
+
+33. TOXICITY RESPONSE
+
+If adverse selection worsens beyond configured threshold:
+
+Possible actions:
+
+Reduce size
+Widen spread
+Reduce inventory limit
+Pause market
+STOP strategy
+
+All rules should be deterministic and configurable.
+
+---
+
+34. VOLATILITY CIRCUIT BREAKER
+
+Classify:
+
+NORMAL
+ELEVATED
+HIGH
+EXTREME
+
+Possible response:
+
+NORMAL
+Normal operation
+
+ELEVATED
+Reduce size
+
+HIGH
+Widen / reduce activity
+
+EXTREME
+STOP quoting
+
+---
+
+35. LIQUIDITY CIRCUIT BREAKER
+
+Monitor:
+
+Top-of-book depth
+Spread
+Recent volume
+Expected exit depth
+
+If liquidity drops below configured minimum:
+
+NO NEW EXPOSURE
+
+---
+
+36. HARD RISK ENGINE
+
+Risk Engine must be independent from strategy logic.
+
+Hard rules may include:
+
+Max Daily Loss
+Max Weekly Loss
+Max Drawdown
+Max Inventory
+Max Market Exposure
+Max Venue Exposure
+Max Strategy Exposure
+Max Order Size
+Max Loss Velocity
+Max Data Age
+Max API Error Rate
+Max Cancel Failure Rate
+
+Strategy cannot override these.
+
+---
+
+37. RISK ENGINE FAILURE
+
+If Risk Engine heartbeat is lost:
+
+STOP
+
+Do not continue trading without active risk control.
+
+---
+
+38. SERVICE HEARTBEATS
+
+Track health for:
+
+Market Data
+Pricing Engine
+OMS
+Risk Engine
+Reconciliation
+Database
+Venue API
+Guardian
+
+Statuses:
+
+HEALTHY
+DEGRADED
+STALE
+FAILED
+
+---
+
+39. GLOBAL FAIL-CLOSED RULE
+
+If a critical component fails:
+
+NO NEW EXPOSURE
+
+Critical components include:
+
+Risk Engine
+Market Data
+OMS
+Reconciliation
+Venue Connection
+
+---
+
+40. SAFE MODE
+
+SAFE_MODE means:
+
+Cancel resting strategy orders
+No new strategy orders
+Continue market-data collection
+Continue reconciliation
+Continue P&L calculation
+Continue monitoring
+
+Safe Mode should be recoverable.
+
+---
+
+41. STOP
+
+STOP means:
+
+Cancel open orders
+Disable new orders
+Preserve current position
+Continue monitoring
+
+Do not automatically flatten unless policy requires it.
+
+---
+
+42. EVACUATE
+
+EVACUATE means:
+
+Stop new exposure
+Cancel unnecessary orders
+Reduce existing exposure using controlled execution
+Respect maximum slippage
+
+---
+
+43. PANIC FLATTEN
+
+Create architecture for a final emergency state:
+
+PANIC_FLATTEN
+
+This should NOT be used routinely.
+
+It may accept severe slippage to remove exposure.
+
+Require explicit policy/human authorization unless a predefined catastrophic condition applies.
+
+---
+
+44. INDEPENDENT GUARDIAN
+
+Create architecture for an independent:
+
+CAPITAL GUARDIAN
+
+The Guardian should NOT run inside the same primary execution process.
+
+Its job is only:
+
+Monitor heartbeat
+Monitor exposure
+Monitor venue position
+Monitor loss
+Monitor trading status
+
+The Guardian does not create normal trades.
+
+---
+
+45. GUARDIAN AUTHORITY
+
+Guardian may:
+
+Request cancel-all
+Disable live trading
+Trigger STOP
+Trigger LOCKED
+Send critical alert
+
+Guardian may NOT:
+
+Run strategies
+Increase capital
+Change risk rules
+Withdraw funds
+
+---
+
+46. GUARDIAN DEPLOYMENT BOUNDARY
+
+Architect Guardian so it can eventually run outside Replit.
+
+For example:
+
+Capital OS
+Replit
+
+and:
+
+Guardian
+Independent infrastructure
+
+Do not make the production safety system dependent entirely on one hosting provider.
+
+For development, a simulated Guardian is acceptable.
+
+Document how it should later be deployed independently.
+
+---
+
+47. GUARDIAN HEARTBEAT
+
+Capital OS must emit a signed/validated heartbeat.
+
+Guardian monitors:
+
+Last Heartbeat
+Trading Status
+Current Exposure
+Current PnL
+Risk State
+
+If heartbeat expires:
+
+GUARDIAN ACTION
+STOP
+
+---
+
+48. GUARDIAN DISAGREEMENT
+
+If Capital OS reports:
+
+Position = 0
+
+while Guardian reads:
+
+Venue Position ≠ 0
+
+Guardian should trigger:
+
+LOCKED
+
+---
+
+49. API ERROR PROTECTION
+
+Monitor:
+
+Request count
+Error count
+Timeout count
+Rate-limit responses
+Rejected orders
+Cancel failures
+
+If API health degrades:
+
+DEGRADED
+→ reduce activity
+
+If critical:
+
+STOP
+
+---
+
+50. CANCEL FAILURE PROTECTION
+
+Track:
+
+Cancel Requested
+Cancel Acknowledged
+Cancel Confirmed
+
+If cancellation cannot be confirmed:
+
+ORDER STATE UNKNOWN
+
+Then query venue.
+
+Do not immediately submit replacement exposure.
+
+---
+
+51. ORDER RACE HANDLING
+
+Design for:
+
+Cancel request
++
+fill
++
+replacement
+
+arriving in unexpected order.
+
+All updates must be processed idempotently.
+
+---
+
+52. PARTIAL FILLS
+
+Model actual partial fills.
+
+Update:
+
+Remaining Order Quantity
+Position
+Exposure
+Inventory
+PnL
+
+immediately.
+
+Do not wait for full fill.
+
+---
+
+53. FILL DEDUPLICATION
+
+Every venue fill must have a unique external identifier where available.
+
+Prevent duplicate fill ingestion.
+
+---
+
+54. BALANCE GUARD
+
+Before every order, verify:
+
+Available balance
+Authorized strategy capital
+Current outstanding order exposure
+
+Do not double-spend capital committed to resting orders.
+
+---
+
+55. OPEN-ORDER RESERVES
+
+Treat outstanding orders as potential exposure.
+
+Example:
+
+Current position
++
+All possible open-order fills
+
+must remain below hard exposure limits.
+
+---
+
+56. SELF-TRADE / DUPLICATE QUOTE PROTECTION
+
+Where applicable, prevent:
+
+Strategy unintentionally trading against itself
+Duplicate resting orders
+Conflicting strategy orders
+
+---
+
+57. MARKET ALLOWLIST
+
+Only approved markets may receive Micro-Live orders.
+
+Each market must have:
+
+Market ID
+Venue
+Risk Classification
+Minimum Liquidity
+Maximum Exposure
+Strategy Allowlist
+
+---
+
+58. STRATEGY-VENUE PERMISSIONS
+
+Example:
+
+Market Making Strategy
+Allowed:
+Venue A
+Market X
+
+Not Allowed:
+All other venues
+
+Do not give a strategy global trading authority.
+
+---
+
+59. STRATEGY CAPITAL WALLET
+
+Track internal authorized capital per strategy:
+
+Allocated
+Committed
+Available
+Realized PnL
+Unrealized PnL
+
+Strategy may not exceed allocation.
+
+---
+
+60. REAL P&L ENGINE
+
+Calculate:
+
+Realized P&L
+Unrealized P&L
+Fees
+Rebates
+Funding
+Slippage
+Hedge Costs
+Net P&L
+
+Use venue-confirmed fills.
+
+---
+
+61. PERFORMANCE VS PAPER
+
+Compare:
+
+Paper Expected
+vs
+Micro-Live Actual
+
+Track:
+
+Fill Rate Difference
+Slippage Difference
+Latency Difference
+Adverse Selection Difference
+P&L Difference
+
+This is one of the main purposes of Micro-Live.
+
+---
+
+62. MICRO-LIVE SCORECARD
+
+Create:
+
+MICRO-LIVE SCORECARD
+
+Example fields:
+
+Capital Allocated
+Current NAV
+Return
+Maximum Drawdown
+Real Fills
+Realized Spread
+Adverse Selection
+Execution Error Rate
+Reconciliation Accuracy
+Venue Uptime
+Risk Events
+
+---
+
+63. MICRO-LIVE GRADUATION
+
+Do NOT automatically scale capital.
+
+Possible outputs:
+
+FAIL
+CONTINUE MICRO-LIVE
+PAUSE
+RETURN TO PAPER
+LIMITED CAPITAL ELIGIBLE
+
+---
+
+64. INITIAL MICRO-LIVE REQUIREMENTS
+
+Example requirements for progression:
+
+Minimum 30 days runtime
+Minimum real fill count
+Positive net expectancy
+Zero unresolved reconciliation errors
+Zero uncontrolled exposure events
+No hard Risk Governor breaches
+Acceptable adverse selection
+Acceptable execution error rate
+Drawdown below configured threshold
+
+Make thresholds configurable.
+
+---
+
+65. CAPITAL INCREASE APPROVAL
+
+Capital increases require:
+
+Strategy Analyst Recommendation
++
+Capital Governor Pass
++
+Risk Governor Pass
++
+Micro-Live Evidence
++
+Human Approval
+
+No AI-only capital increase.
+
+---
+
+66. CAPITAL INCREASE STEPS
+
+Create configurable progression such as:
+
+$20
+↓
+$50
+↓
+$100
+↓
+$250
+↓
+$500
+
+Do not jump automatically between levels.
+
+Each step requires independent approval.
+
+---
+
+67. AUTOMATIC CAPITAL INCREASES
+
+Disabled.
+
+Default:
+
+AUTO_SCALE = FALSE
+
+---
+
+68. CAPITAL WITHDRAWAL / REDUCTION
+
+Allow administrative deallocation of strategy capital.
+
+Capital OS may recommend reducing capital.
+
+Real fund movement should remain outside automated strategy authority unless separately implemented in a future phase.
+
+---
+
+69. AI EXECUTION BOUNDARY
+
+AI may:
+
+Analyze fills
+Analyze markouts
+Explain risk events
+Recommend parameter changes
+Recommend pausing
+Recommend reducing allocation
+
+AI may NOT:
+
+Place live order
+Cancel live order
+Change live risk limit
+Increase capital
+Disable Guardian
+Override STOP
+
+Normal live execution must come only from an already-approved deterministic strategy engine.
+
+---
+
+70. STRATEGY CHANGE CONTROL
+
+If AI or user materially changes:
+
+Pricing Logic
+Signal Logic
+Inventory Logic
+Execution Logic
+Risk Parameters
+
+create:
+
+New Strategy Version
+
+and require:
+
+Backtest
+→ Shadow
+→ Paper
+→ Re-approval
+
+Do not hot-change an untested strategy in production.
+
+---
+
+71. PRODUCTION CONFIG VERSIONING
+
+Every active configuration should have:
+
+Config Version
+Created
+Approved By
+Effective Time
+Previous Version
+
+Rollbacks should be possible.
+
+---
+
+72. DEPLOYMENT LOCK
+
+Do not allow ordinary production deployment while Micro-Live is ACTIVE.
+
+Required process:
+
+Request Deployment
+↓
+Safe Mode
+↓
+Orders Cleared
+↓
+State Reconciled
+↓
+Deploy
+↓
+Boot Reconciliation
+↓
+Health Checks
+↓
+Re-Arm
+
+---
+
+73. CANARY MODE
+
+For future changes, support:
+
+CANARY
+
+with reduced:
+
+Markets
+Size
+Capital
+Runtime
+
+before wider rollout.
+
+---
+
+74. CHAOS TESTING
+
+Before live enablement, deliberately simulate:
+
+WebSocket disconnect
+Database restart
+Venue timeout
+Duplicate fill
+Lost fill message
+Cancel timeout
+Partial fill
+Risk Engine restart
+OMS restart
+Stale price
+10x volatility
+Liquidity collapse
+Guardian heartbeat failure
+
+The expected result must be:
+
+Contained exposure
++
+Correct fail-safe state
+
+---
+
+75. MICRO-LIVE REHEARSAL
+
+Create:
+
+LIVE REHEARSAL MODE
+
+This uses production architecture but does not transmit orders.
+
+Run all:
+
+Risk checks
+OMS lifecycle
+Guardian checks
+Reconciliation simulations
+Alerts
+
+before real Micro-Live activation.
+
+---
+
+76. PRE-LIVE CHECKLIST
+
+Create an explicit checklist:
+
+Strategy approved
+Venue approved
+Market approved
+API credentials configured
+Withdrawal permission disabled where possible
+Market data healthy
+Risk Engine healthy
+OMS healthy
+Guardian healthy
+Reconciliation clean
+Capital allocation confirmed
+Loss limits confirmed
+Emergency actions tested
+
+All must pass.
+
+---
+
+77. HUMAN ARMING
+
+Micro-Live requires explicit:
+
+ARM LIVE TRADING
+
+This must display:
+
+Strategy
+Venue
+Markets
+Capital
+Max Order
+Max Loss
+Max Drawdown
+
+Require confirmation.
+
+---
+
+78. AUTO-EXPIRATION
+
+Live authorization should expire.
+
+Example:
+
+Authorization expires in:
+24 hours
+
+or another configurable duration.
+
+Reauthorization is required afterward.
+
+This prevents forgotten perpetual live sessions.
+
+---
+
+79. SESSION LOSS CAP
+
+Each armed session receives a:
+
+Session Loss Limit
+
+independent from daily limits.
+
+---
+
+80. SESSION EXPOSURE CAP
+
+Each armed session also receives:
+
+Maximum Session Exposure
+
+No strategy can exceed it.
+
+---
+
+81. ALERTS
+
+Critical alerts:
+
+Hard loss threshold
+Reconciliation mismatch
+Guardian heartbeat lost
+Venue outage
+Market data stale
+Unknown order state
+Inventory hard limit
+API error spike
+Risk Engine failure
+
+Advisory alerts:
+
+Adverse selection rising
+Latency increasing
+Liquidity declining
+Strategy confidence declining
+
+---
+
+82. LIVE ACTIVITY PAGE
+
+Create a light-theme execution monitor.
+
+Show:
+
+Status
+Capital Allocated
+Current Position
+Open Orders
+Recent Fills
+Net P&L
+Risk State
+Venue Health
+Guardian Health
+Data Age
+
+Do not use dark-terminal styling.
+
+---
+
+83. EXECUTION TIMELINE
+
+Display:
+
+Order intent
+Validation
+Submission
+Acknowledgment
+Fill
+Cancel
+Risk events
+Guardian actions
+
+for troubleshooting.
+
+---
+
+84. INCIDENT SYSTEM
+
+Create:
+
+Incident
+
+Severity:
+
+INFO
+MINOR
+MAJOR
+CRITICAL
+
+Incident types:
+
+Reconciliation
+Venue
+Market Data
+OMS
+Risk
+Guardian
+Security
+Strategy
+
+---
+
+85. POST-INCIDENT REVIEW
+
+For MAJOR or CRITICAL incidents generate:
+
+What Happened
+Timeline
+Capital Impact
+Root Cause
+Safeguards That Worked
+Safeguards That Failed
+Required Fix
+Reactivation Requirements
+
+Strategy remains blocked until required fixes are completed.
+
+---
+
+86. INCIDENT LOCKOUT
+
+Critical incident:
+
+Strategy Status = LOCKED
+
+Human review required before it can re-enter:
+
+Paper
+Shadow
+or Micro-Live
+
+---
+
+87. DATABASE ENTITIES
+
+Create or expand:
+
+Venue
+VenuePermission
+VenueHealthSnapshot
+
+TradingCredentialReference
+
+LiveSession
+LiveAuthorization
+
+OrderIntent
+VenueOrder
+OrderEvent
+Fill
+Position
+PositionSnapshot
+
+ReconciliationRun
+ReconciliationMismatch
+
+RiskEvent
+RiskSnapshot
+
+GuardianHeartbeat
+GuardianEvent
+
+TradingIncident
+IncidentReview
+
+ExecutionMetric
+Markout
+LatencyMetric
+
+---
+
+88. AUDIT EVENTS
+
+Add:
+
+LiveTradingArmed
+LiveTradingStarted
+LiveTradingStopped
+SafeModeTriggered
+EvacuateTriggered
+StrategyLocked
+VenueConnected
+OrderIntentCreated
+OrderSubmitted
+OrderFilled
+OrderCancelled
+OrderRejected
+ReconciliationFailed
+GuardianTriggered
+RiskLimitTriggered
+LiveCapitalChanged
+
+Never log secrets.
+
+---
+
+89. DATA RETENTION
+
+Preserve execution history needed for:
+
+Audit
+Performance Analysis
+Incident Analysis
+Tax / Accounting Support where relevant
+Strategy Research
+
+Do not silently delete trading history.
+
+---
+
+90. TESTING
+
+Create extensive automated tests for:
+
+Order state transitions
+Duplicate order prevention
+Duplicate fill prevention
+Partial fills
+Cancel/fill races
+Unknown states
+Exposure limits
+Loss limits
+Loss velocity
+Stale data
+Venue health failure
+Risk Engine failure
+Guardian failure
+Reconciliation mismatch
+Restart recovery
+Position reconstruction
+Open-order exposure
+Capital sandboxing
+AI permission boundaries
+
+---
+
+91. INTEGRATION TESTS
+
+Simulate full flows:
+
+Place
+→ Fill
+→ Position
+→ P&L
+→ Reconcile
+
+and:
+
+Place
+→ Partial Fill
+→ Cancel
+→ Reconcile
+
+and:
+
+Place
+→ Cancel Timeout
+→ Fill
+→ Unknown
+→ Venue Query
+→ Resolve
+
+---
+
+92. FAIL-SAFE TEST
+
+For every critical component ask:
+
+If this dies right now, what happens?
+
+Expected default:
+
+NO NEW EXPOSURE
+
+---
+
+93. CAPITAL LOSS TEST
+
+Simulate catastrophic strategy logic.
+
+Example:
+
+Strategy attempts:
+$10,000 order
+
+when authorized:
+
+$1
+
+Expected:
+
+REJECTED
+
+---
+
+94. PROTECTED CAPITAL TEST
+
+Attempt to fund strategy from:
+
+Duplex Reserve
+
+Expected:
+
+BLOCKED
+
+This must remain impossible through ordinary execution paths.
+
+---
+
+95. WITHDRAWAL TEST
+
+If venue credentials include withdrawal authority when avoidable:
+
+SECURITY WARNING
+
+Do not mark venue production-ready until reviewed.
+
+---
+
+96. LIVE READINESS SCORE
+
+Create:
+
+LIVE READINESS
+0–100
+
+Inputs:
+
+Strategy Evidence
+Venue Health
+OMS Tests
+Risk Tests
+Guardian Health
+Reconciliation
+Security Review
+Chaos Testing
+
+Required threshold should be configurable.
+
+A high score does not guarantee profitability.
+
+---
+
+97. FINAL PRE-LIVE STATUS
+
+Before any first real order, display:
+
+MICRO-LIVE READINESS
+
+Strategy Evidence      PASS
+Paper Performance      PASS
+Venue                  PASS
+Market Data             PASS
+OMS                     PASS
+Risk Governor           PASS
+Capital Governor        PASS
+Guardian                PASS
+Reconciliation          PASS
+Security                PASS
+Chaos Tests             PASS
+
+Capital:
+$20
+
+Max Order:
+$1
+
+Hard Loss:
+$1.50
+
+Live Status:
+READY FOR HUMAN ARMING
+
+---
+
+98. DO NOT IMPLEMENT
+
+Do not implement during this phase:
+
+Leverage
+Margin
+Borrowed capital
+Outside investor money
+Automatic capital scaling
+AI-generated live trades
+AI risk overrides
+Automated withdrawals
+Household bank-to-exchange transfers
+Protected capital usage
+
+---
+
+99. DOCUMENTATION
+
+Create or update documentation covering:
+
+LIVE_EXECUTION_ARCHITECTURE
+OMS
+RECONCILIATION
+RISK_CONTROLS
+GUARDIAN
+MICRO_LIVE_POLICY
+INCIDENT_RESPONSE
+LIVE_SECURITY
+
+Documentation must match actual implementation.
+
+---
+
+100. FINAL VALIDATION
+
+Before declaring this phase complete verify:
+
+1. Strategy Lab remains intact.
+2. No unapproved strategy can trade.
+3. Only Micro-Live capital is accessible.
+4. Protected Duplex capital is inaccessible.
+5. Venue allowlisting works.
+6. Market allowlisting works.
+7. OMS state machine works.
+8. Duplicate orders are prevented.
+9. Partial fills are handled.
+10. Cancel/fill races are handled.
+11. Market data freshness is enforced.
+12. Quote TTL works.
+13. Position reconciliation works.
+14. Restart recovery works.
+15. Hard risk limits work.
+16. Loss velocity works.
+17. Inventory limits work.
+18. Venue health limits work.
+19. Safe Mode works.
+20. STOP works.
+21. EVACUATE architecture works.
+22. Guardian architecture works.
+23. Guardian heartbeat failure is contained.
+24. API errors are contained.
+25. AI cannot place orders.
+26. AI cannot change risk rules.
+27. Capital increases require approval.
+28. Deployment lock works.
+29. Chaos tests pass.
+30. Live rehearsal mode works.
+31. Audit records are complete.
+32. Critical execution logic has automated tests.
+
+---
+
+FINAL PRODUCT DIRECTION
+
+The real-money execution pathway should now be:
+
+AUTHORIZED MICRO-LIVE CAPITAL
+          ↓
+APPROVED STRATEGY
+          ↓
+STRATEGY RISK
+          ↓
+PRE-TRADE VALIDATION
+          ↓
+OMS RISK
+          ↓
+VENUE
+          ↓
+FILL
+          ↓
+RECONCILIATION
+          ↓
+RISK MONITORING
+          ↓
+PERFORMANCE
+
+with an independent:
+
+GUARDIAN
+
+watching the entire system.
+
+Capital OS must assume that eventually:
+
+A model will be wrong.
+An API will fail.
+A cancel will arrive late.
+A feed will become stale.
+A service will crash.
+
+The purpose of this architecture is to ensure those events produce:
+
+A small controlled loss
+or
+No loss
+
+rather than a system-wide capital failure.
+
+Maintain this order of priorities:
+
+Capital Containment
+→ State Accuracy
+→ Risk Enforcement
+→ Operational Reliability
+→ Execution Quality
+→ Strategy Edge
+→ Return
+
+Build accordingly.

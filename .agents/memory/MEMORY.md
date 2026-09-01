@@ -5,3 +5,4 @@
 - [Generated query hook options](query-hook-options.md) — custom React Query options need the matching generated query key supplied explicitly.
 - [Derived intelligence hydration](capital-os-intelligence-hydration.md) — derived advisory records must self-hydrate once after schema evolution so a first read is never an empty intelligence view.
 - [Strategy Lab safety boundary](strategy-lab-simulation-boundary.md) — research evidence can inform eligibility review, but no Strategy Lab state may submit orders or access household capital.
+- [Micro-Live fail-closed architecture](capital-os-micro-live-boundary.md) — keep rehearsal, eligibility, and any future real venue integration as separate disabled-by-default boundaries.

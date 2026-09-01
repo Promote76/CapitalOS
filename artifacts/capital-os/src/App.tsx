@@ -1,5 +1,5 @@
 import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import {
   createContribution,
   useGetCashFlow,
@@ -22,6 +22,10 @@ import {
   useDecideRecommendation,
   useRecordIntelligenceFeedback,
   useGetStrategyLab,
+  useGetMicroLive,
+  useRunMicroLiveRehearsal,
+  useReviewMicroLiveEnablement,
+  getGetMicroLiveQueryKey,
   useCreateResearchStrategy,
   useCreateStrategyVersion,
   useRunStrategyExperiment,
@@ -65,6 +69,7 @@ import {
   type StrategyLabStrategy,
   type CreateResearchStrategyInput,
   type RunStrategyExperimentInput,
+  type MicroLiveSnapshot,
 } from '@workspace/api-client-react';
 import {
   ArrowDownLeft,
@@ -84,6 +89,7 @@ import {
   FilePlus2,
   FileText,
   Gauge,
+  Activity,
   Home,
   Landmark,
   LayoutDashboard,
@@ -146,6 +152,7 @@ const primaryNav = [
   { href: '/accounts', label: 'Accounts', icon: Landmark },
   { href: '/goals', label: 'Goals', icon: Target },
   { href: '/strategies', label: 'Strategies', icon: Compass },
+  { href: '/micro-live', label: 'Micro-Live', icon: Activity },
   { href: '/portfolio', label: 'Portfolio', icon: BarChart3 },
   { href: '/properties', label: 'Properties', icon: Building2 },
   { href: '/risk', label: 'Risk & readiness', icon: ShieldCheck },
@@ -1096,6 +1103,33 @@ function TransactionTable({ transactions }: { transactions: Transaction[] }) {
   return <section className="card card-pad animate-in delay-1"><div className="filter-bar"><SlidersHorizontal size={14} color="var(--ink-soft)" />{['All', 'Duplex Reserve', 'Opportunity Reserve', 'Capital OS'].map((label) => <button className={`filter-chip ${filter === label ? 'active' : ''}`} key={label} onClick={() => setFilter(label)} data-testid={`button-filter-transactions-${label.replaceAll(' ', '-').toLowerCase()}`}>{label}</button>)}</div><div className="table-wrap"><table className="table"><thead><tr><th>Date</th><th>Movement</th><th>Category</th><th>Status</th><th>Amount</th></tr></thead><tbody>{filtered.map((item) => <tr key={item.id}><td className="font-mono">{item.date}</td><td><strong>{item.name}</strong></td><td>{item.category}</td><td><span className={`status ${item.status === 'Scheduled' ? 'pending' : ''}`}>{item.status}</span></td><td className="font-mono">+${item.amount}</td></tr>)}</tbody></table></div>{filtered.length === 0 && <div className="empty-state" style={{ marginTop:15 }}><Search size={20} /><h3>Nothing in this sleeve yet</h3><p>Try another category to see your complete capital record.</p></div>}</section>;
 }
 
+function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }) {
+  const queryClient = useQueryClient();
+  const query = useGetMicroLive();
+  const rehearsal = useRunMicroLiveRehearsal();
+  const review = useReviewMicroLiveEnablement();
+  const snapshot = query.data as MicroLiveSnapshot | undefined;
+  const refresh = () => queryClient.invalidateQueries({ queryKey: getGetMicroLiveQueryKey() });
+  if (query.isLoading) return <main className="content"><PageHeading eyebrow="Execution / Micro-Live" title="Controlled execution." description="Loading the fail-closed control plane." /><div className="card card-pad loading-card">Checking readiness, reconciliation, and Guardian health…</div></main>;
+  if (query.isError || !snapshot) return <main className="content"><PageHeading eyebrow="Execution / Micro-Live" title="The monitor is unavailable." description="No execution state is shown until the control plane can be read safely." /><div className="card card-pad error-card"><ShieldAlert size={20} /><strong>Execution remains disabled.</strong><button className="btn" onClick={() => query.refetch()}>Try again</button></div></main>;
+  const money = (value: string) => `$${Number(value).toFixed(2)}`;
+  return <main className="content">
+    <PageHeading eyebrow="Execution / Micro-Live" title={<>Containment before <span className="accent-text">connectivity.</span></>} description="A small, reviewable control plane for future Micro-Live experiments. This workspace transmits no orders and cannot access household capital." actions={<button className="btn btn-primary" onClick={async () => { await rehearsal.mutateAsync(); await refresh(); onFeedback('Live rehearsal completed without transmitting an order.'); }} disabled={rehearsal.isPending}><RotateCcw size={14} /> {rehearsal.isPending ? 'Running…' : 'Run live rehearsal'}</button>} />
+    <section className="micro-live-banner"><div className="micro-live-banner-icon"><Lock size={19} /></div><div><strong>Live execution is disabled</strong><span>Rehearsal mode only · no venue credentials · no order transmission</span></div><span className="status review">DISABLED</span></section>
+    <section className="micro-live-grid">
+      <div className="card card-pad micro-live-status-card"><CardTitle title="Execution status" subtitle="Global fail-closed state" action={<Activity size={17} color="var(--blue)" />} /><div className="micro-live-status-value"><span className="status-pill">{snapshot.status}</span><strong>0</strong><small>open orders</small></div><div className="micro-live-stat-row"><span>Capital allocated</span><b>{money(snapshot.session.capitalAllocated)}</b></div><div className="micro-live-stat-row"><span>Current position</span><b>{snapshot.session.currentPosition}</b></div><div className="micro-live-stat-row"><span>Net P&amp;L</span><b>{money(snapshot.session.netPnl)}</b></div></div>
+      <div className="card card-pad"><CardTitle title="Micro-Live sandbox" subtitle="Configurable policy · no leverage" action={<Gauge size={17} color="var(--green)" />} /><div className="micro-live-limit-grid"><div><span>Max venue</span><strong>{money(String(Number(snapshot.policy.limits.maxVenueCapitalCents ?? 1000) / 100))}</strong></div><div><span>Max strategy</span><strong>{money(String(Number(snapshot.policy.limits.maxStrategyCapitalCents ?? 1000) / 100))}</strong></div><div><span>Max order</span><strong>{money(String(Number(snapshot.policy.limits.maxIndividualOrderCents ?? 100) / 100))}</strong></div><div><span>Hard daily loss</span><strong>{money(String(Number(snapshot.policy.limits.hardDailyLossCents ?? 150) / 100))}</strong></div></div><div className="safety-inline"><CheckCircle2 size={15} /> Leverage, margin, borrowing, and auto-scale are off</div></div>
+    </section>
+    <section className="card card-pad page-section"><CardTitle title="Readiness gates" subtitle={`Live readiness ${snapshot.readiness.score}/100 · a high score never guarantees profitability`} action={<button className="btn" onClick={async () => { await review.mutateAsync(); onFeedback('Enablement review recorded. Live execution remains disabled.'); }} disabled={review.isPending}>{review.isPending ? 'Reviewing…' : 'Review gates'}</button>} /><div className="readiness-grid">{snapshot.readiness.checks.map((check) => <div className={`readiness-check ${check.passed ? 'passed' : 'blocked'}`} key={check.name}><span>{check.passed ? <CheckCircle2 size={15} /> : <ShieldAlert size={15} />}</span><span>{check.name}</span><b>{check.passed ? 'Pass' : 'Blocked'}</b></div>)}</div></section>
+    <section className="micro-live-columns">
+      <div className="card card-pad"><CardTitle title="Venue registry" subtitle="Only explicitly approved venues may ever receive orders" action={<Landmark size={17} color="var(--ink-soft)" />} /><div className="micro-live-list">{snapshot.venues.map((venue) => <div className="micro-live-list-row" key={venue.id}><div><strong>{venue.name}</strong><span>{venue.adapterType} · {venue.status}</span></div><span className={`status ${venue.health === 'HEALTHY' ? '' : 'review'}`}>{venue.health}</span></div>)}</div></div>
+      <div className="card card-pad"><CardTitle title="Independent Guardian" subtitle="Separate process boundary · authority is containment only" action={<ShieldCheck size={17} color="var(--green)" />} /><div className="guardian-state"><span className="status">{snapshot.guardian.status}</span><strong>{snapshot.guardian.decision}</strong><p>{snapshot.guardian.reason}. {snapshot.guardian.independentDeployment}</p></div><div className="safety-inline"><LockKeyhole size={15} /> Guardian cannot run strategies, increase capital, withdraw funds, or change risk rules.</div></div>
+    </section>
+    <section className="card card-pad page-section"><CardTitle title="Rehearsal timeline" subtitle="Production-shaped flow with no order transmission" action={<History size={17} color="var(--ink-soft)" />} /><div className="execution-timeline">{snapshot.rehearsal.sequence.map((event, index) => <div className="timeline-step" key={event}><span>{String(index + 1).padStart(2, '0')}</span><strong>{event.replaceAll(/([A-Z])/g, ' $1').trim()}</strong>{index < snapshot.rehearsal.sequence.length - 1 && <ChevronRight size={14} />}</div>)}</div><div className="rehearsal-note"><CheckCircle2 size={16} /> {snapshot.rehearsal.note}</div></section>
+    <section className="card card-pad page-section"><CardTitle title="Protection summary" subtitle="The order of priorities remains containment, state accuracy, risk, reliability, execution, then return." /><div className="protection-grid">{[['Household capital', snapshot.safety.householdCapitalAccessible ? 'Accessible' : 'Inaccessible'], ['Protected capital', snapshot.safety.protectedCapitalAccessible ? 'Accessible' : 'Inaccessible'], ['AI order authority', snapshot.safety.aiCanPlaceOrders ? 'Allowed' : 'Not allowed'], ['Risk rule changes', snapshot.safety.aiCanChangeRisk ? 'Allowed' : 'Not allowed'], ['Auto scaling', snapshot.safety.autoScale ? 'Enabled' : 'Disabled'], ['Order transmission', snapshot.safety.liveOrderTransmissionEnabled ? 'Enabled' : 'Disabled']].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div></section>
+  </main>;
+}
+
 function ActionModal({ kind, close, onComplete }: { kind: Exclude<ModalKind, null>; close: () => void; onComplete: (kind: Exclude<ModalKind, null>, values: { amount?: number; name?: string; note?: string }) => void }) {
   const copy = {
     contribution: { title: 'Record a contribution', desc: 'Add a movement to your weekly capital rhythm.', submit: 'Save contribution' },
@@ -1121,6 +1155,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue
     <Route path="/accounts" component={() => <AccountsPage onFeedback={onFeedback} />} />
     <Route path="/goals" component={() => <GoalsPage onAction={onAction} />} />
     <Route path="/strategies" component={() => <StrategiesPage onFeedback={onFeedback} />} />
+    <Route path="/micro-live" component={() => <MicroLivePage onFeedback={onFeedback} />} />
     <Route path="/portfolio" component={() => <PortfolioPage onFeedback={onFeedback} />} />
     <Route path="/properties" component={() => <PropertiesPage onAction={onAction} />} />
     <Route path="/risk" component={() => <RiskPage onFeedback={onFeedback} />} />

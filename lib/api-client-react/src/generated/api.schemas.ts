@@ -634,6 +634,163 @@ export interface StrategyLabExperiment {
   completedAt?: string | null;
 }
 
+export interface MicroLiveGate {
+  name: string;
+  passed: boolean;
+}
+
+export type MicroLivePolicyLimits = {[key: string]: string | number | boolean};
+
+export interface MicroLivePolicy {
+  version: string;
+  limits: MicroLivePolicyLimits;
+  autoScale: boolean;
+  leverageEnabled: boolean;
+  marginEnabled: boolean;
+  borrowingEnabled: boolean;
+}
+
+export interface MicroLiveReadiness {
+  score: number;
+  checks: MicroLiveGate[];
+  status: string;
+  liveExecutionEnabled: boolean;
+}
+
+export type MicroLiveRehearsalValidation = {
+  accepted: boolean;
+  failures: string[];
+  state: string;
+};
+
+export type MicroLiveRehearsalChaosTestsItem = {
+  name: string;
+  result: string;
+  expectedState: string;
+};
+
+export interface MicroLiveRehearsal {
+  mode: string;
+  status: string;
+  liveOrderTransmission: boolean;
+  sequence: string[];
+  validation: MicroLiveRehearsalValidation;
+  chaosTests: MicroLiveRehearsalChaosTestsItem[];
+  note: string;
+}
+
+export type MicroLiveSnapshotSession = {
+  id: string;
+  mode: string;
+  capitalAllocated: string;
+  currentPosition: string;
+  openOrders: number;
+  netPnl: string;
+  lossLimit: string;
+  exposureCap: string;
+  /** @nullable */
+  expiresAt?: string | null;
+};
+
+export type MicroLiveSnapshotVenuesItemCapabilities = {[key: string]: boolean};
+
+export type MicroLiveSnapshotVenuesItem = {
+  id: string;
+  name: string;
+  adapterType: string;
+  status: string;
+  capabilities: MicroLiveSnapshotVenuesItemCapabilities;
+  jurisdictionConfirmed: boolean;
+  withdrawalDisabled: boolean;
+  health: string;
+};
+
+export type MicroLiveSnapshotEnablement = {
+  enabled: boolean;
+  status: string;
+  gates: MicroLiveGate[];
+  note: string;
+};
+
+export type MicroLiveSnapshotGuardian = {
+  status: string;
+  /** @nullable */
+  lastHeartbeatAt?: string | null;
+  decision: string;
+  reason: string;
+  independentDeployment: string;
+};
+
+export type MicroLiveSnapshotReconciliationMismatches = {
+  positionMismatch: boolean;
+  orderMismatch: boolean;
+  missingInternalFills: string[];
+  orphanedInternalFills: string[];
+};
+
+export type MicroLiveSnapshotReconciliation = {
+  status: string;
+  action: string;
+  mismatches: MicroLiveSnapshotReconciliationMismatches;
+};
+
+export type MicroLiveSnapshotIncidentsItem = {
+  id?: string;
+  severity?: string;
+  incidentType?: string;
+  title?: string;
+  status?: string;
+};
+
+export type MicroLiveSnapshotEventsItem = {
+  id?: string;
+  eventType?: string;
+  /** @nullable */
+  fromState?: string | null;
+  /** @nullable */
+  toState?: string | null;
+  createdAt?: string;
+};
+
+export type MicroLiveSnapshotSafety = {
+  liveOrderTransmissionEnabled: boolean;
+  householdCapitalAccessible: boolean;
+  protectedCapitalAccessible: boolean;
+  autoScale: boolean;
+  aiCanPlaceOrders: boolean;
+  aiCanChangeRisk: boolean;
+};
+
+export interface MicroLiveSnapshot {
+  status: string;
+  policy: MicroLivePolicy;
+  session: MicroLiveSnapshotSession;
+  venues: MicroLiveSnapshotVenuesItem[];
+  readiness: MicroLiveReadiness;
+  enablement: MicroLiveSnapshotEnablement;
+  guardian: MicroLiveSnapshotGuardian;
+  reconciliation: MicroLiveSnapshotReconciliation;
+  rehearsal: MicroLiveRehearsal;
+  timeline: string[];
+  incidents: MicroLiveSnapshotIncidentsItem[];
+  events: MicroLiveSnapshotEventsItem[];
+  safety: MicroLiveSnapshotSafety;
+}
+
+export type MicroLiveEnablementReviewEnablement = {
+  enabled: boolean;
+  status: string;
+  gates: MicroLiveGate[];
+  note: string;
+};
+
+export interface MicroLiveEnablementReview {
+  status: string;
+  readiness: MicroLiveReadiness;
+  enablement: MicroLiveEnablementReviewEnablement;
+  liveExecutionEnabled: boolean;
+}
+
 export interface StrategyLabStrategy {
   id: string;
   name: string;

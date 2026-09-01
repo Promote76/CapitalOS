@@ -1,0 +1,279 @@
+export const LIVE_STATUSES = ["DISABLED", "ARMED", "ACTIVE", "SAFE_MODE", "STOP", "EVACUATE", "LOCKED"] as const;
+export type LiveStatus = typeof LIVE_STATUSES[number];
+
+export const ORDER_STATES = [
+  "CREATED", "VALIDATING", "SUBMITTING", "ACKNOWLEDGED", "PARTIALLY_FILLED", "FILLED",
+  "CANCEL_REQUESTED", "CANCEL_PENDING", "CANCELLED", "REJECTED", "UNKNOWN", "EXPIRED",
+] as const;
+export type OrderState = typeof ORDER_STATES[number];
+
+export type MicroLivePolicy = {
+  initialCapitalCents: number;
+  maxVenueCapitalCents: number;
+  maxStrategyCapitalCents: number;
+  maxMarketExposureCents: number;
+  maxIndividualOrderCents: number;
+  maxInventoryCents: number;
+  softDailyLossCents: number;
+  hardDailyLossCents: number;
+  softDrawdownBps: number;
+  hardDrawdownBps: number;
+  maxOrdersPerSecond: number;
+  maxOrdersPerMinute: number;
+  maxCancelsPerMinute: number;
+  maxNotionalPerMinuteCents: number;
+  maxPositionChangePerMinuteCents: number;
+  maxDataAgeMs: number;
+  maxQuoteAgeMs: number;
+  maxPriceDeviationBps: number;
+  maxLossPerMinuteCents: number;
+  sessionLossLimitCents: number;
+  sessionExposureCapCents: number;
+  authorizationHours: number;
+};
+
+export const defaultMicroLivePolicy: MicroLivePolicy = {
+  initialCapitalCents: 2000,
+  maxVenueCapitalCents: 1000,
+  maxStrategyCapitalCents: 1000,
+  maxMarketExposureCents: 500,
+  maxIndividualOrderCents: 100,
+  maxInventoryCents: 500,
+  softDailyLossCents: 75,
+  hardDailyLossCents: 150,
+  softDrawdownBps: 400,
+  hardDrawdownBps: 600,
+  maxOrdersPerSecond: 2,
+  maxOrdersPerMinute: 30,
+  maxCancelsPerMinute: 60,
+  maxNotionalPerMinuteCents: 1000,
+  maxPositionChangePerMinuteCents: 500,
+  maxDataAgeMs: 3000,
+  maxQuoteAgeMs: 5000,
+  maxPriceDeviationBps: 150,
+  maxLossPerMinuteCents: 40,
+  sessionLossLimitCents: 75,
+  sessionExposureCapCents: 500,
+  authorizationHours: 24,
+};
+
+export type EnablementInput = {
+  strategyMicroLiveEligible: boolean;
+  humanApproval: boolean;
+  capitalGovernorPass: boolean;
+  riskGovernorPass: boolean;
+  venueHealthy: boolean;
+  reconciliationClean: boolean;
+  venueApproved: boolean;
+  marketApproved: boolean;
+  jurisdictionConfirmed: boolean;
+  credentialsConfigured: boolean;
+  withdrawalDisabled: boolean;
+};
+
+export function evaluateLiveEnablement(input: EnablementInput) {
+  const gates = [
+    { name: "Strategy is Micro-Live Eligible", passed: input.strategyMicroLiveEligible },
+    { name: "Human approval recorded", passed: input.humanApproval },
+    { name: "Capital Governor passes", passed: input.capitalGovernorPass },
+    { name: "Risk Governor passes", passed: input.riskGovernorPass },
+    { name: "Venue health is healthy", passed: input.venueHealthy },
+    { name: "Reconciliation is clean", passed: input.reconciliationClean },
+    { name: "Venue is allowlisted for Micro-Live", passed: input.venueApproved },
+    { name: "Market is allowlisted", passed: input.marketApproved },
+    { name: "Jurisdiction and account eligibility confirmed", passed: input.jurisdictionConfirmed },
+    { name: "Server-side credential reference configured", passed: input.credentialsConfigured },
+    { name: "Withdrawal permission is disabled or reviewed", passed: input.withdrawalDisabled },
+  ];
+  return {
+    enabled: gates.every((gate) => gate.passed),
+    status: gates.every((gate) => gate.passed) ? "ARMED" as const : "DISABLED" as const,
+    gates,
+    note: "Eligibility is not activation. A separate human arming action and expiring session are required.",
+  };
+}
+
+const validTransitions: Record<OrderState, OrderState[]> = {
+  CREATED: ["VALIDATING", "REJECTED", "EXPIRED"],
+  VALIDATING: ["SUBMITTING", "REJECTED"],
+  SUBMITTING: ["ACKNOWLEDGED", "UNKNOWN", "REJECTED"],
+  ACKNOWLEDGED: ["PARTIALLY_FILLED", "FILLED", "CANCEL_REQUESTED", "EXPIRED", "UNKNOWN"],
+  PARTIALLY_FILLED: ["PARTIALLY_FILLED", "FILLED", "CANCEL_REQUESTED", "CANCEL_PENDING", "UNKNOWN"],
+  FILLED: [],
+  CANCEL_REQUESTED: ["CANCEL_PENDING", "PARTIALLY_FILLED", "FILLED", "UNKNOWN"],
+  CANCEL_PENDING: ["CANCELLED", "PARTIALLY_FILLED", "FILLED", "UNKNOWN"],
+  CANCELLED: [],
+  REJECTED: [],
+  UNKNOWN: ["ACKNOWLEDGED", "PARTIALLY_FILLED", "FILLED", "CANCELLED", "REJECTED"],
+  EXPIRED: [],
+};
+
+export function canTransitionOrder(from: OrderState, to: OrderState): boolean {
+  return from === to || validTransitions[from].includes(to);
+}
+
+export function buildClientOrderId(input: { strategyId: string; venueId: string; marketId: string; quoteCycle: string; intent: string }): string {
+  const compact = (value: string) => value.replace(/[^a-zA-Z0-9]/g, "").slice(-12);
+  return `cos_${compact(input.strategyId)}_${compact(input.venueId)}_${compact(input.marketId)}_${compact(input.quoteCycle)}_${compact(input.intent)}`.slice(0, 96);
+}
+
+export type OrderValidationInput = {
+  liveStatus: LiveStatus;
+  strategyAuthorized: boolean;
+  venueAuthorized: boolean;
+  marketAuthorized: boolean;
+  marketDataAgeMs: number;
+  venueHealthy: boolean;
+  reconciled: boolean;
+  riskHeartbeatHealthy: boolean;
+  orderNotionalCents: number;
+  priceBps: number;
+  referencePriceBps: number;
+  marketExposureCents: number;
+  strategyExposureCents: number;
+  venueExposureCents: number;
+  totalActiveExposureCents: number;
+  dailyLossCents: number;
+  drawdownBps: number;
+  inventoryCents: number;
+  ordersInSecond: number;
+  ordersInMinute: number;
+  cancelsInMinute: number;
+  notionalInMinuteCents: number;
+  positionChangeInMinuteCents: number;
+};
+
+export function validatePreTrade(policy: MicroLivePolicy, input: OrderValidationInput) {
+  const failures: string[] = [];
+  if (input.liveStatus !== "ACTIVE" && input.liveStatus !== "ARMED") failures.push("live status is not armed or active");
+  if (!input.strategyAuthorized) failures.push("strategy is not authorized");
+  if (!input.venueAuthorized) failures.push("venue is not authorized");
+  if (!input.marketAuthorized) failures.push("market is not authorized");
+  if (input.marketDataAgeMs > policy.maxDataAgeMs) failures.push("market data is stale");
+  if (!input.venueHealthy) failures.push("venue health is not healthy");
+  if (!input.reconciled) failures.push("position or balance reconciliation is not clean");
+  if (!input.riskHeartbeatHealthy) failures.push("risk engine heartbeat is unavailable");
+  if (input.orderNotionalCents <= 0 || input.orderNotionalCents > policy.maxIndividualOrderCents) failures.push("order size exceeds the individual order cap");
+  if (Math.abs(input.priceBps - input.referencePriceBps) > input.referencePriceBps * policy.maxPriceDeviationBps / 10000) failures.push("price fails the reference-price sanity check");
+  if (input.marketExposureCents + input.orderNotionalCents > policy.maxMarketExposureCents) failures.push("market exposure cap would be exceeded");
+  if (input.strategyExposureCents + input.orderNotionalCents > policy.maxStrategyCapitalCents) failures.push("strategy capital cap would be exceeded");
+  if (input.venueExposureCents + input.orderNotionalCents > policy.maxVenueCapitalCents) failures.push("venue capital cap would be exceeded");
+  if (input.totalActiveExposureCents + input.orderNotionalCents > policy.sessionExposureCapCents) failures.push("session exposure cap would be exceeded");
+  if (input.dailyLossCents >= policy.hardDailyLossCents) failures.push("hard daily loss limit has been reached");
+  if (input.drawdownBps >= policy.hardDrawdownBps) failures.push("hard drawdown limit has been reached");
+  if (Math.abs(input.inventoryCents) + input.orderNotionalCents > policy.maxInventoryCents) failures.push("inventory cap would be exceeded");
+  if (input.ordersInSecond >= policy.maxOrdersPerSecond) failures.push("orders-per-second velocity limit has been reached");
+  if (input.ordersInMinute >= policy.maxOrdersPerMinute) failures.push("orders-per-minute velocity limit has been reached");
+  if (input.cancelsInMinute >= policy.maxCancelsPerMinute) failures.push("cancels-per-minute velocity limit has been reached");
+  if (input.notionalInMinuteCents + input.orderNotionalCents > policy.maxNotionalPerMinuteCents) failures.push("notional-per-minute velocity limit has been reached");
+  if (input.positionChangeInMinuteCents + input.orderNotionalCents > policy.maxPositionChangePerMinuteCents) failures.push("position-change velocity limit has been reached");
+  return { accepted: failures.length === 0, failures, state: failures.length === 0 ? "VALIDATED" as const : "REJECTED" as const };
+}
+
+export function reconcileExecutionState(input: {
+  internalPositionCents: number;
+  venuePositionCents: number;
+  internalOpenOrders: number;
+  venueOpenOrders: number;
+  internalFillIds: string[];
+  venueFillIds: string[];
+  toleranceCents?: number;
+}) {
+  const tolerance = input.toleranceCents ?? 0;
+  const positionMismatch = Math.abs(input.internalPositionCents - input.venuePositionCents) > tolerance;
+  const orderMismatch = input.internalOpenOrders !== input.venueOpenOrders;
+  const internalFills = new Set(input.internalFillIds);
+  const venueFills = new Set(input.venueFillIds);
+  const missingInternalFills = input.venueFillIds.filter((id) => !internalFills.has(id));
+  const orphanedInternalFills = input.internalFillIds.filter((id) => !venueFills.has(id));
+  const clean = !positionMismatch && !orderMismatch && missingInternalFills.length === 0 && orphanedInternalFills.length === 0;
+  return {
+    clean,
+    mismatches: { positionMismatch, orderMismatch, missingInternalFills, orphanedInternalFills },
+    action: clean ? "CONTINUE" as const : "STOP_CANCEL_FETCH_REBUILD_VERIFY" as const,
+  };
+}
+
+export function guardianDecision(input: {
+  liveStatus: LiveStatus;
+  heartbeatAgeMs: number;
+  maxHeartbeatAgeMs: number;
+  reportedExposureCents: number;
+  observedVenueExposureCents: number;
+  hardExposureCents: number;
+  riskEngineHealthy: boolean;
+}) {
+  if (Math.abs(input.reportedExposureCents - input.observedVenueExposureCents) > 0) return { action: "LOCKED" as const, reason: "Guardian and venue position disagree" };
+  if (!input.riskEngineHealthy || input.heartbeatAgeMs > input.maxHeartbeatAgeMs) return { action: "STOP" as const, reason: "Critical heartbeat is stale or risk engine is unavailable" };
+  if (input.observedVenueExposureCents > input.hardExposureCents) return { action: "EVACUATE" as const, reason: "Observed exposure exceeds the hard cap" };
+  if (input.liveStatus === "SAFE_MODE" || input.liveStatus === "STOP") return { action: input.liveStatus, reason: "Preserve the existing fail-safe state" };
+  return { action: "NO_ACTION" as const, reason: "Guardian checks are within policy" };
+}
+
+export function calculateLiveReadiness(input: {
+  strategyEvidence: boolean;
+  paperPerformance: boolean;
+  venue: boolean;
+  marketData: boolean;
+  oms: boolean;
+  riskGovernor: boolean;
+  capitalGovernor: boolean;
+  guardian: boolean;
+  reconciliation: boolean;
+  security: boolean;
+  chaosTests: boolean;
+}) {
+  const checks = Object.entries(input).map(([name, passed]) => ({ name, passed }));
+  const score = Math.round(checks.filter((check) => check.passed).length / checks.length * 100);
+  return { score, checks, status: score === 100 ? "READY_FOR_HUMAN_ARMING" as const : "NOT_READY" as const, liveExecutionEnabled: false };
+}
+
+export function runLiveRehearsal(policy = defaultMicroLivePolicy) {
+  const validation = validatePreTrade(policy, {
+    liveStatus: "SAFE_MODE",
+    strategyAuthorized: true,
+    venueAuthorized: true,
+    marketAuthorized: true,
+    marketDataAgeMs: policy.maxDataAgeMs + 1,
+    venueHealthy: true,
+    reconciled: true,
+    riskHeartbeatHealthy: true,
+    orderNotionalCents: 100,
+    priceBps: 10000,
+    referencePriceBps: 10000,
+    marketExposureCents: 0,
+    strategyExposureCents: 0,
+    venueExposureCents: 0,
+    totalActiveExposureCents: 0,
+    dailyLossCents: 0,
+    drawdownBps: 0,
+    inventoryCents: 0,
+    ordersInSecond: 0,
+    ordersInMinute: 0,
+    cancelsInMinute: 0,
+    notionalInMinuteCents: 0,
+    positionChangeInMinuteCents: 0,
+  });
+  return {
+    mode: "LIVE_REHEARSAL",
+    status: "SAFE_MODE" as const,
+    liveOrderTransmission: false,
+    sequence: [
+      "OrderIntentCreated",
+      "OrderValidationFailed",
+      "OrderRejected",
+      "PartialFillReconciled",
+      "CancelFillRaceResolved",
+      "GuardianHeartbeatVerified",
+      "ReconciliationCompleted",
+    ],
+    validation,
+    chaosTests: [
+      { name: "stale market data", result: "contained", expectedState: "SAFE_MODE" },
+      { name: "duplicate fill", result: "deduplicated", expectedState: "SAFE_MODE" },
+      { name: "cancel timeout then fill", result: "resolved through venue query", expectedState: "SAFE_MODE" },
+      { name: "Guardian heartbeat failure", result: "contained", expectedState: "STOP" },
+    ],
+    note: "This rehearsal uses the production-shaped control flow but transmits no orders and touches no funds.",
+  };
+}

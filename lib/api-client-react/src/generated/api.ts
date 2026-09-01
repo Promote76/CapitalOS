@@ -61,6 +61,9 @@ import type {
   IntelligenceScenarioInput,
   IntelligenceSnapshot,
   ManualFinancialAccountInput,
+  MicroLiveEnablementReview,
+  MicroLiveRehearsal,
+  MicroLiveSnapshot,
   PortfolioSummary,
   PrivacySettingsInput,
   PropertyAnalysis,
@@ -1605,6 +1608,225 @@ export function useGetStrategyLab<TData = Awaited<ReturnType<typeof getStrategyL
 
 
 
+
+export const getGetMicroLiveUrl = () => {
+
+
+
+
+  return `/api/micro-live`
+}
+
+/**
+ * @summary Get the fail-closed Micro-Live execution monitor
+ */
+export const getMicroLive = async ( options?: Parameters<typeof customFetch>[1]): Promise<MicroLiveSnapshot> => {
+
+  return customFetch<MicroLiveSnapshot>(getGetMicroLiveUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMicroLiveQueryKey = () => {
+    return [
+    `/api/micro-live`
+    ] as const;
+    }
+
+
+export const getGetMicroLiveQueryOptions = <TData = Awaited<ReturnType<typeof getMicroLive>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMicroLive>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMicroLiveQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMicroLive>>> = ({ signal }) => getMicroLive({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMicroLive>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMicroLiveQueryResult = NonNullable<Awaited<ReturnType<typeof getMicroLive>>>
+export type GetMicroLiveQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the fail-closed Micro-Live execution monitor
+ */
+
+export function useGetMicroLive<TData = Awaited<ReturnType<typeof getMicroLive>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMicroLive>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMicroLiveQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRunMicroLiveRehearsalUrl = () => {
+
+
+
+
+  return `/api/micro-live/rehearsal`
+}
+
+/**
+ * @summary Run a no-transmission Micro-Live rehearsal
+ */
+export const runMicroLiveRehearsal = async ( options?: Parameters<typeof customFetch>[1]): Promise<MicroLiveRehearsal> => {
+
+  return customFetch<MicroLiveRehearsal>(getRunMicroLiveRehearsalUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRunMicroLiveRehearsalMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runMicroLiveRehearsal>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runMicroLiveRehearsal>>, TError,void, TContext> => {
+
+const mutationKey = ['runMicroLiveRehearsal'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runMicroLiveRehearsal>>, void> = () => {
+
+
+          return  runMicroLiveRehearsal(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunMicroLiveRehearsalMutationResult = NonNullable<Awaited<ReturnType<typeof runMicroLiveRehearsal>>>
+
+    export type RunMicroLiveRehearsalMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Run a no-transmission Micro-Live rehearsal
+ */
+export const useRunMicroLiveRehearsal = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runMicroLiveRehearsal>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runMicroLiveRehearsal>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRunMicroLiveRehearsalMutationOptions(options));
+    }
+
+export const getReviewMicroLiveEnablementUrl = () => {
+
+
+
+
+  return `/api/micro-live/enablement-review`
+}
+
+/**
+ * @summary Review Micro-Live gates without enabling execution
+ */
+export const reviewMicroLiveEnablement = async ( options?: Parameters<typeof customFetch>[1]): Promise<MicroLiveEnablementReview> => {
+
+  return customFetch<MicroLiveEnablementReview>(getReviewMicroLiveEnablementUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReviewMicroLiveEnablementMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewMicroLiveEnablement>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewMicroLiveEnablement>>, TError,void, TContext> => {
+
+const mutationKey = ['reviewMicroLiveEnablement'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewMicroLiveEnablement>>, void> = () => {
+
+
+          return  reviewMicroLiveEnablement(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewMicroLiveEnablementMutationResult = NonNullable<Awaited<ReturnType<typeof reviewMicroLiveEnablement>>>
+
+    export type ReviewMicroLiveEnablementMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Review Micro-Live gates without enabling execution
+ */
+export const useReviewMicroLiveEnablement = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewMicroLiveEnablement>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewMicroLiveEnablement>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getReviewMicroLiveEnablementMutationOptions(options));
+    }
 
 export const getCreateResearchStrategyUrl = () => {
 

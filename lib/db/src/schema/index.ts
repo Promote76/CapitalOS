@@ -4,3 +4,4 @@ export * from "./capital";
 export * from "./property-strategy";
 export * from "./governance";
 export * from "./household-finance";
+export * from "./micro-live";

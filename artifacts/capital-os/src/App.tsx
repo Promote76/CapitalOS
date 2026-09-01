@@ -1,5 +1,11 @@
-import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  createContribution,
+  useGetDashboard,
+  useListContributions,
+  type DashboardSnapshot,
+} from '@workspace/api-client-react';
 import {
   ArrowDownLeft,
   ArrowRightLeft,
@@ -49,6 +55,18 @@ const queryClient = new QueryClient();
 
 type ModalKind = 'contribution' | 'transfer' | 'strategy' | 'property' | null;
 type Transaction = { id: number; date: string; name: string; category: string; amount: number; status: string };
+
+function displayMoney(value: string | undefined, fallback: string) {
+  if (!value) return fallback;
+  const amount = Number(value);
+  return Number.isFinite(amount) ? `$${amount.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : fallback;
+}
+
+function displayDate(value: string | undefined, fallback: string) {
+  if (!value) return fallback;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? fallback : date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
 
 const primaryNav = [
   { href: '/', label: 'Overview', icon: LayoutDashboard },
@@ -162,23 +180,28 @@ function QuickActions({ onAction }: { onAction: (kind: Exclude<ModalKind, null>)
   </div>;
 }
 
-function Dashboard({ onAction, onFeedback, transactions }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void; transactions: Transaction[] }) {
+function Dashboard({ onAction, onFeedback, transactions, dashboard, backendIssue }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void; transactions: Transaction[]; dashboard?: DashboardSnapshot; backendIssue?: boolean }) {
   const monthTotal = transactions.reduce((sum, item) => sum + item.amount, 0);
+  const goal = dashboard?.goal;
+  const allocation = dashboard?.allocation;
+  const portfolio = dashboard?.portfolio;
+  const confidence = dashboard?.strategies[0]?.confidenceScore ?? 78;
   return <main className="content">
+    {backendIssue && <div className="card card-pad" role="status" style={{ marginBottom: 22, borderColor: 'var(--color-warning)', background: 'var(--color-warning-soft)' }}><strong>Showing the last saved view.</strong><p style={{ margin: '5px 0 0', color: 'var(--ink-soft)', fontSize: 12 }}>The household service is temporarily unavailable. Your local plan view is safe to review, and it will refresh automatically.</p></div>}
     <PageHeading eyebrow="Monday, 14 October 2024" title={<>Make room for the<br /><em>long view.</em></>} description="A clear week starts here. Your duplex plan is healthy, and the next small move is already in view." actions={<><button className="btn" data-testid="button-dashboard-export" onClick={() => onFeedback('Snapshot prepared for your next review.')}><ArrowDownLeft size={15} /> Export view</button><button className="btn btn-primary" data-testid="button-dashboard-contribution" onClick={() => onAction('contribution')}><Plus size={15} /> Record contribution</button></>} />
     <div className="dashboard-grid">
       <section className="hero-card card animate-in delay-1">
         <div className="eyebrow" style={{ color: '#58766a' }}>Primary goal / 01</div>
         <h2>A first duplex<br />of your own.</h2>
         <p>Steady capital, thoughtful leverage, and a home with room for the people you love.</p>
-        <div className="hero-stat"><div className="hero-stat-value" data-testid="text-goal-total">$48,260</div><div className="hero-stat-label">of $120,000 reserve</div></div>
-        <div className="hero-progress"><div className="hero-progress-meta"><span>40.2% funded</span><span>Target: Jun 2027</span></div><Progress value={40.2} /></div>
+        <div className="hero-stat"><div className="hero-stat-value" data-testid="text-goal-total">{displayMoney(goal?.currentAmount, '$48,260')}</div><div className="hero-stat-label">of {displayMoney(goal?.targetAmount, '$120,000')} reserve</div></div>
+        <div className="hero-progress"><div className="hero-progress-meta"><span>{goal?.progressPercent.toFixed(1) ?? '40.2'}% funded</span><span>Target: {displayDate(goal?.targetDate, 'Jun 2027')}</span></div><Progress value={goal?.progressPercent ?? 40.2} /></div>
       </section>
       <section className="card card-pad weekly-card animate-in delay-1">
         <CardTitle title="This week’s allocation" subtitle="Automatic on Friday, 18 October" action={<button className="icon-btn" data-testid="button-allocation-menu" onClick={() => onFeedback('Allocation is already set for Friday.')}><MoreHorizontal size={16} /></button>} />
-        <div className="weekly-amount" data-testid="text-weekly-total">$250 <span>/ week</span></div>
+        <div className="weekly-amount" data-testid="text-weekly-total">{displayMoney(allocation?.totalWeekly, '$250')} <span>/ week</span></div>
         <div className="allocation-list">
-        {[['Duplex Reserve', '$200', 'var(--color-protected)'], ['Capital OS', '$25', 'var(--color-primary)'], ['Opportunity Reserve', '$25', 'var(--color-opportunity)']].map(([name, value, color]) => <div className="allocation-row" key={name}><i className="allocation-dot" style={{ background: color }} /><span className="allocation-name">{name}</span><span className="allocation-value">{value}</span></div>)}
+        {[['Duplex Reserve', displayMoney(allocation?.duplexReserve, '$200'), 'var(--color-protected)'], ['Capital OS', displayMoney(allocation?.capitalOs, '$25'), 'var(--color-primary)'], ['Opportunity Reserve', displayMoney(allocation?.opportunityReserve, '$25'), 'var(--color-opportunity)']].map(([name, value, color]) => <div className="allocation-row" key={name}><i className="allocation-dot" style={{ background: color }} /><span className="allocation-name">{name}</span><span className="allocation-value">{value}</span></div>)}
         </div>
         <button className="btn" style={{ width: '100%', marginTop: 22 }} data-testid="button-edit-allocation" onClick={() => onAction('contribution')}><Pencil size={14} /> Edit allocation</button>
       </section>
@@ -188,19 +211,19 @@ function Dashboard({ onAction, onFeedback, transactions }: { onAction: (kind: Ex
       <section className="capital-state-card protected" data-testid="card-protected-capital">
         <div className="state-icon"><ShieldCheck size={17} /></div>
         <div className="state-label">Protected Capital <span className="status" style={{ marginLeft: 6 }}>Locked</span></div>
-        <div className="state-value" data-testid="text-protected-capital">$48,260</div>
+        <div className="state-value" data-testid="text-protected-capital">{displayMoney(portfolio?.protectedCapital, '$48,260')}</div>
         <div className="state-caption">Protected capital is ring-fenced and unavailable to experimental strategies.</div>
       </section>
       <section className="capital-state-card active" data-testid="card-active-capital">
         <div className="state-icon"><CircleDollarSign size={17} /></div>
         <div className="state-label">Active Capital <span className="status" style={{ marginLeft: 6, background: 'var(--color-primary-soft)', color: 'var(--color-primary)' }}>Working</span></div>
-        <div className="state-value" data-testid="text-active-capital">$1,816</div>
+        <div className="state-value" data-testid="text-active-capital">{displayMoney(portfolio?.activeCapital, '$1,180')}</div>
         <div className="state-caption">Authorized for productive deployment while the duplex reserve stays protected.</div>
       </section>
       <section className="capital-state-card confidence" data-testid="card-confidence-score">
         <div className="state-icon"><Gauge size={17} /></div>
         <div className="state-label">Capital Confidence <span className="info-note" title="Confidence reflects historical evidence, execution quality, system health, and risk controls. It is not a guarantee of future returns.">i</span></div>
-        <div className="confidence-score"><strong>78 / 100</strong><span>Limited Capital</span></div>
+        <div className="confidence-score"><strong>{confidence.toFixed(0)} / 100</strong><span>Limited Capital</span></div>
         <div className="state-caption">Confidence reflects evidence, execution quality, system health, and risk controls. Not a guarantee of future returns.</div>
       </section>
     </div>
@@ -357,9 +380,9 @@ function ActionModal({ kind, close, onComplete }: { kind: Exclude<ModalKind, nul
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div className="modal-header"><div><div className="eyebrow">Capital OS / quick action</div><h2 id="modal-title">{copy.title}</h2><p>{copy.desc}</p></div><button className="icon-btn" aria-label="Close dialog" data-testid="button-close-modal" onClick={close}><X size={17} /></button></div><form className="modal-form" onSubmit={submit}>{(kind === 'contribution' || kind === 'transfer') && <div className="field"><label>Amount</label><input autoFocus required inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} data-testid="input-action-amount" placeholder="250" /></div>}{kind === 'contribution' && <div className="field"><label>Allocate to</label><select data-testid="select-contribution-sleeve" defaultValue="Duplex Reserve"><option>Duplex Reserve</option><option>Capital OS</option><option>Opportunity Reserve</option></select></div>}{(kind === 'strategy' || kind === 'property') && <div className="field"><label>{kind === 'property' ? 'Note title' : 'Strategy title'}</label><input autoFocus required value={name} onChange={(event) => setName(event.target.value)} data-testid="input-action-name" /></div>}<div className="field"><label>Note <span style={{ textTransform:'none', letterSpacing:0 }}>(optional)</span></label><textarea value={note} onChange={(event) => setNote(event.target.value)} data-testid="textarea-action-note" placeholder="A little context for later..." /></div><div className="modal-actions"><button type="button" className="btn" data-testid="button-cancel-modal" onClick={close}>Cancel</button><button type="submit" className="btn btn-primary" data-testid="button-submit-modal"><Check size={14} /> {copy.submit}</button></div></form></div></div>;
 }
 
-function AppRouter({ onAction, onFeedback, transactions }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void; transactions: Transaction[] }) {
+function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void; transactions: Transaction[]; dashboard?: DashboardSnapshot; backendIssue?: boolean }) {
   return <Switch>
-    <Route path="/" component={() => <Dashboard onAction={onAction} onFeedback={onFeedback} transactions={transactions} />} />
+    <Route path="/" component={() => <Dashboard onAction={onAction} onFeedback={onFeedback} transactions={transactions} dashboard={dashboard} backendIssue={backendIssue} />} />
     <Route path="/goals" component={() => <GoalsPage onAction={onAction} />} />
     <Route path="/strategies" component={() => <StrategiesPage onAction={onAction} />} />
     <Route path="/portfolio" component={() => <PortfolioPage onFeedback={onFeedback} />} />
@@ -380,24 +403,53 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
-function App() {
+function AppContent() {
   const [modal, setModal] = useState<ModalKind>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState('');
+  const dashboardQuery = useGetDashboard();
+  const contributionsQuery = useListContributions();
   const [transactions, setTransactions] = useState<Transaction[]>([
     { id: 1, date: '11 Oct', name: 'Weekly allocation', category: 'Duplex Reserve', amount: 200, status: 'Posted' },
     { id: 2, date: '11 Oct', name: 'Weekly allocation', category: 'Capital OS', amount: 25, status: 'Posted' },
     { id: 3, date: '11 Oct', name: 'Weekly allocation', category: 'Opportunity Reserve', amount: 25, status: 'Posted' },
     { id: 4, date: '04 Oct', name: 'Weekly allocation', category: 'Duplex Reserve', amount: 200, status: 'Posted' },
   ]);
+  const apiTransactions = useMemo(() => {
+    if (!contributionsQuery.data?.length) return transactions;
+    return contributionsQuery.data.map((item, index) => ({
+      id: index + 1,
+      date: new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      name: 'Weekly allocation',
+      category: 'Duplex Reserve',
+      amount: Number(item.amount),
+      status: item.status === 'completed' ? 'Posted' : item.status,
+    }));
+  }, [contributionsQuery.data, transactions]);
   useEffect(() => { if (!toast) return; const timeout = window.setTimeout(() => setToast(''), 3200); return () => window.clearTimeout(timeout); }, [toast]);
   const notify = (message: string) => setToast(message);
-  const complete = (kind: Exclude<ModalKind, null>, values: { amount?: number; name?: string; note?: string }) => {
+  const complete = async (kind: Exclude<ModalKind, null>, values: { amount?: number; name?: string; note?: string }) => {
     const labels = { contribution: 'Contribution recorded', transfer: 'Transfer saved', strategy: 'Strategy note saved', property: 'Property note saved' };
+    if (kind === 'contribution') {
+      try {
+        await createContribution(
+          { amount: (values.amount || 0).toFixed(2) },
+          { headers: { 'Idempotency-Key': `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}` } },
+        );
+        await queryClient.invalidateQueries();
+      } catch (error) {
+        notify(error instanceof Error ? error.message : 'Contribution could not be recorded.');
+        return;
+      }
+    }
     if (kind === 'contribution' || kind === 'transfer') setTransactions((current) => [{ id: Date.now(), date: 'Today', name: values.name || (kind === 'contribution' ? 'Weekly allocation' : 'Reserve transfer'), category: kind === 'contribution' ? 'Duplex Reserve' : 'Capital OS', amount: values.amount || 0, status: 'Posted' }, ...current]);
     setModal(null); setToast(`${labels[kind]} · your plan is up to date.`);
   };
-  return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><RoutedErrorBoundary><AppShell onAction={setModal} onFeedback={notify} menuOpen={menuOpen} setMenuOpen={setMenuOpen}><AppRouter onAction={setModal} onFeedback={notify} transactions={transactions} /></AppShell></RoutedErrorBoundary></WouterRouter></TooltipProvider><Toaster />{modal && <ActionModal kind={modal} close={() => setModal(null)} onComplete={complete} />}{toast && <div className="toast-note" role="status" data-testid="status-action-feedback">{toast}</div>}</QueryClientProvider>;
+  return <TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><RoutedErrorBoundary><AppShell onAction={setModal} onFeedback={notify} menuOpen={menuOpen} setMenuOpen={setMenuOpen}><AppRouter onAction={setModal} onFeedback={notify} transactions={apiTransactions} dashboard={dashboardQuery.data} backendIssue={dashboardQuery.isError} /></AppShell></RoutedErrorBoundary></WouterRouter>{modal && <ActionModal kind={modal} close={() => setModal(null)} onComplete={complete} />}{toast && <div className="toast-note" role="status" data-testid="status-action-feedback">{toast}</div>}</TooltipProvider>;
+}
+
+function App() {
+  return <QueryClientProvider client={queryClient}><AppContent /><Toaster /></QueryClientProvider>;
 }
 
 export default App;

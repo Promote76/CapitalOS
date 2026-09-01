@@ -2,21 +2,24 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 0.2.0
+  description: Capital OS household capital operating system API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: household
+  - name: capital
+  - name: planning
+  - name: governance
+  - name: blockchain
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +27,736 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /household:
+    get:
+      operationId: getHousehold
+      tags: [household]
+      summary: Get the current household
+      responses:
+        "200":
+          description: Household workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseholdSummary"
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [capital]
+      summary: Get the household dashboard snapshot
+      responses:
+        "200":
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSnapshot"
+  /accounts:
+    get:
+      operationId: listAccounts
+      tags: [capital]
+      summary: List internal capital accounts
+      responses:
+        "200":
+          description: Accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AccountSummary"
+  /goals:
+    get:
+      operationId: listGoals
+      tags: [capital]
+      summary: List capital goals
+      responses:
+        "200":
+          description: Goals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GoalSummary"
+  /contributions:
+    get:
+      operationId: listContributions
+      tags: [capital]
+      summary: List household contributions
+      responses:
+        "200":
+          description: Contributions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContributionSummary"
+    post:
+      operationId: createContribution
+      tags: [capital]
+      summary: Record a household contribution
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContributionInput"
+      responses:
+        "201":
+          description: Contribution recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContributionSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /transfers:
+    post:
+      operationId: createTransfer
+      tags: [capital]
+      summary: Create an internal transfer
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferInput"
+      responses:
+        "201":
+          description: Transfer created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /allocations/impact:
+    post:
+      operationId: previewAllocationImpact
+      tags: [capital]
+      summary: Preview an allocation rule change
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AllocationInput"
+      responses:
+        "200":
+          description: Allocation impact
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AllocationImpact"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /allocations:
+    put:
+      operationId: updateAllocation
+      tags: [capital]
+      summary: Save an allocation rule after previewing its impact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AllocationInput"
+      responses:
+        "200":
+          description: Saved allocation rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AllocationSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /portfolio:
+    get:
+      operationId: getPortfolio
+      tags: [capital]
+      summary: Get portfolio composition and ledger health
+      responses:
+        "200":
+          description: Portfolio snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioSummary"
+  /properties:
+    get:
+      operationId: getProperties
+      tags: [planning]
+      summary: Get property planning data
+      responses:
+        "200":
+          description: Property planning
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertySummary"
+    post:
+      operationId: addPropertyNote
+      tags: [planning]
+      summary: Add a private property research note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PropertyNoteInput"
+      responses:
+        "201":
+          description: Note added
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertyNote"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /strategies:
+    get:
+      operationId: listStrategies
+      tags: [planning]
+      summary: List strategy lifecycle records
+      responses:
+        "200":
+          description: Strategies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StrategySummary"
+  /strategies/{strategyId}/promote:
+    post:
+      operationId: promoteStrategy
+      tags: [planning]
+      summary: Promote a strategy by one validated stage
+      parameters:
+        - $ref: "#/components/parameters/StrategyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StrategyPromotionInput"
+      responses:
+        "200":
+          description: Promoted strategy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StrategySummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /strategies/{strategyId}/allocation:
+    post:
+      operationId: allocateStrategy
+      tags: [planning]
+      summary: Allocate internal capital to an approved strategy
+      parameters:
+        - $ref: "#/components/parameters/StrategyId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StrategyAllocationInput"
+      responses:
+        "201":
+          description: Strategy allocation recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /risk:
+    get:
+      operationId: getRisk
+      tags: [governance]
+      summary: Get Capital Governor state and safeguards
+      responses:
+        "200":
+          description: Risk state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskSummary"
+  /risk/emergency-stop:
+    post:
+      operationId: activateEmergencyStop
+      tags: [governance]
+      summary: Activate the human-confirmed emergency stop
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmergencyStopInput"
+      responses:
+        "200":
+          description: Risk state after activation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskSummary"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /recommendations:
+    get:
+      operationId: listRecommendations
+      tags: [governance]
+      summary: List AI CIO advisory recommendations
+      responses:
+        "200":
+          description: Recommendations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RecommendationSummary"
+  /recommendations/{recommendationId}/decision:
+    post:
+      operationId: decideRecommendation
+      tags: [governance]
+      summary: Record a human recommendation decision
+      parameters:
+        - $ref: "#/components/parameters/RecommendationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecommendationDecisionInput"
+      responses:
+        "200":
+          description: Updated recommendation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecommendationSummary"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /audit:
+    get:
+      operationId: listAuditEvents
+      tags: [governance]
+      summary: List append-only audit events
+      responses:
+        "200":
+          description: Audit events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditEventSummary"
+  /reports:
+    get:
+      operationId: listReports
+      tags: [governance]
+      summary: List private report interfaces
+      responses:
+        "200":
+          description: Available report interfaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReportDescriptor"
+  /blockchain/status:
+    get:
+      operationId: getBlockchainStatus
+      tags: [blockchain]
+      summary: Get disabled-by-default chain adapter status
+      responses:
+        "200":
+          description: Blockchain status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockchainStatus"
 components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+    StrategyId:
+      name: strategyId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[0-9a-fA-F-]{36}$"
+    RecommendationId:
+      name: recommendationId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[0-9a-fA-F-]{36}$"
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Household role or Capital Governor rejected the action
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Idempotency or state conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
-
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        details:
+          type: ["object", "null"]
+          additionalProperties: true
+    HouseholdSummary:
+      type: object
+      required: [id, name, timezone, role, permissions]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        timezone: { type: string }
+        role: { type: string }
+        permissions:
+          type: array
+          items: { type: string }
+    AccountSummary:
+      type: object
+      required: [id, name, accountType, balance, protected, riskClass]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        accountType: { type: string }
+        balance: { type: string }
+        protected: { type: boolean }
+        riskClass: { type: string }
+    GoalSummary:
+      type: object
+      required: [id, name, targetAmount, currentAmount, protectedAmount, weeklyContribution, progressPercent, amountRemaining, weeksRemaining, requiredWeeklyContribution, projectedCompletionWeeks, status, priority, targetDate]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        targetAmount: { type: string }
+        currentAmount: { type: string }
+        protectedAmount: { type: string }
+        weeklyContribution: { type: string }
+        progressPercent: { type: number }
+        amountRemaining: { type: string }
+        weeksRemaining: { type: number }
+        requiredWeeklyContribution: { type: string }
+        projectedCompletionWeeks:
+          type: ["number", "null"]
+        status: { type: string }
+        priority: { type: string }
+        targetDate: { type: string, format: date }
+    AllocationSummary:
+      type: object
+      required: [totalWeekly, duplexReserve, capitalOs, opportunityReserve]
+      properties:
+        totalWeekly: { type: string }
+        duplexReserve: { type: string }
+        capitalOs: { type: string }
+        opportunityReserve: { type: string }
+    ContributionSummary:
+      type: object
+      required: [id, amount, status, createdAt]
+      properties:
+        id: { type: string }
+        amount: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+        idempotencyKey: { type: string }
+    ContributionInput:
+      type: object
+      required: [amount]
+      properties:
+        amount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        goalId: { type: ["string", "null"] }
+        note: { type: ["string", "null"], maxLength: 500 }
+    TransferInput:
+      type: object
+      required: [sourceAccountId, destinationAccountId, amount]
+      properties:
+        sourceAccountId: { type: string }
+        destinationAccountId: { type: string }
+        amount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        note: { type: ["string", "null"], maxLength: 500 }
+    AllocationInput:
+      type: object
+      required: [totalWeekly, duplexReserve, capitalOs, opportunityReserve]
+      properties:
+        totalWeekly: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        duplexReserve: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        capitalOs: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        opportunityReserve: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+    AllocationImpact:
+      type: object
+      required: [current, proposed, totalMatches, duplexWeeklyChange, projectedDelayWeeks, protectedSavingsChange, activeCapitalChange, propertyReadinessImpact]
+      properties:
+        current: { $ref: "#/components/schemas/AllocationSummary" }
+        proposed: { $ref: "#/components/schemas/AllocationSummary" }
+        totalMatches: { type: boolean }
+        duplexWeeklyChange: { type: string }
+        projectedDelayWeeks: { type: number }
+        protectedSavingsChange: { type: string }
+        activeCapitalChange: { type: string }
+        propertyReadinessImpact: { type: string }
+    ReportDescriptor:
+      type: object
+      required: [kind, title, status, private, hashable]
+      properties:
+        kind: { type: string }
+        title: { type: string }
+        status: { type: string }
+        private: { type: boolean }
+        hashable: { type: boolean }
+    TransactionSummary:
+      type: object
+      required: [id, amount, category, status, createdAt]
+      properties:
+        id: { type: string }
+        amount: { type: string }
+        category: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+    PortfolioSummary:
+      type: object
+      required: [totalCapital, protectedCapital, activeCapital, cashReserve, ledgerBalanced, composition]
+      properties:
+        totalCapital: { type: string }
+        protectedCapital: { type: string }
+        activeCapital: { type: string }
+        cashReserve: { type: string }
+        ledgerBalanced: { type: boolean }
+        composition:
+          type: array
+          items:
+            type: object
+            required: [label, amount, percent]
+            properties:
+              label: { type: string }
+              amount: { type: string }
+              percent: { type: number }
+    PropertyMilestone:
+      type: object
+      required: [id, name, status, progress, target, currentState, nextAction]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        status: { type: string }
+        progress: { type: number }
+        target: { type: string }
+        currentState: { type: string }
+        nextAction: { type: string }
+        dueDate: { type: ["string", "null"], format: date }
+    PropertySummary:
+      type: object
+      required: [id, name, targetMarket, targetBudget, estimatedDownPayment, estimatedClosingCosts, readinessScore, milestones]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        targetMarket: { type: string }
+        targetBudget: { type: string }
+        estimatedDownPayment: { type: string }
+        estimatedClosingCosts: { type: string }
+        readinessScore: { type: number }
+        milestones:
+          type: array
+          items: { $ref: "#/components/schemas/PropertyMilestone" }
+    PropertyNoteInput:
+      type: object
+      required: [propertyGoalId, body]
+      properties:
+        propertyGoalId: { type: string }
+        body: { type: string, minLength: 1, maxLength: 2000 }
+    PropertyNote:
+      type: object
+      required: [id, propertyGoalId, body, createdAt]
+      properties:
+        id: { type: string }
+        propertyGoalId: { type: string }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+    StrategySummary:
+      type: object
+      required: [id, name, strategyType, stage, allocation, confidenceScore, riskLevel, enabled]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        strategyType: { type: string }
+        stage: { type: string }
+        allocation: { type: string }
+        confidenceScore: { type: number }
+        riskLevel: { type: string }
+        enabled: { type: boolean }
+        graduationEvidence:
+          type: object
+          required: [minimumObservations, reconciliationAccurate, noCriticalErrors]
+          properties:
+            minimumObservations: { type: boolean }
+            reconciliationAccurate: { type: boolean }
+            noCriticalErrors: { type: boolean }
+    StrategyPromotionInput:
+      type: object
+      required: [toStage, evidence]
+      properties:
+        toStage: { type: string }
+        authorizedOverride: { type: boolean, default: false }
+        evidence:
+          type: object
+          required: [minimumObservations, reconciliationAccurate, noCriticalErrors]
+          properties:
+            minimumObservations: { type: boolean }
+            reconciliationAccurate: { type: boolean }
+            noCriticalErrors: { type: boolean }
+    StrategyAllocationInput:
+      type: object
+      required: [sourceAccountId, amount]
+      properties:
+        sourceAccountId: { type: string }
+        amount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+    RiskSummary:
+      type: object
+      required: [state, protectedCapitalLocked, emergencyStopActive, maxActiveCapital, maxStrategyAllocation, maxWeeklyRisk, maxDrawdown, minimumCashReserve, safeguards]
+      properties:
+        state: { type: string }
+        protectedCapitalLocked: { type: boolean }
+        emergencyStopActive: { type: boolean }
+        maxActiveCapital: { type: string }
+        maxStrategyAllocation: { type: string }
+        maxWeeklyRisk: { type: string }
+        maxDrawdown: { type: string }
+        minimumCashReserve: { type: string }
+        safeguards:
+          type: array
+          items:
+            type: object
+            required: [name, status, message]
+            properties:
+              name: { type: string }
+              status: { type: string }
+              message: { type: string }
+    EmergencyStopInput:
+      type: object
+      required: [confirmed, reason]
+      properties:
+        confirmed: { type: boolean }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    RecommendationSummary:
+      type: object
+      required: [id, recommendation, rationale, expectedBenefit, riskImpact, confidence, status, advisoryOnly]
+      properties:
+        id: { type: string }
+        recommendation: { type: string }
+        rationale: { type: string }
+        expectedBenefit: { type: string }
+        riskImpact: { type: string }
+        confidence: { type: number }
+        status: { type: string }
+        advisoryOnly: { type: boolean }
+    RecommendationDecisionInput:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: { type: string, enum: [approved, rejected] }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    AuditEventSummary:
+      type: object
+      required: [id, eventType, actor, entity, entityId, timestamp]
+      properties:
+        id: { type: string }
+        eventType: { type: string }
+        actor: { type: string }
+        entity: { type: string }
+        entityId: { type: string }
+        timestamp: { type: string, format: date-time }
+        reason: { type: ["string", "null"] }
+    BlockchainStatus:
+      type: object
+      required: [enabled, preferredChain, chains, privateDataOffChain, liveTransactionsEnabled]
+      properties:
+        enabled: { type: boolean }
+        preferredChain: { type: string }
+        chains:
+          type: array
+          items:
+            type: object
+            required: [name, chainId, enabled]
+            properties:
+              name: { type: string }
+              chainId: { type: number }
+              enabled: { type: boolean }
+        privateDataOffChain: { type: boolean }
+        liveTransactionsEnabled: { type: boolean }
+    DashboardSnapshot:
+      type: object
+      required: [household, goal, accounts, allocation, portfolio, property, strategies, risk, recommendation, recentActivity]
+      properties:
+        household: { $ref: "#/components/schemas/HouseholdSummary" }
+        goal: { $ref: "#/components/schemas/GoalSummary" }
+        accounts:
+          type: array
+          items: { $ref: "#/components/schemas/AccountSummary" }
+        allocation: { $ref: "#/components/schemas/AllocationSummary" }
+        portfolio: { $ref: "#/components/schemas/PortfolioSummary" }
+        property: { $ref: "#/components/schemas/PropertySummary" }
+        strategies:
+          type: array
+          items: { $ref: "#/components/schemas/StrategySummary" }
+        risk: { $ref: "#/components/schemas/RiskSummary" }
+        recommendation: { $ref: "#/components/schemas/RecommendationSummary" }
+        recentActivity:
+          type: array
+          items: { $ref: "#/components/schemas/AuditEventSummary" }

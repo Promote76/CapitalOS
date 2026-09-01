@@ -1,0 +1,45 @@
+import type { NextFunction, Request, Response } from "express";
+
+const writeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const requestCounts = new Map<string, { windowStartedAt: number; count: number }>();
+const WINDOW_MS = 60_000;
+const MAX_REQUESTS_PER_WINDOW = 120;
+
+export function securityHeaders(_req: Request, res: Response, next: NextFunction) {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Referrer-Policy", "same-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  next();
+}
+
+export function rateLimit(req: Request, res: Response, next: NextFunction) {
+  const key = req.ip ?? "unknown";
+  const now = Date.now();
+  const current = requestCounts.get(key);
+  if (!current || now - current.windowStartedAt >= WINDOW_MS) {
+    requestCounts.set(key, { windowStartedAt: now, count: 1 });
+    next();
+    return;
+  }
+  current.count += 1;
+  if (current.count > MAX_REQUESTS_PER_WINDOW) {
+    res.status(429).json({ code: "RATE_LIMITED", message: "Too many requests; please try again shortly" });
+    return;
+  }
+  next();
+}
+
+export function writeBoundary(req: Request, res: Response, next: NextFunction) {
+  if (!writeMethods.has(req.method)) {
+    next();
+    return;
+  }
+  const origin = req.header("Origin");
+  const allowedOrigin = process.env.CAPITAL_OS_ALLOWED_ORIGIN;
+  if (origin && allowedOrigin && origin !== allowedOrigin) {
+    res.status(403).json({ code: "ORIGIN_NOT_ALLOWED", message: "Write origin is not allowed" });
+    return;
+  }
+  next();
+}

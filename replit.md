@@ -9,6 +9,7 @@ Capital OS is a light-theme family-capital workspace for disciplined saving, pro
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm --filter @workspace/api-server run test` — run the direct financial and governance tests
 - Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
@@ -16,21 +17,27 @@ Capital OS is a light-theme family-capital workspace for disciplined saving, pro
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - API: Express 5
 - DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
+- Validation: generated Zod schemas, `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
 
 ## Where things live
 
-- `artifacts/capital-os/src/App.tsx` — route-aware application shell, page views, mock data, and local interactions
+- `artifacts/capital-os/src/App.tsx` — route-aware application shell, page views, fallback mock data, and API-backed dashboard/contribution reads
 - `artifacts/capital-os/src/index.css` — shared light-theme design tokens and responsive component styling
+- `artifacts/api-server/src/domain/` — exact-cents calculations, Capital Governor rules, strategy lifecycle, and disabled blockchain interfaces
+- `artifacts/api-server/src/services/` — seed data and transactional household-capital services
+- `lib/db/src/schema/` — PostgreSQL/Drizzle household, capital, property, strategy, risk, AI, and audit tables
+- `docs/capital-os-architecture.md` — backend boundaries, data model, permissions, idempotency, and verification
 - `attached_assets/Pasted-Capital-OS-Design-System-Specification-1-Design-Princip_1788226967597.txt` — product design-system specification
 
 ## Architecture decisions
 
-- The first release is frontend-only and uses realistic local mock data so the product surface can be reviewed before persistence and integrations are added.
+- The approved UI remains visually intact. The backend foundation seeds realistic development data and supplies the dashboard and contribution list through a validated API, while retaining local fallback data for a safe review state.
 - The app is organized around protected family capital, not trading activity; green communicates protection/progress, blue active capital, lavender research/opportunity, amber review, and red critical safeguards.
 - All primary and secondary destinations share one responsive shell with local state for contribution, transfer, strategy, property-note, settings, and risk-review interactions.
+- PostgreSQL `numeric(18,2)` values are converted to integer cents for server calculations; ledger and audit records are written with capital movements in one database transaction.
+- AI is advisory-only, and Arbitrum/Base/Ethereum adapters are disabled stubs. No live trading, bank connection, smart contract, or autonomous capital movement is enabled.
 
 ## Product
 
@@ -48,7 +55,8 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Standalone Vite builds need `PORT` and `BASE_PATH`; managed workflows provide both automatically.
+- The native API tests use Node 24's `--experimental-strip-types` and explicit `.ts` imports.
 
 ## Pointers
 

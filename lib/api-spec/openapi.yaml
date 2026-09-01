@@ -248,6 +248,71 @@ paths:
                 $ref: "#/components/schemas/PropertyNote"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /properties/underwriting:
+    get:
+      operationId: getPropertyUnderwriting
+      tags: [planning]
+      summary: Get the acquisition dashboard and underwriting data
+      responses:
+        "200":
+          description: Property underwriting dashboard
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PropertyUnderwriting" }
+  /properties/buy-box:
+    patch:
+      operationId: updateBuyBox
+      tags: [planning]
+      summary: Update the household duplex buy box
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateBuyBoxInput" }
+      responses:
+        "200":
+          description: Updated buy box
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BuyBox" }
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /properties/candidates:
+    post:
+      operationId: createPropertyCandidate
+      tags: [planning]
+      summary: Add a property candidate to the acquisition pipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePropertyCandidateInput" }
+      responses:
+        "201":
+          description: Property candidate
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PropertyCandidate" }
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /properties/candidates/{candidateId}/analyze:
+    post:
+      operationId: analyzePropertyCandidate
+      tags: [planning]
+      summary: Calculate a property candidate underwriting package
+      parameters:
+        - name: candidateId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Underwriting analysis
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PropertyAnalysis" }
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /strategies:
     get:
       operationId: listStrategies
@@ -1023,6 +1088,121 @@ components:
         currentState: { type: string }
         nextAction: { type: string }
         dueDate: { type: ["string", "null"], format: date }
+    BuyBox:
+      type: object
+      required: [id, householdId, propertyType, ownerOccupied, purchasePriceMinimum, purchasePriceMaximum, targetCashToClose, minimumBedroomsPerUnit, minimumBathroomsPerUnit, minimumEstimatedRent, maximumEstimatedRehabilitation, minimumCashFlow, maximumMonthlyHousingCost, minimumDscrEstimate, minimumPropertyCondition, targetMarkets, excludedMarkets, minimumReadinessScore]
+      properties:
+        id: { type: string }
+        householdId: { type: string }
+        propertyType: { type: string }
+        ownerOccupied: { type: boolean }
+        purchasePriceMinimum: { type: string }
+        purchasePriceMaximum: { type: string }
+        targetCashToClose: { type: string }
+        minimumBedroomsPerUnit: { type: string }
+        minimumBathroomsPerUnit: { type: string }
+        minimumEstimatedRent: { type: string }
+        maximumEstimatedRehabilitation: { type: string }
+        minimumCashFlow: { type: string }
+        maximumMonthlyHousingCost: { type: string }
+        minimumDscrEstimate: { type: string }
+        minimumPropertyCondition: { type: string }
+        targetMarkets: { type: array, items: { type: string } }
+        excludedMarkets: { type: array, items: { type: string } }
+        minimumReadinessScore: { type: string }
+    UpdateBuyBoxInput:
+      type: object
+      properties:
+        propertyType: { type: string }
+        ownerOccupied: { type: boolean }
+        purchasePriceMinimum: { type: string }
+        purchasePriceMaximum: { type: string }
+        targetCashToClose: { type: string }
+        minimumBedroomsPerUnit: { type: string }
+        minimumBathroomsPerUnit: { type: string }
+        minimumEstimatedRent: { type: string }
+        maximumEstimatedRehabilitation: { type: string }
+        minimumCashFlow: { type: string }
+        maximumMonthlyHousingCost: { type: string }
+        minimumDscrEstimate: { type: string }
+        minimumPropertyCondition: { type: string }
+        targetMarkets: { type: array, items: { type: string } }
+        excludedMarkets: { type: array, items: { type: string } }
+        minimumReadinessScore: { type: string }
+    CreatePropertyCandidateInput:
+      type: object
+      required: [propertyGoalId, addressLabel, propertyType, units, bedrooms, askingPrice, estimatedRent, repairs, market]
+      properties:
+        propertyGoalId: { type: string }
+        addressLabel: { type: string }
+        city: { type: string }
+        state: { type: string }
+        zip: { type: string }
+        market: { type: string }
+        propertyType: { type: string }
+        units: { type: string }
+        bedrooms: { type: string }
+        bathrooms: { type: string }
+        askingPrice: { type: string }
+        estimatedMarketValue: { type: string }
+        annualPropertyTaxes: { type: string }
+        insurance: { type: string }
+        hoa: { type: string }
+        estimatedRent: { type: string }
+        currentRents: { type: string }
+        vacancyAssumption: { type: string }
+        repairs: { type: string }
+        immediateRepairs: { type: string }
+        listingSource: { type: string }
+        listingUrl: { type: string, format: uri }
+        status: { type: string }
+        notes: { type: string }
+    AnalyzePropertyCandidateParams:
+      type: object
+      required: [candidateId]
+      properties:
+        candidateId: { type: string }
+    PropertyCandidate:
+      type: object
+      required: [id, propertyGoalId, addressLabel, propertyType, units, bedrooms, askingPrice, estimatedRent, repairs, status, buyBoxScore, dealQualityScore, dataConfidence]
+      properties:
+        id: { type: string }
+        propertyGoalId: { type: string }
+        addressLabel: { type: string }
+        propertyType: { type: string }
+        units: { type: string }
+        bedrooms: { type: string }
+        askingPrice: { type: string }
+        estimatedRent: { type: string }
+        repairs: { type: string }
+        status: { type: string }
+        buyBoxScore: { type: string }
+        dealQualityScore: { type: string }
+        dataConfidence: { type: string }
+        readinessStatus: { type: string }
+        nextAction: { type: string }
+    PropertyAnalysis:
+      type: object
+      required: [candidateId, deal, cashToClose, stress, governor]
+      properties:
+        candidateId: { type: string }
+        deal: { type: object, properties: { analysis: { type: object }, buyBox: { type: object } } }
+        cashToClose: { type: object }
+        stress: { type: object }
+        governor: { type: object }
+    PropertyUnderwriting:
+      type: object
+      required: [propertyGoal, buyBox, candidates, financingScenarios, cashToClose, stressTests, nextAction, dataConfidence, household]
+      properties:
+        propertyGoal: { type: object, properties: { id: { type: string }, name: { type: string }, targetMarket: { type: string }, targetBudget: { type: string }, targetCashToClose: { type: string }, targetDate: { type: string }, readiness: { type: object } } }
+        buyBox: { $ref: "#/components/schemas/BuyBox" }
+        candidates: { type: array, items: { $ref: "#/components/schemas/PropertyCandidate" } }
+        financingScenarios: { type: array, items: { type: object } }
+        cashToClose: { type: array, items: { type: object } }
+        stressTests: { type: array, items: { type: object } }
+        nextAction: { type: string }
+        dataConfidence: { type: number }
+        household: { type: object, properties: { emergencyReserve: { type: string }, emergencyReserveMonths: { type: number }, freeCashFlow: { type: string }, safeToDeploy: { type: string } } }
     PropertySummary:
       type: object
       required: [id, name, targetMarket, targetBudget, estimatedDownPayment, estimatedClosingCosts, readinessScore, milestones]

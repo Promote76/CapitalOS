@@ -173,6 +173,155 @@ export interface PropertyMilestone {
   dueDate?: string | null;
 }
 
+export interface BuyBox {
+  id: string;
+  householdId: string;
+  propertyType: string;
+  ownerOccupied: boolean;
+  purchasePriceMinimum: string;
+  purchasePriceMaximum: string;
+  targetCashToClose: string;
+  minimumBedroomsPerUnit: string;
+  minimumBathroomsPerUnit: string;
+  minimumEstimatedRent: string;
+  maximumEstimatedRehabilitation: string;
+  minimumCashFlow: string;
+  maximumMonthlyHousingCost: string;
+  minimumDscrEstimate: string;
+  minimumPropertyCondition: string;
+  targetMarkets: string[];
+  excludedMarkets: string[];
+  minimumReadinessScore: string;
+}
+
+export interface UpdateBuyBoxInput {
+  propertyType?: string;
+  ownerOccupied?: boolean;
+  purchasePriceMinimum?: string;
+  purchasePriceMaximum?: string;
+  targetCashToClose?: string;
+  minimumBedroomsPerUnit?: string;
+  minimumBathroomsPerUnit?: string;
+  minimumEstimatedRent?: string;
+  maximumEstimatedRehabilitation?: string;
+  minimumCashFlow?: string;
+  maximumMonthlyHousingCost?: string;
+  minimumDscrEstimate?: string;
+  minimumPropertyCondition?: string;
+  targetMarkets?: string[];
+  excludedMarkets?: string[];
+  minimumReadinessScore?: string;
+}
+
+export interface CreatePropertyCandidateInput {
+  propertyGoalId: string;
+  addressLabel: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  market: string;
+  propertyType: string;
+  units: string;
+  bedrooms: string;
+  bathrooms?: string;
+  askingPrice: string;
+  estimatedMarketValue?: string;
+  annualPropertyTaxes?: string;
+  insurance?: string;
+  hoa?: string;
+  estimatedRent: string;
+  currentRents?: string;
+  vacancyAssumption?: string;
+  repairs: string;
+  immediateRepairs?: string;
+  listingSource?: string;
+  listingUrl?: string;
+  status?: string;
+  notes?: string;
+}
+
+export interface AnalyzePropertyCandidateParams {
+  candidateId: string;
+}
+
+export interface PropertyCandidate {
+  id: string;
+  propertyGoalId: string;
+  addressLabel: string;
+  propertyType: string;
+  units: string;
+  bedrooms: string;
+  askingPrice: string;
+  estimatedRent: string;
+  repairs: string;
+  status: string;
+  buyBoxScore: string;
+  dealQualityScore: string;
+  dataConfidence: string;
+  readinessStatus?: string;
+  nextAction?: string;
+}
+
+export type PropertyAnalysisDealAnalysis = { [key: string]: unknown };
+
+export type PropertyAnalysisDealBuyBox = { [key: string]: unknown };
+
+export type PropertyAnalysisDeal = {
+  analysis?: PropertyAnalysisDealAnalysis;
+  buyBox?: PropertyAnalysisDealBuyBox;
+};
+
+export type PropertyAnalysisCashToClose = { [key: string]: unknown };
+
+export type PropertyAnalysisStress = { [key: string]: unknown };
+
+export type PropertyAnalysisGovernor = { [key: string]: unknown };
+
+export interface PropertyAnalysis {
+  candidateId: string;
+  deal: PropertyAnalysisDeal;
+  cashToClose: PropertyAnalysisCashToClose;
+  stress: PropertyAnalysisStress;
+  governor: PropertyAnalysisGovernor;
+}
+
+export type PropertyUnderwritingPropertyGoalReadiness = { [key: string]: unknown };
+
+export type PropertyUnderwritingPropertyGoal = {
+  id?: string;
+  name?: string;
+  targetMarket?: string;
+  targetBudget?: string;
+  targetCashToClose?: string;
+  targetDate?: string;
+  readiness?: PropertyUnderwritingPropertyGoalReadiness;
+};
+
+export type PropertyUnderwritingFinancingScenariosItem = { [key: string]: unknown };
+
+export type PropertyUnderwritingCashToCloseItem = { [key: string]: unknown };
+
+export type PropertyUnderwritingStressTestsItem = { [key: string]: unknown };
+
+export type PropertyUnderwritingHousehold = {
+  emergencyReserve?: string;
+  emergencyReserveMonths?: number;
+  freeCashFlow?: string;
+  safeToDeploy?: string;
+};
+
+export interface PropertyUnderwriting {
+  propertyGoal: PropertyUnderwritingPropertyGoal;
+  buyBox: BuyBox;
+  candidates: PropertyCandidate[];
+  financingScenarios: PropertyUnderwritingFinancingScenariosItem[];
+  cashToClose: PropertyUnderwritingCashToCloseItem[];
+  stressTests: PropertyUnderwritingStressTestsItem[];
+  nextAction: string;
+  dataConfidence: number;
+  household: PropertyUnderwritingHousehold;
+}
+
 export interface PropertySummary {
   id: string;
   name: string;

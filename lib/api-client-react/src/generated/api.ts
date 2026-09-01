@@ -32,10 +32,12 @@ import type {
   BillUpdateInput,
   BlockchainStatus,
   BudgetSummary,
+  BuyBox,
   CashFlowSummary,
   ConflictResponse,
   ContributionInput,
   ContributionSummary,
+  CreatePropertyCandidateInput,
   CsvImportInput,
   DashboardSnapshot,
   EmergencyStopInput,
@@ -54,9 +56,12 @@ import type {
   ManualFinancialAccountInput,
   PortfolioSummary,
   PrivacySettingsInput,
+  PropertyAnalysis,
+  PropertyCandidate,
   PropertyNote,
   PropertyNoteInput,
   PropertySummary,
+  PropertyUnderwriting,
   RecommendationDecisionInput,
   RecommendationSummary,
   ReportDescriptor,
@@ -69,7 +74,8 @@ import type {
   TransferInput,
   UpcomingExpense,
   UpcomingExpenseInput,
-  UpcomingExpenseUpdateInput
+  UpcomingExpenseUpdateInput,
+  UpdateBuyBoxInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1139,6 +1145,296 @@ export const useAddPropertyNote = <TError = ErrorType<ForbiddenResponse>,
         TContext
       > => {
       return useMutation(getAddPropertyNoteMutationOptions(options));
+    }
+
+export const getGetPropertyUnderwritingUrl = () => {
+
+
+
+
+  return `/api/properties/underwriting`
+}
+
+/**
+ * @summary Get the acquisition dashboard and underwriting data
+ */
+export const getPropertyUnderwriting = async ( options?: Parameters<typeof customFetch>[1]): Promise<PropertyUnderwriting> => {
+
+  return customFetch<PropertyUnderwriting>(getGetPropertyUnderwritingUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPropertyUnderwritingQueryKey = () => {
+    return [
+    `/api/properties/underwriting`
+    ] as const;
+    }
+
+
+export const getGetPropertyUnderwritingQueryOptions = <TData = Awaited<ReturnType<typeof getPropertyUnderwriting>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPropertyUnderwriting>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPropertyUnderwritingQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPropertyUnderwriting>>> = ({ signal }) => getPropertyUnderwriting({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPropertyUnderwriting>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPropertyUnderwritingQueryResult = NonNullable<Awaited<ReturnType<typeof getPropertyUnderwriting>>>
+export type GetPropertyUnderwritingQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the acquisition dashboard and underwriting data
+ */
+
+export function useGetPropertyUnderwriting<TData = Awaited<ReturnType<typeof getPropertyUnderwriting>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPropertyUnderwriting>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPropertyUnderwritingQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateBuyBoxUrl = () => {
+
+
+
+
+  return `/api/properties/buy-box`
+}
+
+/**
+ * @summary Update the household duplex buy box
+ */
+export const updateBuyBox = async (updateBuyBoxInput: UpdateBuyBoxInput, options?: Parameters<typeof customFetch>[1]): Promise<BuyBox> => {
+
+  return customFetch<BuyBox>(getUpdateBuyBoxUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateBuyBoxInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateBuyBoxMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBuyBox>>, TError,{data: BodyType<UpdateBuyBoxInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBuyBox>>, TError,{data: BodyType<UpdateBuyBoxInput>}, TContext> => {
+
+const mutationKey = ['updateBuyBox'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBuyBox>>, {data: BodyType<UpdateBuyBoxInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateBuyBox(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateBuyBoxMutationResult = NonNullable<Awaited<ReturnType<typeof updateBuyBox>>>
+    export type UpdateBuyBoxMutationBody = BodyType<UpdateBuyBoxInput>
+    export type UpdateBuyBoxMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Update the household duplex buy box
+ */
+export const useUpdateBuyBox = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBuyBox>>, TError,{data: BodyType<UpdateBuyBoxInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateBuyBox>>,
+        TError,
+        {data: BodyType<UpdateBuyBoxInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateBuyBoxMutationOptions(options));
+    }
+
+export const getCreatePropertyCandidateUrl = () => {
+
+
+
+
+  return `/api/properties/candidates`
+}
+
+/**
+ * @summary Add a property candidate to the acquisition pipeline
+ */
+export const createPropertyCandidate = async (createPropertyCandidateInput: CreatePropertyCandidateInput, options?: Parameters<typeof customFetch>[1]): Promise<PropertyCandidate> => {
+
+  return customFetch<PropertyCandidate>(getCreatePropertyCandidateUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createPropertyCandidateInput)
+  }
+);}
+
+
+
+
+
+export const getCreatePropertyCandidateMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPropertyCandidate>>, TError,{data: BodyType<CreatePropertyCandidateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPropertyCandidate>>, TError,{data: BodyType<CreatePropertyCandidateInput>}, TContext> => {
+
+const mutationKey = ['createPropertyCandidate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPropertyCandidate>>, {data: BodyType<CreatePropertyCandidateInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPropertyCandidate(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePropertyCandidateMutationResult = NonNullable<Awaited<ReturnType<typeof createPropertyCandidate>>>
+    export type CreatePropertyCandidateMutationBody = BodyType<CreatePropertyCandidateInput>
+    export type CreatePropertyCandidateMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Add a property candidate to the acquisition pipeline
+ */
+export const useCreatePropertyCandidate = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPropertyCandidate>>, TError,{data: BodyType<CreatePropertyCandidateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPropertyCandidate>>,
+        TError,
+        {data: BodyType<CreatePropertyCandidateInput>},
+        TContext
+      > => {
+      return useMutation(getCreatePropertyCandidateMutationOptions(options));
+    }
+
+export const getAnalyzePropertyCandidateUrl = (candidateId: string,) => {
+
+
+
+
+  return `/api/properties/candidates/${candidateId}/analyze`
+}
+
+/**
+ * @summary Calculate a property candidate underwriting package
+ */
+export const analyzePropertyCandidate = async (candidateId: string, options?: Parameters<typeof customFetch>[1]): Promise<PropertyAnalysis> => {
+
+  return customFetch<PropertyAnalysis>(getAnalyzePropertyCandidateUrl(candidateId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAnalyzePropertyCandidateMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzePropertyCandidate>>, TError,{candidateId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof analyzePropertyCandidate>>, TError,{candidateId: string}, TContext> => {
+
+const mutationKey = ['analyzePropertyCandidate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof analyzePropertyCandidate>>, {candidateId: string}> = (props) => {
+          const {candidateId} = props ?? {};
+
+          return  analyzePropertyCandidate(candidateId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AnalyzePropertyCandidateMutationResult = NonNullable<Awaited<ReturnType<typeof analyzePropertyCandidate>>>
+
+    export type AnalyzePropertyCandidateMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Calculate a property candidate underwriting package
+ */
+export const useAnalyzePropertyCandidate = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzePropertyCandidate>>, TError,{candidateId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof analyzePropertyCandidate>>,
+        TError,
+        {candidateId: string},
+        TContext
+      > => {
+      return useMutation(getAnalyzePropertyCandidateMutationOptions(options));
     }
 
 export const getListStrategiesUrl = () => {

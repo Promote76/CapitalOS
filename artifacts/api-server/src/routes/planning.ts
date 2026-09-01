@@ -11,10 +11,15 @@ import {
   AllocateStrategyHeader,
   AllocateStrategyParams,
   AllocateStrategyResponse,
+  GetPropertyUnderwritingResponse,
+  UpdateBuyBoxBody,
+  CreatePropertyCandidateBody,
+  AnalyzePropertyCandidateParams,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
 import { addPropertyNote, allocateStrategy, getProperty, getStrategies, promoteStrategy } from "../services/capital-os";
+import { analyzePropertyCandidate, createPropertyCandidate, getPropertyUnderwriting, updateBuyBox } from "../services/property-underwriting";
 
 const router: IRouter = Router();
 
@@ -25,6 +30,25 @@ router.get("/properties", asyncRoute(async (_req, res) => {
 router.post("/properties", asyncRoute(async (req, res) => {
   const body = AddPropertyNoteBody.parse(req.body);
   res.status(201).json(AddPropertyNoteResponse.parse(await addPropertyNote(actorFrom(res), body.propertyGoalId, body.body)));
+}));
+
+router.get("/properties/underwriting", asyncRoute(async (_req, res) => {
+  res.json(GetPropertyUnderwritingResponse.parse(await getPropertyUnderwriting()));
+}));
+
+router.patch("/properties/buy-box", asyncRoute(async (req, res) => {
+  const body = UpdateBuyBoxBody.parse(req.body);
+  res.json(await updateBuyBox(actorFrom(res), body));
+}));
+
+router.post("/properties/candidates", asyncRoute(async (req, res) => {
+  const body = CreatePropertyCandidateBody.parse(req.body);
+  res.status(201).json(await createPropertyCandidate(actorFrom(res), body));
+}));
+
+router.post("/properties/candidates/:candidateId/analyze", asyncRoute(async (req, res) => {
+  const params = AnalyzePropertyCandidateParams.parse(req.params);
+  res.json(await analyzePropertyCandidate(actorFrom(res), params.candidateId));
 }));
 
 router.get("/strategies", asyncRoute(async (_req, res) => {

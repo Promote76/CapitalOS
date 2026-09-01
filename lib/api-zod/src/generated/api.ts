@@ -425,6 +425,200 @@ export const AddPropertyNoteResponse = zod.object({
 
 
 /**
+ * @summary Get the acquisition dashboard and underwriting data
+ */
+export const GetPropertyUnderwritingResponse = zod.object({
+  "propertyGoal": zod.object({
+  "id": zod.string().optional(),
+  "name": zod.string().optional(),
+  "targetMarket": zod.string().optional(),
+  "targetBudget": zod.string().optional(),
+  "targetCashToClose": zod.string().optional(),
+  "targetDate": zod.string().optional(),
+  "readiness": zod.looseObject({
+
+}).optional()
+}),
+  "buyBox": zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "propertyType": zod.string(),
+  "ownerOccupied": zod.boolean(),
+  "purchasePriceMinimum": zod.string(),
+  "purchasePriceMaximum": zod.string(),
+  "targetCashToClose": zod.string(),
+  "minimumBedroomsPerUnit": zod.string(),
+  "minimumBathroomsPerUnit": zod.string(),
+  "minimumEstimatedRent": zod.string(),
+  "maximumEstimatedRehabilitation": zod.string(),
+  "minimumCashFlow": zod.string(),
+  "maximumMonthlyHousingCost": zod.string(),
+  "minimumDscrEstimate": zod.string(),
+  "minimumPropertyCondition": zod.string(),
+  "targetMarkets": zod.array(zod.string()),
+  "excludedMarkets": zod.array(zod.string()),
+  "minimumReadinessScore": zod.string()
+}),
+  "candidates": zod.array(zod.object({
+  "id": zod.string(),
+  "propertyGoalId": zod.string(),
+  "addressLabel": zod.string(),
+  "propertyType": zod.string(),
+  "units": zod.string(),
+  "bedrooms": zod.string(),
+  "askingPrice": zod.string(),
+  "estimatedRent": zod.string(),
+  "repairs": zod.string(),
+  "status": zod.string(),
+  "buyBoxScore": zod.string(),
+  "dealQualityScore": zod.string(),
+  "dataConfidence": zod.string(),
+  "readinessStatus": zod.string().optional(),
+  "nextAction": zod.string().optional()
+})),
+  "financingScenarios": zod.array(zod.looseObject({
+
+})),
+  "cashToClose": zod.array(zod.looseObject({
+
+})),
+  "stressTests": zod.array(zod.looseObject({
+
+})),
+  "nextAction": zod.string(),
+  "dataConfidence": zod.number(),
+  "household": zod.object({
+  "emergencyReserve": zod.string().optional(),
+  "emergencyReserveMonths": zod.number().optional(),
+  "freeCashFlow": zod.string().optional(),
+  "safeToDeploy": zod.string().optional()
+})
+})
+
+
+/**
+ * @summary Update the household duplex buy box
+ */
+export const UpdateBuyBoxBody = zod.object({
+  "propertyType": zod.string().optional(),
+  "ownerOccupied": zod.boolean().optional(),
+  "purchasePriceMinimum": zod.string().optional(),
+  "purchasePriceMaximum": zod.string().optional(),
+  "targetCashToClose": zod.string().optional(),
+  "minimumBedroomsPerUnit": zod.string().optional(),
+  "minimumBathroomsPerUnit": zod.string().optional(),
+  "minimumEstimatedRent": zod.string().optional(),
+  "maximumEstimatedRehabilitation": zod.string().optional(),
+  "minimumCashFlow": zod.string().optional(),
+  "maximumMonthlyHousingCost": zod.string().optional(),
+  "minimumDscrEstimate": zod.string().optional(),
+  "minimumPropertyCondition": zod.string().optional(),
+  "targetMarkets": zod.array(zod.string()).optional(),
+  "excludedMarkets": zod.array(zod.string()).optional(),
+  "minimumReadinessScore": zod.string().optional()
+})
+
+export const UpdateBuyBoxResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "propertyType": zod.string(),
+  "ownerOccupied": zod.boolean(),
+  "purchasePriceMinimum": zod.string(),
+  "purchasePriceMaximum": zod.string(),
+  "targetCashToClose": zod.string(),
+  "minimumBedroomsPerUnit": zod.string(),
+  "minimumBathroomsPerUnit": zod.string(),
+  "minimumEstimatedRent": zod.string(),
+  "maximumEstimatedRehabilitation": zod.string(),
+  "minimumCashFlow": zod.string(),
+  "maximumMonthlyHousingCost": zod.string(),
+  "minimumDscrEstimate": zod.string(),
+  "minimumPropertyCondition": zod.string(),
+  "targetMarkets": zod.array(zod.string()),
+  "excludedMarkets": zod.array(zod.string()),
+  "minimumReadinessScore": zod.string()
+})
+
+
+/**
+ * @summary Add a property candidate to the acquisition pipeline
+ */
+export const CreatePropertyCandidateBody = zod.object({
+  "propertyGoalId": zod.string(),
+  "addressLabel": zod.string(),
+  "city": zod.string().optional(),
+  "state": zod.string().optional(),
+  "zip": zod.string().optional(),
+  "market": zod.string(),
+  "propertyType": zod.string(),
+  "units": zod.string(),
+  "bedrooms": zod.string(),
+  "bathrooms": zod.string().optional(),
+  "askingPrice": zod.string(),
+  "estimatedMarketValue": zod.string().optional(),
+  "annualPropertyTaxes": zod.string().optional(),
+  "insurance": zod.string().optional(),
+  "hoa": zod.string().optional(),
+  "estimatedRent": zod.string(),
+  "currentRents": zod.string().optional(),
+  "vacancyAssumption": zod.string().optional(),
+  "repairs": zod.string(),
+  "immediateRepairs": zod.string().optional(),
+  "listingSource": zod.string().optional(),
+  "listingUrl": zod.url().optional(),
+  "status": zod.string().optional(),
+  "notes": zod.string().optional()
+})
+
+export const CreatePropertyCandidateResponse = zod.object({
+  "id": zod.string(),
+  "propertyGoalId": zod.string(),
+  "addressLabel": zod.string(),
+  "propertyType": zod.string(),
+  "units": zod.string(),
+  "bedrooms": zod.string(),
+  "askingPrice": zod.string(),
+  "estimatedRent": zod.string(),
+  "repairs": zod.string(),
+  "status": zod.string(),
+  "buyBoxScore": zod.string(),
+  "dealQualityScore": zod.string(),
+  "dataConfidence": zod.string(),
+  "readinessStatus": zod.string().optional(),
+  "nextAction": zod.string().optional()
+})
+
+
+/**
+ * @summary Calculate a property candidate underwriting package
+ */
+export const AnalyzePropertyCandidateParams = zod.object({
+  "candidateId": zod.coerce.string()
+})
+
+export const AnalyzePropertyCandidateResponse = zod.object({
+  "candidateId": zod.string(),
+  "deal": zod.object({
+  "analysis": zod.looseObject({
+
+}).optional(),
+  "buyBox": zod.looseObject({
+
+}).optional()
+}),
+  "cashToClose": zod.looseObject({
+
+}),
+  "stress": zod.looseObject({
+
+}),
+  "governor": zod.looseObject({
+
+})
+})
+
+
+/**
  * @summary List strategy lifecycle records
  */
 export const ListStrategiesResponseItem = zod.object({

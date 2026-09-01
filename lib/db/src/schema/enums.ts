@@ -68,15 +68,26 @@ export const transactionStatusEnum = pgEnum("transaction_status", [
 ]);
 
 export const propertyStatusEnum = pgEnum("property_status", [
+  "discovered",
   "research",
+  "researching",
   "watchlist",
   "qualified",
+  "high_priority",
   "tour",
+  "tour_candidate",
+  "financing_review",
   "offer_candidate",
   "offer_submitted",
+  "negotiating",
   "under_contract",
+  "inspection",
+  "appraisal",
+  "financing",
+  "closing",
   "acquired",
   "rejected",
+  "archived",
 ]);
 
 export const milestoneStatusEnum = pgEnum("milestone_status", [

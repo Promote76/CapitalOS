@@ -1,5 +1,4 @@
 import { Router, type IRouter } from "express";
-import healthRouter from "./health";
 import householdRouter from "./household";
 import dashboardRouter from "./dashboard";
 import capitalRouter from "./capital";
@@ -14,7 +13,6 @@ import microLiveRouter from "./micro-live";
 
 const router: IRouter = Router();
 
-router.use(healthRouter);
 router.use(householdRouter);
 router.use(dashboardRouter);
 router.use(capitalRouter);

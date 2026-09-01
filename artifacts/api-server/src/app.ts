@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
+import healthRouter from "./routes/health";
 import { logger } from "./lib/logger";
 import { requestContext } from "./middleware/request-context";
 import { errorHandler } from "./middleware/errors";
@@ -40,6 +41,13 @@ app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(writeBoundary);
 
+// Artifact startup probes must not wait for database seeding. Keep both the
+// artifact path and the documented health endpoint as dependency-free liveness
+// checks; normal API routes still initialize and validate their data context.
+app.get("/api", (_req, res) => {
+  res.json({ status: "ok" });
+});
+app.use("/api", healthRouter);
 app.use("/api", requestContext);
 app.use("/api", router);
 app.use(errorHandler);

@@ -6,4 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PropertyAnalysisGovernor = { [key: string]: unknown };
+export type PropertyAnalysisGovernor = {
+  status?: string;
+  reasons?: string[];
+};

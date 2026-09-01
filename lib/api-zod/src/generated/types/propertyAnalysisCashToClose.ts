@@ -6,4 +6,6 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PropertyAnalysisCashToClose = { [key: string]: unknown };
+export type PropertyAnalysisCashToClose = {
+  estimatedCashToClose?: string;
+};

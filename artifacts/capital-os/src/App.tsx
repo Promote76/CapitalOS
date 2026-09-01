@@ -9,6 +9,11 @@ import {
   useCreateManualFinancialAccount,
   useGetBudget,
   useGetHousehold,
+  useGetPropertyUnderwriting,
+  useUpdateBuyBox,
+  useCreatePropertyCandidate,
+  useAnalyzePropertyCandidate,
+  getGetPropertyUnderwritingQueryKey,
   useUpdatePrivacySettings,
   useGetDashboard,
   useListContributions,
@@ -41,6 +46,7 @@ import {
   type UpcomingExpenseInput,
   type IncomeSourceInput,
   type DashboardSnapshot,
+  type CreatePropertyCandidateInput,
 } from '@workspace/api-client-react';
 import {
   ArrowDownLeft,
@@ -347,26 +353,97 @@ function PortfolioPage({ onFeedback }: { onFeedback: (message: string) => void }
 }
 
 function PropertiesPage({ onAction }: { onAction: (kind: Exclude<ModalKind, null>) => void }) {
+  const query = useGetPropertyUnderwriting();
+  const updateBuyBox = useUpdateBuyBox();
+  const createCandidate = useCreatePropertyCandidate();
+  const analyzeCandidate = useAnalyzePropertyCandidate();
+  const [editingBuyBox, setEditingBuyBox] = useState(false);
+  const [showCandidateForm, setShowCandidateForm] = useState(false);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<any>(null);
+  const [buyBoxDraft, setBuyBoxDraft] = useState({ purchasePriceMinimum: '', purchasePriceMaximum: '', minimumEstimatedRent: '', maximumEstimatedRehabilitation: '', minimumDscrEstimate: '' });
+  const [candidateDraft, setCandidateDraft] = useState({ addressLabel: '', market: 'Northside / transit', askingPrice: '', estimatedRent: '', repairs: '', units: '2', bedrooms: '4' });
+  const data = query.data as any;
+  const readiness = data?.propertyGoal?.readiness;
+  const candidates = data?.candidates ?? [];
+  const currentCandidate = candidates.find((item: any) => item.id === selectedCandidateId);
+  const beginBuyBoxEdit = () => {
+    setBuyBoxDraft({
+      purchasePriceMinimum: data.buyBox.purchasePriceMinimum,
+      purchasePriceMaximum: data.buyBox.purchasePriceMaximum,
+      minimumEstimatedRent: data.buyBox.minimumEstimatedRent,
+      maximumEstimatedRehabilitation: data.buyBox.maximumEstimatedRehabilitation,
+      minimumDscrEstimate: data.buyBox.minimumDscrEstimate,
+    });
+    setEditingBuyBox(true);
+  };
+  const saveBuyBox = async () => {
+    await updateBuyBox.mutateAsync({ data: buyBoxDraft });
+    await queryClient.invalidateQueries({ queryKey: getGetPropertyUnderwritingQueryKey() });
+    setEditingBuyBox(false);
+  };
+  const addCandidate = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!data?.propertyGoal?.id) return;
+    await createCandidate.mutateAsync({
+      data: {
+        ...candidateDraft,
+        propertyGoalId: data.propertyGoal.id,
+        propertyType: 'duplex',
+        bathrooms: '2',
+        annualPropertyTaxes: '7200.00',
+        insurance: '2400.00',
+        hoa: '0.00',
+        vacancyAssumption: '0.05',
+        status: 'research',
+      } as CreatePropertyCandidateInput,
+    });
+    await queryClient.invalidateQueries({ queryKey: getGetPropertyUnderwritingQueryKey() });
+    setCandidateDraft({ addressLabel: '', market: 'Northside / transit', askingPrice: '', estimatedRent: '', repairs: '', units: '2', bedrooms: '4' });
+    setShowCandidateForm(false);
+  };
+  const runAnalysis = async (candidateId: string) => {
+    setSelectedCandidateId(candidateId);
+    setAnalysis(await analyzeCandidate.mutateAsync({ candidateId }));
+    await queryClient.invalidateQueries({ queryKey: getGetPropertyUnderwritingQueryKey() });
+  };
+  if (query.isLoading) return <main className="content"><div className="card card-pad">Loading acquisition dashboard…</div></main>;
+  if (query.isError || !data) return <main className="content"><div className="card card-pad" role="alert">Acquisition data is temporarily unavailable. Try again in a moment.</div></main>;
   return <main className="content">
-    <PageHeading eyebrow="Plan / properties" title={<>Make the future<br /><em>specific enough to visit.</em></>} description="A small, thoughtful watchlist for the first duplex—and the standards it needs to meet." actions={<button className="btn btn-primary" data-testid="button-add-property" onClick={() => onAction('property')}><Plus size={15} /> Add property note</button>} />
-    <div className="section-grid-wide">
-      <section className="card property-card animate-in delay-1"><div className="property-banner" /><div className="property-body"><div className="mono-label">Watchlist / preferred profile</div><h3>Two-family, close to home</h3><p style={{ color:'var(--ink-soft)', fontSize:12, lineHeight:1.55, maxWidth:500 }}>A duplex with a sound structure, an independent entrance, and enough margin to make being a good neighbor feel easy.</p><div className="property-facts"><span>Target range<b>$420–560k</b></span><span>Preferred area<b>Northside / transit</b></span><span>Units<b>2 · 2–3 bed</b></span></div><button className="btn btn-primary" data-testid="button-add-property-note" onClick={() => onAction('property')}><NotebookPen size={14} /> Add a research note</button></div></section>
-      <section className="card card-pad animate-in delay-2"><CardTitle title="Acquisition readiness" subtitle="The things within your control." /><div style={{ display:'grid', gap:18 }}>{[['Reserve pace', 82, 'On plan'], ['Financing picture', 67, 'In progress'], ['Property criteria', 91, 'Clear']].map(([name, value, status]) => <div key={name}><div style={{ display:'flex', justifyContent:'space-between', marginBottom:8, fontSize:11 }}><strong>{name}</strong><span className="font-mono" style={{ color:'var(--ink-soft)', fontSize:10 }}>{status}</span></div><Progress value={Number(value)} /></div>)}</div><div style={{ borderTop:'1px solid var(--line)', marginTop:26, paddingTop:18, display:'flex', gap:10 }}><ShieldCheck size={18} color="var(--ink)" /><p style={{ margin:0, color:'var(--ink-soft)', fontSize:11, lineHeight:1.5 }}>No need to rush the search. Your cash position is building the right to say no.</p></div></section>
-    </div>
-    <section className="card card-pad page-section animate-in delay-2">
-      <CardTitle title="Property readiness milestones" subtitle="Each checkpoint has a target, a status, and one useful next action." />
-      <div className="milestone-grid" data-testid="property-readiness-milestones">{[
-        ['01', 'Down Payment Fund', 'On track · $48,260 / $120k', 'Review contribution pace', 'complete'],
-        ['02', 'Closing Cost Reserve', 'Building · $6,840 / $15k', 'Keep $25 weekly split', 'complete'],
-        ['03', 'Credit Readiness', 'Healthy · 762 score', 'Confirm annual report', 'complete'],
-        ['04', 'Market Selection', 'In progress · Northside', 'Compare 3 neighborhoods', 'current'],
-        ['05', 'Financing Readiness', 'Next · lender conversation', 'Collect income docs', ''],
-        ['06', 'Property Search', 'Future · criteria set', 'Wait for right listing', ''],
-        ['07', 'Offer Readiness', 'Future · not started', 'Draft offer checklist', ''],
-        ['08', 'Acquisition', 'Future · target Jun 2027', 'Protect closing reserve', ''],
-      ].map(([number, title, detail, next, status]) => <div className={`milestone-card ${status}`} key={number}><div className="milestone-number">{number} {status === 'complete' ? '· Complete' : status === 'current' ? '· Current' : '· Future'}</div><strong>{title}</strong><p>{detail}</p><p style={{ marginTop:7, color: status === 'complete' ? '#15803D' : status === 'current' ? 'var(--color-primary)' : 'var(--text-muted)' }}><b>Next:</b> {next}</p></div>)}</div>
+    <PageHeading eyebrow="Plan / properties / acquisition OS" title={<>Find the right duplex,<br /><em>not just a property.</em></>} description="Readiness, affordability, financing estimates, and investment quality stay separate so every next step remains explainable." actions={<><button className="btn" data-testid="button-add-property-note" onClick={() => onAction('property')}><NotebookPen size={14} /> Add note</button><button className="btn btn-primary" data-testid="button-add-property-candidate" onClick={() => setShowCandidateForm(!showCandidateForm)}><Plus size={15} /> Add candidate</button></>} />
+    <section className="acquisition-metrics animate-in delay-1">
+      <div className="metric-card blue"><div className="mono-label">Property readiness</div><div className="metric-value">{readiness?.score ?? 0}<small>/100</small></div><div className="metric-detail">{readiness?.status ?? 'Preparing'} · household level</div></div>
+      <div className="metric-card green"><div className="mono-label">Safe to deploy</div><div className="metric-value">{displayMoney(data.household.safeToDeploy, '$0')}</div><div className="metric-detail">Governor-calculated, not a loan estimate</div></div>
+      <div className="metric-card lavender"><div className="mono-label">Target cash to close</div><div className="metric-value">{displayMoney(data.buyBox.targetCashToClose, '$0')}</div><div className="metric-detail">Includes reserves and buffers</div></div>
+      <div className="metric-card amber"><div className="mono-label">Pipeline</div><div className="metric-value">{candidates.length}<small> candidates</small></div><div className="metric-detail">Manual and provider-neutral</div></div>
     </section>
-    <section className="card card-pad page-section"><CardTitle title="Property notes" subtitle="Private notes for the day the right listing appears." /><div className="activity-list">{[['Look for separate utilities', 'Criterion · updated 08 Oct', 'High priority'], ['Ask about roof age before touring', 'Due diligence · updated 01 Oct', 'Open'], ['Map commute from Northside stations', 'Research · updated 26 Sep', 'Open']].map(([title, meta, status], index) => <div className="activity-item" key={title}><div className="activity-icon"><NotebookPen size={14} /></div><div className="activity-copy"><strong>{title}</strong><span>{meta}</span></div><span className={`status ${index === 0 ? 'review' : ''}`}>{status}</span><button className="icon-btn" data-testid={`button-edit-property-note-${index}`} onClick={() => onAction('property')}><Pencil size={14} /></button></div>)}</div></section>
+    <div className="section-grid-wide">
+      <section className="card card-pad acquisition-readiness animate-in delay-2">
+        <CardTitle title="Readiness score" subtitle="Household capacity to acquire, independent of any one property." action={<span className={`status ${readiness?.score < 60 ? 'pending' : ''}`}>{readiness?.status}</span>} />
+        <div className="readiness-score"><div className="readiness-ring" style={{ '--readiness': `${readiness?.score ?? 0}%` } as React.CSSProperties}><strong>{readiness?.score ?? 0}</strong><span>of 100</span></div><div><p className="readiness-summary">{data.nextAction}</p><div className="progress-label"><span>Protected reserve path</span><b>{readiness?.score ?? 0}%</b></div><Progress value={readiness?.score ?? 0} /></div></div>
+        <div className="governor-note"><ShieldCheck size={16} /><span>Readiness is not approval or qualification. It is a planning signal built from this household’s data.</span></div>
+      </section>
+      <section className="card card-pad animate-in delay-2">
+        <CardTitle title="Buy box" subtitle="The guardrails every candidate is measured against." action={<button className="btn" onClick={editingBuyBox ? saveBuyBox : beginBuyBoxEdit}>{editingBuyBox ? 'Save guardrails' : 'Edit buy box'}</button>} />
+        {editingBuyBox ? <div className="buy-box-editor">{[['purchasePriceMinimum','Min price'],['purchasePriceMaximum','Max price'],['minimumEstimatedRent','Min rent'],['maximumEstimatedRehabilitation','Max repairs'],['minimumDscrEstimate','Min DSCR']].map(([key, label]) => <div className="field" key={key}><label>{label}</label><input value={buyBoxDraft[key as keyof typeof buyBoxDraft]} onChange={(event) => setBuyBoxDraft({ ...buyBoxDraft, [key]: event.target.value })} /></div>)}</div> : <div className="buy-box-grid"><div><span>Price range</span><strong>{displayMoney(data.buyBox.purchasePriceMinimum, '$0')}–{displayMoney(data.buyBox.purchasePriceMaximum, '$0')}</strong></div><div><span>Owner occupied</span><strong>{data.buyBox.ownerOccupied ? 'House hack' : 'Investment only'}</strong></div><div><span>Rent floor</span><strong>{displayMoney(data.buyBox.minimumEstimatedRent, '$0')} / mo</strong></div><div><span>Repair ceiling</span><strong>{displayMoney(data.buyBox.maximumEstimatedRehabilitation, '$0')}</strong></div><div><span>Coverage floor</span><strong>{data.buyBox.minimumDscrEstimate} DSCR</strong></div><div><span>Market</span><strong>{data.buyBox.targetMarkets?.join(', ')}</strong></div></div>}
+      </section>
+    </div>
+    {showCandidateForm && <section className="card card-pad page-section animate-in"><CardTitle title="Add a property candidate" subtitle="Incomplete data is allowed; it will lower confidence rather than become a hidden assumption." /><form className="candidate-form" onSubmit={addCandidate}><div className="field"><label>Address or listing label</label><input required value={candidateDraft.addressLabel} onChange={(event) => setCandidateDraft({ ...candidateDraft, addressLabel: event.target.value })} placeholder="e.g. 1842 N Maple Ave" /></div><div className="field"><label>Market</label><input required value={candidateDraft.market} onChange={(event) => setCandidateDraft({ ...candidateDraft, market: event.target.value })} /></div><div className="field"><label>Asking price</label><input required inputMode="decimal" value={candidateDraft.askingPrice} onChange={(event) => setCandidateDraft({ ...candidateDraft, askingPrice: event.target.value })} placeholder="465000.00" /></div><div className="field"><label>Estimated total rent / mo</label><input required inputMode="decimal" value={candidateDraft.estimatedRent} onChange={(event) => setCandidateDraft({ ...candidateDraft, estimatedRent: event.target.value })} placeholder="2600.00" /></div><div className="field"><label>Repair estimate</label><input required inputMode="decimal" value={candidateDraft.repairs} onChange={(event) => setCandidateDraft({ ...candidateDraft, repairs: event.target.value })} placeholder="18000.00" /></div><div className="field"><label>Bedrooms total</label><input required value={candidateDraft.bedrooms} onChange={(event) => setCandidateDraft({ ...candidateDraft, bedrooms: event.target.value })} /></div><button className="btn btn-primary" type="submit" disabled={createCandidate.isPending}><Check size={14} /> {createCandidate.isPending ? 'Saving…' : 'Save candidate'}</button></form></section>}
+    <section className="card card-pad page-section animate-in delay-2">
+      <CardTitle title="Property pipeline" subtitle="Match score and deal quality are property-level signals. Household readiness remains separate." action={<div className="view-toggle"><button className="active">Table</button><button>Kanban</button></div>} />
+      {candidates.length === 0 ? <div className="empty-state"><Building2 size={18} /><strong>No candidates yet</strong><span>Add a listing to begin research without committing capital.</span></div> : <div className="pipeline-table">{candidates.map((candidate: any) => <div className={`pipeline-row ${selectedCandidateId === candidate.id ? 'selected' : ''}`} key={candidate.id}><div className="pipeline-address"><strong>{candidate.addressLabel}</strong><span>{candidate.market ?? 'Market not set'} · {humanize(candidate.status)}</span></div><div className="pipeline-score"><span>Buy box</span><b>{candidate.buyBoxScore ?? '0'}%</b></div><div className="pipeline-score"><span>Deal quality</span><b>{candidate.dealQualityScore ?? '0'}%</b></div><div className="pipeline-price"><span>Ask</span><b>{displayMoney(candidate.askingPrice, '$0')}</b></div><button className="btn" onClick={() => runAnalysis(candidate.id)} disabled={analyzeCandidate.isPending}>{analyzeCandidate.isPending && selectedCandidateId === candidate.id ? 'Analyzing…' : 'Analyze deal'}</button></div>)}</div>}
+    </section>
+    {(analysis || currentCandidate) && <section className="section-grid-wide page-section animate-in"><section className="card card-pad"><CardTitle title="Deal analyzer" subtitle={`${currentCandidate?.addressLabel ?? 'Selected candidate'} · illustrative estimates only`} /><div className="analyzer-metrics"><div><span>Owner housing cost</span><strong>{displayMoney(analysis?.deal?.analysis?.ownerEffectiveHousingCost ?? currentCandidate?.deal?.analysis?.ownerEffectiveHousingCost, '$0')} / mo</strong></div><div><span>Projected cash flow</span><strong>{displayMoney(analysis?.deal?.analysis?.monthlyCashFlow ?? currentCandidate?.deal?.analysis?.monthlyCashFlow, '$0')} / mo</strong></div><div><span>DSCR estimate</span><strong>{analysis?.deal?.analysis?.dscr ?? currentCandidate?.deal?.analysis?.dscr ?? '—'}</strong></div><div><span>Cash to close</span><strong>{displayMoney(analysis?.cashToClose?.estimatedCashToClose, displayMoney(currentCandidate?.cashRequired, '$—'))}</strong></div></div><div className="governor-note"><ShieldAlert size={16} /><span>Property Capital Governor: <b>{analysis?.governor?.status ?? currentCandidate?.readinessStatus ?? 'Needs analysis'}</b>. AI cannot override this gate or submit an offer.</span></div></section><section className="card card-pad"><CardTitle title="Downside view" subtitle="Vacancy, rent softness, repairs, insurance, and income pressure." /><div className={`stress-result ${analysis?.stress?.result === 'fail' ? 'fail' : analysis?.stress?.result === 'review' ? 'review' : ''}`}><strong>{analysis?.stress?.result ?? 'Not run'}</strong><span>{analysis ? `${displayMoney(String(Math.round((analysis.stress.monthlyCashFlowCents ?? 0) / 100)), '$0')} monthly scenario cash flow` : 'Run analysis to calculate a combined downside case.'}</span></div><p className="disclaimer">This is not a mortgage approval, property valuation, rental guarantee, or offer recommendation.</p></section></section>}
+    <div className="section-grid-wide page-section">
+      <section className="card card-pad"><CardTitle title="Financing scenarios" subtitle="Planning comparisons, not lender offers or approvals." /><div className="scenario-list">{(data.financingScenarios ?? []).map((scenario: any) => <div className="scenario-row" key={scenario.id}><div><strong>{scenario.name}</strong><span>{scenario.loanType} · {(Number(scenario.downPaymentPercent) * 100).toFixed(1)}% down</span></div><div><span>Loan amount</span><b>{displayMoney(scenario.loanAmount, '$0')}</b></div><div><span>Housing estimate</span><b>{displayMoney(scenario.estimatedMonthlyHousingCost, '$0')} / mo</b></div></div>)}</div><p className="disclaimer">Rates, payment estimates, taxes, insurance, and reserves require professional verification. Nothing here represents mortgage approval or guaranteed qualification.</p></section>
+      <section className="card card-pad"><CardTitle title="Preapproval tracker" subtitle="A checklist for a lender conversation, using non-approval language." />{(data.preapprovals ?? []).map((record: any) => <div className="preapproval-card" key={record.id}><div className="activity-icon"><Landmark size={14} /></div><div><strong>{record.provider}</strong><span>{humanize(record.status)} · no approval recorded</span><p>{record.documentsNeeded ?? 'Document list not started.'}</p></div><span className="status pending">Research</span></div>)}<button className="btn" style={{ marginTop:16 }} onClick={() => onAction('property')}><NotebookPen size={14} /> Add lender note</button></section>
+    </div>
+    <div className="section-grid-wide page-section">
+      <section className="card card-pad"><CardTitle title="Target market comparison" subtitle="Market signals inform research; they do not represent property value or rental guarantees." /><div className="market-list">{(data.markets ?? []).map((market: any) => <div className="market-row" key={market.id}><div><strong>{market.name}</strong><span>{market.notes}</span></div><div><span>Fit score</span><b>{market.score}</b></div><div><span>Median price</span><b>{displayMoney(market.medianPrice, '$0')}</b></div><div><span>Rent yield signal</span><b>{(Number(market.rentYield) * 100).toFixed(1)}%</b></div></div>)}</div></section>
+      <section className="card card-pad"><CardTitle title="Private document vault" subtitle="Documents remain private to this household workspace." /><div className="document-list">{(data.documents ?? []).map((document: any) => <div className="document-row" key={document.id}><div className="activity-icon"><LockKeyhole size={14} /></div><div><strong>{document.name}</strong><span>{document.metadata?.description ?? 'Private acquisition document'}</span></div><span className={`status ${document.metadata?.status === 'ready' ? '' : 'pending'}`}>{humanize(document.metadata?.status, 'Needed')}</span></div>)}</div><button className="btn" style={{ marginTop:16 }} onClick={() => onAction('property')}><FilePlus2 size={14} /> Add private note</button></section>
+    </div>
+    <section className="card card-pad page-section"><CardTitle title="Acquisition timeline" subtitle="One accountable next step at each checkpoint." /><div className="timeline-list">{(data.milestones ?? []).map((milestone: any, index: number) => <div className={`timeline-row ${milestone.status === 'current' ? 'current' : ''}`} key={milestone.id}><div className="timeline-dot">{index + 1}</div><div><strong>{milestone.name}</strong><span>{milestone.currentState} · {milestone.progress}%</span></div><div><span>Next</span><b>{milestone.nextAction}</b></div><span className={`status ${planningStatusClass(milestone.status)}`}>{humanize(milestone.status)}</span></div>)}</div></section>
+    <section className="card card-pad page-section"><CardTitle title="Next-best actions" subtitle="Deterministic, useful, and reversible." /><div className="action-list"><div><Check size={15} /><span>{data.nextAction}</span></div><div><FileText size={15} /><span>Collect pay stubs, tax returns, statements, and insurance estimates for a lender conversation.</span></div><div><ShieldCheck size={15} /><span>Keep protected capital and the post-close liquidity floor outside any offer decision.</span></div></div></section>
   </main>;
 }
 

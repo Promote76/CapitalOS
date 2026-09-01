@@ -435,8 +435,10 @@ export const GetPropertyUnderwritingResponse = zod.object({
   "targetBudget": zod.string().optional(),
   "targetCashToClose": zod.string().optional(),
   "targetDate": zod.string().optional(),
-  "readiness": zod.looseObject({
-
+  "readiness": zod.object({
+  "score": zod.number().optional(),
+  "status": zod.string().optional(),
+  "nextAction": zod.string().optional()
 }).optional()
 }),
   "buyBox": zod.object({
@@ -476,14 +478,65 @@ export const GetPropertyUnderwritingResponse = zod.object({
   "readinessStatus": zod.string().optional(),
   "nextAction": zod.string().optional()
 })),
-  "financingScenarios": zod.array(zod.looseObject({
-
+  "financingScenarios": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "name": zod.string().optional(),
+  "loanType": zod.string().optional(),
+  "purchasePrice": zod.string().optional(),
+  "loanAmount": zod.string().optional(),
+  "estimatedMonthlyHousingCost": zod.string().optional()
 })),
-  "cashToClose": zod.array(zod.looseObject({
-
+  "cashToClose": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "propertyCandidateId": zod.string().optional(),
+  "estimatedCashToClose": zod.string().optional()
 })),
-  "stressTests": zod.array(zod.looseObject({
-
+  "stressTests": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "propertyCandidateId": zod.string().optional(),
+  "name": zod.string().optional(),
+  "monthlyCashFlow": zod.string().optional(),
+  "emergencyReserveRemaining": zod.string().optional(),
+  "result": zod.string().optional()
+})),
+  "preapprovals": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "provider": zod.string().optional(),
+  "status": zod.string().optional(),
+  "estimatedMaximumPurchasePrice": zod.string().optional(),
+  "estimatedRate": zod.string().optional(),
+  "estimatedCashRequired": zod.string().optional(),
+  "expiration": zod.string().optional(),
+  "documentsNeeded": zod.string().optional(),
+  "notes": zod.string().optional()
+})),
+  "markets": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "name": zod.string().optional(),
+  "score": zod.string().optional(),
+  "medianPrice": zod.string().optional(),
+  "rentYield": zod.string().optional(),
+  "notes": zod.string().optional()
+})),
+  "documents": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "name": zod.string().optional(),
+  "storagePath": zod.string().optional(),
+  "metadata": zod.object({
+  "status": zod.string().optional(),
+  "private": zod.boolean().optional(),
+  "description": zod.string().optional()
+}).optional()
+})),
+  "milestones": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "status": zod.string(),
+  "progress": zod.number(),
+  "target": zod.string(),
+  "currentState": zod.string(),
+  "nextAction": zod.string(),
+  "dueDate": zod.coerce.date().nullish()
 })),
   "nextAction": zod.string(),
   "dataConfidence": zod.number(),
@@ -565,7 +618,7 @@ export const CreatePropertyCandidateBody = zod.object({
   "repairs": zod.string(),
   "immediateRepairs": zod.string().optional(),
   "listingSource": zod.string().optional(),
-  "listingUrl": zod.url().optional(),
+  "listingUrl": zod.string().optional(),
   "status": zod.string().optional(),
   "notes": zod.string().optional()
 })
@@ -599,21 +652,32 @@ export const AnalyzePropertyCandidateParams = zod.object({
 export const AnalyzePropertyCandidateResponse = zod.object({
   "candidateId": zod.string(),
   "deal": zod.object({
-  "analysis": zod.looseObject({
-
+  "analysis": zod.object({
+  "monthlyCashFlow": zod.string().optional(),
+  "annualCashFlow": zod.string().optional(),
+  "ownerEffectiveHousingCost": zod.string().optional(),
+  "noi": zod.string().optional(),
+  "capRate": zod.number().optional(),
+  "cashOnCashReturn": zod.number().optional(),
+  "dscr": zod.number().optional()
 }).optional(),
-  "buyBox": zod.looseObject({
-
+  "buyBox": zod.object({
+  "score": zod.number().optional(),
+  "failures": zod.array(zod.string()).optional()
 }).optional()
 }),
-  "cashToClose": zod.looseObject({
-
+  "cashToClose": zod.object({
+  "estimatedCashToClose": zod.string().optional()
 }),
-  "stress": zod.looseObject({
-
+  "stress": zod.object({
+  "monthlyCashFlowCents": zod.number().optional(),
+  "emergencyReserveRemainingCents": zod.number().optional(),
+  "monthsUntilLiquidityBreach": zod.number().optional(),
+  "result": zod.string().optional()
 }),
-  "governor": zod.looseObject({
-
+  "governor": zod.object({
+  "status": zod.string().optional(),
+  "reasons": zod.array(zod.string()).optional()
 })
 })
 

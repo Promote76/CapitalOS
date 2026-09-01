@@ -11,7 +11,6 @@ import {
   AllocateStrategyHeader,
   AllocateStrategyParams,
   AllocateStrategyResponse,
-  GetPropertyUnderwritingResponse,
   UpdateBuyBoxBody,
   CreatePropertyCandidateBody,
   AnalyzePropertyCandidateParams,
@@ -33,7 +32,7 @@ router.post("/properties", asyncRoute(async (req, res) => {
 }));
 
 router.get("/properties/underwriting", asyncRoute(async (_req, res) => {
-  res.json(GetPropertyUnderwritingResponse.parse(await getPropertyUnderwriting()));
+  res.json(await getPropertyUnderwriting());
 }));
 
 router.patch("/properties/buy-box", asyncRoute(async (req, res) => {
@@ -43,7 +42,7 @@ router.patch("/properties/buy-box", asyncRoute(async (req, res) => {
 
 router.post("/properties/candidates", asyncRoute(async (req, res) => {
   const body = CreatePropertyCandidateBody.parse(req.body);
-  res.status(201).json(await createPropertyCandidate(actorFrom(res), body));
+  res.status(201).json(await createPropertyCandidate(actorFrom(res), body as Parameters<typeof createPropertyCandidate>[1]));
 }));
 
 router.post("/properties/candidates/:candidateId/analyze", asyncRoute(async (req, res) => {

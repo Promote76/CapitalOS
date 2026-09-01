@@ -6,4 +6,8 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PropertyUnderwritingCashToCloseItem = { [key: string]: unknown };
+export type PropertyUnderwritingCashToCloseItem = {
+  id?: string;
+  propertyCandidateId?: string;
+  estimatedCashToClose?: string;
+};

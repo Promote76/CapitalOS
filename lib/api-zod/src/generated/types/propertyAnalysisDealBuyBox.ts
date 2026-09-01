@@ -6,4 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PropertyAnalysisDealBuyBox = { [key: string]: unknown };
+export type PropertyAnalysisDealBuyBox = {
+  score?: number;
+  failures?: string[];
+};

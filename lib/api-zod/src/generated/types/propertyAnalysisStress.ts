@@ -6,4 +6,9 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PropertyAnalysisStress = { [key: string]: unknown };
+export type PropertyAnalysisStress = {
+  monthlyCashFlowCents?: number;
+  emergencyReserveRemainingCents?: number;
+  monthsUntilLiquidityBreach?: number;
+  result?: string;
+};

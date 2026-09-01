@@ -6,4 +6,12 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PropertyAnalysisDealAnalysis = { [key: string]: unknown };
+export type PropertyAnalysisDealAnalysis = {
+  monthlyCashFlow?: string;
+  annualCashFlow?: string;
+  ownerEffectiveHousingCost?: string;
+  noi?: string;
+  capRate?: number;
+  cashOnCashReturn?: number;
+  dscr?: number;
+};

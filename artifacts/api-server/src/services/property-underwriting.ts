@@ -4,11 +4,15 @@ import {
   buyBoxes,
   cashToCloseEstimates,
   financingScenarios,
+  preapprovalRecords,
   goals,
   propertyCandidates,
   propertyGoals,
   propertyReadinessSnapshots,
   propertyStressTests,
+  propertyDocuments,
+  propertyMilestones,
+  targetMarkets,
 } from "@workspace/db";
 import { centsToMoney, parseMoneyToCents } from "../domain/finance";
 import {
@@ -20,7 +24,7 @@ import {
   calculateStressScenario,
 } from "../domain/property-underwriting";
 import { assertPermission, GovernanceError } from "../domain/governance";
-import { getCashFlow } from "./household-finance";
+import { getCashFlow, getSafeToDeploy } from "./household-finance";
 import { ensureSeedData } from "./seed";
 import type { Actor } from "./capital-os";
 
@@ -70,7 +74,7 @@ function readinessFromFinance(goal: typeof goals.$inferSelect | undefined, cashF
   const current = moneyCents(goal?.currentAmount);
   const downPaymentReadiness = target > 0 ? Math.min(100, (current / target) * 100) : 0;
   const reserveReadiness = Math.min(100, (cashFlow.reserve.monthsCovered / Math.max(1, cashFlow.reserve.targetMonths)) * 100);
-  const cashFlowScore = Number(cashFlow.savingsRate) >= 15 ? 100 : Number(cashFlow.savingsRate) >= 10 ? 80 : Number(cashFlow.savingsRate) >= 5 ? 60 : 35;
+  const cashFlowScore = Number(cashFlow.metrics.savingsRate) >= 15 ? 100 : Number(cashFlow.metrics.savingsRate) >= 10 ? 80 : Number(cashFlow.metrics.savingsRate) >= 5 ? 60 : 35;
   return calculatePropertyReadiness([
     { key: "downPayment", label: "Down payment readiness", score: downPaymentReadiness, weight: 2, reason: "Keep building the protected Duplex Reserve toward the cash requirement." },
     { key: "closingCosts", label: "Closing cost readiness", score: reserveReadiness, weight: 1, reason: "Build a separate closing-cost reserve before property search accelerates." },
@@ -157,7 +161,7 @@ function dealResponse(candidate: typeof propertyCandidates.$inferSelect, box: ty
 
 export async function getPropertyUnderwriting() {
   const ids = await getIds();
-  const [property, goal, box, candidates, scenarios, cashClose, stressTests, readiness] = await Promise.all([
+  const [property, goal, box, candidates, scenarios, cashClose, stressTests, readiness, preapprovals, markets, documents, milestones] = await Promise.all([
     db.select().from(propertyGoals).where(eq(propertyGoals.id, ids.propertyGoalId)).limit(1),
     db.select().from(goals).where(eq(goals.id, ids.goalId)).limit(1),
     getOrCreateBuyBox(ids.householdId),
@@ -166,9 +170,13 @@ export async function getPropertyUnderwriting() {
     db.select().from(cashToCloseEstimates).where(eq(cashToCloseEstimates.householdId, ids.householdId)).orderBy(desc(cashToCloseEstimates.createdAt)),
     db.select().from(propertyStressTests).where(eq(propertyStressTests.householdId, ids.householdId)).orderBy(desc(propertyStressTests.createdAt)),
     db.select().from(propertyReadinessSnapshots).where(eq(propertyReadinessSnapshots.propertyGoalId, ids.propertyGoalId)).orderBy(desc(propertyReadinessSnapshots.createdAt)).limit(1),
+    db.select().from(preapprovalRecords).where(eq(preapprovalRecords.householdId, ids.householdId)).orderBy(desc(preapprovalRecords.createdAt)),
+    db.select().from(targetMarkets).where(eq(targetMarkets.householdId, ids.householdId)).orderBy(desc(targetMarkets.score)),
+    db.select().from(propertyDocuments).where(eq(propertyDocuments.propertyGoalId, ids.propertyGoalId)).orderBy(desc(propertyDocuments.createdAt)),
+    db.select().from(propertyMilestones).where(eq(propertyMilestones.propertyGoalId, ids.propertyGoalId)).orderBy(propertyMilestones.sortOrder),
   ]);
   if (!property[0]) throw new GovernanceError("INVALID_STATE", "Property goal was not found");
-  const cashFlow = await getCashFlow();
+  const [cashFlow, safeToDeploy] = await Promise.all([getCashFlow(), getSafeToDeploy()]);
   const propertyReadiness = readiness[0]
     ? { score: Number(readiness[0].score), status: readiness[0].status, factors: [], nextAction: readiness[0].nextAction }
     : readinessFromFinance(goal[0], cashFlow);
@@ -188,15 +196,19 @@ export async function getPropertyUnderwriting() {
       deal: dealResponse(candidate, box),
     })),
     financingScenarios: scenarios,
+    preapprovals,
     cashToClose: cashClose,
     stressTests,
+    markets,
+    documents,
+    milestones,
     nextAction: propertyReadiness.nextAction,
-    dataConfidence: cashFlow.confidenceScore,
+    dataConfidence: safeToDeploy.confidenceScore,
     household: {
-      emergencyReserve: cashFlow.reserve.currentAmount,
+      emergencyReserve: cashFlow.reserve.current,
       emergencyReserveMonths: cashFlow.reserve.monthsCovered,
-      freeCashFlow: cashFlow.freeCashFlow,
-      safeToDeploy: cashFlow.safeToDeploy,
+      freeCashFlow: cashFlow.metrics.freeCashFlow,
+      safeToDeploy: safeToDeploy.safeToDeploy,
     },
   };
 }
@@ -225,7 +237,7 @@ export async function analyzePropertyCandidate(actor: Actor, candidateId: string
   const box = await getOrCreateBuyBox(ids.householdId);
   const result = dealResponse(candidate, box);
   const cashToCloseInput = {
-    downPaymentCents: moneyCents(candidate.downPayment ?? result.analysis.downPayment),
+    downPaymentCents: moneyCents(candidate.downPayment && moneyCents(candidate.downPayment) > 0 ? candidate.downPayment : result.analysis.downPayment),
     earnestMoneyCents: 1000 * 100,
     inspectionCents: 500 * 100,
     appraisalCents: 650 * 100,
@@ -265,11 +277,11 @@ export async function analyzePropertyCandidate(actor: Actor, candidateId: string
     estimatedCashToClose: money(totalCashToClose),
   }).returning();
   const finance = await getCashFlow();
-  const availableCents = moneyCents(finance.reserve.currentAmount);
+  const availableCents = moneyCents(finance.reserve.current);
   const governor = calculatePropertyGovernor({
     cashAfterClosingCents: availableCents - totalCashToClose,
-    emergencyReserveAfterCents: moneyCents(finance.reserve.currentAmount) - totalCashToClose,
-    minimumEmergencyReserveCents: moneyCents(finance.reserve.essentialMonthlyExpenses) * 3,
+    emergencyReserveAfterCents: moneyCents(finance.reserve.current) - totalCashToClose,
+    minimumEmergencyReserveCents: moneyCents(finance.reserve.target) ,
     monthlyCashFlowAfterCents: moneyCents(result.analysis.monthlyCashFlow) + moneyCents(finance.metrics.freeCashFlow),
     minimumFreeCashFlowCents: 0,
     cashUsedPercent: availableCents > 0 ? (totalCashToClose / availableCents) * 100 : 100,
@@ -278,10 +290,10 @@ export async function analyzePropertyCandidate(actor: Actor, candidateId: string
   });
   const stress = calculateStressScenario({
     baselineMonthlyCashFlowCents: moneyCents(result.analysis.monthlyCashFlow),
-    baselineEmergencyReserveCents: moneyCents(finance.reserve.currentAmount),
+    baselineEmergencyReserveCents: moneyCents(finance.reserve.current),
     monthlyIncomeCents: moneyCents(finance.metrics.grossInflow),
     monthlyRentCents: moneyCents(result.analysis.grossRent),
-    monthlyExpensesCents: moneyCents(finance.reserve.essentialMonthlyExpenses),
+    monthlyExpensesCents: moneyCents(finance.reserve.target) / Math.max(1, finance.reserve.targetMonths),
     rentChange: 0.2,
     vacancyMonths: 2,
     repairCents: 5000 * 100,

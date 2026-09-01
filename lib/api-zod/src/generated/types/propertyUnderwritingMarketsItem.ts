@@ -6,11 +6,11 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PropertyUnderwritingFinancingScenariosItem = {
+export type PropertyUnderwritingMarketsItem = {
   id?: string;
   name?: string;
-  loanType?: string;
-  purchasePrice?: string;
-  loanAmount?: string;
-  estimatedMonthlyHousingCost?: string;
+  score?: string;
+  medianPrice?: string;
+  rentYield?: string;
+  notes?: string;
 };

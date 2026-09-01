@@ -240,10 +240,6 @@ export interface CreatePropertyCandidateInput {
   notes?: string;
 }
 
-export interface AnalyzePropertyCandidateParams {
-  candidateId: string;
-}
-
 export interface PropertyCandidate {
   id: string;
   propertyGoalId: string;
@@ -262,20 +258,41 @@ export interface PropertyCandidate {
   nextAction?: string;
 }
 
-export type PropertyAnalysisDealAnalysis = { [key: string]: unknown };
+export type PropertyAnalysisDealAnalysis = {
+  monthlyCashFlow?: string;
+  annualCashFlow?: string;
+  ownerEffectiveHousingCost?: string;
+  noi?: string;
+  capRate?: number;
+  cashOnCashReturn?: number;
+  dscr?: number;
+};
 
-export type PropertyAnalysisDealBuyBox = { [key: string]: unknown };
+export type PropertyAnalysisDealBuyBox = {
+  score?: number;
+  failures?: string[];
+};
 
 export type PropertyAnalysisDeal = {
   analysis?: PropertyAnalysisDealAnalysis;
   buyBox?: PropertyAnalysisDealBuyBox;
 };
 
-export type PropertyAnalysisCashToClose = { [key: string]: unknown };
+export type PropertyAnalysisCashToClose = {
+  estimatedCashToClose?: string;
+};
 
-export type PropertyAnalysisStress = { [key: string]: unknown };
+export type PropertyAnalysisStress = {
+  monthlyCashFlowCents?: number;
+  emergencyReserveRemainingCents?: number;
+  monthsUntilLiquidityBreach?: number;
+  result?: string;
+};
 
-export type PropertyAnalysisGovernor = { [key: string]: unknown };
+export type PropertyAnalysisGovernor = {
+  status?: string;
+  reasons?: string[];
+};
 
 export interface PropertyAnalysis {
   candidateId: string;
@@ -285,7 +302,11 @@ export interface PropertyAnalysis {
   governor: PropertyAnalysisGovernor;
 }
 
-export type PropertyUnderwritingPropertyGoalReadiness = { [key: string]: unknown };
+export type PropertyUnderwritingPropertyGoalReadiness = {
+  score?: number;
+  status?: string;
+  nextAction?: string;
+};
 
 export type PropertyUnderwritingPropertyGoal = {
   id?: string;
@@ -297,11 +318,63 @@ export type PropertyUnderwritingPropertyGoal = {
   readiness?: PropertyUnderwritingPropertyGoalReadiness;
 };
 
-export type PropertyUnderwritingFinancingScenariosItem = { [key: string]: unknown };
+export type PropertyUnderwritingFinancingScenariosItem = {
+  id?: string;
+  name?: string;
+  loanType?: string;
+  purchasePrice?: string;
+  loanAmount?: string;
+  estimatedMonthlyHousingCost?: string;
+};
 
-export type PropertyUnderwritingCashToCloseItem = { [key: string]: unknown };
+export type PropertyUnderwritingCashToCloseItem = {
+  id?: string;
+  propertyCandidateId?: string;
+  estimatedCashToClose?: string;
+};
 
-export type PropertyUnderwritingStressTestsItem = { [key: string]: unknown };
+export type PropertyUnderwritingStressTestsItem = {
+  id?: string;
+  propertyCandidateId?: string;
+  name?: string;
+  monthlyCashFlow?: string;
+  emergencyReserveRemaining?: string;
+  result?: string;
+};
+
+export type PropertyUnderwritingPreapprovalsItem = {
+  id?: string;
+  provider?: string;
+  status?: string;
+  estimatedMaximumPurchasePrice?: string;
+  estimatedRate?: string;
+  estimatedCashRequired?: string;
+  expiration?: string;
+  documentsNeeded?: string;
+  notes?: string;
+};
+
+export type PropertyUnderwritingMarketsItem = {
+  id?: string;
+  name?: string;
+  score?: string;
+  medianPrice?: string;
+  rentYield?: string;
+  notes?: string;
+};
+
+export type PropertyUnderwritingDocumentsItemMetadata = {
+  status?: string;
+  private?: boolean;
+  description?: string;
+};
+
+export type PropertyUnderwritingDocumentsItem = {
+  id?: string;
+  name?: string;
+  storagePath?: string;
+  metadata?: PropertyUnderwritingDocumentsItemMetadata;
+};
 
 export type PropertyUnderwritingHousehold = {
   emergencyReserve?: string;
@@ -317,6 +390,10 @@ export interface PropertyUnderwriting {
   financingScenarios: PropertyUnderwritingFinancingScenariosItem[];
   cashToClose: PropertyUnderwritingCashToCloseItem[];
   stressTests: PropertyUnderwritingStressTestsItem[];
+  preapprovals: PropertyUnderwritingPreapprovalsItem[];
+  markets: PropertyUnderwritingMarketsItem[];
+  documents: PropertyUnderwritingDocumentsItem[];
+  milestones: PropertyMilestone[];
   nextAction: string;
   dataConfidence: number;
   household: PropertyUnderwritingHousehold;

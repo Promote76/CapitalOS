@@ -6,4 +6,11 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PropertyUnderwritingStressTestsItem = { [key: string]: unknown };
+export type PropertyUnderwritingStressTestsItem = {
+  id?: string;
+  propertyCandidateId?: string;
+  name?: string;
+  monthlyCashFlow?: string;
+  emergencyReserveRemaining?: string;
+  result?: string;
+};

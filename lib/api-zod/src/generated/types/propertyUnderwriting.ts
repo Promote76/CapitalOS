@@ -7,9 +7,13 @@
  */
 import type { BuyBox } from './buyBox';
 import type { PropertyCandidate } from './propertyCandidate';
+import type { PropertyMilestone } from './propertyMilestone';
 import type { PropertyUnderwritingCashToCloseItem } from './propertyUnderwritingCashToCloseItem';
+import type { PropertyUnderwritingDocumentsItem } from './propertyUnderwritingDocumentsItem';
 import type { PropertyUnderwritingFinancingScenariosItem } from './propertyUnderwritingFinancingScenariosItem';
 import type { PropertyUnderwritingHousehold } from './propertyUnderwritingHousehold';
+import type { PropertyUnderwritingMarketsItem } from './propertyUnderwritingMarketsItem';
+import type { PropertyUnderwritingPreapprovalsItem } from './propertyUnderwritingPreapprovalsItem';
 import type { PropertyUnderwritingPropertyGoal } from './propertyUnderwritingPropertyGoal';
 import type { PropertyUnderwritingStressTestsItem } from './propertyUnderwritingStressTestsItem';
 
@@ -20,6 +24,10 @@ export interface PropertyUnderwriting {
   financingScenarios: PropertyUnderwritingFinancingScenariosItem[];
   cashToClose: PropertyUnderwritingCashToCloseItem[];
   stressTests: PropertyUnderwritingStressTestsItem[];
+  preapprovals: PropertyUnderwritingPreapprovalsItem[];
+  markets: PropertyUnderwritingMarketsItem[];
+  documents: PropertyUnderwritingDocumentsItem[];
+  milestones: PropertyMilestone[];
   nextAction: string;
   dataConfidence: number;
   household: PropertyUnderwritingHousehold;

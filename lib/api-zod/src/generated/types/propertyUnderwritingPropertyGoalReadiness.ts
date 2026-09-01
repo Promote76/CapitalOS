@@ -6,4 +6,8 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type PropertyUnderwritingPropertyGoalReadiness = { [key: string]: unknown };
+export type PropertyUnderwritingPropertyGoalReadiness = {
+  score?: number;
+  status?: string;
+  nextAction?: string;
+};

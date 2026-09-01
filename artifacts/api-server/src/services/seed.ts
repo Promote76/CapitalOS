@@ -21,6 +21,13 @@ import {
   ledgerTransactions,
   propertyGoals,
   propertyMilestones,
+  buyBoxes,
+  propertyCandidates,
+  propertyReadinessSnapshots,
+  financingScenarios,
+  preapprovalRecords,
+  targetMarkets,
+  propertyDocuments,
   riskStates,
   incomeSources,
   recurringTransactions,
@@ -32,6 +39,167 @@ import {
 } from "@workspace/db";
 
 const DEMO_HOUSEHOLD_NAME = "Morgan household";
+
+async function ensurePropertyUnderwritingSeed(householdId: string, propertyGoalId: string) {
+  const [buyBox] = await db.select({ id: buyBoxes.id }).from(buyBoxes).where(eq(buyBoxes.householdId, householdId)).limit(1);
+  if (!buyBox) {
+    await db.insert(buyBoxes).values({
+      householdId,
+      propertyType: "duplex",
+      ownerOccupied: true,
+      purchasePriceMinimum: "180000.00",
+      purchasePriceMaximum: "560000.00",
+      targetCashToClose: "135000.00",
+      minimumBedroomsPerUnit: "2",
+      minimumBathroomsPerUnit: "1",
+      minimumEstimatedRent: "2200.00",
+      maximumEstimatedRehabilitation: "35000.00",
+      minimumCashFlow: "0.00",
+      maximumMonthlyHousingCost: "2600.00",
+      minimumDscrEstimate: "1.15",
+      maximumPropertyAge: "100",
+      minimumPropertyCondition: "fair",
+      targetMarkets: ["Northside / transit"],
+      excludedMarkets: [],
+      truckParkingProximity: "Within 15 minutes",
+      neighborhoodRequirements: "Independent entrances, stable block, transit access",
+      propertyTaxCeiling: "9000.00",
+      insuranceCostCeiling: "3000.00",
+      minimumReadinessScore: "60",
+    });
+  }
+  const [candidate] = await db.select({ id: propertyCandidates.id }).from(propertyCandidates).where(eq(propertyCandidates.propertyGoalId, propertyGoalId)).limit(1);
+  let candidateId = candidate?.id;
+  if (!candidate) {
+    const [createdCandidate] = await db.insert(propertyCandidates).values({
+      propertyGoalId,
+      addressLabel: "Example watchlist duplex · Northside",
+      city: "Chicago",
+      state: "IL",
+      zip: "60647",
+      market: "Northside / transit",
+      propertyType: "duplex",
+      units: "2",
+      bedrooms: "4",
+      bathrooms: "2.0",
+      askingPrice: "465000.00",
+      estimatedMarketValue: "470000.00",
+      annualPropertyTaxes: "7200.00",
+      insurance: "2400.00",
+      hoa: "0.00",
+      estimatedRent: "2600.00",
+      currentRents: "2400.00",
+      vacancyAssumption: "0.05",
+      repairs: "18000.00",
+      immediateRepairs: "8000.00",
+      deferredMaintenance: "10000.00",
+      squareFootage: "2400",
+      yearBuilt: "1928",
+      listingSource: "Manual research",
+      dateDiscovered: "2026-08-28",
+      lastReviewed: "2026-08-31",
+      status: "watchlist",
+      readinessStatus: "needs_data",
+      riskLevel: "moderate",
+      notes: "Illustrative watchlist record. Verify all listing, rent, tax, insurance, and repair assumptions.",
+      nextAction: "Confirm rent comparables and request an insurance quote.",
+    }).returning({ id: propertyCandidates.id });
+    candidateId = createdCandidate.id;
+  }
+  const [snapshot] = await db.select({ id: propertyReadinessSnapshots.id }).from(propertyReadinessSnapshots).where(eq(propertyReadinessSnapshots.propertyGoalId, propertyGoalId)).limit(1);
+  if (!snapshot) {
+    await db.insert(propertyReadinessSnapshots).values({
+      householdId,
+      propertyGoalId,
+      score: "66.00",
+      status: "Preparing",
+      factors: { downPayment: 40, closingCosts: 80, emergencyReserve: 80, incomeStability: 80, cashFlow: 80, savingsConsistency: 84, debtObligations: 82, creditReadiness: 76, documentReadiness: 45, marketResearch: 72, buyBoxCompletion: 91, propertyPipeline: 25 },
+      nextAction: "Collect income and reserve documents before lender conversations.",
+    });
+  }
+  const [scenario] = await db.select({ id: financingScenarios.id }).from(financingScenarios).where(eq(financingScenarios.householdId, householdId)).limit(1);
+  if (!scenario && candidateId) {
+    await db.insert(financingScenarios).values([
+      {
+        householdId,
+        propertyCandidateId: candidateId,
+        name: "Conventional · 5% down",
+        loanType: "conventional",
+        purchasePrice: "465000.00",
+        downPaymentPercent: "0.0500",
+        interestRate: "0.0700",
+        termYears: "30",
+        mortgageInsurance: "250.00",
+        loanFees: "1200.00",
+        closingCosts: "11000.00",
+        initialReserves: "8000.00",
+        loanAmount: "441750.00",
+        monthlyPrincipalInterest: "2938.97",
+        estimatedMonthlyHousingCost: "3988.97",
+      },
+      {
+        householdId,
+        propertyCandidateId: candidateId,
+        name: "FHA-style planning case · 3.5% down",
+        loanType: "FHA-style estimate",
+        purchasePrice: "465000.00",
+        downPaymentPercent: "0.0350",
+        interestRate: "0.0725",
+        termYears: "30",
+        mortgageInsurance: "365.00",
+        loanFees: "1600.00",
+        closingCosts: "11500.00",
+        initialReserves: "8000.00",
+        loanAmount: "448725.00",
+        monthlyPrincipalInterest: "3050.00",
+        estimatedMonthlyHousingCost: "4285.00",
+      },
+      {
+        householdId,
+        propertyCandidateId: candidateId,
+        name: "Conservative · 10% down",
+        loanType: "conventional",
+        purchasePrice: "465000.00",
+        downPaymentPercent: "0.1000",
+        interestRate: "0.0675",
+        termYears: "30",
+        mortgageInsurance: "0.00",
+        loanFees: "1000.00",
+        closingCosts: "10500.00",
+        initialReserves: "8000.00",
+        loanAmount: "418500.00",
+        monthlyPrincipalInterest: "2718.00",
+        estimatedMonthlyHousingCost: "3668.00",
+      },
+    ]);
+  }
+  const [preapproval] = await db.select({ id: preapprovalRecords.id }).from(preapprovalRecords).where(eq(preapprovalRecords.householdId, householdId)).limit(1);
+  if (!preapproval) {
+    await db.insert(preapprovalRecords).values({
+      householdId,
+      provider: "Local lender conversation",
+      status: "research",
+      notes: "Not an approval or qualification. Use this tracker to prepare questions and documents.",
+      documentsNeeded: "Pay stubs, tax returns, statements, ID, reserve history",
+    });
+  }
+  const [market] = await db.select({ id: targetMarkets.id }).from(targetMarkets).where(eq(targetMarkets.householdId, householdId)).limit(1);
+  if (!market) {
+    await db.insert(targetMarkets).values([
+      { householdId, name: "Northside / transit", score: "78.00", medianPrice: "465000.00", rentYield: "0.067", notes: "Strong fit for commute, independent entrances, and house-hack research." },
+      { householdId, name: "Near West / neighborhood retail", score: "71.00", medianPrice: "510000.00", rentYield: "0.061", notes: "Higher entry price; compare taxes and insurance carefully." },
+      { householdId, name: "Southwest / larger lots", score: "64.00", medianPrice: "395000.00", rentYield: "0.073", notes: "More space and parking; verify commute, block stability, and deferred maintenance." },
+    ]);
+  }
+  const [document] = await db.select({ id: propertyDocuments.id }).from(propertyDocuments).where(eq(propertyDocuments.propertyGoalId, propertyGoalId)).limit(1);
+  if (!document) {
+    await db.insert(propertyDocuments).values([
+      { propertyGoalId, name: "Income documentation", metadata: { status: "needed", private: true, description: "Recent pay stubs and tax returns" } },
+      { propertyGoalId, name: "Reserve history", metadata: { status: "needed", private: true, description: "Statements showing protected reserve history" } },
+      { propertyGoalId, name: "Insurance estimate", metadata: { status: "needed", private: true, description: "Property-specific quote before offer review" } },
+    ]);
+  }
+}
 
 async function ensureHouseholdFinanceSeed(householdId: string) {
   const existingAccount = await db
@@ -309,6 +477,7 @@ export async function ensureSeedData(): Promise<SeedContext> {
         riskStateId: risk[0].id,
       };
       await ensureHouseholdFinanceSeed(seedContext.householdId);
+      await ensurePropertyUnderwritingSeed(seedContext.householdId, seedContext.propertyGoalId);
       return seedContext;
     }
   }
@@ -602,5 +771,6 @@ export async function ensureSeedData(): Promise<SeedContext> {
 
   seedContext = result;
   await ensureHouseholdFinanceSeed(seedContext.householdId);
+  await ensurePropertyUnderwritingSeed(seedContext.householdId, seedContext.propertyGoalId);
   return result;
 }

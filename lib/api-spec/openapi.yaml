@@ -1154,14 +1154,9 @@ components:
         repairs: { type: string }
         immediateRepairs: { type: string }
         listingSource: { type: string }
-        listingUrl: { type: string, format: uri }
+        listingUrl: { type: string }
         status: { type: string }
         notes: { type: string }
-    AnalyzePropertyCandidateParams:
-      type: object
-      required: [candidateId]
-      properties:
-        candidateId: { type: string }
     PropertyCandidate:
       type: object
       required: [id, propertyGoalId, addressLabel, propertyType, units, bedrooms, askingPrice, estimatedRent, repairs, status, buyBoxScore, dealQualityScore, dataConfidence]
@@ -1186,23 +1181,138 @@ components:
       required: [candidateId, deal, cashToClose, stress, governor]
       properties:
         candidateId: { type: string }
-        deal: { type: object, properties: { analysis: { type: object }, buyBox: { type: object } } }
-        cashToClose: { type: object }
-        stress: { type: object }
-        governor: { type: object }
+        deal:
+          type: object
+          properties:
+            analysis:
+              type: object
+              properties:
+                monthlyCashFlow: { type: string }
+                annualCashFlow: { type: string }
+                ownerEffectiveHousingCost: { type: string }
+                noi: { type: string }
+                capRate: { type: number }
+                cashOnCashReturn: { type: number }
+                dscr: { type: number }
+            buyBox:
+              type: object
+              properties:
+                score: { type: number }
+                failures: { type: array, items: { type: string } }
+        cashToClose:
+          type: object
+          properties:
+            estimatedCashToClose: { type: string }
+        stress:
+          type: object
+          properties:
+            monthlyCashFlowCents: { type: number }
+            emergencyReserveRemainingCents: { type: number }
+            monthsUntilLiquidityBreach: { type: number }
+            result: { type: string }
+        governor:
+          type: object
+          properties:
+            status: { type: string }
+            reasons: { type: array, items: { type: string } }
     PropertyUnderwriting:
       type: object
-      required: [propertyGoal, buyBox, candidates, financingScenarios, cashToClose, stressTests, nextAction, dataConfidence, household]
+      required: [propertyGoal, buyBox, candidates, financingScenarios, cashToClose, stressTests, preapprovals, markets, documents, milestones, nextAction, dataConfidence, household]
       properties:
-        propertyGoal: { type: object, properties: { id: { type: string }, name: { type: string }, targetMarket: { type: string }, targetBudget: { type: string }, targetCashToClose: { type: string }, targetDate: { type: string }, readiness: { type: object } } }
+        propertyGoal:
+          type: object
+          properties:
+            id: { type: string }
+            name: { type: string }
+            targetMarket: { type: string }
+            targetBudget: { type: string }
+            targetCashToClose: { type: string }
+            targetDate: { type: string }
+            readiness:
+              type: object
+              properties:
+                score: { type: number }
+                status: { type: string }
+                nextAction: { type: string }
         buyBox: { $ref: "#/components/schemas/BuyBox" }
         candidates: { type: array, items: { $ref: "#/components/schemas/PropertyCandidate" } }
-        financingScenarios: { type: array, items: { type: object } }
-        cashToClose: { type: array, items: { type: object } }
-        stressTests: { type: array, items: { type: object } }
+        financingScenarios:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              loanType: { type: string }
+              purchasePrice: { type: string }
+              loanAmount: { type: string }
+              estimatedMonthlyHousingCost: { type: string }
+        cashToClose:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              propertyCandidateId: { type: string }
+              estimatedCashToClose: { type: string }
+        stressTests:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              propertyCandidateId: { type: string }
+              name: { type: string }
+              monthlyCashFlow: { type: string }
+              emergencyReserveRemaining: { type: string }
+              result: { type: string }
+        preapprovals:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              provider: { type: string }
+              status: { type: string }
+              estimatedMaximumPurchasePrice: { type: string }
+              estimatedRate: { type: string }
+              estimatedCashRequired: { type: string }
+              expiration: { type: string }
+              documentsNeeded: { type: string }
+              notes: { type: string }
+        markets:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              score: { type: string }
+              medianPrice: { type: string }
+              rentYield: { type: string }
+              notes: { type: string }
+        documents:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              storagePath: { type: string }
+              metadata: { type: object, properties: { status: { type: string }, private: { type: boolean }, description: { type: string } } }
+        milestones:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyMilestone"
         nextAction: { type: string }
         dataConfidence: { type: number }
-        household: { type: object, properties: { emergencyReserve: { type: string }, emergencyReserveMonths: { type: number }, freeCashFlow: { type: string }, safeToDeploy: { type: string } } }
+        household:
+          type: object
+          properties:
+            emergencyReserve: { type: string }
+            emergencyReserveMonths: { type: number }
+            freeCashFlow: { type: string }
+            safeToDeploy: { type: string }
     PropertySummary:
       type: object
       required: [id, name, targetMarket, targetBudget, estimatedDownPayment, estimatedClosingCosts, readinessScore, milestones]

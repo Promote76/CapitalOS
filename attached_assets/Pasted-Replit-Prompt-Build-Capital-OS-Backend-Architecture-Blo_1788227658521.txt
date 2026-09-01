@@ -1,0 +1,1176 @@
+Replit Prompt: Build Capital OS Backend Architecture + Blockchain-Ready Foundation
+
+Continue building the existing Capital OS project.
+
+Do not redesign the approved UI.
+
+Preserve the current light-theme visual system, navigation, card hierarchy, typography, spacing, colors, charts, and overall family-office design language.
+
+This phase is focused on building the backend architecture, data model, application services, security boundaries, and future blockchain integration layer underneath the existing frontend.
+
+The goal is to turn the current Capital OS UI prototype into the foundation of a real family-capital operating system.
+
+---
+
+PRIMARY ARCHITECTURAL PRINCIPLE
+
+Capital OS is NOT a blockchain application at its core.
+
+Build it as a secure hybrid financial platform:
+
+CAPITAL OS
+│
+├── Application Layer
+│   ├── React / TypeScript UI
+│   ├── API layer
+│   ├── authentication
+│   ├── PostgreSQL
+│   ├── goals engine
+│   ├── portfolio engine
+│   ├── contribution engine
+│   ├── property engine
+│   ├── strategy engine
+│   ├── risk governor
+│   ├── audit system
+│   └── AI CIO advisory layer
+│
+└── Blockchain Integration Layer
+    ├── disabled by default
+    ├── chain adapter interface
+    ├── Arbitrum-ready
+    ├── future smart-contract vaults
+    ├── strategy authorization
+    ├── audit attestations
+    └── future treasury integrations
+
+Private financial and family data must remain off-chain.
+
+Blockchain should only be used where immutability, programmable authorization, settlement, or custody controls provide a real advantage.
+
+---
+
+PHASE OBJECTIVE
+
+Build the following foundation:
+
+1. Production-ready backend architecture
+2. PostgreSQL database schema
+3. User and household account structure
+4. Goal tracking engine
+5. Weekly contribution engine
+6. Capital allocation engine
+7. Protected-capital segregation
+8. Portfolio ledger
+9. Property acquisition tracking
+10. Strategy lifecycle system
+11. Risk Governor
+12. Audit/event ledger
+13. AI CIO recommendation architecture
+14. Blockchain adapter layer
+15. Arbitrum-ready contract interfaces
+16. Security boundaries
+17. Testing architecture
+
+Do NOT enable real trading.
+
+Do NOT deploy smart contracts yet.
+
+Do NOT connect live bank accounts yet.
+
+Do NOT allow AI to autonomously move money.
+
+---
+
+1. APPLICATION ARCHITECTURE
+
+Use a modular architecture.
+
+Suggested structure:
+
+/src
+│
+├── /app
+│   ├── dashboard
+│   ├── goals
+│   ├── strategies
+│   ├── portfolio
+│   ├── properties
+│   ├── risk
+│   └── settings
+│
+├── /components
+│
+├── /server
+│   ├── /api
+│   ├── /services
+│   ├── /repositories
+│   ├── /middleware
+│   ├── /validators
+│   └── /jobs
+│
+├── /domain
+│   ├── /accounts
+│   ├── /goals
+│   ├── /contributions
+│   ├── /portfolio
+│   ├── /properties
+│   ├── /strategies
+│   ├── /risk
+│   ├── /audit
+│   ├── /ai
+│   └── /blockchain
+│
+├── /db
+│   ├── schema
+│   ├── migrations
+│   └── seeds
+│
+├── /lib
+│   ├── auth
+│   ├── security
+│   ├── calculations
+│   └── blockchain
+│
+├── /tests
+│   ├── unit
+│   ├── integration
+│   └── security
+│
+└── /docs
+
+Use clean separation between:
+
+- UI
+- API
+- domain logic
+- database
+- risk controls
+- blockchain integration
+
+Do not place business logic directly inside UI components.
+
+---
+
+2. DATABASE
+
+Use PostgreSQL.
+
+Use a modern ORM such as Drizzle or Prisma.
+
+All financial values must use fixed-precision decimal storage.
+
+Never use floating-point values for authoritative financial balances.
+
+Use:
+
+DECIMAL / NUMERIC
+
+for:
+
+- money
+- balances
+- contributions
+- portfolio values
+- allocations
+- property costs
+- P&L
+- strategy capital
+
+---
+
+3. HOUSEHOLD MODEL
+
+Capital OS should support a household / family account.
+
+Create entities such as:
+
+User
+Household
+HouseholdMember
+HouseholdRole
+
+Suggested roles:
+
+- Owner
+- Partner
+- Viewer
+- Advisor
+
+Permissions should be explicit.
+
+Do not assume every family member has authority to change capital allocations.
+
+---
+
+4. ACCOUNT SYSTEM
+
+Create internal financial accounts.
+
+Account categories:
+
+Protected Capital
+Active Capital
+Cash Reserve
+Duplex Reserve
+Opportunity Reserve
+Strategy Capital
+Property Capital
+Treasury
+
+Every account should include:
+
+- id
+- household_id
+- name
+- account_type
+- balance
+- protected_status
+- risk_class
+- created_at
+- updated_at
+
+Protected accounts must include:
+
+protected = true
+
+and must be blocked from experimental strategy allocations.
+
+---
+
+5. DUPLEX GOAL ENGINE
+
+Create the primary goal:
+
+First Duplex Acquisition
+
+Default configuration:
+
+Target Capital: $13,000
+Weekly Contribution: $250
+Timeline: 52 weeks
+Priority: Critical
+
+Create goal entities supporting:
+
+- target amount
+- current amount
+- start date
+- target date
+- weekly contribution
+- protected amount
+- progress %
+- projected completion
+- priority
+- status
+
+Statuses:
+
+Draft
+Active
+On Track
+Behind
+Ahead
+Completed
+Paused
+
+The system must calculate:
+
+Goal Progress
+Projected Completion
+Contribution Pace
+Amount Remaining
+Weeks Remaining
+Required Weekly Contribution
+
+---
+
+6. WEEKLY CONTRIBUTION ENGINE
+
+Create a contribution planner.
+
+Default weekly allocation:
+
+Total Weekly Contribution: $250
+
+Duplex Reserve:        $200
+Capital OS:             $25
+Opportunity Reserve:    $25
+
+Store this as an allocation rule.
+
+Do not hard-code this split throughout the application.
+
+Create configurable allocation rules.
+
+Before saving any allocation change, calculate its impact on:
+
+- duplex target date
+- protected savings
+- active capital
+- future property readiness
+
+Example:
+
+Current:
+Duplex = $200/week
+
+Proposed:
+Duplex = $175/week
+
+Impact:
+Projected acquisition goal delayed by X weeks.
+
+The UI should display this before confirming.
+
+---
+
+7. CAPITAL PROTECTION ENGINE
+
+Create an independent Capital Governor.
+
+The Capital Governor is responsible for enforcing:
+
+Protected Capital Lock
+Maximum Active Capital
+Maximum Strategy Allocation
+Maximum Weekly Risk
+Minimum Cash Reserve
+Goal Protection Rules
+
+Protected capital may NEVER be allocated to a strategy unless the protection rule is explicitly changed through an authorized administrative workflow.
+
+AI recommendations must not override the Capital Governor.
+
+---
+
+8. PORTFOLIO LEDGER
+
+Create a double-entry-inspired internal ledger.
+
+Do not rely only on current balance fields.
+
+Every financial movement should generate a ledger entry.
+
+Create:
+
+LedgerAccount
+LedgerTransaction
+LedgerEntry
+
+Transaction categories:
+
+Contribution
+Transfer
+Strategy Allocation
+Strategy Return
+Strategy Loss
+Property Expense
+Closing Expense
+Income
+Withdrawal
+Adjustment
+Refund
+
+Each transaction should record:
+
+- transaction ID
+- timestamp
+- source account
+- destination account
+- amount
+- category
+- status
+- external reference if applicable
+- created_by
+- metadata
+
+Balances should be reconstructable from ledger history.
+
+---
+
+9. TRANSACTION STATE MACHINE
+
+Transactions should use statuses:
+
+Draft
+Pending
+Authorized
+Processing
+Completed
+Failed
+Cancelled
+Reversed
+
+Never assume a transaction succeeded before confirmation.
+
+---
+
+10. PROPERTY ACQUISITION MODULE
+
+Create the data model for property planning.
+
+Entities:
+
+PropertyGoal
+TargetMarket
+PropertyCandidate
+PropertyAnalysis
+AcquisitionBudget
+PropertyMilestone
+PropertyDocument
+PropertyNote
+
+Track:
+
+- asking price
+- property type
+- units
+- bedrooms
+- estimated rent
+- down payment
+- closing costs
+- repairs
+- financing estimate
+- cash required
+- projected cash flow
+- market
+- status
+
+Statuses:
+
+Research
+Watchlist
+Qualified
+Tour
+Offer Candidate
+Offer Submitted
+Under Contract
+Acquired
+Rejected
+
+Do not implement property purchasing.
+
+This is a tracking and decision-support module.
+
+---
+
+11. PROPERTY READINESS ENGINE
+
+Track:
+
+Down Payment Fund
+Closing Cost Reserve
+Credit Readiness
+Target Market Research
+Financing Readiness
+Property Search
+Offer Readiness
+
+Each milestone should include:
+
+- status
+- progress
+- target
+- current state
+- next action
+- due date
+
+Generate an overall Property Readiness Score.
+
+---
+
+12. STRATEGY SYSTEM
+
+Build the structure for future investment strategies.
+
+Do NOT connect real trading yet.
+
+Create:
+
+Strategy
+StrategyVersion
+StrategyExperiment
+StrategyPerformance
+StrategyAllocation
+StrategyApproval
+
+Strategies may include:
+
+Market Making
+Prediction Market Relative Value
+Funding/Basis
+Treasury Yield
+Mean Reversion
+Arbitrage
+
+Strategy stages:
+
+Research
+Backtest
+Shadow
+Paper
+Micro-Live
+Approved
+Production
+Paused
+Retired
+
+Strategies may not skip stages without an explicit authorized override recorded in the audit log.
+
+---
+
+13. STRATEGY GRADUATION ENGINE
+
+Create configurable promotion requirements.
+
+Examples:
+
+minimum_observations
+minimum_fills
+minimum_runtime
+positive_expectancy
+maximum_drawdown
+minimum_confidence
+reconciliation_accuracy
+critical_error_count
+
+Example logic:
+
+Research
+→ Backtest
+→ Shadow
+→ Paper
+→ Micro-Live
+→ Approved
+→ Production
+
+Promotion must be evidence-based.
+
+---
+
+14. CAPITAL CONFIDENCE SCORE
+
+Create a scoring framework from 0–100.
+
+Potential inputs:
+
+Profitability
+Sample Size
+Execution Quality
+Drawdown
+System Health
+Reconciliation
+Adverse Selection
+Volatility Stability
+Risk Compliance
+
+Do not present this score as a guarantee.
+
+Suggested classifications:
+
+0–49   Research Only
+50–64  Paper
+65–74  Micro-Live
+75–84  Limited Capital
+85–94  Production
+95–100 Scale Candidate
+
+---
+
+15. RISK GOVERNOR
+
+Create the Risk Governor as an independent service.
+
+It should eventually support:
+
+Max Order
+Max Market Exposure
+Max Strategy Exposure
+Max Active Capital
+Max Daily Loss
+Max Weekly Loss
+Max Drawdown
+Loss Velocity
+Inventory Limits
+Venue Limits
+
+For now, create the data structures, service layer, mock calculations, and dashboard integration.
+
+No real trade execution.
+
+---
+
+16. SAFETY STATES
+
+Create system states:
+
+NORMAL
+REVIEW
+SAFE_MODE
+STOP
+EVACUATE
+LOCKED
+
+Definitions:
+
+NORMAL
+System operating normally.
+
+REVIEW
+Requires attention but does not require shutdown.
+
+SAFE_MODE
+No new investment activity. Monitoring remains active.
+
+STOP
+Block new capital deployment.
+
+EVACUATE
+Future controlled reduction of active exposure.
+
+LOCKED
+Requires explicit authorized human intervention.
+
+---
+
+17. AUDIT EVENT SYSTEM
+
+Create an append-only event ledger.
+
+Events should include:
+
+GoalCreated
+GoalUpdated
+ContributionCreated
+AllocationChanged
+CapitalProtectionChanged
+StrategyCreated
+StrategyPromoted
+StrategyPaused
+RiskRuleTriggered
+AIRecommendationCreated
+AIRecommendationApproved
+AIRecommendationRejected
+UserPermissionChanged
+BlockchainAttestationCreated
+
+Each event should record:
+
+event_id
+event_type
+actor
+timestamp
+entity
+entity_id
+before_state
+after_state
+reason
+metadata
+
+Do not allow normal application workflows to silently delete audit events.
+
+---
+
+18. AI CIO ARCHITECTURE
+
+Create the framework for an AI CIO advisory layer.
+
+Important:
+
+AI IS ADVISORY ONLY.
+
+The AI may:
+
+read portfolio data
+analyze strategy performance
+analyze goals
+identify risks
+recommend allocations
+recommend contribution changes
+recommend strategy promotions
+generate reports
+
+The AI may NOT:
+
+move money
+change protected capital rules
+override risk limits
+enable live trading
+change withdrawal destinations
+deploy contracts
+change credentials
+
+Create recommendation entities:
+
+AIRecommendation
+AIRecommendationEvidence
+AIRecommendationDecision
+
+Statuses:
+
+Proposed
+Under Review
+Approved
+Rejected
+Expired
+
+Every recommendation should contain:
+
+- recommendation
+- rationale
+- expected benefit
+- risk impact
+- affected goal
+- affected capital
+- evidence
+- confidence
+- created_at
+
+---
+
+19. HUMAN APPROVAL MODEL
+
+Require explicit approval for high-impact actions.
+
+Examples:
+
+Reduce Duplex Contribution
+Increase Strategy Allocation
+Unlock Protected Capital
+Enable New Venue
+Enable Blockchain Vault
+Promote Strategy to Production
+
+Future dangerous actions should support multi-step approval.
+
+---
+
+20. BLOCKCHAIN ARCHITECTURE
+
+Create a blockchain integration layer, but do NOT deploy contracts.
+
+Primary future chain:
+
+Arbitrum One
+
+Do not hard-code Capital OS directly to Arbitrum.
+
+Create a chain-agnostic adapter architecture.
+
+Suggested interface:
+
+interface ChainAdapter {
+  getChainId(): Promise<number>;
+  getNativeBalance(address: string): Promise<string>;
+  getTokenBalance(token: string, address: string): Promise<string>;
+  readContract(request: ContractReadRequest): Promise<unknown>;
+  simulateTransaction(request: TransactionRequest): Promise<SimulationResult>;
+  submitTransaction(request: TransactionRequest): Promise<TransactionResult>;
+  getTransactionStatus(hash: string): Promise<TransactionStatus>;
+}
+
+Create adapter stubs for:
+
+Arbitrum
+Base
+Ethereum
+
+Only Arbitrum needs to be marked as the preferred future deployment target.
+
+---
+
+21. FUTURE CAPITAL VAULT INTERFACE
+
+Create domain interfaces for a future smart-contract Capital Vault.
+
+Do not deploy it.
+
+Conceptual capabilities:
+
+deposit
+withdraw
+allocate
+deallocate
+pause
+unpause
+authorizeStrategy
+revokeStrategy
+setStrategyLimit
+setDailyLimit
+
+Potential future contract modules:
+
+CapitalVault
+CapitalGovernor
+StrategyRegistry
+AllocationController
+EmergencyPause
+AuditAttestation
+
+---
+
+22. BLOCKCHAIN DATA BOUNDARY
+
+Never place the following on-chain:
+
+Social Security numbers
+credit scores
+bank statements
+mortgage documents
+family personal information
+tax documents
+API keys
+exchange credentials
+private AI conversations
+detailed personal financial records
+
+Only use blockchain for:
+
+vault balances
+authorized allocations
+contract permissions
+transaction settlement
+audit hashes
+strategy authorization
+publicly safe attestations
+
+---
+
+23. AUDIT HASHING
+
+Prepare an optional future feature that hashes important reports.
+
+Example:
+
+Monthly Portfolio Report
+→ generate SHA-256 hash
+→ store hash internally
+→ future option to anchor hash on Arbitrum
+
+The report itself stays private.
+
+Only the cryptographic hash may eventually be published.
+
+---
+
+24. SECURITY
+
+Implement strong security practices.
+
+Include:
+
+server-side validation
+role-based access control
+CSRF protection where applicable
+secure sessions
+rate limiting
+input sanitization
+structured logging
+environment-based secrets
+error redaction
+
+Never expose secrets to the browser.
+
+Never store secret values in source code.
+
+Never place secrets inside AI prompts.
+
+---
+
+25. FINANCIAL CALCULATION RULES
+
+All authoritative financial calculations must happen server-side.
+
+Do not trust browser-provided totals.
+
+Server must independently calculate:
+
+goal progress
+allocation totals
+account balances
+portfolio totals
+capital protection constraints
+strategy limits
+
+---
+
+26. IDEMPOTENCY
+
+Prepare write APIs for idempotency.
+
+Financial actions such as:
+
+contribution creation
+internal transfer
+future strategy allocation
+future blockchain transaction
+
+should support idempotency keys.
+
+Repeated requests must not create duplicate financial events.
+
+---
+
+27. CONCURRENCY SAFETY
+
+Protect balance-changing transactions using database transactions.
+
+Prevent:
+
+double allocation
+double contribution
+race-condition balance errors
+
+Use transactional locking where necessary.
+
+---
+
+28. MOCK DATA
+
+Preserve realistic mock data.
+
+Primary household capital objective:
+
+Weekly Contribution: $250
+
+Duplex Reserve:       $200/week
+Capital OS:            $25/week
+Opportunity Reserve:   $25/week
+
+52-Week Contributions:
+$13,000
+
+Keep the existing UI populated.
+
+Replace hard-coded UI values with backend-served mock records where practical.
+
+---
+
+29. API DESIGN
+
+Create clean API endpoints or server actions for:
+
+household
+accounts
+goals
+contributions
+allocations
+portfolio
+properties
+strategies
+risk
+audit
+AI recommendations
+blockchain status
+
+Use schema validation.
+
+Return structured errors.
+
+---
+
+30. DASHBOARD INTEGRATION
+
+Connect existing dashboard widgets to the new backend data model.
+
+Dashboard values should come from application data rather than duplicated constants.
+
+Examples:
+
+Total Saved
+Duplex Fund
+Capital OS Balance
+Opportunity Reserve
+Goal Progress
+Weekly Allocation
+Property Readiness
+Strategy Confidence
+Risk Status
+
+---
+
+31. TESTING
+
+Create tests for critical financial logic.
+
+At minimum:
+
+Contribution allocation totals correctly
+Protected capital cannot fund a strategy
+Goal progress calculates correctly
+Account balances reconcile with ledger
+Duplicate contribution requests are rejected
+Unauthorized role cannot change allocation
+Strategy cannot skip graduation stages
+AI recommendation cannot directly change capital
+Allocation cannot exceed Capital Governor limit
+
+---
+
+32. SEED DATA
+
+Create development seed data matching the current approved UI.
+
+Include:
+
+Household
+Primary user
+Duplex goal
+Accounts
+Weekly contribution rule
+Mock transactions
+Mock property readiness milestones
+Mock strategies
+Mock AI recommendation
+Mock risk state
+
+---
+
+33. REPORTING FOUNDATION
+
+Create service interfaces for future reports:
+
+Weekly Capital Report
+Monthly Portfolio Report
+Goal Progress Report
+Property Readiness Report
+Strategy Performance Report
+Risk Report
+Net Worth Statement
+
+No PDF generation required yet.
+
+---
+
+34. CAPITAL OS SYSTEM BOUNDARIES
+
+Maintain these explicit boundaries:
+
+PROTECTED CAPITAL
+Must remain isolated.
+
+ACTIVE CAPITAL
+May support validated strategies.
+
+AI
+May advise.
+
+RISK GOVERNOR
+May block.
+
+CAPITAL GOVERNOR
+Controls capital authorization.
+
+BLOCKCHAIN
+Optional execution and authorization layer.
+
+HUMAN OWNER
+Final authority for critical actions.
+
+---
+
+35. DO NOT IMPLEMENT YET
+
+Do not implement:
+
+live exchange trading
+automatic brokerage orders
+real bank transfers
+crypto withdrawals
+smart-contract deployment
+leverage
+margin
+outside investor accounts
+fundraising
+automated AI capital movement
+
+Create architecture hooks only.
+
+---
+
+36. ENGINEERING QUALITY
+
+Use:
+
+- strong TypeScript typing
+- modular services
+- schema validation
+- clean domain models
+- documented financial calculations
+- reusable repositories
+- database migrations
+- testable business logic
+- comments only where useful
+- no unnecessary complexity
+
+Avoid giant single-file implementations.
+
+---
+
+37. DOCUMENTATION
+
+Create:
+
+/docs/ARCHITECTURE.md
+/docs/DATA_MODEL.md
+/docs/CAPITAL_PROTECTION.md
+/docs/BLOCKCHAIN_FUTURE.md
+/docs/AI_GOVERNANCE.md
+/docs/RISK_MODEL.md
+
+Each should accurately describe the implemented system.
+
+---
+
+38. FINAL VALIDATION
+
+Before declaring this phase complete, verify:
+
+1. Existing UI remains visually intact.
+2. All major dashboard values are backed by the new data model.
+3. Weekly $250 allocation works correctly.
+4. Protected capital cannot be used by strategy logic.
+5. Ledger balances reconcile.
+6. Goal progress calculations are accurate.
+7. Strategy stages are enforced.
+8. AI remains advisory only.
+9. Risk Governor can block invalid requests.
+10. Blockchain adapter exists but performs no real transactions.
+11. Arbitrum is configured only as the preferred future chain.
+12. No sensitive information is placed on-chain.
+13. Critical financial functions have automated tests.
+14. Seed data reproduces the approved dashboard experience.
+
+---
+
+FINAL PRODUCT DIRECTION
+
+Capital OS should evolve into:
+
+FAMILY CAPITAL OPERATING SYSTEM
+        │
+        ├── Wealth Goals
+        ├── Protected Capital
+        ├── Portfolio
+        ├── Real Estate
+        ├── Investment Strategies
+        ├── Risk Management
+        ├── AI CIO
+        ├── Audit & Reporting
+        └── Optional Blockchain Infrastructure
+
+The duplex acquisition remains the current primary mission.
+
+The system's priority hierarchy is:
+
+1. Preserve capital
+2. Protect the duplex objective
+3. Maintain accurate financial records
+4. Control risk
+5. Validate investment strategies
+6. Grow capital
+7. Add blockchain capabilities only when they improve security or utility
+
+Build the architecture accordingly.
+
+Do not sacrifice safety, accounting integrity, privacy, or simplicity merely to make the application more automated.

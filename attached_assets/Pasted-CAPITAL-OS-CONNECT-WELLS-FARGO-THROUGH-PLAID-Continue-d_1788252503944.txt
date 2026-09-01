@@ -1,0 +1,648 @@
+CAPITAL OS — CONNECT WELLS FARGO THROUGH PLAID
+
+Continue development of the existing Capital OS application.
+
+Add secure read-only Wells Fargo banking integration using Plaid.
+
+Do not redesign the existing approved Capital OS interface.
+
+The objective is to allow me to connect my personal Wells Fargo accounts to Capital OS so the Household Finance, Budget, Cash Flow, Duplex Goal, and Capital Governor modules can use real financial data.
+
+CRITICAL SECURITY RULE
+
+Capital OS must NEVER ask me to enter my Wells Fargo username or password directly into Capital OS or Replit.
+
+Use Plaid Link and Wells Fargo's supported OAuth authorization flow.
+
+Authentication and account authorization must happen through the official Plaid/Wells Fargo authorization experience.
+
+Capital OS should only receive authorized financial data.
+
+Never expose Plaid secrets or access tokens to the browser.
+
+---
+
+PHASE 1 ACCESS
+
+The Wells Fargo connection must be READ ONLY.
+
+Enable:
+
+- Account discovery
+- Current balances
+- Available balances when provided
+- Transaction history
+- Account type/subtype
+- Institution information
+- Transaction synchronization
+
+Do NOT enable:
+
+- ACH transfers
+- Wire transfers
+- Bank-to-bank transfers
+- Withdrawals
+- Payment initiation
+- Automated movement into Capital OS
+- Automated movement into the Duplex Reserve
+- Automated strategy funding
+
+Capital OS cannot move money through Wells Fargo during this phase.
+
+---
+
+PLAID PRODUCTS
+
+For the initial Wells Fargo integration use:
+
+- Transactions
+- Balance
+
+Do not request unnecessary banking permissions.
+
+Design the architecture so additional products such as Investments or Liabilities can be added later without rebuilding the integration.
+
+---
+
+CONNECT ACCOUNT UX
+
+On the Capital OS Accounts page add:
+
+CONNECT BANK ACCOUNT
+
+When selected:
+
+1. Display a short explanation of what Capital OS will access.
+2. Launch Plaid Link.
+3. Allow Wells Fargo to be selected.
+4. Complete Wells Fargo authorization through OAuth.
+5. Allow the user to select which Wells Fargo accounts to share.
+6. Return to Capital OS.
+7. Securely exchange the returned Plaid public token on the server.
+8. Store the resulting access token securely on the server.
+9. Synchronize authorized accounts.
+10. Synchronize transactions.
+11. Retrieve balances.
+12. Show connected accounts in Capital OS.
+
+Never send the access token to the frontend.
+
+---
+
+ACCOUNT SELECTION
+
+Allow me to choose which Wells Fargo accounts Capital OS can use.
+
+Examples:
+
+- Personal Checking
+- Personal Savings
+- Other authorized accounts
+
+Each imported account must allow these settings:
+
+INCLUDE IN BUDGET
+
+INCLUDE IN CASH FLOW
+
+INCLUDE IN NET WORTH
+
+PROTECTED ACCOUNT
+
+HIDE BALANCE
+
+ACCOUNT NICKNAME
+
+Capital OS should not assume every connected account belongs in every calculation.
+
+---
+
+ACCOUNT DISPLAY
+
+On the Accounts page show cards such as:
+
+WELLS FARGO
+
+Everyday Checking
+•••• 1234
+
+Current Balance
+$X,XXX.XX
+
+Available Balance
+$X,XXX.XX
+
+Status
+Connected
+
+Last Updated
+X minutes ago
+
+Used For:
+Budget
+Cash Flow
+Safe-to-Deploy
+
+Include:
+
+Refresh
+
+Account Settings
+
+Disconnect
+
+---
+
+WELLS FARGO CONNECTION STATUS
+
+Support:
+
+Connected
+
+Healthy
+
+Syncing
+
+Delayed
+
+Needs Reauthorization
+
+Disconnected
+
+Error
+
+If Wells Fargo data becomes stale, clearly show:
+
+BANK DATA STALE
+
+Do not silently treat stale balances as current.
+
+---
+
+TRANSACTION SYNC
+
+Import authorized Wells Fargo transactions into the Household Finance module.
+
+For each transaction preserve:
+
+- Plaid transaction ID
+- Account
+- Date
+- Authorized date if available
+- Merchant
+- Description
+- Amount
+- Pending status
+- Original category metadata
+- Capital OS category
+- User corrections
+
+Transactions should feed:
+
+- Household Budget
+- Cash Flow
+- Recurring Bill Detection
+- Income Detection
+- Spending Analytics
+- Duplex Contribution Tracking
+- Safe-to-Deploy
+- Financial Health Score
+
+---
+
+DUPLICATE PROTECTION
+
+Plaid transaction synchronization must be idempotent.
+
+The same external transaction must never be imported twice.
+
+Use Plaid transaction identifiers and internal uniqueness protections.
+
+Handle transaction updates and removals correctly rather than creating duplicate records.
+
+---
+
+TRANSFER DETECTION
+
+Detect transfers between household accounts.
+
+For example:
+
+Wells Fargo Checking
+-$250
+
+Wells Fargo Savings
++$250
+
+should normally represent:
+
+INTERNAL TRANSFER
+
+not:
+
+$250 EXPENSE
++
+$250 INCOME
+
+Avoid double-counting.
+
+---
+
+DUPLEX CONTRIBUTION DETECTION
+
+Allow Capital OS to identify or manually map transfers to the Duplex Reserve.
+
+Example:
+
+Weekly Transfer
+$200
+
+Classification:
+
+Protected Duplex Contribution
+
+The Duplex Goal should update automatically after the transaction is confirmed and properly categorized.
+
+Do not infer protected status solely from merchant text.
+
+Allow user confirmation and permanent categorization rules.
+
+---
+
+INCOME DETECTION
+
+Identify recurring deposits likely to represent income.
+
+Never automatically make permanent assumptions.
+
+Display suggestions such as:
+
+POSSIBLE RECURRING INCOME
+
+Source:
+[Transaction description]
+
+Typical Amount:
+$X,XXX
+
+Frequency:
+Weekly
+
+Confidence:
+High
+
+User actions:
+
+Confirm Income
+
+Not Income
+
+Create Rule
+
+Confirmed income data should feed the Income Engine.
+
+---
+
+RECURRING BILL DETECTION
+
+Use Wells Fargo transaction history to identify probable recurring obligations.
+
+Examples:
+
+Insurance
+
+Phone
+
+Subscriptions
+
+Utilities
+
+Loans
+
+Business Expenses
+
+Other recurring payments
+
+Show:
+
+Merchant
+
+Average Amount
+
+Frequency
+
+Next Estimated Date
+
+Confidence
+
+Essential / Discretionary
+
+Allow user confirmation.
+
+---
+
+SAFE-TO-DEPLOY INTEGRATION
+
+Wells Fargo balances and transaction data should feed the existing deterministic Safe-to-Deploy Engine.
+
+Example:
+
+AVAILABLE CASH
+$7,400
+
+Bills Due Before Next Income
+-$2,250
+
+Required Reserve
+-$2,500
+
+Protected Duplex Commitment
+-$1,000
+
+Known Upcoming Expenses
+-$600
+
+SAFE TO DEPLOY
+$1,050
+
+This calculation must occur server-side.
+
+AI must not define the Safe-to-Deploy amount.
+
+AI may explain the result.
+
+---
+
+DATA CONFIDENCE
+
+Add banking-data confidence to Safe-to-Deploy.
+
+Example:
+
+SAFE TO DEPLOY
+
+$1,050
+
+DATA CONFIDENCE
+HIGH
+
+Wells Fargo:
+Updated 12 minutes ago
+
+If the data becomes stale:
+
+DATA CONFIDENCE
+LOW
+
+Capital Governor should become more conservative.
+
+Do not increase deployable capital from stale data.
+
+---
+
+CAPITAL GOVERNOR
+
+The Capital Governor must treat household banking data as an input, not as authorization to spend.
+
+Connecting Wells Fargo does NOT authorize Capital OS to use the balance.
+
+The Capital Governor must still respect:
+
+Required bills
+
+Emergency Reserve
+
+Duplex Goal
+
+Protected Capital
+
+Safety Buffer
+
+Upcoming Expenses
+
+Strategy limits
+
+Safe-to-Deploy
+
+---
+
+PLAID ENVIRONMENTS
+
+Support:
+
+Sandbox
+
+Production / Trial
+
+Development should begin safely in Plaid Sandbox.
+
+Do not use my real Wells Fargo credentials in Sandbox.
+
+After Sandbox tests pass, prepare the integration for Plaid's real OAuth/Trial or Production environment.
+
+Environment should be configuration-driven.
+
+---
+
+PLAID CONFIGURATION
+
+Use secure server-side environment secrets for:
+
+PLAID_CLIENT_ID
+
+PLAID_SECRET
+
+PLAID_ENV
+
+PLAID_REDIRECT_URI
+
+Never hard-code these values.
+
+Never commit secrets to version control.
+
+Never expose them in browser code.
+
+---
+
+OAUTH REDIRECT
+
+Configure a secure OAuth redirect flow compatible with Wells Fargo.
+
+The redirect flow must return the user to Capital OS and complete the existing Plaid Link session securely.
+
+Account linking must work correctly on the actual deployed Capital OS domain, not just localhost.
+
+---
+
+DATABASE
+
+Create or update secure entities for:
+
+BankConnection
+
+BankInstitution
+
+BankAccount
+
+BankBalanceSnapshot
+
+BankTransaction
+
+BankSyncState
+
+BankConnectionEvent
+
+Store only required financial data.
+
+Never store Wells Fargo usernames or passwords.
+
+---
+
+AUDIT EVENTS
+
+Record:
+
+WellsFargoConnectionStarted
+
+WellsFargoConnected
+
+WellsFargoAccountsSelected
+
+WellsFargoSyncCompleted
+
+WellsFargoSyncFailed
+
+WellsFargoReauthorizationRequired
+
+WellsFargoDisconnected
+
+BankTransactionImported
+
+BankTransactionCategorized
+
+Do not record secrets in audit events.
+
+---
+
+DISCONNECT
+
+Allow me to disconnect Wells Fargo.
+
+When disconnected:
+
+Stop future synchronization.
+
+Remove/revoke the Plaid connection where supported.
+
+Preserve historical Capital OS financial records needed for accounting unless I explicitly request deletion where allowed.
+
+Clearly explain the effect before disconnecting.
+
+---
+
+PRIVACY
+
+Add a Banking Privacy explanation.
+
+State clearly:
+
+Capital OS uses authorized financial data to provide budgeting, cash-flow, goal tracking and capital planning.
+
+Capital OS does not require the user's Wells Fargo password.
+
+Banking access is read-only during this phase.
+
+AI cannot access credentials.
+
+AI cannot initiate bank transactions.
+
+---
+
+DASHBOARD
+
+After connection, update the existing Dashboard with real household information where available.
+
+Include:
+
+Cash Available
+
+Monthly Income
+
+Monthly Expenses
+
+Free Cash Flow
+
+Safe to Deploy
+
+Duplex Contribution Health
+
+Upcoming Bills
+
+Financial Health
+
+Do not allow banking metrics to overpower the existing First Duplex Acquisition hero section.
+
+The Duplex Goal remains the primary objective.
+
+---
+
+TESTING
+
+Test:
+
+Plaid Link opens successfully.
+
+OAuth return flow succeeds.
+
+Token exchange occurs only server-side.
+
+Accounts synchronize correctly.
+
+Transactions synchronize correctly.
+
+Balances synchronize correctly.
+
+Duplicate transactions are prevented.
+
+Transfers aren't double-counted.
+
+Pending transactions update correctly.
+
+Account disconnection works.
+
+Stale-data warnings work.
+
+Safe-to-Deploy uses synchronized balances correctly.
+
+Protected capital remains protected.
+
+AI cannot move funds.
+
+No banking credentials appear in logs.
+
+No Plaid secrets appear in frontend bundles.
+
+---
+
+FINAL SECURITY REVIEW
+
+Before marking this feature complete confirm:
+
+1. Capital OS never asks for my Wells Fargo password directly.
+2. Wells Fargo authorization uses Plaid Link/OAuth.
+3. Banking access is read-only.
+4. Plaid secrets remain server-side.
+5. Access tokens remain server-side.
+6. Transactions are household-scoped.
+7. Bank data is encrypted appropriately.
+8. AI never receives bank credentials or provider tokens.
+9. Capital OS cannot initiate bank transfers.
+10. Capital Governor remains authoritative.
+11. Protected Duplex capital remains isolated.
+12. Safe-to-Deploy uses real household obligations.
+13. Stale financial data reduces confidence.
+14. Disconnection and reauthorization are handled safely.
+
+Once the integration passes Sandbox testing, tell me exactly which Plaid Dashboard configuration and environment variables I personally need to provide before connecting my real Wells Fargo account.
+
+Do not request or display my Wells Fargo username, password, PIN, security questions, one-time codes, full account number, or any other banking login credentials.

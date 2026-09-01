@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Capital OS"
+description = "A calm family-capital operating system for protecting savings, planning a duplex acquisition, managing contributions, and tracking disciplined strategy experiments."
+version = "1.0.0"
+id = "artifacts/capital-os"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25659
+
+[services.development]
+run = "pnpm --filter @workspace/capital-os run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/capital-os", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/capital-os/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25659"
+BASE_PATH = "/"

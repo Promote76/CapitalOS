@@ -1,0 +1,622 @@
+Replit Prompt: Build Capital OS UI from Approved Baseline
+
+Build a polished frontend-only UI prototype for a web application called Capital OS.
+
+Use the approved first dashboard design in this chat as the visual baseline and keep the same overall design language across the entire app.
+
+CORE OBJECTIVE
+
+Create a clean, modern, premium family capital / personal investment operating system interface that helps a user manage:
+
+- a protected duplex savings goal
+- weekly contributions
+- capital allocation
+- strategy experiments
+- portfolio tracking
+- property readiness
+- risk controls
+
+This is not a dark trading terminal.
+Use a light theme only.
+
+
+--------------------------------------------------
+VISUAL DIRECTION
+--------------------------------------------------
+
+THEME
+
+- No dark colors
+- Bright, clean, calm, trustworthy, premium
+- White and very light gray backgrounds
+- Soft blues, greens, and subtle lavender/purple accents
+- Small touches of amber/yellow only for highlights or warnings
+- Soft shadows
+- Rounded cards
+- Generous whitespace
+- Elegant, modern SaaS feel
+- Family-office / wealth-planning aesthetic
+- Friendly and sophisticated
+
+
+DESIGN STYLE
+
+Use the existing dashboard as the baseline for:
+
+- layout structure
+- card styling
+- spacing
+- typography hierarchy
+- icon treatment
+- chart style
+- pill badges
+- progress bars
+- sidebar + top navigation pattern
+
+
+GENERAL MOOD
+
+The app should feel:
+
+- disciplined
+- safe
+- optimistic
+- intelligent
+- strategic
+- long-term focused
+
+It should look like a product that helps someone build wealth toward a duplex, not a casino or aggressive day-trading app.
+
+
+--------------------------------------------------
+APP STRUCTURE
+--------------------------------------------------
+
+Create a responsive web app with:
+
+
+LEFT SIDEBAR NAVIGATION
+
+Include:
+
+- Overview
+- Transactions
+- Contributions
+- Reports
+- Documents
+- Insights
+
+Also include a Quick Actions section with:
+
+- Make Contribution
+- Transfer Funds
+- View Strategies
+- Add Property Note
+
+At the bottom include a motivational card similar in spirit to the baseline.
+
+
+TOP NAVIGATION
+
+Include:
+
+- Dashboard
+- Goals
+- Strategies
+- Portfolio
+- Properties
+- Risk
+- Settings
+
+Top right:
+
+- notifications bell
+- user/family account dropdown
+- profile avatar area
+
+
+--------------------------------------------------
+PAGES TO BUILD
+--------------------------------------------------
+
+Build the following pages/screens with a consistent reusable design system.
+
+
+--------------------------------------------------
+1. DASHBOARD PAGE
+--------------------------------------------------
+
+Use the approved design as the direct baseline.
+
+Include:
+
+
+HERO GOAL CARD
+
+- Title: First Duplex Acquisition
+- Status badge: On Track
+- Subtitle: Protected Duplex Reserve
+- Progress bar
+
+Metrics:
+
+- Target
+- Weekly Contribution
+- Timeline
+- Est. Completion
+
+
+SUMMARY CARDS
+
+- Total Saved
+- Duplex Fund
+- Capital OS Balance
+- Opportunity Reserve
+- Goal Progress
+
+
+WEEKLY CAPITAL ALLOCATION CARD
+
+Show a donut chart with:
+
+- Duplex Reserve
+- Capital OS
+- Opportunity Reserve
+
+
+CONTRIBUTIONS OVER TIME CHART
+
+Line/area chart with timeline filters.
+
+
+CAPITAL PROTECTION OVERVIEW
+
+Show:
+
+- Protected Capital
+- Active Capital
+
+
+CAPITAL OS ENGINE CARD
+
+Show:
+
+- Paper strategies
+- Micro-live strategies
+- Approved strategies
+- Confidence Score
+- Strategy table
+
+
+RISK GOVERNOR CARD
+
+Show:
+
+- Max Weekly Risk
+- Protected Capital Lock
+- AI Recommendations = Advisory Only
+
+
+PROPERTY READINESS CARD
+
+Show step progress for:
+
+- Down Payment Fund
+- Closing Cost Reserve
+- Credit Readiness
+- Target Market Research
+
+
+RECENT ACTIVITY FEED
+
+Display recent events.
+
+
+--------------------------------------------------
+2. GOALS PAGE
+--------------------------------------------------
+
+Design a dedicated goals-management page.
+
+
+PURPOSE
+
+Show all major wealth goals in one place.
+
+
+INCLUDE
+
+Goal cards for:
+
+- First Duplex Acquisition
+- Emergency Reserve
+- Opportunity Reserve
+- Future 4-Plex Goal
+
+Each goal card should show:
+
+- current amount
+- target amount
+- progress %
+- due date / timeline
+- weekly contribution
+- status badge
+
+Also include:
+
+- Comparison chart of all goals
+- Contribution planner section
+- Goal Priority section
+- Protected vs Flexible capital indicators
+
+CTA buttons:
+
+- Edit Goal
+- Increase Contribution
+- Reallocate Funds
+
+The duplex goal should be the primary featured goal.
+
+
+--------------------------------------------------
+3. STRATEGIES PAGE
+--------------------------------------------------
+
+Design this page as a clean strategy management interface.
+
+
+PURPOSE
+
+Track experimental and approved strategies without looking like a dark trading platform.
+
+
+INCLUDE
+
+Header with:
+
+- Strategy Overview
+- total active strategies
+- confidence score
+
+Strategy cards/table for:
+
+- Dual-Spread Market Making
+- Prediction Market Relative Value
+- Funding/Basis Test
+- Treasury Yield Parking
+
+Each strategy should show:
+
+- strategy type
+- stage
+- allocation
+- status
+- expected edge
+- drawdown
+- confidence score
+- risk level
+- runtime
+
+
+STRATEGY STAGES
+
+- Research
+- Backtest
+- Shadow
+- Paper
+- Micro-Live
+- Approved
+- Production
+
+Also include:
+
+- Visual Strategy Graduation pipeline
+- AI CIO Recommendations panel
+- Capital Confidence Score module
+- A card showing why a strategy is allowed or not allowed to scale
+
+Keep everything clean, light, and easy to understand.
+
+
+--------------------------------------------------
+4. PORTFOLIO PAGE
+--------------------------------------------------
+
+Design a portfolio page focused on total family capital.
+
+
+INCLUDE SECTIONS FOR
+
+- Total Net Worth
+- Liquid Capital
+- Protected Capital
+- Active Capital
+- Real Assets
+- Cash / Treasury
+- Strategy Capital
+- Duplex Fund Progress
+
+
+WIDGETS
+
+- Asset allocation chart
+- Portfolio breakdown by category
+- Capital growth over time chart
+- Protected vs active capital comparison
+- Monthly performance summary
+- Capital allocation table
+- Cash reserve health
+
+
+CATEGORIES
+
+Portfolio should visually break down:
+
+- Duplex Reserve
+- Opportunity Reserve
+- Capital OS
+- Cash/Treasury
+- Property Equity
+- Strategy Capital
+
+Use easy-to-understand charts and family-office style presentation.
+
+
+--------------------------------------------------
+5. PROPERTIES PAGE
+--------------------------------------------------
+
+Design a property planning and acquisition page.
+
+
+INCLUDE
+
+- Featured card for Target Duplex
+- Property readiness checklist
+- Buy box criteria
+- Market shortlist
+- Estimated down payment needed
+- Closing cost tracker
+- Credit readiness section
+- Property notes / research area
+- Acquisition timeline
+- Comparison cards for a few target markets
+
+
+SUGGESTED SUBSECTIONS
+
+- Readiness Score
+- Target Markets
+- Acquisition Budget
+- Savings Milestones
+- Notes and Documents
+
+This page should feel practical and motivating.
+
+
+--------------------------------------------------
+6. RISK PAGE
+--------------------------------------------------
+
+Design a clear risk-control dashboard.
+
+
+PURPOSE
+
+Make risk understandable and reassuring.
+
+
+INCLUDE
+
+- Global Risk Status
+- Protected Capital Lock
+- Max Weekly Risk
+- Max Active Exposure
+- Strategy Limits
+- Emergency Stop state
+- Venue/Strategy health status
+- Risk events history
+- Safeguards list
+- Loss limits
+- Capital protection rules
+- AI authority limitations
+
+
+VISUAL MODULES
+
+- risk score cards
+- gauge indicators
+- status badges
+- system health cards
+- event timeline
+- rule cards
+
+Important:
+Make this page feel like capital protection, not fear.
+
+
+--------------------------------------------------
+7. SETTINGS PAGE
+--------------------------------------------------
+
+Design a user-friendly settings page.
+
+
+INCLUDE SECTIONS FOR
+
+- Profile
+- Family Account
+- Notifications
+- Contribution Rules
+- Goal Rules
+- Capital Protection Preferences
+- Strategy Permissions
+- AI Recommendation Settings
+- Linked Accounts
+- Documents & Reports
+- Security
+
+
+INCLUDE CONTROLS FOR
+
+- weekly contribution amount
+- allocation split
+- risk preferences
+- whether AI is advisory only
+- property goal settings
+- alerts and reminders
+
+
+--------------------------------------------------
+REUSABLE COMPONENTS
+--------------------------------------------------
+
+Create a reusable component system for the entire UI.
+
+Include components such as:
+
+- AppShell / layout
+- Sidebar
+- TopNav
+- PageHeader
+- MetricCard
+- ProgressCard
+- GoalCard
+- StrategyCard
+- PropertyCard
+- RiskCard
+- ActivityFeed
+- DonutChartCard
+- LineChartCard
+- Table
+- StatusBadge
+- PillTag
+- EmptyState
+- StepProgress
+- QuickActionButton
+- SectionContainer
+- InfoTooltip
+
+
+--------------------------------------------------
+UX REQUIREMENTS
+--------------------------------------------------
+
+MUST-HAVES
+
+- Responsive desktop-first design
+- Tablet-friendly layout
+- Good mobile behavior where practical
+- Smooth hover states
+- Elegant transitions
+- Clear hierarchy
+- Clean typography
+- No clutter
+- No dark sections
+- No crypto-bro aesthetic
+- No flashy or aggressive red/green trading look
+
+
+COPY TONE
+
+Use copy that feels:
+
+- encouraging
+- intelligent
+- disciplined
+- family-oriented
+- long-term focused
+
+Example tone:
+
+“Protected capital is ring-fenced and not used for experiments.”
+
+“Building our future, one intentional step at a time.”
+
+“Advisory only — you remain in control.”
+
+
+--------------------------------------------------
+DATA REQUIREMENTS
+--------------------------------------------------
+
+Use realistic mock data throughout the UI.
+
+Key mock concept:
+
+User contributes $250 per week.
+
+Primary goal is saving over 52 weeks.
+
+Default split:
+
+- $200/week Duplex Reserve
+- $25/week Capital OS
+- $25/week Opportunity Reserve
+
+Use the duplex acquisition narrative consistently across pages.
+
+
+--------------------------------------------------
+TECH REQUIREMENTS
+--------------------------------------------------
+
+Build this in a clean modern frontend stack suitable for Replit.
+
+Preferred:
+
+- React
+- Next.js or Vite
+- TypeScript
+- Tailwind CSS
+- shadcn/ui style component patterns or equivalent clean component system
+- Recharts or equivalent for charts
+- Lucide icons or equivalent
+
+
+IMPORTANT
+
+- Focus on UI/UX first
+- Use mock data
+- No backend required yet unless needed for structure
+- Organize code cleanly
+- Make components reusable
+- Use a maintainable folder structure
+
+
+--------------------------------------------------
+DELIVERABLES
+--------------------------------------------------
+
+I want:
+
+1. A complete multi-page UI prototype
+
+2. Clean reusable components
+
+3. Cohesive design system
+
+4. Mock data integrated across pages
+
+5. Responsive layouts
+
+6. A polished visual presentation suitable for a production financial application
+
+
+--------------------------------------------------
+FINAL INSTRUCTION
+--------------------------------------------------
+
+Use the approved first Capital OS dashboard design in this chat as the visual anchor and extend it into a full product UI system.
+
+Maintain:
+
+- the same light premium aesthetic
+- the same calm family capital tone
+- the same emphasis on protected savings
+- disciplined strategy use
+- duplex acquisition planning
+
+Do not redesign from scratch in a different style.
+
+Instead, evolve the approved dashboard into a full application.

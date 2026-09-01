@@ -1,0 +1,1487 @@
+Capital OS — Design System Specification
+
+1. Design Principle
+
+Capital OS should feel like a premium family-office and wealth-management platform.
+
+The interface must communicate:
+
+- Capital protection
+- Discipline
+- Trust
+- Progress
+- Long-term wealth building
+- Simplicity
+- Financial control
+
+Capital OS must never visually resemble:
+
+- A casino
+- A crypto exchange
+- A dark trading terminal
+- A meme-stock application
+- A high-pressure day-trading platform
+
+The application should feel understandable to both sophisticated investors and non-technical family members.
+
+---
+
+2. Theme
+
+Capital OS uses a LIGHT THEME ONLY.
+
+Never create:
+
+- Black backgrounds
+- Charcoal panels
+- Dark navy page backgrounds
+- Neon colors
+- Glowing trading charts
+- Aggressive red/green candlestick styling
+
+Primary application background:
+
+"#F7F9FC"
+
+Primary card background:
+
+"#FFFFFF"
+
+Secondary soft background:
+
+"#F3F7FB"
+
+Protected-capital background:
+
+"#F2FBF5"
+
+Active-capital background:
+
+"#F2F7FF"
+
+Warning background:
+
+"#FFF9EB"
+
+Critical-light background:
+
+"#FFF4F4"
+
+Lavender information background:
+
+"#F7F3FF"
+
+---
+
+3. Core Color Palette
+
+Primary Blue
+
+Main brand blue:
+
+"#2563EB"
+
+Use for:
+
+- Capital OS logo
+- Active navigation
+- Primary buttons
+- Active capital
+- Links
+- Selected filters
+- Main contribution chart
+
+Secondary blue:
+
+"#3B82F6"
+
+Soft blue:
+
+"#DBEAFE"
+
+Very soft blue:
+
+"#EFF6FF"
+
+---
+
+Protected Capital Green
+
+Primary green:
+
+"#16A34A"
+
+Secondary green:
+
+"#22C55E"
+
+Soft green:
+
+"#DCFCE7"
+
+Very soft green:
+
+"#F0FDF4"
+
+Use green for:
+
+- Protected capital
+- Goal progress
+- Successful contributions
+- Positive system health
+- Completed property milestones
+- Approved safeguards
+- On-track status
+
+Do not use green merely because an investment generated a positive trade.
+
+Green primarily communicates HEALTH, PROTECTION, and PROGRESS.
+
+---
+
+Opportunity Lavender
+
+Primary lavender:
+
+"#8B5CF6"
+
+Secondary lavender:
+
+"#A78BFA"
+
+Soft lavender:
+
+"#EDE9FE"
+
+Very soft lavender:
+
+"#F5F3FF"
+
+Use for:
+
+- Opportunity Reserve
+- Research
+- Experimental strategies
+- Property research
+- AI recommendations
+- Informational modules
+
+---
+
+Amber / Gold
+
+Primary amber:
+
+"#F59E0B"
+
+Soft amber:
+
+"#FEF3C7"
+
+Very soft amber:
+
+"#FFFBEB"
+
+Use sparingly for:
+
+- Attention
+- Goal milestones
+- Moderate warnings
+- Upcoming deadlines
+- Review-required states
+
+---
+
+Risk Red
+
+Primary risk red:
+
+"#DC2626"
+
+Soft risk red:
+
+"#FEE2E2"
+
+Very soft risk red:
+
+"#FEF2F2"
+
+Red must be reserved for:
+
+- Hard risk violations
+- Emergency stop
+- Failed reconciliation
+- Capital protection breach
+- Critical system failures
+
+Do not overuse red.
+
+---
+
+4. Neutral Colors
+
+Primary text:
+
+"#111827"
+
+Secondary text:
+
+"#4B5563"
+
+Muted text:
+
+"#6B7280"
+
+Very muted text:
+
+"#9CA3AF"
+
+Borders:
+
+"#E5E7EB"
+
+Soft borders:
+
+"#EDF0F4"
+
+Divider:
+
+"#EEF2F7"
+
+Never use pure black.
+
+---
+
+5. Typography
+
+Preferred font:
+
+Inter
+
+Fallback:
+
+"Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif"
+
+Typography should be clean and highly readable.
+
+---
+
+Page Title
+
+Desktop:
+
+32px
+
+Weight:
+
+700
+
+Line height:
+
+1.2
+
+Example:
+
+First Duplex Acquisition
+
+---
+
+Section Heading
+
+20–22px
+
+Weight:
+
+600–700
+
+---
+
+Card Heading
+
+15–17px
+
+Weight:
+
+600
+
+---
+
+Metric Value
+
+24–32px
+
+Weight:
+
+600–700
+
+Example:
+
+$8,997.50
+
+---
+
+Metric Label
+
+12–14px
+
+Weight:
+
+500
+
+Color:
+
+Muted text
+
+---
+
+Standard Body
+
+14px
+
+Weight:
+
+400
+
+Line height:
+
+1.5–1.6
+
+---
+
+Small Metadata
+
+11–12px
+
+Weight:
+
+400–500
+
+---
+
+6. Spacing System
+
+Use an 8px-based spacing system.
+
+Core spacing:
+
+4px
+8px
+12px
+16px
+24px
+32px
+40px
+48px
+64px
+
+Standard card padding:
+
+24px
+
+Small card padding:
+
+16px–20px
+
+Page horizontal padding:
+
+Desktop:
+
+32px
+
+Large desktop:
+
+40px
+
+Tablet:
+
+24px
+
+Mobile:
+
+16px
+
+Section spacing:
+
+24px–32px
+
+---
+
+7. Border Radius
+
+Capital OS should feel modern and approachable.
+
+Small controls:
+
+8px
+
+Buttons:
+
+10px
+
+Standard cards:
+
+14px
+
+Large cards:
+
+16px
+
+Hero cards:
+
+18px
+
+Pills:
+
+999px
+
+Do not make everything excessively rounded.
+
+---
+
+8. Shadows
+
+Use extremely subtle shadows.
+
+Standard card shadow:
+
+"0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03)"
+
+Hover shadow:
+
+"0 6px 18px rgba(15, 23, 42, 0.07)"
+
+Do not use:
+
+- Heavy drop shadows
+- Glows
+- Neon effects
+- Large floating shadows
+
+---
+
+9. Card System
+
+Every card should follow a common structure.
+
+Standard card:
+
+- White background
+- 1px subtle border
+- 14px radius
+- 20–24px padding
+- Optional icon
+- Clear heading
+- One dominant piece of information
+- Supporting metadata beneath
+
+Avoid placing too many competing metrics inside one card.
+
+---
+
+10. Metric Cards
+
+Example:
+
+Total Saved
+$8,997.50
++$497.50 this month
+
+Structure:
+
+1. Small icon
+2. Metric label
+3. Large metric
+4. Small contextual change
+
+Metrics should feel calm rather than flashy.
+
+Do not animate dollar values aggressively.
+
+---
+
+11. Status Badge System
+
+On Track
+
+Green background:
+
+"#DCFCE7"
+
+Green text:
+
+"#15803D"
+
+---
+
+Protected
+
+Green
+
+Optional shield icon.
+
+---
+
+Active
+
+Blue
+
+---
+
+Research
+
+Lavender
+
+---
+
+Paper
+
+Soft blue
+
+---
+
+Shadow
+
+Lavender
+
+---
+
+Micro-Live
+
+Soft green
+
+---
+
+Approved
+
+Green
+
+---
+
+Production
+
+Blue-green
+
+---
+
+Warning
+
+Amber
+
+---
+
+Critical
+
+Red
+
+---
+
+Paused
+
+Neutral gray
+
+---
+
+12. Button System
+
+Primary Button
+
+Background:
+
+"#2563EB"
+
+Text:
+
+White
+
+Height:
+
+40–44px
+
+Examples:
+
+Make Contribution
+Add Goal
+Save Changes
+
+---
+
+Secondary Button
+
+White background
+
+Blue text
+
+1px light-blue border
+
+---
+
+Positive Action
+
+Green
+
+Only for actions involving:
+
+- Completing a goal
+- Confirming a protected transfer
+- Approving a verified milestone
+
+---
+
+Destructive Button
+
+Red
+
+Examples:
+
+Emergency Stop
+Delete Goal
+Disable Strategy
+
+Destructive buttons should not visually dominate ordinary pages.
+
+---
+
+13. Navigation
+
+Top Navigation
+
+White background.
+
+Thin bottom border.
+
+Current section:
+
+- Blue icon
+- Blue text
+- Thin blue underline
+
+Inactive sections:
+
+Muted gray.
+
+---
+
+Left Sidebar
+
+White or very light gray.
+
+Active item:
+
+Soft blue background.
+
+Blue icon.
+
+Blue text.
+
+Rounded container.
+
+Avoid dark sidebar designs.
+
+---
+
+14. Charts
+
+Charts must remain simple and understandable.
+
+Primary chart line:
+
+Blue.
+
+Secondary:
+
+Green.
+
+Third:
+
+Lavender.
+
+Fourth:
+
+Amber.
+
+Avoid more than four or five visually competing series.
+
+---
+
+Line Charts
+
+Use:
+
+- Smooth or moderately curved lines
+- Small point markers only when useful
+- Light gridlines
+- Light area fill
+
+Never use bright gridlines.
+
+---
+
+Donut Charts
+
+Use for:
+
+- Weekly allocation
+- Asset allocation
+- Protected vs Active capital
+- Portfolio composition
+
+Center should contain the most important metric.
+
+---
+
+Risk Charts
+
+Use gauges, progress bars, and ranges more frequently than complex financial charts.
+
+---
+
+15. Protected Capital Visual Language
+
+Protected capital must have its own visual identity.
+
+Use:
+
+- Green shield
+- Lock icon
+- Very soft green background
+- “Protected” or “Locked” badge
+
+Example:
+
+Protected Duplex Reserve
+$7,181.25
+Locked
+
+Supporting text:
+
+Protected capital is ring-fenced and unavailable to experimental strategies.
+
+---
+
+16. Active Capital Visual Language
+
+Use blue.
+
+Example:
+
+Active Capital
+$1,816.25
+Working
+
+This means capital is authorized for productive deployment.
+
+Avoid language such as:
+
+“Betting capital”
+
+or:
+
+“Trading bankroll”
+
+---
+
+17. Strategy Stage Visual System
+
+Every strategy follows:
+
+Research
+→ Backtest
+→ Shadow
+→ Paper
+→ Micro-Live
+→ Approved
+→ Production
+
+Display as:
+
+- Horizontal stepper on desktop
+- Vertical stepper on mobile
+
+Completed stages:
+
+Green check.
+
+Current stage:
+
+Blue.
+
+Future stages:
+
+Neutral gray.
+
+Failed review:
+
+Amber or red depending severity.
+
+---
+
+18. Capital Confidence Score
+
+Display:
+
+0–100
+
+Example:
+
+78 / 100
+
+Add qualitative classification:
+
+0–49
+Research Only
+
+50–64
+Paper
+
+65–74
+Micro-Live
+
+75–84
+Limited Capital
+
+85–94
+Production
+
+95–100
+Scale Candidate
+
+The score must never appear as though it guarantees performance.
+
+Include a tooltip:
+
+Confidence reflects historical evidence, execution quality, system health, and risk controls. It is not a guarantee of future returns.
+
+---
+
+19. Risk Governor UI
+
+Risk should visually communicate protection.
+
+Primary risk widgets:
+
+- Protected Capital Lock
+- Max Active Capital
+- Maximum Drawdown
+- Loss Velocity
+- Strategy Exposure
+- Venue Health
+- Emergency Stop
+- Reconciliation Health
+- Market Data Health
+
+Health states:
+
+Healthy = green
+
+Review = amber
+
+Critical = red
+
+Paused = gray
+
+---
+
+20. Emergency Stop
+
+Emergency Stop should be visible on the Risk page but not constantly dominate the normal dashboard.
+
+Use a bordered red button:
+
+EMERGENCY STOP
+
+Clicking it opens a confirmation modal.
+
+Modal must explain:
+
+This action stops new automated orders and begins the configured capital-protection procedure.
+
+Require explicit confirmation.
+
+Do not make accidental activation easy.
+
+---
+
+21. AI CIO Visual Language
+
+AI CIO should appear as an advisor.
+
+Use lavender or soft blue.
+
+Never visually imply that AI controls the user's capital directly.
+
+Required language:
+
+Advisory Only
+
+or:
+
+Recommendation Pending Approval
+
+AI CIO cards should contain:
+
+Recommendation
+Reason
+Risk impact
+Expected benefit
+Evidence
+Accept
+Reject
+
+---
+
+22. Duplex Goal Visual Identity
+
+The duplex goal is currently the flagship capital objective.
+
+Use:
+
+- House icon
+- Green progress
+- Property image
+- Clear target amount
+- Contribution pace
+- Expected completion
+- Protected status
+
+Hero examples:
+
+First Duplex Acquisition
+
+Protected Duplex Reserve
+
+Target: $13,000
+
+Weekly Contribution: $250
+
+Timeline: 52 Weeks
+
+---
+
+23. Property Readiness System
+
+Display property readiness as milestone cards.
+
+Recommended stages:
+
+1. Down Payment Fund
+2. Closing Cost Reserve
+3. Credit Readiness
+4. Market Selection
+5. Financing Readiness
+6. Property Search
+7. Offer Readiness
+8. Acquisition
+
+Each stage should show:
+
+Current status
+
+Target
+
+Progress
+
+Required next action
+
+---
+
+24. Capital Allocation Interface
+
+Weekly Capital Allocation should always clearly show how money is split.
+
+Default example:
+
+Duplex Reserve
+$200/week
+80%
+
+Capital OS
+$25/week
+10%
+
+Opportunity Reserve
+$25/week
+10%
+
+Total:
+
+$250/week
+
+Any change to allocation must show BEFORE and AFTER values.
+
+Example:
+
+Current Duplex Contribution:
+
+$200/week
+
+Proposed:
+
+$175/week
+
+Impact:
+
+Projected duplex completion delayed approximately X weeks.
+
+This impact preview is essential.
+
+---
+
+25. Transaction UI
+
+Transactions should categorize movement as:
+
+Contribution
+
+Transfer
+
+Protected Reserve
+
+Strategy Allocation
+
+Strategy Return
+
+Withdrawal
+
+Property Expense
+
+Closing Expense
+
+Income
+
+Refund
+
+Each transaction should display:
+
+Date
+Description
+Account
+Category
+Amount
+Status
+
+---
+
+26. Activity Feed
+
+Activity items should have:
+
+Icon
+
+Headline
+
+Short supporting context
+
+Timestamp
+
+Examples:
+
+Weekly contribution deposited
+
+$250 received.
+
+Goal progress updated
+
+First Duplex Acquisition reached 31%.
+
+Strategy entered Shadow stage
+
+Funding/Basis Test passed backtest requirements.
+
+Risk Governor blocked allocation increase
+
+Protected capital threshold would have been violated.
+
+---
+
+27. Empty States
+
+Avoid blank screens.
+
+Example:
+
+No production strategies yet.
+
+Supporting text:
+
+Strategies must graduate through validation before receiving production capital.
+
+CTA:
+
+View Strategy Pipeline
+
+---
+
+28. Information Tooltips
+
+Use small “i” icons for financial terminology.
+
+Examples:
+
+Expected Edge
+
+Maximum Drawdown
+
+Confidence Score
+
+Protected Capital
+
+Strategy Capacity
+
+Adverse Selection
+
+Tooltips should explain terminology in plain English.
+
+---
+
+29. Motion
+
+Use subtle animation only.
+
+Allowed:
+
+- 150–250ms hover transitions
+- Progress bar animation
+- Subtle chart entrance
+- Smooth modal transitions
+- Sidebar collapse
+
+Avoid:
+
+- Flashing numbers
+- Constantly pulsing P&L
+- Casino-style animations
+- Confetti for trading profits
+
+A major goal achievement may use tasteful celebratory animation.
+
+---
+
+30. Responsive Rules
+
+Desktop
+
+Sidebar + top navigation.
+
+Three-column dashboard where appropriate.
+
+---
+
+Tablet
+
+Sidebar collapses to icons or drawer.
+
+Cards reduce to two columns.
+
+---
+
+Mobile
+
+Single-column layout.
+
+Top nav becomes compact.
+
+Important information order:
+
+1. Goal progress
+2. Total saved
+3. Protected capital
+4. Weekly allocation
+5. Contributions
+6. Property readiness
+7. Strategies
+8. Risk status
+9. Activity
+
+---
+
+31. Accessibility
+
+Meet WCAG AA contrast targets.
+
+All controls should support keyboard navigation.
+
+Do not rely exclusively on color for status.
+
+Use:
+
+- Icons
+- Labels
+- Text status
+
+Example:
+
+Green dot + “Healthy”
+
+rather than only a green dot.
+
+---
+
+32. Icon System
+
+Use Lucide icons consistently.
+
+Suggested mappings:
+
+Dashboard = LayoutDashboard
+
+Goals = Target
+
+Strategies = TrendingUp
+
+Portfolio = PieChart
+
+Properties = House
+
+Risk = ShieldCheck
+
+Settings = Settings
+
+Protected Capital = Shield
+
+Locked = Lock
+
+Contribution = CircleDollarSign
+
+AI CIO = Sparkles
+
+Opportunity = Lightbulb
+
+Documents = FileText
+
+Reports = BarChart3
+
+---
+
+33. Component Naming
+
+Recommended reusable components:
+
+AppShell
+
+TopNavigation
+
+SidebarNavigation
+
+PageHeader
+
+MetricCard
+
+GoalHeroCard
+
+GoalCard
+
+CapitalAllocationCard
+
+ProtectedCapitalCard
+
+ActiveCapitalCard
+
+ContributionChart
+
+PortfolioChart
+
+StrategyCard
+
+StrategyTable
+
+StrategyStageStepper
+
+ConfidenceScore
+
+RiskGovernor
+
+RiskStatusCard
+
+PropertyReadiness
+
+PropertyCard
+
+ActivityFeed
+
+TransactionTable
+
+AIRecommendationCard
+
+StatusBadge
+
+ProgressBar
+
+InfoTooltip
+
+ConfirmationModal
+
+EmergencyStopModal
+
+---
+
+34. Page Width
+
+Maximum primary content width:
+
+1600px
+
+Center content on extremely wide displays.
+
+Do not stretch charts across massive monitors.
+
+---
+
+35. Dashboard Information Hierarchy
+
+The dashboard should answer these questions in order:
+
+1. Are we on track for the duplex?
+2. How much money have we saved?
+3. How much is protected?
+4. Where is this week's $250 going?
+5. Is Capital OS operating safely?
+6. Are any strategies working?
+7. Are we financially ready to buy?
+8. What happened recently?
+
+If the interface cannot answer those questions within seconds, simplify it.
+
+---
+
+36. Core Terminology
+
+Use:
+
+Protected Capital
+
+Active Capital
+
+Capital Allocation
+
+Capital OS Engine
+
+Strategy
+
+Capital Confidence
+
+Risk Governor
+
+Duplex Reserve
+
+Opportunity Reserve
+
+AI CIO
+
+Property Readiness
+
+Do not use unnecessarily aggressive terminology such as:
+
+Bet
+
+Moon
+
+Gamble
+
+YOLO
+
+Degenerate
+
+Trading bankroll
+
+Alpha machine
+
+Money printer
+
+---
+
+37. Design Consistency Rule
+
+Every new Capital OS screen must look like it belongs to the approved original dashboard.
+
+Before completing a new page, verify:
+
+- Same light visual language
+- Same card radii
+- Same shadows
+- Same typography
+- Same navigation
+- Same status colors
+- Same icon family
+- Same spacing system
+- Same family-office tone
+- No dark theme elements
+
+Do not independently redesign individual pages.
+
+Capital OS must feel like ONE product.
+
+---
+
+38. Replit Implementation Rule
+
+Create design tokens instead of hard-coding styles repeatedly.
+
+Use Tailwind theme variables or CSS custom properties for:
+
+- colors
+- borders
+- radius
+- shadows
+- spacing
+- typography
+
+Example:
+
+--color-primary
+
+--color-protected
+
+--color-opportunity
+
+--color-warning
+
+--color-critical
+
+--surface-page
+
+--surface-card
+
+--border-default
+
+--radius-card
+
+--shadow-card
+
+Every reusable component should use these tokens.
+
+---
+
+39. Current Product Priority
+
+Capital OS development priority:
+
+1. Duplex goal
+2. Capital protection
+3. Weekly contribution discipline
+4. Property readiness
+5. Portfolio visibility
+6. Strategy validation
+7. AI recommendations
+8. Trading performance
+
+The UI must reinforce this hierarchy.
+
+Trading should never visually dominate the application.
+
+---
+
+40. Final Design Standard
+
+The finished product should feel as though a modern private bank, family office, and high-quality personal-finance SaaS platform were combined into one simple application.
+
+A spouse should be able to open Capital OS and immediately understand:
+
+- how much has been saved
+- how close the family is to acquiring the duplex
+- how the weekly $250 is being used
+- what capital is protected
+- what capital is being experimented with
+- whether the system is operating safely
+- what needs to happen next
+
+This clarity is the primary design objective.

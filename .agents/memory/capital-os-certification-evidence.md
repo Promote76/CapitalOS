@@ -34,3 +34,14 @@ safe mass-assignment defense as an IDOR failure.
 **How to apply:** Require foreign/malformed rejection for path identifiers, but for
 parameterless writes assert no foreign identifiers or server-owned values are
 returned or persisted.
+
+Certification runners that support recorded evidence must parse explicit per-gate
+result sections and use them only when no fresh isolated rerun was requested; a
+missing optional certification environment must not erase already certified gates.
+
+**Why:** The candidate runner initially reported seven open gates after the
+authenticated browser fixes because it only understood the prior failure wording
+and treated absent optional rerun variables as loss of all prior fixture evidence.
+
+**How to apply:** Prefer fresh execution results, fail on a requested rerun failure,
+and otherwise consume only explicit `PASS` evidence for each individual P0 gate.

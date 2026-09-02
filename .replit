@@ -25,5 +25,3 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-VITE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_RTGCAko_FDgfSH6yiRTczg_rbzRUY98"
-VITE_SUPABASE_URL = "https://wnzhwfxcncffrwzdejxe.supabase.co"

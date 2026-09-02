@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Capital OS — Executive Summary & Technical White Paper</title>
+  <style>
+    :root{--ink:#18322e;--muted:#58706b;--line:#d9e6e1;--soft:#f3f8f6;--mint:#dff1e9;--blue:#e8f0ff;--amber:#fff4da;--red:#fff0ed;--accent:#236b59}
+    *{box-sizing:border-box} body{margin:0;background:#edf3f1;color:var(--ink);font:15px/1.62 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .page{max-width:1040px;margin:30px auto;background:#fff;box-shadow:0 18px 60px #17352a18}
+    .cover{padding:72px 78px 64px;background:linear-gradient(135deg,#12382f,#1f6353);color:#fff;min-height:510px;display:flex;flex-direction:column;justify-content:space-between}
+    .eyebrow{text-transform:uppercase;letter-spacing:.16em;font-size:11px;font-weight:800;color:#86cdb5}.cover h1{font-size:58px;line-height:1;letter-spacing:-.06em;max-width:710px;margin:24px 0 18px}.cover .dek{font-size:22px;line-height:1.35;max-width:710px;color:#d8ece5;margin:0}.cover-meta{border-top:1px solid #ffffff40;padding-top:20px;display:flex;gap:34px;color:#c5e0d6;font-size:13px}.cover-meta strong{display:block;color:#fff;font-size:14px;margin-bottom:3px}
+    .content{padding:52px 78px 80px}.section{margin-top:48px}.section:first-child{margin-top:0}h2{font-size:30px;line-height:1.12;letter-spacing:-.035em;margin:0 0 16px}h3{font-size:19px;margin:28px 0 8px;line-height:1.25}h4{margin:18px 0 5px;font-size:15px}p{margin:9px 0;color:#294740}ul,ol{padding-left:23px;color:#294740}li{margin:5px 0}.lead{font-size:19px;line-height:1.55;color:#294740;max-width:850px}
+    .rule{height:1px;background:var(--line);margin:32px 0}.callout{border:1px solid var(--line);border-left:5px solid var(--accent);background:var(--soft);padding:16px 18px;border-radius:8px;margin:20px 0}.callout strong{color:var(--ink)}.callout.warning{border-left-color:#d49327;background:var(--amber)}.callout.danger{border-left-color:#c85543;background:var(--red)}.callout.blue{border-left-color:#4777ca;background:var(--blue)}
+    .status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.status-card{border:1px solid var(--line);border-radius:10px;padding:17px;background:#fff}.status-card .label{font-size:11px;text-transform:uppercase;letter-spacing:.12em;font-weight:800;color:var(--muted)}.status-card h3{margin:7px 0 5px;font-size:20px}.status-card p{font-size:13px;margin:0}.status-card.green{background:var(--mint);border-color:#c4e4d7}.status-card.amber{background:var(--amber);border-color:#f0dfb3}.status-card.red{background:var(--red);border-color:#efcfc8}
+    table{border-collapse:collapse;width:100%;margin:18px 0;font-size:13px}th{text-align:left;background:#eef5f2;color:#355a50;font-size:11px;text-transform:uppercase;letter-spacing:.08em}th,td{border:1px solid var(--line);padding:10px 11px;vertical-align:top}td:first-child{font-weight:700;white-space:nowrap}.tag{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:800;background:var(--mint);color:#21604e}.tag.amber{background:var(--amber);color:#8b5b13}.tag.red{background:var(--red);color:#9d3d30}.tag.blue{background:var(--blue);color:#365da2}
+    .diagram{background:#102f29;color:#e0f2eb;border-radius:10px;padding:22px;margin:20px 0;font:13px/1.8 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap}.diagram b{color:#a9e4ce}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:26px}.mini{background:var(--soft);border:1px solid var(--line);border-radius:9px;padding:16px}.mini h3{margin:0 0 7px;font-size:17px}.mini p{font-size:13px;margin:0}
+    .footnotes{font-size:12px;color:var(--muted)}.footnotes li{margin:3px 0}.source{color:#3d6a5e;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+    .footer{margin-top:55px;border-top:1px solid var(--line);padding-top:18px;color:var(--muted);font-size:12px;display:flex;justify-content:space-between}
+    @media(max-width:760px){.page{margin:0;box-shadow:none}.cover{padding:42px 24px;min-height:480px}.cover h1{font-size:42px}.cover .dek{font-size:18px}.cover-meta{gap:16px;flex-wrap:wrap}.content{padding:35px 24px 55px}.status-grid,.two{grid-template-columns:1fr}h2{font-size:26px}table{display:block;overflow:auto;white-space:normal}.diagram{font-size:11px;overflow:auto}}
+    @media print{body{background:#fff}.page{margin:0;box-shadow:none;max-width:none}.cover{min-height:245mm;page-break-after:always}.section{break-inside:avoid}.content{padding:30px 50px}.footer{display:none}}
+  </style>
+</head>
+<body>
+<main class="page">
+  <header class="cover">
+    <div>
+      <div class="eyebrow">Capital OS · family capital operating system</div>
+      <h1>Executive Summary &amp; Technical White Paper</h1>
+      <p class="dek">A current-state review of the product, architecture, financial safety model, governance boundaries, and remaining production gaps.</p>
+    </div>
+    <div class="cover-meta">
+      <div><strong>Review date</strong>September 1, 2026</div>
+      <div><strong>Review basis</strong>Current repository, checked-in docs, generated contracts, and running workflows</div>
+      <div><strong>Document status</strong>Internal product and engineering reference</div>
+    </div>
+  </header>
+
+  <div class="content">
+    <section class="section">
+      <div class="eyebrow">01 · Executive summary</div>
+      <h2>Capital OS turns household surplus into governed, purpose-led capital.</h2>
+      <p class="lead">Capital OS is a light-theme family-capital workspace for disciplined saving, protected reserves, property acquisition planning, business-income separation, strategy research, Treasury allocation, and operational review. Its central idea is simple: household cash is not automatically deployable capital.</p>
+      <p>The product is organized around a first duplex acquisition funded by an approximately <strong>$250 weekly rhythm</strong>: <strong>$200</strong> to a protected Duplex Reserve, <strong>$25</strong> to Capital OS, and <strong>$25</strong> to an Opportunity Reserve. The interface presents a calm family-office control surface rather than a trading terminal. Green communicates protection and progress, blue active capital, lavender research/opportunity, amber review, and red critical safeguards.</p>
+      <div class="callout"><strong>Bottom line.</strong> The application has a credible safety-first foundation: exact-cents financial logic, PostgreSQL persistence, server-side governors, audit and idempotency concepts, operational approvals, a business-capital boundary, and a deliberately disabled Micro-Live execution boundary. It is not yet a production-grade multi-user financial platform because identity, tenant isolation, migration discipline, route-level integration coverage, and several user-facing workflows remain incomplete.</div>
+      <div class="status-grid">
+        <article class="status-card green"><div class="label">Strongly implemented</div><h3>Decision control plane</h3><p>Treasury, Capital Governor, property underwriting, strategy research, Operations, accounting views, and fail-closed Micro-Live state modeling.</p></article>
+        <article class="status-card amber"><div class="label">Partially implemented</div><h3>Product workflows</h3><p>Several pages are API-backed, while Goals, Portfolio, Risk, Settings, Reports, Documents, and utility views still rely heavily on local or presentation state.</p></article>
+        <article class="status-card red"><div class="label">Highest-priority gap</div><h3>Real identity</h3><p>Clerk packages and managed keys exist, but the request boundary still uses a seeded actor and a development role header path.</p></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="eyebrow">02 · Product overview</div>
+      <h2>One workspace for the household capital lifecycle.</h2>
+      <p>Capital OS links household finance to protected goals without collapsing their meanings. It can calculate, explain, remind, review, queue, and recommend. It intentionally does not move money, pay bills, sign contracts, connect a bank without an approved provider path, or enable trading.</p>
+      <table>
+        <thead><tr><th>Product area</th><th>Current purpose</th><th>Current state</th></tr></thead>
+        <tbody>
+          <tr><td>Overview / Dashboard</td><td>Household snapshot, goal pace, quick actions, and contribution rhythm.</td><td><span class="tag">API + fallback</span></td></tr>
+          <tr><td>Budget / Cash Flow</td><td>Planned versus actual spending, obligations, runway, forecast, and Safe-to-Deploy context.</td><td><span class="tag">API-backed</span></td></tr>
+          <tr><td>Accounts / Transactions</td><td>Manual, provider-neutral account and transaction context; CSV import exists on the API side.</td><td><span class="tag amber">Partial</span></td></tr>
+          <tr><td>Accounting</td><td>Authoritative net worth, balance sheet, capital statement, income, cash flow, liquidity, reconciliation, and confidence.</td><td><span class="tag">API-backed</span></td></tr>
+          <tr><td>Goals / Contributions</td><td>Purpose-led saving and weekly allocation around the duplex acquisition.</td><td><span class="tag amber">Mixed</span></td></tr>
+          <tr><td>Treasury</td><td>Capital buckets, policy hierarchy, liquidity ladder, stress tests, reservations, and human-reviewed capital requests.</td><td><span class="tag">API-backed</span></td></tr>
+          <tr><td>Properties</td><td>Buy box, candidate analysis, readiness, financing, cash-to-close, milestones, and acquisition planning.</td><td><span class="tag">Decision support</span></td></tr>
+          <tr><td>Business</td><td>Companies, ownership, business accounts, revenue, expenses, reserves, profit, distributions, and owned equity.</td><td><span class="tag">Current slice</span></td></tr>
+          <tr><td>Strategies / Strategy Lab</td><td>Research hypotheses, immutable versions, deterministic experiments, evidence, and graduation review.</td><td><span class="tag">Research-only</span></td></tr>
+          <tr><td>Micro-Live / OMS</td><td>Rehearsal, eligibility, pre-trade checks, lifecycle states, reconciliation, incident recovery, and human arming model.</td><td><span class="tag blue">Disabled by design</span></td></tr>
+          <tr><td>Operations</td><td>Tasks, approvals, alerts, safe automations, runs, and notification preferences.</td><td><span class="tag">API-backed</span></td></tr>
+          <tr><td>Insights / Intelligence</td><td>Advisory CIO-style summaries, recommendations, analyst evidence, and scenario planning.</td><td><span class="tag">Advisory</span></td></tr>
+          <tr><td>Portfolio / Risk / Settings</td><td>Allocation, safeguard, and configuration surfaces.</td><td><span class="tag amber">Mostly presentation</span></td></tr>
+          <tr><td>Reports / Documents</td><td>Navigation and review surfaces for future reporting and document workflows.</td><td><span class="tag amber">Presentation</span></td></tr>
+        </tbody>
+      </table>
+      <p class="footnotes">The route inventory is defined in <span class="source">artifacts/capital-os/src/App.tsx</span>. The application currently has 20+ navigable user-facing destinations, all sharing one responsive shell.</p>
+    </section>
+
+    <section class="section">
+      <div class="eyebrow">03 · Current implementation state</div>
+      <h2>What is real, what is intentionally bounded, and what still needs productization.</h2>
+      <div class="two">
+        <article class="mini"><h3>Data-backed foundation</h3><p>PostgreSQL and Drizzle are the source of truth for household, capital, finance, Treasury, property, strategy, governance, operations, business, and Micro-Live records. Generated OpenAPI clients and Zod schemas connect the React UI to the Express API.</p></article>
+        <article class="mini"><h3>Demo and review surfaces</h3><p>The approved UI remains usable when a backend read is unavailable, but local fallback data and feedback-only buttons can make a presentation surface look more complete than its persistence path.</p></article>
+        <article class="mini"><h3>Business Engine slice</h3><p>The current Business page and API separate operating-company revenue, expenses, reserves, cash, owner pay, distributions, and ownership-adjusted equity. Distribution requests are review-only and reserve floors are enforced.</p></article>
+        <article class="mini"><h3>Development identity</h3><p>Development defaults to the seeded Morgan household owner and can exercise role paths with <span class="source">X-Household-Role</span>. Production defaults to viewer until an authenticated household identity bridge is implemented.</p></article>
+      </div>
+      <div class="callout warning"><strong>Interpretation rule.</strong> “Visible in the UI” does not always mean “persisted in PostgreSQL.” The most important examples are several Dashboard quick actions, some Portfolio/Risk/Settings actions, accounting review/export affordances, and the contribution display’s current tendency to label API contributions as Duplex Reserve.</div>
+    </section>
+
+    <section class="section">
+      <div class="eyebrow">04 · Technical white paper</div>
+      <h2>Architecture and system boundary</h2>
+      <p>Capital OS is a pnpm workspace with two primary runtime artifacts: a React/Vite web application and an Express API server. A separate mockup-sandbox artifact supports component previews and visual exploration.</p>
+      <div class="diagram"><b>Browser / React UI</b>
+          │ generated React Query client
+          ▼
+      <b>Express 5 API</b>  ── security headers · rate limit · CORS · write-origin boundary · pino logging
+          │ generated Zod request/response validation
+          ▼
+      <b>Domain services</b> ── finance · Treasury · property · strategy · business · accounting · OMS · governance
+          │ Drizzle transaction boundary
+          ▼
+      <b>PostgreSQL</b> ── household-scoped records · ledger · audit · idempotency · operational state
+          │
+          └── no bank credentials · no autonomous payments · no live venue transport · no blockchain submission</div>
+      <p>The API contract is defined in <span class="source">lib/api-spec/openapi.yaml</span>. Orval generates the React Query client in <span class="source">lib/api-client-react</span> and Zod schemas/types in <span class="source">lib/api-zod</span>. The intended path is documented as React UI → generated client → Express route → Zod validation → domain service → Drizzle/PostgreSQL → audit event.</p>
+
+      <h3>Data model</h3>
+      <p>The schema is organized by bounded financial and governance domains rather than by screens:</p>
+      <ul>
+        <li><strong>Identity and tenancy:</strong> users, households, members, roles, and household settings.</li>
+        <li><strong>Household finance:</strong> provider-neutral bank connection state, financial accounts, categories, signed transactions, recurring commitments, bills, upcoming expenses, income sources, reserves, and snapshots.</li>
+        <li><strong>Capital and ledger:</strong> internal capital accounts, goals, allocation rules, contributions, transfers, ledger transactions, and ledger entries.</li>
+        <li><strong>Treasury:</strong> prioritized buckets, policy, reservations, capital requests, health, liquidity ladders, and stress cases.</li>
+        <li><strong>Property:</strong> goals, markets, candidates, buy boxes, financing, preapproval records, documents, milestones, readiness, and underwriting.</li>
+        <li><strong>Strategy and intelligence:</strong> strategies, immutable versions, performance, experiments, journal entries, recommendations, insights, and feedback.</li>
+        <li><strong>Governance and operations:</strong> risk states/events, append-only audit events, idempotency keys, tasks, approvals, alerts, automations, runs, and preferences.</li>
+        <li><strong>Business:</strong> entities, ownership, business-linked accounts, revenue, expenses, reserves, and distributions.</li>
+        <li><strong>Micro-Live:</strong> policy, venue state, sessions, order intents/events, fills, positions, reconciliation, Guardian heartbeats, incidents, reviews, and reactivation requirements.</li>
+      </ul>
+      <p>Authoritative money uses PostgreSQL <span class="source">numeric(18,2)</span>. Service calculations convert validated decimal strings into integer cents and format back to decimal strings at the API boundary. Trading quantities and prices use a finer numeric scale. Calendar dates use date columns rather than timezone-shifting timestamps.</p>
+
+      <h3>Household finance and Safe-to-Deploy</h3>
+      <p>Household finance is deliberately read-only with respect to external institutions. Manual entry and CSV-first workflows are provider-neutral. The Capital Governor is the boundary between household context and deployable internal capital.</p>
+      <ul>
+        <li>Safe-to-Deploy is clamped at zero.</li>
+        <li>It is reduced by bills, essential expenses, emergency-reserve shortfall, protected-goal commitments, known upcoming expenses, and the configured safety buffer.</li>
+        <li>It is additionally bounded by the Governor’s maximum deployable percentage and confidence in the underlying data.</li>
+        <li>Protected capital stays ring-fenced and cannot fund experimental allocation while the protected lock is active.</li>
+        <li>Household finance cannot ACH, pay bills, trade, or store bank credentials. The Plaid adapter is disabled until an approved connection exists.</li>
+      </ul>
+
+      <h3>Treasury and capital governance</h3>
+      <p>Treasury models a hierarchy of obligations, operating cash, emergency reserve, protected duplex capital, closing costs, opportunity reserve, liquid Treasury, and validated strategy capital. It calculates health, utilization, liquidity coverage, emergency coverage, stress outcomes, reservations, and safe deployment. Capital requests are submitted for human decision; they do not pull funds directly.</p>
+      <p>The Capital Governor enforces minimum cash, active-capital and strategy-allocation limits, protected-capital locks, weekly risk and drawdown ceilings, and emergency stop state. The UI explains these decisions rather than treating a recommendation as authority.</p>
+
+      <h3>Business and operating-company boundary</h3>
+      <p>The Business Engine extends Capital OS without merging business and household books. Revenue and expenses are recorded against a business entity; business-linked accounts provide operating cash; reserve targets, tax reserve, and safety buffer establish a distribution floor; ownership percentage determines the household’s share of business equity.</p>
+      <div class="callout blue"><strong>Accounting principle.</strong> Owner contributions and intercompany transfers are not revenue. Owner distributions are not ordinary operating expenses. Business cash never becomes household Safe-to-Deploy directly. Only a completed, human-reviewed distribution can become household income. The system must include either underlying business assets or an ownership-adjusted business equity value in household net worth—not both.</div>
+
+      <h3>Strategy Lab and Micro-Live</h3>
+      <p>Strategy Lab is a research environment. It supports hypotheses, immutable versions, deterministic backtests/walk-forward/shadow/paper experiments, execution friction, regime metrics, drawdown events, journals, and evidence-based graduation. Promotion is sequential and requires observations, reconciliation accuracy, and no critical errors. No strategy stage enables live trading in the current release.</p>
+      <p>Micro-Live is a fail-closed control plane, not a live trading product. The default policy is a small sandbox with separate venue, strategy, exposure, order, and loss caps. Household and protected capital are inaccessible. The simulated adapter always refuses order transmission. A future real venue would require a reviewed server-side adapter, opaque credential reference, isolated execution account, market allowlist, security/jurisdiction/terms review, disabled withdrawals, venue-authoritative reconciliation, and explicit owner arming.</p>
+      <p>OMS state handling models partial fills, cancel/fill races, rejection, expiration, unknown state, duplicate orders/fills, recovery, and reconciliation mismatch. Guardian may stop, lock, request cancel-all, and alert a human, but may not trade, increase capital, or change policy.</p>
+
+      <h3>AI and Operations</h3>
+      <p>AI is advisory-only. It may summarize patterns, flag anomalies, identify recurring expenses, and recommend a review. It cannot approve transactions, move capital, change a protected goal, connect a bank, pay a bill, override risk, enable trading, change credentials, sign contracts, or submit blockchain transactions. Human approval records intent and audit; it does not create an external payment.</p>
+      <p>Operations provides the current safe automation surface: tasks, approvals, alerts, prepare-only automation runs, notification channels, and quiet hours. Safe automation may prepare reviews, tasks, alerts, or reports. Restricted actions include transfers, protected-capital changes, trading enablement, ownership changes, offer submission, contract signing, and security disabling.</p>
+    </section>
+
+    <section class="section">
+      <div class="eyebrow">05 · Reliability, security, and operations</div>
+      <h2>Controls are strongest at the domain boundary, not yet at every platform boundary.</h2>
+      <h3>Implemented controls</h3>
+      <ul>
+        <li>Server-side permission checks for owner, partner, advisor, and viewer paths.</li>
+        <li>Exact-cents financial calculations and fixed-precision database money.</li>
+        <li>Transactional ledger and audit writes for protected capital movements.</li>
+        <li>Household-scoped idempotency for contributions and transfers, including conflict detection for key reuse with a different amount.</li>
+        <li>Protected-capital locks, reserve floors, bounded allocations, emergency stop, and fail-closed execution checks.</li>
+        <li>Append-only audit event concepts, reason/evidence fields, human decision records, incident reviews, and reactivation requirements.</li>
+        <li>Security headers, disabled <span class="source">x-powered-by</span>, structured pino request logging with sensitive-header redaction, an in-memory rate limit, CORS configuration, and a write-origin boundary.</li>
+        <li>Advisory-only AI and no external bank, venue, chain, payment, or contract execution in the current boundary.</li>
+      </ul>
+      <h3>Highest-priority gaps</h3>
+      <ol>
+        <li><strong>Authentication and tenant isolation.</strong> Clerk dependencies, managed keys, and a proxy template are present, but middleware wiring, browser provider, sign-in routes, authenticated user resolution, and user-to-household mapping are not complete. Development accepts a role header; production falls back to a seeded viewer. This is the largest gap between the safety model and a deployable multi-user product.</li>
+        <li><strong>Deployment health and schema lifecycle.</strong> The health endpoint is dependency-free liveness, not database readiness. There is no versioned migration history or rollback workflow visible; development schema changes use Drizzle push, while production schema changes must be applied through Publish. Startup seeding and fixed demo data require strict environment separation.</li>
+        <li><strong>Integration and contract verification.</strong> Pure domain tests are strong, but route, database, HTTP contract, browser end-to-end, load, and security coverage is limited. OpenAPI is the source of truth by convention; route/codegen parity is not visibly CI-enforced.</li>
+        <li><strong>Execution and automation observability.</strong> Micro-Live remains safely disabled, but real venue transport and independent Guardian runtime are future work. Operations currently reports automation failures as zero rather than deriving them from run records, and no scheduler/queue for periodic reconciliation or automation is evident.</li>
+        <li><strong>Accounting completeness.</strong> Accounting calculations and reconciliation views are valuable, but investment growth is currently incomplete, there is no universal posting abstraction or database-level double-entry invariant, and multi-line journal semantics should be clarified.</li>
+        <li><strong>Product truthfulness.</strong> Several visible controls are feedback-only or local-state. The application should distinguish clearly between persisted actions, prepared reviews, and presentation affordances.</li>
+      </ol>
+      <div class="callout danger"><strong>Do not infer production authorization from the UI.</strong> The Micro-Live readiness score, owner-only visual controls, and role labels are not substitutes for authenticated identity, step-up verification, independent review, or a separately reviewed deployment boundary.</div>
+    </section>
+
+    <section class="section">
+      <div class="eyebrow">06 · Verification and engineering state</div>
+      <h2>Current evidence supports the safety foundation, with important scope limits.</h2>
+      <p>The current repository contains a broad TypeScript workspace with React/Vite frontend code, Express API code, Drizzle/PostgreSQL schema, generated API artifacts, and domain tests. The latest recorded feature verification includes:</p>
+      <ul>
+        <li>API and frontend TypeScript typechecks passing.</li>
+        <li>Frontend and API production builds passing when supplied with required runtime configuration.</li>
+        <li>Generated OpenAPI, Zod, React Query, and TypeScript clients regenerated from the contract.</li>
+        <li>Development database schema pushed successfully.</li>
+        <li><strong>62 of 62 direct API domain tests passing</strong> after the Business Engine slice was added.</li>
+        <li>Running API and web workflows with successful runtime requests and responsive Business, Operations, and other reviewed pages.</li>
+      </ul>
+      <p>The direct test command is intentionally focused on <span class="source">artifacts/api-server/src/domain/*.test.ts</span>. That gives high confidence in deterministic calculations and state-machine rules, but it does not prove production behavior across authentication, routes, database transactions, browser flows, concurrency under load, or deployment recovery.</p>
+      <table>
+        <thead><tr><th>Verification layer</th><th>Current confidence</th><th>What it proves</th><th>What it does not prove</th></tr></thead>
+        <tbody>
+          <tr><td>Pure domain tests</td><td><span class="tag">Strong</span></td><td>Money math, governors, state transitions, research/execution boundaries.</td><td>HTTP, DB, identity, browser, and deployment behavior.</td></tr>
+          <tr><td>Typecheck/build</td><td><span class="tag">Strong</span></td><td>Workspace contracts compile and artifacts bundle.</td><td>Runtime data correctness or authorization.</td></tr>
+          <tr><td>Runtime smoke checks</td><td><span class="tag amber">Targeted</span></td><td>Workflows start and reviewed endpoints/pages respond.</td><td>Full user journey coverage and failure recovery.</td></tr>
+          <tr><td>Security/auth readiness</td><td><span class="tag red">Incomplete</span></td><td>Defensive domain rules and HTTP hardening exist.</td><td>Authenticated multi-user security and step-up control.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <div class="eyebrow">07 · Recommended maturation path</div>
+      <h2>Sequence production hardening before expanding execution capability.</h2>
+      <ol>
+        <li><strong>Complete authenticated identity and household resolution.</strong> Wire Clerk at the API and browser boundaries, map authenticated users to household memberships, remove privilege-by-header outside explicit test mode, and add authenticated role/tenant tests.</li>
+        <li><strong>Make the database lifecycle explicit.</strong> Establish a versioned migration and rollback strategy, separate development seed repair from production startup, and add readiness checks that report database dependency state.</li>
+        <li><strong>Close the planning-to-governor integrity loop.</strong> Add invariant tests proving that planning balances, property values, business cash, receivables, and unrealized profit cannot silently raise household Safe-to-Deploy without an explicit reconciliation bridge.</li>
+        <li><strong>Productize the existing surfaces.</strong> Replace feedback-only save/export/sync actions with persisted workflows, expose CSV import in Accounts, preserve contribution allocation metadata in the UI, and separate demo fallback state from authoritative state.</li>
+        <li><strong>Expand integration coverage.</strong> Add OpenAPI route parity checks, HTTP contract tests, database transaction tests, browser end-to-end tests for critical capital flows, concurrency tests for seeding and idempotency, and security/load testing.</li>
+        <li><strong>Improve operational truth.</strong> Derive automation failure health from run records, add structured metrics/tracing, implement a durable scheduler/queue for periodic checks, and formalize backup/restore and incident runbooks.</li>
+        <li><strong>Keep real execution last.</strong> If a real venue is ever considered, preserve the current isolation and require independent security, jurisdiction, terms, withdrawal, credential, adapter, reconciliation, Guardian, and human-arming review as a separate release boundary.</li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <div class="eyebrow">08 · Conclusion</div>
+      <h2>A promising governed capital workspace—not yet an autonomous financial platform.</h2>
+      <p>Capital OS already has a differentiated product thesis: protect the family balance sheet first, make capital purpose visible, keep business and household economics separate, and make every higher-risk action reviewable. Its strongest work is in deterministic domain logic and explicit safety boundaries. The current codebase demonstrates that money movement, trading, blockchain, business distributions, and AI authority can be constrained instead of merely described.</p>
+      <p>The next milestone is not “more automation.” It is trustworthy identity, tenant isolation, production schema discipline, persisted user workflows, and end-to-end verification. Once those foundations are complete, the existing Treasury, Business, Operations, Accounting, property, strategy, and Micro-Live control planes will have a more credible path from polished prototype to production-grade family capital operating system.</p>
+      <div class="rule"></div>
+      <p class="footnotes"><strong>Primary evidence reviewed:</strong> <span class="source">replit.md</span>; <span class="source">docs/ARCHITECTURE.md</span>; <span class="source">docs/capital-os-architecture.md</span>; <span class="source">docs/DATA_MODEL.md</span>; <span class="source">docs/CAPITAL_PROTECTION.md</span>; <span class="source">docs/AI_GOVERNANCE.md</span>; <span class="source">docs/MICRO_LIVE_POLICY.md</span>; <span class="source">lib/api-spec/openapi.yaml</span>; <span class="source">lib/db/src/schema/</span>; <span class="source">artifacts/api-server/src/</span>; and <span class="source">artifacts/capital-os/src/</span>.</p>
+      <div class="footer"><span>Capital OS · Executive Summary &amp; Technical White Paper</span><span>Internal reference · September 2026</span></div>
+    </section>
+  </div>
+</main>
+</body>
+</html>

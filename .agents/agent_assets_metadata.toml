@@ -7,3 +7,18 @@ uri = "file://docs/external-production-schema.sql"
 type = "unspecified"
 title = "Capital OS external production schema migration"
 description = "Reviewable additive Drizzle schema synchronization for the external PostgreSQL production database. Apply it through the external provider after review; it contains no detected drops."
+logical_id = "637ef1df-d2d8-4b00-a932-6262484be487"
+
+[[outputs]]
+id = "_Eo_R6UgiiTwa6p4B36Ex"
+uri = "file://docs/capital-os-executive-summary-white-paper.html"
+type = "text"
+title = "Capital OS — Executive Summary & Technical White Paper"
+description = "A single print-friendly document covering Capital OS purpose, current product state, architecture, financial safety boundaries, governance, security posture, verification evidence, and recommended maturation path."
+logical_id = "0d696a4e-396f-4b8e-931d-a3ac32085c8c"
+content_hash = "sha256:032576fb5df4d6679db6914d8b689675b1a3c3bedf7594bb85ee93ba6a8be791"
+size = 32036
+mtime_ms = 1788316585889
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:a275880a-7e86-4ab1-a13b-802e51c9d9ab/0d696a4e-396f-4b8e-931d-a3ac32085c8c/21dd4666-e86d-469b-acce-1bbce28e1c0f"
+storage_version_token = "1788316600429745"
+content_type = "text/html"

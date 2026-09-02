@@ -1,5 +1,5 @@
 import { boolean, date, index, jsonb, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import { households, users } from "./households";
+import { households, users } from "./households.ts";
 
 const money = (name: string) => numeric(name, { precision: 18, scale: 2 }).notNull().default("0");
 

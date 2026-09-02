@@ -201,7 +201,18 @@ export async function updateBusinessEntity(actor: Actor, businessId: string, inp
   assertPermission(actor.role, "contribute");
   const ids = await ensureSeedData();
   if (input.ownershipPercentage != null && (Number(input.ownershipPercentage) <= 0 || Number(input.ownershipPercentage) > 100)) throw new Error("Ownership percentage must be greater than 0 and no more than 100");
-  const [row] = await db.update(businessEntities).set({ ...input, formationDate: input.formationDate?.toISOString().slice(0, 10), updatedAt: new Date() }).where(and(eq(businessEntities.id, businessId), eq(businessEntities.householdId, ids.householdId))).returning();
+  const [row] = await db.update(businessEntities).set({
+    displayName: input.displayName,
+    entityType: input.entityType,
+    ownershipPercentage: input.ownershipPercentage,
+    taxClassification: input.taxClassification,
+    industry: input.industry,
+    status: input.status,
+    formationDate: input.formationDate?.toISOString().slice(0, 10),
+    state: input.state,
+    notes: input.notes,
+    updatedAt: new Date(),
+  }).where(and(eq(businessEntities.id, businessId), eq(businessEntities.householdId, ids.householdId))).returning();
   if (!row) throw new Error("Business not found");
   return entityResponse(row);
 }
@@ -244,8 +255,18 @@ export async function updateBusinessReserve(actor: Actor, businessId: string, in
   const ids = await ensureSeedData();
   await assertBusiness(ids.householdId, businessId);
   const [existing] = await db.select().from(businessReserves).where(and(eq(businessReserves.businessId, businessId), eq(businessReserves.householdId, ids.householdId))).limit(1);
+  const reserveValues = {
+    targetMethod: input.targetMethod,
+    targetAmount: input.targetAmount,
+    taxReserve: input.taxReserve,
+    safetyBuffer: input.safetyBuffer,
+  };
   const [row] = existing
-    ? await db.update(businessReserves).set({ ...input, updatedBy: actor.userId, updatedAt: new Date() }).where(eq(businessReserves.id, existing.id)).returning()
-    : await db.insert(businessReserves).values({ ...input, householdId: ids.householdId, businessId, updatedBy: actor.userId }).returning();
+    ? await db.update(businessReserves).set({ ...reserveValues, updatedBy: actor.userId, updatedAt: new Date() }).where(and(
+      eq(businessReserves.id, existing.id),
+      eq(businessReserves.householdId, ids.householdId),
+      eq(businessReserves.businessId, businessId),
+    )).returning()
+    : await db.insert(businessReserves).values({ ...reserveValues, householdId: ids.householdId, businessId, updatedBy: actor.userId }).returning();
   return reserveResponse(row);
 }

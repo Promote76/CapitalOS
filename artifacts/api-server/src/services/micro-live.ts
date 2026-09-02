@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   auditEvents,
   executionFills,
@@ -7,6 +7,7 @@ import {
   microLivePolicies,
   microLiveSessions,
   orderEvents,
+  orderIntents,
   positionSnapshots,
   postIncidentReviews,
   reactivationRequirements,
@@ -249,7 +250,13 @@ export async function getMicroLiveSnapshot() {
     db.select().from(fillSnapshots).where(eq(fillSnapshots.householdId, session.householdId)).orderBy(desc(fillSnapshots.capturedAt)).limit(50),
   ]);
   const incidents = allIncidents.map((incident) => toIncident(incident, reviews, requirements));
-  const events = await db.select().from(orderEvents).where(eq(orderEvents.orderIntentId, session.id)).orderBy(desc(orderEvents.createdAt)).limit(20);
+  const sessionIntents = await db.select({ id: orderIntents.id }).from(orderIntents).where(and(
+    eq(orderIntents.sessionId, session.id),
+    eq(orderIntents.householdId, session.householdId),
+  ));
+  const events = sessionIntents.length
+    ? await db.select().from(orderEvents).where(inArray(orderEvents.orderIntentId, sessionIntents.map((intent) => intent.id))).orderBy(desc(orderEvents.createdAt)).limit(20)
+    : [];
   return {
     status: session.status,
     policy: { version: policy.policyVersion, limits: policy.limits, autoScale: policy.autoScale, leverageEnabled: policy.leverageEnabled, marginEnabled: policy.marginEnabled, borrowingEnabled: policy.borrowingEnabled },
@@ -552,7 +559,10 @@ export async function armMicroLive(actor: Actor, venueId: string) {
       armedAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(eq(microLiveSessions.id, snapshot.session.id))
+    .where(and(
+      eq(microLiveSessions.id, snapshot.session.id),
+      eq(microLiveSessions.householdId, (await ensureSeedData()).householdId),
+    ))
     .returning();
   await db.insert(auditEvents).values({
     householdId: session.householdId,
@@ -608,6 +618,22 @@ export async function runMicroLiveReconciliation(actor: Actor) {
     venueHealth: recovery.venueHealth,
     balances: recovery.balances,
   };
+  if (venueFills.length > 0) {
+    await db.insert(fillSnapshots).values(venueFills.map((fill) => ({
+      householdId,
+      sessionId: session.id,
+      venueId: session.venueId,
+      externalFillId: fill.externalFillId,
+      marketId: fill.marketId,
+      source: "VENUE",
+      side: "unknown",
+      quantity: fill.quantity.toString(),
+      price: fill.price.toString(),
+      fee: fill.fee.toString(),
+      metadata: { externalOrderId: fill.externalOrderId, reconciledAt: capturedAt.toISOString() },
+      capturedAt,
+    }))).onConflictDoNothing();
+  }
   const [run] = await db.insert(reconciliationRuns).values({
     householdId,
     sessionId: session.id,
@@ -795,6 +821,7 @@ export async function completeMicroLiveReactivationRequirement(actor: Actor, req
   )).returning();
   const remaining = await db.select({ id: reactivationRequirements.id }).from(reactivationRequirements).where(and(
     eq(reactivationRequirements.incidentId, completed.incidentId),
+    eq(reactivationRequirements.householdId, householdId),
     eq(reactivationRequirements.status, "OPEN"),
   ));
   if (remaining.length === 0) {

@@ -17,8 +17,8 @@ import {
   riskClassEnum,
   transactionCategoryEnum,
   transactionStatusEnum,
-} from "./enums";
-import { households, users } from "./households";
+} from "./enums.ts";
+import { households, users } from "./households.ts";
 
 const money = (name: string) => numeric(name, { precision: 18, scale: 2 }).notNull().default("0");
 

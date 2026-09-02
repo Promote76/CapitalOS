@@ -3,7 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
-import router from "./routes";
+import router from "./routes/index.ts";
 import authRouter from "./routes/auth";
 import healthRouter from "./routes/health";
 import { logger } from "./lib/logger";
@@ -43,9 +43,9 @@ app.use(
 );
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(cors({
-  origin: process.env.CAPITAL_OS_ALLOWED_ORIGIN ?? true,
-  methods: ["GET", "POST", "PATCH"],
-  allowedHeaders: ["Content-Type", "Idempotency-Key"],
+  origin: process.env.CAPITAL_OS_ALLOWED_ORIGIN ?? false,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Idempotency-Key", "X-Correlation-ID", "X-Test-User-Id", "X-Test-Household-Id", "X-Test-Step-Up"],
 }));
 app.use(
   clerkMiddleware((req) => ({

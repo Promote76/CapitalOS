@@ -10,8 +10,8 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { households, users } from "./households";
-import { recommendationStatusEnum, safetyStateEnum } from "./enums";
+import { households, users } from "./households.ts";
+import { recommendationStatusEnum, safetyStateEnum } from "./enums.ts";
 
 export const riskStates = pgTable("risk_states", {
   id: uuid("id").defaultRandom().primaryKey(),

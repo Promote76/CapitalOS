@@ -1,4 +1,5 @@
 export type HouseholdRole = "owner" | "partner" | "viewer" | "advisor";
+import { activeSecurityContext } from "../middleware/request-scope.ts";
 
 export const permissions: Record<HouseholdRole, Set<string>> = {
   owner: new Set(["read", "contribute", "transfer", "allocate", "approve", "manage_risk", "review_venue_security", "review_venue_jurisdiction"]),
@@ -8,6 +9,8 @@ export const permissions: Record<HouseholdRole, Set<string>> = {
 };
 
 export function hasPermission(role: HouseholdRole, permission: string): boolean {
+  const context = activeSecurityContext();
+  if (context) return context.permissions.includes(permission);
   return permissions[role]?.has(permission) ?? false;
 }
 

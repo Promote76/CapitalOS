@@ -37,6 +37,10 @@ test("ledger debits equal credits", () => {
   assert.equal(ledgerDebitsEqualCredits([
     { debitCents: 100 * 100, creditCents: 99 * 100 },
   ]), false);
+  assert.equal(ledgerDebitsEqualCredits([]), false);
+  assert.equal(ledgerDebitsEqualCredits([
+    { debitCents: 0, creditCents: 0 },
+  ]), false);
 });
 
 test("net-worth attribution reconciles", () => {

@@ -9,8 +9,8 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { households, users } from "./households";
-import { milestoneStatusEnum, propertyStatusEnum, strategyStageEnum } from "./enums";
+import { households, users } from "./households.ts";
+import { milestoneStatusEnum, propertyStatusEnum, strategyStageEnum } from "./enums.ts";
 
 const money = (name: string) => numeric(name, { precision: 18, scale: 2 }).notNull().default("0");
 

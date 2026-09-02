@@ -23,9 +23,9 @@ import {
   incomeSourceTypeEnum,
   recurringFrequencyEnum,
   upcomingExpensePriorityEnum,
-} from "./enums";
-import { households, users } from "./households";
-import { businessEntities } from "./business";
+} from "./enums.ts";
+import { households, users } from "./households.ts";
+import { businessEntities } from "./business.ts";
 
 const money = (name: string) => numeric(name, { precision: 18, scale: 2 }).notNull().default("0");
 

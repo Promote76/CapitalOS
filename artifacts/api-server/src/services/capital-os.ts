@@ -43,11 +43,14 @@ import {
 import { chainAdapters, futureCapitalVaultInterface } from "../domain/blockchain";
 import { reportDescriptors } from "../domain/reports";
 import { ensureSeedData, type SeedContext } from "./seed";
+import { canViewFinancialBalance } from "../domain/household-finance";
 
 export type Actor = {
   role: HouseholdRole;
   userId: string;
-  source: "development-seed" | "test-seed" | "clerk-session";
+  householdId: string;
+  permissions?: string[];
+  source: "development-seed" | "test-seed" | "test-database" | "clerk-session";
 };
 
 function weeksBetween(targetDate: string): number {
@@ -64,12 +67,12 @@ function dateTime(value: Date | string | null | undefined): string {
   return value instanceof Date ? value.toISOString() : value ?? new Date().toISOString();
 }
 
-function toAccountSummary(account: Account) {
+function toAccountSummary(account: Account, role = "owner") {
   return {
     id: account.id,
     name: account.name,
     accountType: account.accountType,
-    balance: account.balance,
+    balance: canViewFinancialBalance(role, account.protected) ? account.balance : "REDACTED",
     protected: account.protected,
     riskClass: account.riskClass,
   };
@@ -135,15 +138,15 @@ export async function getHousehold(actor: Actor) {
     name: household.name,
     timezone: household.timezone,
     role: actor.role,
-    permissions: Array.from(
-      actor.role === "owner"
-        ? ["read", "contribute", "transfer", "allocate", "approve", "manage_risk"]
-        : actor.role === "partner"
-          ? ["read", "contribute", "transfer", "allocate"]
-          : actor.role === "advisor"
-            ? ["read", "recommend"]
-            : ["read"],
-    ),
+     permissions: actor.permissions ?? Array.from(
+       actor.role === "owner"
+         ? ["read", "contribute", "transfer", "allocate", "approve", "manage_risk"]
+         : actor.role === "partner"
+           ? ["read", "contribute", "transfer", "allocate"]
+           : actor.role === "advisor"
+             ? ["read", "recommend"]
+             : ["read"],
+     ),
     privacy: {
       financeDataPrivate: settings?.settings?.financeDataPrivate !== false,
       shareHealthSummary: settings?.settings?.shareHealthSummary === true,
@@ -164,10 +167,12 @@ export async function updatePrivacySettings(actor: Actor, input: { financeDataPr
   return getHousehold(actor);
 }
 
-export async function getAccounts() {
+export async function getAccounts(actor?: Actor) {
   const ids = await context();
   const rows = await accountRows(ids.householdId);
-  return rows.filter((account) => account.accountType !== "treasury").map(toAccountSummary);
+  return rows
+    .filter((account) => account.accountType !== "treasury")
+    .map((account) => toAccountSummary(account, actor?.role ?? "owner"));
 }
 
 export async function getGoals() {
@@ -244,7 +249,10 @@ export async function getProperty() {
   const [property] = await db
     .select()
     .from(propertyGoals)
-    .where(eq(propertyGoals.id, ids.propertyGoalId))
+    .where(and(
+      eq(propertyGoals.id, ids.propertyGoalId),
+      eq(propertyGoals.householdId, ids.householdId),
+    ))
     .limit(1);
   if (!property) throw new Error("Property goal was not found");
   const milestones = await db
@@ -322,7 +330,10 @@ function riskSummary(risk: RiskState) {
 
 export async function getRisk() {
   const ids = await context();
-  const [risk] = await db.select().from(riskStates).where(eq(riskStates.id, ids.riskStateId)).limit(1);
+  const [risk] = await db.select().from(riskStates).where(and(
+    eq(riskStates.id, ids.riskStateId),
+    eq(riskStates.householdId, ids.householdId),
+  )).limit(1);
   if (!risk) throw new Error("Risk state was not found");
   return riskSummary(risk);
 }
@@ -332,7 +343,10 @@ export async function getRecommendation() {
   const [recommendation] = await db
     .select()
     .from(aiRecommendations)
-    .where(eq(aiRecommendations.id, ids.recommendationId))
+    .where(and(
+      eq(aiRecommendations.id, ids.recommendationId),
+      eq(aiRecommendations.householdId, ids.householdId),
+    ))
     .limit(1);
   if (!recommendation) throw new Error("Recommendation was not found");
   return {
@@ -377,7 +391,7 @@ export async function getDashboard(actor: Actor) {
       getRisk(),
       getRecommendation(),
       getAuditEvents(),
-      getAccounts(),
+      getAccounts(actor),
       currentAllocation(ids.householdId),
     ]);
   return {
@@ -413,7 +427,10 @@ export async function previewAllocation(input: {
     capitalOs: numeric(input.capitalOs),
     opportunityReserve: numeric(input.opportunityReserve),
   };
-  const [goal] = await db.select().from(goals).where(eq(goals.id, ids.goalId)).limit(1);
+  const [goal] = await db.select().from(goals).where(and(
+    eq(goals.id, ids.goalId),
+    eq(goals.householdId, ids.householdId),
+  )).limit(1);
   if (!goal) throw new Error("Primary goal was not found");
   const impact = calculateAllocationImpact(current, proposed, {
     amountRemainingCents: Math.max(numeric(goal.targetAmount) - numeric(goal.currentAmount), 0),
@@ -486,10 +503,28 @@ function splitContribution(amountCents: number, rule: AllocationCents) {
 }
 
 async function adjustBalance(tx: Parameters<Parameters<typeof db.transaction>[0]>[0], accountId: string, cents: number) {
-  await tx
+  const rows = await tx
     .update(accounts)
     .set({ balance: sql`${accounts.balance} + ${centsToMoney(cents)}`, updatedAt: new Date() })
-    .where(eq(accounts.id, accountId));
+    .where(and(
+      eq(accounts.id, accountId),
+      cents < 0 ? sql`${accounts.balance} >= ${centsToMoney(Math.abs(cents))}` : sql`true`,
+    ))
+    .returning({ id: accounts.id });
+  if (!rows[0]) {
+    throw new GovernanceError(
+      "RISK_BLOCKED",
+      cents < 0 ? "Source account does not have sufficient available capital" : "Account balance could not be updated",
+    );
+  }
+}
+
+async function lockIdempotency(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  householdId: string,
+  idempotencyKey: string,
+) {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`capital-movement:${householdId}:${idempotencyKey}`}, 0))`);
 }
 
 async function writeMovement(
@@ -506,6 +541,19 @@ async function writeMovement(
   },
 ) {
   const amount = centsToMoney(input.amountCents);
+  const [source, destination] = await Promise.all([
+    tx.select({ id: accounts.id }).from(accounts).where(and(
+      eq(accounts.id, input.sourceAccountId),
+      eq(accounts.householdId, input.householdId),
+    )).limit(1),
+    tx.select({ id: accounts.id }).from(accounts).where(and(
+      eq(accounts.id, input.destinationAccountId),
+      eq(accounts.householdId, input.householdId),
+    )).limit(1),
+  ]);
+  if (!source[0] || !destination[0]) {
+    throw new GovernanceError("INVALID_STATE", "Capital movement accounts are not registered for this household");
+  }
   const [transaction] = await tx
     .insert(ledgerTransactions)
     .values({
@@ -535,6 +583,7 @@ export async function recordContribution(actor: Actor, input: { amount: string; 
   const amountCents = parseMoneyToCents(input.amount);
   if (amountCents <= 0) throw new GovernanceError("INVALID_STATE", "Contribution amount must be greater than zero");
   return db.transaction(async (tx) => {
+    await lockIdempotency(tx, ids.householdId, idempotencyKey);
     const existing = await tx
       .select()
       .from(contributions)
@@ -551,7 +600,13 @@ export async function recordContribution(actor: Actor, input: { amount: string; 
         metadata: existing[0].metadata ?? {},
       };
     }
-    const rule = await currentAllocation(ids.householdId);
+    const [rule] = await tx
+      .select()
+      .from(allocationRules)
+      .where(and(eq(allocationRules.householdId, ids.householdId), eq(allocationRules.active, true)))
+      .orderBy(desc(allocationRules.createdAt))
+      .limit(1);
+    if (!rule) throw new GovernanceError("INVALID_STATE", "Active allocation rule is missing");
     const allocation: AllocationCents = {
       total: numeric(rule.totalWeekly),
       duplexReserve: numeric(rule.duplexReserve),
@@ -560,9 +615,15 @@ export async function recordContribution(actor: Actor, input: { amount: string; 
     };
     const split = splitContribution(amountCents, allocation);
     const goalId = input.goalId ?? ids.goalId;
-    const [goal] = await tx.select().from(goals).where(eq(goals.id, goalId)).limit(1);
+    const [goal] = await tx.select().from(goals).where(and(
+      eq(goals.id, goalId),
+      eq(goals.householdId, ids.householdId),
+    )).limit(1);
     if (!goal) throw new GovernanceError("INVALID_STATE", "Contribution goal was not found");
-    const [treasury] = await tx.select().from(accounts).where(eq(accounts.id, ids.treasuryAccountId)).limit(1);
+    const [treasury] = await tx.select().from(accounts).where(and(
+      eq(accounts.id, ids.treasuryAccountId),
+      eq(accounts.householdId, ids.householdId),
+    )).limit(1);
     if (!treasury) throw new GovernanceError("INVALID_STATE", "Treasury account was not found");
     const destinations = [
       [ids.duplexAccountId, split.duplex],
@@ -577,7 +638,7 @@ export async function recordContribution(actor: Actor, input: { amount: string; 
           destinationAccountId,
           amountCents: cents,
           category: "contribution",
-          createdBy: ids.ownerId,
+          createdBy: actor.userId,
           metadata: { idempotencyKey, note: input.note ?? null },
         });
       }
@@ -591,7 +652,7 @@ export async function recordContribution(actor: Actor, input: { amount: string; 
         amount: centsToMoney(amountCents),
         status: "completed",
         idempotencyKey,
-        createdBy: ids.ownerId,
+        createdBy: actor.userId,
         metadata: { split, note: input.note ?? null },
       })
       .returning();
@@ -602,11 +663,11 @@ export async function recordContribution(actor: Actor, input: { amount: string; 
         protectedAmount: sql`${goals.protectedAmount} + ${centsToMoney(split.duplex)}`,
         updatedAt: new Date(),
       })
-      .where(eq(goals.id, goalId));
+      .where(and(eq(goals.id, goalId), eq(goals.householdId, ids.householdId)));
     await tx.insert(auditEvents).values({
       householdId: ids.householdId,
       eventType: "contribution_completed",
-      actor: ids.ownerId,
+      actor: actor.userId,
       entity: "contribution",
       entityId: contribution.id,
       reason: input.note ?? "Contribution recorded",
@@ -633,6 +694,7 @@ export async function createTransfer(
   const amountCents = parseMoneyToCents(input.amount);
   if (amountCents <= 0) throw new GovernanceError("INVALID_STATE", "Transfer amount must be greater than zero");
   return db.transaction(async (tx) => {
+    await lockIdempotency(tx, ids.householdId, idempotencyKey);
     const existing = await tx
       .select()
       .from(ledgerTransactions)
@@ -651,8 +713,10 @@ export async function createTransfer(
     const [source] = await tx.select().from(accounts).where(and(eq(accounts.id, input.sourceAccountId), eq(accounts.householdId, ids.householdId))).limit(1);
     const [destination] = await tx.select().from(accounts).where(and(eq(accounts.id, input.destinationAccountId), eq(accounts.householdId, ids.householdId))).limit(1);
     if (!source || !destination || source.id === destination.id) throw new GovernanceError("INVALID_STATE", "Transfer accounts are invalid");
-    if (numeric(source.balance) < amountCents) throw new GovernanceError("RISK_BLOCKED", "Source account does not have sufficient available capital");
-    const [risk] = await tx.select().from(riskStates).where(eq(riskStates.id, ids.riskStateId)).limit(1);
+    const [risk] = await tx.select().from(riskStates).where(and(
+      eq(riskStates.id, ids.riskStateId),
+      eq(riskStates.householdId, ids.householdId),
+    )).limit(1);
     if (risk?.emergencyStopActive) throw new GovernanceError("RISK_BLOCKED", "Capital movement is stopped by the emergency governor");
     if (source.protected && (destination.riskClass === "experimental" || destination.accountType === "strategy_capital")) {
       assertAllocationAllowed({
@@ -671,20 +735,23 @@ export async function createTransfer(
       destinationAccountId: destination.id,
       amountCents,
       category: "transfer",
-      createdBy: ids.ownerId,
+      createdBy: actor.userId,
       idempotencyKey,
       metadata: { idempotencyKey, note: input.note ?? null },
     });
     await tx.insert(auditEvents).values({
       householdId: ids.householdId,
       eventType: "transfer_completed",
-      actor: ids.ownerId,
+      actor: actor.userId,
       entity: "ledger_transaction",
       entityId: transactionId,
       reason: input.note ?? "Internal transfer completed",
       metadata: { idempotencyKey, sourceAccountId: source.id, destinationAccountId: destination.id },
     });
-    const [transaction] = await tx.select().from(ledgerTransactions).where(eq(ledgerTransactions.id, transactionId)).limit(1);
+    const [transaction] = await tx.select().from(ledgerTransactions).where(and(
+      eq(ledgerTransactions.id, transactionId),
+      eq(ledgerTransactions.householdId, ids.householdId),
+    )).limit(1);
     return {
       id: transaction.id,
       amount: transaction.amount,
@@ -724,12 +791,12 @@ export async function promoteStrategy(actor: Actor, strategyId: string, input: {
   const [updated] = await db
     .update(strategies)
     .set({ stage: input.toStage as StrategyStage, updatedAt: new Date() })
-    .where(eq(strategies.id, strategy.id))
+     .where(and(eq(strategies.id, strategy.id), eq(strategies.householdId, ids.householdId)))
     .returning();
   await db.insert(auditEvents).values({
     householdId: ids.householdId,
     eventType: input.authorizedOverride ? "strategy_stage_override" : "strategy_stage_promoted",
-    actor: ids.ownerId,
+     actor: actor.userId,
     entity: "strategy",
     entityId: strategy.id,
     beforeState: { stage: strategy.stage },
@@ -751,6 +818,7 @@ export async function allocateStrategy(
   const amountCents = parseMoneyToCents(input.amount);
   if (amountCents <= 0) throw new GovernanceError("INVALID_STATE", "Strategy allocation must be greater than zero");
   return db.transaction(async (tx) => {
+    await lockIdempotency(tx, ids.householdId, idempotencyKey);
     const [existing] = await tx
       .select()
       .from(ledgerTransactions)
@@ -785,9 +853,11 @@ export async function allocateStrategy(
       .from(accounts)
       .where(and(eq(accounts.id, ids.strategyCapitalAccountId), eq(accounts.householdId, ids.householdId)))
       .limit(1);
-    const [risk] = await tx.select().from(riskStates).where(eq(riskStates.id, ids.riskStateId)).limit(1);
+    const [risk] = await tx.select().from(riskStates).where(and(
+      eq(riskStates.id, ids.riskStateId),
+      eq(riskStates.householdId, ids.householdId),
+    )).limit(1);
     if (!source || !destination || !risk) throw new GovernanceError("INVALID_STATE", "Strategy capital accounts are unavailable");
-    if (numeric(source.balance) < amountCents) throw new GovernanceError("RISK_BLOCKED", "Source account does not have sufficient available capital");
     const allAccounts = await tx.select().from(accounts).where(eq(accounts.householdId, ids.householdId));
     const activeCapitalCents = allAccounts
       .filter((account) => account.accountType === "active_capital" || account.accountType === "strategy_capital")
@@ -810,24 +880,27 @@ export async function allocateStrategy(
       destinationAccountId: destination.id,
       amountCents,
       category: "strategy_allocation",
-      createdBy: ids.ownerId,
+      createdBy: actor.userId,
       idempotencyKey,
       metadata: { idempotencyKey, strategyId },
     });
     await tx
       .update(strategies)
       .set({ allocation: sql`${strategies.allocation} + ${centsToMoney(amountCents)}`, updatedAt: new Date() })
-      .where(eq(strategies.id, strategy.id));
+      .where(and(eq(strategies.id, strategy.id), eq(strategies.householdId, ids.householdId)));
     await tx.insert(auditEvents).values({
       householdId: ids.householdId,
       eventType: "strategy_allocation_completed",
-      actor: ids.ownerId,
+      actor: actor.userId,
       entity: "strategy",
       entityId: strategy.id,
       reason: "Approved strategy allocation",
       metadata: { transactionId, sourceAccountId: source.id, amount: centsToMoney(amountCents) },
     });
-    const [transaction] = await tx.select().from(ledgerTransactions).where(eq(ledgerTransactions.id, transactionId)).limit(1);
+    const [transaction] = await tx.select().from(ledgerTransactions).where(and(
+      eq(ledgerTransactions.id, transactionId),
+      eq(ledgerTransactions.householdId, ids.householdId),
+    )).limit(1);
     return {
       id: transaction.id,
       amount: transaction.amount,
@@ -845,12 +918,12 @@ export async function activateEmergencyStop(actor: Actor, confirmed: boolean, re
   const [updated] = await db
     .update(riskStates)
     .set({ state: "locked", emergencyStopActive: true, updatedAt: new Date() })
-    .where(eq(riskStates.id, ids.riskStateId))
+    .where(and(eq(riskStates.id, ids.riskStateId), eq(riskStates.householdId, ids.householdId)))
     .returning();
   await db.insert(auditEvents).values({
     householdId: ids.householdId,
     eventType: "emergency_stop_activated",
-    actor: ids.ownerId,
+    actor: actor.userId,
     entity: "risk_state",
     entityId: ids.riskStateId,
     afterState: { state: "locked", emergencyStopActive: true },
@@ -880,11 +953,14 @@ export async function decideRecommendation(actor: Actor, recommendationId: strin
   const ids = await context();
   const [recommendation] = await db.select().from(aiRecommendations).where(and(eq(aiRecommendations.id, recommendationId), eq(aiRecommendations.householdId, ids.householdId))).limit(1);
   if (!recommendation) throw new GovernanceError("INVALID_STATE", "Recommendation was not found");
-  const [updated] = await db.update(aiRecommendations).set({ status: decision, reviewedAt: new Date(), reviewedBy: ids.ownerId }).where(eq(aiRecommendations.id, recommendation.id)).returning();
+  const [updated] = await db.update(aiRecommendations).set({ status: decision, reviewedAt: new Date(), reviewedBy: actor.userId }).where(and(
+    eq(aiRecommendations.id, recommendation.id),
+    eq(aiRecommendations.householdId, ids.householdId),
+  )).returning();
   await db.insert(auditEvents).values({
     householdId: ids.householdId,
     eventType: "recommendation_decided",
-    actor: ids.ownerId,
+    actor: actor.userId,
     entity: "ai_recommendation",
     entityId: recommendation.id,
     beforeState: { status: recommendation.status },
@@ -908,11 +984,16 @@ export async function addPropertyNote(actor: Actor, propertyGoalId: string, body
   assertPermission(actor.role, "contribute");
   const ids = await context();
   if (propertyGoalId !== ids.propertyGoalId) throw new GovernanceError("INVALID_STATE", "Property goal was not found");
-  const [note] = await db.insert(propertyNotes).values({ propertyGoalId, body, createdBy: ids.ownerId }).returning();
+  const [property] = await db.select({ id: propertyGoals.id }).from(propertyGoals).where(and(
+    eq(propertyGoals.id, propertyGoalId),
+    eq(propertyGoals.householdId, ids.householdId),
+  )).limit(1);
+  if (!property) throw new GovernanceError("INVALID_STATE", "Property goal was not found");
+  const [note] = await db.insert(propertyNotes).values({ propertyGoalId, body, createdBy: actor.userId }).returning();
   await db.insert(auditEvents).values({
     householdId: ids.householdId,
     eventType: "property_note_created",
-    actor: ids.ownerId,
+    actor: actor.userId,
     entity: "property_note",
     entityId: note.id,
     reason: "Private property research note added",

@@ -10,8 +10,8 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { households, users } from "./households";
-import { strategies, strategyVersions } from "./property-strategy";
+import { households, users } from "./households.ts";
+import { strategies, strategyVersions } from "./property-strategy.ts";
 
 export type StoredIndependentVenueReview = {
   reference: string;

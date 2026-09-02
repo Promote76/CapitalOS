@@ -30,7 +30,7 @@ import {
 const router: IRouter = Router();
 
 router.get("/accounts", asyncRoute(async (_req, res) => {
-  res.json(ListAccountsResponse.parse(await getAccounts()));
+  res.json(ListAccountsResponse.parse(await getAccounts(actorFrom(res))));
 }));
 
 router.get("/goals", asyncRoute(async (_req, res) => {

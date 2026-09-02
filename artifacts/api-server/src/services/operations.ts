@@ -385,7 +385,10 @@ export async function updateOperationsTask(actor: Actor, taskId: string, input: 
     status: input.status ?? existing.status,
     assignedTo: input.assignedTo ?? existing.assignedTo,
     completedAt: input.status === "COMPLETED" ? new Date() : existing.completedAt,
-  }).where(eq(operationsTasks.id, taskId)).returning();
+  }).where(and(
+    eq(operationsTasks.id, taskId),
+    eq(operationsTasks.householdId, ids.householdId),
+  )).returning();
   return taskResponse(task);
 }
 
@@ -403,7 +406,10 @@ export async function decideOperationsApproval(actor: Actor, approvalId: string,
   const [approval] = await db.update(operationsApprovals).set({
     status: input.decision,
     decidedAt: new Date(),
-  }).where(eq(operationsApprovals.id, approvalId)).returning();
+  }).where(and(
+    eq(operationsApprovals.id, approvalId),
+    eq(operationsApprovals.householdId, ids.householdId),
+  )).returning();
   return approvalResponse(approval);
 }
 
@@ -420,7 +426,10 @@ export async function updateOperationsAlert(actor: Actor, alertId: string, statu
   const [alert] = await db.update(operationsAlerts).set({
     status,
     resolvedAt: status === "RESOLVED" ? new Date() : existing.resolvedAt,
-  }).where(eq(operationsAlerts.id, alertId)).returning();
+  }).where(and(
+    eq(operationsAlerts.id, alertId),
+    eq(operationsAlerts.householdId, ids.householdId),
+  )).returning();
   return alertResponse(alert);
 }
 
@@ -447,7 +456,10 @@ export async function runOperationsAutomation(actor: Actor, automationId: string
     startedAt,
     completedAt: new Date(),
   }).returning();
-  await db.update(operationsAutomations).set({ lastRun: run.completedAt }).where(eq(operationsAutomations.id, automation.id));
+  await db.update(operationsAutomations).set({ lastRun: run.completedAt }).where(and(
+    eq(operationsAutomations.id, automation.id),
+    eq(operationsAutomations.householdId, ids.householdId),
+  ));
   return {
     id: run.id,
     automationId: run.automationId,
@@ -483,6 +495,10 @@ export async function updateOperationsNotificationPreferences(actor: Actor, inpu
   const ids = await ensureSeedData();
   const [existing] = await db.select().from(operationsNotificationPreferences).where(and(eq(operationsNotificationPreferences.householdId, ids.householdId), eq(operationsNotificationPreferences.userId, ids.ownerId))).limit(1);
   if (!existing) throw new GovernanceError("INVALID_STATE", "Notification preferences are missing");
-  const [updated] = await db.update(operationsNotificationPreferences).set({ ...input, updatedAt: new Date() }).where(eq(operationsNotificationPreferences.id, existing.id)).returning();
+  const [updated] = await db.update(operationsNotificationPreferences).set({ ...input, updatedAt: new Date() }).where(and(
+    eq(operationsNotificationPreferences.id, existing.id),
+    eq(operationsNotificationPreferences.householdId, ids.householdId),
+    eq(operationsNotificationPreferences.userId, actor.userId),
+  )).returning();
   return preferencesResponse(updated);
 }

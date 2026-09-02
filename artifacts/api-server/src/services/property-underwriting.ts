@@ -162,8 +162,14 @@ function dealResponse(candidate: typeof propertyCandidates.$inferSelect, box: ty
 export async function getPropertyUnderwriting() {
   const ids = await getIds();
   const [property, goal, box, candidates, scenarios, cashClose, stressTests, readiness, preapprovals, markets, documents, milestones] = await Promise.all([
-    db.select().from(propertyGoals).where(eq(propertyGoals.id, ids.propertyGoalId)).limit(1),
-    db.select().from(goals).where(eq(goals.id, ids.goalId)).limit(1),
+    db.select().from(propertyGoals).where(and(
+      eq(propertyGoals.id, ids.propertyGoalId),
+      eq(propertyGoals.householdId, ids.householdId),
+    )).limit(1),
+    db.select().from(goals).where(and(
+      eq(goals.id, ids.goalId),
+      eq(goals.householdId, ids.householdId),
+    )).limit(1),
     getOrCreateBuyBox(ids.householdId),
     db.select().from(propertyCandidates).where(eq(propertyCandidates.propertyGoalId, ids.propertyGoalId)).orderBy(desc(propertyCandidates.updatedAt)),
     db.select().from(financingScenarios).where(eq(financingScenarios.householdId, ids.householdId)).orderBy(desc(financingScenarios.createdAt)),
@@ -225,7 +231,24 @@ export async function createPropertyCandidate(actor: Actor, input: typeof proper
   assertPermission(actor.role, "manage_risk");
   const ids = await getIds();
   if (input.propertyGoalId !== ids.propertyGoalId) throw new GovernanceError("INVALID_STATE", "Property goal was not found");
-  const [candidate] = await db.insert(propertyCandidates).values(input).returning();
+  const {
+    id: _id,
+    propertyGoalId: _propertyGoalId,
+    createdAt: _createdAt,
+    updatedAt: _updatedAt,
+    ...candidateInput
+  } = input;
+  if (candidateInput.marketId) {
+    const [market] = await db.select({ id: targetMarkets.id }).from(targetMarkets).where(and(
+      eq(targetMarkets.id, candidateInput.marketId),
+      eq(targetMarkets.householdId, ids.householdId),
+    )).limit(1);
+    if (!market) throw new GovernanceError("INVALID_STATE", "Target market was not found");
+  }
+  const [candidate] = await db.insert(propertyCandidates).values({
+    ...candidateInput,
+    propertyGoalId: ids.propertyGoalId,
+  }).returning();
   return candidate;
 }
 

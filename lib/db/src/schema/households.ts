@@ -9,7 +9,7 @@ import {
   uuid,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { householdRoleEnum } from "./enums";
+import { householdRoleEnum } from "./enums.ts";
 
 export const users = pgTable("capital_users", {
   id: uuid("id").defaultRandom().primaryKey(),

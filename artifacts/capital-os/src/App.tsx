@@ -637,7 +637,7 @@ function Dashboard({ onAction, onFeedback, transactions, dashboard, backendIssue
   const confidence = dashboard?.strategies[0]?.confidenceScore ?? 78;
   return <main className="content">
     {backendIssue && <div className="card card-pad" role="status" style={{ marginBottom: 22, borderColor: 'var(--color-warning)', background: 'var(--color-warning-soft)' }}><strong>Showing the last saved view.</strong><p style={{ margin: '5px 0 0', color: 'var(--ink-soft)', fontSize: 12 }}>The household service is temporarily unavailable. Your local plan view is safe to review, and it will refresh automatically.</p></div>}
-    <PageHeading eyebrow="Monday, 14 October 2024" title={<>Make room for the<br /><em>long view.</em></>} description="A clear week starts here. Your duplex plan is healthy, and the next small move is already in view." actions={<><button className="btn" data-testid="button-dashboard-export" onClick={() => onFeedback('Snapshot prepared for your next review.')}><ArrowDownLeft size={15} /> Export view</button><button className="btn btn-primary" data-testid="button-dashboard-contribution" onClick={() => onAction('contribution')}><Plus size={15} /> Record contribution</button></>} />
+    <PageHeading eyebrow="Monday, 14 October 2024" title={<>Make room for the<br /><em>long view.</em></>} description="A clear week starts here. Your duplex plan is healthy, and the next small move is already in view." actions={<><button className="btn" data-testid="button-dashboard-export" onClick={() => onFeedback('Local-only preview: no server report was created.')}><ArrowDownLeft size={15} /> Export view</button><button className="btn btn-primary" data-testid="button-dashboard-contribution" onClick={() => onAction('contribution')}><Plus size={15} /> Record contribution</button></>} />
     <div className="dashboard-grid">
       <section className="hero-card card animate-in delay-1">
         <div className="eyebrow" style={{ color: '#58766a' }}>Primary goal / 01</div>
@@ -817,7 +817,7 @@ function StrategiesPage({ onFeedback }: { onFeedback: (message: string) => void 
 
 function PortfolioPage({ onFeedback }: { onFeedback: (message: string) => void }) {
   return <main className="content">
-    <PageHeading eyebrow="Plan / portfolio" title={<>Know what is<br /><em>carrying the load.</em></>} description="A composed view of where your family capital sits today—not a screen that asks you to react." actions={<button className="btn" data-testid="button-portfolio-export" onClick={() => onFeedback('Portfolio snapshot prepared.')}><ArrowDownLeft size={15} /> Export snapshot</button>} />
+    <PageHeading eyebrow="Plan / portfolio" title={<>Know what is<br /><em>carrying the load.</em></>} description="A composed view of where your family capital sits today—not a screen that asks you to react." actions={<button className="btn" data-testid="button-portfolio-export" onClick={() => onFeedback('Local-only preview: no server report was created.')}><ArrowDownLeft size={15} /> Export snapshot</button>} />
     <div className="portfolio-split">
       <section className="card card-pad animate-in delay-1"><CardTitle title="Capital composition" subtitle="Total tracked capital · $56,280" /><div className="donut-wrap"><div className="donut"><div className="donut-center"><strong>$56.3k</strong><span>total capital</span></div></div><div className="holding-list">{[['Duplex Reserve','63%','var(--color-primary)'],['Opportunity Reserve','20%','var(--color-opportunity)'],['Capital OS','11%','var(--color-protected)'],['Other cash','6%','var(--color-warning)']].map(([name, pct, color]) => <div className="holding-row" key={name}><i style={{ background:color }} /><span>{name}</span><b>{pct}</b></div>)}</div></div></section>
       <section className="card card-pad animate-in delay-1"><CardTitle title="Resilience check" subtitle="How the plan behaves in three ordinary scenarios." /><div className="activity-list">{[['Emergency buffer', '8.4 months of core expenses', 'Strong', 'var(--ink)'], ['Acquisition liquidity', '100% available within 5 days', 'Ready', 'var(--marigold)'], ['Single-account exposure', 'Largest account is 63% of total', 'Watch', 'var(--clay)']].map(([label, desc, status, color]) => <div className="activity-item" key={label}><div className="activity-icon" style={{ background: 'var(--secondary)', color }}><ShieldCheck size={14} /></div><div className="activity-copy"><strong>{label}</strong><span>{desc}</span></div><span className="status" style={{ color, background: 'var(--secondary)' }}>{status}</span></div>)}</div></section>
@@ -1578,8 +1578,8 @@ function ActionModal({ kind, close, onComplete }: { kind: Exclude<ModalKind, nul
   const copy = {
     contribution: { title: 'Record a contribution', desc: 'Add a movement to your weekly capital rhythm.', submit: 'Save contribution' },
     transfer: { title: 'Move capital with purpose', desc: 'A transfer is just a change of job—not a change of plan.', submit: 'Save transfer' },
-    strategy: { title: 'Make space for a strategy', desc: 'Name the next useful conversation or review.', submit: 'Save strategy note' },
-    property: { title: 'Add a property note', desc: 'Capture one detail while it is fresh.', submit: 'Save property note' },
+    strategy: { title: 'Make space for a strategy', desc: 'Prepare a note for the next useful conversation or review. This quick action is local-only.', submit: 'Prepare note' },
+    property: { title: 'Add a property note', desc: 'Prepare a local note; no property record will be changed by this quick action.', submit: 'Prepare note' },
   }[kind];
   const [amount, setAmount] = useState(kind === 'contribution' ? '250' : '');
   const [name, setName] = useState(kind === 'property' ? 'Separate utilities' : kind === 'strategy' ? 'Review duplex criteria' : '');
@@ -1659,7 +1659,7 @@ function AppContent() {
   useEffect(() => { if (!toast) return; const timeout = window.setTimeout(() => setToast(''), 3200); return () => window.clearTimeout(timeout); }, [toast]);
   const notify = (message: string) => setToast(message);
   const complete = async (kind: Exclude<ModalKind, null>, values: { amount?: number; name?: string; note?: string }) => {
-    const labels = { contribution: 'Contribution recorded', transfer: 'Transfer saved', strategy: 'Strategy note saved', property: 'Property note saved' };
+    const labels = { contribution: 'Contribution recorded', transfer: 'Transfer draft prepared', strategy: 'Strategy note prepared', property: 'Property note prepared' };
     if (kind === 'contribution') {
       try {
         await createContribution(
@@ -1672,7 +1672,11 @@ function AppContent() {
         return;
       }
     }
-    if (kind === 'contribution' || kind === 'transfer') setTransactions((current) => [{ id: Date.now(), date: 'Today', name: values.name || (kind === 'contribution' ? 'Weekly allocation' : 'Reserve transfer'), category: kind === 'contribution' ? 'Duplex Reserve' : 'Capital OS', amount: values.amount || 0, status: 'Posted' }, ...current]);
+    if (kind !== 'contribution') {
+      setModal(null);
+      notify(`${labels[kind]} locally. Nothing was saved to the household service.`);
+      return;
+    }
     setModal(null); setToast(`${labels[kind]} · your plan is up to date.`);
   };
   return <TooltipProvider><RoutedErrorBoundary><AppShell onAction={setModal} onFeedback={notify} menuOpen={menuOpen} setMenuOpen={setMenuOpen}><AppRouter onAction={setModal} onFeedback={notify} transactions={apiTransactions} dashboard={dashboardQuery.data} backendIssue={dashboardQuery.isError} /></AppShell></RoutedErrorBoundary>{modal && <ActionModal kind={modal} close={() => setModal(null)} onComplete={complete} />}{toast && <div className="toast-note" role="status" data-testid="status-action-feedback">{toast}</div>}</TooltipProvider>;

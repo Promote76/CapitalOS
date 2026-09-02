@@ -10,3 +10,4 @@
 - [Accounting overview boundary](capital-os-accounting-boundary.md) — current net worth comes from included financial-account balances; planning capital stays separate until explicitly reconciled.
 - [Concurrent additive seeding](capital-os-concurrent-seeding.md) — household-scoped advisory locks must serialize lazy seed routines reached by parallel API reads.
 - [Business capital boundary](capital-os-business-boundary.md) — business operating cash, profit, owner pay, and household deployable capital stay separate until an approved distribution bridge completes.
+- [HTTP fixture runner](capital-os-http-fixtures.md) — database-backed API fixtures need the workspace TypeScript runner because the source app retains extensionless relative imports.

@@ -5,6 +5,7 @@ import {
   allocationRules,
   treasuryBuckets,
   treasuryPolicies,
+  riskStates,
   type TreasuryBucket,
   type TreasuryPolicy,
 } from "@workspace/db";
@@ -166,13 +167,20 @@ export async function decideCapitalRequest(actor: Actor, requestId: string, inpu
   const safeToDeploy = await getSafeToDeploy();
   const totalLiquidCents = buckets.filter((bucket) => bucket.liquid).reduce((sum, bucket) => sum + parseMoneyToCents(bucket.currentBalance), 0);
   const strategyCents = buckets.filter((bucket) => bucket.bucketType === "STRATEGY").reduce((sum, bucket) => sum + parseMoneyToCents(bucket.currentBalance), 0);
+  const [riskState] = await db.select({ protectedCapitalLocked: riskStates.protectedCapitalLocked })
+    .from(riskStates)
+    .where(and(
+      eq(riskStates.id, ids.riskStateId),
+      eq(riskStates.householdId, ids.householdId),
+    ))
+    .limit(1);
   const decision = allocationDecision({
     requestedAmountCents: parseMoneyToCents(input.approvedAmount ?? request.requestedAmount),
     safeToDeployCents: parseMoneyToCents(safeToDeploy.safeToDeploy),
     currentStrategyCents: strategyCents,
     totalLiquidCents,
     maxStrategyPercent: Number(policy?.maximumStrategyPercent ?? 15),
-    protectedCapitalLocked: false,
+    protectedCapitalLocked: riskState?.protectedCapitalLocked ?? true,
   });
   if (input.decision !== "REJECTED" && !decision.approved) {
     throw new GovernanceError("RISK_BLOCKED", decision.reason);
@@ -183,6 +191,9 @@ export async function decideCapitalRequest(actor: Actor, requestId: string, inpu
     reviewedBy: actor.userId,
     reviewedAt: new Date(),
     updatedAt: new Date(),
-  }).where(eq(capitalRequests.id, request.id)).returning();
+  }).where(and(
+    eq(capitalRequests.id, request.id),
+    eq(capitalRequests.householdId, ids.householdId),
+  )).returning();
   return requestResponse(updated);
 }

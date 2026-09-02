@@ -16,6 +16,31 @@ import {
 } from "./request-scope";
 
 const roles = new Set<HouseholdRole>(["owner", "partner", "viewer", "advisor"]);
+const RECENT_AUTH_WINDOW_MS = 15 * 60 * 1000;
+
+function requiresRecentAuthentication(req: Request) {
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return false;
+  const path = req.path;
+  return path === "/household/privacy" ||
+    path === "/allocations" ||
+    path === "/transfers" ||
+    path === "/risk/emergency-stop" ||
+    path.startsWith("/recommendations/") ||
+    path.startsWith("/operations/approvals/") ||
+    path.includes("/treasury/requests/") ||
+    path.startsWith("/business/distributions") ||
+    path.startsWith("/micro-live/");
+}
+
+function hasRecentAuthentication(req: Request, context: RequestSecurityContext) {
+  if (context.authStrength === "test_database") {
+    return req.header("X-Test-Step-Up") === "verified";
+  }
+  if (context.authStrength !== "clerk_session") return true;
+  const claims = getAuth(req).sessionClaims as { iat?: number; fva?: unknown } | undefined;
+  const issuedAt = typeof claims?.iat === "number" ? claims.iat * 1000 : 0;
+  return issuedAt > 0 && Date.now() - issuedAt <= RECENT_AUTH_WINDOW_MS;
+}
 
 export type ResolvedClerkIdentity = {
   externalAuthId: string;
@@ -125,10 +150,43 @@ async function authenticatedContext(req: Request): Promise<RequestSecurityContex
   };
 }
 
+async function testDatabaseContext(req: Request): Promise<RequestSecurityContext | null> {
+  if (process.env.NODE_ENV !== "test" || process.env.CAPITAL_OS_TEST_CONTEXT !== "1") return null;
+  const userId = req.header("X-Test-User-Id");
+  const householdId = req.header("X-Test-Household-Id");
+  if (!userId || !householdId) return null;
+  const [membership] = await db
+    .select({
+      householdId: householdMembers.householdId,
+      role: householdMembers.role,
+      permissions: householdMembers.permissions,
+    })
+    .from(householdMembers)
+    .innerJoin(users, eq(users.id, householdMembers.userId))
+    .where(and(
+      eq(householdMembers.userId, userId),
+      eq(householdMembers.householdId, householdId),
+      eq(householdMembers.active, true),
+      eq(users.status, "active"),
+    ))
+    .limit(1);
+  if (!membership) return null;
+  return {
+    userId,
+    householdId: membership.householdId,
+    role: membership.role,
+    permissions: membership.permissions.length ? membership.permissions : Array.from(rolePermissions[membership.role]),
+    authStrength: "test_database",
+    source: "test-database",
+  };
+}
+
 function setLocals(res: Response, context: RequestSecurityContext) {
   const actor: Actor = {
     role: context.role,
     userId: context.userId,
+    householdId: context.householdId,
+    permissions: context.permissions,
     source: context.source,
   };
   res.locals.actor = actor;
@@ -138,8 +196,16 @@ function setLocals(res: Response, context: RequestSecurityContext) {
 
 export async function requestContext(req: Request, res: Response, next: NextFunction) {
   try {
-    const auth = await authenticatedContext(req);
+    const auth = await authenticatedContext(req) ?? await testDatabaseContext(req);
     if (auth) {
+      if (requiresRecentAuthentication(req) && !hasRecentAuthentication(req, auth)) {
+        res.status(403).json({
+          code: "STEP_UP_REQUIRED",
+          message: "Recent authentication is required before this protected action.",
+          correlationId: res.locals.correlationId,
+        });
+        return;
+      }
       setLocals(res, auth);
       runWithSecurityContext(auth, next);
       return;

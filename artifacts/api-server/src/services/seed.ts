@@ -827,7 +827,7 @@ async function ensureTenantCore(householdId: string, ownerId: string): Promise<S
 
 export async function ensureSeedData(): Promise<SeedContext> {
   const active = activeSecurityContext();
-  if (active?.authStrength === "clerk_session") {
+  if (active?.authStrength === "clerk_session" || active?.authStrength === "test_database") {
     return ensureTenantCore(active.householdId, active.userId);
   }
   if (seedContext) return seedContext;

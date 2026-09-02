@@ -15,9 +15,9 @@ import {
   liquidityClassEnum,
   riskClassEnum,
   treasuryBucketTypeEnum,
-} from "./enums";
-import { households, users } from "./households";
-import { strategies } from "./property-strategy";
+} from "./enums.ts";
+import { households, users } from "./households.ts";
+import { strategies } from "./property-strategy.ts";
 
 const money = (name: string) =>
   numeric(name, { precision: 18, scale: 2 }).notNull().default("0");

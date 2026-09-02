@@ -7,6 +7,8 @@ info:
 servers:
   - url: /api
     description: Base API path
+security:
+  - clerkSession: []
 tags:
   - name: health
   - name: auth
@@ -23,6 +25,7 @@ tags:
 paths:
   /healthz:
     get:
+      security: []
       operationId: healthCheck
       tags: [health]
       summary: Health check
@@ -35,6 +38,7 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
   /health/live:
     get:
+      security: []
       operationId: healthLive
       tags: [health]
       summary: Dependency-free liveness check
@@ -46,6 +50,7 @@ paths:
               schema: { $ref: "#/components/schemas/HealthStatus" }
   /health/ready:
     get:
+      security: []
       operationId: healthReady
       tags: [health]
       summary: PostgreSQL readiness check
@@ -1709,6 +1714,17 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 components:
+  securitySchemes:
+    clerkSession:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Clerk-issued session token resolved to an active Capital OS household membership.
+    recentAuthentication:
+      type: apiKey
+      in: header
+      name: X-Capital-Recent-Auth
+      description: Server-verified recent-authentication proof required for protected policy, approval, and Micro-Live boundary writes.
   parameters:
     IdempotencyKey:
       name: Idempotency-Key

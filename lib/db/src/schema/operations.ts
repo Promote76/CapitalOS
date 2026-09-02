@@ -10,7 +10,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { households, users } from "./households";
+import { households, users } from "./households.ts";
 
 export const operationsTasks = pgTable(
   "operations_tasks",

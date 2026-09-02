@@ -44,5 +44,9 @@ export function calculateNetWorthAttribution(input: {
 }
 
 export function ledgerDebitsEqualCredits(lines: LedgerLine[]) {
-  return lines.every((line) => line.debitCents === line.creditCents);
+  return lines.length > 0 && lines.every((line) =>
+    line.debitCents > 0 &&
+    line.creditCents > 0 &&
+    line.debitCents === line.creditCents,
+  );
 }

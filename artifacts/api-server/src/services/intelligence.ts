@@ -203,7 +203,10 @@ export async function refreshIntelligence(actor?: Actor) {
     confidence: recommendation.confidence.toFixed(2),
     affectedGoalId: ids.goalId,
     affectedCapital: "Duplex Reserve and household liquidity",
-  }).where(eq(aiRecommendations.id, ids.recommendationId));
+  }).where(and(
+    eq(aiRecommendations.id, ids.recommendationId),
+    eq(aiRecommendations.householdId, ids.householdId),
+  ));
 
   await db.insert(auditEvents).values({
     householdId: ids.householdId,
@@ -220,7 +223,10 @@ export async function refreshIntelligence(actor?: Actor) {
 async function readIntelligenceSnapshot() {
   const ids = await ensureSeedData();
   const [recommendation, analyses, insights, cashFlow, safeToDeploy, property, goals, portfolio, risk] = await Promise.all([
-    db.select().from(aiRecommendations).where(eq(aiRecommendations.id, ids.recommendationId)).limit(1),
+    db.select().from(aiRecommendations).where(and(
+      eq(aiRecommendations.id, ids.recommendationId),
+      eq(aiRecommendations.householdId, ids.householdId),
+    )).limit(1),
     db.select().from(aiAnalyses).where(eq(aiAnalyses.householdId, ids.householdId)),
     db.select().from(aiInsights).where(eq(aiInsights.householdId, ids.householdId)),
     getCashFlow(),

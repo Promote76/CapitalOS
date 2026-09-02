@@ -12,7 +12,7 @@ Capital OS is a household financial planning and advisory application for budget
 
 The hardening work established meaningful controls around authenticated identity, household scoping, role checks, effective membership permission loading, origin enforcement, exact-cent financial logic, atomic transfer debits, idempotency boundaries, ledger evidence, Treasury protected-capital state, persistence truth in the UI, generated API contracts, and the disabled Micro-Live execution boundary.
 
-Executable evidence is currently strongest for domain safety and isolated PostgreSQL HTTP behavior. The workspace typechecks, builds, regenerates API clients, passes route parity, and passes 66 API tests. The isolated database-backed fixture also proves selected cross-household, viewer-denial, contribution/transfer idempotency, 100-request contention, balanced ledger totals, and representative actor-attribution scenarios.
+Executable evidence is currently strongest for domain safety and isolated PostgreSQL HTTP behavior. The workspace typechecks, builds, regenerates API clients, passes route parity, and passes 66 API tests. The isolated database-backed fixture also proves selected cross-household, viewer-denial, contribution/transfer idempotency, concurrent capital-request creation, concurrent business-distribution preparation, 100-request contention, balanced ledger totals, and representative actor-attribution scenarios.
 
 Capital OS is **not** qualified as a Production Candidate because the full caller-controlled identifier matrix, complete role and effective-permission HTTP matrix, existing-schema upgrade lifecycle, managed backup/restore drill, authenticated browser journeys, production-supported Clerk step-up flow, broader economic-event idempotency coverage, complete actor-audit verification, and durable operations evidence remain unproven.
 
@@ -77,13 +77,13 @@ The current high-risk authentication safeguard is a temporary Clerk session-issu
 |---|---|---|---|
 | Authentication | PARTIAL | Clerk middleware/provider wiring; signed-out protected request returns `401` even with spoofed role header | No real signed-in browser journey |
 | Tenant isolation | PARTIAL | Two-household PostgreSQL HTTP fixture rejects a foreign goal and exercises account/transfer/contribution boundaries | Full per-route identifier matrix is open |
-| Roles | PARTIAL | Dedicated fixture provisions Owner, Partner, Advisor, and Viewer in both households and implements partner allow plus advisor/viewer denial checks | Dedicated PostgreSQL execution and complete action matrix remain open |
+| Roles | PARTIAL | Isolated PostgreSQL fixture provisions Owner, Partner, Advisor, and Viewer in both households and implements partner allow plus advisor/viewer denial checks | Complete action and grant/revocation matrix remains open |
 | Effective permissions | PARTIAL | Active membership permissions are loaded and centralized checks use them; empty lists fall back to role defaults | HTTP grant/revocation precedence certification is open |
 | Step-up | PARTIAL | Recent-auth middleware denies missing test step-up on protected writes | Production-supported Clerk reverification is not configured |
 | Origin / CSRF | PARTIAL | Four middleware tests cover 24 state-changing-method/origin scenarios; production `CAPITAL_OS_ALLOWED_ORIGIN` is configured for `https://capital-os-fund.replit.app`, with republish pending before live verification | Full authenticated HTTP/browser route matrix remains to be certified |
 | IDOR | PARTIAL | Foreign-goal mutation and selected cross-household fixture cases are denied without a partial write | Every caller-controlled child and parent identifier is not yet tested |
 | Mass assignment | OPEN | Request context and server-owned relationships provide safeguards by inspection | No complete HTTP mass-assignment test matrix |
-| Audit attribution | PARTIAL | Fixture queries persisted contribution/transfer audit rows and asserts the authenticated actor; context is propagated through server paths | Full Owner/Partner/Advisor action-to-audit query verification awaits dedicated execution |
+| Audit attribution | PARTIAL | Fixture queries persisted contribution, transfer, capital-request, and business-distribution audit rows and asserts the authenticated actor; context is propagated through server paths | Full Owner/Partner/Advisor action-to-audit query verification awaits dedicated execution |
 | Secret handling | OPEN | No secret values are claimed in this report; runtime configuration uses workspace secret mechanisms | Bundle, logs, errors, audit payload, AI context, vault rotation, and access-audit evidence are not complete |
 | Rate limiting | OPEN | Current controls are not certified for horizontal deployment | Shared production rate-limit store/trusted-proxy model is not recorded |
 
@@ -304,8 +304,8 @@ AI cannot:
 | Tenant isolation | PARTIAL | Targeted two-household fixture passes; full route matrix is open |
 | Authorization | PARTIAL | Viewer denial and permission loading pass; complete role/grant/revocation matrix is open |
 | Origin / CSRF | PARTIAL | Middleware matrix passes 24 method/origin scenarios; complete authenticated HTTP/browser route matrix is open |
-| Concurrency | PARTIAL | Targeted transfer race and 100-request contention with balanced ledger totals pass; broader economic paths remain open |
-| Idempotency | PARTIAL | Contribution and transfer replay pass; capital request and distribution preparation remain open |
+| Concurrency | PARTIAL | Targeted transfer race, 100-request contention with balanced ledger totals, concurrent capital-request creation, and concurrent distribution preparation pass; broader economic paths remain open |
+| Idempotency | PARTIAL | Contribution and transfer replay plus capital-request and distribution-preparation same-key creation pass; broader event and mismatch coverage remains open |
 | Migration | PARTIAL | Clean isolated baseline passes; existing-schema upgrade/data preservation remains open |
 | Restore | BLOCKED | Managed backup/restore unavailable |
 | Browser E2E | BLOCKED | Authenticated test environment unavailable |
@@ -329,6 +329,7 @@ These are listed as resolved only where current source and targeted test evidenc
 9. **UI false-success claims:** reviewed local-only actions no longer claim that authoritative financial, legal, permission, or ownership state was saved.
 10. **Clean migration baseline:** `CAPITAL_OS_CERTIFICATION_ALLOW_RESET=1 pnpm run certify:migrations` reset and applied the generated baseline on the isolated Neon certification branch and verified representative tables with exit code `0`.
 11. **High-contention transfer ledger:** the isolated PostgreSQL HTTP fixture completed 100 concurrent `$25` transfers from `$1,000`, produced 40 successes/60 overdraft rejections, ended at `$0`, and reconciled `$1,000` debits to `$1,000` credits.
+12. **Capital-request and business-distribution idempotency:** concurrent same-key HTTP requests returned the same persisted record for each operation, created one row per operation, and recorded the authenticated actor in one audit event per created record.
 
 ## Remaining Risks
 
@@ -342,8 +343,8 @@ These are listed as resolved only where current source and targeted test evidenc
 | Managed backup/restore is unexecuted | Recovery capability and RPO/RTO are unknown | Restore runbook and explicit blocked record | Execute provider backup and isolated restore drill | Blocks candidate promotion |
 | Authenticated browser journey is unexecuted | UI persistence, auth lifecycle, and tenant navigation are unproven | Preview render and server contract tests | Run real Clerk sign-up/onboarding/reload/sign-out/sign-in journeys | Blocks candidate promotion |
 | Complete role/effective-permission HTTP proof is unexecuted | Partner/Advisor/Viewer and revocation behavior could be wrong | Centralized checks and targeted Viewer denial | Execute full role/action and grant/revocation matrix | Blocks candidate promotion |
-| Broader concurrent idempotency is unexecuted | Duplicate economic events could occur in untested workflows | Contribution idempotency and advisory locks | Test transfer, capital request, and distribution preparation across processes/connections | Blocks candidate promotion |
-| Full actor attribution verification is unexecuted | Audit records could misidentify the responsible actor | Actor context propagation | Query persisted audit records for Owner/Partner/Advisor permitted actions | Blocks candidate promotion |
+| Complete concurrent idempotency breadth is unexecuted | Duplicate economic events could occur in untested workflows | Contribution, transfer, capital-request, and distribution-preparation proofs plus advisory locks | Extend the same-key and mismatch matrix across remaining economic workflows and independent processes/connections | Blocks candidate promotion |
+| Full actor attribution verification is unexecuted | Audit records could misidentify the responsible actor | Actor context propagation and audited capital-request/distribution writes | Query persisted audit records for Owner/Partner/Advisor permitted actions | Blocks candidate promotion |
 
 ### P1
 
@@ -419,4 +420,4 @@ Capital OS is not authorized by this report to:
 
 **Capital OS is not qualified as a Production Candidate for its current non-executing family-capital scope.**
 
-The reason is evidence-based: eight P0 release blockers remain open, including complete tenant/role HTTP coverage, existing-schema upgrade execution, managed backup/restore, authenticated browser proof, broader idempotency proof, and complete actor attribution. The system has meaningful implemented safeguards and now has executed isolated clean-migration, database HTTP, contention, ledger, replay, and representative audit evidence, but the release gate correctly remains **NOT READY** until the remaining gaps are executed and recorded.
+The reason is evidence-based: eight P0 release blockers remain open, including complete tenant/role HTTP coverage, existing-schema upgrade execution, managed backup/restore, authenticated browser proof, broader idempotency coverage, and complete actor attribution. The system has meaningful implemented safeguards and now has executed isolated clean-migration, database HTTP, contention, ledger, replay, capital-request/distribution idempotency, and representative audit evidence, but the release gate correctly remains **NOT READY** until the remaining gaps are executed and recorded.

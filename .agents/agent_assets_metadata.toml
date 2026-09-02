@@ -36,3 +36,17 @@ mtime_ms = 1788316752601
 storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:a275880a-7e86-4ab1-a13b-802e51c9d9ab/7d678fd1-97d6-4bf2-8947-6da9511c9cc4/1b27a795-31ce-4bd8-943e-53282d61e137"
 storage_version_token = "1788316757216594"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "O_cHzLLmSuxetRIUzp2DH"
+uri = "file://docs/CAPITAL_OS_FINAL_COMPLETION_REPORT_2026-09-02.md"
+type = "text"
+title = "Capital OS Final Completion Report"
+description = "Updated production-readiness report with Neon certification evidence, production origin configuration status, and remaining release blockers."
+logical_id = "03df0752-8636-4e7c-9062-2b4cb5299f77"
+content_hash = "sha256:af93b7d5ca9b374e0617799fd75d0463e3ac8b1dedbd23961afe8cf6b0a5abff"
+size = 34143
+mtime_ms = 1788365550607
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:a275880a-7e86-4ab1-a13b-802e51c9d9ab/03df0752-8636-4e7c-9062-2b4cb5299f77/202784b1-ad83-4237-9e6e-87e6bd87d1f9"
+storage_version_token = "1788365627654952"
+content_type = "text/markdown"

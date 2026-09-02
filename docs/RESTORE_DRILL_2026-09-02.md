@@ -14,9 +14,13 @@ official Data recovery guidance:
 - The available agent database operations only provide connectivity and
   read-only production SQL; they do not enumerate provider backup points,
   create an isolated restore target, or confirm a restore.
-- The production read-only check reached `neondb.public` at
-  `2026-09-02 18:58:53 UTC`. This is a connectivity observation only and is
-  not backup or restore evidence.
+- The managed database check reported ready, and the production read-only check
+  reached `neondb.public` at `2026-09-02 20:24:17.66116 UTC`. This is a
+  connectivity observation only and is not backup or restore evidence.
+- Replit's current recovery guidance confirms that production point-in-time
+  restore and scheduled-backup controls are configured from the Database tool
+  in the Project Editor. Those provider controls were not exposed through the
+  agent-accessible database operations used for this run.
 
 Reference: [Replit Data recovery](https://docs.replit.com/features/data-and-storage/data-recovery)
 
@@ -28,6 +32,7 @@ Reference: [Replit Data recovery](https://docs.replit.com/features/data-and-stor
 | Restore target | Not provisioned |
 | Start | Not executed |
 | Finish | Not executed |
+| Provider control observation | PITR and scheduled-backup controls documented in the Database tool; no agent-accessible selection or restore confirmation |
 | RPO observation | Not measured |
 | RTO observation | Not measured |
 | Integrity tests | Not executed |
@@ -36,7 +41,7 @@ Reference: [Replit Data recovery](https://docs.replit.com/features/data-and-stor
 
 ## Required execution
 
-The release owner must use the managed PostgreSQL provider’s supported backup
+The release owner must use the managed PostgreSQL provider's supported backup
 mechanism in the Database tool, record the selected backup/PITR reference,
 backup time, retention, provider controls, and release version, then restore it
 into an isolated database with no public ingress and no production writes.

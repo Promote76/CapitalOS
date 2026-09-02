@@ -12,3 +12,4 @@
 - [Business capital boundary](capital-os-business-boundary.md) — business operating cash, profit, owner pay, and household deployable capital stay separate until an approved distribution bridge completes.
 - [HTTP fixture runner](capital-os-http-fixtures.md) — database-backed API fixtures need the workspace TypeScript runner because the source app retains extensionless relative imports.
 - [Certification evidence boundary](capital-os-certification-evidence.md) — close release gates only from isolated execution; never substitute fabricated legacy schemas or synthetic restore evidence.
+- [Managed recovery controls](capital-os-managed-recovery.md) — provider PITR and scheduled-backup selection require the Database tool; agent SQL access cannot certify a restore.

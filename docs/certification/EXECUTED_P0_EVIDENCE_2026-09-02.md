@@ -76,9 +76,11 @@ recovery guidance. It requires the release owner to select a production
 point-in-time restore or scheduled backup from the Database tool and confirm
 the restore there. The available agent database operations do not expose
 provider backup enumeration, restore confirmation, or isolated-target
-provisioning. A production read-only connectivity check reached
-`neondb.public` at `2026-09-02 18:58:53 UTC`; this does not establish a backup,
-restore, recovery point, recovery time, or data integrity.
+provisioning. The managed database check reported ready, and a production
+read-only connectivity check reached `neondb.public` at
+`2026-09-02 20:24:17.66116 UTC`; this does not establish a backup, restore,
+recovery point, recovery time, or data integrity. No restore or integrity
+checks were executed.
 
 The complete blocked execution record, required provider evidence, and
 verification checklist are in

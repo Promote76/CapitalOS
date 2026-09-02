@@ -9,7 +9,7 @@
 - [ ] **P0-01 Caller-controlled identifier / IDOR matrix.** Selected two-household and mass-assignment cases execute, but the complete route-by-route matrix remains open.
 - [x] **P0-02 Origin / CSRF certification.** Five published-origin probes passed, including missing, malformed, cross-site, allowed, and invalid-credential-origin writes. Evidence: `scripts/certify-production-origin.mjs`, `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [x] **P0-03 Existing-schema upgrade.** Historical data survived the additive current-schema upgrade on disposable Neon branches. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
-- [ ] **P0-04 Managed backup / restore.** Provider-managed backup reference, isolated restore, and invariant verification remain unavailable. Evidence: `docs/RESTORE_DRILL_2026-09-02.md` (blocked; no provider restore evidence claimed).
+- [ ] **P0-04 Managed backup / restore.** Provider-managed backup reference, isolated restore, and invariant verification remain unavailable. The latest agent-accessible check reached `neondb.public` read-only at `2026-09-02 20:24:17.66116 UTC`, which is connectivity evidence only. Evidence: `docs/RESTORE_DRILL_2026-09-02.md` (blocked; no provider restore evidence claimed).
 - [ ] **P0-05 Authenticated browser journey.** The secure programmatic Clerk run passed session authentication, household creation, a saved manual-account write, reload persistence, session invalidation, repeat sign-in, and the exercised two-household isolation assertion. It failed visible onboarding-form rendering and the signed-out UI boundary, so the gate remains open. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [ ] **P0-06 Role / effective-permission HTTP certification.** Selected role paths execute; the complete grant, revoke, membership-change, and tampering matrix remains open.
 - [x] **P0-07 Concurrent idempotency breadth.** The isolated HTTP fixture passed same-key concurrency and mismatched-payload cases for contribution, transfer, strategy allocation, capital request, and business distribution. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
@@ -74,7 +74,7 @@
 - [ ] Production Clerk instance and allowed origins are configured.
 - [ ] Production database is managed and schema publication path is documented for the release.
 - [ ] Backup freshness, retention, RPO, and RTO are recorded.
-- [ ] Restore drill date, source backup, isolated target, and integrity results are recorded. Current drill is blocked because the supported provider restore workflow was not available to the agent.
+- [ ] Restore drill date, source backup, isolated target, and integrity results are recorded. Current drill is blocked because the supported provider restore workflow was not available to the agent; the latest check only confirmed read-only connectivity.
 - [ ] Durable queue/scheduler configuration is recorded.
 - [ ] Rate-limit store and trusted proxy configuration are recorded.
 - [ ] Structured log retention and audit-log shipping are configured.
@@ -97,7 +97,7 @@ As of 2026-09-02:
 - [x] Two-household isolation is verified over HTTP for the current fixture scenarios; systematic route coverage remains open.
 - [x] Isolated PostgreSQL fixture passes duplicate contribution, parallel transfer, 100-request `$25` contention with balanced ledger totals, concurrent capital-request creation, concurrent business-distribution preparation, and actor-attributed audit assertions.
 - [x] Certification evidence index, route matrix, role matrix, and UI persistence matrix are recorded.
-- [x] Clean migration and existing-schema upgrade evidence are recorded for disposable isolated PostgreSQL branches; managed production restore remains open.
+- [x] Clean migration and existing-schema upgrade evidence are recorded for disposable isolated PostgreSQL branches; managed production restore remains open and has no claimed restore evidence.
 - [ ] Backup restore drill passes.
 - [ ] Authenticated browser critical journeys pass. The executed run failed visible onboarding and signed-out UI assertions.
 - [ ] P0 blockers equal zero.

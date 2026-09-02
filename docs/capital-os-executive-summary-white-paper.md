@@ -4,6 +4,7 @@
 **Release decision:** **NOT READY**
 **Companion audit:** `docs/PRODUCTION_READINESS_AUDIT_2026-09-02.md`
 **Release gate:** `docs/PRODUCTION_RELEASE_GATE.md`
+**Current certification:** `docs/PRODUCTION_CANDIDATE_CERTIFICATION_2026-09-02.md`
 
 ## Executive Summary
 
@@ -15,13 +16,13 @@ Capital OS is a polished family-capital planning application centered on a first
 
 The product is strongest as a deterministic, advisory, PostgreSQL-backed planning system. It has exact-cent financial domain logic, protected-goal controls, Treasury review records, business/household separation, advisory intelligence, and a deliberately disabled Micro-Live boundary.
 
-The September 2 post-hardening audit does **not** certify production readiness. The application now has a real Clerk-to-internal-user-to-household-membership path in production, but the trust boundary is not sufficiently proven or complete for multiple households:
+The September 2 certification does **not** classify the application as a Production Candidate. The application now has a real Clerk-to-internal-user-to-household-membership path in production-like code and a targeted PostgreSQL two-household fixture, but the trust boundary is not sufficiently proven or complete for broad multi-household use:
 
-- a caller-supplied contribution goal ID is not constrained to the current household and can update a foreign goal;
-- browser write-origin controls are fail-open when deployment configuration is absent;
-- the database migration lifecycle is not reproducible from zero or proven against an older schema;
+- the contribution goal ID is now constrained to the current household, with a foreign-goal HTTP regression passing;
+- browser write-origin controls now fail closed when deployment configuration is absent;
+- the database migration lifecycle is still not reproducible from zero or proven against an older schema;
 - backups and restore are described but not operationally drilled;
-- there are no HTTP integration, database integration, authenticated browser E2E, or true concurrency tests;
+- targeted HTTP/database/concurrency evidence exists, but full route/role coverage and authenticated browser E2E remain open;
 - several visible workflows are prepared, simulated, read-only, or local-only rather than authoritative writes.
 
 The correct next phase is continued hardening, not a new feature expansion or a real bank/trading integration.
@@ -54,7 +55,7 @@ The system is intentionally provider-neutral and manual/CSV-first for banking. A
 | Financial storage | PostgreSQL `numeric(18,2)` |
 | Financial decisions | Integer cents in deterministic server/domain code |
 | Ledger | Double-entry-inspired movement history and audit records |
-| Idempotency | Household-scoped contribution/transfer keys, with concurrency proof still missing |
+| Idempotency | Household-scoped contribution/transfer keys; contribution replay and transfer concurrency are proven in the fixture |
 | Treasury | Review/preparation records; advisory only |
 | Business | Entities, accounts, revenue, expense, reserves, proposed distributions |
 | Property | Decision-support goals and readiness; no purchase execution |
@@ -69,10 +70,10 @@ The system is intentionally provider-neutral and manual/CSV-first for banking. A
 | Previous major gap | Result |
 |---|---|
 | Authentication | **PARTIALLY RESOLVED** — browser and API are wired to Clerk; real signed-in E2E remains unverified |
-| Tenant isolation | **PARTIALLY RESOLVED** — broad household predicates exist, but a contribution goal IDOR remains |
+| Tenant isolation | **PARTIALLY RESOLVED** — contribution goal IDOR is fixed and targeted HTTP proof passes; full route matrix remains open |
 | Production schema lifecycle | **PARTIALLY RESOLVED** — generated artifact and managed Publish boundary are documented; reproducibility is not proven |
 | Persisted workflows | **PARTIALLY RESOLVED** — several writes now persist; quick actions and exports remain mixed |
-| Integration coverage | **UNCHANGED** — 0 HTTP, 0 database, 0 browser E2E cases |
+| Integration coverage | **PARTIALLY RESOLVED** — targeted PostgreSQL HTTP fixture passes; full route matrix and browser E2E remain open |
 | Operations durability | **UNCHANGED** — no durable scheduler, queue, or restart recovery |
 | Accounting completeness | **CLARIFIED** — API-backed but liabilities, valuation, and business-equity treatment remain partial |
 | Frontend organization | **UNCHANGED** — approved UI preserved; large `App.tsx` remains a change-risk area |
@@ -82,7 +83,7 @@ The system is intentionally provider-neutral and manual/CSV-first for banking. A
 
 No visual regression was found in the verified 1440×1000 preview. Tightening the contribution response contract exposed legacy null metadata during review; the service now normalizes that historical value to `{}` without weakening the public contract.
 
-The hardening layer adds useful authorization complexity but still lacks an HTTP test harness. That is a verification risk, not a claim of a functional regression.
+The hardening layer adds useful authorization complexity. The targeted HTTP fixture passes, but its narrow scope is still a verification risk for the unreached route and role matrix.
 
 ## Technical Architecture
 
@@ -139,7 +140,7 @@ The weekly allocation model preserves the configured $250 rhythm and stores allo
 4. contribution record;
 5. audit event.
 
-The contribution path is not yet safe for production because its optional `goalId` is checked by ID alone rather than ID plus current household. A foreign UUID could mutate another household’s goal. This is a release-blocking integrity defect.
+The contribution path now checks the optional `goalId` against the current household, and the database-backed fixture rejects a foreign UUID before any contribution or goal write. The broader caller-controlled identifier matrix remains a release gate.
 
 Safe-to-Deploy uses liquid checking, savings, and money-market balances; bills; essential expenses; reserve shortfall; protected commitments; upcoming required expenses; a safety buffer; and a deployable percentage cap. Business cash, protected duplex capital, planning balances, and unrealized values are excluded by current source selection. The calculation remains conservative but uses fixed confidence/buffer inputs and lacks a full cross-domain invariant suite.
 
@@ -147,7 +148,7 @@ Safe-to-Deploy uses liquid checking, savings, and money-market balances; bills; 
 
 Treasury provides an advisory review surface and persisted capital-request records. Approval is human-gated and does not itself move money. Protected capital remains a separate boundary.
 
-The Treasury implementation must still be corrected to use the persisted protected-capital lock state rather than a hardcoded unlocked decision field. This is a P1 financial-integrity risk even though the UI describes Treasury as advisory-only.
+Treasury decisions now use the persisted protected-capital lock state. Treasury remains advisory and approval does not itself move money.
 
 ## Business
 
@@ -192,7 +193,7 @@ No direct AI capital authority was found. Full authenticated tenant tests are st
 
 Operations persists tasks, alerts, approvals, notification preferences, and prepare-only automation runs. Automation blocks capital movement, protected-capital unlocks, Micro-Live enablement, ownership changes, contracts, and offers.
 
-There is no durable scheduler, queue, worker, retry policy, or restart recovery. Automation health currently hardcodes zero failures instead of deriving failure state from durable run history. This is not production-grade operational execution.
+There is no durable scheduler, queue, worker, retry policy, or restart recovery. Automation health is not yet proven to derive failure state from durable run history. This is not production-grade operational execution.
 
 ## Accounting
 
@@ -227,7 +228,7 @@ The current design avoids double-counting by using included financial-account ba
 
 ### Incomplete controls
 
-- no step-up/recent-auth boundary;
+- recent-auth middleware protects critical writes, but provider-supported Clerk step-up is not yet configured;
 - role map is used instead of stored effective per-membership permissions;
 - no two-household HTTP security suite;
 - write-origin enforcement is conditional on deployment configuration;
@@ -241,15 +242,15 @@ The current design avoids double-counting by using included financial-account ba
 | Category | Current inventory |
 |---|---|
 | Pure domain | 11 files, 62 cases, 62 passing |
-| HTTP integration | 0 |
-| Database integration | 0 |
+| HTTP integration | 1 targeted PostgreSQL fixture |
+| Database integration | 1 database-backed fixture; no separate lifecycle suite |
 | Authenticated browser E2E | 0 |
-| True concurrency | 0 |
+| True concurrency | 2 targeted request races |
 | Migration tests | 0 |
-| Dedicated security suites | 0 |
-| Recovery | Pure OMS/recovery scenarios only |
+| Dedicated security suites | 3 origin/CSRF middleware cases plus domain coverage |
+| Recovery | Pure OMS/recovery scenarios only; managed restore unexecuted |
 
-The 62 domain cases cover exact-cent arithmetic, financial allocation, accounting rules, role denial, protected capital, strategy stages, AI authority, operations safety, property underwriting, and Micro-Live state logic. They do not certify the deployed HTTP, database, browser, migration, or multi-tenant boundary.
+The 62 domain cases cover exact-cent arithmetic, financial allocation, accounting rules, role denial, protected capital, strategy stages, AI authority, operations safety, property underwriting, and Micro-Live state logic. The new targeted HTTP fixture adds real PostgreSQL evidence but does not certify every route, browser journey, migration, or restore path.
 
 Current build evidence:
 
@@ -281,16 +282,15 @@ The platform is not currently a safe general-purpose multi-household financial s
 
 ### P0 — before any production financial use
 
-1. Fix the contribution goal household predicate and review every path identifier for equivalent issues.
-2. Make write-origin and CSRF controls fail closed in production.
-3. Build two-household authenticated HTTP fixtures and test reads, writes, IDOR, headers, mass assignment, and roles.
-4. Establish a managed-database-compatible migration baseline and clean/upgrade tests.
-5. Execute an isolated backup/restore drill with ledger, identity, Treasury, business, strategy, accounting, and audit checks.
+1. Complete the systematic caller-controlled identifier and role HTTP matrix.
+2. Establish a managed-database-compatible migration baseline and clean/upgrade tests.
+3. Execute an isolated backup/restore drill with ledger, identity, Treasury, business, strategy, accounting, and audit checks.
+4. Complete authenticated browser E2E for onboarding, reload, sign-out, viewer denial, tenant isolation, and persisted writes.
 
 ### P1 — before production candidate
 
-1. Make transfer balance updates atomic and test concurrent requests.
-2. Enforce effective membership permissions and add step-up authentication.
+1. Expand transfer/idempotency and actor-attribution certification across all economic events.
+2. Replace temporary recent-auth freshness with a provider-supported Clerk step-up flow.
 3. Add durable scheduling, retries, restart recovery, and actual automation health.
 4. Add metrics, alerts, audit shipping, and database/queue telemetry.
 5. Reconcile accounting, business equity, liabilities, and Safe-to-Deploy invariants.

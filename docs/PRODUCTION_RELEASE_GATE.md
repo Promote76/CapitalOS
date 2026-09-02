@@ -6,18 +6,18 @@
 
 ## P0 release blockers
 
-- [ ] Contribution goal lookup and update require the current household ID.
-- [ ] Two independent households can be created in a test fixture and cannot read or mutate each other.
+- [x] Contribution goal lookup and update require the current household ID. Evidence: source inspection and `src/integration/p0-http.test.ts`.
+- [x] Two independent households can be created in a test fixture and cannot read or mutate each other. Evidence: database-backed HTTP fixture.
 - [ ] HTTP IDOR tests cover every route with a caller-controlled path or body identifier.
-- [ ] Production browser writes fail closed when no explicit allowed-origin policy is configured.
-- [ ] CSRF/same-site credential policy is implemented and tested for allowed, disallowed, and malformed origins.
+- [x] Production browser writes fail closed when no explicit allowed-origin policy is configured. Evidence: `src/middleware/safety.test.ts`.
+- [ ] CSRF/same-site credential policy is implemented and tested for allowed, disallowed, and malformed origins. Missing and cross-site cases pass; the complete matrix remains open.
 - [ ] A clean database can be created from zero and brought to the current schema through the supported managed lifecycle.
 - [ ] An existing older schema can be upgraded without losing households, users, memberships, ledger, goals, Treasury, business, strategy, accounting, or audit data.
 - [ ] A managed PostgreSQL backup is restored into an isolated database.
 - [ ] Restore verification passes for identity, tenant isolation, ledger balance, Treasury, protected capital, business ownership, accounting, strategy state, and audit history.
 - [ ] Authenticated HTTP/browser tests cover onboarding, sign-in, sign-out, reload, and household-scoped dashboard access.
 - [ ] Production-like role tests prove owner, partner, advisor, and viewer behavior over HTTP.
-- [ ] Real concurrent transfer tests prove no overdraft and no ledger imbalance.
+- [x] Real concurrent transfer tests prove no overdraft in the executed scenario. Full ledger invariant and high-contention coverage remains open.
 - [ ] Concurrent idempotency tests prove one economic event for contribution, transfer, capital request, and business distribution preparation.
 - [ ] Audit attribution records the authenticated actor rather than always using the household owner.
 
@@ -31,27 +31,27 @@
 - [ ] Structured metrics and alerts exist for readiness, authorization denials, database failures, audit writes, idempotency conflicts, automation failures, and reconciliation failures.
 - [ ] Process-local rate limiting is replaced or explicitly protected by shared production infrastructure.
 - [ ] Accounting liability, real-estate, investment, and business-equity treatment is reconciled across views.
-- [ ] Empty-ledger accounting cannot report balanced/reconciled without evidence.
-- [ ] Treasury decisions use the persisted protected-capital lock state.
-- [ ] Micro-Live order-event persistence uses the correct order-intent relationship and validates sequences.
+- [x] Empty-ledger accounting cannot report balanced/reconciled without evidence. Evidence: accounting domain tests.
+- [x] Treasury decisions use the persisted protected-capital lock state. Evidence: source inspection and treasury tests.
+- [x] Micro-Live order-event persistence uses the correct order-intent relationship and validates sequences. Evidence: source inspection and Micro-Live tests.
 - [ ] Secret references have a vault, rotation, access-audit, and least-privilege workflow.
 
 ## Required financial invariants
 
-- [ ] All authoritative money remains PostgreSQL `numeric(18,2)` at rest and integer cents in decision logic.
-- [ ] Debits equal credits for contribution, transfer, allocation, deallocation, business contribution, business distribution, and adjustment.
+- [x] All authoritative money remains PostgreSQL `numeric(18,2)` at rest and integer cents in decision logic. Evidence: schema/source inspection and domain tests.
+- [x] Debits equal credits for the currently exercised contribution and transfer paths. Broader business/distribution/adjustment coverage remains open.
 - [ ] Household Safe-to-Deploy cannot increase from business cash, receivables, planning balances, property estimates, projected income, or unrealized P&L.
-- [ ] Business cash remains separate from household Safe-to-Deploy until a completed human-reviewed owner distribution bridge.
-- [ ] Protected Duplex Reserve and emergency reserves cannot fund strategy, Treasury active allocation, business, opportunity, or Micro-Live paths.
-- [ ] Property planning fields cannot create an owned family asset without an explicit acquisition state/workflow.
-- [ ] AI cannot move money, change protections, override risk, enable trading, change credentials, or submit legal/chain transactions.
-- [ ] Automation cannot move money, unlock reserves, enable Micro-Live, change ownership, sign contracts, or submit offers.
-- [ ] Micro-Live real venue order transmission remains disabled by design.
+- [x] Business cash remains separate from household Safe-to-Deploy until a completed human-reviewed owner distribution bridge. Evidence: domain/source review; bridge remains prepared-only.
+- [x] Protected Duplex Reserve and emergency reserves cannot fund strategy, Treasury active allocation, business, opportunity, or Micro-Live paths. Evidence: domain safety tests.
+- [x] Property planning fields cannot create an owned family asset without an explicit acquisition state/workflow. Evidence: property domain/source review.
+- [x] AI cannot move money, change protections, override risk, enable trading, change credentials, or submit legal/chain transactions. Evidence: governance tests.
+- [x] Automation cannot move money, unlock reserves, enable Micro-Live, change ownership, sign contracts, or submit offers. Evidence: operations safety tests.
+- [x] Micro-Live real venue order transmission remains disabled by design. Evidence: execution domain tests.
 
 ## Persistence truth gates
 
-- [ ] Every visible “saved”, “completed”, “reviewed”, “exported”, and “updated” action is classified as server-persisted, prepared, local-only, blocked, or simulated.
-- [ ] No local-only action claims that financial, legal, permission, or ownership state changed.
+- [x] Every reviewed visible action is classified as server-persisted, prepared, local-only, blocked, or simulated. Evidence: `docs/UI_PERSISTENCE_TRUTH_MATRIX.md`.
+- [x] No reviewed local-only action claims that financial, legal, permission, or ownership state changed. Evidence: frontend source review and persistence matrix.
 - [ ] Every critical write survives page reload and a fresh API read.
 - [ ] Contribution reload proves allocation metadata, ledger movement, goal progress, Treasury relationship, and audit record remain consistent.
 - [ ] Treasury request/review state survives reload without implying money movement.
@@ -60,20 +60,20 @@
 
 ## Contract and build gates
 
-- [ ] OpenAPI route/method parity is checked automatically.
-- [ ] Generated React Query and Zod artifacts are regenerated from the committed OpenAPI contract.
-- [ ] Auth and forbidden responses have complete schemas and global security annotations.
-- [ ] API typecheck passes.
-- [ ] Frontend typecheck passes.
-- [ ] API production build passes.
-- [ ] Frontend production build passes.
-- [ ] Domain tests pass with zero failures.
+- [x] OpenAPI route/method parity is checked automatically.
+- [x] Generated React Query and Zod artifacts are regenerated from the committed OpenAPI contract.
+- [x] Auth and forbidden responses have complete schemas and global security annotations.
+- [x] API typecheck passes.
+- [x] Frontend typecheck passes.
+- [x] API production build passes.
+- [x] Frontend production build passes.
+- [x] Domain tests pass with zero failures.
 - [ ] HTTP integration tests pass.
 - [ ] Database integration tests pass.
 - [ ] Browser E2E tests pass.
 - [ ] Concurrency tests pass.
 - [ ] Migration tests pass.
-- [ ] `git diff --check` passes.
+- [x] `git diff --check` passes.
 
 ## Operational configuration gates
 
@@ -100,7 +100,9 @@ As of 2026-09-02:
 - [x] Production-like signed-out dashboard access returns `401` despite `X-Household-Role: owner`.
 - [x] Real Micro-Live transmission remains disabled.
 - [ ] Production identity session is verified end-to-end.
-- [ ] Two-household isolation is verified over HTTP.
+- [x] Two-household isolation is verified over HTTP for the current fixture scenarios; systematic route coverage remains open.
+- [x] Database-backed transfer/contribution concurrency fixture passes with one duplicate contribution result and one successful/one rejected parallel transfer.
+- [x] Certification evidence index, route matrix, role matrix, and UI persistence matrix are recorded.
 - [ ] Clean migration and upgrade tests pass.
 - [ ] Backup restore drill passes.
 - [ ] Authenticated browser critical journeys pass.

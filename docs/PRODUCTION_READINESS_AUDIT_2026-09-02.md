@@ -5,17 +5,19 @@
 **Audit mode:** Repository, schema, generated-contract, runtime, test, and documentation verification  
 **Decision:** **NOT READY**
 
+> **Certification update:** This audit is retained as the dated baseline and traceability record. The current certification evidence is in `docs/PRODUCTION_CANDIDATE_CERTIFICATION_2026-09-02.md` and supersedes baseline findings that describe the contribution goal IDOR, permissive origin behavior, absent HTTP fixture, and transfer race as current defects. Those controls now have implementation and targeted test evidence, while their broader certification gates remain explicitly open where coverage is incomplete.
+
 ## Executive decision
 
 Capital OS is technically credible as a strong family-capital planning prototype and as a carefully constrained advisory system. It is not yet credible as a production-grade family-capital platform for multiple households or protected financial operations.
 
 The deterministic financial domain is the strongest part of the system. The current production blockers are at the trust boundary around that domain:
 
-1. A contribution accepts a caller-selected `goalId` without constraining the goal to the current household. The same transaction can update that foreign goal. This is a cross-household integrity vulnerability.
-2. Browser writes are not fail-closed when the allowed-origin setting is absent. CORS defaults permissively and the write-origin check only rejects when an allowlist is configured. There is no CSRF token or explicit same-site cookie policy in the application.
+1. The contribution goal lookup and update now require the current household, and the two-household fixture rejects a foreign goal ID before any write.
+2. Production writes now fail closed when the allowed-origin policy is absent, and cross-site writes are rejected by the explicit origin/CSRF boundary.
 3. Production schema lifecycle, backups, restore verification, and durable operations are documented but not executable and proven in this repository.
-4. There are zero HTTP integration tests, zero database integration tests, zero authenticated browser E2E tests, and zero true concurrency tests.
-5. Several production-facing actions are presentation-only or prepared-only while the UI still exposes broad “save”, “review”, “export”, and quick-action surfaces.
+4. A real PostgreSQL two-household HTTP fixture now covers targeted IDOR, role spoofing, recent-auth, contribution idempotency, and concurrent transfer behavior. Full route, role, migration, restore, and browser coverage remains open.
+5. Several production-facing actions remain presentation-only or prepared-only; the reviewed UI now labels those boundaries rather than claiming authoritative persistence.
 
 The application should remain in hardening and controlled internal evaluation. It should not be released for real multi-household financial use until the P0 blockers are fixed and the release-gate checklist is evidenced.
 
@@ -53,19 +55,19 @@ The development `200` responses for household data are not production authentica
 |---|---|---|---|---|---|---|
 | Authentication | Clerk packages/keys existed, but no complete authenticated household bridge | Browser has `ClerkProvider`; API has Clerk middleware and production auth rejection | `artifacts/capital-os/src/App.tsx`; `artifacts/api-server/src/app.ts` and `middleware/request-context.ts`; production `401` smoke test | Resolved at wiring level | No real signed-in session was available for end-to-end verification | PARTIAL |
 | Household identity | Seeded actor was the effective identity | Clerk external ID resolves to internal user and active membership; onboarding creates first household | `request-context.ts`; `routes/auth.ts`; `households.ts` | Partially resolved | First active membership is selected silently; no selected-household mechanism | PARTIAL |
-| Tenant isolation | Not proven | Most services scope reads/mutations by request household; contribution goal path lacks household predicate | `services/capital-os.ts` goal lookup/update; route inventory review | Partially resolved | Foreign goal ID can mutate another household’s goal; no two-household HTTP test | BLOCKED |
-| Role enforcement | Domain role helper existed, HTTP enforcement unproven | Protected routes resolve role server-side; test header is production-rejected | `domain/governance.ts`; `request-context.ts`; production header smoke test | Partially resolved | Stored per-membership permissions are loaded but ignored; audit actor often uses owner ID | PARTIAL |
-| Step-up authentication | Missing | No recent-auth, MFA, re-authentication, or step-up middleware | `request-scope.ts`; `micro-live.ts` arming/review paths | Unchanged | High-impact approvals and policy changes rely on ordinary session role | MISSING |
+| Tenant isolation | Not proven | Most services scope reads/mutations by request household; contribution goal path now has household predicates | `services/capital-os.ts`; `src/integration/p0-http.test.ts`; route matrix | Resolved for tested contribution path | Full caller-controlled identifier matrix remains open | PARTIAL |
+| Role enforcement | Domain role helper existed, HTTP enforcement unproven | Protected routes resolve membership permissions server-side; test header is production-rejected | `domain/governance.ts`; `request-context.ts`; role matrix; HTTP fixture | Partially resolved | Full owner/partner/advisor/viewer route matrix and actor queries remain open | PARTIAL |
+| Step-up authentication | Missing | Recent-auth middleware protects critical writes; test fixture proves missing step-up is rejected | `request-context.ts`; `ROLE_CERTIFICATION_MATRIX.md`; HTTP fixture | Partially resolved | Final Clerk re-authentication provider is not configured; production E2E remains open | PARTIAL |
 | Database migrations | No visible lifecycle | One generated initial SQL artifact exists; package supports generate/push, not migration apply/rollback | `lib/db/migrations`; `lib/db/package.json`; `scripts/post-merge.sh` | Partially resolved | Clean apply from zero and existing-schema upgrade were not proven; post-merge uses push | BLOCKED |
 | Database readiness | No liveness/readiness separation | Separate dependency-free liveness and PostgreSQL readiness endpoints | `routes/health.ts`; invalid-DB runtime test | Resolved for basic signal | No timeout, schema-version check, or operational alerting | PARTIAL |
 | Backup / restore | Runbook absent or incomplete | Runbook exists, but no backup provider configuration, restore artifact, or drill evidence | `docs/production-hardening-status.md`; repository search | Documentation added | Restore is not executable/proven in this workspace | BLOCKED |
 | Persistence truthfulness | UI/API boundaries were mixed | Contributions, business forms, treasury requests, operations, intelligence, and Micro-Live records persist; many quick actions remain local/prepared | `App.tsx`; domain services; page modules | Partially resolved | Export, emergency stop, transfer/strategy/property quick actions can show feedback without durable state | PARTIAL |
 | OpenAPI contract integrity | Contract was incomplete | 108 route declarations and 108 OpenAPI operations; generated clients/Zod regenerate | `lib/api-spec/openapi.yaml`; route modules; Orval output | Resolved for count parity | No automated route-contract parity test; security schemes/requirements absent | PARTIAL |
-| HTTP integration tests | None | Still none | `artifacts/api-server/src/domain/*.test.ts`; package scripts | Unchanged | Auth, tenant, validation, response, origin, and failure behavior are not automated over HTTP | MISSING |
-| Database integration tests | None | Still none | Test inventory; no testcontainers/pg-mem/Drizzle test harness | Unchanged | Transactions, rollback, real constraints, and persistence isolation are unproven | MISSING |
+| HTTP integration tests | None | One real PostgreSQL two-household fixture | `artifacts/api-server/src/integration/p0-http.test.ts`; certification command | Resolved for targeted scenarios | Full route response, IDOR, role, and failure matrix remains open | PARTIAL |
+| Database integration tests | None | One database-backed HTTP fixture; no separate DB suite | Integration fixture and certification evidence index | Partially resolved | Clean migration, rollback, and broader constraint tests remain open | PARTIAL |
 | Browser E2E tests | None | Still none | No Playwright/Cypress/browser test config or script | Unchanged | Onboarding, reload truth, sign-out, role rejection, and tenant navigation are unproven | MISSING |
-| Concurrency tests | Pure race scenarios only | No concurrent request/database harness | `execution-oms.test.ts` race titles are synchronous domain tests | Unchanged | Transfer overdraft race and idempotency insert race remain untested | MISSING |
-| Security tests | Domain safety cases existed | 17 security-themed domain cases; no dedicated HTTP/security suite | Governance, execution, treasury, finance tests | Partially resolved | No HTTP IDOR, header, CSRF, mass-assignment, invalid-session, or secret-leak suite | PARTIAL |
+| Concurrency tests | Pure race scenarios only | Real parallel contribution and transfer requests now execute against PostgreSQL | `src/integration/p0-http.test.ts` | Partially resolved | High-contention transfer and all economic-event idempotency types remain open | PARTIAL |
+| Security tests | Domain safety cases existed | 17 security-themed domain cases plus dedicated origin middleware and targeted HTTP coverage | Governance, execution, treasury, finance tests; `safety.test.ts`; HTTP fixture | Partially resolved | Full HTTP IDOR, mass-assignment, invalid-session, secret-leak, and browser matrix remain open | PARTIAL |
 | Operational scheduling | Manual operation endpoint only | No cron, queue, worker, or restart recovery for scheduled work | `services/operations.ts`; `routes/operations.ts`; repository search | Unchanged | Automation runs can disappear on restart; automation failure health is hardcoded to zero | MISSING |
 | Observability | Structured logging only | Pino logging and correlation IDs exist | `lib/logger.ts`; `middleware/safety.ts`; runtime headers | Partially resolved | No metrics, traces, audit shipping, DB pool signals, queue lag, or alerting | PARTIAL |
 | Accounting integrity | Domain accounting existed but was incomplete | API-backed overview and reconciliation fields exist | `services/accounting.ts`; accounting page | Partially resolved | Hardcoded real-estate/investment fields; business equity treatment disagrees across views; empty ledger can appear balanced | PARTIAL |
@@ -259,14 +261,11 @@ No current finding shows a protected financial write falsely committed after a f
 
 ### Remaining integrity findings
 
-1. **Transfer overdraft race:** source balance is read and checked before unconditional SQL subtraction. Two concurrent transfers can both pass the check. Add row locking or an atomic `balance >= amount` update with retry and a real concurrency test.
-2. **Contribution goal IDOR:** described above; release-blocking.
-3. **Accounting completeness:** real estate and investment fields are hardcoded to zero; business equity treatment differs between accounting and business views; liabilities are incomplete.
-4. **Empty-ledger false positive:** `every()` over an empty ledger can report balanced/reconciled without ledger evidence.
-5. **Treasury lock decision:** Treasury decision output hardcodes `protectedCapitalLocked: false` despite seeded lock state.
-6. **Business distribution bridge:** proposed distributions are not actual reviewed household income transfers and business domain calculations do not post full double-entry entries.
-7. **Safe-to-Deploy confidence:** fixed buffer and confidence values are conservative but not derived from operational data; no cross-domain invariant suite proves every path cannot increase Safe-to-Deploy improperly.
-8. **Audit attribution:** several financial actions record the household owner rather than the authenticated actor.
+1. **Accounting completeness:** real estate and investment fields are hardcoded to zero; business equity treatment differs between accounting and business views; liabilities are incomplete.
+2. **Business distribution bridge:** proposed distributions are not actual reviewed household income transfers and business domain calculations do not post full double-entry entries.
+3. **Safe-to-Deploy confidence:** fixed buffer and confidence values are conservative but not derived from operational data; no cross-domain invariant suite proves every path cannot increase Safe-to-Deploy improperly.
+4. **Audit attribution:** server actor context is wired, but the complete role/action audit query suite remains open.
+5. **Concurrency breadth:** the atomic transfer path and targeted race pass; high-contention transfer and all economic-event idempotency types remain to be certified.
 
 ## Micro-Live, AI, and automation authority
 
@@ -307,29 +306,29 @@ Safe action validation blocks capital movement, protected-capital unlocks, Micro
 | React Query hook exports | 61 |
 | Zod generated output | Regenerated successfully |
 | OpenAPI → Orval → React Query/Zod | PASS |
-| Automated route-contract parity test | MISSING |
-| Global `securitySchemes` / security requirements | MISSING |
+| Automated route-contract parity test | PASS — 108 route/method pairs |
+| Global `securitySchemes` / security requirements | PASS — Clerk bearer security with health opt-outs |
 | Auth response contract depth | PARTIAL |
 
 The contribution response contract was tightened to include allocation metadata. Legacy null metadata is normalized to `{}` at the service boundary, and the endpoint was runtime-verified at `200`.
 
 ## Test inventory
 
-The current test command is `node --experimental-strip-types --test src/domain/*.test.ts`.
+The default test command runs domain, middleware, and integration files. The database-backed fixture is intentionally skipped unless `CAPITAL_OS_RUN_INTEGRATION=1` is set; the production-candidate certification command requires a dedicated certification database before counting it as release evidence.
 
 | Test category | Files/cases | Result |
 |---|---:|---|
 | Pure domain tests | 11 files / 62 cases | 62 passed, 0 failed, 0 skipped, 0 todo |
-| HTTP integration tests | 0 | Not implemented |
-| Database integration tests | 0 | Not implemented |
-| Browser E2E tests | 0 | Not implemented |
-| True concurrency tests | 0 | Not implemented |
-| Migration tests | 0 | Not implemented |
-| Dedicated security suites | 0 | Domain security cases only |
+| HTTP integration tests | 1 targeted fixture | Passes with dedicated database and TypeScript runner |
+| Database integration tests | 1 database-backed fixture | Passes for targeted scenarios; no separate lifecycle suite |
+| Browser E2E tests | 0 | Blocked; authenticated environment unavailable |
+| True concurrency tests | 2 targeted request races | Contribution idempotency and transfer overdraft pass |
+| Migration tests | 0 executed | Guarded clean-baseline tooling exists; dedicated database unavailable |
+| Dedicated security suites | 3 middleware cases plus integration | Full IDOR/origin/browser matrix remains open |
 | Recovery tests | Pure OMS/recovery scenarios inside domain suite | Not real DB/venue recovery |
 | Security-themed domain cases | 17 cases across 4 files | Passed as part of 62 |
 
-The 62 passing cases are valuable financial and safety-domain evidence, but they do not certify the HTTP, database, browser, multi-tenant, migration, or production-operational boundaries.
+The 62 passing cases are valuable financial and safety-domain evidence. The targeted HTTP fixture adds real PostgreSQL evidence, but neither suite certifies every route, browser journey, migration, restore, or production-operational boundary.
 
 ## Build verification
 
@@ -350,20 +349,20 @@ The mockup build requires the managed preview environment variables when invoked
 
 ## Security and operations audit
 
-### P0 blockers
+### P0 blockers after certification update
 
 | Problem | Evidence | Impact | Exact fix | Required proof |
 |---|---|---|---|---|
-| Cross-tenant contribution goal write | `services/capital-os.ts` goal select/update omit household predicate | Foreign goal progress/protected amount can be changed | Require current household on select and update; validate supplied goal belongs to current household | Two-household HTTP IDOR suite and direct service regression test |
-| Write-origin control is fail-open | `app.ts` defaults CORS to permissive when allowlist absent; `safety.ts` only rejects when configured | Browser credentialed writes may be exposed to unintended origins | Fail closed in production without an explicit allowed-origin policy; configure same-site/CSRF protection and test malformed/disallowed origins | Production-like HTTP origin matrix |
+| Cross-tenant contribution goal write | **RESOLVED** — current-household predicates are enforced in select/update | Targeted foreign-goal mutation is rejected | Keep route matrix and foreign-parent regression coverage current | `src/integration/p0-http.test.ts` |
+| Write-origin control is fail-open | **RESOLVED for missing-policy/cross-site cases** — production writes fail closed | Targeted browser-origin attacks are rejected | Complete malformed/allowed-origin/browser matrix | `src/middleware/safety.test.ts` |
 | Production data lifecycle not proven | Push-only package/post-merge flow; migration apply-from-zero failed against current DB; no rollback/restore evidence | Schema drift or data recovery failure can corrupt availability and trust | Establish a supported baseline/version strategy compatible with managed development push and Publish; run clean and upgrade tests; execute isolated restore drill | Migration and restore evidence attached to release |
-| Multi-tenant authorization not certified | 0 HTTP/DB/browser tenant tests; services rely on implicit context | A future scoping regression can leak or mutate household data | Add explicit household context, route-level authorization harness, two-household fixtures, and IDOR/mass-assignment tests | Complete cross-household matrix |
+| Multi-tenant authorization not certified | Targeted two-household HTTP fixture exists; full route matrix remains open | Unreached identifier paths may regress | Complete route-level authorization, role, and mass-assignment matrix | `docs/TENANT_ISOLATION_ROUTE_MATRIX.md` |
 
 ### P1 risks
 
-1. Transfer balance race can overdraw an account.
-2. Stored membership permissions are ignored in favor of role-only checks.
-3. No step-up authentication for high-impact approvals or Micro-Live policy boundaries.
+1. Full high-contention transfer and economic-event idempotency coverage remains open.
+2. Stored membership permissions are wired into centralized checks; explicit grant/revocation HTTP proof remains open.
+3. Temporary recent-auth middleware exists; provider-supported Clerk step-up remains unconfigured.
 4. No durable scheduler/queue/worker; automation health is hardcoded to zero failures.
 5. No metrics, traces, audit shipping, or operational alerting beyond structured logs.
 6. Accounting/business equity/liability treatment is incomplete and inconsistent.
@@ -452,7 +451,7 @@ No raw credentials, private keys, Plaid tokens, or authorization tokens were fou
 | Database lifecycle | 25 | Generated artifact and managed flow; no reproducible migration proof |
 | Financial integrity | 68 | Strong exact-cents/domain invariants; accounting/race gaps remain |
 | Persistence | 56 | Several server-backed workflows; many local/prepared actions |
-| Integration testing | 12 | 62 pure domain cases, no HTTP/DB/browser/concurrency suite |
+| Integration testing | 35 | 62 domain cases plus targeted PostgreSQL HTTP/concurrency evidence; browser and lifecycle suites remain open |
 | Security | 38 | Useful middleware and domain restrictions; origin/IDOR/secret architecture gaps |
 | Operations | 22 | Persisted records but no durable scheduler or executor |
 | Recovery | 18 | Runbook only; no restore drill |
@@ -486,12 +485,11 @@ The hardening work also increased authorization complexity without yet providing
 
 Priority order:
 
-1. Fix and test every household-scoped lookup/update, beginning with the contribution goal IDOR.
-2. Add HTTP integration fixtures for authenticated users, two households, all roles, IDOR, mass assignment, origin rejection, and idempotency.
-3. Establish a managed-database-compatible migration baseline and clean/upgrade test path.
-4. Perform an approved isolated backup/restore drill.
-5. Make transfer balance updates atomic and add a real concurrent request test.
-6. Replace role-only authorization with effective membership permissions and add step-up boundaries.
+1. Complete HTTP fixtures for every household-scoped identifier, all roles, mass assignment, origin variants, and economic-event idempotency.
+2. Execute the guarded clean migration baseline and add an older-schema upgrade/data-preservation path.
+3. Perform an approved isolated backup/restore drill.
+4. Replace temporary recent-auth freshness with provider-supported Clerk step-up and complete actor-attribution queries.
+5. Add durable scheduling/queue infrastructure and operational telemetry.
 7. Add durable scheduling/queue infrastructure and operational telemetry.
 8. Only then expand reporting, provider integrations, or controlled Micro-Live preparation.
 

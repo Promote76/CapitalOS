@@ -10,7 +10,7 @@
 - [x] **P0-02 Origin / CSRF certification.** Five published-origin probes passed, including missing, malformed, cross-site, allowed, and invalid-credential-origin writes. Evidence: `scripts/certify-production-origin.mjs`, `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [x] **P0-03 Existing-schema upgrade.** Historical data survived the additive current-schema upgrade on disposable Neon branches. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [ ] **P0-04 Managed backup / restore.** Provider-managed backup reference, isolated restore, and invariant verification remain unavailable. Evidence: `docs/RESTORE_DRILL_2026-09-02.md` (blocked; no provider restore evidence claimed).
-- [ ] **P0-05 Authenticated browser journey.** Clerk onboarding, sign-in, sign-out, reload, and household-scoped dashboard proof remain unexecuted.
+- [ ] **P0-05 Authenticated browser journey.** The secure programmatic Clerk run passed session authentication, household creation, a saved manual-account write, reload persistence, session invalidation, repeat sign-in, and the exercised two-household isolation assertion. It failed visible onboarding-form rendering and the signed-out UI boundary, so the gate remains open. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [ ] **P0-06 Role / effective-permission HTTP certification.** Selected role paths execute; the complete grant, revoke, membership-change, and tampering matrix remains open.
 - [x] **P0-07 Concurrent idempotency breadth.** The isolated HTTP fixture passed same-key concurrency and mismatched-payload cases for contribution, transfer, strategy allocation, capital request, and business distribution. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [ ] **P0-08 Actor attribution certification.** Representative audit attribution executes; the complete permitted-action audit query remains open.
@@ -99,7 +99,7 @@ As of 2026-09-02:
 - [x] Certification evidence index, route matrix, role matrix, and UI persistence matrix are recorded.
 - [x] Clean migration and existing-schema upgrade evidence are recorded for disposable isolated PostgreSQL branches; managed production restore remains open.
 - [ ] Backup restore drill passes.
-- [ ] Authenticated browser critical journeys pass.
+- [ ] Authenticated browser critical journeys pass. The executed run failed visible onboarding and signed-out UI assertions.
 - [ ] P0 blockers equal zero.
 
 Until every P0 item is checked with evidence, the only valid release decision is **NOT READY**.

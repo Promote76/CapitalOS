@@ -28,3 +28,6 @@ channel = "stable-25_05"
 
 [userenv.production]
 CAPITAL_OS_ALLOWED_ORIGIN = "https://capital-os-fund.replit.app"
+
+[userenv.development]
+CAPITAL_OS_ALLOWED_ORIGIN = "https://a275880a-7e86-4ab1-a13b-802e51c9d9ab-00-10p8dc0vsi6ft-007rz75b.spock.replit.dev"

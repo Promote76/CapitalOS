@@ -12,11 +12,32 @@ Capital OS is a household financial planning and advisory application for budget
 
 The hardening work established meaningful controls around authenticated identity, household scoping, role checks, effective membership permission loading, origin enforcement, exact-cent financial logic, atomic transfer debits, idempotency boundaries, ledger evidence, Treasury protected-capital state, persistence truth in the UI, generated API contracts, and the disabled Micro-Live execution boundary.
 
-Executable evidence is currently strongest for domain safety and isolated PostgreSQL HTTP behavior. The workspace typechecks, builds, regenerates API clients, passes route parity, and passes 66 API tests. The isolated database-backed fixture also proves selected cross-household, viewer-denial, contribution/transfer idempotency, concurrent capital-request creation, concurrent business-distribution preparation, 100-request contention, balanced ledger totals, and representative actor-attribution scenarios.
+Executable evidence is currently strongest for domain safety and isolated PostgreSQL HTTP behavior. The workspace typechecks, builds, regenerates API clients, passes route parity, and passes 66 API tests. The isolated database-backed fixture also proves selected cross-household, viewer-denial, contribution/transfer idempotency, concurrent capital-request creation, concurrent business-distribution preparation, 100-request contention, balanced ledger totals, and representative actor-attribution scenarios. The current-keyed economic write paths now include strategy allocation and mismatch assertions, but that expanded fixture must be re-executed before it can close P0-07.
 
 Capital OS is **not** qualified as a Production Candidate because the full caller-controlled identifier matrix, complete role and effective-permission HTTP matrix, existing-schema upgrade lifecycle, managed backup/restore drill, authenticated browser journeys, production-supported Clerk step-up flow, broader economic-event idempotency coverage, complete actor-audit verification, and durable operations evidence remain unproven.
 
 No real banking, ACH, brokerage, live venue, blockchain, external investor capital, automated withdrawal, or autonomous AI capability was added or enabled.
+
+## P0 certification mapping
+
+The certification runner and this report use the eight P0 gates below. `IMPLEMENTED`
+and `EXECUTED` evidence do not close a gate; only `CERTIFIED` evidence produces
+`PASS`. The current report is the state before re-running the expanded fixture.
+
+| Gate | Status | Implementation | Execution | Certification | Current reason |
+|---|---|---|---|---|---|
+| P0-01 Caller-controlled identifier / IDOR matrix | BLOCKED | IMPLEMENTED | Selected scenarios executed | NOT CERTIFIED | Complete route-by-route matrix remains open |
+| P0-02 Origin / CSRF certification | BLOCKED | IMPLEMENTED | Middleware matrix executed | NOT CERTIFIED | Published-origin HTTP/browser execution remains open |
+| P0-03 Existing-schema upgrade | BLOCKED | IMPLEMENTED (historical artifact) | Clean baseline executed; upgrade not executed | NOT CERTIFIED | Historical snapshot exists; preservation comparison is pending |
+| P0-04 Managed backup / restore | BLOCKED | RUNBOOK ONLY | NOT EXECUTED | NOT CERTIFIED | Provider-managed restore evidence is unavailable |
+| P0-05 Authenticated browser journey | BLOCKED | PARTIAL | NOT EXECUTED | NOT CERTIFIED | Approved authenticated Clerk browser environment is unavailable |
+| P0-06 Role / effective-permission HTTP certification | BLOCKED | IMPLEMENTED | Selected roles/actions executed | NOT CERTIFIED | Full grant, revoke, membership-change, and tampering matrix remains open |
+| P0-07 Concurrent idempotency breadth | BLOCKED | IMPLEMENTED | Expanded strategy/mismatch fixture pending | NOT CERTIFIED | Re-run required before certifying all current keyed economic writes |
+| P0-08 Actor attribution certification | BLOCKED | IMPLEMENTED | Representative actions executed | NOT CERTIFIED | Complete permitted-action audit query remains open |
+
+**P0 START:** 8
+**P0 CLOSED THIS RUN:** 0
+**P0 OPEN:** 8
 
 ## Current Architecture
 
@@ -119,7 +140,7 @@ This inventory separates resources that exist from certification evidence that h
 | Resource | Availability | Execution status | Observed state / required action |
 |---|---|---|---|
 | Certification PostgreSQL | AVAILABLE | CERTIFIED for executed gates | Isolated Neon project `capital-os-certification` (`still-band-85811770`), main branch `br-curly-bread-a53x6g2k`, is disposable and separate from Replit `DATABASE_URL`. Clean baseline and database-backed HTTP certification passed. |
-| Old-schema test PostgreSQL | AVAILABLE | BLOCKED | Isolated Neon branch `old-schema-certification` (`br-mute-field-a5atk2xe`) exists, but no historical schema artifact or upgrade migration path is committed, so data-preservation execution cannot be claimed. |
+| Old-schema test PostgreSQL | AVAILABLE | BLOCKED | Isolated Neon branch `old-schema-certification` (`br-mute-field-a5atk2xe`) exists. The approved historical snapshot is now committed at `docs/certification/HISTORICAL_SCHEMA_2026-09-01.sql`; isolated upgrade and data-preservation execution remain pending. |
 | Restore target | MISSING | BLOCKED | No isolated restore database was provided. Use the Replit Database tool to restore an approved production point-in-time backup into a non-production target without overwriting production. |
 | Clerk test environment | AVAILABLE | NOT EXECUTED | Replit-managed Clerk is present with isolated Development and Production user stores. Clerk dashboard access reports `requires_personal_pro`; test-user and provider step-up configuration are not certified. |
 | Browser E2E URL | AVAILABLE | NOT EXECUTED | Published autoscale URL is available and healthy: `https://capital-os-fund.replit.app`. Authenticated journeys and persistence checks have not run. |
@@ -128,9 +149,9 @@ This inventory separates resources that exist from certification evidence that h
 #### Human-action escalation
 
 **BLOCKER:** Existing-schema upgrade/data preservation
-**WHY REPLIT CANNOT EXECUTE:** The repository has one generated baseline migration and no prior historical schema fixture or upgrade migration. The isolated Neon old-schema branch exists, but populating it with a fabricated legacy model would not constitute valid preservation evidence.
-**EXACT USER ACTION REQUIRED:** Provide the approved prior-schema SQL/database artifact and its intended upgrade procedure, or approve a separately reviewed legacy fixture that represents the real previous release.
-**WHAT TO PROVIDE BACK:** The historical schema/migration artifact and representative pre-upgrade data snapshot.
+**WHY REPLIT CANNOT EXECUTE YET:** The approved historical schema artifact is now available, but the isolated upgrade run still needs a preserved pre-upgrade data fixture and a recorded current-schema upgrade execution.
+**EXACT USER ACTION REQUIRED:** Approve the representative pre-upgrade data fixture and authorize the isolated old-schema branch for the upgrade comparison; do not use production or shared development data.
+**WHAT TO PROVIDE BACK:** The pre-upgrade data snapshot, upgrade start/completion evidence, and post-upgrade invariant comparison.
 **NEXT AUTOMATED COMMAND:** Run the approved upgrade against the isolated old-schema branch, compare row counts/balances/progress/ledger totals/ownership/status/audit counts, then rerun `pnpm run certify:production-candidate`.
 
 **BLOCKER:** Managed backup and isolated restore
@@ -147,7 +168,7 @@ This inventory separates resources that exist from certification evidence that h
 
 ### Migration status
 
-**PASS for clean baseline; BLOCKED for existing-schema upgrade.** `scripts/certify-migrations.mjs` provides a guarded disposable-database reset, baseline apply, and representative-table verification sequence:
+**PASS for clean baseline; BLOCKED for existing-schema upgrade execution.** `scripts/certify-migrations.mjs` provides a guarded disposable-database reset, baseline apply, and representative-table verification sequence. The approved historical source snapshot is `docs/certification/HISTORICAL_SCHEMA_2026-09-01.sql`, with provenance recorded in `docs/certification/HISTORICAL_SCHEMA_MANIFEST_2026-09-02.md`.
 
 ```text
 CAPITAL_OS_CERTIFICATION_DB_URL=<dedicated-url> \
@@ -162,8 +183,8 @@ The command refuses to run when the certification URL equals the shared `DATABAS
 | Generated baseline artifact | PASS by repository inspection |
 | Migration journal | PASS by repository inspection |
 | Clean zero-to-current execution | PASS — isolated Neon branch reset, baseline applied, representative tables verified |
-| Existing-schema upgrade | BLOCKED — no approved historical schema artifact or upgrade path |
-| Data preservation comparison | BLOCKED — no historical pre-upgrade dataset |
+| Existing-schema upgrade | BLOCKED — historical artifact exists; isolated upgrade execution is pending |
+| Data preservation comparison | BLOCKED — representative pre-upgrade dataset and comparison are pending |
 | Rollback / forward-fix | BLOCKED — not executed |
 | Incompatible-schema readiness behavior | PARTIAL — database outage readiness is tested; schema incompatibility execution remains open |
 
@@ -182,13 +203,13 @@ The command refuses to run when the certification URL equals the shared `DATABAS
 | Role / permission | Owner/Viewer executed; Partner/Advisor fixture paths implemented | 0 | Uncovered actions | Dedicated execution | PARTIAL |
 | Security | 4 middleware tests / 27 scenarios plus domain coverage | 0 | Browser/security matrix | Full HTTP matrix | PARTIAL |
 | Concurrency | Targeted race plus 100-request contention and same-key creation executed | 0 | 0 | Broader economic paths | PARTIAL |
-| Idempotency | Contribution, transfer, capital-request, and distribution-preparation replay/creation executed | 0 | 0 | Remaining economic workflows and mismatch matrix | PARTIAL |
+| Idempotency | Contribution, transfer, capital-request, and distribution-preparation replay/creation executed; strategy allocation and mismatch assertions added | 0 | 0 | Expanded fixture execution | PARTIAL |
 | Financial invariants | Domain coverage | 0 | 0 | Cross-domain and broader ledger cases | PARTIAL |
 | Migration | Clean baseline PASS | 0 | 0 | Existing-schema upgrade and data preservation | PARTIAL |
 | Browser E2E | 0 | 0 | 0 | Authenticated environment | BLOCKED |
 | Recovery | Pure domain recovery cases only | 0 | 0 | Managed restore and operations recovery | BLOCKED |
 
-The default API command reports 66 passing tests and one intentionally skipped database fixture without the certification URL. With the isolated Neon URL and reset flag, the full certification command executed the database-backed fixture successfully and exited `2` only for the four remaining external gates: existing-schema upgrade, managed backup/restore, authenticated browser E2E, and production Clerk step-up.
+The default API command reports 66 passing tests and one intentionally skipped database fixture without the certification URL. The certification runner now emits all eight P0 gates individually and exits nonzero whenever any P0 is not `PASS`. The expanded database-backed fixture must be rerun against the isolated Neon URL before P0-07 can be marked certified.
 
 ## Exact Repeatable Commands
 
@@ -339,7 +360,7 @@ These are listed as resolved only where current source and targeted test evidenc
 |---|---|---|---|---|
 | Full caller-controlled identifier matrix is unexecuted | Unreached route paths could regress tenant isolation | Request-scoped household services and targeted fixture | Add per-route A→A/A→B/malformed/mass-assignment HTTP cases | Blocks candidate promotion |
 | Complete origin/CSRF matrix is unexecuted | Browser credentialed requests are not fully certified | Fail-closed missing-policy and cross-site middleware cases | Test same-origin, explicit allow, disallow, malformed, missing, and all state-changing methods | Blocks candidate promotion |
-| Existing-schema upgrade is unexecuted | Existing user data could be lost or transformed incorrectly | Generated baseline and schema inspection | Create older representative schema, migrate, compare counts/totals/state | Blocks candidate promotion |
+| Existing-schema upgrade is unexecuted | Existing user data could be lost or transformed incorrectly | Approved historical snapshot from the repository’s real schema history | Apply the snapshot to an isolated target, migrate, compare counts/totals/state | Blocks candidate promotion |
 | Managed backup/restore is unexecuted | Recovery capability and RPO/RTO are unknown | Restore runbook and explicit blocked record | Execute provider backup and isolated restore drill | Blocks candidate promotion |
 | Authenticated browser journey is unexecuted | UI persistence, auth lifecycle, and tenant navigation are unproven | Preview render and server contract tests | Run real Clerk sign-up/onboarding/reload/sign-out/sign-in journeys | Blocks candidate promotion |
 | Complete role/effective-permission HTTP proof is unexecuted | Partner/Advisor/Viewer and revocation behavior could be wrong | Centralized checks and targeted Viewer denial | Execute full role/action and grant/revocation matrix | Blocks candidate promotion |
@@ -420,4 +441,4 @@ Capital OS is not authorized by this report to:
 
 **Capital OS is not qualified as a Production Candidate for its current non-executing family-capital scope.**
 
-The reason is evidence-based: eight P0 release blockers remain open, including complete tenant/role HTTP coverage, existing-schema upgrade execution, managed backup/restore, authenticated browser proof, broader idempotency coverage, and complete actor attribution. The system has meaningful implemented safeguards and now has executed isolated clean-migration, database HTTP, contention, ledger, replay, capital-request/distribution idempotency, and representative audit evidence, but the release gate correctly remains **NOT READY** until the remaining gaps are executed and recorded.
+The reason is evidence-based: eight P0 release blockers remain open, including complete tenant/role HTTP coverage, existing-schema upgrade execution, managed backup/restore, authenticated browser proof, expanded idempotency execution, and complete actor attribution. The historical schema artifact is now available from a real repository commit, but artifact creation is not upgrade evidence; the release gate correctly remains **NOT READY** until the remaining gaps are executed and recorded.

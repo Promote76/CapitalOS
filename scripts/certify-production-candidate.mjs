@@ -34,6 +34,7 @@ const apiTests = run("Default API tests", "pnpm", ["--filter", "@workspace/api-s
 const routeParity = run("Express / OpenAPI route parity", "pnpm", ["--filter", "@workspace/api-server", "run", "check-contract"]);
 
 const certificationDbUrl = process.env.CAPITAL_OS_CERTIFICATION_DB_URL;
+const historicalSchemaArtifact = path.join(rootDir, "docs/certification/HISTORICAL_SCHEMA_2026-09-01.sql");
 let cleanMigrationExecuted = false;
 let cleanMigrationPassed = false;
 let httpFixtureExecuted = false;
@@ -103,12 +104,14 @@ const p0Gates = [
     id: "P0-03",
     title: "Existing-schema upgrade",
     status: migrationFailed ? "FAIL" : "BLOCKED",
-    implementation: "PARTIAL",
+    implementation: fs.existsSync(historicalSchemaArtifact) ? "IMPLEMENTED (historical artifact)" : "PARTIAL",
     execution: cleanMigrationExecuted ? "EXECUTED (clean baseline only)" : "NOT EXECUTED",
     certification: "NOT CERTIFIED",
     reason: migrationFailed
       ? "The isolated clean migration command failed."
-      : "No approved historical schema artifact and data-preservation upgrade execution are available.",
+      : fs.existsSync(historicalSchemaArtifact)
+        ? "The approved historical snapshot exists, but the isolated upgrade and data-preservation comparison have not executed."
+        : "No approved historical schema artifact or data-preservation upgrade execution are available.",
   },
   {
     id: "P0-04",

@@ -24,7 +24,7 @@ Excluded: real bank movement, ACH, external investor capital, live trading, auto
 | Two-household HTTP isolation | PARTIAL PASS | Fixture covers goals, contributions, accounts, transfers, and viewer denial; systematic route matrix remains open |
 | Origin / CSRF | PARTIAL PASS | Middleware tests cover 24 method/origin scenarios; complete authenticated HTTP/browser-origin matrix remains open |
 | Clean migration | PASS | Guarded reset/apply/verification passed on isolated Neon PostgreSQL |
-| Existing-schema upgrade | BLOCKED | No representative old-schema execution |
+| Existing-schema upgrade | BLOCKED | Approved historical snapshot is now committed; representative old-schema upgrade execution remains open |
 | Backup / restore | BLOCKED | Provider backup reference and restore target unavailable |
 | Authenticated browser journey | BLOCKED | No authenticated browser test environment |
 | Concurrent transfers | PASS | Parallel debits and 100 concurrent `$25` transfers from `$1,000` passed; final source balance remained non-negative and contention ended at `$0` |

@@ -6,20 +6,14 @@
 
 ## P0 release blockers
 
-- [x] Contribution goal lookup and update require the current household ID. Evidence: source inspection and `src/integration/p0-http.test.ts`.
-- [x] Two independent households can be created in a test fixture and cannot read or mutate each other. Evidence: database-backed HTTP fixture.
-- [ ] HTTP IDOR tests cover every route with a caller-controlled path or body identifier.
-- [x] Production browser writes fail closed when no explicit allowed-origin policy is configured. Evidence: `src/middleware/safety.test.ts`.
-- [ ] CSRF/same-site credential policy is implemented and tested for allowed, disallowed, and malformed origins. The middleware matrix covers 24 method/scenario combinations; full HTTP route execution remains open.
-- [x] A clean database can be created from zero and brought to the current schema through the supported disposable certification lifecycle. Evidence: isolated Neon branch and `CAPITAL_OS_CERTIFICATION_ALLOW_RESET=1 pnpm run certify:migrations`.
-- [ ] An existing older schema can be upgraded without losing households, users, memberships, ledger, goals, Treasury, business, strategy, accounting, or audit data.
-- [ ] A managed PostgreSQL backup is restored into an isolated database.
-- [ ] Restore verification passes for identity, tenant isolation, ledger balance, Treasury, protected capital, business ownership, accounting, strategy state, and audit history.
-- [ ] Authenticated HTTP/browser tests cover onboarding, sign-in, sign-out, reload, and household-scoped dashboard access.
-- [ ] Production-like role tests prove owner, partner, advisor, and viewer behavior over HTTP. The isolated fixture provisions all four roles in both households and passes the implemented contribution-role paths; the full action/grant-revocation matrix remains open.
-- [x] Real concurrent transfer tests prove no overdraft in the executed scenario. The isolated fixture also passes 100 concurrent `$25` transfers from `$1,000` with 40 successes, 60 rejections, a `$0` source balance, and balanced ledger totals.
-- [ ] Concurrent idempotency tests prove one economic event for contribution, transfer, capital request, and business distribution preparation. Contribution and transfer replay cases are implemented; dedicated execution and the remaining event types remain open.
-- [ ] Audit attribution records the authenticated actor rather than always using the household owner. Persisted contribution/transfer actor assertions are implemented in the fixture; dedicated execution remains open.
+- [ ] **P0-01 Caller-controlled identifier / IDOR matrix.** Selected two-household and mass-assignment cases execute, but the complete route-by-route matrix remains open.
+- [ ] **P0-02 Origin / CSRF certification.** Middleware behavior is tested; published-origin HTTP/browser execution remains open.
+- [ ] **P0-03 Existing-schema upgrade.** The approved historical snapshot is committed at `docs/certification/HISTORICAL_SCHEMA_2026-09-01.sql`; isolated upgrade and data-preservation execution remain open.
+- [ ] **P0-04 Managed backup / restore.** Provider-managed backup reference, isolated restore, and invariant verification remain unavailable.
+- [ ] **P0-05 Authenticated browser journey.** Clerk onboarding, sign-in, sign-out, reload, and household-scoped dashboard proof remain unexecuted.
+- [ ] **P0-06 Role / effective-permission HTTP certification.** Selected role paths execute; the complete grant, revoke, membership-change, and tampering matrix remains open.
+- [ ] **P0-07 Concurrent idempotency breadth.** The fixture now covers contribution, transfer, strategy allocation, capital request, and business distribution same-key/mismatch cases; expanded execution is pending.
+- [ ] **P0-08 Actor attribution certification.** Representative audit attribution executes; the complete permitted-action audit query remains open.
 
 ## P1 release risks
 

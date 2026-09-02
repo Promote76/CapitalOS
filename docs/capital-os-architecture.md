@@ -16,7 +16,7 @@ React UI → generated API client → Express routes → Zod request/response va
                               append-only audit event
 ```
 
-The API server seeds one development household (`Morgan household`) on startup when it is absent. Seed data is only a realistic development workspace; it is not an external bank or brokerage connection.
+The API server may warm the seeded `Morgan household` only in development. Production onboarding creates a household explicitly after Clerk identity resolution; production startup never creates demo data.
 
 ## Data model
 
@@ -34,7 +34,7 @@ Authoritative financial columns use PostgreSQL `numeric(18,2)`. Service calculat
 
 ## Permissions and safety
 
-The request context currently uses the seeded owner as the development actor. In development and tests, `X-Household-Role` can exercise `owner`, `partner`, `advisor`, and `viewer` permission paths. Production defaults to the least-privileged `viewer` actor until a real identity provider is connected; a browser header is never accepted as a production privilege escalation mechanism.
+The request context resolves a Clerk user to an internal user and active household membership in production. In development and explicit test mode, the seeded actor and `X-Household-Role` can exercise role paths; those mechanisms are not production authorization. Production requests without a valid Clerk session return `401`, and authenticated users without membership return `403`.
 
 The Capital Governor enforces:
 
@@ -45,11 +45,11 @@ The Capital Governor enforces:
 - minimum cash reserve;
 - emergency stop state.
 
-Risk checks happen in domain services, not in UI components. A protected account cannot fund an experimental strategy while the lock is active. A transfer must stay within the household, have sufficient available balance, and produce ledger entries atomically.
+Risk checks happen in domain services, not in UI components. A protected account cannot fund an experimental strategy while the lock is active. A transfer must stay within the household and produce ledger entries in one transaction; concurrent balance checks still require row-locking or an atomic balance guard before this is a production-safe overdraft boundary.
 
 ## Idempotency and concurrency
 
-Contribution and transfer writes require an `Idempotency-Key`. The key is scoped to the household. Repeating a key with the same amount returns the original completed result; reusing it with a different amount returns a conflict. The uniqueness constraints and atomic database transaction prevent duplicate ledger movements under concurrent requests. Balance changes are SQL numeric updates inside the same transaction as ledger and audit writes.
+Contribution and transfer writes require an `Idempotency-Key`. The key is scoped to the household. Repeating a key with the same amount returns the original completed result; reusing it with a different amount returns a conflict. Uniqueness and the transaction boundary constrain duplicate ledger movements, but concurrent duplicate handling and source-balance races still need HTTP/database concurrency tests and conflict-retry behavior. Balance changes are SQL numeric updates inside the same transaction as ledger and audit writes.
 
 ## AI boundary
 
@@ -74,8 +74,8 @@ Run:
 ```bash
 pnpm run typecheck
 pnpm --filter @workspace/api-server run test
-pnpm --filter @workspace/db run push
+pnpm --filter @workspace/db run push # managed development database only
 pnpm --filter @workspace/api-spec run codegen
 ```
 
-The direct domain tests cover exact-cents arithmetic, allocation totals, goal pace, allocation impact, role permissions, protected-capital blocking, stage skipping, and AI authority. API responses are parsed through generated Zod schemas before being sent.
+The direct domain tests cover exact-cents arithmetic, allocation totals, goal pace, allocation impact, role permissions, protected-capital blocking, stage skipping, and AI authority. API responses are parsed through generated Zod schemas before being sent. The current audit in `docs/PRODUCTION_READINESS_AUDIT_2026-09-02.md` records the unverified HTTP, database, browser, concurrency, backup, and recovery boundaries.

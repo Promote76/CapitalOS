@@ -2,7 +2,7 @@
 
 Updated: 2026-09-02
 
-This release hardens the identity boundary and the most important operational controls without claiming that production readiness is complete. The status labels below are intentional.
+This release hardens the identity boundary and the most important operational controls without claiming that production readiness is complete. The status labels below are intentional. The dated certification in `docs/PRODUCTION_READINESS_AUDIT_2026-09-02.md` is the current source for the complete evidence table and ranked blockers.
 
 ## Status summary
 
@@ -25,13 +25,13 @@ This release hardens the identity boundary and the most important operational co
 
 ### PARTIAL
 
-- Fine-grained permissions currently extend the existing role permission model; a separate policy engine and per-resource delegation UI are not warranted yet.
+- Fine-grained permissions currently load membership permissions into request context but enforce the centralized role map; effective per-membership grants/revocations are not yet applied.
 - A user currently resolves to the first active household membership. Household switching and an explicit selected-household session claim remain to be implemented before multi-household users are enabled.
-- Database row scoping is enforced by the request-scoped service context for the migrated services, but the entire route inventory still needs a dedicated object-level authorization review.
+- Database row scoping is enforced by the request-scoped service context for many services, but the contribution goal path currently accepts a goal ID without a household predicate and remains a release-blocking IDOR risk.
 - Account closure is modeled by the internal user status field and membership deactivation path, but deletion/export workflows and retention schedules are not yet complete.
 - Operational rate limiting is process-local. A shared production limiter is still required for multi-instance deployments.
 - The generated OpenAPI document includes the new auth and health routes, but auth response schemas and global security annotations should be expanded before external client publication.
-- Backup and restore procedures are documented as release runbooks, but restore drills must be run against the actual production backup provider.
+- Backup and restore procedures are documented as release runbooks, but no operational backup evidence or isolated restore drill has been completed.
 - UI actions outside contributions and existing transactional flows still include review-only/local presentation states; they are not presented as durable financial operations.
 
 ### BLOCKED
@@ -39,6 +39,7 @@ This release hardens the identity boundary and the most important operational co
 - Production onboarding cannot be verified end-to-end in this workspace without a real signed-in Clerk session.
 - A production restore drill is blocked until the deployment owner provides an approved backup target and maintenance window.
 - Shared rate limiting and centralized audit export are blocked on selecting the production infrastructure for those services.
+- Production release is blocked by the contribution goal tenant-integrity defect, fail-open write-origin behavior, absent HTTP/database/browser/concurrency coverage, and unproven migration/restore lifecycle.
 
 ### NOT IMPLEMENTED
 
@@ -57,6 +58,8 @@ The hardening release is not safe to call complete until the following are true:
 4. A reviewed migration is applied through the release step and is recorded in the migration journal.
 5. A backup is restored in an isolated database and the application passes the persistence truth audit.
 6. The browser suite covers auth redirects, onboarding, viewer write rejection, idempotent contribution replay, CSRF/origin rejection, and disabled Micro-Live execution.
+
+The current audit additionally requires the contribution goal IDOR to be fixed and a two-household HTTP authorization matrix to pass before this release can be considered a production candidate.
 
 ## Migration lifecycle
 

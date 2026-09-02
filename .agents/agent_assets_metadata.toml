@@ -22,3 +22,17 @@ mtime_ms = 1788316585889
 storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:a275880a-7e86-4ab1-a13b-802e51c9d9ab/0d696a4e-396f-4b8e-931d-a3ac32085c8c/21dd4666-e86d-469b-acce-1bbce28e1c0f"
 storage_version_token = "1788316600429745"
 content_type = "text/html"
+
+[[outputs]]
+id = "2gaDR7tba9RKuoYmpQR05"
+uri = "file://docs/capital-os-executive-summary-white-paper.md"
+type = "text"
+title = "Capital OS — Executive Summary & Technical White Paper (Markdown)"
+description = "Editable Markdown version of the combined executive summary, current-state review, technical white paper, security assessment, verification evidence, and maturation roadmap."
+logical_id = "7d678fd1-97d6-4bf2-8947-6da9511c9cc4"
+content_hash = "sha256:5676df047e4234f86ea80a560b97982d8a8b53f454e62d6a0d6c9beaec36e939"
+size = 26243
+mtime_ms = 1788316752601
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:a275880a-7e86-4ab1-a13b-802e51c9d9ab/7d678fd1-97d6-4bf2-8947-6da9511c9cc4/1b27a795-31ce-4bd8-943e-53282d61e137"
+storage_version_token = "1788316757216594"
+content_type = "text/markdown"

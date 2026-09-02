@@ -118,7 +118,7 @@ This inventory separates resources that exist from certification evidence that h
 
 | Resource | Availability | Execution status | Observed state / required action |
 |---|---|---|---|
-| Certification PostgreSQL | MISSING | BLOCKED | The Replit-managed development database is reachable, but no isolated `CAPITAL_OS_CERTIFICATION_DB_URL` exists. Authorize the Neon integration or provide an approved disposable PostgreSQL URL through workspace secrets. |
+| Certification PostgreSQL | MISSING | BLOCKED | The Replit-managed development database is reachable, and Neon is attached, but Neon project creation requires the user’s organization ID; no isolated `CAPITAL_OS_CERTIFICATION_DB_URL` exists. |
 | Old-schema test PostgreSQL | MISSING | BLOCKED | No second disposable database or isolated older-schema target is configured. Create a separate non-production database after certification PostgreSQL is available. |
 | Restore target | MISSING | BLOCKED | No isolated restore database was provided. Use the Replit Database tool to restore an approved production point-in-time backup into a non-production target without overwriting production. |
 | Clerk test environment | AVAILABLE | NOT EXECUTED | Replit-managed Clerk is present with isolated Development and Production user stores. Clerk dashboard access reports `requires_personal_pro`; test-user and provider step-up configuration are not certified. |
@@ -128,10 +128,10 @@ This inventory separates resources that exist from certification evidence that h
 #### Human-action escalation
 
 **BLOCKER:** Isolated certification PostgreSQL and old-schema PostgreSQL  
-**WHY REPLIT CANNOT EXECUTE:** The built-in Replit database provides the shared Development database and the separate Production database; this workspace has no disposable certification URL, and no database-creation callback is available. A Neon MCP connection is discoverable but not authorized.  
-**EXACT USER ACTION REQUIRED:** Authorize the proposed Neon integration and create two disposable, non-production databases (certification and old-schema), or provide approved PostgreSQL connection URLs through Replit Secrets. Do not use the shared `DATABASE_URL`.  
-**WHAT TO PROVIDE BACK:** An accepted Neon connection with two isolated database URLs available to the workspace as `CAPITAL_OS_CERTIFICATION_DB_URL` and the old-schema test URL.  
-**NEXT AUTOMATED COMMAND:** `CAPITAL_OS_CERTIFICATION_ALLOW_RESET=1 pnpm run certify:migrations`, followed by `pnpm run certify:production-candidate`.
+**WHY REPLIT CANNOT EXECUTE:** The built-in Replit database provides the shared Development database and the separate Production database. The attached Neon MCP connection can provision disposable databases, but its create-project operation requires the user’s Neon organization ID.  
+**EXACT USER ACTION REQUIRED:** Provide the non-secret Neon organization ID from the Neon organization settings page. Do not provide a password, API key, or connection string in chat.  
+**WHAT TO PROVIDE BACK:** The Neon `org_id`; the automated run will create two disposable non-production databases and store their connection details through the workspace secret flow.  
+**NEXT AUTOMATED COMMAND:** Create the isolated Neon project, then run `CAPITAL_OS_CERTIFICATION_ALLOW_RESET=1 pnpm run certify:migrations`, followed by `pnpm run certify:production-candidate`.
 
 **BLOCKER:** Managed backup and isolated restore  
 **WHY REPLIT CANNOT EXECUTE:** The Database tool controls production point-in-time restoration, but no approved backup timestamp or isolated restore target is available to the agent; restoring is a user-controlled provider operation.  

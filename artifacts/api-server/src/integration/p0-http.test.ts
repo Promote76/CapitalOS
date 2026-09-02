@@ -7,6 +7,17 @@ const enabled = process.env.CAPITAL_OS_RUN_INTEGRATION === "1";
 type DbModule = typeof import("@workspace/db");
 let database: DbModule | undefined;
 
+function toCents(value: string): bigint {
+  const [whole, fraction = ""] = value.split(".");
+  return BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
+}
+
+function fromCents(value: bigint): string {
+  const sign = value < 0n ? "-" : "";
+  const absolute = value < 0n ? -value : value;
+  return `${sign}${absolute / 100n}.${String(absolute % 100n).padStart(2, "0")}`;
+}
+
 type Fixture = {
   householdA: string;
   householdB: string;
@@ -208,6 +219,7 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
     const source = accountRows.find((account) => account.accountType === "active_capital");
     const destination = accountRows.find((account) => account.accountType === "strategy_capital");
     assert.ok(source?.id && destination?.id, JSON.stringify(accountRows));
+    const sourceBalanceBeforeConcurrent = source.balance;
     const blockedWithoutStepUp = await request("/transfers", {
       method: "POST",
       headers: { "Idempotency-Key": `step-up-${randomUUID()}` },
@@ -222,7 +234,7 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
     assert.deepEqual(transferResponses.map((response) => response.status).sort(), [201, 400]);
     const refreshedAccounts = await (await request("/accounts")).json() as Array<{ id: string; accountType: string; balance: string }>;
     const refreshedSource = refreshedAccounts.find((account) => account.id === source.id);
-    assert.equal(refreshedSource?.balance, "0.40");
+    assert.equal(refreshedSource?.balance, fromCents(toCents(sourceBalanceBeforeConcurrent) - 60n));
 
     await db.update(accounts).set({ balance: "1000.00" }).where(eq(accounts.id, source.id));
     const contentionResponses = await Promise.all(Array.from({ length: 100 }, (_, index) => request("/transfers", {

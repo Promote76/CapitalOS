@@ -6,6 +6,7 @@ import { spawnSync } from "node:child_process";
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const failures = [];
 const openGates = [];
+let cleanMigrationExecuted = false;
 
 function run(label, command, args, extraEnv = {}) {
   console.log(`\n=== ${label} ===`);
@@ -36,6 +37,7 @@ if (!certificationDbUrl) {
   failures.push("CAPITAL_OS_CERTIFICATION_DB_URL must not equal the shared DATABASE_URL");
 } else {
   if (process.env.CAPITAL_OS_CERTIFICATION_ALLOW_RESET === "1") {
+    cleanMigrationExecuted = true;
     run("Clean isolated migration baseline", "pnpm", ["run", "certify:migrations"], {
       CAPITAL_OS_CERTIFICATION_DB_URL: certificationDbUrl,
     });
@@ -62,8 +64,10 @@ if (!certificationDbUrl) {
   }
 }
 
+if (!cleanMigrationExecuted) {
+  openGates.push("Clean-database migration execution is not configured in this workspace");
+}
 openGates.push(
-  "Clean-database migration execution is not configured in this workspace",
   "Existing-schema upgrade execution is not configured in this workspace",
   "Managed PostgreSQL backup and isolated restore evidence is not available",
   "Authenticated browser E2E credentials and execution environment are not available",

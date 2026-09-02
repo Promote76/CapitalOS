@@ -67,11 +67,29 @@ foreign-parent denial; role denial; mass-assignment resistance; recent-auth deni
 100-request transfer contention; ledger balancing; and persisted audit actor checks.
 Idempotency mismatches correctly return HTTP `409` with `IDEMPOTENCY_CONFLICT`.
 
+## P0-04 — managed backup / restore
+
+Result: **BLOCKED — no restore evidence claimed**.
+
+The supported Replit recovery workflow was checked against the official Data
+recovery guidance. It requires the release owner to select a production
+point-in-time restore or scheduled backup from the Database tool and confirm
+the restore there. The available agent database operations do not expose
+provider backup enumeration, restore confirmation, or isolated-target
+provisioning. A production read-only connectivity check reached
+`neondb.public` at `2026-09-02 18:58:53 UTC`; this does not establish a backup,
+restore, recovery point, recovery time, or data integrity.
+
+The complete blocked execution record, required provider evidence, and
+verification checklist are in
+`docs/RESTORE_DRILL_2026-09-02.md`.
+
 ## Remaining P0 blockers
 
 - **P0-01:** the complete 108-route IDOR matrix has not executed.
 - **P0-04:** provider-managed backup identity, isolated restore target, and restore
-  integrity/RPO/RTO evidence are unavailable.
+  integrity/RPO/RTO evidence are unavailable; see
+  `docs/RESTORE_DRILL_2026-09-02.md`.
 - **P0-05:** authenticated Clerk browser journeys and a secure test-user flow are
   unavailable.
 - **P0-06:** the complete role/effective-permission grant, revoke, membership-change,

@@ -1,8 +1,10 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import {
   capitalRequests,
   capitalReservations,
   allocationRules,
+  auditEvents,
+  idempotencyKeys,
   treasuryBuckets,
   treasuryPolicies,
   riskStates,
@@ -76,6 +78,31 @@ function requestResponse(request: typeof capitalRequests.$inferSelect) {
   };
 }
 
+const CAPITAL_REQUEST_OPERATION = "capital_request.create";
+
+function serializeIdempotentResponse(response: Record<string, unknown>, input: unknown) {
+  return JSON.parse(JSON.stringify({
+    response,
+    fingerprint: JSON.stringify(input),
+  })) as Record<string, unknown>;
+}
+
+function replayIdempotentResponse(row: typeof idempotencyKeys.$inferSelect, operation: string, input: unknown) {
+  if (row.operation !== operation || !row.responseBody || row.responseBody.fingerprint !== JSON.stringify(input)) {
+    throw new GovernanceError("IDEMPOTENCY_CONFLICT", "Idempotency key was already used for a different request");
+  }
+  return row.responseBody.response as Record<string, unknown>;
+}
+
+async function lockIdempotency(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  householdId: string,
+  operation: string,
+  idempotencyKey: string,
+) {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`${operation}:${householdId}:${idempotencyKey}`}, 0))`);
+}
+
 export async function getTreasury() {
   const ids = await ensureSeedData();
   const [buckets, policy, requests, reservations, safeToDeploy, cashFlow, allocation] = await Promise.all([
@@ -128,29 +155,59 @@ export async function createCapitalRequest(actor: Actor, input: {
   currentAllocation?: string;
   requestedNewAllocation?: string;
   evidence?: string[];
-}) {
+}, idempotencyKey: string) {
   assertPermission(actor.role, "contribute");
   const ids = await ensureSeedData();
   if (parseMoneyToCents(input.requestedAmount) <= 0) {
     throw new GovernanceError("INVALID_STATE", "Capital requests must be greater than zero");
   }
-  const [request] = await db.insert(capitalRequests).values({
-    householdId: ids.householdId,
-    requestingModule: input.requestingModule,
-    strategyId: input.strategyId,
-    requestedAmount: input.requestedAmount,
-    purpose: input.purpose,
-    expectedDuration: input.expectedDuration,
-    riskClass: input.riskClass,
-    expectedReturnAssumption: input.expectedReturnAssumption,
-    liquidityRequirement: input.liquidityRequirement,
-    currentAllocation: input.currentAllocation ?? "0.00",
-    requestedNewAllocation: input.requestedNewAllocation ?? input.requestedAmount,
-    evidence: input.evidence ?? [],
-    status: "SUBMITTED",
-    createdBy: actor.userId,
-  }).returning();
-  return requestResponse(request);
+  return db.transaction(async (tx) => {
+    await lockIdempotency(tx, ids.householdId, CAPITAL_REQUEST_OPERATION, idempotencyKey);
+    const [existing] = await tx.select().from(idempotencyKeys).where(and(
+      eq(idempotencyKeys.householdId, ids.householdId),
+      eq(idempotencyKeys.key, idempotencyKey),
+    )).limit(1);
+    if (existing) return replayIdempotentResponse(existing, CAPITAL_REQUEST_OPERATION, input);
+    const [request] = await tx.insert(capitalRequests).values({
+      householdId: ids.householdId,
+      requestingModule: input.requestingModule,
+      strategyId: input.strategyId,
+      requestedAmount: input.requestedAmount,
+      purpose: input.purpose,
+      expectedDuration: input.expectedDuration,
+      riskClass: input.riskClass,
+      expectedReturnAssumption: input.expectedReturnAssumption,
+      liquidityRequirement: input.liquidityRequirement,
+      currentAllocation: input.currentAllocation ?? "0.00",
+      requestedNewAllocation: input.requestedNewAllocation ?? input.requestedAmount,
+      evidence: input.evidence ?? [],
+      status: "SUBMITTED",
+      createdBy: actor.userId,
+    }).returning();
+    await tx.insert(auditEvents).values({
+      householdId: ids.householdId,
+      eventType: "capital_request_submitted",
+      actor: actor.userId,
+      entity: "capital_request",
+      entityId: request.id,
+      reason: input.purpose,
+      metadata: {
+        idempotencyKey,
+        amount: request.requestedAmount,
+        requestingModule: request.requestingModule,
+        riskClass: request.riskClass,
+      },
+    });
+    const response = requestResponse(request);
+    await tx.insert(idempotencyKeys).values({
+      householdId: ids.householdId,
+      key: idempotencyKey,
+      operation: CAPITAL_REQUEST_OPERATION,
+      responseStatus: 201,
+      responseBody: serializeIdempotentResponse(response, input),
+    });
+    return response;
+  });
 }
 
 export async function decideCapitalRequest(actor: Actor, requestId: string, input: {

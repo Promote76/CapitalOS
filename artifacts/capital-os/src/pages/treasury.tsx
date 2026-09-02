@@ -13,7 +13,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import {
-  useCreateCapitalRequest,
+  createCapitalRequest,
   useGetTreasury,
   type CapitalRequestInput,
   type TreasurySnapshot,
@@ -172,16 +172,16 @@ function TreasuryOverview({ snapshot }: { snapshot: TreasurySnapshot }) {
 }
 
 function CapitalRequestPanel({ snapshot, onFeedback }: { snapshot: TreasurySnapshot; onFeedback: (message: string) => void }) {
-  const createRequest = useCreateCapitalRequest();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("50.00");
   const [purpose, setPurpose] = useState("Review additional allocation for a validated strategy.");
   const [riskClass, setRiskClass] = useState<CapitalRequestInput["riskClass"]>("conservative");
   const [liquidity, setLiquidity] = useState("Immediate");
+  const [submitting, setSubmitting] = useState(false);
   const submit = async () => {
     try {
-      await createRequest.mutateAsync({
-        data: {
+      setSubmitting(true);
+      await createCapitalRequest({
           requestingModule: "Strategy Lab",
           requestedAmount: amount,
           purpose,
@@ -192,12 +192,15 @@ function CapitalRequestPanel({ snapshot, onFeedback }: { snapshot: TreasurySnaps
           currentAllocation: "0.00",
           requestedNewAllocation: amount,
           evidence: ["Human review requested from Treasury", "Protected capital remains excluded"],
-        },
+        }, {
+          headers: { "Idempotency-Key": crypto.randomUUID() },
       });
       setOpen(false);
       onFeedback("Capital request submitted for Treasury review.");
     } catch (error) {
       onFeedback(error instanceof Error ? error.message : "Capital request could not be submitted.");
+    } finally {
+      setSubmitting(false);
     }
   };
   return (
@@ -208,7 +211,7 @@ function CapitalRequestPanel({ snapshot, onFeedback }: { snapshot: TreasurySnaps
         <div className="field"><label htmlFor="treasury-request-risk">Risk class</label><select id="treasury-request-risk" value={riskClass} onChange={(event) => setRiskClass(event.target.value as CapitalRequestInput["riskClass"])}><option value="conservative">Conservative</option><option value="moderate">Moderate</option><option value="experimental">Experimental</option></select></div>
         <div className="field"><label htmlFor="treasury-request-liquidity">Liquidity requirement</label><input id="treasury-request-liquidity" value={liquidity} onChange={(event) => setLiquidity(event.target.value)} /></div>
         <div className="field treasury-request-purpose"><label htmlFor="treasury-request-purpose">Purpose</label><textarea id="treasury-request-purpose" value={purpose} onChange={(event) => setPurpose(event.target.value)} /></div>
-        <div className="treasury-request-actions"><button className="btn" onClick={() => setOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={() => { void submit(); }} disabled={createRequest.isPending || !amount || Number(amount) <= 0}>{createRequest.isPending ? "Submitting…" : "Submit for review"}</button></div>
+        <div className="treasury-request-actions"><button className="btn" onClick={() => setOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={() => { void submit(); }} disabled={submitting || !amount || Number(amount) <= 0}>{submitting ? "Submitting…" : "Submit for review"}</button></div>
       </div>}
       {snapshot.requests.length === 0 && !open && <div className="empty-state treasury-empty"><Sparkles size={20} /><h3>No capital requests</h3><p>When a strategy needs funding, it will appear here for a governed review.</p></div>}
       {snapshot.requests.length > 0 && <div className="treasury-request-list">{snapshot.requests.map((request) => <div className="treasury-request-row" key={request.id}><div><strong>{request.requestingModule}</strong><span>{request.purpose}</span></div><strong>{money(request.requestedAmount)}</strong><span className={`status ${request.status === "REJECTED" ? "critical" : "pending"}`}>{label(request.status)}</span></div>)}</div>}

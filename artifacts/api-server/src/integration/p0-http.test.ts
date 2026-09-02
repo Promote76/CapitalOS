@@ -144,6 +144,98 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
     assert.ok(goalB?.id);
     assert.notEqual(goalA.id, goalB.id);
 
+    const { businessEntities, financialAccounts } = database;
+    const [business] = await db.insert(businessEntities).values({
+      householdId: fixture.householdA,
+      legalName: `P0 Business ${randomUUID()}`,
+      displayName: `P0 Business ${randomUUID()}`,
+      createdBy: fixture.userA,
+    }).returning({ id: businessEntities.id });
+    await db.insert(financialAccounts).values({
+      householdId: fixture.householdA,
+      institution: "P0 Test Bank",
+      nickname: "P0 Business Cash",
+      accountType: "business_checking",
+      currentBalance: "1000.00",
+      availableBalance: "1000.00",
+      businessEntityId: business.id,
+      connectionStatus: "manual",
+      dataSource: "manual",
+    });
+
+    const capitalRequestInput = {
+      requestingModule: "P0 Test Module",
+      requestedAmount: "10.00",
+      purpose: "Concurrent idempotency certification",
+      expectedDuration: "30 days",
+      riskClass: "conservative" as const,
+      expectedReturnAssumption: "No autonomous execution",
+      liquidityRequirement: "Immediate",
+    };
+    const capitalRequestKey = `capital-request-${randomUUID()}`;
+    const capitalRequestResponses = await Promise.all([1, 2].map(() => request("/treasury/requests", {
+      method: "POST",
+      headers: { "Idempotency-Key": capitalRequestKey },
+      body: JSON.stringify(capitalRequestInput),
+    })));
+    const capitalRequestDetails = await Promise.all(capitalRequestResponses.map(async (response) => ({
+      status: response.status,
+      body: await response.text(),
+    })));
+    assert.deepEqual(capitalRequestDetails.map((response) => response.status), [201, 201], JSON.stringify(capitalRequestDetails));
+    const capitalRequestIds = capitalRequestDetails.map((response) => (JSON.parse(response.body) as { id: string }).id);
+    assert.equal(capitalRequestIds[0], capitalRequestIds[1]);
+    const [capitalRequestCount] = await db.select({
+      count: sql<number>`count(*)::int`,
+    }).from(database.capitalRequests).where(and(
+      eq(database.capitalRequests.householdId, fixture.householdA),
+      eq(database.capitalRequests.id, capitalRequestIds[0]),
+    ));
+    assert.equal(capitalRequestCount?.count, 1);
+    const capitalRequestAudits = await db.select({
+      actor: auditEvents.actor,
+    }).from(auditEvents).where(and(
+      eq(auditEvents.householdId, fixture.householdA),
+      eq(auditEvents.entity, "capital_request"),
+      eq(auditEvents.entityId, capitalRequestIds[0]),
+    ));
+    assert.deepEqual(capitalRequestAudits, [{ actor: fixture.userA }]);
+
+    const distributionInput = {
+      businessId: business.id,
+      distributionDate: new Date().toISOString().slice(0, 10),
+      amount: "10.00",
+      notes: "Concurrent idempotency certification",
+    };
+    const distributionKey = `business-distribution-${randomUUID()}`;
+    const distributionResponses = await Promise.all([1, 2].map(() => request("/business/distributions", {
+      method: "POST",
+      headers: { "Idempotency-Key": distributionKey },
+      body: JSON.stringify(distributionInput),
+    })));
+    const distributionDetails = await Promise.all(distributionResponses.map(async (response) => ({
+      status: response.status,
+      body: await response.text(),
+    })));
+    assert.deepEqual(distributionDetails.map((response) => response.status), [201, 201], JSON.stringify(distributionDetails));
+    const distributionIds = distributionDetails.map((response) => (JSON.parse(response.body) as { id: string }).id);
+    assert.equal(distributionIds[0], distributionIds[1]);
+    const [distributionCount] = await db.select({
+      count: sql<number>`count(*)::int`,
+    }).from(database.businessDistributions).where(and(
+      eq(database.businessDistributions.householdId, fixture.householdA),
+      eq(database.businessDistributions.id, distributionIds[0]),
+    ));
+    assert.equal(distributionCount?.count, 1);
+    const distributionAudits = await db.select({
+      actor: auditEvents.actor,
+    }).from(auditEvents).where(and(
+      eq(auditEvents.householdId, fixture.householdA),
+      eq(auditEvents.entity, "business_distribution"),
+      eq(auditEvents.entityId, distributionIds[0]),
+    ));
+    assert.deepEqual(distributionAudits, [{ actor: fixture.userA }]);
+
     const crossHouseholdContribution = await request("/contributions", {
       method: "POST",
       headers: { "Idempotency-Key": randomUUID() },
@@ -252,8 +344,10 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
     assert.equal(successfulContention.length, 40, JSON.stringify(contentionDetails));
     assert.equal(contentionDetails.filter((response) => response.status === 400).length, 60);
 
-    const postContentionAccounts = await (await request("/accounts")).json() as Array<{ id: string; balance: string }>;
-    assert.equal(postContentionAccounts.find((account) => account.id === source.id)?.balance, "0.00");
+    const [postContentionSource] = await db.select({
+      balance: accounts.balance,
+    }).from(accounts).where(eq(accounts.id, source.id)).limit(1);
+    assert.equal(postContentionSource?.balance, "0.00");
     const [ledgerTotals] = await db.select({
       debits: sql<string>`coalesce(sum(${ledgerEntries.debit}), 0)::text`,
       credits: sql<string>`coalesce(sum(${ledgerEntries.credit}), 0)::text`,

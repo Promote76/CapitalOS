@@ -12,7 +12,7 @@ This index distinguishes executable evidence from source review and blocked infr
 | Authorization | Membership lookup, effective permission list, role/domain tests | Server path exists; full role HTTP matrix absent | OPEN |
 | Origin / CSRF | `src/middleware/safety.test.ts` | 24 state-changing-method/origin scenarios fail closed or continue as expected; full HTTP route matrix remains open | PARTIAL |
 | Financial concurrency | Database-backed HTTP fixture | Targeted race, 100-request contention, balanced ledger totals, and transfer replay passed on isolated Neon PostgreSQL | PARTIAL |
-| Idempotency | Contribution and transfer replay fixture paths; domain idempotency tests | Contribution and transfer proofs pass; capital-request/distribution matrix absent | OPEN |
+| Idempotency | Database-backed HTTP fixture and domain idempotency tests | Contribution duplicate, transfer replay, concurrent capital-request creation, and concurrent business-distribution preparation pass; broader workflow and mismatch matrix remains open | PARTIAL |
 | Migration | Generated Drizzle SQL and migration journal plus isolated clean run | Clean baseline passed; older-schema execution remains unavailable | PARTIAL |
 | Backup / restore | Existing runbook only | No managed backup reference or isolated restore execution | BLOCKED |
 | Browser E2E | Preview screenshot only | No authenticated Playwright journey | BLOCKED |

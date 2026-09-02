@@ -14,7 +14,7 @@ The hardening work established meaningful controls around authenticated identity
 
 Executable evidence is currently strongest for domain safety and isolated PostgreSQL HTTP behavior. The workspace typechecks, builds, regenerates API clients, passes route parity, and passes 66 API tests. The isolated database-backed fixture also proves selected cross-household, viewer-denial, contribution/transfer idempotency, 100-request contention, balanced ledger totals, and representative actor-attribution scenarios.
 
-Capital OS is **not** qualified as a Production Candidate because the full caller-controlled identifier matrix, complete role and effective-permission HTTP matrix, existing-schema upgrade lifecycle, managed backup/restore drill, authenticated browser journeys, production-supported Clerk step-up flow, broader economic-event idempotency, complete actor-audit verification, and durable operations evidence remain unproven.
+Capital OS is **not** qualified as a Production Candidate because the full caller-controlled identifier matrix, complete role and effective-permission HTTP matrix, existing-schema upgrade lifecycle, managed backup/restore drill, authenticated browser journeys, production-supported Clerk step-up flow, broader economic-event idempotency coverage, complete actor-audit verification, and durable operations evidence remain unproven.
 
 No real banking, ACH, brokerage, live venue, blockchain, external investor capital, automated withdrawal, or autonomous AI capability was added or enabled.
 
@@ -96,7 +96,7 @@ The current high-risk authentication safeguard is a temporary Clerk session-issu
 | Ledger balance | PARTIAL | Contribution and transfer paths exercise balanced entries; broader business/distribution/adjustment coverage remains open |
 | Transfer atomicity | PASS for tested scenario | Conditional debit behavior produced one success and one rejection under parallel requests with no negative tested source balance |
 | Transfer high contention | PASS | The isolated PostgreSQL fixture completed 100 concurrent `$25` transfers from `$1,000`, reconciled `$1,000` of debits to `$1,000` of credits, and ended at `$0` |
-| Idempotency | PARTIAL | Concurrent duplicate contribution requests return one persisted result; transfer replay and one-row assertions are implemented; capital-request and distribution-preparation event types remain open |
+| Idempotency | PARTIAL | Concurrent duplicate contribution requests return one persisted result; transfer replay, capital-request creation, and distribution-preparation one-row assertions pass; broader event coverage remains open |
 | Transaction rollback | PARTIAL | Critical writes are transactionally structured; failure injection after each intermediate write has not been fully executed |
 | Safe-to-Deploy | PARTIAL | Business cash and planning capital remain separate; the complete cross-domain non-increase invariant suite is open |
 | Protected Duplex Reserve | PASS for domain coverage | Protected capital cannot fund strategy, Treasury active allocation, business, opportunity, or Micro-Live paths in tested domain controls |
@@ -181,8 +181,8 @@ The command refuses to run when the certification URL equals the shared `DATABAS
 | Tenant / IDOR | 3 key scenarios plus mass-assignment assertions | 0 | Many routes | Full matrix | PARTIAL |
 | Role / permission | Owner/Viewer executed; Partner/Advisor fixture paths implemented | 0 | Uncovered actions | Dedicated execution | PARTIAL |
 | Security | 4 middleware tests / 27 scenarios plus domain coverage | 0 | Browser/security matrix | Full HTTP matrix | PARTIAL |
-| Concurrency | Targeted race plus 100-request contention executed | 0 | 0 | Broader economic paths | PARTIAL |
-| Idempotency | Contribution and transfer replay executed | 0 | 0 | Capital request/distribution preparation | PARTIAL |
+| Concurrency | Targeted race plus 100-request contention and same-key creation executed | 0 | 0 | Broader economic paths | PARTIAL |
+| Idempotency | Contribution, transfer, capital-request, and distribution-preparation replay/creation executed | 0 | 0 | Remaining economic workflows and mismatch matrix | PARTIAL |
 | Financial invariants | Domain coverage | 0 | 0 | Cross-domain and broader ledger cases | PARTIAL |
 | Migration | Clean baseline PASS | 0 | 0 | Existing-schema upgrade and data preservation | PARTIAL |
 | Browser E2E | 0 | 0 | 0 | Authenticated environment | BLOCKED |

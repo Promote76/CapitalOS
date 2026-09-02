@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import {
   CreateCapitalRequestBody,
+  CreateCapitalRequestHeader,
   CreateCapitalRequestResponse,
   DecideCapitalRequestBody,
   DecideCapitalRequestResponse,
@@ -22,8 +23,9 @@ router.get("/treasury", asyncRoute(async (_req, res) => {
 
 router.post("/treasury/requests", asyncRoute(async (req, res) => {
   const input = CreateCapitalRequestBody.parse(req.body);
+  const headers = CreateCapitalRequestHeader.parse({ "Idempotency-Key": req.header("Idempotency-Key") });
   res.status(201).json(
-    CreateCapitalRequestResponse.parse(await createCapitalRequest(actorFrom(res), input)),
+    CreateCapitalRequestResponse.parse(await createCapitalRequest(actorFrom(res), input, headers["Idempotency-Key"])),
   );
 }));
 

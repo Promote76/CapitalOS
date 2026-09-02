@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import {
   CreateBusinessDistributionBody,
+  CreateBusinessDistributionHeader,
   CreateBusinessDistributionResponse,
   CreateBusinessEntityBody,
   CreateBusinessEntityResponse,
@@ -52,7 +53,8 @@ router.post("/business/expenses", asyncRoute(async (req, res) => {
 }));
 router.post("/business/distributions", asyncRoute(async (req, res) => {
   const body = CreateBusinessDistributionBody.parse(req.body);
-  res.status(201).json(CreateBusinessDistributionResponse.parse(await createBusinessDistribution(actorFrom(res), body)));
+  const headers = CreateBusinessDistributionHeader.parse({ "Idempotency-Key": req.header("Idempotency-Key") });
+  res.status(201).json(CreateBusinessDistributionResponse.parse(await createBusinessDistribution(actorFrom(res), body, headers["Idempotency-Key"])));
 }));
 router.patch("/business/reserves/:businessId", asyncRoute(async (req, res) => {
   const params = UpdateBusinessReserveParams.parse(req.params);

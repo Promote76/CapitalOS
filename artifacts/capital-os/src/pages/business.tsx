@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { AlertCircle, ArrowUpRight, BriefcaseBusiness, Building2, CircleDollarSign, Landmark, LockKeyhole, Plus, RefreshCw, ShieldCheck, TrendingUp } from "lucide-react";
-import { getGetBusinessOverviewQueryKey, useCreateBusinessDistribution, useCreateBusinessExpense, useCreateBusinessRevenue, useGetBusinessOverview } from "@workspace/api-client-react";
+import { createBusinessDistribution, getGetBusinessOverviewQueryKey, useCreateBusinessExpense, useCreateBusinessRevenue, useGetBusinessOverview } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 const money = (value?: string) => Number(value ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -11,7 +11,6 @@ export default function BusinessPage({ onFeedback }: { onFeedback: (message: str
   const overview = useGetBusinessOverview();
   const addRevenue = useCreateBusinessRevenue();
   const addExpense = useCreateBusinessExpense();
-  const proposeDistribution = useCreateBusinessDistribution();
   const [form, setForm] = useState<"revenue" | "expense" | "distribution" | null>(null);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -25,7 +24,9 @@ export default function BusinessPage({ onFeedback }: { onFeedback: (message: str
     try {
       if (form === "revenue") await addRevenue.mutateAsync({ data: { businessId, revenueDate: new Date().toISOString().slice(0, 10), category: "services", amount, description: description.trim() } });
       if (form === "expense") await addExpense.mutateAsync({ data: { businessId, expenseDate: new Date().toISOString().slice(0, 10), category: "operating", amount, description: description.trim(), classification: "business", expenseType: "operating" } });
-      if (form === "distribution") await proposeDistribution.mutateAsync({ data: { businessId, distributionDate: new Date().toISOString().slice(0, 10), amount, notes: description.trim() } });
+      if (form === "distribution") await createBusinessDistribution({ businessId, distributionDate: new Date().toISOString().slice(0, 10), amount, notes: description.trim() }, {
+        headers: { "Idempotency-Key": crypto.randomUUID() },
+      });
       await refresh();
       onFeedback(form === "distribution" ? "Distribution prepared for owner review." : `${title(form)} recorded.`);
       setForm(null); setAmount(""); setDescription("");

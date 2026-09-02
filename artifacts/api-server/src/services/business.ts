@@ -7,10 +7,12 @@ import {
   businessReserves,
   businessRevenue,
   financialAccounts,
+  auditEvents,
+  idempotencyKeys,
 } from "@workspace/db/schema";
 import type { Actor } from "./capital-os";
 import { ensureSeedData, isDemoHousehold } from "./seed";
-import { assertPermission } from "../domain/governance";
+import { assertPermission, GovernanceError } from "../domain/governance";
 import { calculateBusinessCapital, calculateBusinessHealth, assertDistributionWithinReserve } from "../domain/business";
 import { centsToMoney, parseMoneyToCents } from "../domain/finance";
 
@@ -35,6 +37,31 @@ function reserveResponse(row: typeof businessReserves.$inferSelect) {
 function distributionResponse(row: typeof businessDistributions.$inferSelect) {
   const { householdId: _householdId, createdBy: _createdBy, ...response } = row;
   return response;
+}
+
+const BUSINESS_DISTRIBUTION_OPERATION = "business_distribution.create";
+
+function serializeIdempotentResponse(response: Record<string, unknown>, input: unknown) {
+  return JSON.parse(JSON.stringify({
+    response,
+    fingerprint: JSON.stringify(input),
+  })) as Record<string, unknown>;
+}
+
+function replayIdempotentResponse(row: typeof idempotencyKeys.$inferSelect, operation: string, input: unknown) {
+  if (row.operation !== operation || !row.responseBody || row.responseBody.fingerprint !== JSON.stringify(input)) {
+    throw new GovernanceError("IDEMPOTENCY_CONFLICT", "Idempotency key was already used for a different request");
+  }
+  return row.responseBody.response as Record<string, unknown>;
+}
+
+async function lockIdempotency(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  householdId: string,
+  operation: string,
+  idempotencyKey: string,
+) {
+  await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`${operation}:${householdId}:${idempotencyKey}`}, 0))`);
 }
 
 async function ensureBusinessSeed(householdId: string, ownerId: string) {
@@ -240,14 +267,49 @@ export async function createBusinessExpense(actor: Actor, input: ExpenseInput) {
   return expenseResponse(row);
 }
 
-export async function createBusinessDistribution(actor: Actor, input: DistributionInput) {
+export async function createBusinessDistribution(actor: Actor, input: DistributionInput, idempotencyKey: string) {
   assertPermission(actor.role, "approve");
-  const overview = await getBusinessOverview(actor);
   const ids = await ensureSeedData();
-  await assertBusiness(ids.householdId, input.businessId);
-  assertDistributionWithinReserve(input.amount, parseMoneyToCents(overview.totals.safeToDistribute));
-  const [row] = await db.insert(businessDistributions).values({ ...input, distributionDate: input.distributionDate.toISOString().slice(0, 10), householdId: ids.householdId, createdBy: actor.userId, status: "proposed" }).returning();
-  return distributionResponse(row);
+  return db.transaction(async (tx) => {
+    await lockIdempotency(tx, ids.householdId, BUSINESS_DISTRIBUTION_OPERATION, idempotencyKey);
+    const [existing] = await tx.select().from(idempotencyKeys).where(and(
+      eq(idempotencyKeys.householdId, ids.householdId),
+      eq(idempotencyKeys.key, idempotencyKey),
+    )).limit(1);
+    if (existing) return replayIdempotentResponse(existing, BUSINESS_DISTRIBUTION_OPERATION, input);
+    const overview = await getBusinessOverview(actor);
+    await assertBusiness(ids.householdId, input.businessId);
+    assertDistributionWithinReserve(input.amount, parseMoneyToCents(overview.totals.safeToDistribute));
+    const [row] = await tx.insert(businessDistributions).values({
+      ...input,
+      distributionDate: input.distributionDate.toISOString().slice(0, 10),
+      householdId: ids.householdId,
+      createdBy: actor.userId,
+      status: "proposed",
+    }).returning();
+    await tx.insert(auditEvents).values({
+      householdId: ids.householdId,
+      eventType: "business_distribution_proposed",
+      actor: actor.userId,
+      entity: "business_distribution",
+      entityId: row.id,
+      reason: input.notes ?? "Business distribution proposed",
+      metadata: {
+        idempotencyKey,
+        amount: row.amount,
+        businessId: row.businessId,
+      },
+    });
+    const response = distributionResponse(row);
+    await tx.insert(idempotencyKeys).values({
+      householdId: ids.householdId,
+      key: idempotencyKey,
+      operation: BUSINESS_DISTRIBUTION_OPERATION,
+      responseStatus: 201,
+      responseBody: serializeIdempotentResponse(response, input),
+    });
+    return response;
+  });
 }
 
 export async function updateBusinessReserve(actor: Actor, businessId: string, input: Partial<typeof businessReserves.$inferInsert>) {

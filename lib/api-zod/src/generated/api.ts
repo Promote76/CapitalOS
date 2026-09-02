@@ -2900,6 +2900,15 @@ export const GetTreasuryResponse = zod.object({
 /**
  * @summary Submit a recommendation-only capital request
  */
+export const createCapitalRequestHeaderIdempotencyKeyMin = 8;
+export const createCapitalRequestHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CreateCapitalRequestHeader = zod.object({
+  "Idempotency-Key": zod.string().min(createCapitalRequestHeaderIdempotencyKeyMin).max(createCapitalRequestHeaderIdempotencyKeyMax)
+})
+
 export const createCapitalRequestBodyRequestingModuleMax = 120;
 
 export const createCapitalRequestBodyRequestedAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
@@ -3814,6 +3823,15 @@ export const CreateBusinessExpenseResponse = zod.object({
 /**
  * @summary Prepare an owner distribution for human review
  */
+export const createBusinessDistributionHeaderIdempotencyKeyMin = 8;
+export const createBusinessDistributionHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CreateBusinessDistributionHeader = zod.object({
+  "Idempotency-Key": zod.string().min(createBusinessDistributionHeaderIdempotencyKeyMin).max(createBusinessDistributionHeaderIdempotencyKeyMax)
+})
+
 export const createBusinessDistributionBodyAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const createBusinessDistributionBodyNotesMax = 500;
 

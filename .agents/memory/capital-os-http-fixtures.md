@@ -7,4 +7,4 @@ The database-backed HTTP fixture should be run with the repository's installed T
 
 **Why:** Raw Node failed first on the database schema directory import and then on the API routes directory/file imports. The fixture itself passed once the runner resolved workspace TypeScript modules.
 
-**How to apply:** Keep the default isolated test command free of database fixture side effects. For authenticated HTTP evidence, run the fixture explicitly with the workspace TypeScript runner, test context enabled, and a temporary database fixture cleanup path.
+**How to apply:** Keep the default isolated test command free of database fixture side effects. For authenticated HTTP evidence, run the fixture explicitly with the workspace TypeScript runner, test context enabled, and a temporary database fixture cleanup path. After a high-volume request race, verify persisted state directly in PostgreSQL or use a fresh request identity; the in-process limiter counts all requests in the window.

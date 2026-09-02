@@ -264,8 +264,8 @@ No current finding shows a protected financial write falsely committed after a f
 1. **Accounting completeness:** real estate and investment fields are hardcoded to zero; business equity treatment differs between accounting and business views; liabilities are incomplete.
 2. **Business distribution bridge:** proposed distributions are not actual reviewed household income transfers and business domain calculations do not post full double-entry entries.
 3. **Safe-to-Deploy confidence:** fixed buffer and confidence values are conservative but not derived from operational data; no cross-domain invariant suite proves every path cannot increase Safe-to-Deploy improperly.
-4. **Audit attribution:** server actor context is wired, but the complete role/action audit query suite remains open.
-5. **Concurrency breadth:** the atomic transfer path, targeted race, and high-contention transfer pass; all economic-event idempotency types remain to be certified.
+4. **Audit attribution:** server actor context and the new capital-request/distribution audit writes are verified for the fixture actors, but the complete role/action audit query suite remains open.
+5. **Concurrency breadth:** the atomic transfer path, targeted race, high-contention transfer, capital-request creation, and distribution preparation pass; broader economic-event coverage remains open.
 
 ## Micro-Live, AI, and automation authority
 

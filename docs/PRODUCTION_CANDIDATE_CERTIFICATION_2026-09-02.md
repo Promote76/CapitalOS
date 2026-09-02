@@ -6,7 +6,7 @@
 
 ## Executive decision
 
-Capital OS has executable evidence for the corrected contribution household boundary, two-household HTTP fixture behavior, origin fail-closed behavior, exact-cent accounting safeguards, atomic transfer overdraft prevention, isolated clean migration, 100-request transfer contention, balanced ledger totals, transfer replay, representative role checks, mass-assignment resistance, and Micro-Live disabled execution. It does not qualify as a Production Candidate because older-schema upgrade, managed backup/restore, authenticated browser E2E, full role/IDOR coverage, broader economic-event idempotency, and production step-up configuration remain unproven.
+Capital OS has executable evidence for the corrected contribution household boundary, two-household HTTP fixture behavior, origin fail-closed behavior, exact-cent accounting safeguards, atomic transfer overdraft prevention, isolated clean migration, 100-request transfer contention, balanced ledger totals, transfer replay, concurrent capital-request and business-distribution idempotency, actor-attributed audit writes, representative role checks, mass-assignment resistance, and Micro-Live disabled execution. It does not qualify as a Production Candidate because older-schema upgrade, managed backup/restore, authenticated browser E2E, full role/IDOR coverage, complete representative actor-audit verification, and production step-up configuration remain unproven.
 
 No real bank, ACH, brokerage, live venue, blockchain, or autonomous AI capability was added or enabled.
 
@@ -28,8 +28,8 @@ Excluded: real bank movement, ACH, external investor capital, live trading, auto
 | Backup / restore | BLOCKED | Provider backup reference and restore target unavailable |
 | Authenticated browser journey | BLOCKED | No authenticated browser test environment |
 | Concurrent transfers | PASS | Parallel debits and 100 concurrent `$25` transfers from `$1,000` passed; final source balance remained non-negative and contention ended at `$0` |
-| Concurrent idempotency | PARTIAL | Contribution duplicate and transfer replay proofs pass; capital-request/distribution execution remains open |
-| Actor audit attribution | PARTIAL | Persisted contribution/transfer actor assertions pass; the full representative action query suite remains open |
+| Concurrent idempotency | PARTIAL | Contribution duplicate, transfer replay, capital-request creation, and business-distribution preparation proofs pass; broader workflow coverage remains open |
+| Actor audit attribution | PARTIAL | Persisted contribution, transfer, capital-request, and business-distribution actor assertions pass; the full representative action query suite remains open |
 
 ## Test inventory
 
@@ -40,7 +40,7 @@ Excluded: real bank movement, ACH, external investor capital, live trading, auto
 | Database integration | 1 | 0 | 0 | Same fixture uses real PostgreSQL; no separate DB suite |
 | Tenant / IDOR | 3 key scenarios | 0 | Many | Goal, contribution, account/transfer fixture scenarios; full matrix open |
 | Security | 4 middleware tests / 27 scenarios plus domain coverage | 0 | Full browser matrix | Origin/CSRF middleware suite |
-| Concurrency | Targeted race plus 100-request contention and replay executed | 0 | Broader economic paths | Duplicate contribution, parallel transfer, ledger reconciliation, and transfer replay pass |
+| Concurrency | Targeted race plus 100-request contention, replay, and same-key creation executed | 0 | Broader economic paths | Duplicate contribution, parallel transfer, capital-request creation, business-distribution preparation, ledger reconciliation, and transfer replay pass |
 | Migration | Clean baseline PASS | 0 | 1 P0 gate | Existing-schema upgrade/data preservation unavailable |
 | Browser E2E | 0 | 0 | 1 P0 gate | Authenticated environment unavailable |
 | Recovery | 0 | 0 | 1 P0 gate | Managed restore unavailable |

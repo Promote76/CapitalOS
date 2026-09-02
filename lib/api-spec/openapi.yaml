@@ -1309,6 +1309,8 @@ paths:
       operationId: createCapitalRequest
       tags: [treasury]
       summary: Submit a recommendation-only capital request
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:
@@ -1675,6 +1677,8 @@ paths:
       operationId: createBusinessDistribution
       tags: [business]
       summary: Prepare an owner distribution for human review
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:

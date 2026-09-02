@@ -71,7 +71,7 @@
 - [x] HTTP integration tests pass against the isolated certification PostgreSQL fixture.
 - [x] Database integration tests pass against the isolated certification PostgreSQL fixture.
 - [ ] Browser E2E tests pass.
-- [x] Concurrency tests pass for the executed contribution/transfer and high-contention scenarios.
+- [x] Concurrency tests pass for the executed contribution/transfer, high-contention, capital-request, and business-distribution scenarios.
 - [x] Clean migration tests pass against the isolated certification PostgreSQL fixture; existing-schema upgrade remains open.
 - [x] `git diff --check` passes.
 
@@ -101,7 +101,7 @@ As of 2026-09-02:
 - [x] Real Micro-Live transmission remains disabled.
 - [ ] Production identity session is verified end-to-end.
 - [x] Two-household isolation is verified over HTTP for the current fixture scenarios; systematic route coverage remains open.
-- [x] Isolated PostgreSQL fixture passes duplicate contribution, parallel transfer, and 100-request `$25` contention with balanced ledger totals.
+- [x] Isolated PostgreSQL fixture passes duplicate contribution, parallel transfer, 100-request `$25` contention with balanced ledger totals, concurrent capital-request creation, concurrent business-distribution preparation, and actor-attributed audit assertions.
 - [x] Certification evidence index, route matrix, role matrix, and UI persistence matrix are recorded.
 - [ ] Clean migration passes; existing-schema upgrade tests remain open.
 - [ ] Backup restore drill passes.

@@ -80,7 +80,7 @@ The current high-risk authentication safeguard is a temporary Clerk session-issu
 | Roles | PARTIAL | Dedicated fixture provisions Owner, Partner, Advisor, and Viewer in both households and implements partner allow plus advisor/viewer denial checks | Dedicated PostgreSQL execution and complete action matrix remain open |
 | Effective permissions | PARTIAL | Active membership permissions are loaded and centralized checks use them; empty lists fall back to role defaults | HTTP grant/revocation precedence certification is open |
 | Step-up | PARTIAL | Recent-auth middleware denies missing test step-up on protected writes | Production-supported Clerk reverification is not configured |
-| Origin / CSRF | PARTIAL | Four middleware tests cover 24 state-changing-method/origin scenarios; missing policy and cross-site credentialed writes fail closed | Full authenticated HTTP/browser route matrix remains to be certified |
+| Origin / CSRF | PARTIAL | Four middleware tests cover 24 state-changing-method/origin scenarios; production `CAPITAL_OS_ALLOWED_ORIGIN` is configured for `https://capital-os-fund.replit.app`, with republish pending before live verification | Full authenticated HTTP/browser route matrix remains to be certified |
 | IDOR | PARTIAL | Foreign-goal mutation and selected cross-household fixture cases are denied without a partial write | Every caller-controlled child and parent identifier is not yet tested |
 | Mass assignment | OPEN | Request context and server-owned relationships provide safeguards by inspection | No complete HTTP mass-assignment test matrix |
 | Audit attribution | PARTIAL | Fixture queries persisted contribution/transfer audit rows and asserts the authenticated actor; context is propagated through server paths | Full Owner/Partner/Advisor action-to-audit query verification awaits dedicated execution |
@@ -406,7 +406,7 @@ Capital OS is not authorized by this report to:
 |---|---|---|
 | Clerk production instance and supported step-up | Required | Not fully configured/certified |
 | Managed PostgreSQL | Required | Must use the managed publication path and dedicated lifecycle evidence |
-| Explicit allowed origins | Required | Production fail-closed behavior exists; candidate matrix remains open |
+| Explicit allowed origins | Required | Production `CAPITAL_OS_ALLOWED_ORIGIN` is configured for `https://capital-os-fund.replit.app`; republish and live verification are pending, and the candidate matrix remains open |
 | Durable queue/scheduler | Required for operational candidate scope | Not implemented |
 | Structured logging/correlation | Required | Implemented at current level |
 | Audit retention/shipping | Required | Not recorded |

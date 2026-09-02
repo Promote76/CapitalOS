@@ -21,6 +21,7 @@ import type {
 
 import type {
   AccountSummary,
+  AccountingOverview,
   AllocationImpact,
   AllocationInput,
   AllocationSummary,
@@ -210,13 +211,6 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
   return withQueryKey(query, queryOptions.queryKey);
 }
-
-
-
-
-
-
-
 export const getGetHouseholdUrl = () => {
 
 
@@ -287,13 +281,6 @@ export function useGetHousehold<TData = Awaited<ReturnType<typeof getHousehold>>
 
   return withQueryKey(query, queryOptions.queryKey);
 }
-
-
-
-
-
-
-
 export const getUpdatePrivacySettingsUrl = () => {
 
 
@@ -6257,3 +6244,73 @@ export const useDecideCapitalRequest = <TError = ErrorType<BadRequestResponse | 
       return useMutation(getDecideCapitalRequestMutationOptions(options));
     }
 
+export const getGetAccountingOverviewUrl = () => {
+
+
+
+
+  return `/api/accounting`
+}
+
+/**
+ * @summary Get the household accounting and net worth overview
+ */
+export const getAccountingOverview = async ( options?: Parameters<typeof customFetch>[1]): Promise<AccountingOverview> => {
+
+  return customFetch<AccountingOverview>(getGetAccountingOverviewUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAccountingOverviewQueryKey = () => {
+    return [
+    `/api/accounting`
+    ] as const;
+    }
+
+
+export const getGetAccountingOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getAccountingOverview>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountingOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAccountingOverviewQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAccountingOverview>>> = ({ signal }) => getAccountingOverview({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAccountingOverview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAccountingOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getAccountingOverview>>>
+export type GetAccountingOverviewQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the household accounting and net worth overview
+ */
+
+export function useGetAccountingOverview<TData = Awaited<ReturnType<typeof getAccountingOverview>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAccountingOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAccountingOverviewQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+   return withQueryKey(query, queryOptions.queryKey);
+}

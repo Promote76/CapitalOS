@@ -2952,3 +2952,141 @@ export const DecideCapitalRequestResponse = zod.object({
 })
 
 
+/**
+ * @summary Get the household accounting and net worth overview
+ */
+export const GetAccountingOverviewResponse = zod.object({
+  "asOf": zod.coerce.date(),
+  "period": zod.object({
+  "label": zod.string(),
+  "start": zod.coerce.date(),
+  "end": zod.coerce.date()
+}),
+  "disclaimer": zod.string(),
+  "netWorth": zod.object({
+  "totalAssets": zod.string(),
+  "totalLiabilities": zod.string(),
+  "netWorth": zod.string(),
+  "liquidNetWorth": zod.string(),
+  "protectedCapital": zod.string(),
+  "investedCapital": zod.string(),
+  "realEstateEquity": zod.string(),
+  "businessEquity": zod.string(),
+  "cashTreasury": zod.string()
+}),
+  "change": zod.object({
+  "month": zod.string(),
+  "yearToDate": zod.string(),
+  "capitalContributed": zod.string(),
+  "investmentGrowth": zod.string(),
+  "debtReduction": zod.string(),
+  "other": zod.string(),
+  "reconciles": zod.boolean()
+}),
+  "balanceSheet": zod.object({
+  "assets": zod.array(zod.object({
+  "name": zod.string(),
+  "category": zod.string(),
+  "institution": zod.string(),
+  "amount": zod.string(),
+  "valueStatus": zod.string(),
+  "valuationDate": zod.coerce.date().nullable(),
+  "protected": zod.boolean()
+})),
+  "liabilities": zod.array(zod.object({
+  "name": zod.string(),
+  "category": zod.string(),
+  "institution": zod.string(),
+  "amount": zod.string(),
+  "interestRate": zod.string().nullable(),
+  "monthlyPayment": zod.string().nullable(),
+  "maturity": zod.coerce.date().nullable()
+})),
+  "totalAssets": zod.string(),
+  "totalLiabilities": zod.string(),
+  "netWorth": zod.string(),
+  "comparison": zod.object({
+  "previousPeriod": zod.string().nullable(),
+  "quarterEnd": zod.string().nullable(),
+  "yearEnd": zod.string().nullable()
+})
+}),
+  "capitalStatement": zod.object({
+  "beginningCapital": zod.string(),
+  "householdContributions": zod.string(),
+  "withdrawals": zod.string(),
+  "realizedGainsLosses": zod.string(),
+  "unrealizedGainsLosses": zod.string(),
+  "income": zod.string(),
+  "fees": zod.string(),
+  "endingCapital": zod.string()
+}),
+  "incomeStatement": zod.object({
+  "income": zod.array(zod.object({
+  "category": zod.string(),
+  "amount": zod.string()
+})),
+  "expenses": zod.array(zod.object({
+  "category": zod.string(),
+  "amount": zod.string()
+})),
+  "totalIncome": zod.string(),
+  "totalExpenses": zod.string(),
+  "netCashIncome": zod.string(),
+  "taxableIncomeDisclaimer": zod.string()
+}),
+  "cashFlow": zod.object({
+  "operating": zod.string(),
+  "investing": zod.string(),
+  "financing": zod.string(),
+  "transfers": zod.string(),
+  "netCashFlow": zod.string()
+}),
+  "metrics": zod.object({
+  "savingsRate": zod.number(),
+  "debtToAssetRatio": zod.number(),
+  "debtToNetWorth": zod.number(),
+  "liquidAssets": zod.string(),
+  "essentialMonths": zod.number(),
+  "protectedLiquidity": zod.string(),
+  "unrestrictedLiquidity": zod.string(),
+  "returnOnCapital": zod.number()
+}),
+  "reconciliation": zod.object({
+  "ledgerBalanced": zod.boolean(),
+  "accountsIncluded": zod.number(),
+  "uncategorizedTransactions": zod.number(),
+  "staleAccounts": zod.number(),
+  "status": zod.string()
+}),
+  "confidence": zod.object({
+  "score": zod.number(),
+  "bankSyncFreshness": zod.number(),
+  "ledgerReconciliation": zod.number(),
+  "categorization": zod.number(),
+  "valuationFreshness": zod.number(),
+  "label": zod.string()
+}),
+  "taxYear": zod.object({
+  "year": zod.number(),
+  "documentsCollected": zod.number(),
+  "missingDocuments": zod.array(zod.string()),
+  "realizedGainsLosses": zod.string(),
+  "reviewStatus": zod.string(),
+  "disclaimer": zod.string()
+}),
+  "accounts": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "institution": zod.string(),
+  "accountType": zod.string(),
+  "balance": zod.string().nullable(),
+  "includedInNetWorth": zod.boolean(),
+  "protected": zod.boolean(),
+  "dataSource": zod.string(),
+  "lastSync": zod.coerce.date().nullable(),
+  "restricted": zod.boolean()
+}))
+})
+
+

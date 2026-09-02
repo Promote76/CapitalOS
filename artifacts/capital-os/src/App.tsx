@@ -119,6 +119,7 @@ import {
   CheckCircle2,
   Database,
   ScrollText,
+  Scale,
   Search,
   Settings as SettingsIcon,
   ShieldAlert,
@@ -136,6 +137,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import TreasuryPage from '@/pages/treasury';
+import AccountingPage from '@/pages/accounting';
 import { Link, Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 
 const queryClient = new QueryClient();
@@ -160,6 +162,7 @@ const primaryNav = [
   { href: '/budget', label: 'Budget', icon: ClipboardList },
   { href: '/cash-flow', label: 'Cash Flow', icon: TrendingUp },
   { href: '/accounts', label: 'Accounts', icon: Landmark },
+  { href: '/accounting', label: 'Accounting', icon: Scale },
   { href: '/goals', label: 'Goals', icon: Target },
   { href: '/strategies', label: 'Strategies', icon: Compass },
   { href: '/micro-live', label: 'Micro-Live', icon: Activity },
@@ -1328,6 +1331,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue
     <Route path="/upcoming-expenses" component={() => <UpcomingExpensesPage onFeedback={onFeedback} />} />
     <Route path="/income" component={() => <IncomePage onFeedback={onFeedback} />} />
     <Route path="/accounts" component={() => <AccountsPage onFeedback={onFeedback} />} />
+    <Route path="/accounting" component={() => <AccountingPage onFeedback={onFeedback} />} />
     <Route path="/goals" component={() => <GoalsPage onAction={onAction} />} />
     <Route path="/strategies" component={() => <StrategiesPage onFeedback={onFeedback} />} />
     <Route path="/micro-live" component={() => <MicroLivePage onFeedback={onFeedback} />} />

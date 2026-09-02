@@ -1808,6 +1808,178 @@ export interface FinanceSnapshot {
   createdAt: string;
 }
 
+export interface AccountingAccount {
+  id: string;
+  name: string;
+  institution: string;
+  accountType: string;
+  /** @nullable */
+  balance: string | null;
+  includedInNetWorth: boolean;
+  protected: boolean;
+  dataSource: string;
+  /** @nullable */
+  lastSync: string | null;
+  restricted: boolean;
+}
+
+export interface AccountingAsset {
+  name: string;
+  category: string;
+  institution: string;
+  amount: string;
+  valueStatus: string;
+  /** @nullable */
+  valuationDate: string | null;
+  protected: boolean;
+}
+
+export interface AccountingLiability {
+  name: string;
+  category: string;
+  institution: string;
+  amount: string;
+  /** @nullable */
+  interestRate: string | null;
+  /** @nullable */
+  monthlyPayment: string | null;
+  /** @nullable */
+  maturity: string | null;
+}
+
+export interface AccountingNetWorth {
+  totalAssets: string;
+  totalLiabilities: string;
+  netWorth: string;
+  liquidNetWorth: string;
+  protectedCapital: string;
+  investedCapital: string;
+  realEstateEquity: string;
+  businessEquity: string;
+  cashTreasury: string;
+}
+
+export interface AccountingChange {
+  month: string;
+  yearToDate: string;
+  capitalContributed: string;
+  investmentGrowth: string;
+  debtReduction: string;
+  other: string;
+  reconciles: boolean;
+}
+
+export type AccountingBalanceSheetComparison = {
+  /** @nullable */
+  previousPeriod: string | null;
+  /** @nullable */
+  quarterEnd: string | null;
+  /** @nullable */
+  yearEnd: string | null;
+};
+
+export interface AccountingBalanceSheet {
+  assets: AccountingAsset[];
+  liabilities: AccountingLiability[];
+  totalAssets: string;
+  totalLiabilities: string;
+  netWorth: string;
+  comparison: AccountingBalanceSheetComparison;
+}
+
+export interface AccountingCapitalStatement {
+  beginningCapital: string;
+  householdContributions: string;
+  withdrawals: string;
+  realizedGainsLosses: string;
+  unrealizedGainsLosses: string;
+  income: string;
+  fees: string;
+  endingCapital: string;
+}
+
+export interface AccountingLineItem {
+  category: string;
+  amount: string;
+}
+
+export interface AccountingIncomeStatement {
+  income: AccountingLineItem[];
+  expenses: AccountingLineItem[];
+  totalIncome: string;
+  totalExpenses: string;
+  netCashIncome: string;
+  taxableIncomeDisclaimer: string;
+}
+
+export interface AccountingCashFlow {
+  operating: string;
+  investing: string;
+  financing: string;
+  transfers: string;
+  netCashFlow: string;
+}
+
+export interface AccountingMetrics {
+  savingsRate: number;
+  debtToAssetRatio: number;
+  debtToNetWorth: number;
+  liquidAssets: string;
+  essentialMonths: number;
+  protectedLiquidity: string;
+  unrestrictedLiquidity: string;
+  returnOnCapital: number;
+}
+
+export interface AccountingReconciliation {
+  ledgerBalanced: boolean;
+  accountsIncluded: number;
+  uncategorizedTransactions: number;
+  staleAccounts: number;
+  status: string;
+}
+
+export interface AccountingConfidence {
+  score: number;
+  bankSyncFreshness: number;
+  ledgerReconciliation: number;
+  categorization: number;
+  valuationFreshness: number;
+  label: string;
+}
+
+export interface AccountingTaxYear {
+  year: number;
+  documentsCollected: number;
+  missingDocuments: string[];
+  realizedGainsLosses: string;
+  reviewStatus: string;
+  disclaimer: string;
+}
+
+export type AccountingOverviewPeriod = {
+  label: string;
+  start: string;
+  end: string;
+};
+
+export interface AccountingOverview {
+  asOf: string;
+  period: AccountingOverviewPeriod;
+  disclaimer: string;
+  netWorth: AccountingNetWorth;
+  change: AccountingChange;
+  balanceSheet: AccountingBalanceSheet;
+  capitalStatement: AccountingCapitalStatement;
+  incomeStatement: AccountingIncomeStatement;
+  cashFlow: AccountingCashFlow;
+  metrics: AccountingMetrics;
+  reconciliation: AccountingReconciliation;
+  confidence: AccountingConfidence;
+  taxYear: AccountingTaxYear;
+  accounts: AccountingAccount[];
+}
+
 export interface TreasuryBucket {
   id: string;
   name: string;

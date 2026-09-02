@@ -16,6 +16,7 @@ tags:
   - name: blockchain
   - name: household-finance
   - name: treasury
+  - name: accounting
 paths:
   /healthz:
     get:
@@ -1294,6 +1295,17 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+  /accounting:
+    get:
+      operationId: getAccountingOverview
+      tags: [accounting]
+      summary: Get the household accounting and net worth overview
+      responses:
+        "200":
+          description: Authoritative accounting overview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountingOverview" }
 components:
   parameters:
     IdempotencyKey:
@@ -2971,6 +2983,186 @@ components:
             month: { type: string }
             source: { type: string }
         createdAt: { type: string, format: date-time }
+    AccountingAccount:
+      type: object
+      required: [id, name, institution, accountType, balance, includedInNetWorth, protected, dataSource, lastSync, restricted]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        institution: { type: string }
+        accountType: { type: string }
+        balance: { type: ["string", "null"] }
+        includedInNetWorth: { type: boolean }
+        protected: { type: boolean }
+        dataSource: { type: string }
+        lastSync: { type: ["string", "null"], format: date }
+        restricted: { type: boolean }
+    AccountingAsset:
+      type: object
+      required: [name, category, institution, amount, valueStatus, valuationDate, protected]
+      properties:
+        name: { type: string }
+        category: { type: string }
+        institution: { type: string }
+        amount: { type: string }
+        valueStatus: { type: string }
+        valuationDate: { type: ["string", "null"], format: date }
+        protected: { type: boolean }
+    AccountingLiability:
+      type: object
+      required: [name, category, institution, amount, interestRate, monthlyPayment, maturity]
+      properties:
+        name: { type: string }
+        category: { type: string }
+        institution: { type: string }
+        amount: { type: string }
+        interestRate: { type: ["string", "null"] }
+        monthlyPayment: { type: ["string", "null"] }
+        maturity: { type: ["string", "null"], format: date }
+    AccountingNetWorth:
+      type: object
+      required: [totalAssets, totalLiabilities, netWorth, liquidNetWorth, protectedCapital, investedCapital, realEstateEquity, businessEquity, cashTreasury]
+      properties:
+        totalAssets: { type: string }
+        totalLiabilities: { type: string }
+        netWorth: { type: string }
+        liquidNetWorth: { type: string }
+        protectedCapital: { type: string }
+        investedCapital: { type: string }
+        realEstateEquity: { type: string }
+        businessEquity: { type: string }
+        cashTreasury: { type: string }
+    AccountingChange:
+      type: object
+      required: [month, yearToDate, capitalContributed, investmentGrowth, debtReduction, other, reconciles]
+      properties:
+        month: { type: string }
+        yearToDate: { type: string }
+        capitalContributed: { type: string }
+        investmentGrowth: { type: string }
+        debtReduction: { type: string }
+        other: { type: string }
+        reconciles: { type: boolean }
+    AccountingBalanceSheet:
+      type: object
+      required: [assets, liabilities, totalAssets, totalLiabilities, netWorth, comparison]
+      properties:
+        assets: { type: array, items: { $ref: "#/components/schemas/AccountingAsset" } }
+        liabilities: { type: array, items: { $ref: "#/components/schemas/AccountingLiability" } }
+        totalAssets: { type: string }
+        totalLiabilities: { type: string }
+        netWorth: { type: string }
+        comparison:
+          type: object
+          required: [previousPeriod, quarterEnd, yearEnd]
+          properties:
+            previousPeriod: { type: ["string", "null"] }
+            quarterEnd: { type: ["string", "null"] }
+            yearEnd: { type: ["string", "null"] }
+    AccountingCapitalStatement:
+      type: object
+      required: [beginningCapital, householdContributions, withdrawals, realizedGainsLosses, unrealizedGainsLosses, income, fees, endingCapital]
+      properties:
+        beginningCapital: { type: string }
+        householdContributions: { type: string }
+        withdrawals: { type: string }
+        realizedGainsLosses: { type: string }
+        unrealizedGainsLosses: { type: string }
+        income: { type: string }
+        fees: { type: string }
+        endingCapital: { type: string }
+    AccountingLineItem:
+      type: object
+      required: [category, amount]
+      properties:
+        category: { type: string }
+        amount: { type: string }
+    AccountingIncomeStatement:
+      type: object
+      required: [income, expenses, totalIncome, totalExpenses, netCashIncome, taxableIncomeDisclaimer]
+      properties:
+        income: { type: array, items: { $ref: "#/components/schemas/AccountingLineItem" } }
+        expenses: { type: array, items: { $ref: "#/components/schemas/AccountingLineItem" } }
+        totalIncome: { type: string }
+        totalExpenses: { type: string }
+        netCashIncome: { type: string }
+        taxableIncomeDisclaimer: { type: string }
+    AccountingCashFlow:
+      type: object
+      required: [operating, investing, financing, transfers, netCashFlow]
+      properties:
+        operating: { type: string }
+        investing: { type: string }
+        financing: { type: string }
+        transfers: { type: string }
+        netCashFlow: { type: string }
+    AccountingMetrics:
+      type: object
+      required: [savingsRate, debtToAssetRatio, debtToNetWorth, liquidAssets, essentialMonths, protectedLiquidity, unrestrictedLiquidity, returnOnCapital]
+      properties:
+        savingsRate: { type: number }
+        debtToAssetRatio: { type: number }
+        debtToNetWorth: { type: number }
+        liquidAssets: { type: string }
+        essentialMonths: { type: number }
+        protectedLiquidity: { type: string }
+        unrestrictedLiquidity: { type: string }
+        returnOnCapital: { type: number }
+    AccountingReconciliation:
+      type: object
+      required: [ledgerBalanced, accountsIncluded, uncategorizedTransactions, staleAccounts, status]
+      properties:
+        ledgerBalanced: { type: boolean }
+        accountsIncluded: { type: number }
+        uncategorizedTransactions: { type: number }
+        staleAccounts: { type: number }
+        status: { type: string }
+    AccountingConfidence:
+      type: object
+      required: [score, bankSyncFreshness, ledgerReconciliation, categorization, valuationFreshness, label]
+      properties:
+        score: { type: number }
+        bankSyncFreshness: { type: number }
+        ledgerReconciliation: { type: number }
+        categorization: { type: number }
+        valuationFreshness: { type: number }
+        label: { type: string }
+    AccountingTaxYear:
+      type: object
+      required: [year, documentsCollected, missingDocuments, realizedGainsLosses, reviewStatus, disclaimer]
+      properties:
+        year: { type: number }
+        documentsCollected: { type: number }
+        missingDocuments: { type: array, items: { type: string } }
+        realizedGainsLosses: { type: string }
+        reviewStatus: { type: string }
+        disclaimer: { type: string }
+    AccountingOverview:
+      type: object
+      required: [asOf, period, disclaimer, netWorth, change, balanceSheet, capitalStatement, incomeStatement, cashFlow, metrics, reconciliation, confidence, taxYear, accounts]
+      properties:
+        asOf: { type: string, format: date }
+        period:
+          type: object
+          required: [label, start, end]
+          properties:
+            label: { type: string }
+            start: { type: string, format: date }
+            end: { type: string, format: date }
+        disclaimer: { type: string }
+        netWorth: { $ref: "#/components/schemas/AccountingNetWorth" }
+        change: { $ref: "#/components/schemas/AccountingChange" }
+        balanceSheet: { $ref: "#/components/schemas/AccountingBalanceSheet" }
+        capitalStatement: { $ref: "#/components/schemas/AccountingCapitalStatement" }
+        incomeStatement: { $ref: "#/components/schemas/AccountingIncomeStatement" }
+        cashFlow: { $ref: "#/components/schemas/AccountingCashFlow" }
+        metrics: { $ref: "#/components/schemas/AccountingMetrics" }
+        reconciliation: { $ref: "#/components/schemas/AccountingReconciliation" }
+        confidence: { $ref: "#/components/schemas/AccountingConfidence" }
+        taxYear: { $ref: "#/components/schemas/AccountingTaxYear" }
+        accounts:
+          type: array
+          items: { $ref: "#/components/schemas/AccountingAccount" }
     TreasuryBucket:
       type: object
       required: [id, name, bucketType, priority, targetAmount, minimumAmount, maximumAmount, currentBalance, protected, liquid, liquidityClass, riskClass, withdrawalPolicy, fundingRule]

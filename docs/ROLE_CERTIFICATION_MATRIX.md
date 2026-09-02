@@ -1,14 +1,14 @@
 # Capital OS role certification matrix
 
 **Date:** 2026-09-02  
-**Decision:** Not certified yet; the rows below separate intended authorization from executed HTTP evidence.
+**Decision:** Partially certified; the rows below separate intended authorization from executed HTTP evidence.
 
 | Action | Owner | Partner | Advisor | Viewer | Current HTTP evidence |
 |---|---:|---:|---:|---:|---|
 | View household finance | Allow | Allow | Restricted/advisory | Allow | OPEN |
 | Edit budget | Allow | Allow | Deny | Deny | OPEN |
-| Create contribution | Allow | Allow | Deny | Deny | Fixture provisions all four roles; owner/partner allow and advisor/viewer denial cases are implemented, dedicated execution open |
-| Create transfer | Allow | Allow | Deny | Deny | Owner concurrency path and transfer replay are implemented; partner/advisor/viewer execution OPEN |
+| Create contribution | Allow | Allow | Deny | Deny | Isolated Neon PostgreSQL fixture passed owner/partner allow and advisor/viewer denial cases |
+| Create transfer | Allow | Allow | Deny | Deny | Owner concurrency path and transfer replay pass; partner/advisor/viewer transfer-action execution remains OPEN |
 | Submit capital request | Allow | Allow | Deny | Deny | OPEN |
 | Approve capital request | Allow | Deny | Deny | Deny | OPEN |
 | Change Treasury policy | Allow with recent auth | Deny | Deny | Deny | OPEN |
@@ -23,6 +23,6 @@
 
 ## Permission precedence
 
-The server resolves the active membership and uses its stored permission list when present. If the stored list is empty, it falls back to the centralized role permission set. Step-up authentication is an additional requirement and does not create authorization. A viewer with fresh authentication remains denied. The PostgreSQL fixture now provisions every documented role in both households; full action execution remains open until the dedicated certification run.
+The server resolves the active membership and uses its stored permission list when present. If the stored list is empty, it falls back to the centralized role permission set. Step-up authentication is an additional requirement and does not create authorization. A viewer with fresh authentication remains denied. The isolated PostgreSQL fixture provisions every documented role in both households and passes the implemented contribution-role paths; full action and grant/revocation execution remains open.
 
 Membership selection currently uses the earliest active membership. Production candidate certification must either enforce one active household per user or add an explicit server-verified household selection context before multi-household users are enabled.

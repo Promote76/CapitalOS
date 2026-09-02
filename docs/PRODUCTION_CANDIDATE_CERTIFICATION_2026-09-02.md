@@ -6,7 +6,7 @@
 
 ## Executive decision
 
-Capital OS has executable evidence for the corrected contribution household boundary, two-household HTTP fixture behavior, origin fail-closed behavior, exact-cent accounting safeguards, atomic transfer overdraft prevention, and Micro-Live disabled execution. It does not qualify as a Production Candidate because clean migration, older-schema upgrade, managed backup/restore, authenticated browser E2E, full role/IDOR coverage, and production step-up configuration remain unproven.
+Capital OS has executable evidence for the corrected contribution household boundary, two-household HTTP fixture behavior, origin fail-closed behavior, exact-cent accounting safeguards, atomic transfer overdraft prevention, isolated clean migration, 100-request transfer contention, balanced ledger totals, transfer replay, representative role checks, mass-assignment resistance, and Micro-Live disabled execution. It does not qualify as a Production Candidate because older-schema upgrade, managed backup/restore, authenticated browser E2E, full role/IDOR coverage, broader economic-event idempotency, and production step-up configuration remain unproven.
 
 No real bank, ACH, brokerage, live venue, blockchain, or autonomous AI capability was added or enabled.
 
@@ -23,13 +23,13 @@ Excluded: real bank movement, ACH, external investor capital, live trading, auto
 | Contribution goal household predicate | PASS | Source review plus two-household HTTP fixture |
 | Two-household HTTP isolation | PARTIAL PASS | Fixture covers goals, contributions, accounts, transfers, and viewer denial; systematic route matrix remains open |
 | Origin / CSRF | PARTIAL PASS | Middleware tests cover 24 method/origin scenarios; complete authenticated HTTP/browser-origin matrix remains open |
-| Clean migration | BLOCKED | No isolated empty database execution |
+| Clean migration | PASS | Guarded reset/apply/verification passed on isolated Neon PostgreSQL |
 | Existing-schema upgrade | BLOCKED | No representative old-schema execution |
 | Backup / restore | BLOCKED | Provider backup reference and restore target unavailable |
 | Authenticated browser journey | BLOCKED | No authenticated browser test environment |
-| Concurrent transfers | PASS for tested scenario | Parallel debits produced one 201 and one 400; final source balance remained non-negative |
-| Concurrent idempotency | PARTIAL | Contribution duplicate proof passes; transfer replay and ledger checks are implemented; capital-request/distribution execution remains open |
-| Actor audit attribution | PARTIAL | Server actor context and persisted contribution/transfer assertions are implemented; dedicated execution and full action query suite remain open |
+| Concurrent transfers | PASS | Parallel debits and 100 concurrent `$25` transfers from `$1,000` passed; final source balance remained non-negative and contention ended at `$0` |
+| Concurrent idempotency | PARTIAL | Contribution duplicate and transfer replay proofs pass; capital-request/distribution execution remains open |
+| Actor audit attribution | PARTIAL | Persisted contribution/transfer actor assertions pass; the full representative action query suite remains open |
 
 ## Test inventory
 
@@ -40,12 +40,12 @@ Excluded: real bank movement, ACH, external investor capital, live trading, auto
 | Database integration | 1 | 0 | 0 | Same fixture uses real PostgreSQL; no separate DB suite |
 | Tenant / IDOR | 3 key scenarios | 0 | Many | Goal, contribution, account/transfer fixture scenarios; full matrix open |
 | Security | 4 middleware tests / 27 scenarios plus domain coverage | 0 | Full browser matrix | Origin/CSRF middleware suite |
-| Concurrency | 2 previously executed scenarios; high-contention and replay paths implemented | 0 | Dedicated execution | Duplicate contribution and parallel transfer; 100-request ledger/replay assertions await isolated DB |
-| Migration | 0 | 0 | 2 P0 gates | Clean and upgrade execution unavailable |
+| Concurrency | Targeted race plus 100-request contention and replay executed | 0 | Broader economic paths | Duplicate contribution, parallel transfer, ledger reconciliation, and transfer replay pass |
+| Migration | Clean baseline PASS | 0 | 1 P0 gate | Existing-schema upgrade/data preservation unavailable |
 | Browser E2E | 0 | 0 | 1 P0 gate | Authenticated environment unavailable |
 | Recovery | 0 | 0 | 1 P0 gate | Managed restore unavailable |
 
-The normal API command reports 66 passing tests and one intentionally skipped database fixture. The certification command is designed to require a dedicated certification database rather than counting that skip as release evidence.
+The normal API command reports 66 passing tests and one intentionally skipped database fixture. With the isolated Neon project, the certification command executed the database-backed fixture successfully and exited `2` only for the existing-schema upgrade, managed restore, authenticated browser, and production Clerk step-up gates.
 
 ## Financial invariant results
 
@@ -64,7 +64,7 @@ High-impact routes now require recent authentication. The database fixture prove
 
 ## Migration and restore results
 
-**Migration:** BLOCKED. The repository contains a generated initial SQL artifact and Drizzle journal, but no executed clean-zero lifecycle or older-schema data-preservation run.
+**Migration:** PARTIAL. The generated baseline executed successfully on isolated Neon PostgreSQL. The repository contains no approved historical schema artifact or upgrade migration path, so older-schema data preservation remains blocked.
 
 **Restore:** BLOCKED. No approved managed backup reference, isolated restore target, RPO/RTO observation, or restored invariant query is available. No fake restore evidence is claimed.
 
@@ -80,7 +80,7 @@ Structured Pino logs, correlation IDs, liveness/readiness separation, generated 
 
 1. Full caller-controlled identifier matrix is not executed over HTTP.
 2. Production step-up provider configuration is not complete.
-3. Clean migration and older-schema upgrade are not proven.
+3. Older-schema upgrade and data preservation are not proven; the clean migration baseline has passed on isolated PostgreSQL.
 4. Managed backup/restore is not proven.
 5. Authenticated browser journeys and reload persistence are not proven.
 6. Accounting treatment for liabilities, real estate, investments, and business equity remains partial.

@@ -6,7 +6,7 @@
 | Surface/action | Classification | Evidence / required wording |
 |---|---|---|
 | Record contribution / Add contribution | PERSISTED | Calls the contribution API; allocation metadata, ledger movement, goal progress, and audit are server-owned. Reload verification remains open in browser E2E. |
-| Transfer quick action | PERSISTED when API flow is used | Must call the validated transfer API; no local completion may be shown after a failed request. HTTP concurrency is proven; browser persistence is open. |
+| Transfer quick action | PERSISTED when API flow is used | Must call the validated transfer API; no local completion may be shown after a failed request. Isolated PostgreSQL concurrency and ledger reconciliation pass; browser persistence is open. |
 | Dashboard allocation edit | PREPARED or LOCAL-ONLY unless API-backed | Do not present a durable allocation update without a fresh API read. |
 | Emergency stop | PERSISTED only through the risk API | If the visible control is not wired to the persisted risk state, label it preview/local-only. Reload certification is open. |
 | Strategy note | LOCAL-ONLY / PREPARED | It does not claim that a strategy record was saved unless the API creates one. |

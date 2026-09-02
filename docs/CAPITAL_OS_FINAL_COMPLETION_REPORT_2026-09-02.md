@@ -12,9 +12,9 @@ Capital OS is a household financial planning and advisory application for budget
 
 The hardening work established meaningful controls around authenticated identity, household scoping, role checks, effective membership permission loading, origin enforcement, exact-cent financial logic, atomic transfer debits, idempotency boundaries, ledger evidence, Treasury protected-capital state, persistence truth in the UI, generated API contracts, and the disabled Micro-Live execution boundary.
 
-Executable evidence is currently strongest for domain safety and targeted PostgreSQL HTTP behavior. The workspace typechecks, builds, regenerates API clients, passes route parity, and passes 66 API tests. A database-backed fixture also proves selected cross-household, viewer-denial, contribution-idempotency, and concurrent-transfer scenarios.
+Executable evidence is currently strongest for domain safety and isolated PostgreSQL HTTP behavior. The workspace typechecks, builds, regenerates API clients, passes route parity, and passes 66 API tests. The isolated database-backed fixture also proves selected cross-household, viewer-denial, contribution/transfer idempotency, 100-request contention, balanced ledger totals, and representative actor-attribution scenarios.
 
-Capital OS is **not** qualified as a Production Candidate because the full caller-controlled identifier matrix, complete role and effective-permission HTTP matrix, clean and upgrade migration lifecycle, managed backup/restore drill, authenticated browser journeys, production-supported Clerk step-up flow, broader economic-event idempotency, complete actor-audit verification, and durable operations evidence remain unproven.
+Capital OS is **not** qualified as a Production Candidate because the full caller-controlled identifier matrix, complete role and effective-permission HTTP matrix, existing-schema upgrade lifecycle, managed backup/restore drill, authenticated browser journeys, production-supported Clerk step-up flow, broader economic-event idempotency, complete actor-audit verification, and durable operations evidence remain unproven.
 
 No real banking, ACH, brokerage, live venue, blockchain, external investor capital, automated withdrawal, or autonomous AI capability was added or enabled.
 
@@ -95,7 +95,7 @@ The current high-risk authentication safeguard is a temporary Clerk session-issu
 | PostgreSQL money storage | PASS | Authoritative monetary columns use `numeric(18,2)` |
 | Ledger balance | PARTIAL | Contribution and transfer paths exercise balanced entries; broader business/distribution/adjustment coverage remains open |
 | Transfer atomicity | PASS for tested scenario | Conditional debit behavior produced one success and one rejection under parallel requests with no negative tested source balance |
-| Transfer high contention | BLOCKED | The required 100-request/$25 scenario and persisted ledger totals are implemented but have not been executed against the dedicated database |
+| Transfer high contention | PASS | The isolated PostgreSQL fixture completed 100 concurrent `$25` transfers from `$1,000`, reconciled `$1,000` of debits to `$1,000` of credits, and ended at `$0` |
 | Idempotency | PARTIAL | Concurrent duplicate contribution requests return one persisted result; transfer replay and one-row assertions are implemented; capital-request and distribution-preparation event types remain open |
 | Transaction rollback | PARTIAL | Critical writes are transactionally structured; failure injection after each intermediate write has not been fully executed |
 | Safe-to-Deploy | PARTIAL | Business cash and planning capital remain separate; the complete cross-domain non-increase invariant suite is open |
@@ -118,8 +118,8 @@ This inventory separates resources that exist from certification evidence that h
 
 | Resource | Availability | Execution status | Observed state / required action |
 |---|---|---|---|
-| Certification PostgreSQL | MISSING | BLOCKED | The Replit-managed development database is reachable, and Neon is attached, but Neon project creation requires the user’s organization ID; no isolated `CAPITAL_OS_CERTIFICATION_DB_URL` exists. |
-| Old-schema test PostgreSQL | MISSING | BLOCKED | No second disposable database or isolated older-schema target is configured. Create a separate non-production database after certification PostgreSQL is available. |
+| Certification PostgreSQL | AVAILABLE | CERTIFIED for executed gates | Isolated Neon project `capital-os-certification` (`still-band-85811770`), main branch `br-curly-bread-a53x6g2k`, is disposable and separate from Replit `DATABASE_URL`. Clean baseline and database-backed HTTP certification passed. |
+| Old-schema test PostgreSQL | AVAILABLE | BLOCKED | Isolated Neon branch `old-schema-certification` (`br-mute-field-a5atk2xe`) exists, but no historical schema artifact or upgrade migration path is committed, so data-preservation execution cannot be claimed. |
 | Restore target | MISSING | BLOCKED | No isolated restore database was provided. Use the Replit Database tool to restore an approved production point-in-time backup into a non-production target without overwriting production. |
 | Clerk test environment | AVAILABLE | NOT EXECUTED | Replit-managed Clerk is present with isolated Development and Production user stores. Clerk dashboard access reports `requires_personal_pro`; test-user and provider step-up configuration are not certified. |
 | Browser E2E URL | AVAILABLE | NOT EXECUTED | Published autoscale URL is available and healthy: `https://capital-os-fund.replit.app`. Authenticated journeys and persistence checks have not run. |
@@ -127,13 +127,13 @@ This inventory separates resources that exist from certification evidence that h
 
 #### Human-action escalation
 
-**BLOCKER:** Isolated certification PostgreSQL and old-schema PostgreSQL  
-**WHY REPLIT CANNOT EXECUTE:** The built-in Replit database provides the shared Development database and the separate Production database. The attached Neon MCP connection can provision disposable databases, but its create-project operation requires the user’s Neon organization ID.  
-**EXACT USER ACTION REQUIRED:** Provide the non-secret Neon organization ID from the Neon organization settings page. Do not provide a password, API key, or connection string in chat.  
-**WHAT TO PROVIDE BACK:** The Neon `org_id`; the automated run will create two disposable non-production databases and store their connection details through the workspace secret flow.  
-**NEXT AUTOMATED COMMAND:** Create the isolated Neon project, then run `CAPITAL_OS_CERTIFICATION_ALLOW_RESET=1 pnpm run certify:migrations`, followed by `pnpm run certify:production-candidate`.
+**BLOCKER:** Existing-schema upgrade/data preservation
+**WHY REPLIT CANNOT EXECUTE:** The repository has one generated baseline migration and no prior historical schema fixture or upgrade migration. The isolated Neon old-schema branch exists, but populating it with a fabricated legacy model would not constitute valid preservation evidence.
+**EXACT USER ACTION REQUIRED:** Provide the approved prior-schema SQL/database artifact and its intended upgrade procedure, or approve a separately reviewed legacy fixture that represents the real previous release.
+**WHAT TO PROVIDE BACK:** The historical schema/migration artifact and representative pre-upgrade data snapshot.
+**NEXT AUTOMATED COMMAND:** Run the approved upgrade against the isolated old-schema branch, compare row counts/balances/progress/ledger totals/ownership/status/audit counts, then rerun `pnpm run certify:production-candidate`.
 
-**BLOCKER:** Managed backup and isolated restore  
+**BLOCKER:** Managed backup and isolated restore
 **WHY REPLIT CANNOT EXECUTE:** The Database tool controls production point-in-time restoration, but no approved backup timestamp or isolated restore target is available to the agent; restoring is a user-controlled provider operation.  
 **EXACT USER ACTION REQUIRED:** In the Replit Database tool, select an approved production point-in-time restore, restore it into an isolated non-production target, and authorize the test application to connect to that target.  
 **WHAT TO PROVIDE BACK:** Backup reference, backup timestamp, restore target, restore start/completion timestamps, and permission to run read-only invariant checks.  
@@ -147,7 +147,7 @@ This inventory separates resources that exist from certification evidence that h
 
 ### Migration status
 
-**BLOCKED.** `scripts/certify-migrations.mjs` now provides a guarded disposable-database reset, baseline apply, and representative-table verification sequence:
+**PASS for clean baseline; BLOCKED for existing-schema upgrade.** `scripts/certify-migrations.mjs` provides a guarded disposable-database reset, baseline apply, and representative-table verification sequence:
 
 ```text
 CAPITAL_OS_CERTIFICATION_DB_URL=<dedicated-url> \
@@ -155,15 +155,15 @@ CAPITAL_OS_CERTIFICATION_ALLOW_RESET=1 \
 pnpm run certify:migrations
 ```
 
-The command refuses to run when the certification URL equals the shared `DATABASE_URL`. It has not been executed because no isolated certification PostgreSQL URL is configured.
+The command refuses to run when the certification URL equals the shared `DATABASE_URL`. It executed successfully on the isolated Neon certification branch on 2026-09-02 with reset explicitly enabled.
 
 | Migration requirement | Result |
 |---|---|
 | Generated baseline artifact | PASS by repository inspection |
 | Migration journal | PASS by repository inspection |
-| Clean zero-to-current execution | BLOCKED — not executed |
-| Existing-schema upgrade | BLOCKED — no representative older schema fixture |
-| Data preservation comparison | BLOCKED — not executed |
+| Clean zero-to-current execution | PASS — isolated Neon branch reset, baseline applied, representative tables verified |
+| Existing-schema upgrade | BLOCKED — no approved historical schema artifact or upgrade path |
+| Data preservation comparison | BLOCKED — no historical pre-upgrade dataset |
 | Rollback / forward-fix | BLOCKED — not executed |
 | Incompatible-schema readiness behavior | PARTIAL — database outage readiness is tested; schema incompatibility execution remains open |
 
@@ -181,14 +181,14 @@ The command refuses to run when the certification URL equals the shared `DATABAS
 | Tenant / IDOR | 3 key scenarios plus mass-assignment assertions | 0 | Many routes | Full matrix | PARTIAL |
 | Role / permission | Owner/Viewer executed; Partner/Advisor fixture paths implemented | 0 | Uncovered actions | Dedicated execution | PARTIAL |
 | Security | 4 middleware tests / 27 scenarios plus domain coverage | 0 | Browser/security matrix | Full HTTP matrix | PARTIAL |
-| Concurrency | 2 targeted scenarios executed; high-contention path implemented | 0 | 0 | Dedicated execution | PARTIAL |
-| Idempotency | Contribution proof executed; transfer replay implemented | 0 | 0 | 2 economic-event types | PARTIAL |
+| Concurrency | Targeted race plus 100-request contention executed | 0 | 0 | Broader economic paths | PARTIAL |
+| Idempotency | Contribution and transfer replay executed | 0 | 0 | Capital request/distribution preparation | PARTIAL |
 | Financial invariants | Domain coverage | 0 | 0 | Cross-domain and broader ledger cases | PARTIAL |
-| Migration | 0 executed | 0 | 0 | Clean and upgrade lifecycle | BLOCKED |
+| Migration | Clean baseline PASS | 0 | 0 | Existing-schema upgrade and data preservation | PARTIAL |
 | Browser E2E | 0 | 0 | 0 | Authenticated environment | BLOCKED |
 | Recovery | Pure domain recovery cases only | 0 | 0 | Managed restore and operations recovery | BLOCKED |
 
-The default API command reports 66 passing tests and one intentionally skipped database fixture when no dedicated certification database is configured. The skipped fixture is not counted as release certification. The full certification command exited `2` because the required isolated database, migration, restore, browser, and Clerk step-up gates remain unavailable.
+The default API command reports 66 passing tests and one intentionally skipped database fixture without the certification URL. With the isolated Neon URL and reset flag, the full certification command executed the database-backed fixture successfully and exited `2` only for the four remaining external gates: existing-schema upgrade, managed backup/restore, authenticated browser E2E, and production Clerk step-up.
 
 ## Exact Repeatable Commands
 
@@ -304,9 +304,9 @@ AI cannot:
 | Tenant isolation | PARTIAL | Targeted two-household fixture passes; full route matrix is open |
 | Authorization | PARTIAL | Viewer denial and permission loading pass; complete role/grant/revocation matrix is open |
 | Origin / CSRF | PARTIAL | Middleware matrix passes 24 method/origin scenarios; complete authenticated HTTP/browser route matrix is open |
-| Concurrency | PARTIAL | Targeted transfer race passes; 100-request contention and ledger reconciliation are implemented but unexecuted |
-| Idempotency | PARTIAL | Contribution replay passes; transfer replay is implemented; capital request and distribution preparation remain open |
-| Migration | BLOCKED | Dedicated clean and upgrade runs unavailable |
+| Concurrency | PARTIAL | Targeted transfer race and 100-request contention with balanced ledger totals pass; broader economic paths remain open |
+| Idempotency | PARTIAL | Contribution and transfer replay pass; capital request and distribution preparation remain open |
+| Migration | PARTIAL | Clean isolated baseline passes; existing-schema upgrade/data preservation remains open |
 | Restore | BLOCKED | Managed backup/restore unavailable |
 | Browser E2E | BLOCKED | Authenticated test environment unavailable |
 | Accounting | PARTIAL | Exact cents and empty-ledger safeguards pass; cross-view treatment remains incomplete |
@@ -327,6 +327,8 @@ These are listed as resolved only where current source and targeted test evidenc
 7. **Micro-Live event relationship:** order-event persistence uses the order-intent relationship and validates sequences in the current tested boundary.
 8. **OpenAPI security and parity:** Clerk bearer security/forbidden responses are represented and 108 route/method pairs pass parity.
 9. **UI false-success claims:** reviewed local-only actions no longer claim that authoritative financial, legal, permission, or ownership state was saved.
+10. **Clean migration baseline:** `CAPITAL_OS_CERTIFICATION_ALLOW_RESET=1 pnpm run certify:migrations` reset and applied the generated baseline on the isolated Neon certification branch and verified representative tables with exit code `0`.
+11. **High-contention transfer ledger:** the isolated PostgreSQL HTTP fixture completed 100 concurrent `$25` transfers from `$1,000`, produced 40 successes/60 overdraft rejections, ended at `$0`, and reconciled `$1,000` debits to `$1,000` credits.
 
 ## Remaining Risks
 
@@ -336,14 +338,12 @@ These are listed as resolved only where current source and targeted test evidenc
 |---|---|---|---|---|
 | Full caller-controlled identifier matrix is unexecuted | Unreached route paths could regress tenant isolation | Request-scoped household services and targeted fixture | Add per-route A→A/A→B/malformed/mass-assignment HTTP cases | Blocks candidate promotion |
 | Complete origin/CSRF matrix is unexecuted | Browser credentialed requests are not fully certified | Fail-closed missing-policy and cross-site middleware cases | Test same-origin, explicit allow, disallow, malformed, missing, and all state-changing methods | Blocks candidate promotion |
-| Clean migration lifecycle is unexecuted | Schema drift or startup incompatibility could affect availability/data | Guarded migration verifier and readiness endpoint | Run disposable zero-to-current lifecycle and record journal/result | Blocks candidate promotion |
 | Existing-schema upgrade is unexecuted | Existing user data could be lost or transformed incorrectly | Generated baseline and schema inspection | Create older representative schema, migrate, compare counts/totals/state | Blocks candidate promotion |
 | Managed backup/restore is unexecuted | Recovery capability and RPO/RTO are unknown | Restore runbook and explicit blocked record | Execute provider backup and isolated restore drill | Blocks candidate promotion |
 | Authenticated browser journey is unexecuted | UI persistence, auth lifecycle, and tenant navigation are unproven | Preview render and server contract tests | Run real Clerk sign-up/onboarding/reload/sign-out/sign-in journeys | Blocks candidate promotion |
 | Complete role/effective-permission HTTP proof is unexecuted | Partner/Advisor/Viewer and revocation behavior could be wrong | Centralized checks and targeted Viewer denial | Execute full role/action and grant/revocation matrix | Blocks candidate promotion |
 | Broader concurrent idempotency is unexecuted | Duplicate economic events could occur in untested workflows | Contribution idempotency and advisory locks | Test transfer, capital request, and distribution preparation across processes/connections | Blocks candidate promotion |
 | Full actor attribution verification is unexecuted | Audit records could misidentify the responsible actor | Actor context propagation | Query persisted audit records for Owner/Partner/Advisor permitted actions | Blocks candidate promotion |
-| High-contention ledger proof is unexecuted | Correctness under load is unknown | Atomic tested transfer path | Execute 100 concurrent $25 transfers from $1,000 and reconcile every entry | Blocks candidate promotion |
 
 ### P1
 
@@ -419,4 +419,4 @@ Capital OS is not authorized by this report to:
 
 **Capital OS is not qualified as a Production Candidate for its current non-executing family-capital scope.**
 
-The reason is evidence-based: ten P0 release blockers remain open, including complete tenant/role HTTP coverage, clean and upgrade migration execution, managed backup/restore, authenticated browser proof, broader concurrency/idempotency proof, and complete actor attribution. The system has meaningful implemented safeguards and targeted passing evidence, but the release gate correctly remains **NOT READY** until those infrastructure and certification gaps are executed and recorded.
+The reason is evidence-based: eight P0 release blockers remain open, including complete tenant/role HTTP coverage, existing-schema upgrade execution, managed backup/restore, authenticated browser proof, broader idempotency proof, and complete actor attribution. The system has meaningful implemented safeguards and now has executed isolated clean-migration, database HTTP, contention, ledger, replay, and representative audit evidence, but the release gate correctly remains **NOT READY** until the remaining gaps are executed and recorded.

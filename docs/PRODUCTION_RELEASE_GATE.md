@@ -11,13 +11,13 @@
 - [ ] HTTP IDOR tests cover every route with a caller-controlled path or body identifier.
 - [x] Production browser writes fail closed when no explicit allowed-origin policy is configured. Evidence: `src/middleware/safety.test.ts`.
 - [ ] CSRF/same-site credential policy is implemented and tested for allowed, disallowed, and malformed origins. The middleware matrix covers 24 method/scenario combinations; full HTTP route execution remains open.
-- [ ] A clean database can be created from zero and brought to the current schema through the supported managed lifecycle.
+- [x] A clean database can be created from zero and brought to the current schema through the supported disposable certification lifecycle. Evidence: isolated Neon branch and `CAPITAL_OS_CERTIFICATION_ALLOW_RESET=1 pnpm run certify:migrations`.
 - [ ] An existing older schema can be upgraded without losing households, users, memberships, ledger, goals, Treasury, business, strategy, accounting, or audit data.
 - [ ] A managed PostgreSQL backup is restored into an isolated database.
 - [ ] Restore verification passes for identity, tenant isolation, ledger balance, Treasury, protected capital, business ownership, accounting, strategy state, and audit history.
 - [ ] Authenticated HTTP/browser tests cover onboarding, sign-in, sign-out, reload, and household-scoped dashboard access.
-- [ ] Production-like role tests prove owner, partner, advisor, and viewer behavior over HTTP. The dedicated fixture now provisions all four roles in both households; execution remains gated on the isolated certification database.
-- [x] Real concurrent transfer tests prove no overdraft in the executed scenario. Full ledger invariant and high-contention coverage remains open.
+- [ ] Production-like role tests prove owner, partner, advisor, and viewer behavior over HTTP. The isolated fixture provisions all four roles in both households and passes the implemented contribution-role paths; the full action/grant-revocation matrix remains open.
+- [x] Real concurrent transfer tests prove no overdraft in the executed scenario. The isolated fixture also passes 100 concurrent `$25` transfers from `$1,000` with 40 successes, 60 rejections, a `$0` source balance, and balanced ledger totals.
 - [ ] Concurrent idempotency tests prove one economic event for contribution, transfer, capital request, and business distribution preparation. Contribution and transfer replay cases are implemented; dedicated execution and the remaining event types remain open.
 - [ ] Audit attribution records the authenticated actor rather than always using the household owner. Persisted contribution/transfer actor assertions are implemented in the fixture; dedicated execution remains open.
 
@@ -68,11 +68,11 @@
 - [x] API production build passes.
 - [x] Frontend production build passes.
 - [x] Domain tests pass with zero failures.
-- [ ] HTTP integration tests pass.
-- [ ] Database integration tests pass.
+- [x] HTTP integration tests pass against the isolated certification PostgreSQL fixture.
+- [x] Database integration tests pass against the isolated certification PostgreSQL fixture.
 - [ ] Browser E2E tests pass.
-- [ ] Concurrency tests pass.
-- [ ] Migration tests pass.
+- [x] Concurrency tests pass for the executed contribution/transfer and high-contention scenarios.
+- [x] Clean migration tests pass against the isolated certification PostgreSQL fixture; existing-schema upgrade remains open.
 - [x] `git diff --check` passes.
 
 ## Operational configuration gates
@@ -101,9 +101,9 @@ As of 2026-09-02:
 - [x] Real Micro-Live transmission remains disabled.
 - [ ] Production identity session is verified end-to-end.
 - [x] Two-household isolation is verified over HTTP for the current fixture scenarios; systematic route coverage remains open.
-- [x] Database-backed transfer/contribution concurrency fixture passes with one duplicate contribution result and one successful/one rejected parallel transfer.
+- [x] Isolated PostgreSQL fixture passes duplicate contribution, parallel transfer, and 100-request `$25` contention with balanced ledger totals.
 - [x] Certification evidence index, route matrix, role matrix, and UI persistence matrix are recorded.
-- [ ] Clean migration and upgrade tests pass.
+- [ ] Clean migration passes; existing-schema upgrade tests remain open.
 - [ ] Backup restore drill passes.
 - [ ] Authenticated browser critical journeys pass.
 - [ ] P0 blockers equal zero.

@@ -1,7 +1,7 @@
 # Capital OS tenant-isolation route matrix
 
 **Inventory date:** 2026-09-02  
-**Source:** `scripts/check-api-contract.mjs` and `artifacts/api-server/src/routes`  
+**Source:** `scripts/check-api-contract.mjs`, `artifacts/api-server/src/routes`, and isolated Neon HTTP certification on 2026-09-02
 **Inventory result:** 108 Express route/method pairs match the OpenAPI contract.
 
 This is an evidence index, not a claim that every row has passed HTTP certification. `PASS` means the current database-backed fixture exercised that behavior. `OPEN` means the route is inventoried and source-reviewed but still needs an authenticated HTTP case before the release gate can be checked.
@@ -29,6 +29,6 @@ This is an evidence index, not a claim that every row has passed HTTP certificat
 ## Current executable evidence
 
 - The two-household fixture proves a foreign goal ID is rejected before a contribution is created.
-- The same fixture provisions Owner, Partner, Advisor, and Viewer memberships in both households and exercises the role-header regression, partner contribution allow, advisor/viewer contribution denial, and contribution mass-assignment assertions when enabled.
-- The same fixture proves recent-auth denial, parallel transfer overdraft prevention, 100-request contention expectations, transfer replay, persisted household/actor attribution, and ledger debit/credit reconciliation when enabled.
+- The same fixture provisions Owner, Partner, Advisor, and Viewer memberships in both households and passes the role-header regression, partner contribution allow, advisor/viewer contribution denial, and contribution mass-assignment assertions on isolated Neon PostgreSQL.
+- The same fixture passes recent-auth denial, parallel transfer overdraft prevention, 100-request contention, transfer replay, persisted household/actor attribution, and ledger debit/credit reconciliation on isolated Neon PostgreSQL.
 - The matrix is intentionally not marked complete: route-family inventory is not a substitute for one HTTP test per high-value identifier path.

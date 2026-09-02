@@ -66,7 +66,7 @@ The development `200` responses for household data are not production authentica
 | HTTP integration tests | None | One real PostgreSQL two-household fixture | `artifacts/api-server/src/integration/p0-http.test.ts`; certification command | Resolved for targeted scenarios | Full route response, IDOR, role, and failure matrix remains open | PARTIAL |
 | Database integration tests | None | One database-backed HTTP fixture; no separate DB suite | Integration fixture and certification evidence index | Partially resolved | Clean migration, rollback, and broader constraint tests remain open | PARTIAL |
 | Browser E2E tests | None | Still none | No Playwright/Cypress/browser test config or script | Unchanged | Onboarding, reload truth, sign-out, role rejection, and tenant navigation are unproven | MISSING |
-| Concurrency tests | Pure race scenarios only | Real parallel contribution and transfer requests now execute against PostgreSQL | `src/integration/p0-http.test.ts` | Partially resolved | High-contention transfer and all economic-event idempotency types remain open | PARTIAL |
+| Concurrency tests | Pure race scenarios only | Real parallel contribution and transfer requests now execute against isolated PostgreSQL | `src/integration/p0-http.test.ts` | Partially resolved | High-contention transfer now passes; all economic-event idempotency types remain open | PARTIAL |
 | Security tests | Domain safety cases existed | 17 security-themed domain cases plus dedicated origin middleware and targeted HTTP coverage | Governance, execution, treasury, finance tests; `safety.test.ts`; HTTP fixture | Partially resolved | Full HTTP IDOR, mass-assignment, invalid-session, secret-leak, and browser matrix remain open | PARTIAL |
 | Operational scheduling | Manual operation endpoint only | No cron, queue, worker, or restart recovery for scheduled work | `services/operations.ts`; `routes/operations.ts`; repository search | Unchanged | Automation runs can disappear on restart; automation failure health is hardcoded to zero | MISSING |
 | Observability | Structured logging only | Pino logging and correlation IDs exist | `lib/logger.ts`; `middleware/safety.ts`; runtime headers | Partially resolved | No metrics, traces, audit shipping, DB pool signals, queue lag, or alerting | PARTIAL |
@@ -265,7 +265,7 @@ No current finding shows a protected financial write falsely committed after a f
 2. **Business distribution bridge:** proposed distributions are not actual reviewed household income transfers and business domain calculations do not post full double-entry entries.
 3. **Safe-to-Deploy confidence:** fixed buffer and confidence values are conservative but not derived from operational data; no cross-domain invariant suite proves every path cannot increase Safe-to-Deploy improperly.
 4. **Audit attribution:** server actor context is wired, but the complete role/action audit query suite remains open.
-5. **Concurrency breadth:** the atomic transfer path and targeted race pass; high-contention transfer and all economic-event idempotency types remain to be certified.
+5. **Concurrency breadth:** the atomic transfer path, targeted race, and high-contention transfer pass; all economic-event idempotency types remain to be certified.
 
 ## Micro-Live, AI, and automation authority
 
@@ -323,7 +323,7 @@ The default test command runs domain, middleware, and integration files. The dat
 | Database integration tests | 1 database-backed fixture | Passes for targeted scenarios; no separate lifecycle suite |
 | Browser E2E tests | 0 | Blocked; authenticated environment unavailable |
 | True concurrency tests | 2 targeted request races | Contribution idempotency and transfer overdraft pass |
-| Migration tests | 0 executed | Guarded clean-baseline tooling exists; dedicated database unavailable |
+| Migration tests | Clean baseline executed; upgrade unexecuted | Guarded clean-baseline tooling passes on isolated Neon PostgreSQL; no approved historical schema artifact exists for upgrade preservation |
 | Dedicated security suites | 3 middleware cases plus integration | Full IDOR/origin/browser matrix remains open |
 | Recovery tests | Pure OMS/recovery scenarios inside domain suite | Not real DB/venue recovery |
 | Security-themed domain cases | 17 cases across 4 files | Passed as part of 62 |
@@ -355,12 +355,12 @@ The mockup build requires the managed preview environment variables when invoked
 |---|---|---|---|---|
 | Cross-tenant contribution goal write | **RESOLVED** — current-household predicates are enforced in select/update | Targeted foreign-goal mutation is rejected | Keep route matrix and foreign-parent regression coverage current | `src/integration/p0-http.test.ts` |
 | Write-origin control is fail-open | **RESOLVED for missing-policy/cross-site cases** — production writes fail closed | Targeted browser-origin attacks are rejected | Complete malformed/allowed-origin/browser matrix | `src/middleware/safety.test.ts` |
-| Production data lifecycle not proven | Push-only package/post-merge flow; migration apply-from-zero failed against current DB; no rollback/restore evidence | Schema drift or data recovery failure can corrupt availability and trust | Establish a supported baseline/version strategy compatible with managed development push and Publish; run clean and upgrade tests; execute isolated restore drill | Migration and restore evidence attached to release |
+| Production data lifecycle not proven | Clean isolated baseline now passes; no historical upgrade or rollback/restore evidence | Schema drift or data recovery failure can corrupt availability and trust | Provide an approved historical schema/version strategy; run upgrade/data-preservation tests; execute isolated restore drill | Migration and restore evidence attached to release |
 | Multi-tenant authorization not certified | Targeted two-household HTTP fixture exists; full route matrix remains open | Unreached identifier paths may regress | Complete route-level authorization, role, and mass-assignment matrix | `docs/TENANT_ISOLATION_ROUTE_MATRIX.md` |
 
 ### P1 risks
 
-1. Full high-contention transfer and economic-event idempotency coverage remains open.
+1. Broader economic-event idempotency coverage remains open; high-contention transfer and ledger reconciliation now pass on isolated PostgreSQL.
 2. Stored membership permissions are wired into centralized checks; explicit grant/revocation HTTP proof remains open.
 3. Temporary recent-auth middleware exists; provider-supported Clerk step-up remains unconfigured.
 4. No durable scheduler/queue/worker; automation health is hardcoded to zero failures.

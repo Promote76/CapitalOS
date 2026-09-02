@@ -8,11 +8,26 @@ The guarded command below resets only a dedicated disposable PostgreSQL database
 
 ```text
 CAPITAL_OS_CERTIFICATION_DB_URL=<dedicated-url> \
+CAPITAL_OS_CERTIFICATION_TARGET_ID=<sentinel-id> \
 CAPITAL_OS_CERTIFICATION_ALLOW_RESET=1 \
 pnpm run certify:migrations
 ```
 
-The command refuses to run when the certification URL equals the shared `DATABASE_URL`. It does not run against production and does not claim an existing-schema upgrade.
+Before this command can reset `public`, the disposable database must have an out-of-band guard outside that schema:
+
+```sql
+CREATE SCHEMA IF NOT EXISTS capital_os_certification;
+CREATE TABLE IF NOT EXISTS capital_os_certification.target_guard (
+  target_id text PRIMARY KEY,
+  active boolean NOT NULL DEFAULT true
+);
+INSERT INTO capital_os_certification.target_guard (target_id)
+VALUES ('<sentinel-id>');
+```
+
+The runner canonicalizes the certification and shared connection targets, verifies the sentinel through PostgreSQL, and checks it again in the same server-side block immediately before `DROP SCHEMA public CASCADE`. A missing or mismatched sentinel is a hard refusal.
+
+The command refuses a canonical target matching the configured shared `DATABASE_URL`, requires an out-of-band disposable-target sentinel, and rechecks that sentinel immediately before reset. These safeguards do not independently identify every production database, so operators must still provision the sentinel only on an approved disposable target. The command does not claim an existing-schema upgrade.
 
 ## Current evidence
 

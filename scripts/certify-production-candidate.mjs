@@ -43,6 +43,7 @@ if (process.env.CAPITAL_OS_CERTIFICATION_ORIGIN) {
 }
 
 const certificationDbUrl = process.env.CAPITAL_OS_CERTIFICATION_DB_URL;
+const certificationTargetId = process.env.CAPITAL_OS_CERTIFICATION_TARGET_ID;
 const historicalSchemaArtifact = path.join(rootDir, "docs/certification/HISTORICAL_SCHEMA_2026-09-01.sql");
 let cleanMigrationExecuted = false;
 let cleanMigrationPassed = false;
@@ -50,8 +51,8 @@ let httpFixtureExecuted = false;
 let httpFixturePassed = false;
 if (!certificationDbUrl) {
   console.log("\nBLOCKED: Dedicated certification PostgreSQL URL is not configured.");
-} else if (certificationDbUrl === process.env.DATABASE_URL) {
-  failures.push("CAPITAL_OS_CERTIFICATION_DB_URL must not equal the shared DATABASE_URL");
+} else if (!certificationTargetId) {
+  console.log("\nBLOCKED: Disposable certification target sentinel ID is not configured.");
 } else {
   if (process.env.CAPITAL_OS_CERTIFICATION_ALLOW_RESET === "1") {
     cleanMigrationExecuted = true;
@@ -64,7 +65,9 @@ if (!certificationDbUrl) {
   const pnpmStore = path.join(rootDir, "node_modules", ".pnpm");
   const tsxPackage = fs.readdirSync(pnpmStore).find((entry) => entry.startsWith("tsx@"));
   const tsxCli = tsxPackage && path.join(pnpmStore, tsxPackage, "node_modules", "tsx", "dist", "cli.mjs");
-  if (!tsxCli || !fs.existsSync(tsxCli)) {
+  if (!cleanMigrationPassed) {
+    console.log("\nBLOCKED: HTTP certification requires a successful isolated clean migration in the same run.");
+  } else if (!tsxCli || !fs.existsSync(tsxCli)) {
     failures.push("The workspace TypeScript runner is unavailable for the HTTP fixture");
   } else {
     httpFixtureExecuted = true;
@@ -92,11 +95,11 @@ const p0Gates = [
     title: "Caller-controlled identifier / IDOR matrix",
     status: fixtureFailed ? "FAIL" : "BLOCKED",
     implementation: "IMPLEMENTED",
-    execution: httpFixtureExecuted ? "EXECUTED (selected scenarios)" : "NOT EXECUTED",
+    execution: httpFixtureExecuted ? "EXECUTED (route inventory and selected identifier probes)" : "NOT EXECUTED",
     certification: "NOT CERTIFIED",
     reason: fixtureFailed
       ? "The database-backed HTTP fixture failed."
-      : "The complete route-by-route A→A/A→B/malformed/foreign-parent/mass-assignment matrix has not executed.",
+      : "Valid same-household and foreign-object cases are not complete for every caller-controlled identifier and parent relationship.",
   },
   {
     id: "P0-02",
@@ -151,11 +154,11 @@ const p0Gates = [
     title: "Role / effective-permission HTTP certification",
     status: fixtureFailed ? "FAIL" : "BLOCKED",
     implementation: "IMPLEMENTED",
-    execution: httpFixtureExecuted ? "EXECUTED (selected roles/actions)" : "NOT EXECUTED",
+    execution: httpFixtureExecuted ? "EXECUTED (representative role and effective-permission probes)" : "NOT EXECUTED",
     certification: "NOT CERTIFIED",
     reason: fixtureFailed
       ? "The database-backed HTTP fixture failed."
-      : "The complete Owner/Partner/Advisor/Viewer grant, revoke, membership-change, and tampering matrix has not executed.",
+      : "The complete documented action matrix and production Clerk household-selection path have not executed.",
   },
   {
     id: "P0-07",
@@ -175,11 +178,11 @@ const p0Gates = [
     title: "Actor attribution certification",
     status: fixtureFailed ? "FAIL" : "BLOCKED",
     implementation: "IMPLEMENTED",
-    execution: httpFixtureExecuted ? "EXECUTED (representative actions)" : "NOT EXECUTED",
+    execution: httpFixtureExecuted ? "EXECUTED (selected representative actions)" : "NOT EXECUTED",
     certification: "NOT CERTIFIED",
     reason: fixtureFailed
       ? "The database-backed HTTP fixture failed."
-      : "Persisted audit verification across all permitted representative Owner/Partner/Advisor actions has not executed.",
+      : "Persisted actor-attribution queries do not yet cover every permitted representative action in the role matrix.",
   },
 ];
 

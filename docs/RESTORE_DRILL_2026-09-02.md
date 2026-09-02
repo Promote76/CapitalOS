@@ -17,6 +17,11 @@ official Data recovery guidance:
 - The managed database check reported ready, and the production read-only check
   reached `neondb.public` at `2026-09-02 20:24:17.66116 UTC`. This is a
   connectivity observation only and is not backup or restore evidence.
+- A release-owner screenshot of the Production Database settings shows
+  point-in-time recovery enabled for the last 2 days with a `2 Days` recovery
+  window, plus scheduled backups enabled with 7 days of retention. This proves
+  that provider recovery controls are configured; it does not prove that a
+  restore was executed or that an isolated target exists.
 - Replit's current recovery guidance confirms that production point-in-time
   restore and scheduled-backup controls are configured from the Database tool
   in the Project Editor. Those provider controls were not exposed through the
@@ -32,7 +37,7 @@ Reference: [Replit Data recovery](https://docs.replit.com/features/data-and-stor
 | Restore target | Not provisioned |
 | Start | Not executed |
 | Finish | Not executed |
-| Provider control observation | PITR and scheduled-backup controls documented in the Database tool; no agent-accessible selection or restore confirmation |
+| Provider control observation | Screenshot confirms PITR enabled for the last 2 days and scheduled backups enabled with 7 days retained; no isolated-target selection or restore confirmation |
 | RPO observation | Not measured |
 | RTO observation | Not measured |
 | Integrity tests | Not executed |

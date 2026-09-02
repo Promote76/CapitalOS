@@ -145,7 +145,7 @@ This inventory separates resources that exist from certification evidence that h
 | Restore target | MISSING | BLOCKED | No isolated restore database was provided. Use the Replit Database tool to restore an approved production point-in-time backup into a non-production target without overwriting production. |
 | Clerk test environment | AVAILABLE | EXECUTED / CERTIFIED for P0-05 | Replit-managed Clerk development tenant completed the authenticated onboarding, persistence, sign-out, sign-in, and isolation journey. Provider-supported step-up remains outside this certification. |
 | Browser E2E URL | AVAILABLE | EXECUTED / PASS | Published autoscale URL is available and healthy: `https://capital-os-fund.replit.app`. The documented authenticated browser lifecycle passed. |
-| Managed backup access | UNVERIFIED / MISSING TO AGENT | BLOCKED | Replit documentation confirms production point-in-time restore, but no backup reference, retention record, or restore authorization is available in this workspace. |
+| Managed backup access | PROVIDER CONTROLS OBSERVED | BLOCKED | Production Database screenshot shows point-in-time recovery for the last 2 days and scheduled backups retained for 7 days; no backup reference, isolated restore target, or restore authorization is available. |
 
 #### Human-action escalation
 

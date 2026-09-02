@@ -1,0 +1,2254 @@
+Replit Prompt: Build Capital OS Security, Identity, Permissions, Secrets & Disaster-Recovery Layer
+
+Continue building the existing Capital OS application.
+
+Do not redesign the approved UI.
+
+Preserve all existing modules, including:
+
+- Household Budget
+- Cash Flow
+- Wells Fargo / Plaid integration
+- Accounts
+- Safe-to-Deploy
+- Capital Governor
+- Treasury Engine
+- Protected Capital
+- Duplex Goal
+- Duplex Acquisition OS
+- Property Readiness
+- Portfolio
+- Risk Governor
+- AI CIO
+- Strategy Lab
+- Backtesting
+- Shadow Trading
+- Paper Trading
+- Micro-Live Execution
+- OMS
+- Reconciliation
+- Guardian
+- Accounting
+- Tax Lots
+- Family Net Worth
+- Reporting
+- Audit Ledger
+- Blockchain-ready architecture
+
+This phase builds:
+
+CAPITAL OS SECURITY & RESILIENCE LAYER
+
+The objective is to make Capital OS capable of safely holding sensitive household financial information and supporting controlled capital operations.
+
+Security must not be treated as a single login page.
+
+Capital OS needs defense across:
+
+Identity
+Authentication
+Authorization
+Secrets
+Sessions
+Devices
+Data
+Financial Actions
+AI Permissions
+API Security
+Infrastructure
+Audit
+Backup
+Recovery
+Incident Response
+
+The core philosophy is:
+
+PREVENT
+↓
+DETECT
+↓
+CONTAIN
+↓
+RECOVER
+↓
+VERIFY
+
+---
+
+1. CORE SECURITY PRINCIPLE
+
+Assume eventually:
+
+- passwords may be compromised
+- a browser session may be stolen
+- an API key may leak
+- a dependency may fail
+- a user may click a malicious link
+- a service may become unavailable
+- a database may become corrupted
+- an administrator may make an error
+- AI may receive malicious external content
+- a venue may disagree with Capital OS state
+
+Therefore:
+
+«No single compromised credential, session, service, or AI component should provide unrestricted authority over household capital.»
+
+---
+
+2. SECURITY NAVIGATION
+
+Add a Security section:
+
+Security
+├── Overview
+├── Identity
+├── Devices
+├── Sessions
+├── Permissions
+├── Financial Authority
+├── Connections
+├── Secrets Health
+├── Security Events
+├── Backups
+├── Recovery
+└── Audit
+
+Do not show raw secrets anywhere.
+
+---
+
+3. SECURITY OVERVIEW
+
+Create "/security".
+
+Display:
+
+SECURITY STATUS
+
+Overall Security
+92 / 100
+
+Authentication
+Healthy
+
+MFA
+Enabled
+
+Trusted Devices
+3
+
+Active Sessions
+2
+
+Banking Connections
+Healthy
+
+Trading Credentials
+Restricted
+
+Backup Status
+Current
+
+Last Recovery Test
+Passed
+
+Critical Alerts
+0
+
+Also show:
+
+- Last login
+- Last privilege change
+- Last sensitive action
+- Last backup
+- Last security review
+- Guardian status
+- Financial execution status
+
+---
+
+4. AUTHENTICATION
+
+Implement secure authentication architecture.
+
+Support:
+
+Email + Password
+Passkey / WebAuthn
+MFA
+Recovery Codes
+
+Prefer passkeys where practical.
+
+Passwords must be:
+
+- hashed using modern adaptive password hashing
+- salted
+- never stored in plaintext
+- never logged
+- never sent to AI
+
+---
+
+5. MFA
+
+Support multi-factor authentication.
+
+Methods may include:
+
+Authenticator App
+Passkey
+Recovery Code
+
+Avoid SMS as the preferred high-security method.
+
+Require MFA for sensitive accounts when enabled by policy.
+
+---
+
+6. STEP-UP AUTHENTICATION
+
+Certain actions require recent strong authentication.
+
+Examples:
+
+Change Capital Policy
+Change Household Owner
+Change Banking Connection
+Add Trading Credential
+Enable Micro-Live
+Increase Strategy Capital
+Unlock Protected Capital
+Change Security Settings
+Disable MFA
+Generate Recovery Codes
+
+If authentication is stale:
+
+REAUTHENTICATION REQUIRED
+
+---
+
+7. SESSION MANAGEMENT
+
+Create:
+
+UserSession
+
+Track:
+
+- session ID
+- user
+- device
+- created time
+- last activity
+- IP metadata
+- approximate region if available
+- authentication strength
+- expiration
+- revoked status
+
+Allow:
+
+View Active Sessions
+Revoke Session
+Revoke All Other Sessions
+
+---
+
+8. SESSION EXPIRATION
+
+Support:
+
+Idle Timeout
+Absolute Timeout
+Sensitive Action Timeout
+
+Do not keep high-authority sessions indefinitely.
+
+---
+
+9. SESSION ROTATION
+
+Rotate session identifiers after:
+
+Login
+MFA completion
+Privilege elevation
+Password change
+Sensitive security changes
+
+Prevent session fixation.
+
+---
+
+10. DEVICE REGISTRY
+
+Create:
+
+TrustedDevice
+
+Track:
+
+Device Name
+Device Type
+Browser
+Last Seen
+Trusted Since
+Last Authentication
+Status
+
+Statuses:
+
+Trusted
+Untrusted
+Revoked
+Review
+
+---
+
+11. NEW DEVICE ALERTS
+
+If a new device authenticates:
+
+NEW DEVICE SIGN-IN
+
+Show:
+
+- approximate time
+- browser/device
+- approximate region where safely available
+
+Allow:
+
+This Was Me
+Revoke Session
+Secure Account
+
+---
+
+12. DEVICE TRUST
+
+Sensitive financial actions may optionally require:
+
+Trusted Device
++
+MFA
+
+Make this configurable.
+
+---
+
+13. HOUSEHOLD ROLES
+
+Expand RBAC.
+
+Core roles:
+
+Owner
+Partner
+Viewer
+Advisor
+Accountant
+
+Prepare future:
+
+Property Manager
+Investment Analyst
+Operations Admin
+
+---
+
+14. PERMISSION MODEL
+
+Use fine-grained permissions rather than only role names.
+
+Examples:
+
+VIEW_BANK_BALANCES
+VIEW_TRANSACTIONS
+EDIT_BUDGET
+VIEW_NET_WORTH
+VIEW_PROPERTIES
+EDIT_PROPERTIES
+VIEW_STRATEGIES
+APPROVE_CAPITAL
+EDIT_CAPITAL_POLICY
+ENABLE_MICRO_LIVE
+VIEW_TAX_DOCUMENTS
+EXPORT_ACCOUNTING
+MANAGE_USERS
+MANAGE_BANK_CONNECTIONS
+MANAGE_SECURITY
+
+---
+
+15. LEAST PRIVILEGE
+
+Default:
+
+DENY
+
+unless permission is explicitly granted.
+
+Do not infer authority because a user can view a page.
+
+---
+
+16. SERVER-SIDE AUTHORIZATION
+
+Every protected action must be verified server-side.
+
+Do not rely on:
+
+Hidden Button
+Disabled UI
+Frontend Role Check
+
+as security.
+
+Frontend authorization is only presentation.
+
+Backend authorization is authoritative.
+
+---
+
+17. FINANCIAL AUTHORITY
+
+Create separate financial authority levels.
+
+Example:
+
+LEVEL 0
+View Only
+
+LEVEL 1
+Create Recommendation / Draft
+
+LEVEL 2
+Approve Low-Risk Internal Changes
+
+LEVEL 3
+Approve Capital Allocation
+
+LEVEL 4
+Enable Micro-Live
+
+LEVEL 5
+Change Protected Capital Policy
+
+Household roles and Financial Authority are related but not identical.
+
+---
+
+18. DANGEROUS ACTION CLASSIFICATION
+
+Classify sensitive operations:
+
+STANDARD
+SENSITIVE
+HIGH_RISK
+CRITICAL
+
+Examples:
+
+STANDARD
+
+Categorize Transaction
+Edit Note
+
+SENSITIVE
+
+Change Budget
+Export Financial Report
+
+HIGH_RISK
+
+Increase Strategy Allocation
+Change Venue Permission
+
+CRITICAL
+
+Unlock Protected Capital
+Disable Guardian
+Change Household Owner
+Enable Withdrawal Authority
+
+---
+
+19. CRITICAL ACTION CONFIRMATION
+
+Critical actions require:
+
+Step-Up Authentication
++
+Explicit Confirmation
++
+Reason
++
+Audit Event
+
+Potentially support dual approval later.
+
+---
+
+20. DUAL APPROVAL ARCHITECTURE
+
+Prepare support for:
+
+Two-Person Approval
+
+for actions such as:
+
+Unlock Protected Capital
+Large Capital Allocation
+Change Withdrawal Destination
+Disable Guardian
+Change Emergency Reserve Policy
+
+Do not require two users if only one household owner exists.
+
+Make it policy-driven.
+
+---
+
+21. SECURITY POLICY
+
+Create:
+
+SecurityPolicy
+SecurityPolicyVersion
+
+Possible settings:
+
+Require MFA
+Require Passkey for Critical Actions
+Trusted Device Required
+Session Timeout
+Capital Approval Threshold
+Dual Approval Threshold
+Bank Export Restrictions
+Micro-Live Authentication Requirement
+
+---
+
+22. POLICY VERSIONING
+
+Every change must record:
+
+Previous Policy
+New Policy
+Actor
+Reason
+Timestamp
+
+---
+
+23. SECRET MANAGEMENT
+
+Centralize secrets handling.
+
+Never store secrets:
+
+in source files
+in client bundles
+in database plaintext
+in AI prompts
+in logs
+in analytics
+
+Sensitive credentials may include:
+
+Plaid Secret
+Plaid Access Tokens
+Exchange API Keys
+Trading Credentials
+RPC Keys
+Blockchain Signing References
+AI Provider Keys
+Email Provider Keys
+
+---
+
+24. SECRET REFERENCES
+
+Application records should preferably store:
+
+CredentialReference
+
+rather than exposing raw secrets to normal application services.
+
+---
+
+25. SECRET ACCESS BOUNDARIES
+
+Services should only access secrets required for their function.
+
+Examples:
+
+Banking Service
+→ Plaid credentials
+
+Execution Service
+→ Trading credential reference
+
+AI Service
+→ AI provider key
+
+The AI system must never receive banking or venue secrets in its prompt context.
+
+---
+
+26. SECRET ROTATION
+
+Prepare:
+
+CredentialCreated
+CredentialRotated
+CredentialRevoked
+CredentialExpired
+
+flows.
+
+Display secret health without showing actual values.
+
+Example:
+
+Plaid Credential
+Healthy
+Last Rotated: 43 days ago
+
+---
+
+27. SECRET LEAK DETECTION
+
+Add checks where practical for:
+
+Secrets accidentally committed
+Secrets exposed in configuration
+Secrets present in logs
+
+Never print the discovered secret itself in alert output.
+
+---
+
+28. BANK CONNECTION SECURITY
+
+For Plaid/Wells Fargo:
+
+Capital OS should never collect or store Wells Fargo login credentials.
+
+Continue using authorized provider flows.
+
+Banking tokens remain:
+
+Server-Side Only
+Encrypted
+Scoped
+Audited
+
+---
+
+29. TRADING CREDENTIAL SECURITY
+
+Trading API credentials should use the minimum privileges required.
+
+Prefer:
+
+READ
+TRADE
+CANCEL
+
+without:
+
+WITHDRAW
+
+when venue functionality permits.
+
+---
+
+30. WITHDRAWAL AUTHORITY ALERT
+
+If a trading credential has withdrawal permission:
+
+HIGH-RISK CREDENTIAL
+
+Display a security warning.
+
+Do not allow Micro-Live activation until explicitly reviewed.
+
+---
+
+31. DATA CLASSIFICATION
+
+Classify data.
+
+Example:
+
+PUBLIC
+INTERNAL
+CONFIDENTIAL
+HIGHLY_SENSITIVE
+SECRET
+
+Examples:
+
+PUBLIC
+
+Public market data
+
+INTERNAL
+
+Strategy research notes
+
+CONFIDENTIAL
+
+Household budgets
+Net worth
+Property plans
+
+HIGHLY_SENSITIVE
+
+Bank transactions
+Tax documents
+Financial statements
+
+SECRET
+
+Access Tokens
+API Secrets
+Private Keys
+Recovery Secrets
+
+---
+
+32. DATA ACCESS POLICY
+
+Enforce access controls based on classification.
+
+AI should receive the minimum data necessary for analysis.
+
+---
+
+33. DATA ENCRYPTION
+
+Use encryption in transit.
+
+Use encrypted storage for sensitive data where supported.
+
+Document:
+
+Encryption in Transit
+Encryption at Rest
+Application-Level Encryption
+
+and where each applies.
+
+---
+
+34. FIELD-LEVEL ENCRYPTION
+
+Consider application-level encryption for especially sensitive fields such as:
+
+Provider Tokens
+External Credential Data
+Sensitive Identifiers
+
+Do not create homemade cryptography.
+
+Use mature cryptographic libraries.
+
+---
+
+35. KEY MANAGEMENT
+
+Encryption keys must be separate from encrypted data where practical.
+
+Document future migration to dedicated key-management infrastructure if needed.
+
+---
+
+36. PII MINIMIZATION
+
+Do not store unnecessary identity information.
+
+Capital OS should not require:
+
+SSN
+Full Driver License
+Bank Password
+Security Questions
+
+unless a future regulated workflow explicitly requires it.
+
+---
+
+37. ACCOUNT NUMBER MASKING
+
+Display:
+
+•••• 1234
+
+rather than full numbers.
+
+Full account numbers should not normally appear in the UI.
+
+---
+
+38. SENSITIVE EXPORTS
+
+Exports containing:
+
+Tax Information
+Bank Transactions
+Net Worth
+Financial Statements
+
+should require appropriate permission.
+
+Potentially require recent authentication.
+
+---
+
+39. EXPORT WATERMARK / METADATA
+
+Prepare optional metadata:
+
+Generated By
+Generated At
+Household
+Confidential
+
+Avoid exposing sensitive internal IDs unnecessarily.
+
+---
+
+40. API SECURITY
+
+All APIs must validate:
+
+Authentication
+Authorization
+Input Schema
+Household Ownership
+Rate Limits
+Request Size
+
+---
+
+41. OBJECT-LEVEL AUTHORIZATION
+
+Every object fetch must ensure:
+
+object.household_id
+=
+authenticated user's authorized household
+
+Do not rely on URL IDs alone.
+
+---
+
+42. TENANT ISOLATION
+
+Test isolation for:
+
+Accounts
+Bank Transactions
+Goals
+Properties
+Strategies
+Reports
+Documents
+Tax Lots
+AI Recommendations
+Security Events
+
+No household may access another household's records.
+
+---
+
+43. MASS-ASSIGNMENT PROTECTION
+
+Prevent clients from sending unauthorized fields such as:
+
+protected=false
+financialAuthority=5
+owner=true
+riskOverride=true
+
+unless explicitly allowed.
+
+---
+
+44. RATE LIMITING
+
+Apply rate limits to:
+
+Login
+Password reset
+MFA
+Bank connection
+AI requests
+Financial actions
+Security actions
+Trading enablement
+
+---
+
+45. BRUTE-FORCE PROTECTION
+
+Detect repeated failed authentication.
+
+Use:
+
+Rate Limit
+Progressive Delay
+Temporary Lockout
+Security Alert
+
+without creating easy denial-of-service vulnerabilities against legitimate users.
+
+---
+
+46. PASSWORD RESET
+
+Secure password reset must:
+
+Use short-lived token
+Be single-use
+Invalidate after completion
+
+Consider revoking existing sessions after password reset.
+
+---
+
+47. ACCOUNT RECOVERY
+
+Create controlled recovery.
+
+Possible recovery mechanisms:
+
+Verified Email
+Recovery Codes
+Passkey
+Support/Admin Recovery Workflow
+
+Do not use weak security questions.
+
+---
+
+48. RECOVERY CODES
+
+Generate one-time recovery codes.
+
+Store securely.
+
+Allow regeneration.
+
+Regeneration invalidates prior codes.
+
+---
+
+49. SECURITY EVENT LOG
+
+Create:
+
+SecurityEvent
+
+Examples:
+
+LoginSucceeded
+LoginFailed
+MFASucceeded
+MFAFailed
+NewDeviceDetected
+SessionRevoked
+PasswordChanged
+PermissionChanged
+FinancialAuthorityChanged
+CredentialRotated
+CredentialRevoked
+SensitiveExportGenerated
+CriticalActionApproved
+
+---
+
+50. SECURITY EVENT SEVERITY
+
+Use:
+
+INFO
+LOW
+MEDIUM
+HIGH
+CRITICAL
+
+---
+
+51. SUSPICIOUS ACTIVITY ENGINE
+
+Detect patterns such as:
+
+Many failed logins
+New device + critical action
+Rapid permission changes
+Repeated MFA failures
+Multiple capital policy changes
+Unusual sensitive exports
+Trading enablement from new session
+
+Do not overstate certainty.
+
+Flag as:
+
+REVIEW
+
+when appropriate.
+
+---
+
+52. SECURITY LOCK MODE
+
+Create:
+
+SECURITY_LOCK
+
+When activated:
+
+Block critical financial changes
+Block live trading enablement
+Block new banking connections
+Block credential changes
+Continue read-only access where safe
+
+Owner recovery required.
+
+---
+
+53. EMERGENCY ACCOUNT SECURE ACTION
+
+Add:
+
+SECURE MY ACCOUNT
+
+This should:
+
+Revoke other sessions
+Disable Micro-Live
+Trigger STOP if live
+Lock critical changes
+Flag banking/trading connections for review
+
+Do not automatically delete data or disconnect everything unless configured.
+
+---
+
+54. AI SECURITY BOUNDARY
+
+AI may:
+
+Read authorized sanitized financial data
+Analyze
+Recommend
+Explain security alerts
+
+AI may NOT:
+
+Read secrets
+Reset passwords
+Change MFA
+Grant permissions
+Change owner
+Disable Guardian
+Move capital
+Enable live trading
+
+---
+
+55. PROMPT-INJECTION DEFENSE
+
+All external content is untrusted.
+
+Examples:
+
+Web Pages
+Property Listings
+Uploaded Documents
+Market News
+Emails
+User Notes
+Market Descriptions
+
+External text must never gain authority to instruct system tools.
+
+Create an explicit trust boundary:
+
+EXTERNAL CONTENT
+=
+DATA
+NOT
+SYSTEM INSTRUCTION
+
+---
+
+56. AI TOOL ALLOWLIST
+
+AI can only access explicitly approved internal read/advisory tools.
+
+Do not provide a generic unrestricted administrative API.
+
+---
+
+57. AI AUDIT
+
+Record:
+
+What AI action occurred
+Which data domain it used
+What recommendation resulted
+
+Do not store private model reasoning.
+
+---
+
+58. DOCUMENT SECURITY
+
+Uploaded documents may include:
+
+Bank Statements
+Property Documents
+Tax Documents
+Contracts
+Receipts
+
+Enforce:
+
+Household ownership
+Permission checks
+Private storage
+Safe file type handling
+File size limits
+
+---
+
+59. FILE TYPE VALIDATION
+
+Validate uploaded files by actual file type where practical.
+
+Do not rely only on file extension.
+
+Reject dangerous executable formats where unnecessary.
+
+---
+
+60. MALWARE / FILE SAFETY ARCHITECTURE
+
+Prepare architecture for future malware scanning.
+
+Files should not execute inside the application.
+
+---
+
+61. CONTENT SECURITY
+
+Apply strong browser security headers where applicable.
+
+Examples:
+
+Content Security Policy
+HSTS
+X-Content-Type-Options
+Referrer Policy
+Frame Protections
+
+Avoid insecure inline script patterns where practical.
+
+---
+
+62. CSRF PROTECTION
+
+Protect state-changing requests using suitable framework-native protections.
+
+Do not treat read requests as state changes.
+
+---
+
+63. XSS PROTECTION
+
+Escape and sanitize user-generated content.
+
+Pay special attention to:
+
+Notes
+Property descriptions
+AI-generated content
+Imported merchant descriptions
+Documents
+
+---
+
+64. SQL INJECTION PROTECTION
+
+Use parameterized ORM/database queries.
+
+Never concatenate raw user input into SQL.
+
+---
+
+65. DEPENDENCY SECURITY
+
+Track application dependencies.
+
+Prepare:
+
+Dependency Audit
+Vulnerability Review
+Update Process
+
+Do not auto-upgrade critical dependencies directly into production without tests.
+
+---
+
+66. DEPLOYMENT SECURITY
+
+Use:
+
+Development
+Staging
+Production
+
+boundaries where architecture permits.
+
+Production secrets must not be used in development tests.
+
+---
+
+67. ENVIRONMENT SEPARATION
+
+Do not share:
+
+Production Bank Tokens
+Production Trading Credentials
+Production Encryption Keys
+
+with development environments.
+
+---
+
+68. PRODUCTION CHANGE CONTROL
+
+Critical production changes should record:
+
+Version
+User
+Timestamp
+Reason
+Tests
+Deployment Result
+
+---
+
+69. ROLLBACK
+
+Prepare the ability to return to a known-good application version.
+
+Do not automatically rollback financial data.
+
+Application rollback and database rollback are separate concerns.
+
+---
+
+70. DATABASE MIGRATION SAFETY
+
+Before destructive schema migrations:
+
+Backup
+Validate
+Migrate
+Verify
+
+Avoid irreversible migrations without a recovery plan.
+
+---
+
+71. BACKUP ARCHITECTURE
+
+Create documented backups for:
+
+Database
+Configuration
+Critical Audit Data
+Financial Records
+
+Do NOT back up secrets insecurely.
+
+---
+
+72. BACKUP FREQUENCY
+
+Support configurable:
+
+Daily
+Weekly
+Monthly
+
+retention policies.
+
+The exact provider implementation can depend on hosting.
+
+---
+
+73. BACKUP ENCRYPTION
+
+Backups containing household financial information must be protected appropriately.
+
+Document encryption and access controls.
+
+---
+
+74. BACKUP STATUS
+
+Show:
+
+Last Successful Backup
+Next Backup
+Backup Age
+Backup Health
+
+Do not mark backup healthy solely because a job started.
+
+Require success confirmation.
+
+---
+
+75. RESTORE TESTING
+
+A backup that has never been restored is not fully validated.
+
+Create:
+
+RecoveryTest
+
+Track:
+
+Backup Used
+Restore Started
+Restore Completed
+Integrity Check
+Result
+
+---
+
+76. DISASTER RECOVERY
+
+Prepare recovery procedures for:
+
+Database Loss
+Application Failure
+Hosting Failure
+Credential Compromise
+Banking Integration Failure
+Trading Infrastructure Failure
+
+---
+
+77. RECOVERY PRIORITIES
+
+Recommended sequence:
+
+1. Protect capital
+2. Disable live execution
+3. Preserve authoritative external state
+4. Restore identity/authentication
+5. Restore database
+6. Reconcile external accounts
+7. Restore application services
+8. Verify integrity
+9. Re-enable functions gradually
+
+---
+
+78. TRADING DISASTER RECOVERY
+
+On major system recovery:
+
+LIVE TRADING DISABLED
+
+Then:
+
+Venue balances
+↓
+Venue positions
+↓
+Open orders
+↓
+Recent fills
+↓
+Internal reconstruction
+↓
+Reconciliation
+↓
+Risk validation
+↓
+Guardian validation
+↓
+Human re-arm
+
+Never restore live state only from backup.
+
+The venue remains authoritative for actual live trading positions.
+
+---
+
+79. BANKING RECOVERY
+
+After database restore:
+
+Reconnect Provider
+↓
+Retrieve Account State
+↓
+Sync Transactions
+↓
+Deduplicate
+↓
+Reconcile Internal Ledger
+
+Do not assume backup balances are current.
+
+---
+
+80. ACCOUNTING RECOVERY
+
+After restore:
+
+Verify journal balance
+Verify account balances
+Verify report snapshots
+Verify reconciliation
+
+Do not finalize financial reports until accounting integrity passes.
+
+---
+
+81. RECOVERY POINT OBJECTIVE
+
+Document:
+
+RPO
+
+for critical data.
+
+Meaning:
+
+«Maximum tolerable amount of data loss.»
+
+Do not claim zero data loss unless architecture supports it.
+
+---
+
+82. RECOVERY TIME OBJECTIVE
+
+Document:
+
+RTO
+
+for:
+
+Authentication
+Banking Data
+Accounting
+Dashboard
+Trading Monitoring
+Live Execution
+
+Live execution should not be prioritized ahead of accurate recovery.
+
+---
+
+83. DEGRADED MODE
+
+Capital OS should be capable of limited operation when integrations fail.
+
+Example:
+
+Bank provider unavailable
+
+Allow:
+
+View last known data
+Manual budgeting
+Accounting review
+Property research
+
+but label stale information.
+
+---
+
+84. READ-ONLY RECOVERY MODE
+
+Create:
+
+RECOVERY_READ_ONLY
+
+This allows inspection without financial changes while system integrity is being verified.
+
+---
+
+85. DATA INTEGRITY CHECK
+
+Create automated checks after restart or restore:
+
+Ledger balances
+Journal debits = credits
+Account ownership
+Protected capital flags
+Strategy allocations
+Risk limits
+Property reservations
+Security policies
+
+---
+
+86. HASH / CHECKSUM SUPPORT
+
+For important reports and backup metadata, prepare checksums for integrity verification.
+
+This may later integrate with optional blockchain attestations.
+
+---
+
+87. IMMUTABLE AUDIT PRIORITY
+
+Security-related audit history should not be silently editable.
+
+Critical events include:
+
+Owner Changed
+Permission Changed
+Capital Policy Changed
+Protected Capital Unlocked
+Micro-Live Enabled
+Credential Added
+Credential Revoked
+Security Lock Triggered
+
+---
+
+88. ADMINISTRATIVE AUDIT CENTER
+
+Create an Audit page showing:
+
+Actor
+Event
+Date
+Entity
+Risk Level
+Result
+
+with filters:
+
+Security
+Capital
+Banking
+Trading
+Property
+Accounting
+AI
+
+---
+
+89. SECURITY INCIDENT MODEL
+
+Create:
+
+SecurityIncident
+
+Types:
+
+Authentication
+Authorization
+Credential
+Data Exposure
+Banking
+Trading
+Malware
+Infrastructure
+Insider / Administrative
+Unknown
+
+---
+
+90. INCIDENT WORKFLOW
+
+Statuses:
+
+Detected
+Investigating
+Contained
+Remediating
+Monitoring
+Closed
+
+---
+
+91. INCIDENT RESPONSE
+
+For serious incidents:
+
+Contain
+↓
+Preserve Logs
+↓
+Identify Scope
+↓
+Protect Capital
+↓
+Rotate Credentials
+↓
+Reconcile External State
+↓
+Restore
+↓
+Verify
+↓
+Post-Incident Review
+
+---
+
+92. SECURITY INCIDENT REVIEW
+
+Create:
+
+Incident Summary
+Timeline
+Affected Systems
+Affected Data
+Capital Impact
+Root Cause
+Containment
+Corrective Actions
+Recovery
+Lessons
+
+---
+
+93. CAPITAL IMPACT PRIORITY
+
+If there is a suspected compromise involving trading:
+
+STOP
+
+must take precedence over availability.
+
+Do not continue trading just to keep the system online.
+
+---
+
+94. BANKING COMPROMISE RESPONSE
+
+If a banking token is suspected compromised:
+
+Disable Banking Sync
+Revoke Provider Token
+Require Reconnection
+Audit Recent Activity
+
+Read-only architecture should limit financial impact.
+
+---
+
+95. CREDENTIAL COMPROMISE RESPONSE
+
+If a venue API key is compromised:
+
+STOP Live Trading
+Revoke Credential
+Cancel Open Orders
+Reconcile Positions
+Review Venue Activity
+Generate Incident
+
+---
+
+96. SECURITY NOTIFICATIONS
+
+Support alerts for:
+
+New Login
+New Device
+MFA Changed
+Password Changed
+Permission Changed
+Capital Policy Changed
+Trading Credential Added
+Micro-Live Armed
+Protected Capital Policy Changed
+Security Lock Triggered
+Critical Incident
+
+---
+
+97. NOTIFICATION CONTENT
+
+Never include:
+
+Access Tokens
+Passwords
+Full Bank Numbers
+API Secrets
+Private Keys
+
+in alerts.
+
+---
+
+98. SECURITY HEALTH SCORE
+
+Create:
+
+SECURITY HEALTH
+0–100
+
+Potential inputs:
+
+MFA
+Passkey
+Session Health
+Device Trust
+Permission Hygiene
+Credential Health
+Backup Health
+Recovery Testing
+Audit Integrity
+Open Incidents
+
+---
+
+99. SECURITY SCORE LIMITATION
+
+The score is informational.
+
+A high score does not imply that Capital OS cannot be compromised.
+
+---
+
+100. PERMISSION REVIEW
+
+Create periodic:
+
+ACCESS REVIEW
+
+Show:
+
+User
+Role
+Permissions
+Financial Authority
+Last Active
+
+Prompt owner to review unnecessary permissions.
+
+---
+
+101. CREDENTIAL REVIEW
+
+Create:
+
+CONNECTED SERVICES REVIEW
+
+Examples:
+
+Plaid
+Banking
+Trading Venue
+Blockchain RPC
+AI Provider
+
+Show:
+
+Status
+Privilege Level
+Last Used
+Last Rotated
+
+---
+
+102. ACCOUNT LOCKOUT / OFFBOARDING
+
+When removing a household user:
+
+Revoke Sessions
+Remove Permissions
+Remove Financial Authority
+Preserve Audit History
+
+Do not delete historical actor records.
+
+---
+
+103. OWNER TRANSFER
+
+Changing Household Owner is a CRITICAL action.
+
+Require:
+
+Step-Up Authentication
+Explicit Confirmation
+Audit Record
+
+If multiple owners exist, support optional dual approval.
+
+---
+
+104. PRIVACY CONTROLS
+
+Allow users to hide:
+
+Balances
+Account Names
+Strategy P&L
+Property Values
+Tax Data
+
+in shared-screen mode.
+
+This is display privacy, not access security.
+
+---
+
+105. SHARED SCREEN MODE
+
+Create:
+
+PRIVACY MODE
+
+Temporarily mask:
+
+Balances
+Account Numbers
+Exact Net Worth
+Income
+Tax Information
+
+without changing stored data.
+
+---
+
+106. API ACCESS TOKENS
+
+If Capital OS later exposes API access:
+
+Create scoped API tokens.
+
+Example:
+
+READ_PORTFOLIO
+READ_REPORTS
+
+Avoid unrestricted master tokens.
+
+---
+
+107. API TOKEN EXPIRATION
+
+Support:
+
+Expiration
+Revocation
+Last Used
+Scope
+
+---
+
+108. WEBHOOK SECURITY
+
+Future inbound webhooks must support provider verification.
+
+Do not trust arbitrary requests claiming to come from:
+
+Plaid
+Venue
+Payment Provider
+
+Verify using provider-supported signatures/secrets.
+
+---
+
+109. REPLAY PROTECTION
+
+Where applicable, reject duplicated/replayed webhook events using:
+
+Event ID
+Timestamp
+Signature
+Processed State
+
+---
+
+110. BACKGROUND JOB SECURITY
+
+Scheduled jobs must execute using minimum necessary authority.
+
+A reporting job should not have live-trading privileges.
+
+---
+
+111. SERVICE AUTHORITY
+
+Separate application service privileges conceptually:
+
+Budget Service
+Bank Service
+Treasury Service
+Trading Service
+Risk Service
+Reporting Service
+AI Service
+
+Do not use one unrestricted service identity everywhere.
+
+---
+
+112. SECURITY TESTING
+
+Create automated tests for:
+
+Authentication
+Session expiration
+Permission enforcement
+Tenant isolation
+Critical action reauthentication
+Secret redaction
+Role changes
+Device revocation
+Protected capital permissions
+AI permission boundaries
+
+---
+
+113. AUTHORIZATION TEST MATRIX
+
+Test every major role against sensitive endpoints.
+
+Example:
+
+VIEWER
+Cannot edit capital policy.
+
+ACCOUNTANT
+Cannot enable trading.
+
+PARTNER
+Cannot manage security unless granted.
+
+OWNER
+Can perform authorized owner actions.
+
+---
+
+114. CROSS-HOUSEHOLD ATTACK TEST
+
+Attempt:
+
+Household A user requests Household B account
+
+Expected:
+
+DENIED
+
+No data leakage.
+
+---
+
+115. IDOR TESTS
+
+Test object IDs for:
+
+Accounts
+Transactions
+Properties
+Documents
+Reports
+Strategies
+AI Recommendations
+
+Users must not access another household by changing an ID.
+
+---
+
+116. SECURITY CHAOS TESTING
+
+Simulate:
+
+Expired session
+Stolen/revoked token
+Provider outage
+Database outage
+Guardian outage
+Secrets unavailable
+Permission cache stale
+Backup failure
+
+System should fail safely.
+
+---
+
+117. DISASTER RECOVERY DRILL
+
+Create:
+
+RECOVERY DRILL
+
+Simulation should verify:
+
+Backup available
+Restore succeeds
+Authentication works
+Ledger integrity passes
+Bank sync reconciles
+Trading remains disabled
+Guardian works
+Reports reconcile
+
+---
+
+118. BACKUP FAILURE ALERT
+
+If backups fail repeatedly:
+
+HIGH PRIORITY SECURITY ALERT
+
+Do not continue showing:
+
+Backup Healthy
+
+based on old successful backups without indicating age.
+
+---
+
+119. SECURITY DASHBOARD ACTIVITY
+
+Display recent:
+
+Logins
+New Devices
+Permission Changes
+Credential Changes
+Critical Approvals
+Security Incidents
+Recovery Tests
+
+---
+
+120. DATABASE ENTITIES
+
+Create or expand:
+
+User
+HouseholdRole
+Permission
+RolePermission
+UserPermission
+
+UserSession
+TrustedDevice
+AuthenticationEvent
+RecoveryCode
+
+FinancialAuthority
+ApprovalPolicy
+ApprovalRequest
+
+SecurityPolicy
+SecurityPolicyVersion
+
+CredentialReference
+CredentialEvent
+
+SecurityEvent
+SecurityIncident
+IncidentAction
+
+BackupRecord
+RecoveryTest
+RecoveryPlan
+
+APIKeyReference
+WebhookEvent
+
+---
+
+121. AUDIT EVENTS
+
+Add:
+
+UserLoggedIn
+UserLoginFailed
+MFAEnabled
+MFADisabled
+PasskeyAdded
+PasskeyRemoved
+SessionRevoked
+DeviceTrusted
+DeviceRevoked
+RoleChanged
+PermissionGranted
+PermissionRevoked
+FinancialAuthorityChanged
+SecurityPolicyChanged
+CredentialCreated
+CredentialRotated
+CredentialRevoked
+SecurityLockEnabled
+SecurityLockDisabled
+BackupCompleted
+BackupFailed
+RecoveryTestCompleted
+SecurityIncidentCreated
+
+---
+
+122. DO NOT IMPLEMENT INSECURE SHORTCUTS
+
+Do not:
+
+Store plaintext passwords
+Store plaintext provider tokens
+Put secrets in browser localStorage
+Expose raw secrets in admin pages
+Disable authorization for development convenience
+Use shared admin credentials
+Allow AI to read credentials
+Use hidden UI buttons as authorization
+Auto-enable live trading after recovery
+
+---
+
+123. DOCUMENTATION
+
+Create or update:
+
+SECURITY_ARCHITECTURE.md
+AUTHENTICATION.md
+AUTHORIZATION.md
+SECRETS_MANAGEMENT.md
+INCIDENT_RESPONSE.md
+BACKUP_RECOVERY.md
+DISASTER_RECOVERY.md
+AI_SECURITY_BOUNDARY.md
+TRADING_SECURITY.md
+BANKING_SECURITY.md
+
+Documentation must reflect actual implementation.
+
+---
+
+124. FINAL VALIDATION
+
+Before declaring this phase complete, verify:
+
+1. Existing Capital OS UI remains intact.
+2. Authentication works.
+3. MFA architecture works.
+4. Passkey architecture is supported where practical.
+5. Sessions are manageable.
+6. Sessions can be revoked.
+7. Trusted-device system works.
+8. Roles work.
+9. Fine-grained permissions work.
+10. Server-side authorization is enforced.
+11. Financial Authority is separate from ordinary viewing permissions.
+12. Critical actions require step-up authentication.
+13. Security policies are versioned.
+14. Secrets remain server-side.
+15. Secrets do not appear in AI prompts.
+16. Banking tokens are protected.
+17. Trading credentials are protected.
+18. Withdrawal-enabled credentials trigger review.
+19. Sensitive data is properly classified.
+20. Tenant isolation works.
+21. Cross-household access tests fail safely.
+22. Security event logging works.
+23. Security Lock works.
+24. Secure My Account works.
+25. AI permissions remain advisory/read-only.
+26. Prompt-injection boundaries are enforced.
+27. File access is permission-controlled.
+28. Backups are tracked.
+29. Recovery testing works.
+30. Disaster-recovery procedures exist.
+31. Trading stays disabled after major recovery until reconciliation passes.
+32. Bank data can be resynchronized after recovery.
+33. Accounting integrity is verified after recovery.
+34. Security incidents can be tracked.
+35. Credential-compromise workflow works.
+36. Permission review works.
+37. Recovery drill works.
+38. Security Health Score works.
+39. Critical security tests are automated.
+40. Documentation matches implementation.
+
+---
+
+FINAL PRODUCT DIRECTION
+
+Capital OS should now be architected as:
+
+                    FAMILY CAPITAL
+                          │
+                          ▼
+                    CAPITAL OS
+                          │
+                SECURITY BOUNDARY
+                          │
+     ┌────────────────────┼────────────────────┐
+     ▼                    ▼                    ▼
+ HOUSEHOLD             PROPERTY            INVESTMENTS
+ FINANCE                                    / TREASURY
+     │                    │                    │
+     └────────────────────┼────────────────────┘
+                          ▼
+                  CAPITAL GOVERNOR
+                          │
+                     RISK GOVERNOR
+                          │
+                        HUMAN
+                          │
+                        ACTION
+
+Around the entire system:
+
+IDENTITY
+AUTHORIZATION
+ENCRYPTION
+AUDIT
+GUARDIAN
+BACKUPS
+RECOVERY
+
+Capital OS must assume that security controls will eventually be tested by:
+
+Human Error
+Credential Theft
+Software Bugs
+Malicious Input
+Provider Failures
+Infrastructure Failures
+
+The system should be designed so one failure does not become a household financial catastrophe.
+
+Maintain this security hierarchy:
+
+Identity
+→ Least Privilege
+→ Capital Containment
+→ Secrets Protection
+→ Detection
+→ Auditability
+→ Backup
+→ Recovery
+→ Verification
+
+Build accordingly.

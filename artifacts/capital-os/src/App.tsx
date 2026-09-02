@@ -88,6 +88,7 @@ import {
   BookOpen,
   Bell,
   Building2,
+  BriefcaseBusiness,
   CalendarDays,
   Check,
   ChevronRight,
@@ -140,6 +141,7 @@ import NotFound from '@/pages/not-found';
 import TreasuryPage from '@/pages/treasury';
 import AccountingPage from '@/pages/accounting';
 import OperationsPage from '@/pages/operations';
+import BusinessPage from '@/pages/business';
 import { Link, Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 
 const queryClient = new QueryClient();
@@ -171,6 +173,7 @@ const primaryNav = [
   { href: '/treasury', label: 'Treasury', icon: WalletCards },
   { href: '/portfolio', label: 'Portfolio', icon: BarChart3 },
   { href: '/properties', label: 'Properties', icon: Building2 },
+  { href: '/business', label: 'Business', icon: BriefcaseBusiness },
   { href: '/risk', label: 'Risk & readiness', icon: ShieldCheck },
 ];
 const planningNav = [
@@ -1336,6 +1339,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue
     <Route path="/accounts" component={() => <AccountsPage onFeedback={onFeedback} />} />
     <Route path="/accounting" component={() => <AccountingPage onFeedback={onFeedback} />} />
     <Route path="/operations" component={() => <OperationsPage onFeedback={onFeedback} />} />
+    <Route path="/business" component={() => <BusinessPage onFeedback={onFeedback} />} />
     <Route path="/goals" component={() => <GoalsPage onAction={onAction} />} />
     <Route path="/strategies" component={() => <StrategiesPage onFeedback={onFeedback} />} />
     <Route path="/micro-live" component={() => <MicroLivePage onFeedback={onFeedback} />} />

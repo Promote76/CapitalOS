@@ -3521,3 +3521,313 @@ export const UpdateOperationsNotificationPreferencesResponse = zod.object({
 })
 
 
+/**
+ * @summary Get the consolidated business and income engine overview
+ */
+export const getBusinessOverviewResponseHealthMin = 0;
+export const getBusinessOverviewResponseHealthMax = 100;
+
+
+
+export const GetBusinessOverviewResponse = zod.object({
+  "asOf": zod.coerce.date(),
+  "totals": zod.object({
+  "totalRevenue": zod.string(),
+  "businessProfit": zod.string(),
+  "ownerDistributions": zod.string(),
+  "businessCash": zod.string(),
+  "businessLiabilities": zod.string(),
+  "estimatedBusinessEquity": zod.string(),
+  "activeBusinesses": zod.number(),
+  "revenueThisMonth": zod.string(),
+  "profitMargin": zod.number(),
+  "ownerPay": zod.string(),
+  "reserveCoverageMonths": zod.number(),
+  "householdIncomeContribution": zod.string(),
+  "incomeConcentration": zod.number(),
+  "safeToDistribute": zod.string()
+}),
+  "health": zod.number().min(getBusinessOverviewResponseHealthMin).max(getBusinessOverviewResponseHealthMax),
+  "businesses": zod.array(zod.object({
+  "id": zod.string(),
+  "legalName": zod.string(),
+  "displayName": zod.string(),
+  "entityType": zod.string(),
+  "ownershipPercentage": zod.string(),
+  "taxClassification": zod.string().nullable(),
+  "industry": zod.string().nullable(),
+  "status": zod.string(),
+  "formationDate": zod.coerce.date().nullable(),
+  "state": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "recentRevenue": zod.array(zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "revenueDate": zod.coerce.date(),
+  "category": zod.string(),
+  "amount": zod.string(),
+  "customer": zod.string().nullable(),
+  "description": zod.string(),
+  "recurring": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})),
+  "recentExpenses": zod.array(zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "expenseDate": zod.coerce.date(),
+  "category": zod.string(),
+  "amount": zod.string(),
+  "description": zod.string(),
+  "expenseType": zod.string(),
+  "classification": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "distributions": zod.array(zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "distributionDate": zod.coerce.date(),
+  "amount": zod.string(),
+  "status": zod.string(),
+  "householdDestination": zod.string(),
+  "notes": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Create an operating business
+ */
+export const createBusinessEntityBodyLegalNameMax = 160;
+
+export const createBusinessEntityBodyDisplayNameMax = 80;
+
+export const createBusinessEntityBodyEntityTypeMax = 60;
+
+export const createBusinessEntityBodyOwnershipPercentageRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,3})?$');
+export const createBusinessEntityBodyNotesMax = 1000;
+
+
+
+export const CreateBusinessEntityBody = zod.object({
+  "legalName": zod.string().min(1).max(createBusinessEntityBodyLegalNameMax),
+  "displayName": zod.string().min(1).max(createBusinessEntityBodyDisplayNameMax),
+  "entityType": zod.string().min(1).max(createBusinessEntityBodyEntityTypeMax),
+  "ownershipPercentage": zod.string().regex(createBusinessEntityBodyOwnershipPercentageRegExp),
+  "taxClassification": zod.string().optional(),
+  "industry": zod.string().optional(),
+  "status": zod.string().optional(),
+  "formationDate": zod.coerce.date().optional(),
+  "state": zod.string().optional(),
+  "notes": zod.string().max(createBusinessEntityBodyNotesMax).optional()
+})
+
+export const CreateBusinessEntityResponse = zod.object({
+  "id": zod.string(),
+  "legalName": zod.string(),
+  "displayName": zod.string(),
+  "entityType": zod.string(),
+  "ownershipPercentage": zod.string(),
+  "taxClassification": zod.string().nullable(),
+  "industry": zod.string().nullable(),
+  "status": zod.string(),
+  "formationDate": zod.coerce.date().nullable(),
+  "state": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List household businesses
+ */
+export const ListBusinessEntitiesResponseItem = zod.object({
+  "id": zod.string(),
+  "legalName": zod.string(),
+  "displayName": zod.string(),
+  "entityType": zod.string(),
+  "ownershipPercentage": zod.string(),
+  "taxClassification": zod.string().nullable(),
+  "industry": zod.string().nullable(),
+  "status": zod.string(),
+  "formationDate": zod.coerce.date().nullable(),
+  "state": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListBusinessEntitiesResponse = zod.array(ListBusinessEntitiesResponseItem)
+
+
+/**
+ * @summary Update a business profile
+ */
+export const UpdateBusinessEntityParams = zod.object({
+  "businessId": zod.coerce.string()
+})
+
+export const updateBusinessEntityBodyDisplayNameMax = 80;
+
+export const updateBusinessEntityBodyEntityTypeMax = 60;
+
+export const updateBusinessEntityBodyOwnershipPercentageRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,3})?$');
+export const updateBusinessEntityBodyNotesMax = 1000;
+
+
+
+export const UpdateBusinessEntityBody = zod.object({
+  "displayName": zod.string().min(1).max(updateBusinessEntityBodyDisplayNameMax).optional(),
+  "entityType": zod.string().min(1).max(updateBusinessEntityBodyEntityTypeMax).optional(),
+  "ownershipPercentage": zod.string().regex(updateBusinessEntityBodyOwnershipPercentageRegExp).optional(),
+  "taxClassification": zod.string().optional(),
+  "industry": zod.string().optional(),
+  "status": zod.string().optional(),
+  "formationDate": zod.coerce.date().optional(),
+  "state": zod.string().optional(),
+  "notes": zod.string().max(updateBusinessEntityBodyNotesMax).optional()
+})
+
+export const UpdateBusinessEntityResponse = zod.object({
+  "id": zod.string(),
+  "legalName": zod.string(),
+  "displayName": zod.string(),
+  "entityType": zod.string(),
+  "ownershipPercentage": zod.string(),
+  "taxClassification": zod.string().nullable(),
+  "industry": zod.string().nullable(),
+  "status": zod.string(),
+  "formationDate": zod.coerce.date().nullable(),
+  "state": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Record business revenue
+ */
+export const createBusinessRevenueBodyCategoryMax = 60;
+
+export const createBusinessRevenueBodyAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createBusinessRevenueBodyDescriptionMax = 500;
+
+
+
+export const CreateBusinessRevenueBody = zod.object({
+  "businessId": zod.string(),
+  "revenueDate": zod.coerce.date(),
+  "category": zod.string().min(1).max(createBusinessRevenueBodyCategoryMax),
+  "amount": zod.string().regex(createBusinessRevenueBodyAmountRegExp),
+  "customer": zod.string().optional(),
+  "description": zod.string().min(1).max(createBusinessRevenueBodyDescriptionMax),
+  "recurring": zod.boolean().optional()
+})
+
+export const CreateBusinessRevenueResponse = zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "revenueDate": zod.coerce.date(),
+  "category": zod.string(),
+  "amount": zod.string(),
+  "customer": zod.string().nullable(),
+  "description": zod.string(),
+  "recurring": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Record a business expense
+ */
+export const createBusinessExpenseBodyCategoryMax = 60;
+
+export const createBusinessExpenseBodyAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createBusinessExpenseBodyDescriptionMax = 500;
+
+
+
+export const CreateBusinessExpenseBody = zod.object({
+  "businessId": zod.string(),
+  "expenseDate": zod.coerce.date(),
+  "category": zod.string().min(1).max(createBusinessExpenseBodyCategoryMax),
+  "amount": zod.string().regex(createBusinessExpenseBodyAmountRegExp),
+  "description": zod.string().min(1).max(createBusinessExpenseBodyDescriptionMax),
+  "expenseType": zod.string().optional(),
+  "classification": zod.string().optional()
+})
+
+export const CreateBusinessExpenseResponse = zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "expenseDate": zod.coerce.date(),
+  "category": zod.string(),
+  "amount": zod.string(),
+  "description": zod.string(),
+  "expenseType": zod.string(),
+  "classification": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Prepare an owner distribution for human review
+ */
+export const createBusinessDistributionBodyAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createBusinessDistributionBodyNotesMax = 500;
+
+
+
+export const CreateBusinessDistributionBody = zod.object({
+  "businessId": zod.string(),
+  "distributionDate": zod.coerce.date(),
+  "amount": zod.string().regex(createBusinessDistributionBodyAmountRegExp),
+  "householdDestination": zod.string().optional(),
+  "notes": zod.string().max(createBusinessDistributionBodyNotesMax).optional()
+})
+
+export const CreateBusinessDistributionResponse = zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "distributionDate": zod.coerce.date(),
+  "amount": zod.string(),
+  "status": zod.string(),
+  "householdDestination": zod.string(),
+  "notes": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update business reserve planning assumptions
+ */
+export const UpdateBusinessReserveParams = zod.object({
+  "businessId": zod.coerce.string()
+})
+
+export const updateBusinessReserveBodyTargetAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const updateBusinessReserveBodyTaxReserveRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const updateBusinessReserveBodySafetyBufferRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+
+
+export const UpdateBusinessReserveBody = zod.object({
+  "targetMethod": zod.string().optional(),
+  "targetAmount": zod.string().regex(updateBusinessReserveBodyTargetAmountRegExp).optional(),
+  "taxReserve": zod.string().regex(updateBusinessReserveBodyTaxReserveRegExp).optional(),
+  "safetyBuffer": zod.string().regex(updateBusinessReserveBodySafetyBufferRegExp).optional()
+})
+
+export const UpdateBusinessReserveResponse = zod.object({
+  "businessId": zod.string(),
+  "targetMethod": zod.string(),
+  "targetAmount": zod.string(),
+  "taxReserve": zod.string(),
+  "safetyBuffer": zod.string(),
+  "updatedAt": zod.coerce.date()
+})
+
+

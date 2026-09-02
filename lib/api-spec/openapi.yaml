@@ -18,6 +18,7 @@ tags:
   - name: treasury
   - name: accounting
   - name: operations
+  - name: business
 paths:
   /healthz:
     get:
@@ -1514,6 +1515,150 @@ paths:
               schema: { $ref: "#/components/schemas/OperationsNotificationPreferences" }
         "403":
           $ref: "#/components/responses/Forbidden"
+  /business:
+    get:
+      operationId: getBusinessOverview
+      tags: [business]
+      summary: Get the consolidated business and income engine overview
+      responses:
+        "200":
+          description: Business overview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessOverview" }
+  /business/companies:
+    post:
+      operationId: createBusinessEntity
+      tags: [business]
+      summary: Create an operating business
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessEntityInput" }
+      responses:
+        "201":
+          description: Created business
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessEntity" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    get:
+      operationId: listBusinessEntities
+      tags: [business]
+      summary: List household businesses
+      responses:
+        "200":
+          description: Businesses
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/BusinessEntity" } }
+  /business/companies/{businessId}:
+    patch:
+      operationId: updateBusinessEntity
+      tags: [business]
+      summary: Update a business profile
+      parameters:
+        - name: businessId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessEntityUpdate" }
+      responses:
+        "200":
+          description: Updated business
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessEntity" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /business/revenue:
+    post:
+      operationId: createBusinessRevenue
+      tags: [business]
+      summary: Record business revenue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessRevenueInput" }
+      responses:
+        "201":
+          description: Recorded business revenue
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessRevenue" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /business/expenses:
+    post:
+      operationId: createBusinessExpense
+      tags: [business]
+      summary: Record a business expense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessExpenseInput" }
+      responses:
+        "201":
+          description: Recorded business expense
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessExpense" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /business/distributions:
+    post:
+      operationId: createBusinessDistribution
+      tags: [business]
+      summary: Prepare an owner distribution for human review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessDistributionInput" }
+      responses:
+        "201":
+          description: Proposed owner distribution
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessDistribution" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /business/reserves/{businessId}:
+    patch:
+      operationId: updateBusinessReserve
+      tags: [business]
+      summary: Update business reserve planning assumptions
+      parameters:
+        - name: businessId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessReserveUpdate" }
+      responses:
+        "200":
+          description: Updated business reserve
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessReserve" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
 components:
   parameters:
     IdempotencyKey:
@@ -3377,6 +3522,163 @@ components:
         accounts:
           type: array
           items: { $ref: "#/components/schemas/AccountingAccount" }
+    BusinessEntity:
+      type: object
+      required: [id, legalName, displayName, entityType, ownershipPercentage, status, industry, taxClassification, formationDate, state, notes, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        legalName: { type: string }
+        displayName: { type: string }
+        entityType: { type: string }
+        ownershipPercentage: { type: string }
+        taxClassification: { type: ["string", "null"] }
+        industry: { type: ["string", "null"] }
+        status: { type: string }
+        formationDate: { type: ["string", "null"], format: date }
+        state: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    BusinessEntityInput:
+      type: object
+      required: [legalName, displayName, entityType, ownershipPercentage]
+      properties:
+        legalName: { type: string, minLength: 1, maxLength: 160 }
+        displayName: { type: string, minLength: 1, maxLength: 80 }
+        entityType: { type: string, minLength: 1, maxLength: 60 }
+        ownershipPercentage: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,3})?$" }
+        taxClassification: { type: string }
+        industry: { type: string }
+        status: { type: string }
+        formationDate: { type: string, format: date }
+        state: { type: string }
+        notes: { type: string, maxLength: 1000 }
+    BusinessEntityUpdate:
+      type: object
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 80 }
+        entityType: { type: string, minLength: 1, maxLength: 60 }
+        ownershipPercentage: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,3})?$" }
+        taxClassification: { type: string }
+        industry: { type: string }
+        status: { type: string }
+        formationDate: { type: string, format: date }
+        state: { type: string }
+        notes: { type: string, maxLength: 1000 }
+    BusinessRevenue:
+      type: object
+      required: [id, businessId, revenueDate, category, amount, customer, description, recurring, createdAt]
+      properties:
+        id: { type: string }
+        businessId: { type: string }
+        revenueDate: { type: string, format: date }
+        category: { type: string }
+        amount: { type: string }
+        customer: { type: ["string", "null"] }
+        description: { type: string }
+        recurring: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    BusinessRevenueInput:
+      type: object
+      required: [businessId, revenueDate, category, amount, description]
+      properties:
+        businessId: { type: string }
+        revenueDate: { type: string, format: date }
+        category: { type: string, minLength: 1, maxLength: 60 }
+        amount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        customer: { type: string }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        recurring: { type: boolean }
+    BusinessExpense:
+      type: object
+      required: [id, businessId, expenseDate, category, amount, description, expenseType, classification, createdAt]
+      properties:
+        id: { type: string }
+        businessId: { type: string }
+        expenseDate: { type: string, format: date }
+        category: { type: string }
+        amount: { type: string }
+        description: { type: string }
+        expenseType: { type: string }
+        classification: { type: string }
+        createdAt: { type: string, format: date-time }
+    BusinessExpenseInput:
+      type: object
+      required: [businessId, expenseDate, category, amount, description]
+      properties:
+        businessId: { type: string }
+        expenseDate: { type: string, format: date }
+        category: { type: string, minLength: 1, maxLength: 60 }
+        amount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        expenseType: { type: string }
+        classification: { type: string }
+    BusinessReserve:
+      type: object
+      required: [businessId, targetMethod, targetAmount, taxReserve, safetyBuffer, updatedAt]
+      properties:
+        businessId: { type: string }
+        targetMethod: { type: string }
+        targetAmount: { type: string }
+        taxReserve: { type: string }
+        safetyBuffer: { type: string }
+        updatedAt: { type: string, format: date-time }
+    BusinessReserveUpdate:
+      type: object
+      properties:
+        targetMethod: { type: string }
+        targetAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        taxReserve: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        safetyBuffer: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+    BusinessDistribution:
+      type: object
+      required: [id, businessId, distributionDate, amount, status, householdDestination, notes, createdAt]
+      properties:
+        id: { type: string }
+        businessId: { type: string }
+        distributionDate: { type: string, format: date }
+        amount: { type: string }
+        status: { type: string }
+        householdDestination: { type: string }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    BusinessDistributionInput:
+      type: object
+      required: [businessId, distributionDate, amount]
+      properties:
+        businessId: { type: string }
+        distributionDate: { type: string, format: date }
+        amount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        householdDestination: { type: string }
+        notes: { type: string, maxLength: 500 }
+    BusinessOverview:
+      type: object
+      required: [asOf, totals, health, businesses, recentRevenue, recentExpenses, distributions]
+      properties:
+        asOf: { type: string, format: date }
+        totals:
+          type: object
+          required: [totalRevenue, businessProfit, ownerDistributions, businessCash, businessLiabilities, estimatedBusinessEquity, activeBusinesses, revenueThisMonth, profitMargin, ownerPay, reserveCoverageMonths, householdIncomeContribution, incomeConcentration, safeToDistribute]
+          properties:
+            totalRevenue: { type: string }
+            businessProfit: { type: string }
+            ownerDistributions: { type: string }
+            businessCash: { type: string }
+            businessLiabilities: { type: string }
+            estimatedBusinessEquity: { type: string }
+            activeBusinesses: { type: number }
+            revenueThisMonth: { type: string }
+            profitMargin: { type: number }
+            ownerPay: { type: string }
+            reserveCoverageMonths: { type: number }
+            householdIncomeContribution: { type: string }
+            incomeConcentration: { type: number }
+            safeToDistribute: { type: string }
+        health: { type: number, minimum: 0, maximum: 100 }
+        businesses: { type: array, items: { $ref: "#/components/schemas/BusinessEntity" } }
+        recentRevenue: { type: array, items: { $ref: "#/components/schemas/BusinessRevenue" } }
+        recentExpenses: { type: array, items: { $ref: "#/components/schemas/BusinessExpense" } }
+        distributions: { type: array, items: { $ref: "#/components/schemas/BusinessDistribution" } }
     TreasuryBucket:
       type: object
       required: [id, name, bucketType, priority, targetAmount, minimumAmount, maximumAmount, currentBalance, protected, liquid, liquidityClass, riskClass, withdrawalPolicy, fundingRule]

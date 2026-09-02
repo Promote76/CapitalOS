@@ -1,0 +1,2087 @@
+Replit Prompt: Build Capital OS Business, Income & Operating Company Engine
+
+Continue building the existing Capital OS application.
+
+Do not redesign the approved UI.
+
+Preserve all existing modules, including:
+
+- Household Budget
+- Cash Flow
+- Wells Fargo / Plaid integration
+- Accounts
+- Safe-to-Deploy
+- Capital Governor
+- Treasury Engine
+- Protected Capital
+- Duplex Goal
+- Duplex Acquisition OS
+- Property Readiness
+- Portfolio
+- Risk Governor
+- AI CIO
+- Strategy Lab
+- Micro-Live Execution
+- OMS
+- Guardian
+- Accounting
+- Family Net Worth
+- Tax Lots
+- Reporting
+- Security
+- Operations & Automation
+- Audit Ledger
+- Blockchain-ready architecture
+
+This phase builds:
+
+CAPITAL OS BUSINESS & INCOME ENGINE
+
+The purpose is to allow Capital OS to understand that household wealth may come from multiple economic engines.
+
+Capital OS should support:
+
+Household Income
++
+1099 / Contract Income
++
+Operating Businesses
++
+Real Estate Income
++
+Investment Income
++
+Future Ventures
+
+The system must distinguish:
+
+Business Revenue
+≠
+Household Income
+≠
+Business Profit
+≠
+Owner Distribution
+≠
+Spendable Household Cash
+
+Capital OS should answer:
+
+«Which businesses are actually generating economic value?»
+
+«How much business revenue becomes household cash?»
+
+«How much capital should remain inside each business?»
+
+«How much can safely be distributed?»
+
+«Which expenses belong to the business versus the household?»
+
+«How volatile is income?»
+
+«How dependent is the household on one income source?»
+
+«What percentage of family net worth comes from operating businesses?»
+
+«Should additional capital be reinvested in a business, directed toward the duplex, held in Treasury, or invested elsewhere?»
+
+---
+
+1. CORE PRINCIPLE
+
+Business accounts must remain financially distinct from household accounts.
+
+Do not assume:
+
+Business Bank Balance
+=
+Household Available Cash
+
+Instead:
+
+Business Revenue
+↓
+Business Expenses
+↓
+Business Taxes / Reserves
+↓
+Business Operating Reserve
+↓
+Business Capital Requirements
+↓
+Available Distribution
+↓
+Owner Distribution
+↓
+Household Cash Flow
+
+This distinction must flow through the Treasury and Safe-to-Deploy systems.
+
+---
+
+2. NAVIGATION
+
+Add:
+
+Business
+├── Overview
+├── Companies
+├── Income
+├── Revenue
+├── Expenses
+├── Profitability
+├── Cash Flow
+├── Reserves
+├── Owner Pay
+├── Distributions
+├── Documents
+└── Reports
+
+Keep the interface consistent with the Capital OS light family-office design system.
+
+---
+
+3. BUSINESS OVERVIEW
+
+Create "/business".
+
+Display:
+
+OPERATING BUSINESSES
+
+Total Business Revenue
+$XX,XXX
+
+Business Profit
+$X,XXX
+
+Owner Distributions
+$X,XXX
+
+Business Cash
+$XX,XXX
+
+Business Liabilities
+$X,XXX
+
+Estimated Business Equity
+$XX,XXX
+
+Also show:
+
+- Active Businesses
+- Revenue This Month
+- Profit Margin
+- Owner Pay
+- Business Reserve Coverage
+- Household Income Contribution
+- Income Concentration
+- Top Business Alert
+
+---
+
+4. BUSINESS ENTITY MODEL
+
+Create:
+
+BusinessEntity
+
+Fields:
+
+business_id
+household_id
+legal_name
+display_name
+entity_type
+ownership_percentage
+tax_classification
+industry
+status
+formation_date
+state
+ein_reference
+notes
+
+Avoid displaying sensitive identifiers unnecessarily.
+
+---
+
+5. ENTITY TYPES
+
+Support:
+
+Sole Proprietorship
+Single-Member LLC
+Multi-Member LLC
+Partnership
+S Corporation
+C Corporation
+Other
+
+Do not infer tax treatment solely from entity type.
+
+---
+
+6. BUSINESS STATUS
+
+Use:
+
+Planning
+Active
+Paused
+Dormant
+Sold
+Closed
+
+---
+
+7. BUSINESS OWNERSHIP
+
+Track:
+
+Ownership %
+
+This should affect:
+
+Estimated Household Business Equity
+
+but should not automatically determine tax treatment or distribution rights.
+
+---
+
+8. BUSINESS ACCOUNT LINKING
+
+Allow financial accounts to be assigned to a business.
+
+Examples:
+
+Business Checking
+Business Savings
+Business Credit Card
+Business Loan
+Merchant Account
+Business Brokerage
+
+Use existing Banking Provider architecture where possible.
+
+---
+
+9. ACCOUNT CLASSIFICATION
+
+Each account should explicitly identify:
+
+HOUSEHOLD
+BUSINESS
+PROPERTY
+STRATEGY
+TREASURY
+
+Do not automatically mix account balances between domains.
+
+---
+
+10. INCOME SOURCE ENGINE
+
+Expand the existing Income Engine.
+
+Create:
+
+IncomeSource
+
+Types:
+
+W-2
+1099
+Contract
+Business Distribution
+Business Salary
+Rental Income
+Investment Income
+Interest
+Dividend
+Other
+
+---
+
+11. INCOME SOURCE METRICS
+
+Track:
+
+Current Month
+Trailing 30 Days
+Trailing 90 Days
+6 Months
+12 Months
+
+Average
+Median
+Minimum
+Maximum
+Volatility
+Trend
+
+---
+
+12. VARIABLE INCOME INTELLIGENCE
+
+For variable income calculate:
+
+Income Stability Score
+0–100
+
+Potential inputs:
+
+Frequency
+Variance
+Minimum Observed Income
+Seasonality
+Source Concentration
+Missed Income Periods
+
+---
+
+13. INCOME CONFIDENCE
+
+Create:
+
+Income Confidence
+HIGH
+MEDIUM
+LOW
+
+based on:
+
+Data History
+Source Reliability
+Pattern Consistency
+Data Freshness
+
+Treasury should become more conservative when income confidence is low.
+
+---
+
+14. REVENUE ENGINE
+
+Create business revenue tracking.
+
+Categories:
+
+Operating Revenue
+Service Revenue
+Product Revenue
+Contract Revenue
+Recurring Revenue
+Other Revenue
+
+Store gross revenue separately from business profit.
+
+---
+
+15. BUSINESS EXPENSE ENGINE
+
+Create business categories such as:
+
+Fuel
+Vehicle
+Repairs
+Insurance
+Equipment
+Software
+Professional Services
+Bank Fees
+Interest
+Travel
+Meals
+Marketing
+Payroll
+Contractors
+Taxes
+Licenses
+Rent
+Utilities
+Supplies
+Other
+
+Categories must remain configurable.
+
+---
+
+16. BUSINESS VS PERSONAL
+
+Support transaction classification:
+
+Business
+Personal
+Mixed
+Reimbursable
+Transfer
+
+For mixed transactions allow split allocation.
+
+---
+
+17. BUSINESS PROFIT
+
+Calculate:
+
+Business Operating Profit
+=
+Business Revenue
+-
+Business Operating Expenses
+
+Also track:
+
+Interest
+Taxes
+Owner Compensation
+Capital Expenditures
+
+separately where appropriate.
+
+---
+
+18. BUSINESS PROFITABILITY DASHBOARD
+
+Display:
+
+Revenue
+Expenses
+Operating Profit
+Profit Margin
+Cash Flow
+Owner Pay
+
+for:
+
+Current Month
+Previous Month
+Quarter
+YTD
+Trailing 12 Months
+
+---
+
+19. BUSINESS CASH FLOW
+
+Create:
+
+Cash Inflow
+Cash Outflow
+Net Operating Cash Flow
+Capital Spending
+Debt Service
+Owner Distributions
+Net Change in Cash
+
+---
+
+20. BUSINESS CASH RESERVE
+
+Create:
+
+Business Operating Reserve
+
+Target methods:
+
+Fixed Dollar Amount
+2 Weeks Expenses
+1 Month
+2 Months
+3 Months
+6 Months
+
+---
+
+21. BUSINESS RESERVE COVERAGE
+
+Calculate:
+
+Business Cash
+/
+Average Monthly Business Operating Expenses
+
+Display:
+
+Reserve Coverage:
+2.7 months
+
+---
+
+22. OWNER PAY ENGINE
+
+Create a model for:
+
+Owner Salary
+Owner Draw
+Owner Distribution
+Reimbursement
+Business-to-Household Transfer
+
+Do not treat all business withdrawals as ordinary household income automatically.
+
+---
+
+23. DISTRIBUTABLE CASH
+
+Create a deterministic calculation:
+
+Potentially Distributable Cash
+=
+Business Liquid Cash
+- Upcoming Business Obligations
+- Operating Reserve Requirement
+- Tax Reserve
+- Debt Requirements
+- Known Capital Expenditures
+- Business Safety Buffer
+
+Then:
+
+MAX(0, result)
+
+Label:
+
+AVAILABLE FOR OWNER REVIEW
+
+not:
+
+Guaranteed Distribution
+
+---
+
+24. DISTRIBUTION GOVERNOR
+
+Create business distribution rules.
+
+Examples:
+
+Minimum Business Cash
+Minimum Reserve Coverage
+Maximum Distribution %
+Minimum Tax Reserve
+Upcoming Obligation Protection
+
+No AI may override these.
+
+---
+
+25. BUSINESS → HOUSEHOLD FLOW
+
+When an owner distribution is confirmed:
+
+Business Capital
+↓
+Owner Distribution
+↓
+Household Income / Capital Flow
+↓
+Treasury
+↓
+Household Priority Waterfall
+
+The household Treasury decides what happens next.
+
+---
+
+26. DISTRIBUTION EXAMPLE
+
+Example:
+
+Business Cash:
+$18,000
+
+Operating Reserve:
+-$8,000
+
+Upcoming Expenses:
+-$2,500
+
+Tax Reserve:
+-$2,000
+
+Capital Needs:
+-$1,000
+
+Potential Distribution:
+$4,500
+
+Then Treasury may recommend:
+
+Duplex Reserve
+$2,000
+
+Emergency Reserve
+$1,000
+
+Treasury
+$1,000
+
+Capital OS
+$500
+
+Human approval required.
+
+---
+
+27. BUSINESS TAX RESERVE
+
+Create configurable:
+
+Tax Reserve
+
+The system may estimate a percentage for planning only if explicitly configured.
+
+Do not present tax liability calculations as authoritative tax advice.
+
+---
+
+28. BUSINESS CAPITAL EXPENDITURES
+
+Track:
+
+Equipment
+Vehicles
+Technology
+Property
+Major Repairs
+Other Long-Lived Assets
+
+Create:
+
+CapitalExpenditure
+
+with:
+
+amount
+date
+asset
+purpose
+expected_life
+funding_source
+
+---
+
+29. OPERATING EXPENSE VS CAPITAL EXPENDITURE
+
+Keep them distinct.
+
+Do not classify a major asset purchase as ordinary monthly operating expense without explicit accounting treatment.
+
+---
+
+30. BUSINESS DEBT
+
+Track:
+
+Business Loan
+Equipment Loan
+Vehicle Loan
+Credit Line
+Credit Card
+Other
+
+Metrics:
+
+Outstanding Balance
+Rate
+Monthly Payment
+Maturity
+Collateral
+
+---
+
+31. BUSINESS DEBT SERVICE
+
+Calculate:
+
+Monthly Debt Service
+Debt-to-Revenue
+Debt-to-Cash-Flow
+
+for internal planning.
+
+---
+
+32. BUSINESS LIQUIDITY
+
+Calculate:
+
+Business Liquid Assets
+Business Current Obligations
+Business Reserve Coverage
+
+Keep business liquidity separate from household liquidity.
+
+---
+
+33. BUSINESS SAFE-TO-DISTRIBUTE
+
+Create:
+
+SAFE TO DISTRIBUTE
+
+Similar to household Safe-to-Deploy but business-specific.
+
+Example:
+
+Business Cash             $20,000
+30-Day Obligations        -$4,000
+Operating Reserve         -$8,000
+Tax Reserve               -$2,500
+Upcoming Equipment        -$1,500
+---------------------------------
+Safe to Distribute         $4,000
+
+---
+
+34. BUSINESS CAPITAL GOVERNOR
+
+Create a Business Capital Governor that prevents distributions that would:
+
+Breach reserve floor
+Cause projected bill shortfall
+Violate debt requirements
+Consume protected business capital
+Create negative operating liquidity
+
+---
+
+35. CAPITAL RETENTION VS DISTRIBUTION
+
+Allow scenarios:
+
+Retain in Business
+Distribute to Household
+Pay Down Business Debt
+Fund Expansion
+Increase Business Reserve
+
+Compare impacts.
+
+---
+
+36. REINVESTMENT ANALYSIS
+
+Create a structured framework for evaluating:
+
+Business Reinvestment
+
+Inputs:
+
+Required Capital
+Expected Incremental Revenue
+Expected Incremental Profit
+Payback Period
+Risk
+Liquidity Impact
+Confidence
+
+Do not rely solely on projected ROI.
+
+---
+
+37. REINVESTMENT REQUEST
+
+Create:
+
+BusinessCapitalRequest
+
+Examples:
+
+New Equipment
+Marketing
+New Vehicle
+Software
+Hiring
+Expansion
+Working Capital
+
+---
+
+38. BUSINESS CAPITAL REQUEST FLOW
+
+Require:
+
+Business Need
+↓
+Financial Analysis
+↓
+Business Governor
+↓
+Household Treasury Impact
+↓
+Capital Governor
+↓
+Human Approval
+
+---
+
+39. HOUSEHOLD VS BUSINESS CAPITAL CONFLICT
+
+Example:
+
+Business requests:
+$8,000 equipment investment
+
+Household:
+Duplex closing target approaching
+
+Capital OS should explicitly show the conflict.
+
+---
+
+40. CAPITAL PRIORITY DECISION
+
+Possible output:
+
+BUSINESS CAPITAL REQUEST
+
+Requested:
+$8,000
+
+Business Case:
+Moderate
+
+Duplex Impact:
+High
+
+Household Liquidity Impact:
+High
+
+Recommendation:
+Defer
+
+---
+
+41. BUSINESS PERFORMANCE SCORE
+
+Create:
+
+BUSINESS HEALTH
+0–100
+
+Potential inputs:
+
+Revenue Trend
+Profit Margin
+Cash Flow
+Reserve Coverage
+Debt Load
+Revenue Concentration
+Expense Stability
+Owner Dependency
+Data Quality
+
+---
+
+42. BUSINESS HEALTH CLASSIFICATION
+
+Use:
+
+0–39 Critical
+40–59 Weak
+60–74 Stable
+75–89 Strong
+90–100 Excellent
+
+Informational only.
+
+---
+
+43. BUSINESS QUALITY VS CASH GENERATION
+
+Keep separate metrics:
+
+Business Health
+
+and:
+
+Owner Cash Generation
+
+A growing business may have strong economics while retaining cash internally.
+
+---
+
+44. REVENUE CONCENTRATION
+
+Track:
+
+Revenue by Customer
+Revenue by Contract
+Revenue by Business Line
+Revenue by Geography
+
+where data exists.
+
+---
+
+45. CUSTOMER CONCENTRATION RISK
+
+Example:
+
+Top Customer:
+68% of revenue
+
+Flag:
+
+HIGH REVENUE CONCENTRATION
+
+Do not assume diversification if actual revenue sources are concentrated.
+
+---
+
+46. HOUSEHOLD INCOME CONCENTRATION
+
+Across all household income sources calculate:
+
+Income Source A
+Income Source B
+Business Distribution
+Rental Income
+Investment Income
+
+Then identify dependence.
+
+Example:
+
+Primary Source:
+81% of household income
+
+---
+
+47. INCOME DIVERSIFICATION SCORE
+
+Create:
+
+INCOME DIVERSIFICATION
+0–100
+
+This should consider:
+
+Number of Sources
+Source Correlation
+Source Stability
+Largest Source %
+
+---
+
+48. BUSINESS SEASONALITY
+
+Detect possible seasonality.
+
+Display:
+
+High Revenue Months
+Low Revenue Months
+Seasonal Expense Periods
+
+Use this in reserve planning.
+
+---
+
+49. BUSINESS FORECAST
+
+Create:
+
+30 Days
+90 Days
+6 Months
+12 Months
+
+forecast for:
+
+Revenue
+Expenses
+Cash Flow
+Reserve
+Distributable Cash
+
+Clearly mark:
+
+PROJECTED
+
+---
+
+50. DOWNSIDE FORECAST
+
+Test:
+
+Revenue -10%
+Revenue -20%
+Revenue -40%
+
+Expenses +10%
+Unexpected repair
+Customer loss
+Temporary business interruption
+
+---
+
+51. BUSINESS STRESS TEST
+
+Example:
+
+Revenue -25%
++
+$5,000 unexpected expense
++
+2 months lower activity
+
+Calculate:
+
+Cash Remaining
+Reserve Coverage
+Debt Coverage
+Distribution Capacity
+Household Income Impact
+
+---
+
+52. HOUSEHOLD IMPACT OF BUSINESS SHOCK
+
+If a major business income source declines:
+
+Household Budget
+Treasury
+Safe-to-Deploy
+Duplex Goal
+
+must update.
+
+---
+
+53. BUSINESS INTERRUPTION MODE
+
+Create:
+
+NORMAL
+CAUTION
+DEFENSIVE
+PRESERVATION
+RECOVERY
+
+Possible responses:
+
+Pause Owner Distributions
+Protect Business Cash
+Reduce Growth Spending
+Increase Reserve
+Notify Household Treasury
+
+---
+
+54. INCOME SHOCK ENGINE
+
+Create a household-wide scenario:
+
+Primary Income Source Lost
+
+Show:
+
+Emergency Reserve Survival
+Duplex Contribution Sustainability
+Household Expense Coverage
+Safe-to-Deploy
+
+---
+
+55. BUSINESS DOCUMENT CENTER
+
+Support:
+
+Formation Documents
+Operating Agreement
+Licenses
+Contracts
+Invoices
+Statements
+Insurance
+Loans
+Tax Documents
+Receipts
+Equipment Documents
+
+Remain private.
+
+---
+
+56. CONTRACT TRACKING
+
+Create:
+
+BusinessContract
+
+Fields:
+
+customer
+start_date
+end_date
+value
+payment_terms
+renewal
+status
+document
+
+---
+
+57. CONTRACT EXPIRATION
+
+Create alerts for:
+
+30 Days
+60 Days
+90 Days
+
+before significant contracts expire.
+
+---
+
+58. ACCOUNTS RECEIVABLE
+
+Prepare:
+
+Invoice
+Receivable
+Payment
+
+architecture.
+
+Track:
+
+Issued
+Due
+Paid
+Overdue
+Partial
+Written Off
+
+---
+
+59. RECEIVABLE METRICS
+
+Calculate:
+
+Outstanding Receivables
+Average Days to Pay
+Overdue Amount
+Collection Rate
+
+---
+
+60. ACCOUNTS PAYABLE
+
+Create:
+
+VendorBill
+
+Track:
+
+Vendor
+Amount
+Due Date
+Status
+Business
+Category
+
+---
+
+61. BUSINESS CASH CONVERSION
+
+Track:
+
+Revenue Earned
+Cash Received
+Receivables Outstanding
+
+Do not treat invoiced revenue as cash available.
+
+---
+
+62. OWNER DEPENDENCY RISK
+
+Track whether business performance depends heavily on:
+
+Owner Time
+Owner Labor
+Owner License
+Owner Vehicle
+Single Customer
+Single Platform
+
+Create:
+
+Owner Dependency Risk
+LOW
+MODERATE
+HIGH
+
+---
+
+63. BUSINESS SYSTEMIZATION
+
+Prepare metrics such as:
+
+Revenue Not Requiring Owner Labor
+Recurring Revenue
+Processes Documented
+Delegated Functions
+
+for future business maturity analysis.
+
+---
+
+64. BUSINESS VALUATION
+
+Create an internal estimated value framework.
+
+Support methods:
+
+Owner Estimate
+Book Value
+Revenue Multiple
+Profit Multiple
+Professional Valuation
+Other
+
+Clearly mark:
+
+ESTIMATED BUSINESS VALUE
+
+---
+
+65. BUSINESS EQUITY
+
+Calculate:
+
+Estimated Business Equity
+=
+Estimated Business Value
+× Household Ownership %
+
+Keep liquid cash distinct.
+
+---
+
+66. BUSINESS VALUE CONFIDENCE
+
+Create:
+
+VALUATION CONFIDENCE
+0–100
+
+based on:
+
+Financial Data Quality
+Profit History
+Revenue History
+Valuation Method
+Professional Valuation Availability
+
+---
+
+67. NET WORTH INTEGRATION
+
+Business equity should flow into:
+
+Family Net Worth
+→ Business Interests
+
+Do not include full business enterprise value when household ownership is less than 100%.
+
+---
+
+68. BUSINESS CASH IN NET WORTH
+
+Business cash may contribute to business equity but should not automatically appear as unrestricted household cash.
+
+Avoid double counting.
+
+---
+
+69. ACCOUNTING INTEGRATION
+
+Use existing double-entry ledger.
+
+Business transactions should map to:
+
+Business Revenue
+Business Expense
+Business Asset
+Business Liability
+Owner Contribution
+Owner Distribution
+
+---
+
+70. INTERCOMPANY TRANSACTIONS
+
+Prepare support for future multiple businesses.
+
+Track:
+
+Business A
+→
+Business B
+
+as:
+
+Intercompany Transfer
+
+not household revenue.
+
+---
+
+71. OWNER CONTRIBUTIONS
+
+Track when household capital funds business activity.
+
+Example:
+
+Household Treasury -$5,000
+Business Capital +$5,000
+
+Classification:
+
+Owner Contribution
+
+not business revenue.
+
+---
+
+72. OWNER DISTRIBUTIONS
+
+Track:
+
+Business Capital -$2,000
+Household Cash +$2,000
+
+Classification:
+
+Owner Distribution
+
+not customer revenue.
+
+---
+
+73. BUSINESS PERFORMANCE ATTRIBUTION
+
+Explain changes in business equity.
+
+Example:
+
+Business Equity Change:
++$4,200
+
+Operating Profit        +$3,500
+Owner Contribution      +$1,000
+Owner Distribution        -$800
+Valuation Adjustment      +$500
+
+---
+
+74. BUSINESS REPORTING
+
+Create:
+
+Monthly Business Review
+Quarterly Business Review
+Annual Business Review
+
+---
+
+75. MONTHLY BUSINESS REVIEW
+
+Include:
+
+Revenue
+Expenses
+Operating Profit
+Cash Flow
+Reserve Coverage
+Debt
+Owner Distribution
+Receivables
+Upcoming Obligations
+Business Health
+
+---
+
+76. BUSINESS P&L
+
+Create:
+
+Revenue
+
+Cost of Revenue
+
+Gross Profit
+
+Operating Expenses
+
+Operating Profit
+
+Interest
+
+Other Income/Expense
+
+Net Internal Profit
+
+Make configuration flexible by business type.
+
+---
+
+77. BUSINESS BALANCE SHEET
+
+Create:
+
+Assets
+
+Cash
+Receivables
+Equipment
+Other Assets
+
+Liabilities
+
+Credit Cards
+Loans
+Payables
+
+Equity
+
+---
+
+78. BUSINESS CASH FLOW STATEMENT
+
+Create:
+
+Operating Cash Flow
+Investing Cash Flow
+Financing Cash Flow
+Owner Contributions
+Owner Distributions
+
+---
+
+79. MULTI-BUSINESS CONSOLIDATION
+
+Capital OS should support multiple future businesses.
+
+Create a consolidated view:
+
+OPERATING COMPANIES
+
+Business A
+Business B
+Business C
+
+then:
+
+Combined Revenue
+Combined Profit
+Combined Equity
+Combined Distributions
+
+Avoid double-counting intercompany flows.
+
+---
+
+80. FAMILY ECONOMIC ENGINE VIEW
+
+Create an executive visualization:
+
+FAMILY ECONOMIC ENGINES
+
+Income Source A
+      ↓
+Household Cash
+
+Business A
+      ↓
+Owner Distribution
+
+Rental Property
+      ↓
+Rental Cash Flow
+
+Treasury
+      ↓
+Yield
+
+Strategies
+      ↓
+Investment Return
+
+Then:
+
+TOTAL FAMILY CASH GENERATION
+
+---
+
+81. ACTIVE VS PASSIVE INCOME
+
+Classify income for internal analysis:
+
+Active
+Semi-Passive
+Passive
+
+User-editable.
+
+Do not imply tax classification.
+
+---
+
+82. FAMILY INCOME MIX
+
+Show:
+
+Active Income
+Business Income
+Rental Income
+Investment Income
+Interest
+
+as percentages.
+
+---
+
+83. TARGET INCOME DIVERSIFICATION
+
+Allow goals such as:
+
+Reduce dependence on primary earned income.
+Increase property income.
+Increase business distributions.
+Increase investment income.
+
+These are strategic goals, not guarantees.
+
+---
+
+84. INCOME REPLACEMENT ANALYSIS
+
+Create:
+
+Essential Household Expenses
+vs
+Non-Primary Income
+
+Example:
+
+Essential Expenses:
+$4,000/month
+
+Business + Rental + Investment:
+$1,500/month
+
+Income Replacement:
+37.5%
+
+---
+
+85. FINANCIAL INDEPENDENCE METRIC
+
+Create informational:
+
+CORE EXPENSE COVERAGE
+
+Formula:
+
+Recurring Non-Primary Cash Income
+/
+Essential Household Expenses
+
+Do not label this as guaranteed financial independence.
+
+---
+
+86. BUSINESS OPPORTUNITY PIPELINE
+
+Prepare:
+
+BusinessOpportunity
+
+Stages:
+
+Idea
+Research
+Validation
+Pilot
+Active
+Rejected
+
+---
+
+87. NEW BUSINESS CAPITAL REQUEST
+
+Before funding a new venture:
+
+Required Capital
+Expected Revenue
+Expected Expenses
+Break-Even
+Downside
+Household Impact
+Duplex Impact
+
+must be reviewed.
+
+---
+
+88. BUSINESS ACQUISITION SUPPORT
+
+Prepare architecture for future:
+
+Acquire Existing Business
+
+Track:
+
+Purchase Price
+Revenue
+Profit
+Debt
+Cash Flow
+Required Equity
+Financing
+Due Diligence
+
+Do not build transaction execution.
+
+---
+
+89. BUSINESS BUY BOX
+
+Prepare configurable criteria:
+
+Industry
+Revenue
+Profit
+Owner Involvement
+Purchase Price
+Cash Flow
+Debt
+Location
+Risk
+
+for future acquisitions.
+
+---
+
+90. AI BUSINESS ANALYST
+
+Add:
+
+AI BUSINESS ANALYST
+
+It may:
+
+Explain revenue changes
+Analyze expenses
+Identify margin deterioration
+Analyze reserve adequacy
+Evaluate capital requests
+Compare reinvestment vs distribution
+Detect income concentration
+Identify unusual business spending
+Generate business reports
+
+It may NOT:
+
+Move business money
+Sign contracts
+Apply for credit
+Take loans
+Make payroll
+Change capital policy
+
+---
+
+91. AI BUSINESS REVIEW EXAMPLE
+
+Example:
+
+BUSINESS ANALYST
+
+Revenue:
++8% vs trailing 90-day average
+
+Expenses:
++17%
+
+Operating Margin:
+Fell from 24% to 19%
+
+Primary Driver:
+Vehicle and repair costs
+
+Recommendation:
+Do not increase owner distributions until
+expense trend stabilizes.
+
+Risk:
+Moderate
+
+Confidence:
+88%
+
+---
+
+92. AI CAPITAL ALLOCATION COMPARISON
+
+Allow AI to compare:
+
+Retain $5,000 in Business
+vs
+Distribute $5,000 to Household
+vs
+Pay Down Business Debt
+vs
+Fund Duplex Reserve
+
+Values should be calculated by deterministic services.
+
+---
+
+93. AI INCOME RISK ADVISOR
+
+Identify:
+
+Source concentration
+Income volatility
+Business dependence
+Upcoming contract expiration
+Revenue deterioration
+
+and explain impact on household planning.
+
+---
+
+94. OPERATIONS INTEGRATION
+
+Create tasks/alerts for:
+
+Invoice overdue
+Contract expiring
+Reserve below minimum
+Revenue drop
+Expense spike
+Distribution review
+Business review due
+
+---
+
+95. TREASURY INTEGRATION
+
+Household Treasury should receive:
+
+Confirmed Owner Distribution
+
+not:
+
+Raw Business Revenue
+
+as household deployable cash.
+
+---
+
+96. SAFE-TO-DEPLOY INTEGRATION
+
+Only actual or highly certain household-accessible cash should influence household Safe-to-Deploy.
+
+Do not include:
+
+Accounts Receivable
+Unrealized Business Profit
+Protected Business Cash
+
+as spendable household cash.
+
+---
+
+97. DUPLEX INTEGRATION
+
+Business or contract income may support duplex planning metrics.
+
+Track:
+
+Income History
+Income Volatility
+Savings Capacity
+Distribution History
+
+Do not claim lender qualification.
+
+---
+
+98. PROPERTY CASH FLOW INTEGRATION
+
+After acquiring rental property:
+
+Property Rental Income
+
+should become another family income engine.
+
+Keep property-level accounting separate.
+
+---
+
+99. BUSINESS DOCUMENT PRIVACY
+
+Business documents should use:
+
+Owner
+Partner
+Accountant
+Advisor
+
+permission rules.
+
+---
+
+100. AUDIT EVENTS
+
+Add:
+
+BusinessCreated
+BusinessUpdated
+BusinessAccountLinked
+BusinessRevenueRecorded
+BusinessExpenseRecorded
+OwnerContributionRecorded
+OwnerDistributionRecorded
+BusinessCapitalRequestCreated
+BusinessCapitalRequestApproved
+BusinessReserveChanged
+BusinessValuationUpdated
+ContractAdded
+InvoiceCreated
+InvoicePaid
+
+---
+
+101. DATABASE ENTITIES
+
+Create or expand:
+
+BusinessEntity
+BusinessOwnership
+BusinessAccount
+BusinessRevenue
+BusinessExpense
+BusinessReserve
+BusinessLiability
+BusinessAsset
+BusinessCapitalRequest
+BusinessDistribution
+OwnerContribution
+BusinessForecast
+BusinessHealthSnapshot
+BusinessValuation
+BusinessContract
+Invoice
+Receivable
+VendorBill
+BusinessOpportunity
+
+---
+
+102. TESTING
+
+Add tests for:
+
+Business revenue does not automatically become household income
+Owner contributions are not classified as revenue
+Owner distributions are not classified as business expenses incorrectly
+Business account cash is not automatically Safe-to-Deploy
+Business reserve limits prevent excessive distributions
+Intercompany transfers do not create fake revenue
+Business ownership % affects equity correctly
+Business cash is not double-counted in family net worth
+
+---
+
+103. INTEGRATION TEST
+
+Test:
+
+Customer payment
+↓
+Business Revenue
+↓
+Business Cash
+↓
+Expense / Reserve Allocation
+↓
+Safe-to-Distribute
+↓
+Owner Distribution
+↓
+Household Treasury
+↓
+Duplex / Reserve / Strategy Allocation
+
+Ensure no double-counting.
+
+---
+
+104. BUSINESS FAILURE TEST
+
+Simulate:
+
+Revenue falls 50%
+
+Expected:
+
+Business Distribution Capacity Falls
+Household Income Forecast Falls
+Safe-to-Deploy Falls
+Risk Increases
+Duplex Timeline Recalculates
+
+No protected capital should be automatically raided.
+
+---
+
+105. BUSINESS SUCCESS TEST
+
+Simulate:
+
+Business generates unexpected $10,000 surplus
+
+Expected:
+
+Business Reserve Evaluated
+Tax Reserve Evaluated
+Safe-to-Distribute Calculated
+Owner Distribution Recommendation Created
+
+Do NOT automatically move the full $10,000 into household investments.
+
+---
+
+106. REPORTS
+
+Create:
+
+Business P&L
+Business Balance Sheet
+Business Cash Flow
+Owner Distribution Report
+Business Reserve Report
+Income Source Report
+Income Concentration Report
+Family Economic Engine Report
+
+---
+
+107. FAMILY OFFICE DASHBOARD UPDATE
+
+Add a compact:
+
+BUSINESS & INCOME
+
+card.
+
+Example:
+
+Monthly Business Income
+$X,XXX
+
+Business Profit
+$X,XXX
+
+Owner Distribution
+$X,XXX
+
+Income Stability
+82 / 100
+
+Primary Source Exposure
+64%
+
+Keep the Duplex Goal visually dominant.
+
+---
+
+108. FINAL VALIDATION
+
+Before declaring this phase complete, verify:
+
+1. Existing Capital OS UI remains intact.
+2. Multiple businesses are supported.
+3. Business accounts remain separate from household accounts.
+4. Revenue tracking works.
+5. Expense tracking works.
+6. Business P&L works.
+7. Business cash flow works.
+8. Business reserve works.
+9. Safe-to-Distribute works.
+10. Owner contributions are classified correctly.
+11. Owner distributions are classified correctly.
+12. Business cash does not automatically become household Safe-to-Deploy.
+13. Business equity integrates into family net worth correctly.
+14. Income source tracking works.
+15. Variable income analytics work.
+16. Income concentration works.
+17. Business stress testing works.
+18. Capital requests work.
+19. Treasury integration works.
+20. Duplex planning updates appropriately.
+21. AI Business Analyst remains advisory.
+22. Audit events are generated.
+23. Multi-business consolidation avoids double-counting.
+24. Business documents remain permission-controlled.
+25. Critical business financial logic has automated tests.
+
+---
+
+FINAL PRODUCT DIRECTION
+
+Capital OS should now understand the full family economic system:
+
+                    FAMILY CAPITAL
+                         │
+          ┌──────────────┼──────────────┐
+          ▼              ▼              ▼
+      HOUSEHOLD       BUSINESSES     INVESTMENTS
+       INCOME              │              │
+          │             PROFIT          RETURN
+          │                │              │
+          │          DISTRIBUTIONS        │
+          └──────────────┬─┴──────────────┘
+                         ▼
+                     TREASURY
+                         │
+                 CAPITAL GOVERNOR
+                         │
+          ┌──────────────┼──────────────┐
+          ▼              ▼              ▼
+        DUPLEX       RESERVES       STRATEGIES
+                         │
+                         ▼
+                  FAMILY NET WORTH
+
+Capital OS should not merely track income.
+
+It should identify:
+
+Where income originates
+How reliable it is
+How profitable each business is
+How much capital must remain inside the business
+How much can safely reach the household
+Where that household capital should go next
+
+Maintain this hierarchy:
+
+Business Survival
+→ Household Stability
+→ Protected Goals
+→ Liquidity
+→ Productive Reinvestment
+→ Controlled Distributions
+→ Wealth Compounding
+
+Build accordingly.

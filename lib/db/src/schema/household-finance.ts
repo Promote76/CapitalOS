@@ -25,6 +25,7 @@ import {
   upcomingExpensePriorityEnum,
 } from "./enums";
 import { households, users } from "./households";
+import { businessEntities } from "./business";
 
 const money = (name: string) => numeric(name, { precision: 18, scale: 2 }).notNull().default("0");
 
@@ -65,6 +66,7 @@ export const financialAccounts = pgTable(
     includedInNetWorth: boolean("included_in_net_worth").notNull().default(true),
     includedInBudget: boolean("included_in_budget").notNull().default(true),
     protected: boolean("protected").notNull().default(false),
+    businessEntityId: uuid("business_entity_id").references(() => businessEntities.id, { onDelete: "set null" }),
     dataSource: financeDataSourceEnum("data_source").notNull().default("manual"),
     lastSuccessfulSync: timestamp("last_successful_sync", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

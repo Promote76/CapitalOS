@@ -13,6 +13,7 @@ import microLiveRouter from "./micro-live";
 import treasuryRouter from "./treasury";
 import accountingRouter from "./accounting";
 import operationsRouter from "./operations";
+import businessRouter from "./business";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(microLiveRouter);
 router.use(treasuryRouter);
 router.use(accountingRouter);
 router.use(operationsRouter);
+router.use(businessRouter);
 
 export default router;

@@ -9,3 +9,4 @@
 - [Database publishing boundary](capital-os-database-publishing.md) — an external DATABASE_URL can let code publish while production schema stays stale; managed database setup must happen through Publish.
 - [Accounting overview boundary](capital-os-accounting-boundary.md) — current net worth comes from included financial-account balances; planning capital stays separate until explicitly reconciled.
 - [Concurrent additive seeding](capital-os-concurrent-seeding.md) — household-scoped advisory locks must serialize lazy seed routines reached by parallel API reads.
+- [Business capital boundary](capital-os-business-boundary.md) — business operating cash, profit, owner pay, and household deployable capital stay separate until an approved distribution bridge completes.

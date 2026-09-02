@@ -1980,6 +1980,211 @@ export interface AccountingOverview {
   accounts: AccountingAccount[];
 }
 
+export interface BusinessEntity {
+  id: string;
+  legalName: string;
+  displayName: string;
+  entityType: string;
+  ownershipPercentage: string;
+  /** @nullable */
+  taxClassification: string | null;
+  /** @nullable */
+  industry: string | null;
+  status: string;
+  /** @nullable */
+  formationDate: string | null;
+  /** @nullable */
+  state: string | null;
+  /** @nullable */
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BusinessEntityInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  legalName: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  displayName: string;
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  entityType: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,3})?$ */
+  ownershipPercentage: string;
+  taxClassification?: string;
+  industry?: string;
+  status?: string;
+  formationDate?: string;
+  state?: string;
+  /** @maxLength 1000 */
+  notes?: string;
+}
+
+export interface BusinessEntityUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  displayName?: string;
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  entityType?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,3})?$ */
+  ownershipPercentage?: string;
+  taxClassification?: string;
+  industry?: string;
+  status?: string;
+  formationDate?: string;
+  state?: string;
+  /** @maxLength 1000 */
+  notes?: string;
+}
+
+export interface BusinessRevenue {
+  id: string;
+  businessId: string;
+  revenueDate: string;
+  category: string;
+  amount: string;
+  /** @nullable */
+  customer: string | null;
+  description: string;
+  recurring: boolean;
+  createdAt: string;
+}
+
+export interface BusinessRevenueInput {
+  businessId: string;
+  revenueDate: string;
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  category: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  amount: string;
+  customer?: string;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  description: string;
+  recurring?: boolean;
+}
+
+export interface BusinessExpense {
+  id: string;
+  businessId: string;
+  expenseDate: string;
+  category: string;
+  amount: string;
+  description: string;
+  expenseType: string;
+  classification: string;
+  createdAt: string;
+}
+
+export interface BusinessExpenseInput {
+  businessId: string;
+  expenseDate: string;
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  category: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  amount: string;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  description: string;
+  expenseType?: string;
+  classification?: string;
+}
+
+export interface BusinessReserve {
+  businessId: string;
+  targetMethod: string;
+  targetAmount: string;
+  taxReserve: string;
+  safetyBuffer: string;
+  updatedAt: string;
+}
+
+export interface BusinessReserveUpdate {
+  targetMethod?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  targetAmount?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  taxReserve?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  safetyBuffer?: string;
+}
+
+export interface BusinessDistribution {
+  id: string;
+  businessId: string;
+  distributionDate: string;
+  amount: string;
+  status: string;
+  householdDestination: string;
+  /** @nullable */
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface BusinessDistributionInput {
+  businessId: string;
+  distributionDate: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  amount: string;
+  householdDestination?: string;
+  /** @maxLength 500 */
+  notes?: string;
+}
+
+export type BusinessOverviewTotals = {
+  totalRevenue: string;
+  businessProfit: string;
+  ownerDistributions: string;
+  businessCash: string;
+  businessLiabilities: string;
+  estimatedBusinessEquity: string;
+  activeBusinesses: number;
+  revenueThisMonth: string;
+  profitMargin: number;
+  ownerPay: string;
+  reserveCoverageMonths: number;
+  householdIncomeContribution: string;
+  incomeConcentration: number;
+  safeToDistribute: string;
+};
+
+export interface BusinessOverview {
+  asOf: string;
+  totals: BusinessOverviewTotals;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  health: number;
+  businesses: BusinessEntity[];
+  recentRevenue: BusinessRevenue[];
+  recentExpenses: BusinessExpense[];
+  distributions: BusinessDistribution[];
+}
+
 export interface TreasuryBucket {
   id: string;
   name: string;

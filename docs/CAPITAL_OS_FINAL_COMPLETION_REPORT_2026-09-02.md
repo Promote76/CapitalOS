@@ -77,13 +77,13 @@ The current high-risk authentication safeguard is a temporary Clerk session-issu
 |---|---|---|---|
 | Authentication | PARTIAL | Clerk middleware/provider wiring; signed-out protected request returns `401` even with spoofed role header | No real signed-in browser journey |
 | Tenant isolation | PARTIAL | Two-household PostgreSQL HTTP fixture rejects a foreign goal and exercises account/transfer/contribution boundaries | Full per-route identifier matrix is open |
-| Roles | PARTIAL | Viewer write denial and owner write behavior are exercised | Partner, Advisor, and complete Viewer action matrix remain open |
+| Roles | PARTIAL | Dedicated fixture provisions Owner, Partner, Advisor, and Viewer in both households and implements partner allow plus advisor/viewer denial checks | Dedicated PostgreSQL execution and complete action matrix remain open |
 | Effective permissions | PARTIAL | Active membership permissions are loaded and centralized checks use them; empty lists fall back to role defaults | HTTP grant/revocation precedence certification is open |
 | Step-up | PARTIAL | Recent-auth middleware denies missing test step-up on protected writes | Production-supported Clerk reverification is not configured |
-| Origin / CSRF | PARTIAL | Missing allowed-origin policy and cross-site credentialed writes fail closed in middleware tests | Same-origin, explicit-allow, disallowed, malformed, and all method combinations remain to be certified |
+| Origin / CSRF | PARTIAL | Four middleware tests cover 24 state-changing-method/origin scenarios; missing policy and cross-site credentialed writes fail closed | Full authenticated HTTP/browser route matrix remains to be certified |
 | IDOR | PARTIAL | Foreign-goal mutation and selected cross-household fixture cases are denied without a partial write | Every caller-controlled child and parent identifier is not yet tested |
 | Mass assignment | OPEN | Request context and server-owned relationships provide safeguards by inspection | No complete HTTP mass-assignment test matrix |
-| Audit attribution | PARTIAL | Authenticated actor context is propagated through server paths | Full Owner/Partner/Advisor action-to-audit query verification is open |
+| Audit attribution | PARTIAL | Fixture queries persisted contribution/transfer audit rows and asserts the authenticated actor; context is propagated through server paths | Full Owner/Partner/Advisor action-to-audit query verification awaits dedicated execution |
 | Secret handling | OPEN | No secret values are claimed in this report; runtime configuration uses workspace secret mechanisms | Bundle, logs, errors, audit payload, AI context, vault rotation, and access-audit evidence are not complete |
 | Rate limiting | OPEN | Current controls are not certified for horizontal deployment | Shared production rate-limit store/trusted-proxy model is not recorded |
 
@@ -95,8 +95,8 @@ The current high-risk authentication safeguard is a temporary Clerk session-issu
 | PostgreSQL money storage | PASS | Authoritative monetary columns use `numeric(18,2)` |
 | Ledger balance | PARTIAL | Contribution and transfer paths exercise balanced entries; broader business/distribution/adjustment coverage remains open |
 | Transfer atomicity | PASS for tested scenario | Conditional debit behavior produced one success and one rejection under parallel requests with no negative tested source balance |
-| Transfer high contention | BLOCKED | The required 100-request/$25 scenario has not been executed |
-| Idempotency | PARTIAL | Concurrent duplicate contribution requests return one persisted result; transfer, capital-request, and distribution-preparation event types remain open |
+| Transfer high contention | BLOCKED | The required 100-request/$25 scenario and persisted ledger totals are implemented but have not been executed against the dedicated database |
+| Idempotency | PARTIAL | Concurrent duplicate contribution requests return one persisted result; transfer replay and one-row assertions are implemented; capital-request and distribution-preparation event types remain open |
 | Transaction rollback | PARTIAL | Critical writes are transactionally structured; failure injection after each intermediate write has not been fully executed |
 | Safe-to-Deploy | PARTIAL | Business cash and planning capital remain separate; the complete cross-domain non-increase invariant suite is open |
 | Protected Duplex Reserve | PASS for domain coverage | Protected capital cannot fund strategy, Treasury active allocation, business, opportunity, or Micro-Live paths in tested domain controls |
@@ -145,17 +145,17 @@ The command refuses to run when the certification URL equals the shared `DATABAS
 | Domain | 62 | 0 | 0 | 0 | PASS |
 | HTTP integration | 1 fixture | 0 | 0 | 0 | Targeted scenarios PASS |
 | Database integration | 1 fixture | 0 | 0 | 0 | Real PostgreSQL fixture PASS |
-| Tenant / IDOR | 3 key scenarios | 0 | Many routes | Full matrix | PARTIAL |
-| Role / permission | Viewer denial and owner path | 0 | Uncovered roles/actions | Full matrix | PARTIAL |
-| Security | 3 middleware cases plus domain coverage | 0 | Browser/security matrix | Full HTTP matrix | PARTIAL |
-| Concurrency | 2 targeted scenarios | 0 | 0 | High-contention suite | PARTIAL |
-| Idempotency | Contribution duplicate proof | 0 | 0 | 3 economic-event types | PARTIAL |
+| Tenant / IDOR | 3 key scenarios plus mass-assignment assertions | 0 | Many routes | Full matrix | PARTIAL |
+| Role / permission | Owner/Viewer executed; Partner/Advisor fixture paths implemented | 0 | Uncovered actions | Dedicated execution | PARTIAL |
+| Security | 4 middleware tests / 27 scenarios plus domain coverage | 0 | Browser/security matrix | Full HTTP matrix | PARTIAL |
+| Concurrency | 2 targeted scenarios executed; high-contention path implemented | 0 | 0 | Dedicated execution | PARTIAL |
+| Idempotency | Contribution proof executed; transfer replay implemented | 0 | 0 | 2 economic-event types | PARTIAL |
 | Financial invariants | Domain coverage | 0 | 0 | Cross-domain and broader ledger cases | PARTIAL |
 | Migration | 0 executed | 0 | 0 | Clean and upgrade lifecycle | BLOCKED |
 | Browser E2E | 0 | 0 | 0 | Authenticated environment | BLOCKED |
 | Recovery | Pure domain recovery cases only | 0 | 0 | Managed restore and operations recovery | BLOCKED |
 
-The default API command reports 65 passing tests and one intentionally skipped database fixture when no dedicated certification database is configured. The skipped fixture is not counted as release certification.
+The default API command reports 66 passing tests and one intentionally skipped database fixture when no dedicated certification database is configured. The skipped fixture is not counted as release certification.
 
 ## Exact Repeatable Commands
 
@@ -270,9 +270,9 @@ AI cannot:
 | Identity | PARTIAL | Clerk wiring and signed-out rejection pass; authenticated browser identity journey is open |
 | Tenant isolation | PARTIAL | Targeted two-household fixture passes; full route matrix is open |
 | Authorization | PARTIAL | Viewer denial and permission loading pass; complete role/grant/revocation matrix is open |
-| Origin / CSRF | PARTIAL | Missing-policy and cross-site cases pass; complete method/origin matrix is open |
-| Concurrency | PARTIAL | Targeted transfer race passes; high-contention and broader economic paths are open |
-| Idempotency | PARTIAL | Contribution replay passes; transfer, capital request, and distribution preparation remain open |
+| Origin / CSRF | PARTIAL | Middleware matrix passes 24 method/origin scenarios; complete authenticated HTTP/browser route matrix is open |
+| Concurrency | PARTIAL | Targeted transfer race passes; 100-request contention and ledger reconciliation are implemented but unexecuted |
+| Idempotency | PARTIAL | Contribution replay passes; transfer replay is implemented; capital request and distribution preparation remain open |
 | Migration | BLOCKED | Dedicated clean and upgrade runs unavailable |
 | Restore | BLOCKED | Managed backup/restore unavailable |
 | Browser E2E | BLOCKED | Authenticated test environment unavailable |

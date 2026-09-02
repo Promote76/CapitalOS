@@ -29,6 +29,6 @@ This is an evidence index, not a claim that every row has passed HTTP certificat
 ## Current executable evidence
 
 - The two-household fixture proves a foreign goal ID is rejected before a contribution is created.
-- The same fixture proves a viewer cannot write even when a caller supplies `X-Household-Role: owner`.
-- The same fixture proves recent-auth denial and parallel transfer overdraft prevention.
+- The same fixture provisions Owner, Partner, Advisor, and Viewer memberships in both households and exercises the role-header regression, partner contribution allow, advisor/viewer contribution denial, and contribution mass-assignment assertions when enabled.
+- The same fixture proves recent-auth denial, parallel transfer overdraft prevention, 100-request contention expectations, transfer replay, persisted household/actor attribution, and ledger debit/credit reconciliation when enabled.
 - The matrix is intentionally not marked complete: route-family inventory is not a substitute for one HTTP test per high-value identifier path.

@@ -1,0 +1,1345 @@
+Replit Prompt: Capital OS Final P0 Execution & Evidence Closure Sprint
+
+Continue working on the existing Capital OS repository.
+
+This is a final focused P0 closure sprint.
+
+Do NOT add new product features.
+
+Do NOT redesign the UI.
+
+Do NOT add banking integrations.
+
+Do NOT enable ACH.
+
+Do NOT enable live trading.
+
+Do NOT deploy blockchain contracts.
+
+Do NOT add autonomous AI execution.
+
+Do NOT expand Strategy Lab.
+
+Do NOT build Debt/Credit functionality.
+
+Do NOT create another broad architecture plan.
+
+Use the existing:
+
+docs/CAPITAL_OS_FINAL_COMPLETION_REPORT_2026-09-02.md
+
+as the primary current-state reference.
+
+The current release decision is:
+
+NOT READY
+
+Production Candidate status is denied because P0 release gates remain open.
+
+Your objective is simple:
+
+CLOSE THE REMAINING P0 BLOCKERS WITH EXECUTABLE EVIDENCE
+
+Do not spend time re-documenting already-proven controls unless necessary for regression verification.
+
+---
+
+1. EXACT P0 SCOPE
+
+The remaining P0 closure work is:
+
+1. Complete caller-controlled identifier / IDOR coverage
+2. Complete origin / CSRF certification matrix
+3. Execute clean database migration from zero
+4. Execute representative old-schema upgrade
+5. Execute managed backup → isolated restore
+6. Execute authenticated Clerk browser E2E
+7. Complete role/effective-permission HTTP certification
+8. Complete broader concurrent idempotency certification
+9. Complete authenticated actor audit attribution certification
+10. Execute high-contention transfer + ledger reconciliation
+
+Work on these items only unless a directly related defect is discovered.
+
+---
+
+2. FINISH THE TENANT / IDOR MATRIX
+
+Complete:
+
+docs/TENANT_ISOLATION_ROUTE_MATRIX.md
+
+Every API route containing any caller-controlled:
+
+path ID
+body ID
+query ID
+foreign key
+parent resource ID
+child resource ID
+
+must be included.
+
+At minimum certify:
+
+Accounts
+Transactions
+Bills
+Income
+Goals
+Contributions
+Transfers
+Capital Accounts
+Treasury
+Capital Requests
+Property Goals
+Property Candidates
+Property Documents
+Businesses
+Business Accounts
+Revenue
+Expenses
+Reserves
+Distributions
+Strategies
+Versions
+Experiments
+Recommendations
+Tasks
+Approvals
+Alerts
+Accounting
+Reports
+Documents
+Micro-Live Sessions
+Venues
+Order Intents
+Order Events
+Fills
+Incidents
+Recovery Requirements
+
+For each applicable route test:
+
+Household A → A object
+Household A → B object
+Household B → A object
+Malformed identifier
+Foreign parent identifier
+Unauthorized role
+Mass-assignment attempt
+
+Expected cross-household behavior:
+
+DENIED
+NO PARTIAL WRITE
+NO FINANCIAL STATE CHANGE
+NO OWNERSHIP CHANGE
+
+---
+
+3. NO UNTESTED CALLER-CONTROLLED FINANCIAL IDS
+
+Before completing this item, there must be no high-value route in the tenant matrix marked:
+
+UNTESTED
+UNREVIEWED
+UNKNOWN
+
+If a route cannot be tested, explain why and leave its release gate open.
+
+---
+
+4. COMPLETE MASS-ASSIGNMENT TESTING
+
+Attempt unauthorized request fields including:
+
+householdId
+userId
+ownerId
+actorUserId
+role
+permissions
+protected
+protectedCapitalLocked
+financialAuthority
+liveEnabled
+businessId belonging to another household
+goalId belonging to another household
+
+Internal authority must come from server-side context.
+
+Caller-supplied fields must not override:
+
+Authenticated User
+Household
+Membership
+Role
+Permissions
+Protected State
+Execution State
+
+---
+
+5. COMPLETE ROLE HTTP MATRIX
+
+Complete:
+
+docs/ROLE_CERTIFICATION_MATRIX.md
+
+using actual HTTP requests backed by PostgreSQL.
+
+Test:
+
+Owner
+Partner
+Advisor
+Viewer
+
+against:
+
+View Finance
+Edit Budget
+Create Contribution
+Create Transfer
+Submit Capital Request
+Approve Capital Request
+Change Treasury Policy
+Manage Business
+Manage Property
+Promote Strategy
+Review Strategy
+View Accounting
+Manage Operations
+Emergency Stop
+Manage Household
+Micro-Live review/arming boundary
+
+Do not rely only on frontend button visibility.
+
+---
+
+6. EFFECTIVE PERMISSION CERTIFICATION
+
+Prove the actual membership permission system.
+
+At minimum test:
+
+Base role allows
++
+membership revoke
+=
+DENY
+
+If explicit grants are supported, test:
+
+Base role lacks
++
+membership grant
+=
+result according to configured policy
+
+Document the actual precedence rule.
+
+No ambiguity.
+
+---
+
+7. ROLE HEADER REGRESSION
+
+Production-like requests using:
+
+X-Household-Role: owner
+
+must never change authority.
+
+Keep automated regression coverage.
+
+---
+
+8. COMPLETE ACTOR ATTRIBUTION
+
+For every permitted actor type:
+
+Owner
+Partner
+Advisor
+
+perform representative actions.
+
+Query the persisted audit record.
+
+Verify:
+
+audit.actorUserId
+=
+authenticated actor
+
+not:
+
+household owner
+
+by default.
+
+At minimum certify:
+
+Contribution
+Transfer
+Capital Request
+Capital Approval
+Business Write
+Property Write
+Recommendation Decision
+Emergency Stop
+Strategy Action
+
+---
+
+9. AUDIT ATTRIBUTION FAILURE = RELEASE FAILURE
+
+If any permitted action records the wrong actor:
+
+fix it.
+
+Add regression coverage.
+
+Do not mark actor-attribution P0 complete until the persisted record is queried.
+
+---
+
+10. COMPLETE ORIGIN / CSRF MATRIX
+
+The existing targeted cases are insufficient for final certification.
+
+Test all relevant state-changing methods:
+
+POST
+PUT
+PATCH
+DELETE
+
+against:
+
+Correct same origin
+Explicitly allowed origin
+Disallowed origin
+Malformed origin
+Missing origin
+Cross-site credentialed request
+
+Record expected server behavior.
+
+---
+
+11. FAIL CLOSED
+
+Production with missing required origin configuration must:
+
+FAIL CLOSED
+
+Do not fall back to wildcard or permissive credentialed browser writes.
+
+---
+
+12. DOCUMENT THE ACTUAL CSRF MODEL
+
+Document exactly what protects browser writes.
+
+For example, according to the real implementation:
+
+Clerk session behavior
++
+cookie policy
++
+SameSite behavior
++
+Origin enforcement
++
+reverification where required
+
+Do not make generic claims like:
+
+CSRF protected
+
+without describing the actual control.
+
+---
+
+13. DEDICATED CERTIFICATION POSTGRESQL DATABASE
+
+Create/configure an isolated PostgreSQL certification database.
+
+It must NOT be:
+
+production DB
+shared development DB
+
+Required properties:
+
+Disposable
+Resettable
+Dedicated
+Repeatable
+
+Use it for:
+
+migration
+upgrade
+HTTP
+tenant
+role
+concurrency
+idempotency
+financial invariant
+
+certification.
+
+---
+
+14. RUN CLEAN MIGRATION FROM ZERO
+
+The repository already contains:
+
+scripts/certify-migrations.mjs
+
+and the guarded command:
+
+CAPITAL_OS_CERTIFICATION_DB_URL=<dedicated-url> \
+CAPITAL_OS_CERTIFICATION_ALLOW_RESET=1 \
+pnpm run certify:migrations
+
+Now execute it against the isolated certification database.
+
+Do not leave this as tooling-only evidence.
+
+---
+
+15. CLEAN MIGRATION PASS CRITERIA
+
+Required sequence:
+
+EMPTY DATABASE
+↓
+Migration baseline/history
+↓
+Current schema
+↓
+Application startup
+↓
+Readiness
+↓
+Fixture creation
+↓
+Critical integration suite
+
+Verify representative tables and constraints.
+
+At minimum:
+
+Users
+Households
+Memberships
+Accounts
+Goals
+Ledger
+Treasury
+Properties
+Businesses
+Strategies
+Accounting
+Operations
+Audit
+Micro-Live
+
+---
+
+16. MIGRATION JOURNAL EVIDENCE
+
+Record:
+
+Migration Version
+Migration Name
+Applied At
+Result
+Schema Version
+Release Version
+Forward-Fix / Rollback Classification
+
+---
+
+17. OLD-SCHEMA UPGRADE TEST
+
+Create a representative prior schema version.
+
+Seed meaningful historical records.
+
+At minimum:
+
+Users
+Households
+Memberships
+Accounts
+Goals
+Contributions
+Ledger
+Treasury
+Business
+Property
+Strategies
+Accounting
+Operations
+Audit
+
+Then upgrade it to the current schema.
+
+---
+
+18. DATA PRESERVATION
+
+Before and after upgrade compare:
+
+Record Counts
+Account Balances
+Protected Balances
+Goal Progress
+Ledger Debits
+Ledger Credits
+Business Ownership
+Strategy State
+Audit Counts
+
+Require:
+
+NO UNEXPLAINED DATA LOSS
+
+---
+
+19. MIGRATION FAILURE BEHAVIOR
+
+Where practical, test an incompatible or incomplete schema.
+
+Capital OS must not report:
+
+READY
+
+against an unsupported schema.
+
+Prefer:
+
+READINESS = FALSE
+
+with an explicit safe dependency/schema error.
+
+---
+
+20. EXECUTE MANAGED BACKUP
+
+Use the actual managed PostgreSQL backup facility.
+
+Record:
+
+Backup Reference
+Timestamp
+Source Environment
+Schema Version
+Release Version
+Retention
+
+Do not expose secrets.
+
+Do not count:
+
+CSV
+JSON export
+application report
+
+as database backup.
+
+---
+
+21. RESTORE INTO ISOLATED DATABASE
+
+Restore the managed backup into a separate isolated PostgreSQL database.
+
+Do not restore over production.
+
+Do not fake a restore.
+
+---
+
+22. RUN CAPITAL OS AGAINST RESTORED DATABASE
+
+Verify:
+
+Liveness
+Readiness
+Users
+Households
+Memberships
+Accounts
+Goals
+Protected Capital
+Ledger
+Treasury
+Business
+Property
+Strategies
+Accounting
+Operations
+Audit
+
+---
+
+23. RESTORE FINANCIAL INVARIANTS
+
+Run:
+
+Debits = Credits
+
+Protected balances intact
+
+No invalid negative balances
+
+Household isolation intact
+
+Safe-to-Deploy rules intact
+
+Business cash remains non-household
+
+Micro-Live remains disabled
+
+---
+
+24. RECORD OBSERVED RESTORE PERFORMANCE
+
+Record:
+
+Backup Time
+Restore Start
+Restore Complete
+Integrity Verification Complete
+Observed RPO
+Observed RTO
+
+Use actual observed values.
+
+---
+
+25. RESTORE BLOCK RULE
+
+If managed backup/restore cannot be performed:
+
+RESTORE = BLOCKED
+PRODUCTION CANDIDATE = DENIED
+
+Do not bypass this requirement with simulated evidence.
+
+---
+
+26. REAL CLERK BROWSER E2E
+
+Configure an authenticated browser-test environment using the actual supported Clerk test/development mechanism.
+
+Use one E2E framework.
+
+Prefer Playwright if compatible.
+
+---
+
+27. NEW USER E2E
+
+Run:
+
+Sign Up
+↓
+Authenticate
+↓
+Create Household
+↓
+Owner Membership
+↓
+Create Conservative Defaults
+↓
+Dashboard
+
+Verify:
+
+No Morgan demo balances
+No demo businesses
+No demo properties
+No duplicate onboarding
+
+---
+
+28. RELOAD E2E
+
+Reload browser.
+
+Verify:
+
+Same User
+Same Household
+Same Membership
+Same Persisted State
+
+---
+
+29. SIGN-OUT E2E
+
+Sign out.
+
+Attempt protected route.
+
+Expected:
+
+AUTHENTICATION REQUIRED
+
+---
+
+30. SIGN-BACK-IN E2E
+
+Sign in again.
+
+Verify:
+
+Same Household
+Same Financial State
+No Duplicate Household
+No Duplicate Membership
+
+---
+
+31. CONTRIBUTION E2E
+
+Through actual UI:
+
+Create Contribution
+↓
+Server Success
+↓
+Reload
+↓
+Fresh API Read
+
+Verify:
+
+Contribution row
+Allocation metadata
+Ledger entries
+Goal progress
+Treasury relationship
+Audit actor
+
+---
+
+32. VIEWER E2E
+
+Authenticate as Viewer.
+
+Attempt prohibited UI write.
+
+Also attempt direct request.
+
+Expected:
+
+DENIED
+
+---
+
+33. CROSS-HOUSEHOLD BROWSER E2E
+
+Authenticate User A.
+
+Attempt access to User B object via:
+
+URL manipulation
+Object-ID replacement
+Direct API request
+
+Expected:
+
+DENIED
+
+---
+
+34. FAILED-WRITE E2E
+
+Force a backend rejection.
+
+UI must:
+
+Show error
+Revert optimistic state if needed
+Not display false success
+Not persist fake financial state
+
+---
+
+35. COMPLETE HIGH-CONTENTION TRANSFER TEST
+
+Run the required real PostgreSQL scenario:
+
+Starting balance:
+$1,000
+
+100 concurrent transfer attempts:
+$25 each
+
+Expected:
+
+Maximum successful debit count = 40
+
+Final source balance >= $0
+
+No overdraft
+
+---
+
+36. RECONCILE EVERY SUCCESSFUL TRANSFER
+
+After the contention test verify:
+
+Successful API Transfers
+=
+Transfer Records
+=
+Ledger Transactions
+
+and:
+
+Debits
+=
+Credits
+
+No:
+
+orphan debit
+orphan credit
+duplicate economic event
+
+---
+
+37. BROADER IDEMPOTENCY CERTIFICATION
+
+Submit the SAME idempotency key concurrently for:
+
+Contribution
+Transfer
+Capital Request
+Business Distribution Preparation
+
+Expected:
+
+ONE ECONOMIC EVENT
+
+for each.
+
+---
+
+38. IDEMPOTENCY MUST USE REAL CONCURRENCY
+
+Use:
+
+multiple requests
+separate DB connections
+real PostgreSQL
+
+Do not certify from sequential service tests.
+
+---
+
+39. IDEMPOTENCY RESULT VERIFICATION
+
+For each event type verify:
+
+Expected row count
+Expected ledger count
+Expected audit count
+Expected response semantics
+
+No duplicate financial effect.
+
+---
+
+40. COMPLETE SAFE-TO-DEPLOY INVARIANT TESTS
+
+Attempt to raise household Safe-to-Deploy by adding:
+
+Business Cash
+Accounts Receivable
+Property Estimated Value
+Projected Income
+Unrealized Strategy P&L
+Unrealized Business Value
+Planning Balances
+Protected Duplex Capital
+Emergency Reserve
+
+Expected:
+
+NO UNAUTHORIZED INCREASE
+
+---
+
+41. BUSINESS DISTRIBUTION INVARIANT
+
+Verify:
+
+PROPOSED
+PREPARED
+
+business distribution does not increase household cash.
+
+Only a completed reviewed bridge may do so if such a bridge exists.
+
+If no completed bridge exists:
+
+PREPARED ONLY
+
+remains the correct state.
+
+---
+
+42. ACCOUNTING CROSS-VIEW TEST
+
+Complete or narrow the accounting consistency issue.
+
+For the same:
+
+household
+date
+scope
+valuation basis
+
+compare:
+
+Accounting Net Worth
+Dashboard Net Worth
+Portfolio Net Worth
+Business Equity
+
+Explain every intentional difference.
+
+---
+
+43. BUSINESS EQUITY DOUBLE-COUNT TEST
+
+Prove the system does not simultaneously count:
+
+Business enterprise equity
++
+the same underlying business assets
+
+in household net worth.
+
+---
+
+44. COMPLETE UI PERSISTENCE TRUTH REGRESSION
+
+Reverify:
+
+Emergency Stop
+Quick Transfer
+Allocation Edit
+Strategy Note
+Property Note
+Accounting Review
+Reports
+Exports
+Documents
+
+Every action must remain explicitly:
+
+PERSISTED
+PREPARED
+LOCAL-ONLY
+SIMULATED
+BLOCKED
+READ-ONLY
+
+No false-success regression.
+
+---
+
+45. PRODUCTION STEP-UP
+
+Where the configured Clerk environment supports it, replace temporary issued-at freshness with the actual provider-supported reauthentication/reverification mechanism.
+
+Do not invent custom authentication.
+
+---
+
+46. STEP-UP CERTIFICATION
+
+Test:
+
+Owner
++
+stale auth
++
+critical action
+=
+STEP_UP_REQUIRED
+
+Then:
+
+Owner
++
+successful supported reverification
++
+critical action
+=
+ALLOW
+
+provided other permissions pass.
+
+Also:
+
+Viewer
++
+fresh step-up
+=
+STILL DENIED
+
+---
+
+47. CRITICAL STEP-UP ACTIONS
+
+At minimum:
+
+Treasury Policy Change
+Protected Capital Change
+Major Capital Approval
+Ownership Change
+Permission Change
+Critical Security Change
+Micro-Live Arming Boundary
+Future Credential Administration
+
+---
+
+48. KEEP MICRO-LIVE DISABLED
+
+At the end of this sprint, prove:
+
+REAL ORDER TRANSMISSION = FALSE
+
+HOUSEHOLD CAPITAL ACCESS = FALSE
+
+PROTECTED CAPITAL ACCESS = FALSE
+
+AI ORDER AUTHORITY = FALSE
+
+AUTOMATION ORDER AUTHORITY = FALSE
+
+Do not create a real venue adapter.
+
+---
+
+49. OPERATIONS P1
+
+Do NOT let P1 work prevent P0 completion.
+
+After all P0 evidence has been executed, inspect the operational blockers:
+
+Durable scheduler
+Retries
+Dead letter
+Automation health
+Observability
+Alerting
+Audit shipping
+Rate limit deployment
+
+If they are still open, leave them P1 in the completion report.
+
+Do not falsely convert them to PASS.
+
+---
+
+50. CERTIFICATION COMMAND
+
+Finalize:
+
+pnpm run certify:production-candidate
+
+so it executes all available automated certification layers.
+
+Include:
+
+Typecheck
+Build
+OpenAPI generation
+Route parity
+Domain tests
+HTTP integration
+DB integration
+Tenant / IDOR
+Role / permission
+Origin / CSRF
+Concurrency
+Idempotency
+Financial invariants
+Migration
+Browser E2E
+
+as applicable.
+
+---
+
+51. NO RELEASE-CRITICAL SKIPS
+
+For P0 certification:
+
+SKIPPED
+
+means:
+
+NOT CERTIFIED
+
+The release gate remains open.
+
+---
+
+52. UPDATE PRODUCTION RELEASE GATE
+
+Update:
+
+docs/PRODUCTION_RELEASE_GATE.md
+
+Mark only evidenced items complete.
+
+---
+
+53. UPDATE EXISTING MATRICES
+
+Update existing:
+
+docs/TENANT_ISOLATION_ROUTE_MATRIX.md
+docs/ROLE_CERTIFICATION_MATRIX.md
+docs/UI_PERSISTENCE_TRUTH_MATRIX.md
+
+Do not create redundant replacements.
+
+---
+
+54. UPDATE THE SINGLE FINAL COMPLETION REPORT
+
+Update:
+
+docs/CAPITAL_OS_FINAL_COMPLETION_REPORT_2026-09-02.md
+
+This remains the single authoritative current-state completion document.
+
+Do NOT create another new:
+
+final audit
+final white paper
+final readiness document
+final security document
+final summary
+
+unless a narrowly scoped test artifact is technically required.
+
+The Final Completion Report must contain the current truth after this sprint.
+
+---
+
+55. FINAL COMPLETION REPORT MUST UPDATE
+
+At minimum update:
+
+Release Decision
+Production Candidate Status
+P0 Count
+P1 Count
+Test Inventory
+Tenant Isolation
+Role Certification
+Origin / CSRF
+Actor Attribution
+Concurrency
+Idempotency
+Migration
+Upgrade
+Backup
+Restore
+Browser E2E
+Step-Up
+Financial Invariants
+Accounting
+Operations
+Micro-Live
+Deployment Requirements
+Remaining Risks
+
+---
+
+56. MOVE OLD P0 ISSUES WHEN RESOLVED
+
+If a P0 issue now has complete evidence:
+
+move it from:
+
+Remaining Risks → P0
+
+to:
+
+Resolved During Hardening / Certification
+
+with exact evidence.
+
+Do not erase its history.
+
+---
+
+57. PRODUCTION CANDIDATE DECISION RULE
+
+Only allow:
+
+PRODUCTION CANDIDATE
+
+when:
+
+P0 OPEN = 0
+
+and the executed evidence supports the current non-executing scope.
+
+---
+
+58. IF P0 REMAINS
+
+If:
+
+P0 OPEN > 0
+
+then:
+
+RELEASE DECISION = NOT READY
+
+Do not override with a numerical score.
+
+---
+
+59. DO NOT CLAIM FULL PRODUCTION READINESS
+
+Even if P0 reaches zero and the result becomes:
+
+PRODUCTION CANDIDATE
+
+do not call Capital OS:
+
+FULLY PRODUCTION READY
+
+The appropriate next phase would be controlled deployment/pilot.
+
+---
+
+60. FINAL OUTPUT FORMAT
+
+When finished, respond with only:
+
+FINAL DECISION:
+<NOT READY / PRODUCTION CANDIDATE>
+
+P0 OPEN:
+<number>
+
+P1 OPEN:
+<number>
+
+TENANT / IDOR:
+<PASS / PARTIAL / BLOCKED>
+
+ROLE / PERMISSION:
+<PASS / PARTIAL / BLOCKED>
+
+ORIGIN / CSRF:
+<PASS / PARTIAL / BLOCKED>
+
+CONCURRENCY:
+<PASS / PARTIAL / BLOCKED>
+
+IDEMPOTENCY:
+<PASS / PARTIAL / BLOCKED>
+
+MIGRATION:
+<PASS / BLOCKED>
+
+OLD-SCHEMA UPGRADE:
+<PASS / BLOCKED>
+
+BACKUP / RESTORE:
+<PASS / BLOCKED>
+
+AUTHENTICATED BROWSER:
+<PASS / BLOCKED>
+
+STEP-UP:
+<PASS / PARTIAL / BLOCKED>
+
+ACCOUNTING:
+<PASS / PARTIAL>
+
+OPERATIONS:
+<PASS / PARTIAL / BLOCKED>
+
+MICRO-LIVE:
+<DISABLED BY DESIGN>
+
+TOTAL TEST RESULTS:
+<exact summary>
+
+FINAL COMPLETION DOCUMENT:
+docs/CAPITAL_OS_FINAL_COMPLETION_REPORT_2026-09-02.md
+
+Do not give me another large narrative.
+
+Put all detail into the existing Final Completion Report.
+
+---
+
+FINAL DIRECTIVE
+
+Stop expanding Capital OS.
+
+Close the known evidence gaps.
+
+The sprint succeeds only if we can prove:
+
+Every household object is isolated.
+
+Every role behaves correctly.
+
+Every critical audit record identifies the true actor.
+
+Browser writes are origin-safe.
+
+Concurrent financial requests cannot create invalid balances.
+
+Duplicate requests cannot create duplicate economic events.
+
+A clean database can be built from zero.
+
+Existing data survives schema upgrades.
+
+A managed database can actually be restored.
+
+A real user can sign up, onboard, reload, sign out, and return.
+
+Protected capital stays protected.
+
+Safe-to-Deploy cannot be inflated by non-liquid planning values.
+
+Micro-Live remains non-executing.
+
+The standard is not:
+
+It looks correct.
+
+The standard is:
+
+WE EXECUTED THE TEST
+AND RECORDED THE RESULT.
+
+Close the exact remaining P0 release gates and nothing else.

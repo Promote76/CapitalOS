@@ -10,16 +10,16 @@
 - [x] Two independent households can be created in a test fixture and cannot read or mutate each other. Evidence: database-backed HTTP fixture.
 - [ ] HTTP IDOR tests cover every route with a caller-controlled path or body identifier.
 - [x] Production browser writes fail closed when no explicit allowed-origin policy is configured. Evidence: `src/middleware/safety.test.ts`.
-- [ ] CSRF/same-site credential policy is implemented and tested for allowed, disallowed, and malformed origins. Missing and cross-site cases pass; the complete matrix remains open.
+- [ ] CSRF/same-site credential policy is implemented and tested for allowed, disallowed, and malformed origins. The middleware matrix covers 24 method/scenario combinations; full HTTP route execution remains open.
 - [ ] A clean database can be created from zero and brought to the current schema through the supported managed lifecycle.
 - [ ] An existing older schema can be upgraded without losing households, users, memberships, ledger, goals, Treasury, business, strategy, accounting, or audit data.
 - [ ] A managed PostgreSQL backup is restored into an isolated database.
 - [ ] Restore verification passes for identity, tenant isolation, ledger balance, Treasury, protected capital, business ownership, accounting, strategy state, and audit history.
 - [ ] Authenticated HTTP/browser tests cover onboarding, sign-in, sign-out, reload, and household-scoped dashboard access.
-- [ ] Production-like role tests prove owner, partner, advisor, and viewer behavior over HTTP.
+- [ ] Production-like role tests prove owner, partner, advisor, and viewer behavior over HTTP. The dedicated fixture now provisions all four roles in both households; execution remains gated on the isolated certification database.
 - [x] Real concurrent transfer tests prove no overdraft in the executed scenario. Full ledger invariant and high-contention coverage remains open.
-- [ ] Concurrent idempotency tests prove one economic event for contribution, transfer, capital request, and business distribution preparation.
-- [ ] Audit attribution records the authenticated actor rather than always using the household owner.
+- [ ] Concurrent idempotency tests prove one economic event for contribution, transfer, capital request, and business distribution preparation. Contribution and transfer replay cases are implemented; dedicated execution and the remaining event types remain open.
+- [ ] Audit attribution records the authenticated actor rather than always using the household owner. Persisted contribution/transfer actor assertions are implemented in the fixture; dedicated execution remains open.
 
 ## P1 release risks
 

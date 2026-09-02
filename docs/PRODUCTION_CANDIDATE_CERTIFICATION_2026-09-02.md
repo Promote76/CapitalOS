@@ -22,14 +22,14 @@ Excluded: real bank movement, ACH, external investor capital, live trading, auto
 |---|---|---|
 | Contribution goal household predicate | PASS | Source review plus two-household HTTP fixture |
 | Two-household HTTP isolation | PARTIAL PASS | Fixture covers goals, contributions, accounts, transfers, and viewer denial; systematic route matrix remains open |
-| Origin / CSRF | PARTIAL PASS | Middleware tests cover missing policy and cross-site writes; complete browser-origin matrix remains open |
+| Origin / CSRF | PARTIAL PASS | Middleware tests cover 24 method/origin scenarios; complete authenticated HTTP/browser-origin matrix remains open |
 | Clean migration | BLOCKED | No isolated empty database execution |
 | Existing-schema upgrade | BLOCKED | No representative old-schema execution |
 | Backup / restore | BLOCKED | Provider backup reference and restore target unavailable |
 | Authenticated browser journey | BLOCKED | No authenticated browser test environment |
 | Concurrent transfers | PASS for tested scenario | Parallel debits produced one 201 and one 400; final source balance remained non-negative |
-| Concurrent idempotency | PARTIAL | Contribution duplicate proof passes; other economic-event types remain open |
-| Actor audit attribution | PARTIAL | Server actor context is wired; complete role/action audit query suite remains open |
+| Concurrent idempotency | PARTIAL | Contribution duplicate proof passes; transfer replay and ledger checks are implemented; capital-request/distribution execution remains open |
+| Actor audit attribution | PARTIAL | Server actor context and persisted contribution/transfer assertions are implemented; dedicated execution and full action query suite remain open |
 
 ## Test inventory
 
@@ -39,13 +39,13 @@ Excluded: real bank movement, ACH, external investor capital, live trading, auto
 | HTTP integration | 1 | 0 | 0 | Database-backed fixture, explicit runner |
 | Database integration | 1 | 0 | 0 | Same fixture uses real PostgreSQL; no separate DB suite |
 | Tenant / IDOR | 3 key scenarios | 0 | Many | Goal, contribution, account/transfer fixture scenarios; full matrix open |
-| Security | 3 middleware cases plus domain coverage | 0 | Full browser matrix | Origin/CSRF middleware suite |
-| Concurrency | 2 scenarios | 0 | High-contention suite | Duplicate contribution and parallel transfer |
+| Security | 4 middleware tests / 27 scenarios plus domain coverage | 0 | Full browser matrix | Origin/CSRF middleware suite |
+| Concurrency | 2 previously executed scenarios; high-contention and replay paths implemented | 0 | Dedicated execution | Duplicate contribution and parallel transfer; 100-request ledger/replay assertions await isolated DB |
 | Migration | 0 | 0 | 2 P0 gates | Clean and upgrade execution unavailable |
 | Browser E2E | 0 | 0 | 1 P0 gate | Authenticated environment unavailable |
 | Recovery | 0 | 0 | 1 P0 gate | Managed restore unavailable |
 
-The normal API command reports 65 passing tests and one intentionally skipped database fixture. The certification command is designed to require a dedicated certification database rather than counting that skip as release evidence.
+The normal API command reports 66 passing tests and one intentionally skipped database fixture. The certification command is designed to require a dedicated certification database rather than counting that skip as release evidence.
 
 ## Financial invariant results
 
@@ -58,7 +58,7 @@ The normal API command reports 65 passing tests and one intentionally skipped da
 
 ## Role and step-up results
 
-Membership permissions are loaded into request context and used by the centralized permission checks; role fallback applies only when the stored permission list is empty. The test fixture proves viewer denial and owner writes, but partner/advisor HTTP behavior and grant/revocation cases are not fully certified.
+Membership permissions are loaded into request context and used by centralized permission checks; role fallback applies only when the stored permission list is empty. The fixture now provisions Owner, Partner, Advisor, and Viewer in both households and implements partner allow plus advisor/viewer denial checks, but dedicated execution and grant/revocation cases are not fully certified.
 
 High-impact routes now require recent authentication. The database fixture proves missing test step-up is rejected. Real Clerk production re-authentication is not yet configured; current Clerk session-issued-at freshness remains a temporary safeguard and is not a final production certification.
 

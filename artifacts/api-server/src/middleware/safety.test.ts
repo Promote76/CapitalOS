@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { writeBoundary } from "./safety.ts";
 
-function runBoundary(env: Record<string, string | undefined>, headers: Record<string, string> = {}) {
+function runBoundary(
+  env: Record<string, string | undefined>,
+  headers: Record<string, string> = {},
+  method = "POST",
+) {
   const previous = {
     nodeEnv: process.env.NODE_ENV,
     allowedOrigin: process.env.CAPITAL_OS_ALLOWED_ORIGIN,
@@ -17,7 +21,7 @@ function runBoundary(env: Record<string, string | undefined>, headers: Record<st
     else process.env[key] = value;
   }
   const req = {
-    method: "POST",
+    method,
     header(name: string) {
       return headers[name] ?? headers[name.toLowerCase()];
     },
@@ -68,4 +72,66 @@ test("the database-backed test context can exercise writes without weakening pro
   );
   assert.equal(result.continued, true);
   assert.equal(result.statusCode, 200);
+});
+
+test("the complete production origin matrix covers every state-changing method", () => {
+  const methods = ["POST", "PUT", "PATCH", "DELETE"];
+  const cases: Array<{
+    name: string;
+    headers: Record<string, string>;
+    statusCode: number;
+    code: string | undefined;
+  }> = [
+    {
+      name: "same origin",
+      headers: { Origin: "https://capital.example", "Sec-Fetch-Site": "same-origin" },
+      statusCode: 200,
+      code: undefined,
+    },
+    {
+      name: "explicitly allowed origin",
+      headers: { Origin: "https://capital.example", "Sec-Fetch-Site": "same-site" },
+      statusCode: 200,
+      code: undefined,
+    },
+    {
+      name: "disallowed origin",
+      headers: { Origin: "https://evil.example", "Sec-Fetch-Site": "cross-site" },
+      statusCode: 403,
+      code: "CSRF_BLOCKED",
+    },
+    {
+      name: "malformed origin",
+      headers: { Origin: "not a URL", "Sec-Fetch-Site": "same-origin" },
+      statusCode: 403,
+      code: "ORIGIN_NOT_ALLOWED",
+    },
+    {
+      name: "missing origin",
+      headers: { "Sec-Fetch-Site": "same-origin" },
+      statusCode: 403,
+      code: "ORIGIN_NOT_ALLOWED",
+    },
+    {
+      name: "cross-site credentialed request",
+      headers: { Origin: "https://capital.example", "Sec-Fetch-Site": "cross-site" },
+      statusCode: 403,
+      code: "CSRF_BLOCKED",
+    },
+  ];
+
+  for (const method of methods) {
+    for (const scenario of cases) {
+      const result = runBoundary(
+        { NODE_ENV: "production", CAPITAL_OS_ALLOWED_ORIGIN: "https://capital.example" },
+        scenario.headers,
+        method,
+      );
+      assert.equal(result.statusCode, scenario.statusCode, `${method} ${scenario.name}`);
+      assert.equal(result.continued, scenario.statusCode === 200, `${method} ${scenario.name}`);
+      if (scenario.code) {
+        assert.equal((result.payload as { code: string }).code, scenario.code, `${method} ${scenario.name}`);
+      }
+    }
+  }
 });

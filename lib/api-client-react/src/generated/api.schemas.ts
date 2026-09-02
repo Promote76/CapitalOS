@@ -2166,6 +2166,312 @@ export interface TreasurySnapshot {
   lastUpdated: string;
 }
 
+export type OperationsTaskPriority = typeof OperationsTaskPriority[keyof typeof OperationsTaskPriority];
+
+
+export const OperationsTaskPriority = {
+  CRITICAL: 'CRITICAL',
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW',
+} as const;
+
+export type OperationsTaskStatus = typeof OperationsTaskStatus[keyof typeof OperationsTaskStatus];
+
+
+export const OperationsTaskStatus = {
+  OPEN: 'OPEN',
+  IN_PROGRESS: 'IN_PROGRESS',
+  WAITING: 'WAITING',
+  BLOCKED: 'BLOCKED',
+  COMPLETED: 'COMPLETED',
+  DISMISSED: 'DISMISSED',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+export interface OperationsTask {
+  id: string;
+  title: string;
+  description: string;
+  domain: string;
+  priority: OperationsTaskPriority;
+  status: OperationsTaskStatus;
+  dueDate: string;
+  /** @nullable */
+  assignedTo: string | null;
+  source: string;
+  /** @nullable */
+  relatedEntityType?: string | null;
+  /** @nullable */
+  relatedEntityId?: string | null;
+  requiresApproval: boolean;
+  createdAt: string;
+  /** @nullable */
+  completedAt: string | null;
+}
+
+export type OperationsTaskInputPriority = typeof OperationsTaskInputPriority[keyof typeof OperationsTaskInputPriority];
+
+
+export const OperationsTaskInputPriority = {
+  CRITICAL: 'CRITICAL',
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW',
+} as const;
+
+export interface OperationsTaskInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  description: string;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  domain: string;
+  priority: OperationsTaskInputPriority;
+  dueDate: string;
+  assignedTo?: string;
+  requiresApproval?: boolean;
+}
+
+export type OperationsTaskUpdateStatus = typeof OperationsTaskUpdateStatus[keyof typeof OperationsTaskUpdateStatus];
+
+
+export const OperationsTaskUpdateStatus = {
+  OPEN: 'OPEN',
+  IN_PROGRESS: 'IN_PROGRESS',
+  WAITING: 'WAITING',
+  BLOCKED: 'BLOCKED',
+  COMPLETED: 'COMPLETED',
+  DISMISSED: 'DISMISSED',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+export interface OperationsTaskUpdate {
+  status?: OperationsTaskUpdateStatus;
+  assignedTo?: string;
+}
+
+export type OperationsApprovalStatus = typeof OperationsApprovalStatus[keyof typeof OperationsApprovalStatus];
+
+
+export const OperationsApprovalStatus = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  DEFERRED: 'DEFERRED',
+  EXPIRED: 'EXPIRED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export interface OperationsApproval {
+  id: string;
+  requestType: string;
+  requestedBy: string;
+  relatedEntity: string;
+  currentState: string;
+  proposedState: string;
+  financialImpact: string;
+  riskImpact: string;
+  duplexImpact: string;
+  reason: string;
+  evidence: string[];
+  requiredAuthority: string;
+  /** @nullable */
+  expiresAt: string | null;
+  status: OperationsApprovalStatus;
+  createdAt: string;
+  /** @nullable */
+  decidedAt?: string | null;
+}
+
+export type OperationsApprovalDecisionDecision = typeof OperationsApprovalDecisionDecision[keyof typeof OperationsApprovalDecisionDecision];
+
+
+export const OperationsApprovalDecisionDecision = {
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  DEFERRED: 'DEFERRED',
+} as const;
+
+export interface OperationsApprovalDecision {
+  decision: OperationsApprovalDecisionDecision;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+}
+
+export type OperationsAlertSeverity = typeof OperationsAlertSeverity[keyof typeof OperationsAlertSeverity];
+
+
+export const OperationsAlertSeverity = {
+  INFO: 'INFO',
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+} as const;
+
+export type OperationsAlertStatus = typeof OperationsAlertStatus[keyof typeof OperationsAlertStatus];
+
+
+export const OperationsAlertStatus = {
+  ACTIVE: 'ACTIVE',
+  ACKNOWLEDGED: 'ACKNOWLEDGED',
+  RESOLVED: 'RESOLVED',
+  DISMISSED: 'DISMISSED',
+} as const;
+
+export interface OperationsAlert {
+  id: string;
+  alertKey: string;
+  title: string;
+  message: string;
+  severity: OperationsAlertSeverity;
+  domain: string;
+  status: OperationsAlertStatus;
+  /** @minimum 0 */
+  occurrenceCount: number;
+  firstSeen: string;
+  lastSeen: string;
+  /** @nullable */
+  resolvedAt?: string | null;
+}
+
+export type OperationsAlertUpdateStatus = typeof OperationsAlertUpdateStatus[keyof typeof OperationsAlertUpdateStatus];
+
+
+export const OperationsAlertUpdateStatus = {
+  ACKNOWLEDGED: 'ACKNOWLEDGED',
+  RESOLVED: 'RESOLVED',
+  DISMISSED: 'DISMISSED',
+} as const;
+
+export interface OperationsAlertUpdate {
+  status: OperationsAlertUpdateStatus;
+}
+
+export interface OperationsAutomation {
+  id: string;
+  name: string;
+  trigger: string;
+  action: string;
+  enabled: boolean;
+  protected: boolean;
+  /** @minimum 0 */
+  priority: number;
+  /** @nullable */
+  lastRun: string | null;
+  /** @nullable */
+  nextRun: string | null;
+}
+
+export interface OperationsAutomationRun {
+  id: string;
+  automationId: string;
+  result: string;
+  actionsCreated: string[];
+  errors: string[];
+  startedAt: string;
+  completedAt: string;
+  safeBoundary: string;
+}
+
+export interface OperationsNotificationPreferences {
+  criticalAlerts: string[];
+  bills: string[];
+  budget: string[];
+  duplexGoal: string[];
+  property: string[];
+  strategies: string[];
+  accounting: string[];
+  security: string[];
+  weeklyReports: string[];
+  monthlyReports: string[];
+  /** @nullable */
+  quietHoursStart: string | null;
+  /** @nullable */
+  quietHoursEnd: string | null;
+}
+
+export interface OperationsNotificationPreferencesUpdate {
+  criticalAlerts?: string[];
+  bills?: string[];
+  budget?: string[];
+  duplexGoal?: string[];
+  property?: string[];
+  strategies?: string[];
+  accounting?: string[];
+  security?: string[];
+  weeklyReports?: string[];
+  monthlyReports?: string[];
+  /** @nullable */
+  quietHoursStart?: string | null;
+  /** @nullable */
+  quietHoursEnd?: string | null;
+}
+
+export type OperationsOverviewToday = {
+  /** @minimum 0 */
+  criticalAlerts: number;
+  /** @minimum 0 */
+  approvalsPending: number;
+  /** @minimum 0 */
+  tasksDue: number;
+  /** @minimum 0 */
+  billsDue: number;
+  /** @minimum 0 */
+  goalActions: number;
+  /** @minimum 0 */
+  propertyActions: number;
+  /** @minimum 0 */
+  securityActions: number;
+  /** @minimum 0 */
+  reviewsScheduled: number;
+};
+
+export type OperationsOverviewHealth = {
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  score: number;
+  /** @minimum 0 */
+  overdueTasks: number;
+  /** @minimum 0 */
+  pendingApprovals: number;
+  /** @minimum 0 */
+  criticalAlerts: number;
+  bills: string;
+  accounting: string;
+  security: string;
+  /** @minimum 0 */
+  automationFailures: number;
+};
+
+export interface OperationsOverview {
+  today: OperationsOverviewToday;
+  /** @nullable */
+  nextBestAction: string | null;
+  noActionRequired: boolean;
+  health: OperationsOverviewHealth;
+  tasks: OperationsTask[];
+  approvals: OperationsApproval[];
+  alerts: OperationsAlert[];
+  automations: OperationsAutomation[];
+  notifications: OperationsNotificationPreferences;
+}
+
 /**
  * Invalid request
  */
@@ -2175,6 +2481,11 @@ export type BadRequestResponse = ErrorResponse;
  * Household role or Capital Governor rejected the action
  */
 export type ForbiddenResponse = ErrorResponse;
+
+/**
+ * Requested household record was not found
+ */
+export type NotFoundResponse = ErrorResponse;
 
 /**
  * Idempotency or state conflict

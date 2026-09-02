@@ -17,6 +17,7 @@ tags:
   - name: household-finance
   - name: treasury
   - name: accounting
+  - name: operations
 paths:
   /healthz:
     get:
@@ -1306,6 +1307,213 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AccountingOverview" }
+  /operations:
+    get:
+      operationId: getOperationsOverview
+      tags: [operations]
+      summary: Get the household Operations Command Center snapshot
+      responses:
+        "200":
+          description: Operations overview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperationsOverview" }
+  /operations/tasks:
+    get:
+      operationId: listOperationsTasks
+      tags: [operations]
+      summary: List household operations tasks
+      responses:
+        "200":
+          description: Operations tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OperationsTask" }
+    post:
+      operationId: createOperationsTask
+      tags: [operations]
+      summary: Create a household operations task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OperationsTaskInput" }
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperationsTask" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /operations/tasks/{taskId}:
+    patch:
+      operationId: updateOperationsTask
+      tags: [operations]
+      summary: Update task status or assignment
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OperationsTaskUpdate" }
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperationsTask" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /operations/approvals:
+    get:
+      operationId: listOperationsApprovals
+      tags: [operations]
+      summary: List pending and recent household approvals
+      responses:
+        "200":
+          description: Approval inbox
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OperationsApproval" }
+  /operations/approvals/{approvalId}/decision:
+    post:
+      operationId: decideOperationsApproval
+      tags: [operations]
+      summary: Record a human approval decision
+      parameters:
+        - name: approvalId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OperationsApprovalDecision" }
+      responses:
+        "200":
+          description: Updated approval request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperationsApproval" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /operations/alerts:
+    get:
+      operationId: listOperationsAlerts
+      tags: [operations]
+      summary: List active household operations alerts
+      responses:
+        "200":
+          description: Operations alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OperationsAlert" }
+  /operations/alerts/{alertId}:
+    patch:
+      operationId: updateOperationsAlert
+      tags: [operations]
+      summary: Acknowledge or resolve an operations alert
+      parameters:
+        - name: alertId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OperationsAlertUpdate" }
+      responses:
+        "200":
+          description: Updated alert
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperationsAlert" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /operations/automations:
+    get:
+      operationId: listOperationsAutomations
+      tags: [operations]
+      summary: List safe household automation rules
+      responses:
+        "200":
+          description: Automation rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OperationsAutomation" }
+  /operations/automations/{automationId}/run:
+    post:
+      operationId: runOperationsAutomation
+      tags: [operations]
+      summary: Run a safe automation in prepare-only mode
+      parameters:
+        - name: automationId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "201":
+          description: Automation run result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperationsAutomationRun" }
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /operations/notifications/preferences:
+    get:
+      operationId: getOperationsNotificationPreferences
+      tags: [operations]
+      summary: Get household notification preferences
+      responses:
+        "200":
+          description: Notification preferences
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperationsNotificationPreferences" }
+    patch:
+      operationId: updateOperationsNotificationPreferences
+      tags: [operations]
+      summary: Update household notification preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OperationsNotificationPreferencesUpdate" }
+      responses:
+        "200":
+          description: Updated notification preferences
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperationsNotificationPreferences" }
+        "403":
+          $ref: "#/components/responses/Forbidden"
 components:
   parameters:
     IdempotencyKey:
@@ -1367,6 +1575,12 @@ components:
             $ref: "#/components/schemas/ErrorResponse"
     Forbidden:
       description: Household role or Capital Governor rejected the action
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Requested household record was not found
       content:
         application/json:
           schema:
@@ -3317,3 +3531,174 @@ components:
               expiresAt: { type: ["string", "null"], format: date }
               status: { type: string }
         lastUpdated: { type: string, format: date-time }
+    OperationsTask:
+      type: object
+      required: [id, title, description, domain, priority, status, dueDate, assignedTo, source, requiresApproval, createdAt, completedAt]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        domain: { type: string }
+        priority: { type: string, enum: [CRITICAL, HIGH, MEDIUM, LOW] }
+        status: { type: string, enum: [OPEN, IN_PROGRESS, WAITING, BLOCKED, COMPLETED, DISMISSED, EXPIRED] }
+        dueDate: { type: string, format: date }
+        assignedTo: { type: ["string", "null"] }
+        source: { type: string }
+        relatedEntityType: { type: ["string", "null"] }
+        relatedEntityId: { type: ["string", "null"] }
+        requiresApproval: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: ["string", "null"], format: date-time }
+    OperationsTaskInput:
+      type: object
+      required: [title, description, domain, priority, dueDate]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 160 }
+        description: { type: string, minLength: 1, maxLength: 1000 }
+        domain: { type: string, minLength: 1, maxLength: 40 }
+        priority: { type: string, enum: [CRITICAL, HIGH, MEDIUM, LOW] }
+        dueDate: { type: string, format: date }
+        assignedTo: { type: string }
+        requiresApproval: { type: boolean }
+    OperationsTaskUpdate:
+      type: object
+      properties:
+        status: { type: string, enum: [OPEN, IN_PROGRESS, WAITING, BLOCKED, COMPLETED, DISMISSED, EXPIRED] }
+        assignedTo: { type: string }
+    OperationsApproval:
+      type: object
+      required: [id, requestType, requestedBy, relatedEntity, currentState, proposedState, financialImpact, riskImpact, duplexImpact, reason, evidence, requiredAuthority, expiresAt, status, createdAt]
+      properties:
+        id: { type: string }
+        requestType: { type: string }
+        requestedBy: { type: string }
+        relatedEntity: { type: string }
+        currentState: { type: string }
+        proposedState: { type: string }
+        financialImpact: { type: string }
+        riskImpact: { type: string }
+        duplexImpact: { type: string }
+        reason: { type: string }
+        evidence: { type: array, items: { type: string } }
+        requiredAuthority: { type: string }
+        expiresAt: { type: ["string", "null"], format: date-time }
+        status: { type: string, enum: [PENDING, APPROVED, REJECTED, DEFERRED, EXPIRED, CANCELLED] }
+        createdAt: { type: string, format: date-time }
+        decidedAt: { type: ["string", "null"], format: date-time }
+    OperationsApprovalDecision:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: { type: string, enum: [APPROVED, REJECTED, DEFERRED] }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    OperationsAlert:
+      type: object
+      required: [id, alertKey, title, message, severity, domain, status, occurrenceCount, firstSeen, lastSeen]
+      properties:
+        id: { type: string }
+        alertKey: { type: string }
+        title: { type: string }
+        message: { type: string }
+        severity: { type: string, enum: [INFO, LOW, MEDIUM, HIGH, CRITICAL] }
+        domain: { type: string }
+        status: { type: string, enum: [ACTIVE, ACKNOWLEDGED, RESOLVED, DISMISSED] }
+        occurrenceCount: { type: number, minimum: 0 }
+        firstSeen: { type: string, format: date-time }
+        lastSeen: { type: string, format: date-time }
+        resolvedAt: { type: ["string", "null"], format: date-time }
+    OperationsAlertUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [ACKNOWLEDGED, RESOLVED, DISMISSED] }
+    OperationsAutomation:
+      type: object
+      required: [id, name, trigger, action, enabled, protected, priority, lastRun, nextRun]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        trigger: { type: string }
+        action: { type: string }
+        enabled: { type: boolean }
+        protected: { type: boolean }
+        priority: { type: number, minimum: 0 }
+        lastRun: { type: ["string", "null"], format: date-time }
+        nextRun: { type: ["string", "null"], format: date-time }
+    OperationsAutomationRun:
+      type: object
+      required: [id, automationId, result, actionsCreated, errors, startedAt, completedAt, safeBoundary]
+      properties:
+        id: { type: string }
+        automationId: { type: string }
+        result: { type: string }
+        actionsCreated: { type: array, items: { type: string } }
+        errors: { type: array, items: { type: string } }
+        startedAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time }
+        safeBoundary: { type: string }
+    OperationsNotificationPreferences:
+      type: object
+      required: [criticalAlerts, bills, budget, duplexGoal, property, strategies, accounting, security, weeklyReports, monthlyReports, quietHoursStart, quietHoursEnd]
+      properties:
+        criticalAlerts: { type: array, items: { type: string } }
+        bills: { type: array, items: { type: string } }
+        budget: { type: array, items: { type: string } }
+        duplexGoal: { type: array, items: { type: string } }
+        property: { type: array, items: { type: string } }
+        strategies: { type: array, items: { type: string } }
+        accounting: { type: array, items: { type: string } }
+        security: { type: array, items: { type: string } }
+        weeklyReports: { type: array, items: { type: string } }
+        monthlyReports: { type: array, items: { type: string } }
+        quietHoursStart: { type: ["string", "null"] }
+        quietHoursEnd: { type: ["string", "null"] }
+    OperationsNotificationPreferencesUpdate:
+      type: object
+      properties:
+        criticalAlerts: { type: array, items: { type: string } }
+        bills: { type: array, items: { type: string } }
+        budget: { type: array, items: { type: string } }
+        duplexGoal: { type: array, items: { type: string } }
+        property: { type: array, items: { type: string } }
+        strategies: { type: array, items: { type: string } }
+        accounting: { type: array, items: { type: string } }
+        security: { type: array, items: { type: string } }
+        weeklyReports: { type: array, items: { type: string } }
+        monthlyReports: { type: array, items: { type: string } }
+        quietHoursStart: { type: ["string", "null"] }
+        quietHoursEnd: { type: ["string", "null"] }
+    OperationsOverview:
+      type: object
+      required: [today, nextBestAction, noActionRequired, health, tasks, approvals, alerts, automations, notifications]
+      properties:
+        today:
+          type: object
+          required: [criticalAlerts, approvalsPending, tasksDue, billsDue, goalActions, propertyActions, securityActions, reviewsScheduled]
+          properties:
+            criticalAlerts: { type: number, minimum: 0 }
+            approvalsPending: { type: number, minimum: 0 }
+            tasksDue: { type: number, minimum: 0 }
+            billsDue: { type: number, minimum: 0 }
+            goalActions: { type: number, minimum: 0 }
+            propertyActions: { type: number, minimum: 0 }
+            securityActions: { type: number, minimum: 0 }
+            reviewsScheduled: { type: number, minimum: 0 }
+        nextBestAction: { type: ["string", "null"] }
+        noActionRequired: { type: boolean }
+        health:
+          type: object
+          required: [score, overdueTasks, pendingApprovals, criticalAlerts, bills, accounting, security, automationFailures]
+          properties:
+            score: { type: number, minimum: 0, maximum: 100 }
+            overdueTasks: { type: number, minimum: 0 }
+            pendingApprovals: { type: number, minimum: 0 }
+            criticalAlerts: { type: number, minimum: 0 }
+            bills: { type: string }
+            accounting: { type: string }
+            security: { type: string }
+            automationFailures: { type: number, minimum: 0 }
+        tasks: { type: array, items: { $ref: "#/components/schemas/OperationsTask" } }
+        approvals: { type: array, items: { $ref: "#/components/schemas/OperationsApproval" } }
+        alerts: { type: array, items: { $ref: "#/components/schemas/OperationsAlert" } }
+        automations: { type: array, items: { $ref: "#/components/schemas/OperationsAutomation" } }
+        notifications: { $ref: "#/components/schemas/OperationsNotificationPreferences" }

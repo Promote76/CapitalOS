@@ -3090,3 +3090,434 @@ export const GetAccountingOverviewResponse = zod.object({
 })
 
 
+/**
+ * @summary Get the household Operations Command Center snapshot
+ */
+export const getOperationsOverviewResponseTodayCriticalAlertsMin = 0;
+
+export const getOperationsOverviewResponseTodayApprovalsPendingMin = 0;
+
+export const getOperationsOverviewResponseTodayTasksDueMin = 0;
+
+export const getOperationsOverviewResponseTodayBillsDueMin = 0;
+
+export const getOperationsOverviewResponseTodayGoalActionsMin = 0;
+
+export const getOperationsOverviewResponseTodayPropertyActionsMin = 0;
+
+export const getOperationsOverviewResponseTodaySecurityActionsMin = 0;
+
+export const getOperationsOverviewResponseTodayReviewsScheduledMin = 0;
+
+export const getOperationsOverviewResponseHealthScoreMin = 0;
+export const getOperationsOverviewResponseHealthScoreMax = 100;
+
+export const getOperationsOverviewResponseHealthOverdueTasksMin = 0;
+
+export const getOperationsOverviewResponseHealthPendingApprovalsMin = 0;
+
+export const getOperationsOverviewResponseHealthCriticalAlertsMin = 0;
+
+export const getOperationsOverviewResponseHealthAutomationFailuresMin = 0;
+
+export const getOperationsOverviewResponseAlertsItemOccurrenceCountMin = 0;
+
+export const getOperationsOverviewResponseAutomationsItemPriorityMin = 0;
+
+
+
+export const GetOperationsOverviewResponse = zod.object({
+  "today": zod.object({
+  "criticalAlerts": zod.number().min(getOperationsOverviewResponseTodayCriticalAlertsMin),
+  "approvalsPending": zod.number().min(getOperationsOverviewResponseTodayApprovalsPendingMin),
+  "tasksDue": zod.number().min(getOperationsOverviewResponseTodayTasksDueMin),
+  "billsDue": zod.number().min(getOperationsOverviewResponseTodayBillsDueMin),
+  "goalActions": zod.number().min(getOperationsOverviewResponseTodayGoalActionsMin),
+  "propertyActions": zod.number().min(getOperationsOverviewResponseTodayPropertyActionsMin),
+  "securityActions": zod.number().min(getOperationsOverviewResponseTodaySecurityActionsMin),
+  "reviewsScheduled": zod.number().min(getOperationsOverviewResponseTodayReviewsScheduledMin)
+}),
+  "nextBestAction": zod.string().nullable(),
+  "noActionRequired": zod.boolean(),
+  "health": zod.object({
+  "score": zod.number().min(getOperationsOverviewResponseHealthScoreMin).max(getOperationsOverviewResponseHealthScoreMax),
+  "overdueTasks": zod.number().min(getOperationsOverviewResponseHealthOverdueTasksMin),
+  "pendingApprovals": zod.number().min(getOperationsOverviewResponseHealthPendingApprovalsMin),
+  "criticalAlerts": zod.number().min(getOperationsOverviewResponseHealthCriticalAlertsMin),
+  "bills": zod.string(),
+  "accounting": zod.string(),
+  "security": zod.string(),
+  "automationFailures": zod.number().min(getOperationsOverviewResponseHealthAutomationFailuresMin)
+}),
+  "tasks": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "domain": zod.string(),
+  "priority": zod.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']),
+  "status": zod.enum(['OPEN', 'IN_PROGRESS', 'WAITING', 'BLOCKED', 'COMPLETED', 'DISMISSED', 'EXPIRED']),
+  "dueDate": zod.coerce.date(),
+  "assignedTo": zod.string().nullable(),
+  "source": zod.string(),
+  "relatedEntityType": zod.string().nullish(),
+  "relatedEntityId": zod.string().nullish(),
+  "requiresApproval": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable()
+})),
+  "approvals": zod.array(zod.object({
+  "id": zod.string(),
+  "requestType": zod.string(),
+  "requestedBy": zod.string(),
+  "relatedEntity": zod.string(),
+  "currentState": zod.string(),
+  "proposedState": zod.string(),
+  "financialImpact": zod.string(),
+  "riskImpact": zod.string(),
+  "duplexImpact": zod.string(),
+  "reason": zod.string(),
+  "evidence": zod.array(zod.string()),
+  "requiredAuthority": zod.string(),
+  "expiresAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'DEFERRED', 'EXPIRED', 'CANCELLED']),
+  "createdAt": zod.coerce.date(),
+  "decidedAt": zod.coerce.date().nullish()
+})),
+  "alerts": zod.array(zod.object({
+  "id": zod.string(),
+  "alertKey": zod.string(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "severity": zod.enum(['INFO', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "domain": zod.string(),
+  "status": zod.enum(['ACTIVE', 'ACKNOWLEDGED', 'RESOLVED', 'DISMISSED']),
+  "occurrenceCount": zod.number().min(getOperationsOverviewResponseAlertsItemOccurrenceCountMin),
+  "firstSeen": zod.coerce.date(),
+  "lastSeen": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullish()
+})),
+  "automations": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "trigger": zod.string(),
+  "action": zod.string(),
+  "enabled": zod.boolean(),
+  "protected": zod.boolean(),
+  "priority": zod.number().min(getOperationsOverviewResponseAutomationsItemPriorityMin),
+  "lastRun": zod.coerce.date().nullable(),
+  "nextRun": zod.coerce.date().nullable()
+})),
+  "notifications": zod.object({
+  "criticalAlerts": zod.array(zod.string()),
+  "bills": zod.array(zod.string()),
+  "budget": zod.array(zod.string()),
+  "duplexGoal": zod.array(zod.string()),
+  "property": zod.array(zod.string()),
+  "strategies": zod.array(zod.string()),
+  "accounting": zod.array(zod.string()),
+  "security": zod.array(zod.string()),
+  "weeklyReports": zod.array(zod.string()),
+  "monthlyReports": zod.array(zod.string()),
+  "quietHoursStart": zod.string().nullable(),
+  "quietHoursEnd": zod.string().nullable()
+})
+})
+
+
+/**
+ * @summary List household operations tasks
+ */
+export const ListOperationsTasksResponseItem = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "domain": zod.string(),
+  "priority": zod.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']),
+  "status": zod.enum(['OPEN', 'IN_PROGRESS', 'WAITING', 'BLOCKED', 'COMPLETED', 'DISMISSED', 'EXPIRED']),
+  "dueDate": zod.coerce.date(),
+  "assignedTo": zod.string().nullable(),
+  "source": zod.string(),
+  "relatedEntityType": zod.string().nullish(),
+  "relatedEntityId": zod.string().nullish(),
+  "requiresApproval": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable()
+})
+export const ListOperationsTasksResponse = zod.array(ListOperationsTasksResponseItem)
+
+
+/**
+ * @summary Create a household operations task
+ */
+export const createOperationsTaskBodyTitleMax = 160;
+
+export const createOperationsTaskBodyDescriptionMax = 1000;
+
+export const createOperationsTaskBodyDomainMax = 40;
+
+
+
+export const CreateOperationsTaskBody = zod.object({
+  "title": zod.string().min(1).max(createOperationsTaskBodyTitleMax),
+  "description": zod.string().min(1).max(createOperationsTaskBodyDescriptionMax),
+  "domain": zod.string().min(1).max(createOperationsTaskBodyDomainMax),
+  "priority": zod.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']),
+  "dueDate": zod.coerce.date(),
+  "assignedTo": zod.string().optional(),
+  "requiresApproval": zod.boolean().optional()
+})
+
+export const CreateOperationsTaskResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "domain": zod.string(),
+  "priority": zod.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']),
+  "status": zod.enum(['OPEN', 'IN_PROGRESS', 'WAITING', 'BLOCKED', 'COMPLETED', 'DISMISSED', 'EXPIRED']),
+  "dueDate": zod.coerce.date(),
+  "assignedTo": zod.string().nullable(),
+  "source": zod.string(),
+  "relatedEntityType": zod.string().nullish(),
+  "relatedEntityId": zod.string().nullish(),
+  "requiresApproval": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Update task status or assignment
+ */
+export const UpdateOperationsTaskParams = zod.object({
+  "taskId": zod.coerce.string()
+})
+
+export const UpdateOperationsTaskBody = zod.object({
+  "status": zod.enum(['OPEN', 'IN_PROGRESS', 'WAITING', 'BLOCKED', 'COMPLETED', 'DISMISSED', 'EXPIRED']).optional(),
+  "assignedTo": zod.string().optional()
+})
+
+export const UpdateOperationsTaskResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "description": zod.string(),
+  "domain": zod.string(),
+  "priority": zod.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']),
+  "status": zod.enum(['OPEN', 'IN_PROGRESS', 'WAITING', 'BLOCKED', 'COMPLETED', 'DISMISSED', 'EXPIRED']),
+  "dueDate": zod.coerce.date(),
+  "assignedTo": zod.string().nullable(),
+  "source": zod.string(),
+  "relatedEntityType": zod.string().nullish(),
+  "relatedEntityId": zod.string().nullish(),
+  "requiresApproval": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary List pending and recent household approvals
+ */
+export const ListOperationsApprovalsResponseItem = zod.object({
+  "id": zod.string(),
+  "requestType": zod.string(),
+  "requestedBy": zod.string(),
+  "relatedEntity": zod.string(),
+  "currentState": zod.string(),
+  "proposedState": zod.string(),
+  "financialImpact": zod.string(),
+  "riskImpact": zod.string(),
+  "duplexImpact": zod.string(),
+  "reason": zod.string(),
+  "evidence": zod.array(zod.string()),
+  "requiredAuthority": zod.string(),
+  "expiresAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'DEFERRED', 'EXPIRED', 'CANCELLED']),
+  "createdAt": zod.coerce.date(),
+  "decidedAt": zod.coerce.date().nullish()
+})
+export const ListOperationsApprovalsResponse = zod.array(ListOperationsApprovalsResponseItem)
+
+
+/**
+ * @summary Record a human approval decision
+ */
+export const DecideOperationsApprovalParams = zod.object({
+  "approvalId": zod.coerce.string()
+})
+
+export const decideOperationsApprovalBodyReasonMax = 1000;
+
+
+
+export const DecideOperationsApprovalBody = zod.object({
+  "decision": zod.enum(['APPROVED', 'REJECTED', 'DEFERRED']),
+  "reason": zod.string().min(1).max(decideOperationsApprovalBodyReasonMax)
+})
+
+export const DecideOperationsApprovalResponse = zod.object({
+  "id": zod.string(),
+  "requestType": zod.string(),
+  "requestedBy": zod.string(),
+  "relatedEntity": zod.string(),
+  "currentState": zod.string(),
+  "proposedState": zod.string(),
+  "financialImpact": zod.string(),
+  "riskImpact": zod.string(),
+  "duplexImpact": zod.string(),
+  "reason": zod.string(),
+  "evidence": zod.array(zod.string()),
+  "requiredAuthority": zod.string(),
+  "expiresAt": zod.coerce.date().nullable(),
+  "status": zod.enum(['PENDING', 'APPROVED', 'REJECTED', 'DEFERRED', 'EXPIRED', 'CANCELLED']),
+  "createdAt": zod.coerce.date(),
+  "decidedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary List active household operations alerts
+ */
+export const listOperationsAlertsResponseOccurrenceCountMin = 0;
+
+
+
+export const ListOperationsAlertsResponseItem = zod.object({
+  "id": zod.string(),
+  "alertKey": zod.string(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "severity": zod.enum(['INFO', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "domain": zod.string(),
+  "status": zod.enum(['ACTIVE', 'ACKNOWLEDGED', 'RESOLVED', 'DISMISSED']),
+  "occurrenceCount": zod.number().min(listOperationsAlertsResponseOccurrenceCountMin),
+  "firstSeen": zod.coerce.date(),
+  "lastSeen": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullish()
+})
+export const ListOperationsAlertsResponse = zod.array(ListOperationsAlertsResponseItem)
+
+
+/**
+ * @summary Acknowledge or resolve an operations alert
+ */
+export const UpdateOperationsAlertParams = zod.object({
+  "alertId": zod.coerce.string()
+})
+
+export const UpdateOperationsAlertBody = zod.object({
+  "status": zod.enum(['ACKNOWLEDGED', 'RESOLVED', 'DISMISSED'])
+})
+
+export const updateOperationsAlertResponseOccurrenceCountMin = 0;
+
+
+
+export const UpdateOperationsAlertResponse = zod.object({
+  "id": zod.string(),
+  "alertKey": zod.string(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "severity": zod.enum(['INFO', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  "domain": zod.string(),
+  "status": zod.enum(['ACTIVE', 'ACKNOWLEDGED', 'RESOLVED', 'DISMISSED']),
+  "occurrenceCount": zod.number().min(updateOperationsAlertResponseOccurrenceCountMin),
+  "firstSeen": zod.coerce.date(),
+  "lastSeen": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullish()
+})
+
+
+/**
+ * @summary List safe household automation rules
+ */
+export const listOperationsAutomationsResponsePriorityMin = 0;
+
+
+
+export const ListOperationsAutomationsResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "trigger": zod.string(),
+  "action": zod.string(),
+  "enabled": zod.boolean(),
+  "protected": zod.boolean(),
+  "priority": zod.number().min(listOperationsAutomationsResponsePriorityMin),
+  "lastRun": zod.coerce.date().nullable(),
+  "nextRun": zod.coerce.date().nullable()
+})
+export const ListOperationsAutomationsResponse = zod.array(ListOperationsAutomationsResponseItem)
+
+
+/**
+ * @summary Run a safe automation in prepare-only mode
+ */
+export const RunOperationsAutomationParams = zod.object({
+  "automationId": zod.coerce.string()
+})
+
+export const RunOperationsAutomationResponse = zod.object({
+  "id": zod.string(),
+  "automationId": zod.string(),
+  "result": zod.string(),
+  "actionsCreated": zod.array(zod.string()),
+  "errors": zod.array(zod.string()),
+  "startedAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date(),
+  "safeBoundary": zod.string()
+})
+
+
+/**
+ * @summary Get household notification preferences
+ */
+export const GetOperationsNotificationPreferencesResponse = zod.object({
+  "criticalAlerts": zod.array(zod.string()),
+  "bills": zod.array(zod.string()),
+  "budget": zod.array(zod.string()),
+  "duplexGoal": zod.array(zod.string()),
+  "property": zod.array(zod.string()),
+  "strategies": zod.array(zod.string()),
+  "accounting": zod.array(zod.string()),
+  "security": zod.array(zod.string()),
+  "weeklyReports": zod.array(zod.string()),
+  "monthlyReports": zod.array(zod.string()),
+  "quietHoursStart": zod.string().nullable(),
+  "quietHoursEnd": zod.string().nullable()
+})
+
+
+/**
+ * @summary Update household notification preferences
+ */
+export const UpdateOperationsNotificationPreferencesBody = zod.object({
+  "criticalAlerts": zod.array(zod.string()).optional(),
+  "bills": zod.array(zod.string()).optional(),
+  "budget": zod.array(zod.string()).optional(),
+  "duplexGoal": zod.array(zod.string()).optional(),
+  "property": zod.array(zod.string()).optional(),
+  "strategies": zod.array(zod.string()).optional(),
+  "accounting": zod.array(zod.string()).optional(),
+  "security": zod.array(zod.string()).optional(),
+  "weeklyReports": zod.array(zod.string()).optional(),
+  "monthlyReports": zod.array(zod.string()).optional(),
+  "quietHoursStart": zod.string().nullish(),
+  "quietHoursEnd": zod.string().nullish()
+})
+
+export const UpdateOperationsNotificationPreferencesResponse = zod.object({
+  "criticalAlerts": zod.array(zod.string()),
+  "bills": zod.array(zod.string()),
+  "budget": zod.array(zod.string()),
+  "duplexGoal": zod.array(zod.string()),
+  "property": zod.array(zod.string()),
+  "strategies": zod.array(zod.string()),
+  "accounting": zod.array(zod.string()),
+  "security": zod.array(zod.string()),
+  "weeklyReports": zod.array(zod.string()),
+  "monthlyReports": zod.array(zod.string()),
+  "quietHoursStart": zod.string().nullable(),
+  "quietHoursEnd": zod.string().nullable()
+})
+
+

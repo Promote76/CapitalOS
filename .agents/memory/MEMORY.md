@@ -8,3 +8,4 @@
 - [Micro-Live fail-closed architecture](capital-os-micro-live-boundary.md) — keep rehearsal, eligibility, and any future real venue integration as separate disabled-by-default boundaries.
 - [Database publishing boundary](capital-os-database-publishing.md) — an external DATABASE_URL can let code publish while production schema stays stale; managed database setup must happen through Publish.
 - [Accounting overview boundary](capital-os-accounting-boundary.md) — current net worth comes from included financial-account balances; planning capital stays separate until explicitly reconciled.
+- [Concurrent additive seeding](capital-os-concurrent-seeding.md) — household-scoped advisory locks must serialize lazy seed routines reached by parallel API reads.

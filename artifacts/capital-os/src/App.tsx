@@ -94,6 +94,7 @@ import {
   CircleDollarSign,
   CircleHelp,
   ClipboardList,
+  ClipboardCheck,
   Compass,
   FilePlus2,
   FileText,
@@ -138,6 +139,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import TreasuryPage from '@/pages/treasury';
 import AccountingPage from '@/pages/accounting';
+import OperationsPage from '@/pages/operations';
 import { Link, Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 
 const queryClient = new QueryClient();
@@ -177,6 +179,7 @@ const planningNav = [
   { href: '/income', label: 'Income', icon: CircleDollarSign },
 ];
 const secondaryNav = [
+  { href: '/operations', label: 'Operations', icon: ClipboardCheck },
   { href: '/transactions', label: 'Transactions', icon: ReceiptText },
   { href: '/contributions', label: 'Contributions', icon: WalletCards },
   { href: '/reports', label: 'Reports', icon: FileText },
@@ -1332,6 +1335,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue
     <Route path="/income" component={() => <IncomePage onFeedback={onFeedback} />} />
     <Route path="/accounts" component={() => <AccountsPage onFeedback={onFeedback} />} />
     <Route path="/accounting" component={() => <AccountingPage onFeedback={onFeedback} />} />
+    <Route path="/operations" component={() => <OperationsPage onFeedback={onFeedback} />} />
     <Route path="/goals" component={() => <GoalsPage onAction={onAction} />} />
     <Route path="/strategies" component={() => <StrategiesPage onFeedback={onFeedback} />} />
     <Route path="/micro-live" component={() => <MicroLivePage onFeedback={onFeedback} />} />

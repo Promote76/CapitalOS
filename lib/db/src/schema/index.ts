@@ -6,3 +6,4 @@ export * from "./governance";
 export * from "./household-finance";
 export * from "./micro-live";
 export * from "./treasury";
+export * from "./operations";

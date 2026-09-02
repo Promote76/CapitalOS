@@ -1,0 +1,1882 @@
+Replit Prompt: Build Capital OS Automation, Notifications & Family Operations Layer
+
+Continue building the existing Capital OS application.
+
+Do not redesign the approved UI.
+
+Preserve all existing modules, including:
+
+- Household Budget
+- Cash Flow
+- Wells Fargo / Plaid integration
+- Accounts
+- Safe-to-Deploy
+- Capital Governor
+- Treasury Engine
+- Protected Capital
+- Duplex Goal
+- Duplex Acquisition OS
+- Property Readiness
+- Portfolio
+- Risk Governor
+- AI CIO
+- Strategy Lab
+- Backtesting
+- Shadow Trading
+- Paper Trading
+- Micro-Live Execution
+- OMS
+- Reconciliation
+- Guardian
+- Accounting
+- Tax Lots
+- Family Net Worth
+- Reporting
+- Security
+- Identity
+- Permissions
+- Backup & Recovery
+- Audit Ledger
+- Blockchain-ready architecture
+
+This phase builds:
+
+CAPITAL OS FAMILY OPERATIONS & AUTOMATION ENGINE
+
+The purpose is to create a reliable operating cadence for the household.
+
+Capital OS should not merely store financial information.
+
+It should help ensure that:
+
+- bills are not forgotten
+- goals are reviewed
+- duplex contributions remain on track
+- property tasks are followed up
+- stale banking data is refreshed
+- approvals are not lost
+- strategy reviews occur on schedule
+- accounting closes happen
+- security reviews occur
+- reports are generated
+- significant financial changes surface at the right time
+
+Automation should reduce administrative burden without taking unauthorized financial action.
+
+---
+
+1. CORE AUTOMATION PRINCIPLE
+
+Automation may:
+
+Monitor
+Calculate
+Generate
+Remind
+Notify
+Escalate
+Prepare
+Queue
+Recommend
+Schedule Reviews
+
+Automation may NOT automatically:
+
+Move bank funds
+Submit property offers
+Apply for loans
+Change protected capital
+Increase strategy capital
+Enable live trading
+Override risk limits
+Withdraw assets
+Change security ownership
+
+unless a future explicitly authorized workflow is separately implemented.
+
+---
+
+2. OPERATIONS NAVIGATION
+
+Add:
+
+Operations
+├── Command Center
+├── Tasks
+├── Approvals
+├── Alerts
+├── Calendar
+├── Automations
+├── Reviews
+├── Notifications
+└── Activity
+
+Keep the interface consistent with the approved light family-office design.
+
+---
+
+3. OPERATIONS COMMAND CENTER
+
+Create "/operations".
+
+The page should answer:
+
+«What needs attention today?»
+
+Display:
+
+TODAY
+
+Critical Alerts        0
+Approvals Pending      2
+Tasks Due              4
+Bills Due              3
+Goal Actions           1
+Property Actions       2
+Security Actions       0
+Reviews Scheduled      1
+
+Also display:
+
+NEXT BEST ACTION
+
+and:
+
+NO ACTION REQUIRED
+
+when appropriate.
+
+---
+
+4. UNIFIED TASK ENGINE
+
+Create:
+
+Task
+
+Fields:
+
+task_id
+household_id
+title
+description
+domain
+priority
+status
+due_date
+assigned_to
+created_by
+source
+related_entity_type
+related_entity_id
+requires_approval
+completed_at
+
+---
+
+5. TASK DOMAINS
+
+Support:
+
+Household
+Budget
+Banking
+Duplex
+Property
+Treasury
+Strategy
+Accounting
+Tax
+Security
+Documents
+General
+
+---
+
+6. TASK PRIORITIES
+
+Use:
+
+CRITICAL
+HIGH
+MEDIUM
+LOW
+
+Do not mark everything urgent.
+
+---
+
+7. TASK STATUS
+
+Support:
+
+Open
+In Progress
+Waiting
+Blocked
+Completed
+Dismissed
+Expired
+
+---
+
+8. TASK SOURCE
+
+Track whether a task was created by:
+
+User
+System Rule
+AI Recommendation
+Property Workflow
+Accounting Workflow
+Security Event
+Strategy Workflow
+
+---
+
+9. AUTOMATED TASK GENERATION
+
+Examples:
+
+Bank connection requires reauthentication
+→ Create Banking Task
+
+Duplex contribution missed
+→ Create Goal Review Task
+
+Insurance quote missing for top property
+→ Create Property Task
+
+Month-end approaching
+→ Create Accounting Close Tasks
+
+Strategy review due
+→ Create Strategy Review Task
+
+Recovery drill overdue
+→ Create Security Task
+
+---
+
+10. APPROVAL INBOX
+
+Create:
+
+APPROVALS
+
+Centralize actions requiring human decision.
+
+Examples:
+
+Capital Allocation Change
+AI CIO Recommendation
+Property Promotion
+Strategy Graduation
+Micro-Live Arming
+Security Policy Change
+Treasury Policy Change
+Account Connection Change
+
+---
+
+11. APPROVAL ITEM
+
+Create:
+
+ApprovalRequest
+
+Fields:
+
+request_type
+requested_by
+related_entity
+current_state
+proposed_state
+financial_impact
+risk_impact
+duplex_impact
+reason
+evidence
+required_authority
+expires_at
+status
+
+---
+
+12. APPROVAL STATUS
+
+Use:
+
+Pending
+Approved
+Rejected
+Deferred
+Expired
+Cancelled
+
+---
+
+13. APPROVAL UX
+
+Every approval should show:
+
+WHAT IS CHANGING?
+
+WHY?
+
+FINANCIAL IMPACT
+
+RISK IMPACT
+
+DUPLEX IMPACT
+
+EVIDENCE
+
+WHO REQUESTED IT?
+
+WHAT HAPPENS IF I DO NOTHING?
+
+Then:
+
+Approve
+Reject
+Defer
+
+---
+
+14. NO BLIND APPROVAL
+
+Do not show:
+
+Approve
+
+without context for high-impact financial actions.
+
+Critical approvals should require step-up authentication.
+
+---
+
+15. ALERT ENGINE
+
+Create:
+
+Alert
+
+Separate alerts from tasks.
+
+Alerts communicate a condition.
+
+Tasks represent something that should be done.
+
+---
+
+16. ALERT SEVERITY
+
+Use:
+
+INFO
+LOW
+MEDIUM
+HIGH
+CRITICAL
+
+---
+
+17. ALERT DOMAINS
+
+Support:
+
+Cash Flow
+Budget
+Banking
+Duplex
+Property
+Treasury
+Strategy
+Risk
+Accounting
+Security
+System
+
+---
+
+18. ALERT EXAMPLES
+
+Cash Flow:
+
+Projected checking balance below safety floor.
+
+Duplex:
+
+Weekly contribution missed.
+
+Property:
+
+Top property fails updated liquidity stress test.
+
+Strategy:
+
+Strategy drawdown approaching soft limit.
+
+Security:
+
+New trusted device added.
+
+---
+
+19. ALERT DEDUPLICATION
+
+Do not repeatedly create the same alert every refresh.
+
+Track:
+
+alert_key
+first_seen
+last_seen
+occurrence_count
+resolved_at
+
+---
+
+20. ALERT ESCALATION
+
+Allow escalation when unresolved.
+
+Example:
+
+Medium
+→ High
+
+if a condition persists or worsens.
+
+---
+
+21. ALERT RESOLUTION
+
+Alerts should support:
+
+Resolved Automatically
+Resolved by User
+Acknowledged
+Dismissed
+
+A dismissed alert does not necessarily mean the underlying condition is fixed.
+
+---
+
+22. NOTIFICATION ENGINE
+
+Create provider-agnostic notification architecture.
+
+Channels:
+
+In-App
+Email
+Push
+Future SMS
+
+Do not require SMS initially.
+
+---
+
+23. NOTIFICATION PREFERENCES
+
+Allow per-user settings:
+
+Critical Alerts
+Bills
+Budget
+Duplex Goal
+Property
+Strategies
+Accounting
+Security
+Weekly Reports
+Monthly Reports
+
+with channel preferences.
+
+---
+
+24. CRITICAL NOTIFICATION OVERRIDE
+
+Critical security and capital-risk notifications may ignore ordinary marketing-style notification preferences where appropriate.
+
+Do not allow users to accidentally suppress essential security warnings without clear confirmation.
+
+---
+
+25. NOTIFICATION QUIET HOURS
+
+Support quiet hours for non-critical alerts.
+
+Critical security or capital emergencies may bypass quiet hours.
+
+---
+
+26. DAILY CAPITAL BRIEF AUTOMATION
+
+Automatically prepare:
+
+DAILY CAPITAL BRIEF
+
+Suggested content:
+
+Duplex Goal
+Cash Flow
+Safe to Deploy
+Bills Due
+Property Actions
+Strategy Status
+Risk Status
+Security Status
+Top Recommendation
+
+Keep it concise.
+
+---
+
+27. WEEKLY FAMILY CAPITAL REVIEW
+
+Generate:
+
+WEEKLY FAMILY CAPITAL REVIEW
+
+Include:
+
+Income
+Expenses
+Free Cash Flow
+Savings
+Duplex Contribution
+Treasury
+Property Readiness
+Strategy Performance
+Approvals
+Next Week Actions
+
+---
+
+28. MONTHLY CAPITAL REVIEW
+
+Use existing reporting engine.
+
+Schedule generation of:
+
+Monthly Family Capital Report
+Monthly Treasury Review
+Monthly Net Worth Review
+Monthly Accounting Close
+
+---
+
+29. QUARTERLY REVIEW
+
+Prepare:
+
+Quarterly Capital Review
+Quarterly Strategy Review
+Quarterly Property Review
+Quarterly Security Review
+
+---
+
+30. ANNUAL REVIEW
+
+Prepare:
+
+Annual Family Capital Review
+Annual Tax Preparation Checklist
+Annual Security Review
+Annual Goal Review
+
+---
+
+31. AUTOMATION RULE ENGINE
+
+Create:
+
+AutomationRule
+
+Fields:
+
+name
+trigger
+conditions
+action
+enabled
+priority
+last_run
+next_run
+created_by
+
+---
+
+32. AUTOMATION TRIGGER TYPES
+
+Support:
+
+Scheduled
+Event-Based
+Threshold
+State Change
+Deadline
+Data Freshness
+
+---
+
+33. SCHEDULED TRIGGER EXAMPLES
+
+Every Day
+Every Week
+Month-End
+Quarter-End
+Annual
+Specific Date
+
+---
+
+34. EVENT TRIGGERS
+
+Examples:
+
+BankAccountDisconnected
+
+PropertyPromoted
+
+StrategyGraduated
+
+SecurityPolicyChanged
+
+ContributionMissed
+
+AccountingPeriodClosed
+
+---
+
+35. THRESHOLD TRIGGERS
+
+Examples:
+
+Emergency Reserve < Minimum
+
+Safe-to-Deploy < Threshold
+
+Strategy Drawdown > 4%
+
+Duplex Progress Behind Schedule
+
+Liquidity Coverage < 2 Months
+
+---
+
+36. STATE CHANGE TRIGGERS
+
+Example:
+
+Property:
+Qualified
+→ Offer Candidate
+
+could create:
+
+Financing review task
+Insurance quote task
+Liquidity review task
+
+---
+
+37. DEADLINE TRIGGERS
+
+Examples:
+
+Bill due
+Document expiring
+Loan preapproval expiring
+Insurance quote expiring
+Tax deadline approaching
+
+---
+
+38. DATA FRESHNESS TRIGGERS
+
+Examples:
+
+Wells Fargo data stale > X hours
+
+Property valuation stale > X days
+
+Strategy market data stale
+
+Liability balance stale
+
+---
+
+39. SAFE AUTOMATION ACTIONS
+
+Automation may automatically:
+
+Create Task
+Create Alert
+Generate Report
+Request Review
+Update Non-Financial Status
+Send Notification
+Queue AI Analysis
+
+---
+
+40. RESTRICTED AUTOMATION ACTIONS
+
+Automation may NOT automatically:
+
+Transfer Money
+Change Protected Capital
+Increase Strategy Capital
+Enable Trading
+Change Owner
+Disable Security
+Submit Offer
+Sign Contract
+
+---
+
+41. AI-ASSISTED AUTOMATION
+
+AI may:
+
+Draft task descriptions
+Summarize alerts
+Prioritize tasks
+Explain why an automation triggered
+Generate review summaries
+
+AI does not decide hard financial authorization.
+
+---
+
+42. APPROVAL-REQUIRED AUTOMATION
+
+Some workflows may prepare:
+
+Recommended Change
+
+then create an approval request.
+
+Example:
+
+Free Cash Flow above threshold
+↓
+AI recommends additional $50/week Duplex contribution
+↓
+Capital Governor calculates impact
+↓
+Approval Request created
+
+No automatic change.
+
+---
+
+43. BILL REMINDERS
+
+Use existing Bill Calendar.
+
+Support:
+
+7 Days Before
+3 Days Before
+1 Day Before
+Due Today
+Overdue
+
+Avoid sending repetitive alerts if payment is confirmed.
+
+---
+
+44. UPCOMING CASH NEEDS
+
+Create a consolidated:
+
+UPCOMING CASH NEEDS
+
+View:
+
+Next 7 Days
+Next 30 Days
+Next 60 Days
+Next 90 Days
+
+Include:
+
+Bills
+Insurance
+Property Costs
+Tax Items
+Known Repairs
+Closing Costs
+Other Commitments
+
+---
+
+45. DUPLEX CONTRIBUTION AUTOMATION
+
+Monitor the planned contribution schedule.
+
+Current plan:
+
+$250/week total
+
+Default split:
+
+$200 Duplex
+$25 Capital OS
+$25 Opportunity Reserve
+
+If contribution is not confirmed:
+
+Create review task
+
+Do not initiate bank transfer.
+
+---
+
+46. DUPLEX MILESTONE AUTOMATIONS
+
+Create milestones at:
+
+25%
+50%
+75%
+90%
+100%
+
+Generate:
+
+Progress Notification
+Updated Timeline
+Next Acquisition Action
+
+---
+
+47. DUPLEX GOAL AT RISK
+
+If projected completion slips beyond configured tolerance:
+
+DUPLEX GOAL AT RISK
+
+Generate:
+
+Reason
+Impact
+Recommended Action
+
+---
+
+48. PROPERTY FOLLOW-UP ENGINE
+
+Every candidate may have:
+
+Next Action
+Follow-Up Date
+Responsible Person
+
+Examples:
+
+Call Agent
+Request Insurance Quote
+Get Rent Estimate
+Research Taxes
+Schedule Tour
+Review Financing
+
+---
+
+49. PROPERTY STALE PIPELINE
+
+If a property remains:
+
+Researching
+
+for too long without activity:
+
+Review or Archive
+
+task.
+
+---
+
+50. PROPERTY DOCUMENT DEADLINES
+
+Track:
+
+Inspection Deadline
+Financing Deadline
+Appraisal
+Insurance
+Closing
+
+once a property is under contract.
+
+Generate increasingly urgent alerts.
+
+---
+
+51. PROPERTY UNDER CONTRACT OPERATIONS
+
+When property enters:
+
+Under Contract
+
+automatically create a checklist such as:
+
+Earnest money tracking
+Inspection
+Insurance
+Appraisal
+Financing
+Title
+Closing documents
+Final walkthrough
+Cash-to-close review
+
+Do not submit payments automatically.
+
+---
+
+52. STRATEGY REVIEW AUTOMATIONS
+
+Schedule review based on stage.
+
+Examples:
+
+Research
+Monthly Review
+
+Paper
+Weekly Review
+
+Micro-Live
+Daily / Weekly Review
+
+Configurable.
+
+---
+
+53. STRATEGY PERFORMANCE ALERTS
+
+Generate alerts for:
+
+Drawdown
+Negative expectancy
+Adverse selection
+Execution errors
+Reconciliation issues
+Evidence score decline
+
+Hard risk rules remain deterministic.
+
+---
+
+54. STRATEGY GRADUATION REVIEW
+
+When stage requirements are met:
+
+Create Graduation Review
+
+not:
+
+Automatically Graduate
+
+---
+
+55. MICRO-LIVE SESSION REVIEW
+
+At end of each Micro-Live authorization:
+
+Generate Session Summary
+
+Include:
+
+Capital
+Orders
+Fills
+P&L
+Drawdown
+Risk Events
+Reconciliation
+Guardian Events
+
+---
+
+56. TREASURY REVIEW AUTOMATIONS
+
+Examples:
+
+Weekly Allocation Review
+Monthly Surplus Review
+Quarterly Policy Review
+
+---
+
+57. CAPITAL REQUEST EXPIRATION
+
+Capital Requests should automatically expire if not approved within configured timeframe.
+
+Expired requests require resubmission with current data.
+
+---
+
+58. ACCOUNTING AUTOMATIONS
+
+Schedule:
+
+Weekly Transaction Review
+Month-End Close
+Quarter-End Review
+Year-End Review
+
+---
+
+59. UNCATEGORIZED TRANSACTION TASK
+
+If uncategorized transaction count exceeds threshold:
+
+Create Accounting Task
+
+---
+
+60. RECONCILIATION TASK
+
+If reconciliation fails:
+
+Create High-Priority Task
++
+Alert
+
+Do not finalize statements.
+
+---
+
+61. TAX DOCUMENT AUTOMATIONS
+
+During tax season:
+
+Track missing documents
+Generate checklist
+Create follow-up reminders
+
+Do not file taxes automatically.
+
+---
+
+62. SECURITY REVIEW AUTOMATIONS
+
+Schedule:
+
+Monthly Device Review
+Quarterly Permission Review
+Credential Review
+Backup Review
+Recovery Drill
+
+---
+
+63. BACKUP MONITOR
+
+If backup age exceeds policy:
+
+HIGH SECURITY ALERT
+
+---
+
+64. RECOVERY TEST REMINDER
+
+If no recovery test has occurred within policy interval:
+
+Create Security Task
+
+---
+
+65. CONNECTION HEALTH OPERATIONS
+
+Monitor:
+
+Plaid
+Banking
+Market Data
+Trading Venue
+AI Provider
+Email Provider
+
+Create alerts when degraded.
+
+---
+
+66. BANK REAUTHENTICATION WORKFLOW
+
+If Wells Fargo/Plaid requires reauthorization:
+
+Create Banking Alert
+Create Task
+Lower Financial Data Confidence
+Reduce Safe-to-Deploy Confidence
+
+Do not immediately delete historical data.
+
+---
+
+67. NOTIFICATION BUNDLING
+
+Bundle low-priority notifications.
+
+Example:
+
+3 budget observations
+2 property reminders
+
+instead of sending 5 separate interruptions.
+
+---
+
+68. CRITICAL ALERT DELIVERY
+
+Critical alerts should not be bundled with routine information.
+
+Examples:
+
+Security compromise
+Risk hard limit
+Reconciliation failure
+Projected liquidity breach
+
+---
+
+69. DIGESTS
+
+Support:
+
+Daily Digest
+Weekly Digest
+Monthly Digest
+
+---
+
+70. FAMILY MEMBER ASSIGNMENT
+
+Tasks may be assigned based on household permissions.
+
+Examples:
+
+Owner
+Partner
+Accountant
+Advisor
+
+Do not expose restricted financial details in task assignments to unauthorized members.
+
+---
+
+71. PARTNER VIEW
+
+Create a simplified Family Operations view.
+
+Show:
+
+Duplex Progress
+Bills
+Shared Tasks
+Property Progress
+Approvals assigned to partner
+Upcoming Household Events
+
+based on permissions.
+
+---
+
+72. OPERATING CALENDAR
+
+Create a calendar containing:
+
+Bills
+Contributions
+Property Deadlines
+Reviews
+Accounting Close
+Security Review
+Tax Deadlines
+Strategy Reviews
+
+---
+
+73. CALENDAR EVENT SOURCE
+
+Label events:
+
+System
+User
+Property
+Accounting
+Security
+Strategy
+Goal
+
+---
+
+74. CALENDAR CONFLICT DETECTION
+
+Identify periods with unusually high cash requirements.
+
+Example:
+
+Insurance
++
+Property Inspection
++
+Tax Payment
+
+within one week.
+
+Create:
+
+CASH FLOW PRESSURE
+
+insight.
+
+---
+
+75. CASH CALENDAR
+
+Create a specialized calendar showing:
+
+Expected Income
+Bills
+Goal Contributions
+Known Expenses
+Closing Costs
+
+with projected daily/weekly balance.
+
+---
+
+76. TASK DEPENDENCIES
+
+Support:
+
+Task A must complete before Task B
+
+Example:
+
+Insurance Quote
+↓
+Final Deal Stress Test
+↓
+Offer Readiness Review
+
+---
+
+77. WORKFLOW TEMPLATES
+
+Create reusable workflow templates.
+
+Examples:
+
+Monthly Financial Close
+Duplex Candidate Review
+Property Under Contract
+Micro-Live Review
+Security Incident
+Annual Tax Prep
+
+---
+
+78. PROPERTY ACQUISITION WORKFLOW
+
+Template:
+
+Add Property
+↓
+Buy Box Review
+↓
+Deal Analysis
+↓
+Financing
+↓
+Insurance
+↓
+Stress Test
+↓
+Capital Governor
+↓
+Offer Readiness
+
+---
+
+79. MONTH-END WORKFLOW
+
+Template:
+
+Sync Accounts
+↓
+Categorize
+↓
+Reconcile
+↓
+Update Assets
+↓
+Review P&L
+↓
+Generate Statements
+↓
+AI Financial Review
+↓
+Close Period
+
+---
+
+80. SECURITY INCIDENT WORKFLOW
+
+Template:
+
+Detect
+↓
+Security Lock
+↓
+Protect Capital
+↓
+Revoke Credentials if needed
+↓
+Investigate
+↓
+Restore
+↓
+Verify
+↓
+Post-Incident Review
+
+---
+
+81. AUTOMATION RUN HISTORY
+
+Create:
+
+AutomationRun
+
+Track:
+
+Rule
+Started
+Completed
+Result
+Actions Created
+Errors
+Duration
+
+---
+
+82. AUTOMATION FAILURE
+
+If an automation fails:
+
+Do not silently ignore it.
+
+Create:
+
+Automation Failure Alert
+
+where material.
+
+---
+
+83. RETRY POLICY
+
+Support safe retries for idempotent automations.
+
+Do not blindly retry financial or external write operations.
+
+---
+
+84. IDEMPOTENT TASK CREATION
+
+Repeated automation runs must not create duplicate tasks for the same unresolved condition.
+
+---
+
+85. AUTOMATION HEALTH
+
+Create:
+
+AUTOMATION HEALTH
+
+Show:
+
+Rules Enabled
+Successful Runs
+Failed Runs
+Overdue Runs
+
+---
+
+86. FAMILY OPERATIONS HEALTH SCORE
+
+Create:
+
+OPERATIONS HEALTH
+0–100
+
+Inputs:
+
+Overdue Tasks
+Critical Alerts
+Approval Backlog
+Bill Status
+Goal Actions
+Accounting Reviews
+Security Reviews
+Automation Failures
+
+---
+
+87. OPERATIONS HEALTH EXAMPLE
+
+OPERATIONS HEALTH
+
+94 / 100
+
+Overdue Tasks        0
+Pending Approvals    2
+Critical Alerts      0
+Bills                Current
+Accounting           Current
+Security             Current
+
+---
+
+88. COMMAND CENTER PRIORITIZATION
+
+Rank today's work by:
+
+Risk
+Financial Impact
+Urgency
+Goal Impact
+Deadline
+
+not by creation time alone.
+
+---
+
+89. AI OPERATIONS CHIEF
+
+Add:
+
+AI OPERATIONS CHIEF
+
+It may:
+
+Summarize today's priorities
+Explain alerts
+Draft task plans
+Identify bottlenecks
+Recommend task order
+Summarize unresolved approvals
+
+It may not bypass approval or financial authority.
+
+---
+
+90. MORNING BRIEF
+
+Create:
+
+MORNING BRIEF
+
+Example:
+
+Today:
+
+1 bill due
+1 duplex contribution scheduled
+2 property tasks
+No critical risk alerts
+No security issues
+
+Top Action:
+Request updated insurance estimate for top duplex candidate.
+
+---
+
+91. END-OF-WEEK REVIEW
+
+Generate:
+
+WEEK COMPLETE
+
+Income
+Expenses
+Savings
+Duplex Contribution
+Tasks Completed
+Property Progress
+Strategy Status
+Risk Events
+Next Week
+
+---
+
+92. REVIEW HISTORY
+
+Store completed reviews.
+
+Create:
+
+Review
+ReviewPeriod
+ReviewFinding
+ReviewAction
+
+---
+
+93. DECISION JOURNAL INTEGRATION
+
+When an approval results in a material decision:
+
+Create or link Decision Journal entry.
+
+---
+
+94. TASK → DECISION → OUTCOME
+
+Support:
+
+Task
+↓
+Decision
+↓
+Action
+↓
+Outcome Review
+
+This creates institutional memory.
+
+---
+
+95. NO HIDDEN AUTOMATION
+
+Users should be able to see:
+
+What rules are active
+What triggers them
+What they can do
+When they last ran
+
+---
+
+96. AUTOMATION ENABLE / DISABLE
+
+Authorized users may:
+
+Enable
+Disable
+Pause
+
+rules.
+
+Critical system safeguards should not be casually disabled.
+
+---
+
+97. PROTECTED AUTOMATIONS
+
+Some rules may be system-protected:
+
+Critical Security Alert
+Reconciliation Failure
+Hard Risk Trigger
+Backup Failure
+
+Require elevated authority to disable.
+
+---
+
+98. NOTIFICATION SECURITY
+
+Never include:
+
+Full Account Numbers
+Plaid Tokens
+API Secrets
+Private Keys
+Passwords
+
+in notifications.
+
+---
+
+99. NOTIFICATION LINK SAFETY
+
+In-app notifications should link to authenticated Capital OS pages rather than embedding sensitive financial details in external email where avoidable.
+
+---
+
+100. AUDIT EVENTS
+
+Add:
+
+TaskCreated
+TaskCompleted
+TaskDismissed
+ApprovalRequested
+ApprovalApproved
+ApprovalRejected
+AlertCreated
+AlertEscalated
+AlertResolved
+AutomationRuleCreated
+AutomationRuleChanged
+AutomationRunStarted
+AutomationRunCompleted
+AutomationRunFailed
+NotificationSent
+ReviewGenerated
+
+---
+
+101. DATABASE ENTITIES
+
+Create or expand:
+
+Task
+TaskDependency
+TaskComment
+
+ApprovalRequest
+ApprovalDecision
+
+Alert
+AlertOccurrence
+
+NotificationPreference
+NotificationEvent
+
+AutomationRule
+AutomationRun
+AutomationAction
+
+OperationsReview
+OperationsReviewItem
+
+CalendarEvent
+WorkflowTemplate
+WorkflowInstance
+WorkflowStep
+
+---
+
+102. TESTING
+
+Add tests for:
+
+Duplicate tasks are prevented
+Duplicate alerts are prevented
+Approval authority is enforced
+Critical approvals require proper authentication
+Automation cannot transfer money
+Automation cannot enable live trading
+Notification permissions work
+Quiet hours work
+Critical alerts bypass non-critical bundling
+Task dependencies work
+Automation retries remain idempotent
+
+---
+
+103. INTEGRATION TESTS
+
+Test:
+
+Contribution missed
+→ Alert
+→ Task
+→ AI explanation
+
+Property promoted
+→ Workflow created
+→ Financing task
+→ Insurance task
+→ Stress-test review
+
+Reconciliation mismatch
+→ Critical Alert
+→ Accounting Task
+→ Report Finalization Blocked
+
+---
+
+104. SECURITY TEST
+
+Attempt:
+
+Automation changes Protected Duplex capital.
+
+Expected:
+
+BLOCKED
+
+---
+
+105. TRADING TEST
+
+Attempt:
+
+Automation enables Micro-Live.
+
+Expected:
+
+BLOCKED
+
+unless the workflow only creates an approval request.
+
+---
+
+106. OPERATIONS RECOVERY
+
+After application restart:
+
+Reload active automation rules
+Rebuild pending schedules
+Do not duplicate previous actions
+Resume only safe jobs
+
+---
+
+107. AUTOMATION TIMEZONE
+
+Store scheduling logic consistently.
+
+Use household timezone for user-facing schedules.
+
+Use UTC internally where appropriate.
+
+Handle daylight-saving transitions correctly.
+
+---
+
+108. AUTOMATION DATA CONFIDENCE
+
+Before triggering financial recommendations based on external data:
+
+Check freshness.
+
+Example:
+
+Bank data stale
+→ Do not generate aggressive surplus recommendation.
+
+---
+
+109. OPERATIONS REPORT
+
+Create a monthly:
+
+FAMILY OPERATIONS REPORT
+
+Include:
+
+Tasks Created
+Tasks Completed
+Approvals
+Alerts
+Automation Runs
+Missed Obligations
+Property Progress
+Security Reviews
+Accounting Status
+
+---
+
+110. FINAL VALIDATION
+
+Before declaring this phase complete verify:
+
+1. Existing UI remains intact.
+2. Operations Command Center works.
+3. Tasks work.
+4. Task priorities work.
+5. Task dependencies work.
+6. Approval Inbox works.
+7. Financial authority is enforced.
+8. Alerts work.
+9. Alert deduplication works.
+10. Alert escalation works.
+11. Notifications work.
+12. Notification preferences work.
+13. Daily Brief works.
+14. Weekly Review works.
+15. Monthly Review scheduling works.
+16. Automation rules work.
+17. Scheduled triggers work.
+18. Event triggers work.
+19. Threshold triggers work.
+20. Deadline triggers work.
+21. Data freshness triggers work.
+22. Automations cannot move money.
+23. Automations cannot enable trading.
+24. Duplex contribution monitoring works.
+25. Property workflows work.
+26. Accounting workflows work.
+27. Security review workflows work.
+28. Automation run history works.
+29. Failed automations generate appropriate alerts.
+30. AI Operations Chief remains advisory.
+31. Audit events are generated.
+32. Critical operations logic has automated tests.
+
+---
+
+FINAL PRODUCT DIRECTION
+
+Capital OS should now operate as a continuous household financial operating system:
+
+DATA
+  ↓
+MONITORING
+  ↓
+ALERTS
+  ↓
+TASKS
+  ↓
+ANALYSIS
+  ↓
+APPROVALS
+  ↓
+HUMAN DECISION
+  ↓
+ACTION
+  ↓
+OUTCOME
+  ↓
+REVIEW
+
+The system should reduce:
+
+Forgotten Bills
+Missed Follow-Ups
+Unreviewed Risks
+Stale Financial Data
+Untracked Decisions
+Administrative Friction
+
+without creating autonomous financial authority.
+
+Maintain this hierarchy:
+
+Observe
+→ Prioritize
+→ Notify
+→ Prepare
+→ Approve
+→ Act
+→ Verify
+→ Learn
+
+Build accordingly.

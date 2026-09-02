@@ -81,6 +81,19 @@ import type {
   MicroLiveVenueApprovalRequest,
   MicroLiveVenueReview,
   MicroLiveVenueReviewRequest,
+  NotFoundResponse,
+  OperationsAlert,
+  OperationsAlertUpdate,
+  OperationsApproval,
+  OperationsApprovalDecision,
+  OperationsAutomation,
+  OperationsAutomationRun,
+  OperationsNotificationPreferences,
+  OperationsNotificationPreferencesUpdate,
+  OperationsOverview,
+  OperationsTask,
+  OperationsTaskInput,
+  OperationsTaskUpdate,
   PortfolioSummary,
   PrivacySettingsInput,
   PropertyAnalysis,
@@ -211,6 +224,13 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
+
 export const getGetHouseholdUrl = () => {
 
 
@@ -281,6 +301,13 @@ export function useGetHousehold<TData = Awaited<ReturnType<typeof getHousehold>>
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
+
 export const getUpdatePrivacySettingsUrl = () => {
 
 
@@ -6312,5 +6339,903 @@ export function useGetAccountingOverview<TData = Awaited<ReturnType<typeof getAc
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
-   return withQueryKey(query, queryOptions.queryKey);
+  return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
+
+export const getGetOperationsOverviewUrl = () => {
+
+
+
+
+  return `/api/operations`
+}
+
+/**
+ * @summary Get the household Operations Command Center snapshot
+ */
+export const getOperationsOverview = async ( options?: Parameters<typeof customFetch>[1]): Promise<OperationsOverview> => {
+
+  return customFetch<OperationsOverview>(getGetOperationsOverviewUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOperationsOverviewQueryKey = () => {
+    return [
+    `/api/operations`
+    ] as const;
+    }
+
+
+export const getGetOperationsOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getOperationsOverview>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperationsOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOperationsOverviewQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOperationsOverview>>> = ({ signal }) => getOperationsOverview({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOperationsOverview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOperationsOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getOperationsOverview>>>
+export type GetOperationsOverviewQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the household Operations Command Center snapshot
+ */
+
+export function useGetOperationsOverview<TData = Awaited<ReturnType<typeof getOperationsOverview>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperationsOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOperationsOverviewQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListOperationsTasksUrl = () => {
+
+
+
+
+  return `/api/operations/tasks`
+}
+
+/**
+ * @summary List household operations tasks
+ */
+export const listOperationsTasks = async ( options?: Parameters<typeof customFetch>[1]): Promise<OperationsTask[]> => {
+
+  return customFetch<OperationsTask[]>(getListOperationsTasksUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOperationsTasksQueryKey = () => {
+    return [
+    `/api/operations/tasks`
+    ] as const;
+    }
+
+
+export const getListOperationsTasksQueryOptions = <TData = Awaited<ReturnType<typeof listOperationsTasks>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOperationsTasksQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOperationsTasks>>> = ({ signal }) => listOperationsTasks({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOperationsTasks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOperationsTasksQueryResult = NonNullable<Awaited<ReturnType<typeof listOperationsTasks>>>
+export type ListOperationsTasksQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List household operations tasks
+ */
+
+export function useListOperationsTasks<TData = Awaited<ReturnType<typeof listOperationsTasks>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsTasks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOperationsTasksQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateOperationsTaskUrl = () => {
+
+
+
+
+  return `/api/operations/tasks`
+}
+
+/**
+ * @summary Create a household operations task
+ */
+export const createOperationsTask = async (operationsTaskInput: OperationsTaskInput, options?: Parameters<typeof customFetch>[1]): Promise<OperationsTask> => {
+
+  return customFetch<OperationsTask>(getCreateOperationsTaskUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(operationsTaskInput)
+  }
+);}
+
+
+
+
+
+export const getCreateOperationsTaskMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOperationsTask>>, TError,{data: BodyType<OperationsTaskInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createOperationsTask>>, TError,{data: BodyType<OperationsTaskInput>}, TContext> => {
+
+const mutationKey = ['createOperationsTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createOperationsTask>>, {data: BodyType<OperationsTaskInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createOperationsTask(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateOperationsTaskMutationResult = NonNullable<Awaited<ReturnType<typeof createOperationsTask>>>
+    export type CreateOperationsTaskMutationBody = BodyType<OperationsTaskInput>
+    export type CreateOperationsTaskMutationError = ErrorType<BadRequestResponse | ForbiddenResponse>
+
+    /**
+ * @summary Create a household operations task
+ */
+export const useCreateOperationsTask = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOperationsTask>>, TError,{data: BodyType<OperationsTaskInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createOperationsTask>>,
+        TError,
+        {data: BodyType<OperationsTaskInput>},
+        TContext
+      > => {
+      return useMutation(getCreateOperationsTaskMutationOptions(options));
+    }
+
+export const getUpdateOperationsTaskUrl = (taskId: string,) => {
+
+
+
+
+  return `/api/operations/tasks/${taskId}`
+}
+
+/**
+ * @summary Update task status or assignment
+ */
+export const updateOperationsTask = async (taskId: string,
+    operationsTaskUpdate: OperationsTaskUpdate, options?: Parameters<typeof customFetch>[1]): Promise<OperationsTask> => {
+
+  return customFetch<OperationsTask>(getUpdateOperationsTaskUrl(taskId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(operationsTaskUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateOperationsTaskMutationOptions = <TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationsTask>>, TError,{taskId: string;data: BodyType<OperationsTaskUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOperationsTask>>, TError,{taskId: string;data: BodyType<OperationsTaskUpdate>}, TContext> => {
+
+const mutationKey = ['updateOperationsTask'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOperationsTask>>, {taskId: string;data: BodyType<OperationsTaskUpdate>}> = (props) => {
+          const {taskId,data} = props ?? {};
+
+          return  updateOperationsTask(taskId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOperationsTaskMutationResult = NonNullable<Awaited<ReturnType<typeof updateOperationsTask>>>
+    export type UpdateOperationsTaskMutationBody = BodyType<OperationsTaskUpdate>
+    export type UpdateOperationsTaskMutationError = ErrorType<BadRequestResponse | NotFoundResponse>
+
+    /**
+ * @summary Update task status or assignment
+ */
+export const useUpdateOperationsTask = <TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationsTask>>, TError,{taskId: string;data: BodyType<OperationsTaskUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOperationsTask>>,
+        TError,
+        {taskId: string;data: BodyType<OperationsTaskUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateOperationsTaskMutationOptions(options));
+    }
+
+export const getListOperationsApprovalsUrl = () => {
+
+
+
+
+  return `/api/operations/approvals`
+}
+
+/**
+ * @summary List pending and recent household approvals
+ */
+export const listOperationsApprovals = async ( options?: Parameters<typeof customFetch>[1]): Promise<OperationsApproval[]> => {
+
+  return customFetch<OperationsApproval[]>(getListOperationsApprovalsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOperationsApprovalsQueryKey = () => {
+    return [
+    `/api/operations/approvals`
+    ] as const;
+    }
+
+
+export const getListOperationsApprovalsQueryOptions = <TData = Awaited<ReturnType<typeof listOperationsApprovals>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsApprovals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOperationsApprovalsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOperationsApprovals>>> = ({ signal }) => listOperationsApprovals({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOperationsApprovals>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOperationsApprovalsQueryResult = NonNullable<Awaited<ReturnType<typeof listOperationsApprovals>>>
+export type ListOperationsApprovalsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List pending and recent household approvals
+ */
+
+export function useListOperationsApprovals<TData = Awaited<ReturnType<typeof listOperationsApprovals>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsApprovals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOperationsApprovalsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDecideOperationsApprovalUrl = (approvalId: string,) => {
+
+
+
+
+  return `/api/operations/approvals/${approvalId}/decision`
+}
+
+/**
+ * @summary Record a human approval decision
+ */
+export const decideOperationsApproval = async (approvalId: string,
+    operationsApprovalDecision: OperationsApprovalDecision, options?: Parameters<typeof customFetch>[1]): Promise<OperationsApproval> => {
+
+  return customFetch<OperationsApproval>(getDecideOperationsApprovalUrl(approvalId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(operationsApprovalDecision)
+  }
+);}
+
+
+
+
+
+export const getDecideOperationsApprovalMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideOperationsApproval>>, TError,{approvalId: string;data: BodyType<OperationsApprovalDecision>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideOperationsApproval>>, TError,{approvalId: string;data: BodyType<OperationsApprovalDecision>}, TContext> => {
+
+const mutationKey = ['decideOperationsApproval'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideOperationsApproval>>, {approvalId: string;data: BodyType<OperationsApprovalDecision>}> = (props) => {
+          const {approvalId,data} = props ?? {};
+
+          return  decideOperationsApproval(approvalId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecideOperationsApprovalMutationResult = NonNullable<Awaited<ReturnType<typeof decideOperationsApproval>>>
+    export type DecideOperationsApprovalMutationBody = BodyType<OperationsApprovalDecision>
+    export type DecideOperationsApprovalMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Record a human approval decision
+ */
+export const useDecideOperationsApproval = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideOperationsApproval>>, TError,{approvalId: string;data: BodyType<OperationsApprovalDecision>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof decideOperationsApproval>>,
+        TError,
+        {approvalId: string;data: BodyType<OperationsApprovalDecision>},
+        TContext
+      > => {
+      return useMutation(getDecideOperationsApprovalMutationOptions(options));
+    }
+
+export const getListOperationsAlertsUrl = () => {
+
+
+
+
+  return `/api/operations/alerts`
+}
+
+/**
+ * @summary List active household operations alerts
+ */
+export const listOperationsAlerts = async ( options?: Parameters<typeof customFetch>[1]): Promise<OperationsAlert[]> => {
+
+  return customFetch<OperationsAlert[]>(getListOperationsAlertsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOperationsAlertsQueryKey = () => {
+    return [
+    `/api/operations/alerts`
+    ] as const;
+    }
+
+
+export const getListOperationsAlertsQueryOptions = <TData = Awaited<ReturnType<typeof listOperationsAlerts>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsAlerts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOperationsAlertsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOperationsAlerts>>> = ({ signal }) => listOperationsAlerts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOperationsAlerts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOperationsAlertsQueryResult = NonNullable<Awaited<ReturnType<typeof listOperationsAlerts>>>
+export type ListOperationsAlertsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List active household operations alerts
+ */
+
+export function useListOperationsAlerts<TData = Awaited<ReturnType<typeof listOperationsAlerts>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsAlerts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOperationsAlertsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateOperationsAlertUrl = (alertId: string,) => {
+
+
+
+
+  return `/api/operations/alerts/${alertId}`
+}
+
+/**
+ * @summary Acknowledge or resolve an operations alert
+ */
+export const updateOperationsAlert = async (alertId: string,
+    operationsAlertUpdate: OperationsAlertUpdate, options?: Parameters<typeof customFetch>[1]): Promise<OperationsAlert> => {
+
+  return customFetch<OperationsAlert>(getUpdateOperationsAlertUrl(alertId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(operationsAlertUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateOperationsAlertMutationOptions = <TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationsAlert>>, TError,{alertId: string;data: BodyType<OperationsAlertUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOperationsAlert>>, TError,{alertId: string;data: BodyType<OperationsAlertUpdate>}, TContext> => {
+
+const mutationKey = ['updateOperationsAlert'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOperationsAlert>>, {alertId: string;data: BodyType<OperationsAlertUpdate>}> = (props) => {
+          const {alertId,data} = props ?? {};
+
+          return  updateOperationsAlert(alertId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOperationsAlertMutationResult = NonNullable<Awaited<ReturnType<typeof updateOperationsAlert>>>
+    export type UpdateOperationsAlertMutationBody = BodyType<OperationsAlertUpdate>
+    export type UpdateOperationsAlertMutationError = ErrorType<BadRequestResponse | NotFoundResponse>
+
+    /**
+ * @summary Acknowledge or resolve an operations alert
+ */
+export const useUpdateOperationsAlert = <TError = ErrorType<BadRequestResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationsAlert>>, TError,{alertId: string;data: BodyType<OperationsAlertUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOperationsAlert>>,
+        TError,
+        {alertId: string;data: BodyType<OperationsAlertUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateOperationsAlertMutationOptions(options));
+    }
+
+export const getListOperationsAutomationsUrl = () => {
+
+
+
+
+  return `/api/operations/automations`
+}
+
+/**
+ * @summary List safe household automation rules
+ */
+export const listOperationsAutomations = async ( options?: Parameters<typeof customFetch>[1]): Promise<OperationsAutomation[]> => {
+
+  return customFetch<OperationsAutomation[]>(getListOperationsAutomationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOperationsAutomationsQueryKey = () => {
+    return [
+    `/api/operations/automations`
+    ] as const;
+    }
+
+
+export const getListOperationsAutomationsQueryOptions = <TData = Awaited<ReturnType<typeof listOperationsAutomations>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsAutomations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOperationsAutomationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOperationsAutomations>>> = ({ signal }) => listOperationsAutomations({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOperationsAutomations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOperationsAutomationsQueryResult = NonNullable<Awaited<ReturnType<typeof listOperationsAutomations>>>
+export type ListOperationsAutomationsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List safe household automation rules
+ */
+
+export function useListOperationsAutomations<TData = Awaited<ReturnType<typeof listOperationsAutomations>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsAutomations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOperationsAutomationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRunOperationsAutomationUrl = (automationId: string,) => {
+
+
+
+
+  return `/api/operations/automations/${automationId}/run`
+}
+
+/**
+ * @summary Run a safe automation in prepare-only mode
+ */
+export const runOperationsAutomation = async (automationId: string, options?: Parameters<typeof customFetch>[1]): Promise<OperationsAutomationRun> => {
+
+  return customFetch<OperationsAutomationRun>(getRunOperationsAutomationUrl(automationId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRunOperationsAutomationMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runOperationsAutomation>>, TError,{automationId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runOperationsAutomation>>, TError,{automationId: string}, TContext> => {
+
+const mutationKey = ['runOperationsAutomation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runOperationsAutomation>>, {automationId: string}> = (props) => {
+          const {automationId} = props ?? {};
+
+          return  runOperationsAutomation(automationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunOperationsAutomationMutationResult = NonNullable<Awaited<ReturnType<typeof runOperationsAutomation>>>
+
+    export type RunOperationsAutomationMutationError = ErrorType<ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Run a safe automation in prepare-only mode
+ */
+export const useRunOperationsAutomation = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runOperationsAutomation>>, TError,{automationId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runOperationsAutomation>>,
+        TError,
+        {automationId: string},
+        TContext
+      > => {
+      return useMutation(getRunOperationsAutomationMutationOptions(options));
+    }
+
+export const getGetOperationsNotificationPreferencesUrl = () => {
+
+
+
+
+  return `/api/operations/notifications/preferences`
+}
+
+/**
+ * @summary Get household notification preferences
+ */
+export const getOperationsNotificationPreferences = async ( options?: Parameters<typeof customFetch>[1]): Promise<OperationsNotificationPreferences> => {
+
+  return customFetch<OperationsNotificationPreferences>(getGetOperationsNotificationPreferencesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOperationsNotificationPreferencesQueryKey = () => {
+    return [
+    `/api/operations/notifications/preferences`
+    ] as const;
+    }
+
+
+export const getGetOperationsNotificationPreferencesQueryOptions = <TData = Awaited<ReturnType<typeof getOperationsNotificationPreferences>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperationsNotificationPreferences>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOperationsNotificationPreferencesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOperationsNotificationPreferences>>> = ({ signal }) => getOperationsNotificationPreferences({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOperationsNotificationPreferences>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOperationsNotificationPreferencesQueryResult = NonNullable<Awaited<ReturnType<typeof getOperationsNotificationPreferences>>>
+export type GetOperationsNotificationPreferencesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get household notification preferences
+ */
+
+export function useGetOperationsNotificationPreferences<TData = Awaited<ReturnType<typeof getOperationsNotificationPreferences>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperationsNotificationPreferences>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOperationsNotificationPreferencesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateOperationsNotificationPreferencesUrl = () => {
+
+
+
+
+  return `/api/operations/notifications/preferences`
+}
+
+/**
+ * @summary Update household notification preferences
+ */
+export const updateOperationsNotificationPreferences = async (operationsNotificationPreferencesUpdate: OperationsNotificationPreferencesUpdate, options?: Parameters<typeof customFetch>[1]): Promise<OperationsNotificationPreferences> => {
+
+  return customFetch<OperationsNotificationPreferences>(getUpdateOperationsNotificationPreferencesUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(operationsNotificationPreferencesUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateOperationsNotificationPreferencesMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationsNotificationPreferences>>, TError,{data: BodyType<OperationsNotificationPreferencesUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOperationsNotificationPreferences>>, TError,{data: BodyType<OperationsNotificationPreferencesUpdate>}, TContext> => {
+
+const mutationKey = ['updateOperationsNotificationPreferences'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOperationsNotificationPreferences>>, {data: BodyType<OperationsNotificationPreferencesUpdate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateOperationsNotificationPreferences(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOperationsNotificationPreferencesMutationResult = NonNullable<Awaited<ReturnType<typeof updateOperationsNotificationPreferences>>>
+    export type UpdateOperationsNotificationPreferencesMutationBody = BodyType<OperationsNotificationPreferencesUpdate>
+    export type UpdateOperationsNotificationPreferencesMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Update household notification preferences
+ */
+export const useUpdateOperationsNotificationPreferences = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOperationsNotificationPreferences>>, TError,{data: BodyType<OperationsNotificationPreferencesUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOperationsNotificationPreferences>>,
+        TError,
+        {data: BodyType<OperationsNotificationPreferencesUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateOperationsNotificationPreferencesMutationOptions(options));
+    }
+

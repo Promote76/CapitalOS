@@ -14,3 +14,23 @@ Before using a historical SQL artifact for certification, compare it byte-for-by
 **Why:** A manually assembled snapshot initially omitted one foreign-key statement even though its table and index counts looked plausible.
 
 **How to apply:** Treat the generated migration as the source of truth and make the exact comparison a prerequisite to any old-schema upgrade run.
+
+Database query wrappers may expose PostgreSQL invalid-UUID code `22P02` on a nested
+`cause` rather than the top-level error.
+
+**Why:** A malformed route identifier initially reached the global handler as a
+wrapped driver error and was incorrectly returned as `500 INTERNAL_ERROR`.
+
+**How to apply:** When mapping database validation failures, inspect the wrapped
+cause chain or validate UUID route parameters before querying.
+
+Route preflights must treat parameterized identifiers and parameterless write bodies
+as different threat surfaces.
+
+**Why:** A parameterless write can safely return `200` after stripping an unknown
+household field; requiring every tamper probe to reject with non-2xx misclassifies a
+safe mass-assignment defense as an IDOR failure.
+
+**How to apply:** Require foreign/malformed rejection for path identifiers, but for
+parameterless writes assert no foreign identifiers or server-owned values are
+returned or persisted.

@@ -500,7 +500,7 @@ const pathIdTables: Record<string, string> = {
   businessId: "business_entities",
   billId: "finance_bills",
   candidateId: "property_candidates",
-  expenseId: "upcoming_expenses",
+  expenseId: "upcoming_finance_expenses",
   incomeId: "income_sources",
   incidentId: "trading_incidents",
   recommendationId: "ai_recommendations",
@@ -547,9 +547,14 @@ function bodyContainsAny(body: unknown, values: string[]): boolean {
 
 async function firstHouseholdRecordId(table: string, householdId: string): Promise<string | undefined> {
   database ??= await import("@workspace/db");
-  const result = await database.db.execute(sql.raw(
-    `SELECT id::text FROM "${table}" WHERE household_id = '${householdId}'::uuid LIMIT 1`,
-  ));
+  const query = table === "property_candidates"
+    ? `SELECT property_candidates.id::text
+       FROM property_candidates
+       INNER JOIN property_goals ON property_goals.id = property_candidates.property_goal_id
+       WHERE property_goals.household_id = '${householdId}'::uuid
+       LIMIT 1`
+    : `SELECT id::text FROM "${table}" WHERE household_id = '${householdId}'::uuid LIMIT 1`;
+  const result = await database.db.execute(sql.raw(query));
   return (result.rows[0] as { id?: string } | undefined)?.id;
 }
 
@@ -590,6 +595,28 @@ async function warmRouteMatrixResources(
     displayName: `P0 Matrix Business ${randomUUID()}`,
     createdBy: fixture.userB,
   }).returning({ id: database.businessEntities.id });
+  for (const [householdId, label] of [[fixture.householdA, "A"], [fixture.householdB, "B"]] as const) {
+    await database.db.insert(database.financeBills).values({
+      householdId,
+      billName: `P0 Matrix Bill ${label}`,
+      dueDate: "2026-09-15",
+      expectedAmount: "100.00",
+    });
+    await database.db.insert(database.upcomingExpenses).values({
+      householdId,
+      name: `P0 Matrix Expense ${label}`,
+      estimatedAmount: "50.00",
+      expectedDate: "2026-09-20",
+    });
+    await database.db.insert(database.incomeSources).values({
+      householdId,
+      name: `P0 Matrix Income ${label}`,
+      sourceType: "employment",
+      expectedMonthly: "5000.00",
+      cadence: "monthly",
+      nextPayDate: "2026-09-15",
+    });
+  }
 
   const idsA: Record<string, string> = { businessId: business.id };
   const idsB: Record<string, string> = { businessId: businessB.id };
@@ -659,7 +686,10 @@ test("P0-01 preflight inventories all 108 routes and rejects unsafe generic prob
 
     for (const route of routes) {
       resetRateLimitForTests();
-      const baseline = await request(route.path, { method: route.method });
+      const baselinePath = route.params.length > 0
+        ? replaceRouteParams(route, idsA, fixture.householdA)
+        : route.path;
+      const baseline = await request(baselinePath, { method: route.method });
       const baselineBody = await responseBody(baseline);
       executed += 1;
 
@@ -681,6 +711,25 @@ test("P0-01 preflight inventories all 108 routes and rejects unsafe generic prob
         assert.equal(other.status, 200, `${route.method} ${route.path} Household B read`);
         assert.equal(bodyContainsAny(otherBody, allAIds), false, `${route.method} ${route.path} leaked Household A data to Household B`);
         scopedReads += 1;
+        continue;
+      }
+
+      if (route.params.length === 0) {
+        if (!["GET", "HEAD", "OPTIONS"].includes(route.method)) {
+          resetRateLimitForTests();
+          const tampered = await request(route.path, {
+            method: route.method,
+            body: JSON.stringify(bodyTamper),
+          });
+          const tamperedBody = await responseBody(tampered);
+          assert.notEqual(tampered.status, 500, `${route.method} ${route.path} mass-assignment probe errored`);
+          assert.equal(
+            bodyContainsAny(tamperedBody, allBIds),
+            false,
+            `${route.method} ${route.path} returned another household's identifier from a mass-assignment body`,
+          );
+          executed += 1;
+        }
         continue;
       }
 
@@ -710,12 +759,28 @@ test("P0-01 preflight inventories all 108 routes and rejects unsafe generic prob
 
       resetRateLimitForTests();
       const malformed = await request(malformedPath, init);
-      assert.ok(malformed.status >= 400 && malformed.status < 500, `${route.method} ${malformedPath} accepted a malformed identifier`);
+      const malformedBody = await responseBody(malformed);
+      assert.ok(
+        malformed.status >= 400 && malformed.status < 500,
+        `${route.method} ${malformedPath} accepted a malformed identifier: ${malformed.status} ${JSON.stringify(malformedBody)}`,
+      );
       malformedRejected += 1;
       executed += 1;
     }
 
-    assert.equal(executed, 108 + (routes.filter((route) => route.params.length > 0).length * 3), "Every discovered route/probe case must execute");
+    const parameterizedRoutes = routes.filter((route) => route.params.length > 0);
+    const massAssignmentRoutes = routes.filter((route) =>
+      route.params.length === 0 &&
+      !["GET", "HEAD", "OPTIONS"].includes(route.method) &&
+      !route.path.startsWith("/health/") &&
+      route.path !== "/healthz" &&
+      !route.path.startsWith("/auth/"),
+    );
+    assert.equal(
+      executed,
+      routes.length + (parameterizedRoutes.length * 3) + massAssignmentRoutes.length,
+      "Every discovered route/probe case must execute",
+    );
     assert.ok(scopedReads >= 30, `Expected broad scoped GET coverage, observed ${scopedReads}`);
     assert.ok(rejectedCrossTenant > 0, "Cross-household identifier probes did not execute");
     assert.ok(malformedRejected > 0, "Malformed identifier probes did not execute");
@@ -778,13 +843,15 @@ test("P0-06 and P0-08 preflight role, effective-permission, selection, tampering
     assert.equal(goalsResponse.status, 200);
     const goal = (await goalsResponse.json() as Array<{ id: string }>)[0];
     assert.ok(goal?.id);
+    await database.db.update(database.accounts)
+      .set({ balance: "100.00" })
+      .where(and(
+        eq(database.accounts.householdId, fixture.householdA),
+        eq(database.accounts.accountType, "treasury"),
+      ));
     const contributionBody = (amount: string) => JSON.stringify({
       amount,
       goalId: goal.id,
-      householdId: fixture.householdB,
-      actorUserId: fixture.userB,
-      permissions: ["approve"],
-      protected: true,
     });
     const members = database.householdMembers;
     const memberIds = {
@@ -807,8 +874,9 @@ test("P0-06 and P0-08 preflight role, effective-permission, selection, tampering
         body: contributionBody("1.00"),
       }, userId);
       if (allowed.has(role)) {
-        assert.equal(write.status, 201, `${role} contribution should be permitted`);
-        const created = await write.json() as { id: string };
+        const writeBody = await responseBody(write);
+        assert.equal(write.status, 201, `${role} contribution should be permitted: ${JSON.stringify(writeBody)}`);
+        const created = writeBody as { id: string };
         const auditRows = await database.db.select({ actor: database.auditEvents.actor })
           .from(database.auditEvents)
           .where(and(
@@ -837,7 +905,14 @@ test("P0-06 and P0-08 preflight role, effective-permission, selection, tampering
         "Idempotency-Key": `viewer-spoof-${randomUUID()}`,
         "X-Household-Role": "owner",
       },
-      body: contributionBody("1.01"),
+      body: JSON.stringify({
+        amount: "1.01",
+        goalId: goal.id,
+        householdId: fixture.householdB,
+        actorUserId: fixture.userB,
+        permissions: ["approve"],
+        protected: true,
+      }),
     }, fixture.viewerA);
     assert.equal(spoofedViewer.status, 403);
     const viewerAfter = await database.db.select({ count: sql<number>`count(*)::int` })

@@ -19,6 +19,15 @@ function isValidationError(error: unknown): error is { name: "ZodError"; flatten
   );
 }
 
+function isInvalidUuidError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  if ("code" in error && error.code === "22P02") return true;
+  if ("cause" in error && typeof error.cause === "object" && error.cause !== null) {
+    return "code" in error.cause && error.cause.code === "22P02";
+  }
+  return false;
+}
+
 export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   const correlationId = res.locals.correlationId;
   if (isValidationError(error)) {
@@ -26,6 +35,14 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
       code: "VALIDATION_ERROR",
       message: "The request did not pass validation",
       details: error.flatten(),
+      correlationId,
+    });
+    return;
+  }
+  if (isInvalidUuidError(error)) {
+    res.status(400).json({
+      code: "VALIDATION_ERROR",
+      message: "The request contains an invalid identifier",
       correlationId,
     });
     return;

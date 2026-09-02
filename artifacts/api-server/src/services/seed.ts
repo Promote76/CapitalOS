@@ -822,6 +822,7 @@ async function ensureTenantCore(householdId: string, ownerId: string): Promise<S
   });
 
   tenantContexts.set(householdId, result);
+  await ensureTreasurySeed(householdId, ownerId);
   return result;
 }
 

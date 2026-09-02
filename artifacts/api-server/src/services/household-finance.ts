@@ -28,7 +28,7 @@ import { getBankingStatus } from "../adapters/banking";
 import { csvImportBankingAdapter } from "../adapters/banking";
 import { ensureSeedData } from "./seed";
 import type { Actor } from "./capital-os";
-import { assertPermission } from "../domain/governance";
+import { assertPermission, GovernanceError } from "../domain/governance";
 
 const numeric = (value: string | number | null | undefined) => Number(value ?? 0);
 const cents = (value: string | number | null | undefined) => Math.round(numeric(value) * 100);
@@ -301,7 +301,7 @@ export async function getFinanceLists() {
 }
 
 function planningNotFound(resource: string): never {
-  throw new Error(`${resource} was not found`);
+  throw new GovernanceError("INVALID_STATE", `${resource} was not found`);
 }
 
 export async function createBill(actor: Actor, input: {
@@ -363,7 +363,7 @@ export async function deleteBill(actor: Actor, billId: string) {
   const [bill] = await db.delete(financeBills)
     .where(and(eq(financeBills.id, billId), eq(financeBills.householdId, id)))
     .returning({ id: financeBills.id });
-  if (!bill) planningNotFound("Bill");
+  if (!bill) return planningNotFound("Bill");
 }
 
 export async function createUpcomingExpense(actor: Actor, input: {

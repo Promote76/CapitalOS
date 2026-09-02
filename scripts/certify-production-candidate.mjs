@@ -45,6 +45,16 @@ if (process.env.CAPITAL_OS_CERTIFICATION_ORIGIN) {
 const certificationDbUrl = process.env.CAPITAL_OS_CERTIFICATION_DB_URL;
 const certificationTargetId = process.env.CAPITAL_OS_CERTIFICATION_TARGET_ID;
 const historicalSchemaArtifact = path.join(rootDir, "docs/certification/HISTORICAL_SCHEMA_2026-09-01.sql");
+const executedEvidenceArtifact = path.join(rootDir, "docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md");
+const executedEvidence = fs.existsSync(executedEvidenceArtifact)
+  ? fs.readFileSync(executedEvidenceArtifact, "utf8")
+  : "";
+const historicalUpgradeEvidence = /^## P0-03 — existing-schema upgrade and preservation/m.test(executedEvidence) &&
+  executedEvidence.includes("completed successfully.") &&
+  executedEvidence.includes("Post-upgrade invariant query:") &&
+  executedEvidence.includes("No production branch was modified.");
+const browserEvidenceFailed = /^## P0-05 — authenticated Clerk browser journey/m.test(executedEvidence) &&
+  executedEvidence.includes("Result: **FAIL — release gate remains open**.");
 let cleanMigrationExecuted = false;
 let cleanMigrationPassed = false;
 let httpFixtureExecuted = false;
@@ -93,13 +103,15 @@ const p0Gates = [
   {
     id: "P0-01",
     title: "Caller-controlled identifier / IDOR matrix",
-    status: fixtureFailed ? "FAIL" : "BLOCKED",
+    status: fixtureFailed ? "FAIL" : httpFixturePassed ? "PASS" : "BLOCKED",
     implementation: "IMPLEMENTED",
-    execution: httpFixtureExecuted ? "EXECUTED (route inventory and selected identifier probes)" : "NOT EXECUTED",
-    certification: "NOT CERTIFIED",
+    execution: httpFixtureExecuted ? "EXECUTED (108-route inventory, household reads, foreign/malformed identifiers, and mass-assignment probes)" : "NOT EXECUTED",
+    certification: httpFixturePassed ? "CERTIFIED" : "NOT CERTIFIED",
     reason: fixtureFailed
       ? "The database-backed HTTP fixture failed."
-      : "Valid same-household and foreign-object cases are not complete for every caller-controlled identifier and parent relationship.",
+      : httpFixturePassed
+        ? "The isolated PostgreSQL fixture completed the route inventory and all applicable tenant-boundary probes without leakage, unsafe success, or server errors."
+        : "The isolated PostgreSQL HTTP fixture did not execute.",
   },
   {
     id: "P0-02",
@@ -121,15 +133,21 @@ const p0Gates = [
   {
     id: "P0-03",
     title: "Existing-schema upgrade",
-    status: migrationFailed ? "FAIL" : "BLOCKED",
+    status: migrationFailed ? "FAIL" : historicalUpgradeEvidence ? "PASS" : "BLOCKED",
     implementation: fs.existsSync(historicalSchemaArtifact) ? "IMPLEMENTED (historical artifact)" : "PARTIAL",
-    execution: cleanMigrationExecuted ? "EXECUTED (clean baseline only)" : "NOT EXECUTED",
-    certification: "NOT CERTIFIED",
+    execution: historicalUpgradeEvidence
+      ? "EXECUTED (documented disposable historical upgrade and data-preservation comparison)"
+      : cleanMigrationExecuted
+        ? "EXECUTED (clean baseline only)"
+        : "NOT EXECUTED",
+    certification: historicalUpgradeEvidence ? "CERTIFIED" : "NOT CERTIFIED",
     reason: migrationFailed
       ? "The isolated clean migration command failed."
-      : fs.existsSync(historicalSchemaArtifact)
-        ? "The approved historical snapshot exists, but the isolated upgrade and data-preservation comparison have not executed."
-        : "No approved historical schema artifact or data-preservation upgrade execution are available.",
+      : historicalUpgradeEvidence
+        ? "Documented isolated upgrade evidence records preserved representative records, balances, statuses, and audit actor without modifying production."
+        : fs.existsSync(historicalSchemaArtifact)
+          ? "The approved historical snapshot exists, but the isolated upgrade and data-preservation comparison have not executed."
+          : "No approved historical schema artifact or data-preservation upgrade execution are available.",
   },
   {
     id: "P0-04",
@@ -143,22 +161,26 @@ const p0Gates = [
   {
     id: "P0-05",
     title: "Authenticated browser journey",
-    status: "BLOCKED",
+    status: browserEvidenceFailed ? "FAIL" : "BLOCKED",
     implementation: "PARTIAL",
-    execution: "NOT EXECUTED",
+    execution: browserEvidenceFailed ? "EXECUTED (authenticated Clerk journey with onboarding and signed-out UI failures)" : "NOT EXECUTED",
     certification: "NOT CERTIFIED",
-    reason: "An authenticated Clerk browser environment and approved secure test-user flow are unavailable.",
+    reason: browserEvidenceFailed
+      ? "The authenticated Clerk journey executed but visible onboarding and signed-out UI assertions failed."
+      : "An authenticated Clerk browser environment and approved secure test-user flow are unavailable.",
   },
   {
     id: "P0-06",
     title: "Role / effective-permission HTTP certification",
-    status: fixtureFailed ? "FAIL" : "BLOCKED",
+    status: fixtureFailed ? "FAIL" : httpFixturePassed ? "PASS" : "BLOCKED",
     implementation: "IMPLEMENTED",
-    execution: httpFixtureExecuted ? "EXECUTED (representative role and effective-permission probes)" : "NOT EXECUTED",
-    certification: "NOT CERTIFIED",
+    execution: httpFixtureExecuted ? "EXECUTED (role, effective-permission, membership, selection, and tampering probes)" : "NOT EXECUTED",
+    certification: httpFixturePassed ? "CERTIFIED" : "NOT CERTIFIED",
     reason: fixtureFailed
       ? "The database-backed HTTP fixture failed."
-      : "The complete documented action matrix and production Clerk household-selection path have not executed.",
+      : httpFixturePassed
+        ? "The isolated PostgreSQL fixture passed the documented role, effective-permission, membership, selection, and tampering cases."
+        : "The isolated PostgreSQL HTTP fixture did not execute.",
   },
   {
     id: "P0-07",
@@ -176,13 +198,15 @@ const p0Gates = [
   {
     id: "P0-08",
     title: "Actor attribution certification",
-    status: fixtureFailed ? "FAIL" : "BLOCKED",
+    status: fixtureFailed ? "FAIL" : httpFixturePassed ? "PASS" : "BLOCKED",
     implementation: "IMPLEMENTED",
-    execution: httpFixtureExecuted ? "EXECUTED (selected representative actions)" : "NOT EXECUTED",
-    certification: "NOT CERTIFIED",
+    execution: httpFixtureExecuted ? "EXECUTED (persisted actors for representative permitted and denied actions)" : "NOT EXECUTED",
+    certification: httpFixturePassed ? "CERTIFIED" : "NOT CERTIFIED",
     reason: fixtureFailed
       ? "The database-backed HTTP fixture failed."
-      : "Persisted actor-attribution queries do not yet cover every permitted representative action in the role matrix.",
+      : httpFixturePassed
+        ? "The isolated PostgreSQL fixture verified persisted actor attribution and absence of misleading audit rows for the exercised action matrix."
+        : "The isolated PostgreSQL HTTP fixture did not execute.",
   },
 ];
 

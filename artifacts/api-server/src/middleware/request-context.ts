@@ -211,6 +211,19 @@ export async function requestContext(req: Request, res: Response, next: NextFunc
       return;
     }
 
+    if (
+      process.env.NODE_ENV === "test" &&
+      req.header("X-Test-User-Id") &&
+      req.header("X-Test-Household-Id")
+    ) {
+      res.status(403).json({
+        code: "HOUSEHOLD_MEMBERSHIP_REQUIRED",
+        message: "Your authenticated account is not a member of the selected Capital OS household.",
+        correlationId: res.locals.correlationId,
+      });
+      return;
+    }
+
     const clerkAuth = getAuth(req);
     if (clerkAuth.userId) {
       res.status(403).json({

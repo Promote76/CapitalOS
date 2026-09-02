@@ -240,13 +240,13 @@ export async function updateBusinessEntity(actor: Actor, businessId: string, inp
     notes: input.notes,
     updatedAt: new Date(),
   }).where(and(eq(businessEntities.id, businessId), eq(businessEntities.householdId, ids.householdId))).returning();
-  if (!row) throw new Error("Business not found");
+  if (!row) throw new GovernanceError("INVALID_STATE", "Business not found");
   return entityResponse(row);
 }
 
 async function assertBusiness(householdId: string, businessId: string) {
   const [row] = await db.select({ id: businessEntities.id }).from(businessEntities).where(and(eq(businessEntities.id, businessId), eq(businessEntities.householdId, householdId))).limit(1);
-  if (!row) throw new Error("Business not found");
+  if (!row) throw new GovernanceError("INVALID_STATE", "Business not found");
 }
 
 export async function createBusinessRevenue(actor: Actor, input: RevenueInput) {

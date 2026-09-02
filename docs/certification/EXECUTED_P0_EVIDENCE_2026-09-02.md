@@ -6,6 +6,26 @@
 This record contains only evidence executed during the current certification run. It
 does not convert source review or an available runbook into certification.
 
+## P0-01 — caller-controlled identifier / IDOR matrix
+
+Command:
+
+```text
+DATABASE_URL=<disposable-neon-url> NODE_ENV=test CAPITAL_OS_TEST_CONTEXT=1 \
+CAPITAL_OS_RUN_INTEGRATION=1 CAPITAL_OS_ALLOWED_ORIGIN=http://capitalos.test \
+node <workspace-tsx-cli> --test artifacts/api-server/src/integration/p0-http.test.ts
+```
+
+Result: **PASS — 108 route/method pairs, 0 failures**.
+
+The isolated fixture executed the complete discovered route inventory, broad
+household-scoped collection reads in both households, same-household parameterized
+requests, foreign-household identifier probes, malformed identifier probes, and
+mass-assignment body probes for applicable parameterless writes. The run rejected
+unsafe cross-household success, rejected malformed identifiers with 4xx responses,
+returned no other-household identifiers, and produced no unexpected 500 responses.
+The shared application database was not used as the destructive certification target.
+
 ## P0-02 — published origin / CSRF
 
 Command:
@@ -59,13 +79,32 @@ The disposable post-upgrade schema contained 75 public tables, 998 constraints, 
 The database-backed HTTP fixture ran against the disposable upgraded Neon branch using
 the workspace TypeScript runner.
 
-Result: **1 test passed, 0 failed, 0 skipped**.
+Result: **3 tests passed, 0 failed, 0 skipped**.
 
 The run covered same-key concurrent contribution, transfer, strategy allocation, capital
 request, and business-distribution writes; mismatched replay conflicts; cross-household
 foreign-parent denial; role denial; mass-assignment resistance; recent-auth denial;
-100-request transfer contention; ledger balancing; and persisted audit actor checks.
+100-request transfer contention; ledger balancing; the complete 108-route tenant
+preflight; role/effective-permission membership and selection transitions; and
+persisted audit actor checks.
 Idempotency mismatches correctly return HTTP `409` with `IDEMPOTENCY_CONFLICT`.
+
+## P0-06 — role / effective-permission HTTP certification
+
+Result: **PASS — included in the isolated three-test run**.
+
+The fixture exercised Owner, Partner, Advisor, and Viewer behavior; stored permission
+grant and revoke; inactive/active membership transitions; explicit household selection
+cases; role-header and body tampering; denied representative actions; and unsupported
+administration routes. The run completed with zero failures.
+
+## P0-08 — actor attribution certification
+
+Result: **PASS — included in the isolated three-test run**.
+
+Persisted audit queries retained the authenticated actor for the exercised permitted
+Owner, Partner, Advisor, and explicitly granted Viewer actions. Denied tampering did
+not create a misleading actor audit row. The run completed with zero failures.
 
 ## P0-04 — managed backup / restore
 
@@ -122,14 +161,10 @@ and the exercised two-household isolation assertion passed.
 
 ## Remaining P0 blockers
 
-- **P0-01:** the complete 108-route IDOR matrix has not executed.
 - **P0-04:** provider-managed backup identity, isolated restore target, and restore
   integrity/RPO/RTO evidence are unavailable; see
   `docs/RESTORE_DRILL_2026-09-02.md`.
 - **P0-05:** the authenticated browser run failed the visible onboarding and
   signed-out UI assertions.
-- **P0-06:** the complete role/effective-permission grant, revoke, membership-change,
-  household-selection, and tampering matrix has not executed.
-- **P0-08:** the complete permitted-action audit-attribution matrix has not executed.
 
 These blockers keep the production candidate `NOT READY`.

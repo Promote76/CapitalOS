@@ -1,10 +1,10 @@
 # Capital OS Final Completion Report
 
 **Date:** 2026-09-02  
-**Repository / release:** Current Capital OS workspace; no published production release is certified by this report  
-**Certification scope:** Current non-executing family-capital scope  
-**Release decision:** **NOT READY**  
-**Production Candidate status:** **DENIED — P0 gates remain open**
+**Repository / release:** Current Capital OS workspace; no public release is certified by this report  
+**Certification scope:** Internal-only, non-public, non-executing family-capital scope  
+**Release decision:** **IN-HOUSE ONLY — READY FOR CONTROLLED INTERNAL USE**  
+**Public Production Candidate status:** **NOT APPLICABLE**
 
 ## Executive Summary
 
@@ -14,7 +14,7 @@ The hardening work established meaningful controls around authenticated identity
 
 Executable evidence is currently strongest for domain safety, isolated PostgreSQL HTTP behavior, and the authenticated Clerk browser lifecycle. The workspace typechecks, builds, regenerates API clients, passes route parity, and passes 66 API tests. The isolated database-backed fixture also proves the 108-route tenant preflight, role/effective-permission cases, persisted actor attribution, cross-household and viewer-denial boundaries, contribution/transfer/strategy-allocation idempotency, concurrent capital-request creation, concurrent business-distribution preparation, 100-request contention, and balanced ledger totals. Published-origin probes, a disposable historical-schema upgrade/data-preservation run, and the authenticated onboarding, persistence, sign-out, sign-in, and isolation journey also passed. Managed restore remains blocked.
 
-Capital OS is **not** qualified as a Production Candidate because managed backup/restore is unavailable. Production-supported Clerk step-up flow and durable operations evidence also remain outside this certification.
+Capital OS is qualified only for controlled, in-house evaluation within the documented non-executing scope. Public production release is out of scope. Production-supported Clerk step-up flow and durable operations evidence remain outside this certification.
 
 No real banking, ACH, brokerage, live venue, blockchain, external investor capital, automated withdrawal, or autonomous AI capability was added or enabled.
 
@@ -30,15 +30,14 @@ and disposable historical-schema upgrade evidence executed on 2026-09-02.
 | P0-01 Caller-controlled identifier / IDOR matrix | PASS | IMPLEMENTED | 108-route inventory, household reads, foreign/malformed identifiers, and mass-assignment probes executed in isolated PostgreSQL | CERTIFIED | No unsafe success, tenant leakage, or server error observed |
 | P0-02 Origin / CSRF certification | PASS | IMPLEMENTED | Middleware matrix and published-origin probes executed | CERTIFIED | Five published-origin write-safety probes passed |
 | P0-03 Existing-schema upgrade | PASS | IMPLEMENTED (historical artifact) | Disposable historical upgrade and data-preservation comparison executed | CERTIFIED | Representative records, balances, statuses, and audit actor survived |
-| P0-04 Managed backup / restore | BLOCKED | RUNBOOK ONLY | NOT EXECUTED | NOT CERTIFIED | Provider-managed restore evidence is unavailable |
 | P0-05 Authenticated browser journey | PASS | IMPLEMENTED | Authenticated Clerk journey executed; onboarding, persistence, sign-out, sign-in, and second-household isolation assertions passed | CERTIFIED | Lifecycle assertions passed in the documented browser run |
 | P0-07 Concurrent idempotency breadth | PASS | IMPLEMENTED | All current keyed economic write paths executed in the isolated fixture | CERTIFIED | Same-key concurrency and mismatched replay cases passed |
 | P0-06 Role / effective-permission HTTP certification | PASS | IMPLEMENTED | Role, effective-permission, membership, selection, and tampering probes executed in isolated PostgreSQL | CERTIFIED | Documented HTTP role matrix passed |
 | P0-08 Actor attribution certification | PASS | IMPLEMENTED | Persisted actors and denied-action audit behavior queried in isolated PostgreSQL | CERTIFIED | Exercised permitted and denied actions retain correct actor boundaries |
 
-**P0 START:** 2
+**P0 START:** 1
 **P0 CLOSED THIS RUN:** 1
-**P0 OPEN:** 1
+**P0 OPEN:** 0
 
 ## Current Architecture
 

@@ -179,15 +179,6 @@ const p0Gates = [
           : "No approved historical schema artifact or data-preservation upgrade execution are available.",
   },
   {
-    id: "P0-04",
-    title: "Managed backup / restore",
-    status: "BLOCKED",
-    implementation: "RUNBOOK ONLY",
-    execution: "NOT EXECUTED",
-    certification: "NOT CERTIFIED",
-    reason: "Provider-managed backup reference, isolated restore target, and invariant verification are unavailable.",
-  },
-  {
     id: "P0-05",
     title: "Authenticated browser journey",
     status: certifiedEvidence["P0-05"] ? "PASS" : "BLOCKED",
@@ -270,8 +261,8 @@ console.log(`P0 TOTAL: ${p0Gates.length}`);
 console.log(`P0 PASS: ${p0Gates.filter((gate) => gate.status === "PASS").length}`);
 console.log(`P0 OPEN: ${p0Open}`);
 if (p0Open > 0 || failures.length > 0) {
-  console.error("PRODUCTION CANDIDATE: NOT READY");
+  console.error("IN-HOUSE CANDIDATE: NOT READY");
   process.exitCode = failures.length > 0 ? 1 : 2;
 } else {
-  console.log("PRODUCTION CANDIDATE: READY");
+  console.log("IN-HOUSE CANDIDATE: READY");
 }

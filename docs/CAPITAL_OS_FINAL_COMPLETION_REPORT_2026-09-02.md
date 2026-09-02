@@ -12,7 +12,7 @@ Capital OS is a household financial planning and advisory application for budget
 
 The hardening work established meaningful controls around authenticated identity, household scoping, role checks, effective membership permission loading, origin enforcement, exact-cent financial logic, atomic transfer debits, idempotency boundaries, ledger evidence, Treasury protected-capital state, persistence truth in the UI, generated API contracts, and the disabled Micro-Live execution boundary.
 
-Executable evidence is currently strongest for domain safety and targeted PostgreSQL HTTP behavior. The workspace typechecks, builds, regenerates API clients, passes route parity, and passes 65 API tests. A database-backed fixture also proves selected cross-household, viewer-denial, contribution-idempotency, and concurrent-transfer scenarios.
+Executable evidence is currently strongest for domain safety and targeted PostgreSQL HTTP behavior. The workspace typechecks, builds, regenerates API clients, passes route parity, and passes 66 API tests. A database-backed fixture also proves selected cross-household, viewer-denial, contribution-idempotency, and concurrent-transfer scenarios.
 
 Capital OS is **not** qualified as a Production Candidate because the full caller-controlled identifier matrix, complete role and effective-permission HTTP matrix, clean and upgrade migration lifecycle, managed backup/restore drill, authenticated browser journeys, production-supported Clerk step-up flow, broader economic-event idempotency, complete actor-audit verification, and durable operations evidence remain unproven.
 
@@ -112,6 +112,39 @@ The current high-risk authentication safeguard is a temporary Clerk session-issu
 
 Capital OS uses PostgreSQL through Drizzle. The repository contains a generated baseline SQL artifact and migration journal. The application separates liveness from database readiness; readiness fails with `503` during the tested database outage while liveness remains available.
 
+### Certification infrastructure inventory
+
+This inventory separates resources that exist from certification evidence that has actually executed.
+
+| Resource | Availability | Execution status | Observed state / required action |
+|---|---|---|---|
+| Certification PostgreSQL | MISSING | BLOCKED | The Replit-managed development database is reachable, but no isolated `CAPITAL_OS_CERTIFICATION_DB_URL` exists. Authorize the Neon integration or provide an approved disposable PostgreSQL URL through workspace secrets. |
+| Old-schema test PostgreSQL | MISSING | BLOCKED | No second disposable database or isolated older-schema target is configured. Create a separate non-production database after certification PostgreSQL is available. |
+| Restore target | MISSING | BLOCKED | No isolated restore database was provided. Use the Replit Database tool to restore an approved production point-in-time backup into a non-production target without overwriting production. |
+| Clerk test environment | AVAILABLE | NOT EXECUTED | Replit-managed Clerk is present with isolated Development and Production user stores. Clerk dashboard access reports `requires_personal_pro`; test-user and provider step-up configuration are not certified. |
+| Browser E2E URL | AVAILABLE | NOT EXECUTED | Published autoscale URL is available and healthy: `https://capital-os-fund.replit.app`. Authenticated journeys and persistence checks have not run. |
+| Managed backup access | UNVERIFIED / MISSING TO AGENT | BLOCKED | Replit documentation confirms production point-in-time restore, but no backup reference, retention record, or restore authorization is available in this workspace. |
+
+#### Human-action escalation
+
+**BLOCKER:** Isolated certification PostgreSQL and old-schema PostgreSQL  
+**WHY REPLIT CANNOT EXECUTE:** The built-in Replit database provides the shared Development database and the separate Production database; this workspace has no disposable certification URL, and no database-creation callback is available. A Neon MCP connection is discoverable but not authorized.  
+**EXACT USER ACTION REQUIRED:** Authorize the proposed Neon integration and create two disposable, non-production databases (certification and old-schema), or provide approved PostgreSQL connection URLs through Replit Secrets. Do not use the shared `DATABASE_URL`.  
+**WHAT TO PROVIDE BACK:** An accepted Neon connection with two isolated database URLs available to the workspace as `CAPITAL_OS_CERTIFICATION_DB_URL` and the old-schema test URL.  
+**NEXT AUTOMATED COMMAND:** `CAPITAL_OS_CERTIFICATION_ALLOW_RESET=1 pnpm run certify:migrations`, followed by `pnpm run certify:production-candidate`.
+
+**BLOCKER:** Managed backup and isolated restore  
+**WHY REPLIT CANNOT EXECUTE:** The Database tool controls production point-in-time restoration, but no approved backup timestamp or isolated restore target is available to the agent; restoring is a user-controlled provider operation.  
+**EXACT USER ACTION REQUIRED:** In the Replit Database tool, select an approved production point-in-time restore, restore it into an isolated non-production target, and authorize the test application to connect to that target.  
+**WHAT TO PROVIDE BACK:** Backup reference, backup timestamp, restore target, restore start/completion timestamps, and permission to run read-only invariant checks.  
+**NEXT AUTOMATED COMMAND:** `pnpm run certify:production-candidate` with the restored target configured for the restore verification run.
+
+**BLOCKER:** Authenticated Clerk browser E2E and provider step-up  
+**WHY REPLIT CANNOT EXECUTE:** The published URL exists, but no test-user credentials or provider-supported reverification session have been supplied; Clerk dashboard administration requires the reported personal Pro entitlement.  
+**EXACT USER ACTION REQUIRED:** Create Development Clerk test accounts in the Auth pane and configure provider-supported reverification/step-up if available; do not paste credentials into chat.  
+**WHAT TO PROVIDE BACK:** Test-account availability through the approved secure environment and confirmation that the authenticated browser runner may use the Development Clerk environment.  
+**NEXT AUTOMATED COMMAND:** Run the authenticated browser suite against `https://capital-os-fund.replit.app`, then rerun `pnpm run certify:production-candidate`.
+
 ### Migration status
 
 **BLOCKED.** `scripts/certify-migrations.mjs` now provides a guarded disposable-database reset, baseline apply, and representative-table verification sequence:
@@ -155,7 +188,7 @@ The command refuses to run when the certification URL equals the shared `DATABAS
 | Browser E2E | 0 | 0 | 0 | Authenticated environment | BLOCKED |
 | Recovery | Pure domain recovery cases only | 0 | 0 | Managed restore and operations recovery | BLOCKED |
 
-The default API command reports 66 passing tests and one intentionally skipped database fixture when no dedicated certification database is configured. The skipped fixture is not counted as release certification.
+The default API command reports 66 passing tests and one intentionally skipped database fixture when no dedicated certification database is configured. The skipped fixture is not counted as release certification. The full certification command exited `2` because the required isolated database, migration, restore, browser, and Clerk step-up gates remain unavailable.
 
 ## Exact Repeatable Commands
 

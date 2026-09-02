@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import {
   ClerkProvider,
@@ -259,16 +259,15 @@ function SignUpPage() {
 
 function ClerkQueryClientCacheInvalidator() {
   const { userId, isLoaded } = useAuth();
-  const previousUserId = useState<string | null | undefined>(undefined);
-  const previous = previousUserId[0];
-  const setPrevious = previousUserId[1];
+  const previousUserId = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     if (!isLoaded) return;
-    if (previous !== undefined && previous !== (userId ?? null)) {
+    const currentUserId = userId ?? null;
+    if (previousUserId.current !== undefined && previousUserId.current !== currentUserId) {
       queryClient.clear();
     }
-    setPrevious(userId ?? null);
-  }, [isLoaded, previous, setPrevious, userId]);
+    previousUserId.current = currentUserId;
+  }, [isLoaded, userId]);
   return null;
 }
 
@@ -363,15 +362,15 @@ function TenantGate() {
 }
 
 function AuthenticatedApp() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, userId } = useAuth();
   const [location] = useLocation();
   if (!isLoaded) {
     return <div className="auth-loading">Loading your secure workspace…</div>;
   }
-  if (!isSignedIn && import.meta.env.PROD) {
+  if (!isSignedIn) {
     return location === '/' ? <AuthLanding /> : <Redirect to="/sign-in" />;
   }
-  return import.meta.env.PROD ? <TenantGate /> : <AppContent />;
+  return <TenantGate key={userId ?? 'signed-in'} />;
 }
 
 function ClerkProviderWithRoutes() {

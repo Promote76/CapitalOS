@@ -10,11 +10,10 @@
 - [x] **P0-02 Origin / CSRF certification.** Five published-origin probes passed, including missing, malformed, cross-site, allowed, and invalid-credential-origin writes. Evidence: `scripts/certify-production-origin.mjs`, `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [x] **P0-03 Existing-schema upgrade.** Historical data survived the additive current-schema upgrade on disposable Neon branches. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [ ] **P0-04 Managed backup / restore.** Provider-managed backup reference, isolated restore, and invariant verification remain unavailable. The latest agent-accessible check reached `neondb.public` read-only at `2026-09-02 20:24:17.66116 UTC`, which is connectivity evidence only. Evidence: `docs/RESTORE_DRILL_2026-09-02.md` (blocked; no provider restore evidence claimed).
-- [ ] **P0-05 Authenticated browser journey.** The secure programmatic Clerk run passed session authentication, household creation, a saved manual-account write, reload persistence, session invalidation, repeat sign-in, and the exercised two-household isolation assertion. It failed visible onboarding-form rendering and the signed-out UI boundary, so the gate remains open with status `FAIL`. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
+- [x] **P0-05 Authenticated browser journey.** The secure programmatic Clerk rerun passed visible first-user onboarding, household creation, a saved manual-account write, reload persistence, visible sign-out to the public boundary, repeat sign-in, and second-household isolation. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [x] **P0-06 Role / effective-permission HTTP certification.** The isolated PostgreSQL fixture passed the documented role, effective-permission, membership, selection, role/body-tampering, and denied-action cases. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [x] **P0-07 Concurrent idempotency breadth.** The isolated HTTP fixture passed same-key concurrency and mismatched-payload cases for contribution, transfer, strategy allocation, capital request, and business distribution. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [x] **P0-08 Actor attribution certification.** The isolated PostgreSQL fixture queried persisted actors for the exercised permitted and denied actions and verified that denied tampering did not create a misleading audit row. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
-
 ## P1 release risks
 
 - [ ] Effective per-membership permissions are enforced rather than merely loaded.
@@ -64,7 +63,7 @@
 - [x] Domain tests pass with zero failures.
 - [x] HTTP integration tests pass against the isolated certification PostgreSQL fixture.
 - [x] Database integration tests pass against the isolated certification PostgreSQL fixture.
-- [ ] Browser E2E tests pass.
+- [x] Browser E2E tests pass for the authenticated P0-05 critical journey.
 - [x] Concurrency tests pass for the executed contribution/transfer, high-contention, capital-request, and business-distribution scenarios.
 - [x] Clean migration tests and the historical data-preserving upgrade pass on disposable isolated PostgreSQL branches. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [x] `git diff --check` passes.
@@ -99,7 +98,7 @@ As of 2026-09-02:
 - [x] Certification evidence index, route matrix, role matrix, and UI persistence matrix are recorded.
 - [x] Clean migration and existing-schema upgrade evidence are recorded for disposable isolated PostgreSQL branches; managed production restore remains open and has no claimed restore evidence.
 - [ ] Backup restore drill passes.
-- [ ] Authenticated browser critical journeys pass. The executed run failed visible onboarding and signed-out UI assertions.
+- [x] Authenticated browser critical journey passes, including visible onboarding, saved-write reload, sign-out, repeat sign-in, and second-household isolation.
 - [ ] P0 blockers equal zero.
 
 Until every P0 item is checked with evidence, the only valid release decision is **NOT READY**.

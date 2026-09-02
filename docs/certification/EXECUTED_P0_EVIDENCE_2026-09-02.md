@@ -127,44 +127,43 @@ verification checklist are in
 
 ## P0-05 — authenticated Clerk browser journey
 
-Result: **FAIL — release gate remains open**.
+Result: **PASS**.
 
 The browser certification used the Replit-managed Clerk development tenant and
 the testing harness's programmatic Clerk sign-in. No password or other test-user
 credential was placed in source, the test plan, or this evidence record. The
-development API was restarted with an explicit allowed origin for the current
-Replit preview before the final run.
+development API required an explicit allowed origin for the current Replit
+preview before authenticated writes could proceed; the first onboarding write
+was correctly rejected with `403` until that runtime policy was applied.
 
 | Assertion | Result | Executed evidence |
 |---|---|---|
 | Programmatic Clerk sign-in | PASS | A unique first test user reached an authenticated session; `/api/auth/me` returned `200` with `authStrength=clerk_session`. |
-| Visible onboarding form | FAIL | The authenticated page did not reliably render `Set up your household.`; onboarding had to be completed with an authenticated same-origin browser request. |
-| Household onboarding write | PASS | Test household A was created by `POST /api/auth/onboard` with HTTP `201`. |
+| Visible onboarding form | PASS | Before any workaround or protected content, the clean first-user context rendered `Set up your household.` with household name, time-zone, and submit controls. |
+| Household onboarding write | PASS | The visible onboarding form created test household A and transitioned to the protected application. |
 | Household-scoped dashboard | PASS | The active membership and unique household-A name were returned to the authenticated browser. |
 | Saved household write | PASS | The Accounts UI created a unique manual account at `$0`; the success message and new row were visible. |
 | Reload persistence | PASS | Reloading `/accounts` retained the unique manual account and the authenticated household. |
 | Sign-out session invalidation | PASS | After the visible `Sign out` control was used, `/api/auth/me` returned `401`. |
-| Signed-out UI boundary | FAIL | Protected dashboard shell/content remained rendered instead of resolving to the public landing/sign-in state. |
-| Same-user sign-in persistence | PASS | A new programmatic session for test user A recovered the same household and manual account. |
-| Second-user onboarding | PASS | A clean browser context created distinct test household B with HTTP `201`. |
+| Signed-out UI boundary | PASS | Protected dashboard, sidebar, and account content were removed and the public `Protect the base. Fund the next chapter.` landing state rendered. |
+| Same-user sign-in persistence | PASS | A new programmatic session for test user A skipped onboarding and recovered the same household and manual account. |
+| Second-user onboarding | PASS | A clean second browser context showed onboarding before protected content and created distinct test household B. |
 | Household isolation | PASS | Household B showed zero accounts and did not render household A's unique household or account names. |
 
 Routes exercised: `/`, `/accounts`, `/api/auth/me`, and
-`/api/auth/onboard`. Screenshots captured by the browser run:
-`k200iw` (authenticated household context), `78yfsf` (saved account),
-`dqmo8f` (reload persistence), `h5iycq` and `hjtadb` (sign-out failure),
-and `fuf26z` and `b8j4jj` (second-household isolation).
+`/api/auth/onboard`. Screenshots captured by the passing browser run:
+`w7z049` (visible first-user onboarding before protected content), `t0zjl3`
+(saved account after reload), `0hx7uo` (signed-out public boundary), and
+`z4vn77` (second-household zero-account isolation).
 
-Because the visible onboarding and signed-out UI assertions failed, P0-05 is
-not certified even though authentication, persistence, session invalidation,
-and the exercised two-household isolation assertion passed.
+All required P0-05 assertions passed in the rerun, so the authenticated Clerk
+browser journey is certified. This closes P0-05 only; it does not change the
+overall `NOT READY` decision while other P0 blockers remain.
 
 ## Remaining P0 blockers
 
 - **P0-04:** provider-managed backup identity, isolated restore target, and restore
   integrity/RPO/RTO evidence are unavailable; see
   `docs/RESTORE_DRILL_2026-09-02.md`.
-- **P0-05:** the authenticated browser run failed the visible onboarding and
-  signed-out UI assertions.
 
 These blockers keep the production candidate `NOT READY`.

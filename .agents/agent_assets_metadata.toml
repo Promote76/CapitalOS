@@ -1,0 +1,9 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "dV-2m8uGLy6STwiCsw8eN"
+uri = "file://docs/external-production-schema.sql"
+type = "unspecified"
+title = "Capital OS external production schema migration"
+description = "Reviewable additive Drizzle schema synchronization for the external PostgreSQL production database. Apply it through the external provider after review; it contains no detected drops."

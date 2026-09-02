@@ -77,6 +77,8 @@ import {
   type MicroLiveSnapshot,
   type MicroLiveVenueApprovalRequest,
   type MicroLiveIncidentReviewInput,
+  type TreasurySnapshot,
+  useGetTreasury,
 } from '@workspace/api-client-react';
 import {
   ArrowDownLeft,
@@ -133,6 +135,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
+import TreasuryPage from '@/pages/treasury';
 import { Link, Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 
 const queryClient = new QueryClient();
@@ -160,6 +163,7 @@ const primaryNav = [
   { href: '/goals', label: 'Goals', icon: Target },
   { href: '/strategies', label: 'Strategies', icon: Compass },
   { href: '/micro-live', label: 'Micro-Live', icon: Activity },
+  { href: '/treasury', label: 'Treasury', icon: WalletCards },
   { href: '/portfolio', label: 'Portfolio', icon: BarChart3 },
   { href: '/properties', label: 'Properties', icon: Building2 },
   { href: '/risk', label: 'Risk & readiness', icon: ShieldCheck },
@@ -337,6 +341,25 @@ function DashboardIntelligence({ onFeedback }: { onFeedback: (message: string) =
   </section>;
 }
 
+function DashboardTreasury() {
+  const query = useGetTreasury();
+  const snapshot = query.data as TreasurySnapshot | undefined;
+  return <section className="card card-pad dashboard-treasury-card animate-in delay-2" data-testid="card-dashboard-treasury">
+    <CardTitle title="Treasury / today" subtitle="Liquidity first. Protected goals stay protected." action={<Link href="/treasury" className="text-link">Open Treasury <ArrowUpRight size={13} /></Link>} />
+    {query.isLoading && <div className="intelligence-loading">Reading the household capital map…</div>}
+    {query.isError && <div className="intelligence-empty"><ShieldAlert size={17} /><span>Treasury is temporarily unavailable. No allocation action was taken.</span></div>}
+    {snapshot && <div className="dashboard-treasury-content">
+      <div className="dashboard-treasury-score"><span className="mono-label">Treasury health</span><strong>{snapshot.health.score}<small>/100</small></strong><span className="status">{snapshot.health.state}</span></div>
+      <div className="dashboard-treasury-metrics">
+        <div><span>Safe to deploy</span><strong>{displayMoney(snapshot.totals.safeToDeploy, '$0')}</strong></div>
+        <div><span>Liquid reserve</span><strong>{displayMoney(snapshot.totals.liquidReserve, '$0')}</strong></div>
+        <div><span>Emergency coverage</span><strong>{snapshot.health.emergencyCoverage.toFixed(1)} mo</strong></div>
+      </div>
+      <div className="dashboard-treasury-action"><ShieldCheck size={14} /><span>{snapshot.nextAction}</span></div>
+    </div>}
+  </section>;
+}
+
 function Dashboard({ onAction, onFeedback, transactions, dashboard, backendIssue }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void; transactions: Transaction[]; dashboard?: DashboardSnapshot; backendIssue?: boolean }) {
   const monthTotal = transactions.reduce((sum, item) => sum + item.amount, 0);
   const goal = dashboard?.goal;
@@ -365,6 +388,7 @@ function Dashboard({ onAction, onFeedback, transactions, dashboard, backendIssue
     </div>
     <QuickActions onAction={onAction} />
      <DashboardIntelligence onFeedback={onFeedback} />
+      <DashboardTreasury />
      <FinancePulse />
     <div className="capital-state-grid animate-in delay-3">
       <section className="capital-state-card protected" data-testid="card-protected-capital">
@@ -1307,6 +1331,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue
     <Route path="/goals" component={() => <GoalsPage onAction={onAction} />} />
     <Route path="/strategies" component={() => <StrategiesPage onFeedback={onFeedback} />} />
     <Route path="/micro-live" component={() => <MicroLivePage onFeedback={onFeedback} />} />
+    <Route path="/treasury" component={() => <TreasuryPage onFeedback={onFeedback} />} />
     <Route path="/portfolio" component={() => <PortfolioPage onFeedback={onFeedback} />} />
     <Route path="/properties" component={() => <PropertiesPage onAction={onAction} />} />
     <Route path="/risk" component={() => <RiskPage onFeedback={onFeedback} />} />

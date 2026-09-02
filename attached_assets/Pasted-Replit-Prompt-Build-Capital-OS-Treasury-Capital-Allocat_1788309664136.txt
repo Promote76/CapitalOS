@@ -1,0 +1,2003 @@
+Replit Prompt: Build Capital OS Treasury, Capital Allocation & Liquidity Management Engine
+
+Continue building the existing Capital OS application.
+
+Do not redesign the approved UI.
+
+Preserve all existing modules, including:
+
+- Household Budget
+- Cash Flow
+- Accounts
+- Wells Fargo / Plaid integration
+- Safe-to-Deploy Engine
+- Capital Governor
+- Protected Capital
+- Duplex Goal
+- Duplex Acquisition OS
+- Property Readiness
+- Portfolio
+- Risk Governor
+- AI CIO
+- Strategy Lab
+- Backtesting
+- Shadow Trading
+- Paper Trading
+- Micro-Live Execution
+- OMS
+- Reconciliation
+- Guardian
+- Audit Ledger
+- Blockchain-ready architecture
+
+This phase builds:
+
+CAPITAL OS TREASURY & CAPITAL ALLOCATION ENGINE
+
+The purpose is to create a disciplined central treasury that governs how household capital is divided between:
+
+- Required household liquidity
+- Emergency reserves
+- Protected duplex capital
+- Closing-cost reserves
+- Opportunity reserves
+- Treasury / low-risk cash management
+- Strategy capital
+- Property capital
+- Future wealth-building goals
+
+The Treasury Engine must answer:
+
+«Where should the next dollar go?»
+
+«How much cash must remain protected?»
+
+«How much can safely be invested?»
+
+«Are we overfunding or underfunding any capital bucket?»
+
+«Can a strategy receive additional capital without hurting the duplex plan?»
+
+«How much liquidity would remain after a property purchase?»
+
+«When should investment capital be reduced and returned to reserves?»
+
+The system must prioritize capital survival and goal completion over maximizing investment deployment.
+
+---
+
+1. CORE CAPITAL HIERARCHY
+
+Capital OS should enforce this default priority:
+
+1. Required Household Obligations
+2. Minimum Operating Cash
+3. Emergency Reserve
+4. Protected Duplex Reserve
+5. Closing Cost Reserve
+6. Opportunity Reserve
+7. Treasury / Liquid Yield
+8. Validated Strategy Capital
+9. Additional Long-Term Investments
+10. Future Property Acquisition Capital
+
+This hierarchy should be configurable by an authorized owner.
+
+AI cannot reorder priorities autonomously.
+
+---
+
+2. TREASURY NAVIGATION
+
+Add a major section:
+
+Treasury
+├── Overview
+├── Capital Buckets
+├── Allocation
+├── Liquidity
+├── Reserves
+├── Contribution Rules
+├── Rebalancing
+├── Capital Requests
+├── Forecasts
+└── Treasury History
+
+Keep the interface light, family-office styled, and easy to understand.
+
+---
+
+3. TREASURY OVERVIEW
+
+Create a "/treasury" page.
+
+Display:
+
+TOTAL HOUSEHOLD CAPITAL
+
+$XX,XXX
+
+Protected Capital
+$XX,XXX
+
+Liquid Reserve
+$XX,XXX
+
+Duplex Capital
+$XX,XXX
+
+Opportunity Capital
+$XX,XXX
+
+Treasury Capital
+$XX,XXX
+
+Active Strategy Capital
+$XX,XXX
+
+Safe to Deploy
+$X,XXX
+
+Also show:
+
+- Liquidity Coverage
+- Emergency Reserve Coverage
+- Duplex Goal Status
+- Capital Utilization
+- Active vs Protected Capital
+- Next Contribution
+- Next Best Capital Action
+
+---
+
+4. CAPITAL BUCKET MODEL
+
+Create configurable capital buckets.
+
+Default examples:
+
+Household Operating Cash
+Emergency Reserve
+Duplex Reserve
+Closing Cost Reserve
+Opportunity Reserve
+Treasury Reserve
+Capital OS Strategy Capital
+Property Acquisition Capital
+Future 4-Plex Reserve
+Other Goal Capital
+
+Each bucket should include:
+
+bucket_id
+household_id
+name
+type
+priority
+target_amount
+minimum_amount
+maximum_amount
+current_balance
+protected
+liquid
+risk_class
+withdrawal_policy
+funding_rule
+created_at
+updated_at
+
+---
+
+5. CAPITAL BUCKET TYPES
+
+Support:
+
+OPERATING
+EMERGENCY
+PROTECTED_GOAL
+PROPERTY
+TREASURY
+OPPORTUNITY
+STRATEGY
+LONG_TERM
+CUSTOM
+
+---
+
+6. PROTECTED STATUS
+
+Protected buckets must support:
+
+protected = true
+
+Protected capital cannot be transferred to active strategy capital through ordinary allocation workflows.
+
+Examples:
+
+Duplex Reserve
+Emergency Reserve
+Closing Cost Reserve
+
+The Capital Governor must block violations.
+
+---
+
+7. LIQUIDITY CLASSIFICATION
+
+Every bucket should have a liquidity classification:
+
+Immediate
+1–3 Days
+3–7 Days
+7–30 Days
+Illiquid
+
+Capital OS should distinguish:
+
+Net Worth
+
+from:
+
+Available Liquidity
+
+---
+
+8. HOUSEHOLD OPERATING CASH
+
+Create a minimum Operating Cash rule.
+
+Example:
+
+Minimum Checking Buffer:
+$2,000
+
+or:
+
+Minimum:
+30 days essential household expenses
+
+Support both fixed-dollar and expense-based policies.
+
+Operating Cash must be funded before investment allocations.
+
+---
+
+9. EMERGENCY RESERVE POLICY
+
+Support target methods:
+
+Fixed Dollar Amount
+1 Month Essential Expenses
+3 Months
+6 Months
+9 Months
+12 Months
+
+Calculate:
+
+Emergency Reserve Coverage
+=
+Emergency Reserve Balance
+/
+Average Essential Monthly Expenses
+
+Display:
+
+3.4 Months Covered
+
+---
+
+10. DUPLEX RESERVE
+
+Maintain the existing flagship goal.
+
+Default:
+
+First Duplex Acquisition
+
+52-week contribution plan
+$250/week total household capital plan
+
+Current default weekly allocation:
+
+Duplex Reserve        $200
+Capital OS             $25
+Opportunity Reserve    $25
+
+Treasury must integrate with this rule.
+
+---
+
+11. CLOSING COST RESERVE
+
+Create a distinct bucket for:
+
+Inspection
+Appraisal
+Closing Fees
+Prepaids
+Escrows
+Moving
+Initial Repairs
+
+Do not assume the Duplex Reserve alone represents total acquisition capital.
+
+---
+
+12. OPPORTUNITY RESERVE
+
+Opportunity Reserve may support:
+
+Unexpected property opportunity
+Business opportunity
+Special investment
+Repair
+Short-term strategic need
+
+It should remain more flexible than protected Duplex capital.
+
+---
+
+13. TREASURY RESERVE
+
+Create a bucket for low-risk, highly liquid capital.
+
+Potential future uses:
+
+Cash
+Money Market
+Treasury Bills
+Government Money Market
+Other approved low-risk instruments
+
+Do not automatically connect or invest yet.
+
+Prepare architecture for future providers.
+
+---
+
+14. ACTIVE STRATEGY CAPITAL
+
+Track:
+
+Allocated Capital
+Committed Capital
+Available Strategy Capital
+Realized P&L
+Unrealized P&L
+Returned Capital
+
+Only strategies that pass graduation and Micro-Live approval may receive capital.
+
+---
+
+15. CAPITAL REQUEST SYSTEM
+
+Strategies and modules should request capital rather than pulling it directly.
+
+Create:
+
+CapitalRequest
+
+Fields:
+
+requesting_module
+strategy_id
+requested_amount
+purpose
+expected_duration
+risk_class
+expected_return_assumption
+liquidity_requirement
+current_allocation
+requested_new_allocation
+evidence
+status
+
+Statuses:
+
+Draft
+Submitted
+Under Review
+Approved
+Partially Approved
+Rejected
+Expired
+Cancelled
+
+---
+
+16. CAPITAL REQUEST APPROVAL PATH
+
+Every capital request should pass:
+
+Safe-to-Deploy
+↓
+Capital Governor
+↓
+Risk Governor
+↓
+Treasury Rules
+↓
+Goal Protection
+↓
+Liquidity Test
+↓
+Human Approval where required
+
+---
+
+17. CAPITAL REQUEST EXAMPLE
+
+Example:
+
+Strategy:
+Prediction Market Relative Value
+
+Current Allocation:
+$100
+
+Requested:
++$50
+
+Evidence Score:
+86
+
+Risk:
+Low–Moderate
+
+Liquidity Required:
+Immediate
+
+Duplex Impact:
+None
+
+Emergency Reserve Impact:
+None
+
+Treasury Decision:
+Eligible for Review
+
+---
+
+18. CAPITAL GOVERNOR HARD RULES
+
+Treasury must enforce:
+
+Minimum Operating Cash
+Minimum Emergency Reserve
+Minimum Duplex Contribution
+Minimum Closing Cost Reserve
+Maximum Strategy Capital %
+Maximum Single Strategy %
+Maximum Single Venue %
+Maximum Illiquid Capital %
+Maximum Total Active Capital %
+
+All configurable.
+
+---
+
+19. SAFE-TO-DEPLOY INTEGRATION
+
+Treasury should use the existing deterministic Safe-to-Deploy Engine.
+
+Example:
+
+Available Cash              $8,500
+
+Bills Due                  -$2,100
+Operating Buffer           -$2,000
+Emergency Reserve Gap      -$1,200
+Duplex Commitment            -$800
+Upcoming Expenses            -$500
+--------------------------------
+Safe to Deploy              $1,900
+
+Then Treasury policy may further reduce that.
+
+Example:
+
+Safe to Deploy:
+$1,900
+
+Max Deployable Percentage:
+50%
+
+Authorized Deployable:
+$950
+
+---
+
+20. CAPITAL DEPLOYABILITY SCORE
+
+Create a score:
+
+Capital Deployability
+0–100
+
+Potential inputs:
+
+Liquidity
+Emergency Reserve
+Goal Coverage
+Income Stability
+Upcoming Obligations
+Cash Flow
+Data Freshness
+Risk Environment
+
+Example:
+
+Capital Deployability:
+82 / 100
+
+Status:
+Healthy
+
+---
+
+21. CAPITAL UTILIZATION
+
+Calculate:
+
+Active Capital
+/
+Total Eligible Capital
+
+Example:
+
+Active Capital:
+$1,500
+
+Eligible Capital:
+$5,000
+
+Utilization:
+30%
+
+This prevents unnecessarily deploying all available capital.
+
+---
+
+22. TARGET UTILIZATION
+
+Create configurable target bands:
+
+Conservative:
+10–25%
+
+Balanced:
+20–40%
+
+Growth:
+30–50%
+
+These are internal policy presets only.
+
+Do not imply guaranteed suitability.
+
+---
+
+23. CASH DRAG
+
+Measure capital sitting idle relative to policy.
+
+Example:
+
+Treasury Cash:
+$20,000
+
+Required Liquidity:
+$12,000
+
+Excess Liquid Capital:
+$8,000
+
+AI may recommend reviewing excess cash.
+
+It may not move it automatically.
+
+---
+
+24. LIQUIDITY COVERAGE
+
+Calculate:
+
+Liquid Assets
+/
+Essential Monthly Expenses
+
+Display:
+
+Liquidity Coverage:
+5.8 months
+
+---
+
+25. LIQUIDITY STRESS TEST
+
+Simulate:
+
+Income -20%
+Income -40%
+Unexpected $2,500 expense
+Unexpected $5,000 expense
+Strategy loss
+Property repair
+Insurance increase
+
+Calculate:
+
+Months of Liquidity
+Remaining Reserves
+Duplex Goal Impact
+Safe-to-Deploy
+
+---
+
+26. COMBINED LIQUIDITY SHOCK
+
+Create:
+
+Income -25%
++
+$5,000 unexpected expense
++
+strategy drawdown
+
+Show whether:
+
+Operating Cash
+Emergency Reserve
+Duplex Reserve
+
+remain protected.
+
+---
+
+27. CONTRIBUTION WATERFALL
+
+Create a configurable contribution waterfall.
+
+Example:
+
+New Income / Savings
+        ↓
+Operating Cash Minimum
+        ↓
+Emergency Reserve
+        ↓
+Duplex Reserve
+        ↓
+Closing Cost Reserve
+        ↓
+Opportunity Reserve
+        ↓
+Treasury
+        ↓
+Strategy Capital
+
+Do not automatically move actual bank funds.
+
+The system determines recommended allocation.
+
+---
+
+28. WEEKLY CONTRIBUTION ENGINE ENHANCEMENT
+
+Existing:
+
+$250/week
+
+should be treated as a Treasury allocation rule.
+
+Example:
+
+$200 → Duplex
+$25 → Capital OS
+$25 → Opportunity
+
+Allow scenario comparison.
+
+---
+
+29. DYNAMIC CONTRIBUTION POLICY
+
+Allow optional rules such as:
+
+If Emergency Reserve below target:
+reduce Strategy allocation
+
+If Duplex Goal behind:
+increase Duplex allocation
+
+If Free Cash Flow exceeds threshold:
+recommend additional contribution
+
+If Income falls materially:
+protect operating cash first
+
+Recommendations only unless user explicitly changes allocation rules.
+
+---
+
+30. SURPLUS SWEEP RECOMMENDATION
+
+Create a monthly:
+
+SURPLUS REVIEW
+
+Example:
+
+Excess monthly free cash flow:
+$1,250
+
+Suggested allocation:
+
+Duplex Reserve        $600
+Emergency Reserve     $250
+Opportunity Reserve   $150
+Treasury              $150
+Strategy Capital      $100
+
+Human approval required.
+
+---
+
+31. CAPITAL DEFICIT MODE
+
+If household cash flow deteriorates:
+
+TREASURY DEFENSIVE MODE
+
+Potential priority:
+
+Stop new strategy allocations
+↓
+Retain incoming cash
+↓
+Fund obligations
+↓
+Restore emergency reserve
+↓
+Protect Duplex contribution where feasible
+
+---
+
+32. CAPITAL DEFENSE STATES
+
+Create:
+
+NORMAL
+CAUTION
+DEFENSIVE
+CAPITAL_PRESERVATION
+CRITICAL
+
+Example behavior:
+
+NORMAL
+Normal allocations allowed.
+
+CAUTION
+New investment requests require stronger review.
+
+DEFENSIVE
+No capital increases.
+
+CAPITAL_PRESERVATION
+Reduce active allocations where practical.
+
+CRITICAL
+Protect liquidity only.
+
+---
+
+33. STRATEGY CAPITAL RETURN
+
+Treasury must support:
+
+Deallocate
+Return Capital
+Reduce Allocation
+Pause Allocation
+
+Returned strategy capital goes to an approved Treasury destination.
+
+Do not silently recycle it into another strategy.
+
+---
+
+34. PROFITS POLICY
+
+Create configurable treatment for strategy profits.
+
+Possible policies:
+
+Retain in Strategy
+Return to Treasury
+Split Profit
+Transfer to Duplex Goal
+Transfer to Opportunity Reserve
+
+Recommendation only until real money movement architecture exists.
+
+---
+
+35. PROFIT HARVEST RULE
+
+Example future policy:
+
+50% Strategy Profit → Treasury
+25% → Duplex Reserve
+25% → Retained Strategy Capital
+
+Do not enable automatic money movement in this phase unless a controlled internal ledger simulation is used.
+
+---
+
+36. LOSS POLICY
+
+If strategy capital falls:
+
+5%
+10%
+20%
+
+Treasury may recommend:
+
+Hold
+Reduce
+Pause
+Return Remaining Capital
+
+Capital Governor remains authoritative.
+
+---
+
+37. CAPITAL ALLOCATION SCORE
+
+Each potential allocation receives:
+
+Allocation Score
+0–100
+
+Potential inputs:
+
+Expected Return
+Risk
+Liquidity
+Confidence
+Drawdown
+Goal Impact
+Capacity
+Correlation
+Time Horizon
+
+Keep separate from:
+
+Strategy Confidence
+
+---
+
+38. CAPITAL ALLOCATION MATRIX
+
+Create an interface like:
+
+Destination         Return    Risk   Liquidity  Confidence  Priority
+
+Duplex Reserve      N/A       Low    High       100         Critical
+Emergency Reserve   N/A       Low    High       100         Critical
+Treasury            Low       Low    High       High        High
+Strategy A          Medium    Med    High       82          Medium
+Strategy B          High?     High   High       61          Low
+
+Do not rank solely on projected return.
+
+---
+
+39. RISK-ADJUSTED CAPITAL RANKING
+
+Treasury may rank opportunities using:
+
+Expected Return
+/
+Risk
+
+along with:
+
+Liquidity
+Confidence
+Goal impact
+
+No single metric should control allocation.
+
+---
+
+40. STRATEGY CAPACITY
+
+Integrate Strategy Lab capacity estimates.
+
+Example:
+
+Strategy A
+
+Estimated Efficient Capacity:
+$5,000
+
+Current Allocation:
+$4,500
+
+Requested Increase:
+$2,000
+
+Treasury Assessment:
+Reject
+
+Reason:
+Would exceed estimated efficient capacity.
+
+---
+
+41. CORRELATION LIMITS
+
+Integrate portfolio correlation analysis.
+
+Avoid:
+
+Strategy A
+Strategy B
+Strategy C
+
+all being exposed to the same underlying risk.
+
+Track:
+
+Asset Exposure
+Venue Exposure
+Chain Exposure
+Stablecoin Exposure
+Directional Exposure
+Property Exposure
+
+---
+
+42. CONCENTRATION LIMITS
+
+Support:
+
+Max Single Strategy %
+Max Single Venue %
+Max Single Asset %
+Max Single Stablecoin %
+Max Single Chain %
+Max Property %
+
+These should be policy-driven.
+
+---
+
+43. STABLECOIN RISK
+
+If future Treasury uses stablecoins, track:
+
+Stablecoin
+Issuer
+Chain
+Current Price
+Deviation from $1
+Liquidity
+Concentration
+
+Do not treat:
+
+1 stablecoin = $1
+
+as absolute.
+
+---
+
+44. STABLECOIN LIMITS
+
+Allow:
+
+Maximum Stablecoin Allocation
+Maximum Single Stablecoin %
+
+If depeg exceeds threshold:
+
+NO NEW ALLOCATION
+
+and raise alert.
+
+---
+
+45. VENUE CAPITAL LIMITS
+
+Each venue gets:
+
+Max Working Capital
+Max Percentage of Active Capital
+Risk Score
+Withdrawal Status
+Operational Status
+
+A venue should never hold unnecessary household capital.
+
+---
+
+46. COUNTERPARTY RISK
+
+Track:
+
+Bank
+Broker
+Exchange
+DEX
+Custodian
+Stablecoin Issuer
+
+Capital concentration should be visible by counterparty.
+
+---
+
+47. TREASURY DIVERSIFICATION
+
+Show:
+
+Capital by Institution
+Capital by Account Type
+Capital by Risk Class
+Capital by Liquidity Class
+
+This is more useful than only showing asset categories.
+
+---
+
+48. PROPERTY CAPITAL RESERVATION
+
+When a property becomes:
+
+Offer Candidate
+
+Treasury may reserve capital.
+
+Example:
+
+Property Candidate A
+
+Reserved Capital:
+$15,000
+
+Reserved capital becomes unavailable for strategy allocation.
+
+---
+
+49. PROPERTY UNDER CONTRACT MODE
+
+When:
+
+Property Status = Under Contract
+
+Treasury should become more conservative.
+
+Prioritize:
+
+Cash to Close
+Closing Costs
+Emergency Reserves
+Repair Reserve
+
+Strategy capital increases should normally be blocked.
+
+---
+
+50. POST-PURCHASE TREASURY MODE
+
+After acquisition, add:
+
+Property Operating Reserve
+Maintenance Reserve
+Vacancy Reserve
+
+to Treasury priorities.
+
+---
+
+51. TREASURY FORECAST
+
+Forecast:
+
+4 weeks
+13 weeks
+26 weeks
+52 weeks
+
+for:
+
+Operating Cash
+Emergency Reserve
+Duplex Reserve
+Closing Cost Reserve
+Opportunity Reserve
+Treasury
+Strategy Capital
+
+---
+
+52. CAPITAL TRAJECTORY
+
+Display expected future allocation.
+
+Example:
+
+Today
+
+Protected Capital      70%
+Treasury               20%
+Active Strategies      10%
+
+52 Weeks
+
+Property Capital       55%
+Emergency              15%
+Treasury               15%
+Strategies             15%
+
+Use scenario assumptions.
+
+---
+
+53. DUPLEX PURCHASE SCENARIO
+
+Allow:
+
+Purchase Duplex Today
+Purchase in 6 Months
+Purchase in 12 Months
+
+Compare impact on:
+
+Liquidity
+Emergency Reserve
+Net Worth
+Strategy Capital
+Safe-to-Deploy
+
+---
+
+54. TREASURY SCENARIO LAB
+
+Create scenarios such as:
+
+Conservative Allocation
+Accelerated Duplex
+Higher Emergency Reserve
+Higher Strategy Allocation
+Income Downturn
+Property Closing
+
+No scenario modifies production data.
+
+---
+
+55. REBALANCING ENGINE
+
+Create recommendation-only rebalancing.
+
+Example:
+
+Current:
+Strategy Capital 25%
+
+Policy Maximum:
+20%
+
+Recommendation:
+Return $500 to Treasury Reserve.
+
+---
+
+56. REBALANCE STATUS
+
+Support:
+
+Not Needed
+Recommended
+Required by Policy
+Blocked
+Completed
+
+---
+
+57. TREASURY AI ADVISOR
+
+Expand AI CIO with:
+
+TREASURY ADVISOR
+
+It may:
+
+Explain allocation
+Identify idle capital
+Identify liquidity risks
+Recommend bucket changes
+Explain capital requests
+Compare allocation scenarios
+Recommend rebalancing
+
+It may NOT:
+
+Move bank funds
+Fund strategy directly
+Override capital locks
+Change reserve requirements
+
+---
+
+58. TREASURY RECOMMENDATION EXAMPLE
+
+Example:
+
+TREASURY RECOMMENDATION
+
+Observation:
+Emergency Reserve is now fully funded.
+
+Duplex Goal:
+On Track
+
+Free Cash Flow:
+Strong
+
+Safe-to-Deploy:
+$1,250
+
+Recommendation:
+Consider directing an additional
+$50/week to the Duplex Reserve.
+
+Estimated Effect:
+Target reached approximately X weeks earlier.
+
+Risk:
+Low
+
+Status:
+Pending Approval
+
+---
+
+59. CAPITAL PRIORITY CONFLICT
+
+If AI CIO recommends:
+
+Increase strategy capital
+
+while Treasury detects:
+
+Duplex funding gap
+
+Treasury hierarchy wins.
+
+---
+
+60. CAPITAL GOVERNOR DECISION LOG
+
+For every material allocation request record:
+
+Request
+Rules Evaluated
+Pass / Fail
+Reason
+Maximum Allowed
+Approved Amount
+Timestamp
+
+---
+
+61. DOUBLE-ENTRY TREASURY LEDGER
+
+Use the existing internal ledger.
+
+Every simulated or internal allocation should create balanced entries.
+
+Example:
+
+Duplex Reserve +$200
+Checking Allocation -$200
+
+Avoid manually updating account balances without ledger events.
+
+---
+
+62. CAPITAL RESERVATIONS
+
+Create:
+
+CapitalReservation
+
+for:
+
+Property Closing
+Upcoming Bill
+Strategy Capital
+Repair
+Tax Payment
+
+Reserved funds should not count as Safe-to-Deploy.
+
+---
+
+63. RESERVATION EXPIRATION
+
+Reservations should have:
+
+Start
+Expiration
+Purpose
+Status
+
+Expired reservations return to eligible capital unless policy requires review.
+
+---
+
+64. LIQUIDITY LADDER
+
+Create a liquidity ladder:
+
+Immediate Cash
+1–3 Day Liquidity
+3–7 Day Liquidity
+7–30 Day Liquidity
+Illiquid
+
+Show dollar values and percentages.
+
+---
+
+65. TREASURY HEALTH SCORE
+
+Create:
+
+TREASURY HEALTH
+0–100
+
+Potential inputs:
+
+Operating Cash
+Emergency Reserve
+Liquidity Coverage
+Goal Funding
+Capital Concentration
+Cash Flow
+Data Freshness
+Risk Compliance
+
+---
+
+66. TREASURY HEALTH EXAMPLE
+
+TREASURY HEALTH
+
+91 / 100
+
+Operating Cash       100
+Emergency Reserve     92
+Duplex Funding        95
+Liquidity             94
+Concentration         82
+Risk Compliance      100
+
+---
+
+67. CAPITAL EFFICIENCY SCORE
+
+Create a separate informational metric:
+
+CAPITAL EFFICIENCY
+
+This may consider:
+
+Idle Capital
+Goal Progress
+Treasury Yield
+Strategy Use
+Liquidity
+
+Do not optimize efficiency at the expense of reserves.
+
+---
+
+68. DASHBOARD UPDATE
+
+Add a compact Treasury card.
+
+Example:
+
+TREASURY
+
+Protected Capital
+$10,400
+
+Safe to Deploy
+$850
+
+Emergency Coverage
+3.4 months
+
+Capital Status
+Healthy
+
+---
+
+69. CAPITAL FLOW VISUALIZATION
+
+Create a visual:
+
+Income
+  ↓
+Operating Cash
+  ↓
+Emergency Reserve
+  ↓
+Duplex
+  ↓
+Opportunity / Treasury
+  ↓
+Strategies
+
+Show dollar amounts.
+
+---
+
+70. CAPITAL SOURCE TAGGING
+
+Track whether capital came from:
+
+Household Income
+Strategy Profit
+Business Income
+Property Income
+Refund
+Asset Sale
+Other
+
+Useful for future analytics.
+
+---
+
+71. CAPITAL USE TAGGING
+
+Track:
+
+Household Expense
+Protected Savings
+Property
+Strategy
+Treasury
+Debt
+Business
+Other
+
+---
+
+72. WITHDRAWAL PLANNING
+
+Prepare advisory planning for:
+
+Large Purchase
+Property Closing
+Emergency Expense
+Tax Payment
+
+Treasury should show which buckets are eligible without automatically moving funds.
+
+---
+
+73. NO BLIND REBALANCING
+
+Treasury should never rebalance solely because:
+
+Allocation drifted from target.
+
+Consider:
+
+Taxes
+Fees
+Liquidity
+Goal timing
+Market conditions
+Transaction costs
+
+before recommendation.
+
+---
+
+74. TREASURY ALERTS
+
+Examples:
+
+Emergency reserve below target
+
+Duplex reserve behind plan
+
+Safe-to-Deploy dropped materially
+
+Strategy capital exceeds policy
+
+Venue capital exceeds limit
+
+Upcoming closing requires additional liquidity
+
+Operating cash projected below floor
+
+---
+
+75. MONTHLY TREASURY REVIEW
+
+Create:
+
+MONTHLY TREASURY REVIEW
+
+Include:
+
+Opening Cash
+Closing Cash
+Contributions
+Capital Allocations
+Goal Funding
+Strategy Capital
+Property Capital
+Liquidity
+Reserve Coverage
+Risk
+Recommended Changes
+
+---
+
+76. WEEKLY ALLOCATION REVIEW
+
+Generate:
+
+WEEKLY CAPITAL ALLOCATION
+
+Income Received
+
+Required Bills
+
+Protected Contributions
+
+Reserve Contributions
+
+Available Surplus
+
+Recommended Allocation
+
+---
+
+77. QUARTERLY CAPITAL REVIEW
+
+Include:
+
+Capital Structure
+Liquidity
+Goals
+Portfolio
+Property Plans
+Strategy Capacity
+Concentration
+Treasury Policy
+
+---
+
+78. CAPITAL POLICY DOCUMENT
+
+Create an internal policy configuration.
+
+Example:
+
+Minimum Operating Cash
+3,000
+
+Emergency Reserve
+3 months expenses
+
+Minimum Weekly Duplex Contribution
+$200
+
+Max Strategy Capital
+15% of liquid net worth
+
+Max Single Strategy
+5%
+
+Max Single Venue
+5%
+
+Auto Scale
+Disabled
+
+---
+
+79. POLICY VERSIONING
+
+Every change creates:
+
+CapitalPolicyVersion
+
+Track:
+
+Old Policy
+New Policy
+Who Changed
+Reason
+Timestamp
+
+---
+
+80. POLICY IMPACT PREVIEW
+
+Before changing a capital policy show:
+
+Current
+vs
+Proposed
+
+and projected effects.
+
+Example:
+
+Increase Strategy Maximum:
+10% → 20%
+
+Effect:
+Potential strategy capacity +$X
+
+Liquidity buffer:
+Reduced by $Y
+
+Duplex timeline:
+No change
+
+---
+
+81. HUMAN APPROVAL
+
+Require explicit approval for:
+
+Reduce Emergency Reserve Target
+Reduce Duplex Minimum
+Increase Strategy Capital Maximum
+Increase Venue Limit
+Unlock Protected Capital
+Change Capital Hierarchy
+
+---
+
+82. CAPITAL OS + BLOCKCHAIN FUTURE
+
+Keep future integration hooks for:
+
+On-chain Treasury Vault
+Strategy Allowances
+Capital Limits
+Audit Attestations
+
+Do not require blockchain for Treasury operation.
+
+---
+
+83. FUTURE SMART-CONTRACT LIMITS
+
+Prepare conceptual policies:
+
+Max Strategy Allocation
+Daily Transfer Limit
+Approved Strategy Registry
+Pause
+Withdrawal Destination Allowlist
+
+No deployment required.
+
+---
+
+84. BANKING DATA BOUNDARY
+
+Connected Wells Fargo data is an input to Treasury.
+
+It is NOT authorization to transfer money.
+
+Maintain read-only banking policy.
+
+---
+
+85. AI DATA BOUNDARY
+
+AI may receive:
+
+Balances
+Allocation percentages
+Cash-flow metrics
+Goal metrics
+
+AI may not receive:
+
+Bank credentials
+Plaid access tokens
+Private keys
+Withdrawal credentials
+
+---
+
+86. INCIDENT RESPONSE
+
+If Treasury calculation integrity fails:
+
+SAFE MODE
+
+Block new capital allocation recommendations until resolved.
+
+---
+
+87. RECONCILIATION
+
+Treasury balances must reconcile against:
+
+Internal Ledger
+Connected Account Balances
+Strategy Capital
+Property Reservations
+
+Discrepancies should be visible.
+
+---
+
+88. TREASURY RECONCILIATION STATUS
+
+Use:
+
+Clean
+Review
+Mismatch
+Critical
+
+Critical mismatch should block new allocations.
+
+---
+
+89. DATABASE ENTITIES
+
+Create or expand:
+
+Treasury
+CapitalBucket
+CapitalPolicy
+CapitalPolicyVersion
+CapitalRequest
+CapitalDecision
+CapitalReservation
+CapitalAllocation
+CapitalDeallocation
+CapitalForecast
+LiquiditySnapshot
+TreasuryHealthSnapshot
+CapitalDeployabilitySnapshot
+RebalanceRecommendation
+
+---
+
+90. AUDIT EVENTS
+
+Add:
+
+CapitalBucketCreated
+CapitalBucketUpdated
+CapitalRequestSubmitted
+CapitalRequestApproved
+CapitalRequestRejected
+CapitalAllocated
+CapitalDeallocated
+CapitalReserved
+CapitalReservationReleased
+CapitalPolicyChanged
+TreasuryDefensiveModeTriggered
+RebalanceRecommended
+
+---
+
+91. TESTING
+
+Add tests for:
+
+Protected capital cannot fund strategies
+Operating minimum is respected
+Emergency reserve rules are respected
+Duplex minimum contribution is respected
+Safe-to-Deploy cannot be exceeded
+Capital reservations reduce deployable capital
+Strategy allocations respect limits
+Venue allocations respect limits
+Capital requests cannot bypass Governor
+Policy changes are versioned
+Rebalancing cannot violate protected goals
+
+---
+
+92. STRESS TESTING
+
+Test Treasury under:
+
+Income loss
+Emergency expense
+Strategy drawdown
+Property closing
+Venue failure
+Bank data stale
+Multiple simultaneous obligations
+
+---
+
+93. FAMILY CAPITAL DEFENSE TEST
+
+Simulate:
+
+Strategy loses 100% of authorized capital.
+
+Expected:
+
+Duplex Reserve unaffected
+Emergency Reserve unaffected
+Household operating cash unaffected
+
+This must be structurally true.
+
+---
+
+94. PROPERTY CLOSING TEST
+
+Simulate:
+
+Property closes in 30 days.
+
+Treasury should:
+
+Reserve required capital
+Reduce deployable capital
+Block conflicting strategy increases
+Protect emergency liquidity
+
+---
+
+95. BANK DATA STALE TEST
+
+If primary bank data becomes stale:
+
+Treasury Confidence decreases.
+
+New capital requests should become more conservative.
+
+---
+
+96. TREASURY CONFIDENCE
+
+Create:
+
+TREASURY DATA CONFIDENCE
+
+Inputs:
+
+Bank Data Freshness
+Ledger Reconciliation
+Income Data
+Bill Forecast Quality
+Upcoming Expense Data
+Strategy Balances
+
+---
+
+97. DO NOT IMPLEMENT YET
+
+Do NOT implement:
+
+Automatic ACH transfers
+Automatic bank sweeps
+Automatic property funding
+AI money movement
+Automatic strategy scaling
+Automatic withdrawal routing
+Leverage
+Borrowing
+Outside investor capital
+
+---
+
+98. FINAL VALIDATION
+
+Before declaring this phase complete verify:
+
+1. Existing Capital OS UI remains intact.
+2. Treasury dashboard works.
+3. Capital buckets work.
+4. Protected status works.
+5. Operating Cash rules work.
+6. Emergency Reserve rules work.
+7. Duplex Reserve remains protected.
+8. Closing Cost Reserve works.
+9. Opportunity Reserve works.
+10. Treasury Reserve works.
+11. Strategy capital is separate.
+12. Capital Requests work.
+13. Safe-to-Deploy integrates correctly.
+14. Capital Governor blocks invalid requests.
+15. Risk Governor remains authoritative.
+16. Contribution waterfall works.
+17. Liquidity ladder works.
+18. Capital reservations work.
+19. Property reservations reduce available capital.
+20. Strategy capacity limits work.
+21. Concentration limits work.
+22. Treasury forecasting works.
+23. Rebalancing recommendations work.
+24. Treasury Health Score works.
+25. AI remains advisory.
+26. Banking remains read-only.
+27. Audit events are complete.
+28. Policy versioning works.
+29. Family capital defense tests pass.
+30. Critical Treasury logic has automated tests.
+
+---
+
+FINAL PRODUCT DIRECTION
+
+Capital OS should now manage money conceptually as:
+
+HOUSEHOLD INCOME
+        ↓
+HOUSEHOLD OBLIGATIONS
+        ↓
+OPERATING CASH
+        ↓
+EMERGENCY RESERVE
+        ↓
+DUPLEX RESERVE
+        ↓
+CLOSING / PROPERTY CAPITAL
+        ↓
+TREASURY
+        ↓
+VALIDATED STRATEGY CAPITAL
+        ↓
+RETURNS
+        ↓
+FAMILY NET WORTH
+
+Every dollar should have:
+
+Purpose
+Risk Level
+Liquidity
+Priority
+Authorization
+
+The Treasury Engine should ensure Capital OS does not ask:
+
+«How much money can we invest?»
+
+until it first answers:
+
+«How much money must remain protected?»
+
+Maintain this priority:
+
+Liquidity
+→ Household Stability
+→ Protected Goals
+→ Property Acquisition
+→ Capital Preservation
+→ Controlled Deployment
+→ Compounding
+
+Build accordingly.

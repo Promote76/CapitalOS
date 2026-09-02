@@ -23,11 +23,11 @@ Capital OS is a light-theme family-capital workspace for disciplined saving, pro
 
 ## Where things live
 
-- `artifacts/capital-os/src/App.tsx` — route-aware application shell, page views, fallback mock data, and API-backed dashboard/contribution reads
+- `artifacts/capital-os/src/App.tsx` — route-aware application shell, page views, fallback mock data, and API-backed dashboard/contribution/Treasury reads
 - `artifacts/capital-os/src/index.css` — shared light-theme design tokens and responsive component styling
-- `artifacts/api-server/src/domain/` — exact-cents calculations, Capital Governor rules, strategy lifecycle, and disabled blockchain interfaces
-- `artifacts/api-server/src/services/` — seed data and transactional household-capital services
-- `lib/db/src/schema/` — PostgreSQL/Drizzle household, capital, property, strategy, risk, AI, and audit tables
+- `artifacts/api-server/src/domain/` — exact-cents calculations, Treasury health and liquidity rules, Capital Governor rules, strategy lifecycle, and disabled blockchain interfaces
+- `artifacts/api-server/src/services/` — seed data, Treasury summaries and guarded requests, and transactional household-capital services
+- `lib/db/src/schema/` — PostgreSQL/Drizzle household, capital, Treasury, property, strategy, risk, AI, and audit tables
 - `docs/capital-os-architecture.md` — backend boundaries, data model, permissions, idempotency, and verification
 - `attached_assets/Pasted-Capital-OS-Design-System-Specification-1-Design-Princip_1788226967597.txt` — product design-system specification
 
@@ -47,6 +47,7 @@ Capital OS is a light-theme family-capital workspace for disciplined saving, pro
 - Portfolio allocation and growth views
 - Property readiness milestones, market shortlist, and acquisition planning
 - Risk Governor safeguards with protected-capital lock and Emergency Stop confirmation
+- Treasury overview with policy hierarchy, protected buckets, liquidity ladder, stress tests, deployability, and human-reviewed capital requests
 - Family account, contribution, protection, strategy permission, AI, and security settings
 
 ## User preferences
@@ -57,6 +58,7 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 - Standalone Vite builds need `PORT` and `BASE_PATH`; managed workflows provide both automatically.
 - The native API tests use Node 24's `--experimental-strip-types` and explicit `.ts` imports.
+- Treasury Reserve is a planning bucket, not a ledger clearing account; negative clearing balances must never appear as spendable household capital.
 
 ## Pointers
 

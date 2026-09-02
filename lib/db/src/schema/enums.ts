@@ -231,3 +231,34 @@ export const upcomingExpensePriorityEnum = pgEnum("upcoming_expense_priority", [
   "high",
   "critical",
 ]);
+
+export const treasuryBucketTypeEnum = pgEnum("treasury_bucket_type", [
+  "OPERATING",
+  "EMERGENCY",
+  "PROTECTED_GOAL",
+  "PROPERTY",
+  "TREASURY",
+  "OPPORTUNITY",
+  "STRATEGY",
+  "LONG_TERM",
+  "CUSTOM",
+]);
+
+export const liquidityClassEnum = pgEnum("liquidity_class", [
+  "IMMEDIATE",
+  "ONE_TO_THREE_DAYS",
+  "THREE_TO_SEVEN_DAYS",
+  "SEVEN_TO_THIRTY_DAYS",
+  "ILLIQUID",
+]);
+
+export const capitalRequestStatusEnum = pgEnum("capital_request_status", [
+  "DRAFT",
+  "SUBMITTED",
+  "UNDER_REVIEW",
+  "APPROVED",
+  "PARTIALLY_APPROVED",
+  "REJECTED",
+  "EXPIRED",
+  "CANCELLED",
+]);

@@ -34,6 +34,9 @@ import type {
   BlockchainStatus,
   BudgetSummary,
   BuyBox,
+  CapitalRequest,
+  CapitalRequestDecisionInput,
+  CapitalRequestInput,
   CashFlowSummary,
   ConflictResponse,
   ContributionInput,
@@ -103,6 +106,7 @@ import type {
   StrategyVersionCreated,
   TransactionSummary,
   TransferInput,
+  TreasurySnapshot,
   UpcomingExpense,
   UpcomingExpenseInput,
   UpcomingExpenseUpdateInput,
@@ -6032,4 +6036,224 @@ export function useGetBankingStatus<TData = Awaited<ReturnType<typeof getBanking
 
 
 
+
+export const getGetTreasuryUrl = () => {
+
+
+
+
+  return `/api/treasury`
+}
+
+/**
+ * @summary Get the household Treasury snapshot
+ */
+export const getTreasury = async ( options?: Parameters<typeof customFetch>[1]): Promise<TreasurySnapshot> => {
+
+  return customFetch<TreasurySnapshot>(getGetTreasuryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTreasuryQueryKey = () => {
+    return [
+    `/api/treasury`
+    ] as const;
+    }
+
+
+export const getGetTreasuryQueryOptions = <TData = Awaited<ReturnType<typeof getTreasury>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTreasury>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTreasuryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTreasury>>> = ({ signal }) => getTreasury({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTreasury>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTreasuryQueryResult = NonNullable<Awaited<ReturnType<typeof getTreasury>>>
+export type GetTreasuryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the household Treasury snapshot
+ */
+
+export function useGetTreasury<TData = Awaited<ReturnType<typeof getTreasury>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTreasury>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTreasuryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCapitalRequestUrl = () => {
+
+
+
+
+  return `/api/treasury/requests`
+}
+
+/**
+ * @summary Submit a recommendation-only capital request
+ */
+export const createCapitalRequest = async (capitalRequestInput: CapitalRequestInput, options?: Parameters<typeof customFetch>[1]): Promise<CapitalRequest> => {
+
+  return customFetch<CapitalRequest>(getCreateCapitalRequestUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(capitalRequestInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCapitalRequestMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCapitalRequest>>, TError,{data: BodyType<CapitalRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCapitalRequest>>, TError,{data: BodyType<CapitalRequestInput>}, TContext> => {
+
+const mutationKey = ['createCapitalRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCapitalRequest>>, {data: BodyType<CapitalRequestInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCapitalRequest(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCapitalRequestMutationResult = NonNullable<Awaited<ReturnType<typeof createCapitalRequest>>>
+    export type CreateCapitalRequestMutationBody = BodyType<CapitalRequestInput>
+    export type CreateCapitalRequestMutationError = ErrorType<BadRequestResponse | ForbiddenResponse>
+
+    /**
+ * @summary Submit a recommendation-only capital request
+ */
+export const useCreateCapitalRequest = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCapitalRequest>>, TError,{data: BodyType<CapitalRequestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCapitalRequest>>,
+        TError,
+        {data: BodyType<CapitalRequestInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCapitalRequestMutationOptions(options));
+    }
+
+export const getDecideCapitalRequestUrl = (requestId: string,) => {
+
+
+
+
+  return `/api/treasury/requests/${requestId}/decision`
+}
+
+/**
+ * @summary Record a human Treasury decision
+ */
+export const decideCapitalRequest = async (requestId: string,
+    capitalRequestDecisionInput: CapitalRequestDecisionInput, options?: Parameters<typeof customFetch>[1]): Promise<CapitalRequest> => {
+
+  return customFetch<CapitalRequest>(getDecideCapitalRequestUrl(requestId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(capitalRequestDecisionInput)
+  }
+);}
+
+
+
+
+
+export const getDecideCapitalRequestMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideCapitalRequest>>, TError,{requestId: string;data: BodyType<CapitalRequestDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideCapitalRequest>>, TError,{requestId: string;data: BodyType<CapitalRequestDecisionInput>}, TContext> => {
+
+const mutationKey = ['decideCapitalRequest'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideCapitalRequest>>, {requestId: string;data: BodyType<CapitalRequestDecisionInput>}> = (props) => {
+          const {requestId,data} = props ?? {};
+
+          return  decideCapitalRequest(requestId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecideCapitalRequestMutationResult = NonNullable<Awaited<ReturnType<typeof decideCapitalRequest>>>
+    export type DecideCapitalRequestMutationBody = BodyType<CapitalRequestDecisionInput>
+    export type DecideCapitalRequestMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Record a human Treasury decision
+ */
+export const useDecideCapitalRequest = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideCapitalRequest>>, TError,{requestId: string;data: BodyType<CapitalRequestDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof decideCapitalRequest>>,
+        TError,
+        {requestId: string;data: BodyType<CapitalRequestDecisionInput>},
+        TContext
+      > => {
+      return useMutation(getDecideCapitalRequestMutationOptions(options));
+    }
 

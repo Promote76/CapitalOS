@@ -2758,3 +2758,197 @@ export const GetBankingStatusResponse = zod.object({
 })
 
 
+/**
+ * @summary Get the household Treasury snapshot
+ */
+export const GetTreasuryResponse = zod.object({
+  "totals": zod.object({
+  "totalCapital": zod.string(),
+  "protectedCapital": zod.string(),
+  "liquidReserve": zod.string(),
+  "duplexCapital": zod.string(),
+  "opportunityCapital": zod.string(),
+  "treasuryCapital": zod.string(),
+  "activeStrategyCapital": zod.string(),
+  "safeToDeploy": zod.string()
+}),
+  "health": zod.object({
+  "score": zod.number(),
+  "state": zod.string(),
+  "deployability": zod.number(),
+  "utilization": zod.number(),
+  "activeCapitalPercent": zod.number(),
+  "liquidityCoverage": zod.number(),
+  "emergencyCoverage": zod.number(),
+  "duplexProgressPercent": zod.number(),
+  "cashDrag": zod.string()
+}),
+  "policy": zod.object({
+  "minimumOperatingCash": zod.string(),
+  "emergencyTargetMonths": zod.number(),
+  "minimumWeeklyDuplexContribution": zod.string(),
+  "maximumStrategyPercent": zod.string(),
+  "maximumSingleStrategyPercent": zod.string(),
+  "maximumSingleVenuePercent": zod.string(),
+  "maximumIlliquidPercent": zod.string(),
+  "maximumActivePercent": zod.string(),
+  "autoScale": zod.boolean(),
+  "hierarchy": zod.array(zod.string()),
+  "version": zod.string(),
+  "emergencyTarget": zod.string()
+}),
+  "liquidityLadder": zod.array(zod.object({
+  "liquidityClass": zod.string(),
+  "amount": zod.string(),
+  "percent": zod.number()
+})),
+  "stressTests": zod.array(zod.object({
+  "name": zod.string(),
+  "remainingLiquid": zod.string(),
+  "remainingReserves": zod.string(),
+  "liquidityMonths": zod.number(),
+  "duplexProtected": zod.boolean(),
+  "safeToDeploy": zod.string(),
+  "status": zod.string()
+})),
+  "alerts": zod.array(zod.string()),
+  "nextAction": zod.string(),
+  "buckets": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "bucketType": zod.string(),
+  "priority": zod.number(),
+  "targetAmount": zod.string(),
+  "minimumAmount": zod.string(),
+  "maximumAmount": zod.string(),
+  "currentBalance": zod.string(),
+  "protected": zod.boolean(),
+  "liquid": zod.boolean(),
+  "liquidityClass": zod.string(),
+  "riskClass": zod.string(),
+  "withdrawalPolicy": zod.string(),
+  "fundingRule": zod.string()
+})),
+  "requests": zod.array(zod.object({
+  "id": zod.string(),
+  "requestingModule": zod.string(),
+  "strategyId": zod.string().nullish(),
+  "requestedAmount": zod.string(),
+  "purpose": zod.string(),
+  "expectedDuration": zod.string(),
+  "riskClass": zod.string(),
+  "expectedReturnAssumption": zod.string(),
+  "liquidityRequirement": zod.string(),
+  "currentAllocation": zod.string(),
+  "requestedNewAllocation": zod.string(),
+  "evidence": zod.array(zod.string()),
+  "status": zod.string(),
+  "decisionReason": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullable()
+})),
+  "reservations": zod.array(zod.object({
+  "id": zod.string(),
+  "bucketId": zod.string(),
+  "reason": zod.string(),
+  "reservedAmount": zod.string(),
+  "startsAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date().nullable(),
+  "status": zod.string()
+})),
+  "lastUpdated": zod.coerce.date()
+})
+
+
+/**
+ * @summary Submit a recommendation-only capital request
+ */
+export const createCapitalRequestBodyRequestingModuleMax = 120;
+
+export const createCapitalRequestBodyRequestedAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createCapitalRequestBodyPurposeMax = 1000;
+
+export const createCapitalRequestBodyExpectedDurationMax = 120;
+
+export const createCapitalRequestBodyExpectedReturnAssumptionMax = 500;
+
+export const createCapitalRequestBodyLiquidityRequirementMax = 120;
+
+export const createCapitalRequestBodyCurrentAllocationRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createCapitalRequestBodyRequestedNewAllocationRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createCapitalRequestBodyEvidenceMax = 10;
+
+
+
+export const CreateCapitalRequestBody = zod.object({
+  "requestingModule": zod.string().min(1).max(createCapitalRequestBodyRequestingModuleMax),
+  "strategyId": zod.string().optional(),
+  "requestedAmount": zod.string().regex(createCapitalRequestBodyRequestedAmountRegExp),
+  "purpose": zod.string().min(1).max(createCapitalRequestBodyPurposeMax),
+  "expectedDuration": zod.string().min(1).max(createCapitalRequestBodyExpectedDurationMax),
+  "riskClass": zod.enum(['protected', 'conservative', 'moderate', 'experimental']),
+  "expectedReturnAssumption": zod.string().min(1).max(createCapitalRequestBodyExpectedReturnAssumptionMax),
+  "liquidityRequirement": zod.string().min(1).max(createCapitalRequestBodyLiquidityRequirementMax),
+  "currentAllocation": zod.string().regex(createCapitalRequestBodyCurrentAllocationRegExp).optional(),
+  "requestedNewAllocation": zod.string().regex(createCapitalRequestBodyRequestedNewAllocationRegExp).optional(),
+  "evidence": zod.array(zod.string()).max(createCapitalRequestBodyEvidenceMax).optional()
+})
+
+export const CreateCapitalRequestResponse = zod.object({
+  "id": zod.string(),
+  "requestingModule": zod.string(),
+  "strategyId": zod.string().nullish(),
+  "requestedAmount": zod.string(),
+  "purpose": zod.string(),
+  "expectedDuration": zod.string(),
+  "riskClass": zod.string(),
+  "expectedReturnAssumption": zod.string(),
+  "liquidityRequirement": zod.string(),
+  "currentAllocation": zod.string(),
+  "requestedNewAllocation": zod.string(),
+  "evidence": zod.array(zod.string()),
+  "status": zod.string(),
+  "decisionReason": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Record a human Treasury decision
+ */
+export const DecideCapitalRequestParams = zod.object({
+  "requestId": zod.coerce.string()
+})
+
+export const decideCapitalRequestBodyApprovedAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const decideCapitalRequestBodyReasonMax = 1000;
+
+
+
+export const DecideCapitalRequestBody = zod.object({
+  "decision": zod.enum(['APPROVED', 'PARTIALLY_APPROVED', 'REJECTED']),
+  "approvedAmount": zod.string().regex(decideCapitalRequestBodyApprovedAmountRegExp).optional(),
+  "reason": zod.string().min(1).max(decideCapitalRequestBodyReasonMax)
+})
+
+export const DecideCapitalRequestResponse = zod.object({
+  "id": zod.string(),
+  "requestingModule": zod.string(),
+  "strategyId": zod.string().nullish(),
+  "requestedAmount": zod.string(),
+  "purpose": zod.string(),
+  "expectedDuration": zod.string(),
+  "riskClass": zod.string(),
+  "expectedReturnAssumption": zod.string(),
+  "liquidityRequirement": zod.string(),
+  "currentAllocation": zod.string(),
+  "requestedNewAllocation": zod.string(),
+  "evidence": zod.array(zod.string()),
+  "status": zod.string(),
+  "decisionReason": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullable()
+})
+
+

@@ -1808,6 +1808,192 @@ export interface FinanceSnapshot {
   createdAt: string;
 }
 
+export interface TreasuryBucket {
+  id: string;
+  name: string;
+  bucketType: string;
+  priority: number;
+  targetAmount: string;
+  minimumAmount: string;
+  maximumAmount: string;
+  currentBalance: string;
+  protected: boolean;
+  liquid: boolean;
+  liquidityClass: string;
+  riskClass: string;
+  withdrawalPolicy: string;
+  fundingRule: string;
+}
+
+export interface TreasuryPolicy {
+  minimumOperatingCash: string;
+  emergencyTargetMonths: number;
+  minimumWeeklyDuplexContribution: string;
+  maximumStrategyPercent: string;
+  maximumSingleStrategyPercent: string;
+  maximumSingleVenuePercent: string;
+  maximumIlliquidPercent: string;
+  maximumActivePercent: string;
+  autoScale: boolean;
+  hierarchy: string[];
+  version: string;
+  emergencyTarget: string;
+}
+
+export interface TreasuryHealth {
+  score: number;
+  state: string;
+  deployability: number;
+  utilization: number;
+  activeCapitalPercent: number;
+  liquidityCoverage: number;
+  emergencyCoverage: number;
+  duplexProgressPercent: number;
+  cashDrag: string;
+}
+
+export interface TreasuryTotals {
+  totalCapital: string;
+  protectedCapital: string;
+  liquidReserve: string;
+  duplexCapital: string;
+  opportunityCapital: string;
+  treasuryCapital: string;
+  activeStrategyCapital: string;
+  safeToDeploy: string;
+}
+
+export interface TreasuryLadderItem {
+  liquidityClass: string;
+  amount: string;
+  percent: number;
+}
+
+export interface TreasuryStressTest {
+  name: string;
+  remainingLiquid: string;
+  remainingReserves: string;
+  liquidityMonths: number;
+  duplexProtected: boolean;
+  safeToDeploy: string;
+  status: string;
+}
+
+export interface CapitalRequest {
+  id: string;
+  requestingModule: string;
+  /** @nullable */
+  strategyId?: string | null;
+  requestedAmount: string;
+  purpose: string;
+  expectedDuration: string;
+  riskClass: string;
+  expectedReturnAssumption: string;
+  liquidityRequirement: string;
+  currentAllocation: string;
+  requestedNewAllocation: string;
+  evidence: string[];
+  status: string;
+  /** @nullable */
+  decisionReason: string | null;
+  createdAt: string;
+  /** @nullable */
+  reviewedAt: string | null;
+}
+
+export type CapitalRequestInputRiskClass = typeof CapitalRequestInputRiskClass[keyof typeof CapitalRequestInputRiskClass];
+
+
+export const CapitalRequestInputRiskClass = {
+  protected: 'protected',
+  conservative: 'conservative',
+  moderate: 'moderate',
+  experimental: 'experimental',
+} as const;
+
+export interface CapitalRequestInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  requestingModule: string;
+  strategyId?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  requestedAmount: string;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  purpose: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  expectedDuration: string;
+  riskClass: CapitalRequestInputRiskClass;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  expectedReturnAssumption: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  liquidityRequirement: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  currentAllocation?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  requestedNewAllocation?: string;
+  /** @maxItems 10 */
+  evidence?: string[];
+}
+
+export type CapitalRequestDecisionInputDecision = typeof CapitalRequestDecisionInputDecision[keyof typeof CapitalRequestDecisionInputDecision];
+
+
+export const CapitalRequestDecisionInputDecision = {
+  APPROVED: 'APPROVED',
+  PARTIALLY_APPROVED: 'PARTIALLY_APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface CapitalRequestDecisionInput {
+  decision: CapitalRequestDecisionInputDecision;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  approvedAmount?: string;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+}
+
+export type TreasurySnapshotReservationsItem = {
+  id: string;
+  bucketId: string;
+  reason: string;
+  reservedAmount: string;
+  startsAt: string;
+  /** @nullable */
+  expiresAt: string | null;
+  status: string;
+};
+
+export interface TreasurySnapshot {
+  totals: TreasuryTotals;
+  health: TreasuryHealth;
+  policy: TreasuryPolicy;
+  liquidityLadder: TreasuryLadderItem[];
+  stressTests: TreasuryStressTest[];
+  alerts: string[];
+  nextAction: string;
+  buckets: TreasuryBucket[];
+  requests: CapitalRequest[];
+  reservations: TreasurySnapshotReservationsItem[];
+  lastUpdated: string;
+}
+
 /**
  * Invalid request
  */

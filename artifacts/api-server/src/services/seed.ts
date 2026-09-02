@@ -34,11 +34,224 @@ import {
   strategyPerformance,
   strategyVersions,
   strategies,
+  treasuryBuckets,
+  treasuryPolicies,
   users,
   upcomingExpenses,
 } from "@workspace/db";
 
 const DEMO_HOUSEHOLD_NAME = "Morgan household";
+
+async function ensureTreasurySeed(householdId: string, ownerId: string) {
+  const [existingPolicy] = await db
+    .select({ id: treasuryPolicies.id })
+    .from(treasuryPolicies)
+    .where(eq(treasuryPolicies.householdId, householdId))
+    .limit(1);
+  if (!existingPolicy) {
+    await db.insert(treasuryPolicies).values({
+      householdId,
+      minimumOperatingCash: "2000.00",
+      emergencyTargetMonths: 6,
+      minimumWeeklyDuplexContribution: "200.00",
+      maximumStrategyPercent: "15",
+      maximumSingleStrategyPercent: "5",
+      maximumSingleVenuePercent: "5",
+      maximumIlliquidPercent: "20",
+      maximumActivePercent: "30",
+      autoScale: false,
+      hierarchy: [
+        "Required household obligations",
+        "Minimum operating cash",
+        "Emergency reserve",
+        "Protected Duplex reserve",
+        "Closing cost reserve",
+        "Opportunity reserve",
+        "Treasury / liquid yield",
+        "Validated strategy capital",
+      ],
+      updatedBy: ownerId,
+    });
+  }
+
+  const existingBuckets = await db
+    .select({
+      id: treasuryBuckets.id,
+      bucketType: treasuryBuckets.bucketType,
+      currentBalance: treasuryBuckets.currentBalance,
+    })
+    .from(treasuryBuckets)
+    .where(eq(treasuryBuckets.householdId, householdId))
+    .limit(20);
+  if (existingBuckets.length > 0) {
+    for (const bucket of existingBuckets) {
+      if (bucket.bucketType === "TREASURY" && Number(bucket.currentBalance) < 0) {
+        await db
+          .update(treasuryBuckets)
+          .set({ currentBalance: "0.00", updatedAt: new Date() })
+          .where(eq(treasuryBuckets.id, bucket.id));
+      }
+    }
+    return;
+  }
+
+  const internalAccounts = await db
+    .select({
+      accountType: accounts.accountType,
+      balance: accounts.balance,
+    })
+    .from(accounts)
+    .where(eq(accounts.householdId, householdId));
+  const accountBalance = (type: string) =>
+    internalAccounts.find((account) => account.accountType === type)?.balance ?? "0.00";
+
+  await db.insert(treasuryBuckets).values([
+    {
+      householdId,
+      name: "Household Operating Cash",
+      bucketType: "OPERATING",
+      priority: 1,
+      targetAmount: "3000.00",
+      minimumAmount: "2000.00",
+      maximumAmount: "10000.00",
+      currentBalance: "3500.00",
+      protected: false,
+      liquid: true,
+      liquidityClass: "IMMEDIATE",
+      riskClass: "conservative",
+      withdrawalPolicy: "Household obligations and recurring bills only.",
+      fundingRule: "Fund before all discretionary allocations.",
+    },
+    {
+      householdId,
+      name: "Emergency Reserve",
+      bucketType: "EMERGENCY",
+      priority: 2,
+      targetAmount: "18000.00",
+      minimumAmount: "18000.00",
+      maximumAmount: "36000.00",
+      currentBalance: "12000.00",
+      protected: true,
+      liquid: true,
+      liquidityClass: "ONE_TO_THREE_DAYS",
+      riskClass: "protected",
+      withdrawalPolicy: "Emergency expense only; human review required.",
+      fundingRule: "Restore to six months of essential expenses.",
+    },
+    {
+      householdId,
+      name: "Duplex Reserve",
+      bucketType: "PROTECTED_GOAL",
+      priority: 3,
+      targetAmount: "120000.00",
+      minimumAmount: "0.00",
+      maximumAmount: "250000.00",
+      currentBalance: accountBalance("duplex_reserve"),
+      protected: true,
+      liquid: true,
+      liquidityClass: "SEVEN_TO_THIRTY_DAYS",
+      riskClass: "protected",
+      withdrawalPolicy: "First duplex acquisition only.",
+      fundingRule: "Minimum $200 weekly contribution.",
+    },
+    {
+      householdId,
+      name: "Closing Cost Reserve",
+      bucketType: "PROPERTY",
+      priority: 4,
+      targetAmount: "20000.00",
+      minimumAmount: "11500.00",
+      maximumAmount: "30000.00",
+      currentBalance: "0.00",
+      protected: true,
+      liquid: true,
+      liquidityClass: "SEVEN_TO_THIRTY_DAYS",
+      riskClass: "protected",
+      withdrawalPolicy: "Inspection, appraisal, closing, prepaids, escrows, moving, and repairs.",
+      fundingRule: "Fund before strategy increases when a property is active.",
+    },
+    {
+      householdId,
+      name: "Opportunity Reserve",
+      bucketType: "OPPORTUNITY",
+      priority: 5,
+      targetAmount: "10000.00",
+      minimumAmount: "2500.00",
+      maximumAmount: "25000.00",
+      currentBalance: accountBalance("opportunity_reserve"),
+      protected: false,
+      liquid: true,
+      liquidityClass: "ONE_TO_THREE_DAYS",
+      riskClass: "conservative",
+      withdrawalPolicy: "Short-term strategic needs after protected priorities.",
+      fundingRule: "Fund after the Duplex contribution.",
+    },
+    {
+      householdId,
+      name: "Treasury Reserve",
+      bucketType: "TREASURY",
+      priority: 6,
+      targetAmount: "15000.00",
+      minimumAmount: "0.00",
+      maximumAmount: "50000.00",
+      currentBalance: accountBalance("treasury"),
+      protected: false,
+      liquid: true,
+      liquidityClass: "ONE_TO_THREE_DAYS",
+      riskClass: "conservative",
+      withdrawalPolicy: "Approved low-risk liquid instruments only.",
+      fundingRule: "Receive surplus after reserves and goal commitments.",
+    },
+    {
+      householdId,
+      name: "Capital OS Strategy Capital",
+      bucketType: "STRATEGY",
+      priority: 7,
+      targetAmount: "5000.00",
+      minimumAmount: "0.00",
+      maximumAmount: "15000.00",
+      currentBalance: accountBalance("active_capital"),
+      protected: false,
+      liquid: true,
+      liquidityClass: "SEVEN_TO_THIRTY_DAYS",
+      riskClass: "experimental",
+      withdrawalPolicy: "Graduated strategy and Micro-Live approval required.",
+      fundingRule: "Last funded in the contribution waterfall.",
+    },
+    {
+      householdId,
+      name: "Property Acquisition Capital",
+      bucketType: "PROPERTY",
+      priority: 8,
+      targetAmount: "135000.00",
+      minimumAmount: "0.00",
+      maximumAmount: "300000.00",
+      currentBalance: "0.00",
+      protected: true,
+      liquid: true,
+      liquidityClass: "SEVEN_TO_THIRTY_DAYS",
+      riskClass: "protected",
+      withdrawalPolicy: "Approved property closing only.",
+      fundingRule: "Follow the active property goal and cash-to-close plan.",
+    },
+    {
+      householdId,
+      name: "Future 4-Plex Reserve",
+      bucketType: "LONG_TERM",
+      priority: 9,
+      targetAmount: "0.00",
+      minimumAmount: "0.00",
+      maximumAmount: "500000.00",
+      currentBalance: "0.00",
+      protected: false,
+      liquid: false,
+      liquidityClass: "ILLIQUID",
+      riskClass: "moderate",
+      withdrawalPolicy: "Future goal review only.",
+      fundingRule: "No funding until the first duplex goal is complete.",
+    },
+  ]);
+}
 
 async function ensurePropertyUnderwritingSeed(householdId: string, propertyGoalId: string) {
   const [buyBox] = await db.select({ id: buyBoxes.id }).from(buyBoxes).where(eq(buyBoxes.householdId, householdId)).limit(1);
@@ -478,6 +691,7 @@ export async function ensureSeedData(): Promise<SeedContext> {
       };
       await ensureHouseholdFinanceSeed(seedContext.householdId);
       await ensurePropertyUnderwritingSeed(seedContext.householdId, seedContext.propertyGoalId);
+      await ensureTreasurySeed(seedContext.householdId, seedContext.ownerId);
       return seedContext;
     }
   }
@@ -772,5 +986,6 @@ export async function ensureSeedData(): Promise<SeedContext> {
   seedContext = result;
   await ensureHouseholdFinanceSeed(seedContext.householdId);
   await ensurePropertyUnderwritingSeed(seedContext.householdId, seedContext.propertyGoalId);
+  await ensureTreasurySeed(seedContext.householdId, seedContext.ownerId);
   return result;
 }

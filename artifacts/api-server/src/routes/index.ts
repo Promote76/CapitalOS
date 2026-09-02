@@ -10,6 +10,7 @@ import financeRouter from "./finance";
 import intelligenceRouter from "./intelligence";
 import strategyLabRouter from "./strategy-lab";
 import microLiveRouter from "./micro-live";
+import treasuryRouter from "./treasury";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(financeRouter);
 router.use(intelligenceRouter);
 router.use(strategyLabRouter);
 router.use(microLiveRouter);
+router.use(treasuryRouter);
 
 export default router;

@@ -15,6 +15,7 @@ tags:
   - name: governance
   - name: blockchain
   - name: household-finance
+  - name: treasury
 paths:
   /healthz:
     get:
@@ -1235,6 +1236,64 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/BankingStatus" }
+  /treasury:
+    get:
+      operationId: getTreasury
+      tags: [treasury]
+      summary: Get the household Treasury snapshot
+      responses:
+        "200":
+          description: Treasury overview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TreasurySnapshot" }
+  /treasury/requests:
+    post:
+      operationId: createCapitalRequest
+      tags: [treasury]
+      summary: Submit a recommendation-only capital request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CapitalRequestInput" }
+      responses:
+        "201":
+          description: Capital request submitted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CapitalRequest" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /treasury/requests/{requestId}/decision:
+    post:
+      operationId: decideCapitalRequest
+      tags: [treasury]
+      summary: Record a human Treasury decision
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CapitalRequestDecisionInput" }
+      responses:
+        "200":
+          description: Capital request decision
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CapitalRequest" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
 components:
   parameters:
     IdempotencyKey:
@@ -2912,3 +2971,157 @@ components:
             month: { type: string }
             source: { type: string }
         createdAt: { type: string, format: date-time }
+    TreasuryBucket:
+      type: object
+      required: [id, name, bucketType, priority, targetAmount, minimumAmount, maximumAmount, currentBalance, protected, liquid, liquidityClass, riskClass, withdrawalPolicy, fundingRule]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        bucketType: { type: string }
+        priority: { type: number }
+        targetAmount: { type: string }
+        minimumAmount: { type: string }
+        maximumAmount: { type: string }
+        currentBalance: { type: string }
+        protected: { type: boolean }
+        liquid: { type: boolean }
+        liquidityClass: { type: string }
+        riskClass: { type: string }
+        withdrawalPolicy: { type: string }
+        fundingRule: { type: string }
+    TreasuryPolicy:
+      type: object
+      required: [minimumOperatingCash, emergencyTargetMonths, minimumWeeklyDuplexContribution, maximumStrategyPercent, maximumSingleStrategyPercent, maximumSingleVenuePercent, maximumIlliquidPercent, maximumActivePercent, autoScale, hierarchy, version, emergencyTarget]
+      properties:
+        minimumOperatingCash: { type: string }
+        emergencyTargetMonths: { type: number }
+        minimumWeeklyDuplexContribution: { type: string }
+        maximumStrategyPercent: { type: string }
+        maximumSingleStrategyPercent: { type: string }
+        maximumSingleVenuePercent: { type: string }
+        maximumIlliquidPercent: { type: string }
+        maximumActivePercent: { type: string }
+        autoScale: { type: boolean }
+        hierarchy: { type: array, items: { type: string } }
+        version: { type: string }
+        emergencyTarget: { type: string }
+    TreasuryHealth:
+      type: object
+      required: [score, state, deployability, utilization, activeCapitalPercent, liquidityCoverage, emergencyCoverage, duplexProgressPercent, cashDrag]
+      properties:
+        score: { type: number }
+        state: { type: string }
+        deployability: { type: number }
+        utilization: { type: number }
+        activeCapitalPercent: { type: number }
+        liquidityCoverage: { type: number }
+        emergencyCoverage: { type: number }
+        duplexProgressPercent: { type: number }
+        cashDrag: { type: string }
+    TreasuryTotals:
+      type: object
+      required: [totalCapital, protectedCapital, liquidReserve, duplexCapital, opportunityCapital, treasuryCapital, activeStrategyCapital, safeToDeploy]
+      properties:
+        totalCapital: { type: string }
+        protectedCapital: { type: string }
+        liquidReserve: { type: string }
+        duplexCapital: { type: string }
+        opportunityCapital: { type: string }
+        treasuryCapital: { type: string }
+        activeStrategyCapital: { type: string }
+        safeToDeploy: { type: string }
+    TreasuryLadderItem:
+      type: object
+      required: [liquidityClass, amount, percent]
+      properties:
+        liquidityClass: { type: string }
+        amount: { type: string }
+        percent: { type: number }
+    TreasuryStressTest:
+      type: object
+      required: [name, remainingLiquid, remainingReserves, liquidityMonths, duplexProtected, safeToDeploy, status]
+      properties:
+        name: { type: string }
+        remainingLiquid: { type: string }
+        remainingReserves: { type: string }
+        liquidityMonths: { type: number }
+        duplexProtected: { type: boolean }
+        safeToDeploy: { type: string }
+        status: { type: string }
+    CapitalRequest:
+      type: object
+      required: [id, requestingModule, requestedAmount, purpose, expectedDuration, riskClass, expectedReturnAssumption, liquidityRequirement, currentAllocation, requestedNewAllocation, evidence, status, decisionReason, createdAt, reviewedAt]
+      properties:
+        id: { type: string }
+        requestingModule: { type: string }
+        strategyId: { type: ["string", "null"] }
+        requestedAmount: { type: string }
+        purpose: { type: string }
+        expectedDuration: { type: string }
+        riskClass: { type: string }
+        expectedReturnAssumption: { type: string }
+        liquidityRequirement: { type: string }
+        currentAllocation: { type: string }
+        requestedNewAllocation: { type: string }
+        evidence: { type: array, items: { type: string } }
+        status: { type: string }
+        decisionReason: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        reviewedAt: { type: ["string", "null"], format: date-time }
+    CapitalRequestInput:
+      type: object
+      required: [requestingModule, requestedAmount, purpose, expectedDuration, riskClass, expectedReturnAssumption, liquidityRequirement]
+      properties:
+        requestingModule: { type: string, minLength: 1, maxLength: 120 }
+        strategyId: { type: string }
+        requestedAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        purpose: { type: string, minLength: 1, maxLength: 1000 }
+        expectedDuration: { type: string, minLength: 1, maxLength: 120 }
+        riskClass: { type: string, enum: [protected, conservative, moderate, experimental] }
+        expectedReturnAssumption: { type: string, minLength: 1, maxLength: 500 }
+        liquidityRequirement: { type: string, minLength: 1, maxLength: 120 }
+        currentAllocation: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        requestedNewAllocation: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        evidence: { type: array, items: { type: string }, maxItems: 10 }
+    CapitalRequestDecisionInput:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: { type: string, enum: [APPROVED, PARTIALLY_APPROVED, REJECTED] }
+        approvedAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    TreasurySnapshot:
+      type: object
+      required: [totals, health, policy, liquidityLadder, stressTests, alerts, nextAction, buckets, requests, reservations, lastUpdated]
+      properties:
+        totals: { $ref: "#/components/schemas/TreasuryTotals" }
+        health: { $ref: "#/components/schemas/TreasuryHealth" }
+        policy: { $ref: "#/components/schemas/TreasuryPolicy" }
+        liquidityLadder:
+          type: array
+          items: { $ref: "#/components/schemas/TreasuryLadderItem" }
+        stressTests:
+          type: array
+          items: { $ref: "#/components/schemas/TreasuryStressTest" }
+        alerts: { type: array, items: { type: string } }
+        nextAction: { type: string }
+        buckets:
+          type: array
+          items: { $ref: "#/components/schemas/TreasuryBucket" }
+        requests:
+          type: array
+          items: { $ref: "#/components/schemas/CapitalRequest" }
+        reservations:
+          type: array
+          items:
+            type: object
+            required: [id, bucketId, reason, reservedAmount, startsAt, expiresAt, status]
+            properties:
+              id: { type: string }
+              bucketId: { type: string }
+              reason: { type: string }
+              reservedAmount: { type: string }
+              startsAt: { type: string, format: date }
+              expiresAt: { type: ["string", "null"], format: date }
+              status: { type: string }
+        lastUpdated: { type: string, format: date-time }

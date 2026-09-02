@@ -39,6 +39,12 @@ export function rateLimit(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+export function resetRateLimitForTests() {
+  if (process.env.NODE_ENV === "test" && process.env.CAPITAL_OS_TEST_CONTEXT === "1") {
+    requestCounts.clear();
+  }
+}
+
 export function writeBoundary(req: Request, res: Response, next: NextFunction) {
   if (!writeMethods.has(req.method)) {
     next();

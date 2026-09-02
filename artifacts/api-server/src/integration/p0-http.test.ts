@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { resetRateLimitForTests } from "../middleware/safety.ts";
 
 const enabled = process.env.CAPITAL_OS_RUN_INTEGRATION === "1";
 type DbModule = typeof import("@workspace/db");
@@ -130,7 +131,7 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
     assert.equal(goalsA.status, 200);
     const goalA = (await goalsA.json() as Array<{ id: string }>)[0];
     assert.ok(goalA?.id);
-    const { db, accounts, contributions, auditEvents, ledgerEntries, ledgerTransactions } = database;
+    const { db, accounts, contributions, auditEvents, ledgerEntries, ledgerTransactions, strategies } = database;
     const [treasury] = await db.select({ id: accounts.id }).from(accounts).where(and(
       eq(accounts.householdId, fixture.householdA),
       eq(accounts.accountType, "treasury"),
@@ -200,6 +201,12 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
       eq(auditEvents.entityId, capitalRequestIds[0]),
     ));
     assert.deepEqual(capitalRequestAudits, [{ actor: fixture.userA }]);
+    const capitalRequestConflict = await request("/treasury/requests", {
+      method: "POST",
+      headers: { "Idempotency-Key": capitalRequestKey },
+      body: JSON.stringify({ ...capitalRequestInput, requestedAmount: "11.00" }),
+    });
+    assert.equal(capitalRequestConflict.status, 400);
 
     const distributionInput = {
       businessId: business.id,
@@ -235,6 +242,12 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
       eq(auditEvents.entityId, distributionIds[0]),
     ));
     assert.deepEqual(distributionAudits, [{ actor: fixture.userA }]);
+    const distributionConflict = await request("/business/distributions", {
+      method: "POST",
+      headers: { "Idempotency-Key": distributionKey },
+      body: JSON.stringify({ ...distributionInput, amount: "11.00" }),
+    });
+    assert.equal(distributionConflict.status, 400);
 
     const crossHouseholdContribution = await request("/contributions", {
       method: "POST",
@@ -304,6 +317,12 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
     assert.deepEqual(responseDetails.map((response) => response.status), [201, 201], JSON.stringify(responseDetails));
     const payloads = responseDetails.map((response) => JSON.parse(response.body) as { id: string });
     assert.equal(payloads[0].id, payloads[1].id);
+    const contributionConflict = await request("/contributions", {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify({ amount: "11.00", goalId: goalA.id }),
+    });
+    assert.equal(contributionConflict.status, 400);
 
     const accountsResponse = await request("/accounts");
     assert.equal(accountsResponse.status, 200);
@@ -311,7 +330,88 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
     const source = accountRows.find((account) => account.accountType === "active_capital");
     const destination = accountRows.find((account) => account.accountType === "strategy_capital");
     assert.ok(source?.id && destination?.id, JSON.stringify(accountRows));
-    const sourceBalanceBeforeConcurrent = source.balance;
+    const [strategy] = await db.select({ id: strategies.id }).from(strategies).where(eq(strategies.householdId, fixture.householdA)).limit(1);
+    assert.ok(strategy?.id);
+    await db.update(strategies).set({ stage: "approved" }).where(and(
+      eq(strategies.id, strategy.id),
+      eq(strategies.householdId, fixture.householdA),
+    ));
+    const strategyAllocationKey = `strategy-allocation-${randomUUID()}`;
+    const strategyAllocationResponses = await Promise.all([1, 2].map(() => request(`/strategies/${strategy.id}/allocation`, {
+      method: "POST",
+      headers: { "Idempotency-Key": strategyAllocationKey },
+      body: JSON.stringify({ sourceAccountId: source.id, amount: "0.01" }),
+    })));
+    const strategyAllocationDetails = await Promise.all(strategyAllocationResponses.map(async (response) => ({
+      status: response.status,
+      body: await response.text(),
+    })));
+    assert.deepEqual(strategyAllocationDetails.map((response) => response.status), [201, 201], JSON.stringify(strategyAllocationDetails));
+    const strategyAllocationIds = strategyAllocationDetails.map((response) => (JSON.parse(response.body) as { id: string }).id);
+    assert.equal(strategyAllocationIds[0], strategyAllocationIds[1]);
+    const [strategyAllocationCount] = await db.select({
+      count: sql<number>`count(*)::int`,
+    }).from(ledgerTransactions).where(and(
+      eq(ledgerTransactions.householdId, fixture.householdA),
+      eq(ledgerTransactions.idempotencyKey, strategyAllocationKey),
+    ));
+    assert.equal(strategyAllocationCount?.count, 1);
+    const [strategyAllocationAudit] = await db.select({
+      actor: auditEvents.actor,
+    }).from(auditEvents).where(and(
+      eq(auditEvents.entity, "strategy"),
+      eq(auditEvents.entityId, strategy.id),
+      eq(auditEvents.eventType, "strategy_allocation_completed"),
+      eq(auditEvents.householdId, fixture.householdA),
+    )).limit(1);
+    assert.equal(strategyAllocationAudit?.actor, fixture.userA);
+    const strategyAllocationConflict = await request(`/strategies/${strategy.id}/allocation`, {
+      method: "POST",
+      headers: { "Idempotency-Key": strategyAllocationKey },
+      body: JSON.stringify({ sourceAccountId: source.id, amount: "0.02" }),
+    });
+    assert.equal(strategyAllocationConflict.status, 400);
+    const replayKey = `transfer-replay-${randomUUID()}`;
+    const replayResponses = await Promise.all([1, 2].map(() => request("/transfers", {
+      method: "POST",
+      headers: { "Idempotency-Key": replayKey },
+      body: JSON.stringify({ sourceAccountId: source.id, destinationAccountId: destination.id, amount: "0.01" }),
+    })));
+    const replayDetails = await Promise.all(replayResponses.map(async (response) => ({
+      status: response.status,
+      body: await response.text(),
+    })));
+    assert.deepEqual(replayDetails.map((response) => response.status), [201, 201], JSON.stringify(replayDetails));
+    const replayIds = replayDetails.map((response) => (JSON.parse(response.body) as { id: string }).id);
+    assert.equal(replayIds[0], replayIds[1]);
+    const [replayCount] = await db.select({
+      count: sql<number>`count(*)::int`,
+    }).from(ledgerTransactions).where(and(
+      eq(ledgerTransactions.householdId, fixture.householdA),
+      eq(ledgerTransactions.idempotencyKey, replayKey),
+    ));
+    assert.equal(replayCount?.count, 1);
+    const [transferAudit] = await db.select({
+      actor: auditEvents.actor,
+    }).from(auditEvents).where(and(
+      eq(auditEvents.entity, "ledger_transaction"),
+      eq(auditEvents.entityId, replayIds[0]),
+      eq(auditEvents.householdId, fixture.householdA),
+    )).limit(1);
+    assert.equal(transferAudit?.actor, fixture.userA);
+    const transferConflict = await request("/transfers", {
+      method: "POST",
+      headers: { "Idempotency-Key": replayKey },
+      body: JSON.stringify({ sourceAccountId: source.id, destinationAccountId: destination.id, amount: "0.02" }),
+    });
+    assert.equal(transferConflict.status, 400);
+
+    resetRateLimitForTests();
+    const [currentSource] = await db.select({
+      balance: accounts.balance,
+    }).from(accounts).where(eq(accounts.id, source.id)).limit(1);
+    assert.ok(currentSource?.balance);
+    const sourceBalanceBeforeConcurrent = currentSource.balance;
     const blockedWithoutStepUp = await request("/transfers", {
       method: "POST",
       headers: { "Idempotency-Key": `step-up-${randomUUID()}` },
@@ -354,35 +454,6 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
     }).from(ledgerEntries).where(inArray(ledgerEntries.transactionId, successfulContention));
     assert.equal(ledgerTotals?.debits, "1000.00");
     assert.equal(ledgerTotals?.credits, "1000.00");
-
-    const replayKey = `transfer-replay-${randomUUID()}`;
-    const replayResponses = await Promise.all([1, 2].map(() => request("/transfers", {
-      method: "POST",
-      headers: { "Idempotency-Key": replayKey },
-      body: JSON.stringify({ sourceAccountId: destination.id, destinationAccountId: source.id, amount: "1.00" }),
-    })));
-    const replayDetails = await Promise.all(replayResponses.map(async (response) => ({
-      status: response.status,
-      body: await response.text(),
-    })));
-    assert.deepEqual(replayDetails.map((response) => response.status), [201, 201], JSON.stringify(replayDetails));
-    const replayIds = replayDetails.map((response) => (JSON.parse(response.body) as { id: string }).id);
-    assert.equal(replayIds[0], replayIds[1]);
-    const [replayCount] = await db.select({
-      count: sql<number>`count(*)::int`,
-    }).from(ledgerTransactions).where(and(
-      eq(ledgerTransactions.householdId, fixture.householdA),
-      eq(ledgerTransactions.idempotencyKey, replayKey),
-    ));
-    assert.equal(replayCount?.count, 1);
-    const [transferAudit] = await db.select({
-      actor: auditEvents.actor,
-    }).from(auditEvents).where(and(
-      eq(auditEvents.entity, "ledger_transaction"),
-      eq(auditEvents.entityId, replayIds[0]),
-      eq(auditEvents.householdId, fixture.householdA),
-    )).limit(1);
-    assert.equal(transferAudit?.actor, fixture.userA);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     const { db, households, users } = database;

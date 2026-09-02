@@ -9,7 +9,7 @@ import {
   financialAccounts,
 } from "@workspace/db/schema";
 import type { Actor } from "./capital-os";
-import { ensureSeedData } from "./seed";
+import { ensureSeedData, isDemoHousehold } from "./seed";
 import { assertPermission } from "../domain/governance";
 import { calculateBusinessCapital, calculateBusinessHealth, assertDistributionWithinReserve } from "../domain/business";
 import { centsToMoney, parseMoneyToCents } from "../domain/finance";
@@ -99,7 +99,9 @@ async function ensureBusinessSeed(householdId: string, ownerId: string) {
 
 async function loadBusinessData() {
   const ids = await ensureSeedData();
-  await ensureBusinessSeed(ids.householdId, ids.ownerId);
+  if (await isDemoHousehold(ids.householdId)) {
+    await ensureBusinessSeed(ids.householdId, ids.ownerId);
+  }
   const [businesses, revenue, expenses, reserves, distributions, accounts] = await Promise.all([
     db.select().from(businessEntities).where(eq(businessEntities.householdId, ids.householdId)).orderBy(businessEntities.displayName),
     db.select().from(businessRevenue).where(eq(businessRevenue.householdId, ids.householdId)).orderBy(desc(businessRevenue.revenueDate)),

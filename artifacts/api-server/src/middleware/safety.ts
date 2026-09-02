@@ -1,9 +1,18 @@
 import type { NextFunction, Request, Response } from "express";
+import { randomUUID } from "node:crypto";
 
 const writeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const requestCounts = new Map<string, { windowStartedAt: number; count: number }>();
 const WINDOW_MS = 60_000;
 const MAX_REQUESTS_PER_WINDOW = 120;
+
+export function correlationId(req: Request, res: Response, next: NextFunction) {
+  const supplied = req.header("X-Correlation-ID");
+  const id = supplied && /^[a-zA-Z0-9._:-]{1,128}$/.test(supplied) ? supplied : randomUUID();
+  res.locals.correlationId = id;
+  res.setHeader("X-Correlation-ID", id);
+  next();
+}
 
 export function securityHeaders(_req: Request, res: Response, next: NextFunction) {
   res.setHeader("X-Content-Type-Options", "nosniff");

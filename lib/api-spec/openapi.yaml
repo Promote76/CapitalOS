@@ -2,13 +2,14 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.2.0
+  version: 0.3.0
   description: Capital OS household capital operating system API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
+  - name: auth
   - name: household
   - name: capital
   - name: planning
@@ -32,6 +33,54 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /health/live:
+    get:
+      operationId: healthLive
+      tags: [health]
+      summary: Dependency-free liveness check
+      responses:
+        "200":
+          description: Process is alive
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+  /health/ready:
+    get:
+      operationId: healthReady
+      tags: [health]
+      summary: PostgreSQL readiness check
+      responses:
+        "200":
+          description: Dependencies are ready
+        "503":
+          description: A dependency is unavailable
+  /auth/me:
+    get:
+      operationId: getAuthMe
+      tags: [auth]
+      summary: Resolve the authenticated Clerk user and household memberships
+      responses:
+        "200":
+          description: Internal identity and memberships
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /auth/onboard:
+    post:
+      operationId: onboardHousehold
+      tags: [auth]
+      summary: Create the first household for an authenticated user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OnboardHouseholdInput" }
+      responses:
+        "201":
+          description: Household created with conservative defaults
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: User already belongs to an active household
   /household:
     get:
       operationId: getHousehold
@@ -1724,6 +1773,12 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication is required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
     NotFound:
       description: Requested household record was not found
       content:
@@ -1743,12 +1798,19 @@ components:
       properties:
         status:
           type: string
+    OnboardHouseholdInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        timezone: { type: string, default: America/Chicago }
     ErrorResponse:
       type: object
       required: [code, message]
       properties:
         code: { type: string }
         message: { type: string }
+        correlationId: { type: string, nullable: true }
         details:
           type: ["object", "null"]
           additionalProperties: true

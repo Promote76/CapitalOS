@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Capital OS household capital operating system API
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 
 export type CreateResearchStrategyInputExecutionModel = typeof CreateResearchStrategyInputExecutionModel[keyof typeof CreateResearchStrategyInputExecutionModel];

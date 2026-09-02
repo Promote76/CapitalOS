@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   accounts,
@@ -39,8 +39,18 @@ import {
   users,
   upcomingExpenses,
 } from "@workspace/db";
+import { activeSecurityContext } from "../middleware/request-scope";
 
 const DEMO_HOUSEHOLD_NAME = "Morgan household";
+
+export async function isDemoHousehold(householdId: string): Promise<boolean> {
+  const [household] = await db
+    .select({ name: households.name })
+    .from(households)
+    .where(eq(households.id, householdId))
+    .limit(1);
+  return household?.name === DEMO_HOUSEHOLD_NAME;
+}
 
 async function ensureTreasurySeed(householdId: string, ownerId: string) {
   const [existingPolicy] = await db
@@ -591,8 +601,235 @@ export type SeedContext = {
 };
 
 let seedContext: SeedContext | undefined;
+const tenantContexts = new Map<string, SeedContext>();
+
+async function ensureTenantCore(householdId: string, ownerId: string): Promise<SeedContext> {
+  const cached = tenantContexts.get(householdId);
+  if (cached) return cached;
+
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`tenant-core:${householdId}`}))`);
+
+    const [settings] = await tx
+      .select({ id: householdSettings.id })
+      .from(householdSettings)
+      .where(eq(householdSettings.householdId, householdId))
+      .limit(1);
+    if (!settings) {
+      await tx.insert(householdSettings).values({
+        householdId,
+        aiAdvisoryOnly: true,
+        blockchainEnabled: false,
+        emergencyStopActive: false,
+      });
+    }
+
+    const findOrCreateAccount = async (
+      accountType: "duplex_reserve" | "active_capital" | "opportunity_reserve" | "treasury" | "strategy_capital",
+      name: string,
+      isProtected: boolean,
+      riskClass: "protected" | "conservative" | "moderate" | "experimental",
+    ) => {
+      const [existing] = await tx
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(and(eq(accounts.householdId, householdId), eq(accounts.accountType, accountType)))
+        .limit(1);
+      if (existing) return existing.id;
+      const [created] = await tx
+        .insert(accounts)
+        .values({
+          householdId,
+          name,
+          accountType,
+          balance: "0.00",
+          protected: isProtected,
+          riskClass,
+        })
+        .returning({ id: accounts.id });
+      return created.id;
+    };
+
+    const duplexAccountId = await findOrCreateAccount("duplex_reserve", "Duplex Reserve", true, "protected");
+    const capitalOsAccountId = await findOrCreateAccount("active_capital", "Capital OS", false, "conservative");
+    const opportunityAccountId = await findOrCreateAccount("opportunity_reserve", "Opportunity Reserve", false, "conservative");
+    const treasuryAccountId = await findOrCreateAccount("treasury", "Capital OS Treasury", false, "conservative");
+    const strategyCapitalAccountId = await findOrCreateAccount("strategy_capital", "Strategy Capital", false, "experimental");
+
+    const [existingGoal] = await tx
+      .select({ id: goals.id })
+      .from(goals)
+      .where(eq(goals.householdId, householdId))
+      .limit(1);
+    const goalId =
+      existingGoal?.id ??
+      (await tx
+        .insert(goals)
+        .values({
+          householdId,
+          name: "First Duplex Acquisition",
+          targetAmount: "120000.00",
+          currentAmount: "0.00",
+          protectedAmount: "0.00",
+          weeklyContribution: "200.00",
+          startDate: new Date().toISOString().slice(0, 10),
+          targetDate: "2027-06-30",
+          priority: "critical",
+          status: "draft",
+        })
+        .returning({ id: goals.id }))[0].id;
+
+    const [existingRule] = await tx
+      .select({ id: allocationRules.id })
+      .from(allocationRules)
+      .where(and(eq(allocationRules.householdId, householdId), eq(allocationRules.active, true)))
+      .limit(1);
+    const allocationRuleId =
+      existingRule?.id ??
+      (await tx
+        .insert(allocationRules)
+        .values({
+          householdId,
+          totalWeekly: "250.00",
+          duplexReserve: "200.00",
+          capitalOs: "25.00",
+          opportunityReserve: "25.00",
+          active: true,
+          createdBy: ownerId,
+        })
+        .returning({ id: allocationRules.id }))[0].id;
+
+    const [existingProperty] = await tx
+      .select({ id: propertyGoals.id })
+      .from(propertyGoals)
+      .where(eq(propertyGoals.householdId, householdId))
+      .limit(1);
+    const propertyGoalId =
+      existingProperty?.id ??
+      (await tx
+        .insert(propertyGoals)
+        .values({
+          householdId,
+          name: "First property plan",
+          targetMarket: "To be selected",
+          targetBudget: "0.00",
+          estimatedDownPayment: "0.00",
+          estimatedClosingCosts: "0.00",
+          readinessScore: "0.00",
+          targetDate: "2027-06-30",
+        })
+        .returning({ id: propertyGoals.id }))[0].id;
+
+    const [existingStrategy] = await tx
+      .select({ id: strategies.id })
+      .from(strategies)
+      .where(eq(strategies.householdId, householdId))
+      .limit(1);
+    let strategyId = existingStrategy?.id;
+    if (!strategyId) {
+      const [created] = await tx
+        .insert(strategies)
+        .values({
+          householdId,
+          name: "Research plan",
+          strategyType: "core_plan",
+          stage: "research",
+          allocation: "0.00",
+          confidenceScore: "0.00",
+          riskLevel: "low",
+          runtimeDays: "0",
+          enabled: false,
+        })
+        .returning({ id: strategies.id });
+      strategyId = created.id;
+      await tx.insert(strategyVersions).values({
+        strategyId,
+        version: "1.0",
+        configuration: { purpose: "research-only until evidence is reviewed" },
+      });
+      await tx.insert(strategyPerformance).values({
+        strategyId,
+        observations: "0",
+        fills: "0",
+        runtimeHours: "0",
+        expectancy: "0",
+        drawdown: "0",
+        reconciliationAccuracy: "0",
+        criticalErrorCount: "0",
+      });
+    }
+
+    const [existingRisk] = await tx
+      .select({ id: riskStates.id })
+      .from(riskStates)
+      .where(eq(riskStates.householdId, householdId))
+      .limit(1);
+    const riskStateId =
+      existingRisk?.id ??
+      (await tx
+        .insert(riskStates)
+        .values({
+          householdId,
+          state: "normal",
+          maxActiveCapital: "5000.00",
+          maxStrategyAllocation: "500.00",
+          maxWeeklyRisk: "0.0100",
+          maxDrawdown: "0.0500",
+          minimumCashReserve: "3000.00",
+          protectedCapitalLocked: true,
+          emergencyStopActive: false,
+        })
+        .returning({ id: riskStates.id }))[0].id;
+
+    const [existingRecommendation] = await tx
+      .select({ id: aiRecommendations.id })
+      .from(aiRecommendations)
+      .where(eq(aiRecommendations.householdId, householdId))
+      .limit(1);
+    const recommendationId =
+      existingRecommendation?.id ??
+      (await tx
+        .insert(aiRecommendations)
+        .values({
+          householdId,
+          recommendation: "Complete your household setup before making capital decisions",
+          rationale: "New households begin with conservative defaults and no verified external accounts.",
+          expectedBenefit: "Clearer financial context and safer future recommendations.",
+          riskImpact: "No external or protected capital is assumed.",
+          affectedGoalId: goalId,
+          affectedCapital: "None",
+          evidence: ["new household", "manual setup required"],
+          confidence: "100.00",
+          status: "proposed",
+        })
+        .returning({ id: aiRecommendations.id }))[0].id;
+
+    return {
+      householdId,
+      ownerId,
+      goalId,
+      duplexAccountId,
+      capitalOsAccountId,
+      opportunityAccountId,
+      strategyCapitalAccountId,
+      treasuryAccountId,
+      allocationRuleId,
+      propertyGoalId,
+      strategyId,
+      recommendationId,
+      riskStateId,
+    };
+  });
+
+  tenantContexts.set(householdId, result);
+  return result;
+}
 
 export async function ensureSeedData(): Promise<SeedContext> {
+  const active = activeSecurityContext();
+  if (active?.authStrength === "clerk_session") {
+    return ensureTenantCore(active.householdId, active.userId);
+  }
   if (seedContext) return seedContext;
 
   const existingHousehold = await db

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Capital OS household capital operating system API
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 
 export * from './accountingAccount';
@@ -154,6 +154,7 @@ export * from './microLiveVenueReviewRequest';
 export * from './microLiveVenueReviewReviewType';
 export * from './monthlyFamilyCapitalReview';
 export * from './notFoundResponse';
+export * from './onboardHouseholdBody';
 export * from './operationsAlert';
 export * from './operationsAlertSeverity';
 export * from './operationsAlertStatus';
@@ -244,6 +245,7 @@ export * from './treasurySnapshot';
 export * from './treasurySnapshotReservationsItem';
 export * from './treasuryStressTest';
 export * from './treasuryTotals';
+export * from './unauthorizedResponse';
 export * from './upcomingExpense';
 export * from './upcomingExpenseInput';
 export * from './upcomingExpenseInputPriority';

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Capital OS household capital operating system API
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 import * as zod from 'zod';
 
@@ -14,6 +14,41 @@ import * as zod from 'zod';
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
+
+
+/**
+ * @summary Dependency-free liveness check
+ */
+export const HealthLiveResponse = zod.object({
+  "status": zod.string()
+})
+
+
+/**
+ * @summary PostgreSQL readiness check
+ */
+export const HealthReadyResponse = zod.unknown()
+
+
+/**
+ * @summary Resolve the authenticated Clerk user and household memberships
+ */
+export const GetAuthMeResponse = zod.unknown()
+
+
+/**
+ * @summary Create the first household for an authenticated user
+ */
+export const onboardHouseholdBodyNameMax = 120;
+
+export const onboardHouseholdBodyTimezoneDefault = `America/Chicago`;
+
+export const OnboardHouseholdBody = zod.object({
+  "name": zod.string().min(1).max(onboardHouseholdBodyNameMax),
+  "timezone": zod.string().default(onboardHouseholdBodyTimezoneDefault)
+})
+
+export const OnboardHouseholdResponse = zod.void()
 
 
 /**

@@ -13,11 +13,15 @@ import { householdRoleEnum } from "./enums";
 
 export const users = pgTable("capital_users", {
   id: uuid("id").defaultRandom().primaryKey(),
+  externalAuthId: text("external_auth_id"),
   displayName: text("display_name").notNull(),
   email: text("email").notNull(),
+  status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (table) => ({
+  externalAuthIdUnique: uniqueIndex("capital_users_external_auth_id_unique").on(table.externalAuthId),
+}));
 
 export const households = pgTable("households", {
   id: uuid("id").defaultRandom().primaryKey(),

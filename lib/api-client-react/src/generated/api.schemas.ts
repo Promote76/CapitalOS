@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Capital OS household capital operating system API
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 export interface HealthStatus {
   status: string;
@@ -17,6 +17,7 @@ export type ErrorResponseDetails = { [key: string]: unknown } | null;
 export interface ErrorResponse {
   code: string;
   message: string;
+  correlationId?: string | null;
   /** @nullable */
   details?: ErrorResponseDetails;
 }
@@ -2688,6 +2689,11 @@ export type BadRequestResponse = ErrorResponse;
 export type ForbiddenResponse = ErrorResponse;
 
 /**
+ * Authentication is required
+ */
+export type UnauthorizedResponse = ErrorResponse;
+
+/**
  * Requested household record was not found
  */
 export type NotFoundResponse = ErrorResponse;
@@ -2698,6 +2704,15 @@ export type NotFoundResponse = ErrorResponse;
 export type ConflictResponse = ErrorResponse;
 
 export type IdempotencyKeyParameter = string;
+
+export type OnboardHouseholdBody = {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  timezone?: string;
+};
 
 export type ArmMicroLive200 = {
   status: string;

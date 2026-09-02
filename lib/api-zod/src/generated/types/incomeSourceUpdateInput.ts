@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Capital OS household capital operating system API
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 import type { IncomeSourceUpdateInputCadence } from './incomeSourceUpdateInputCadence';
 import type { IncomeSourceUpdateInputSourceType } from './incomeSourceUpdateInputSourceType';

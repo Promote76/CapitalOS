@@ -47,7 +47,7 @@ import { ensureSeedData, type SeedContext } from "./seed";
 export type Actor = {
   role: HouseholdRole;
   userId: string;
-  source: "development-header" | "production-default";
+  source: "development-seed" | "test-seed" | "clerk-session";
 };
 
 function weeksBetween(targetDate: string): number {

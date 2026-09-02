@@ -1,6 +1,17 @@
 import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import {
+  ClerkProvider,
+  SignIn,
+  SignUp,
+  Show,
+  useAuth,
+  useClerk,
+  useUser,
+} from '@clerk/react';
+import { publishableKeyFromHost } from '@clerk/react/internal';
+import { shadcn } from '@clerk/themes';
+import {
   createContribution,
   useGetCashFlow,
   useGetFinanceInsights,
@@ -142,9 +153,257 @@ import TreasuryPage from '@/pages/treasury';
 import AccountingPage from '@/pages/accounting';
 import OperationsPage from '@/pages/operations';
 import BusinessPage from '@/pages/business';
-import { Link, Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
+import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 
 const queryClient = new QueryClient();
+const clerkPubKey = publishableKeyFromHost(
+  window.location.hostname,
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+);
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+function stripBase(path: string) {
+  return basePath && path.startsWith(basePath)
+    ? path.slice(basePath.length) || '/'
+    : path;
+}
+
+const clerkAppearance = {
+  theme: shadcn,
+  cssLayerName: 'clerk',
+  options: {
+    logoPlacement: 'inside' as const,
+    logoLinkUrl: basePath || '/',
+    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+    socialButtonsPlacement: 'top' as const,
+    socialButtonsVariant: 'blockButton' as const,
+  },
+  variables: {
+    colorPrimary: '#236b59',
+    colorForeground: '#18322e',
+    colorMutedForeground: '#58706b',
+    colorDanger: '#b34a3c',
+    colorBackground: '#ffffff',
+    colorInput: '#f6faf8',
+    colorInputForeground: '#18322e',
+    colorNeutral: '#d9e6e1',
+    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+    borderRadius: '0.85rem',
+  },
+  elements: {
+    rootBox: 'w-full flex justify-center',
+    cardBox: 'bg-white rounded-2xl w-[440px] max-w-full overflow-hidden',
+    card: '!shadow-none !border-0 !bg-transparent !rounded-none',
+    footer: '!shadow-none !border-0 !bg-transparent !rounded-none',
+    headerTitle: 'text-[#18322e]',
+    headerSubtitle: 'text-[#58706b]',
+    socialButtonsBlockButtonText: 'text-[#18322e]',
+    formFieldLabel: 'text-[#355a50]',
+    footerActionLink: 'text-[#236b59]',
+    footerActionText: 'text-[#58706b]',
+    dividerText: 'text-[#58706b]',
+    identityPreviewEditButton: 'text-[#236b59]',
+    formFieldSuccessText: 'text-[#236b59]',
+    alertText: 'text-[#9d3d30]',
+    logoBox: 'rounded-xl overflow-hidden',
+    logoImage: 'rounded-xl',
+    socialButtonsBlockButton: 'border-[#d9e6e1] bg-[#f6faf8] hover:bg-[#e8f3ef]',
+    formButtonPrimary: 'bg-[#236b59] hover:bg-[#1b594a] text-white',
+    formFieldInput: 'border-[#d9e6e1] bg-[#f6faf8] text-[#18322e]',
+    footerAction: 'border-t border-[#d9e6e1]',
+    dividerLine: 'bg-[#d9e6e1]',
+    alert: 'border-[#efcfc8] bg-[#fff0ed]',
+    otpCodeFieldInput: 'border-[#d9e6e1] bg-[#f6faf8] text-[#18322e]',
+    formFieldRow: 'text-[#18322e]',
+    main: 'bg-white',
+  },
+};
+
+function AuthLanding() {
+  return (
+    <div className="auth-landing">
+      <div className="auth-landing-card">
+        <div className="brand-mark">
+          <div className="brand-glyph" aria-hidden="true" />
+          <div><div className="brand-name">capital os</div><div className="brand-sub">family capital / 01</div></div>
+        </div>
+        <div className="auth-landing-kicker">Family capital, with a plan</div>
+        <h1>Protect the base. Fund the next chapter.</h1>
+        <p>Capital OS brings household finance, protected goals, Treasury, property planning, and business context into one governed workspace.</p>
+        <div className="auth-landing-actions">
+          <Link href="/sign-in" className="button button-primary">Sign in</Link>
+          <Link href="/sign-up" className="button button-secondary">Create an account</Link>
+        </div>
+        <div className="auth-landing-note"><LockKeyhole size={15} /> AI is advisory-only. Live execution is disabled.</div>
+      </div>
+    </div>
+  );
+}
+
+function SignInPage() {
+  return (
+    <div className="auth-page">
+      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+    </div>
+  );
+}
+
+function SignUpPage() {
+  return (
+    <div className="auth-page">
+      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+    </div>
+  );
+}
+
+function ClerkQueryClientCacheInvalidator() {
+  const { userId, isLoaded } = useAuth();
+  const previousUserId = useState<string | null | undefined>(undefined);
+  const previous = previousUserId[0];
+  const setPrevious = previousUserId[1];
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (previous !== undefined && previous !== (userId ?? null)) {
+      queryClient.clear();
+    }
+    setPrevious(userId ?? null);
+  }, [isLoaded, previous, setPrevious, userId]);
+  return null;
+}
+
+function SessionControls() {
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  if (!user) return null;
+  const label = user.firstName || user.primaryEmailAddress?.emailAddress || 'Signed in';
+  return (
+    <div className="session-controls">
+      <div className="session-user"><div className="session-avatar">{label.slice(0, 1).toUpperCase()}</div><span>{label}</span></div>
+      <button type="button" className="session-signout" onClick={() => signOut({ redirectUrl: basePath || '/' })}>Sign out</button>
+    </div>
+  );
+}
+
+function OnboardingPage({ onComplete }: { onComplete: () => void }) {
+  const { user } = useUser();
+  const [name, setName] = useState('');
+  const [timezone, setTimezone] = useState('America/Chicago');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!name && user) {
+      setName(`${user.firstName || 'My'} household`);
+    }
+  }, [name, user]);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      const response = await fetch('/api/auth/onboard', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, timezone }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.message || 'Household setup could not be completed.');
+      onComplete();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Household setup could not be completed.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="auth-landing">
+      <div className="auth-landing-card onboarding-card">
+        <div className="auth-landing-kicker">One secure workspace per account</div>
+        <h1>Set up your household.</h1>
+        <p>Capital OS starts with conservative, non-executing defaults. You can add verified accounts and planning data after setup; no balances are invented or copied from the demo household.</p>
+        <form className="onboarding-form" onSubmit={submit}>
+          <label>Household name<input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} placeholder="The Morgan household" /></label>
+          <label>Time zone<select value={timezone} onChange={(event) => setTimezone(event.target.value)}><option>America/Chicago</option><option>America/New_York</option><option>America/Denver</option><option>America/Los_Angeles</option><option>UTC</option></select></label>
+          {error && <div className="onboarding-error" role="alert">{error}</div>}
+          <button className="button button-primary" type="submit" disabled={saving}>{saving ? 'Creating workspace…' : 'Create household'}</button>
+        </form>
+        <div className="auth-landing-note"><LockKeyhole size={15} /> Your account is linked to the internal household identity after setup.</div>
+      </div>
+    </div>
+  );
+}
+
+function TenantGate() {
+  const [state, setState] = useState<'loading' | 'onboarding' | 'ready' | 'error'>('loading');
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let active = true;
+    fetch('/api/auth/me', { credentials: 'same-origin' })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || 'Your secure workspace could not be loaded.');
+        if (!active) return;
+        setState(payload.memberships?.length ? 'ready' : 'onboarding');
+      })
+      .catch((requestError) => {
+        if (!active) return;
+        setError(requestError instanceof Error ? requestError.message : 'Your secure workspace could not be loaded.');
+        setState('error');
+      });
+    return () => { active = false; };
+  }, []);
+  if (state === 'ready') return <AppContent />;
+  if (state === 'onboarding') return <OnboardingPage onComplete={() => setState('ready')} />;
+  if (state === 'error') return <div className="auth-loading">{error}</div>;
+  return <div className="auth-loading">Preparing your secure workspace…</div>;
+}
+
+function AuthenticatedApp() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const [location] = useLocation();
+  if (!isLoaded) {
+    return <div className="auth-loading">Loading your secure workspace…</div>;
+  }
+  if (!isSignedIn && import.meta.env.PROD) {
+    return location === '/' ? <AuthLanding /> : <Redirect to="/sign-in" />;
+  }
+  return import.meta.env.PROD ? <TenantGate /> : <AppContent />;
+}
+
+function ClerkProviderWithRoutes() {
+  const [, setLocation] = useLocation();
+  if (!clerkPubKey) {
+    throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY in the application environment.');
+  }
+  return (
+    <ClerkProvider
+      publishableKey={clerkPubKey}
+      proxyUrl={clerkProxyUrl}
+      appearance={clerkAppearance}
+      signInUrl={`${basePath}/sign-in`}
+      signUpUrl={`${basePath}/sign-up`}
+      localization={{
+        signIn: { start: { title: 'Welcome back', subtitle: 'Sign in to access your family capital workspace' } },
+        signUp: { start: { title: 'Create your Capital OS account', subtitle: 'Start with conservative defaults and a clear plan' } },
+      }}
+      routerPush={(to) => setLocation(stripBase(to))}
+      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
+    >
+      <QueryClientProvider client={queryClient}>
+        <ClerkQueryClientCacheInvalidator />
+        <Switch>
+          <Route path="/sign-in/*?" component={SignInPage} />
+          <Route path="/sign-up/*?" component={SignUpPage} />
+          <Route component={AuthenticatedApp} />
+        </Switch>
+      </QueryClientProvider>
+    </ClerkProvider>
+  );
+}
 
 type ModalKind = 'contribution' | 'transfer' | 'strategy' | 'property' | null;
 type Transaction = { id: number; date: string; name: string; category: string; amount: number; status: string };
@@ -236,6 +495,7 @@ function AppShell({
           <strong>THE NORTH STAR</strong>
           <p>A first duplex, funded with patience and a plan that holds.</p>
         </div>
+        <SessionControls />
         <Link href="/settings" className={`nav-link ${isActive('/settings') ? 'active' : ''}`} data-testid="link-nav-settings" onClick={() => setMenuOpen(false)}><SettingsIcon /><span>Settings</span></Link>
       </aside>
       {menuOpen && <button className="modal-backdrop" style={{ zIndex: 20, background: 'rgba(35,70,62,.16)' }} aria-label="Close navigation" data-testid="button-close-mobile-nav" onClick={() => setMenuOpen(false)} />}
@@ -1404,11 +1664,11 @@ function AppContent() {
     if (kind === 'contribution' || kind === 'transfer') setTransactions((current) => [{ id: Date.now(), date: 'Today', name: values.name || (kind === 'contribution' ? 'Weekly allocation' : 'Reserve transfer'), category: kind === 'contribution' ? 'Duplex Reserve' : 'Capital OS', amount: values.amount || 0, status: 'Posted' }, ...current]);
     setModal(null); setToast(`${labels[kind]} · your plan is up to date.`);
   };
-  return <TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><RoutedErrorBoundary><AppShell onAction={setModal} onFeedback={notify} menuOpen={menuOpen} setMenuOpen={setMenuOpen}><AppRouter onAction={setModal} onFeedback={notify} transactions={apiTransactions} dashboard={dashboardQuery.data} backendIssue={dashboardQuery.isError} /></AppShell></RoutedErrorBoundary></WouterRouter>{modal && <ActionModal kind={modal} close={() => setModal(null)} onComplete={complete} />}{toast && <div className="toast-note" role="status" data-testid="status-action-feedback">{toast}</div>}</TooltipProvider>;
+  return <TooltipProvider><RoutedErrorBoundary><AppShell onAction={setModal} onFeedback={notify} menuOpen={menuOpen} setMenuOpen={setMenuOpen}><AppRouter onAction={setModal} onFeedback={notify} transactions={apiTransactions} dashboard={dashboardQuery.data} backendIssue={dashboardQuery.isError} /></AppShell></RoutedErrorBoundary>{modal && <ActionModal kind={modal} close={() => setModal(null)} onComplete={complete} />}{toast && <div className="toast-note" role="status" data-testid="status-action-feedback">{toast}</div>}</TooltipProvider>;
 }
 
 function App() {
-  return <QueryClientProvider client={queryClient}><AppContent /><Toaster /></QueryClientProvider>;
+  return <WouterRouter base={basePath}><ClerkProviderWithRoutes /><Toaster /></WouterRouter>;
 }
 
 export default App;

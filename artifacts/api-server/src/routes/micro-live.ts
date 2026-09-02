@@ -1,4 +1,14 @@
 import { Router, type IRouter } from "express";
+import {
+  ApproveMicroLiveVenueBody,
+  ApproveMicroLiveVenueParams,
+  ArmMicroLiveBody,
+  CompleteMicroLiveReactivationRequirementParams,
+  CreateMicroLiveIncidentReviewBody,
+  CreateMicroLiveIncidentReviewParams,
+  RecordMicroLiveVenueReviewBody,
+  RecordMicroLiveVenueReviewParams,
+} from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
 import {
@@ -34,22 +44,19 @@ router.post("/micro-live/enablement-review", asyncRoute(async (_req, res) => {
 }));
 
 router.post("/micro-live/venues/:venueId/approve", asyncRoute(async (req, res) => {
-  const venueId = typeof req.params.venueId === "string" ? req.params.venueId : "";
-  res.json(await approveMicroLiveVenue(actorFrom(res), venueId, req.body));
+  const { venueId } = ApproveMicroLiveVenueParams.parse(req.params);
+  const body = ApproveMicroLiveVenueBody.parse(req.body);
+  res.json(await approveMicroLiveVenue(actorFrom(res), venueId, body));
 }));
 
 router.post("/micro-live/venues/:venueId/reviews/:kind", asyncRoute(async (req, res) => {
-  const venueId = typeof req.params.venueId === "string" ? req.params.venueId : "";
-  const kind = req.params.kind === "security" || req.params.kind === "jurisdiction" ? req.params.kind : null;
-  if (!kind) {
-    res.status(400).json({ code: "INVALID_STATE", message: "Venue review kind must be security or jurisdiction" });
-    return;
-  }
-  res.status(201).json(await recordMicroLiveVenueReview(actorFrom(res), venueId, kind, req.body));
+  const { venueId, kind } = RecordMicroLiveVenueReviewParams.parse(req.params);
+  const body = RecordMicroLiveVenueReviewBody.parse(req.body);
+  res.status(201).json(await recordMicroLiveVenueReview(actorFrom(res), venueId, kind, body));
 }));
 
 router.post("/micro-live/arm", asyncRoute(async (req, res) => {
-  const venueId = typeof req.body?.venueId === "string" ? req.body.venueId : "";
+  const { venueId } = ArmMicroLiveBody.parse(req.body);
   res.json(await armMicroLive(actorFrom(res), venueId));
 }));
 
@@ -74,8 +81,9 @@ router.get("/micro-live/incidents", asyncRoute(async (_req, res) => {
 }));
 
 router.post("/micro-live/incidents/:incidentId/reviews", asyncRoute(async (req, res) => {
-  const incidentId = typeof req.params.incidentId === "string" ? req.params.incidentId : "";
-  res.status(201).json(await createMicroLiveIncidentReview(actorFrom(res), incidentId, req.body));
+  const { incidentId } = CreateMicroLiveIncidentReviewParams.parse(req.params);
+  const body = CreateMicroLiveIncidentReviewBody.parse(req.body);
+  res.status(201).json(await createMicroLiveIncidentReview(actorFrom(res), incidentId, body));
 }));
 
 router.get("/micro-live/incident-reviews", asyncRoute(async (_req, res) => {
@@ -87,7 +95,7 @@ router.get("/micro-live/reactivation-requirements", asyncRoute(async (_req, res)
 }));
 
 router.post("/micro-live/reactivation-requirements/:requirementId/complete", asyncRoute(async (req, res) => {
-  const requirementId = typeof req.params.requirementId === "string" ? req.params.requirementId : "";
+  const { requirementId } = CompleteMicroLiveReactivationRequirementParams.parse(req.params);
   res.json(await completeMicroLiveReactivationRequirement(actorFrom(res), requirementId));
 }));
 

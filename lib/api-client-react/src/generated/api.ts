@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Capital OS household capital operating system API
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 import {
   useMutation,
@@ -94,6 +94,7 @@ import type {
   MicroLiveVenueReview,
   MicroLiveVenueReviewRequest,
   NotFoundResponse,
+  OnboardHouseholdBody,
   OperationsAlert,
   OperationsAlertUpdate,
   OperationsApproval,
@@ -133,6 +134,7 @@ import type {
   TransactionSummary,
   TransferInput,
   TreasurySnapshot,
+  UnauthorizedResponse,
   UpcomingExpense,
   UpcomingExpenseInput,
   UpcomingExpenseUpdateInput,
@@ -242,6 +244,308 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
 
 
+
+export const getHealthLiveUrl = () => {
+
+
+
+
+  return `/api/health/live`
+}
+
+/**
+ * @summary Dependency-free liveness check
+ */
+export const healthLive = async ( options?: Parameters<typeof customFetch>[1]): Promise<HealthStatus> => {
+
+  return customFetch<HealthStatus>(getHealthLiveUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getHealthLiveQueryKey = () => {
+    return [
+    `/api/health/live`
+    ] as const;
+    }
+
+
+export const getHealthLiveQueryOptions = <TData = Awaited<ReturnType<typeof healthLive>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthLive>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getHealthLiveQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof healthLive>>> = ({ signal }) => healthLive({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof healthLive>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type HealthLiveQueryResult = NonNullable<Awaited<ReturnType<typeof healthLive>>>
+export type HealthLiveQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Dependency-free liveness check
+ */
+
+export function useHealthLive<TData = Awaited<ReturnType<typeof healthLive>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthLive>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getHealthLiveQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getHealthReadyUrl = () => {
+
+
+
+
+  return `/api/health/ready`
+}
+
+/**
+ * @summary PostgreSQL readiness check
+ */
+export const healthReady = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getHealthReadyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getHealthReadyQueryKey = () => {
+    return [
+    `/api/health/ready`
+    ] as const;
+    }
+
+
+export const getHealthReadyQueryOptions = <TData = Awaited<ReturnType<typeof healthReady>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthReady>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getHealthReadyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof healthReady>>> = ({ signal }) => healthReady({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof healthReady>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type HealthReadyQueryResult = NonNullable<Awaited<ReturnType<typeof healthReady>>>
+export type HealthReadyQueryError = ErrorType<void>
+
+
+/**
+ * @summary PostgreSQL readiness check
+ */
+
+export function useHealthReady<TData = Awaited<ReturnType<typeof healthReady>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof healthReady>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getHealthReadyQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAuthMeUrl = () => {
+
+
+
+
+  return `/api/auth/me`
+}
+
+/**
+ * @summary Resolve the authenticated Clerk user and household memberships
+ */
+export const getAuthMe = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getGetAuthMeUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAuthMeQueryKey = () => {
+    return [
+    `/api/auth/me`
+    ] as const;
+    }
+
+
+export const getGetAuthMeQueryOptions = <TData = Awaited<ReturnType<typeof getAuthMe>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAuthMe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAuthMeQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAuthMe>>> = ({ signal }) => getAuthMe({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAuthMe>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAuthMeQueryResult = NonNullable<Awaited<ReturnType<typeof getAuthMe>>>
+export type GetAuthMeQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Resolve the authenticated Clerk user and household memberships
+ */
+
+export function useGetAuthMe<TData = Awaited<ReturnType<typeof getAuthMe>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAuthMe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAuthMeQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getOnboardHouseholdUrl = () => {
+
+
+
+
+  return `/api/auth/onboard`
+}
+
+/**
+ * @summary Create the first household for an authenticated user
+ */
+export const onboardHousehold = async (onboardHouseholdBody: OnboardHouseholdBody, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getOnboardHouseholdUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(onboardHouseholdBody)
+  }
+);}
+
+
+
+
+
+export const getOnboardHouseholdMutationOptions = <TError = ErrorType<UnauthorizedResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof onboardHousehold>>, TError,{data: BodyType<OnboardHouseholdBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof onboardHousehold>>, TError,{data: BodyType<OnboardHouseholdBody>}, TContext> => {
+
+const mutationKey = ['onboardHousehold'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof onboardHousehold>>, {data: BodyType<OnboardHouseholdBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  onboardHousehold(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OnboardHouseholdMutationResult = NonNullable<Awaited<ReturnType<typeof onboardHousehold>>>
+    export type OnboardHouseholdMutationBody = BodyType<OnboardHouseholdBody>
+    export type OnboardHouseholdMutationError = ErrorType<UnauthorizedResponse | void>
+
+    /**
+ * @summary Create the first household for an authenticated user
+ */
+export const useOnboardHousehold = <TError = ErrorType<UnauthorizedResponse | void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof onboardHousehold>>, TError,{data: BodyType<OnboardHouseholdBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof onboardHousehold>>,
+        TError,
+        {data: BodyType<OnboardHouseholdBody>},
+        TContext
+      > => {
+      return useMutation(getOnboardHouseholdMutationOptions(options));
+    }
 
 export const getGetHouseholdUrl = () => {
 

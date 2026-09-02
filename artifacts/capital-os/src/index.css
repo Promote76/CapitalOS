@@ -1735,3 +1735,37 @@ body { background: var(--surface-page); }
   .operations-preference-row { align-items: flex-start; flex-direction: column; padding: 9px 0; }
   .operations-skeleton-columns { grid-template-columns: 1fr; }
 }
+
+/* Auth boundary */
+.auth-page { min-height: 100dvh; display: grid; place-items: center; padding: 24px; background: #edf3f1; }
+.auth-page > .cl-rootBox { width: min(100%, 440px); }
+.auth-loading { min-height: 100dvh; display: grid; place-items: center; color: var(--ink-soft); background: #f7f7f3; font-size: 13px; }
+.auth-landing { min-height: 100dvh; display: grid; place-items: center; padding: 28px; background: radial-gradient(circle at 80% 10%, #dff1e9 0, #f7f7f3 34%, #f7f7f3 100%); }
+.auth-landing-card { width: min(100%, 720px); padding: clamp(28px, 6vw, 64px); border: 1px solid var(--line); border-radius: 18px; background: rgba(255,255,255,.9); box-shadow: 0 24px 70px rgba(24,50,46,.11); }
+.auth-landing-card .brand-mark { margin-bottom: 58px; }
+.auth-landing-kicker { margin-bottom: 12px; color: var(--ink-soft); font: 700 11px var(--app-font-mono); letter-spacing: .12em; text-transform: uppercase; }
+.auth-landing-card h1 { max-width: 580px; margin: 0; color: var(--ink); font: 400 clamp(38px, 6vw, 66px)/.98 var(--app-font-serif); letter-spacing: -.04em; }
+.auth-landing-card p { max-width: 530px; margin: 22px 0 28px; color: var(--ink-soft); font-size: 15px; line-height: 1.7; }
+.auth-landing-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.auth-landing-actions .button { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 17px; border-radius: 7px; font-size: 11px; font-weight: 700; text-decoration: none; }
+.auth-landing-actions .button-primary { color: #fff; background: var(--ink); }
+.auth-landing-actions .button-secondary { color: var(--ink); border: 1px solid var(--line); background: #fff; }
+.auth-landing-note { display: flex; align-items: center; gap: 7px; margin-top: 34px; color: var(--ink-soft); font-size: 10px; }
+.onboarding-card { max-width: 680px; }
+.onboarding-form { display: grid; gap: 15px; max-width: 500px; }
+.onboarding-form label { display: grid; gap: 7px; color: var(--ink-soft); font-size: 10px; font-weight: 700; }
+.onboarding-form input, .onboarding-form select { width: 100%; min-height: 42px; padding: 0 11px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fff; font: 12px var(--app-font-sans); }
+.onboarding-form button { width: max-content; min-height: 42px; margin-top: 4px; padding: 0 17px; border: 0; border-radius: 7px; cursor: pointer; font: 700 11px var(--app-font-sans); }
+.onboarding-form button:disabled { opacity: .6; cursor: wait; }
+.onboarding-error { padding: 10px 12px; border: 1px solid #efcfc8; border-radius: 7px; color: #9d3d30; background: #fff0ed; font-size: 10px; }
+.session-controls { display: grid; gap: 8px; margin: 12px 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.6); }
+.session-user { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink); font-size: 10px; font-weight: 700; }
+.session-user span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.session-avatar { display: grid; flex: 0 0 24px; width: 24px; height: 24px; place-items: center; border-radius: 50%; color: #fff; background: var(--ink); font-size: 10px; }
+.session-signout { width: 100%; padding: 7px 8px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink-soft); background: #fff; cursor: pointer; font: 10px var(--app-font-sans); text-align: left; }
+.session-signout:hover { color: var(--ink); border-color: var(--ink-soft); }
+@media (max-width: 700px) {
+  .auth-landing { padding: 16px; }
+  .auth-landing-card .brand-mark { margin-bottom: 42px; }
+  .auth-landing-card h1 { font-size: 44px; }
+}

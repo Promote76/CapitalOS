@@ -3,13 +3,14 @@
  * Do not edit manually.
  * Api
  * Capital OS household capital operating system API
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 import type { ErrorResponseDetails } from './errorResponseDetails';
 
 export interface ErrorResponse {
   code: string;
   message: string;
+  correlationId?: string | null;
   /** @nullable */
   details?: ErrorResponseDetails;
 }

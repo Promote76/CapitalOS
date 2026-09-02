@@ -7,12 +7,12 @@
 ## P0 release blockers
 
 - [ ] **P0-01 Caller-controlled identifier / IDOR matrix.** Selected two-household and mass-assignment cases execute, but the complete route-by-route matrix remains open.
-- [ ] **P0-02 Origin / CSRF certification.** Middleware behavior is tested; published-origin HTTP/browser execution remains open.
-- [ ] **P0-03 Existing-schema upgrade.** The approved historical snapshot is committed at `docs/certification/HISTORICAL_SCHEMA_2026-09-01.sql`; isolated upgrade and data-preservation execution remain open.
+- [x] **P0-02 Origin / CSRF certification.** Five published-origin probes passed, including missing, malformed, cross-site, allowed, and invalid-credential-origin writes. Evidence: `scripts/certify-production-origin.mjs`, `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
+- [x] **P0-03 Existing-schema upgrade.** Historical data survived the additive current-schema upgrade on disposable Neon branches. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [ ] **P0-04 Managed backup / restore.** Provider-managed backup reference, isolated restore, and invariant verification remain unavailable.
 - [ ] **P0-05 Authenticated browser journey.** Clerk onboarding, sign-in, sign-out, reload, and household-scoped dashboard proof remain unexecuted.
 - [ ] **P0-06 Role / effective-permission HTTP certification.** Selected role paths execute; the complete grant, revoke, membership-change, and tampering matrix remains open.
-- [ ] **P0-07 Concurrent idempotency breadth.** The fixture now covers contribution, transfer, strategy allocation, capital request, and business distribution same-key/mismatch cases; expanded execution is pending.
+- [x] **P0-07 Concurrent idempotency breadth.** The isolated HTTP fixture passed same-key concurrency and mismatched-payload cases for contribution, transfer, strategy allocation, capital request, and business distribution. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [ ] **P0-08 Actor attribution certification.** Representative audit attribution executes; the complete permitted-action audit query remains open.
 
 ## P1 release risks
@@ -66,7 +66,7 @@
 - [x] Database integration tests pass against the isolated certification PostgreSQL fixture.
 - [ ] Browser E2E tests pass.
 - [x] Concurrency tests pass for the executed contribution/transfer, high-contention, capital-request, and business-distribution scenarios.
-- [x] Clean migration tests pass against the isolated certification PostgreSQL fixture; existing-schema upgrade remains open.
+- [x] Clean migration tests and the historical data-preserving upgrade pass on disposable isolated PostgreSQL branches. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [x] `git diff --check` passes.
 
 ## Operational configuration gates
@@ -97,7 +97,7 @@ As of 2026-09-02:
 - [x] Two-household isolation is verified over HTTP for the current fixture scenarios; systematic route coverage remains open.
 - [x] Isolated PostgreSQL fixture passes duplicate contribution, parallel transfer, 100-request `$25` contention with balanced ledger totals, concurrent capital-request creation, concurrent business-distribution preparation, and actor-attributed audit assertions.
 - [x] Certification evidence index, route matrix, role matrix, and UI persistence matrix are recorded.
-- [ ] Clean migration passes; existing-schema upgrade tests remain open.
+- [x] Clean migration and existing-schema upgrade evidence are recorded for disposable isolated PostgreSQL branches; managed production restore remains open.
 - [ ] Backup restore drill passes.
 - [ ] Authenticated browser critical journeys pass.
 - [ ] P0 blockers equal zero.

@@ -12,9 +12,9 @@ Capital OS is a household financial planning and advisory application for budget
 
 The hardening work established meaningful controls around authenticated identity, household scoping, role checks, effective membership permission loading, origin enforcement, exact-cent financial logic, atomic transfer debits, idempotency boundaries, ledger evidence, Treasury protected-capital state, persistence truth in the UI, generated API contracts, and the disabled Micro-Live execution boundary.
 
-Executable evidence is currently strongest for domain safety and isolated PostgreSQL HTTP behavior. The workspace typechecks, builds, regenerates API clients, passes route parity, and passes 66 API tests. The isolated database-backed fixture also proves selected cross-household, viewer-denial, contribution/transfer idempotency, concurrent capital-request creation, concurrent business-distribution preparation, 100-request contention, balanced ledger totals, and representative actor-attribution scenarios. The current-keyed economic write paths now include strategy allocation and mismatch assertions, but that expanded fixture must be re-executed before it can close P0-07.
+Executable evidence is currently strongest for domain safety and isolated PostgreSQL HTTP behavior. The workspace typechecks, builds, regenerates API clients, passes route parity, and passes 66 API tests. The isolated database-backed fixture also proves selected cross-household, viewer-denial, contribution/transfer/strategy-allocation idempotency, concurrent capital-request creation, concurrent business-distribution preparation, 100-request contention, balanced ledger totals, and representative actor-attribution scenarios. Published-origin probes and a disposable historical-schema upgrade/data-preservation run also passed. The complete tenant, role, and audit matrices, managed restore, and authenticated browser journey remain open.
 
-Capital OS is **not** qualified as a Production Candidate because the full caller-controlled identifier matrix, complete role and effective-permission HTTP matrix, existing-schema upgrade lifecycle, managed backup/restore drill, authenticated browser journeys, production-supported Clerk step-up flow, broader economic-event idempotency coverage, complete actor-audit verification, and durable operations evidence remain unproven.
+Capital OS is **not** qualified as a Production Candidate because the full caller-controlled identifier matrix, complete role and effective-permission HTTP matrix, managed backup/restore drill, authenticated browser journeys, production-supported Clerk step-up flow, complete actor-audit verification, and durable operations evidence remain unproven.
 
 No real banking, ACH, brokerage, live venue, blockchain, external investor capital, automated withdrawal, or autonomous AI capability was added or enabled.
 
@@ -22,22 +22,23 @@ No real banking, ACH, brokerage, live venue, blockchain, external investor capit
 
 The certification runner and this report use the eight P0 gates below. `IMPLEMENTED`
 and `EXECUTED` evidence do not close a gate; only `CERTIFIED` evidence produces
-`PASS`. The current report is the state before re-running the expanded fixture.
+`PASS`. This report includes the expanded isolated fixture, published-origin probes,
+and disposable historical-schema upgrade evidence executed on 2026-09-02.
 
 | Gate | Status | Implementation | Execution | Certification | Current reason |
 |---|---|---|---|---|---|
 | P0-01 Caller-controlled identifier / IDOR matrix | BLOCKED | IMPLEMENTED | Selected scenarios executed | NOT CERTIFIED | Complete route-by-route matrix remains open |
-| P0-02 Origin / CSRF certification | BLOCKED | IMPLEMENTED | Middleware matrix executed | NOT CERTIFIED | Published-origin HTTP/browser execution remains open |
-| P0-03 Existing-schema upgrade | BLOCKED | IMPLEMENTED (historical artifact) | Clean baseline executed; upgrade not executed | NOT CERTIFIED | Historical snapshot exists; preservation comparison is pending |
+| P0-02 Origin / CSRF certification | PASS | IMPLEMENTED | Middleware matrix and published-origin probes executed | CERTIFIED | Five published-origin write-safety probes passed |
+| P0-03 Existing-schema upgrade | PASS | IMPLEMENTED (historical artifact) | Disposable historical upgrade and data-preservation comparison executed | CERTIFIED | Representative records, balances, statuses, and audit actor survived |
 | P0-04 Managed backup / restore | BLOCKED | RUNBOOK ONLY | NOT EXECUTED | NOT CERTIFIED | Provider-managed restore evidence is unavailable |
 | P0-05 Authenticated browser journey | BLOCKED | PARTIAL | NOT EXECUTED | NOT CERTIFIED | Approved authenticated Clerk browser environment is unavailable |
 | P0-06 Role / effective-permission HTTP certification | BLOCKED | IMPLEMENTED | Selected roles/actions executed | NOT CERTIFIED | Full grant, revoke, membership-change, and tampering matrix remains open |
-| P0-07 Concurrent idempotency breadth | BLOCKED | IMPLEMENTED | Expanded strategy/mismatch fixture pending | NOT CERTIFIED | Re-run required before certifying all current keyed economic writes |
+| P0-07 Concurrent idempotency breadth | PASS | IMPLEMENTED | All current keyed economic write paths executed in the isolated fixture | CERTIFIED | Same-key concurrency and mismatched replay cases passed |
 | P0-08 Actor attribution certification | BLOCKED | IMPLEMENTED | Representative actions executed | NOT CERTIFIED | Complete permitted-action audit query remains open |
 
 **P0 START:** 8
-**P0 CLOSED THIS RUN:** 0
-**P0 OPEN:** 8
+**P0 CLOSED THIS RUN:** 3
+**P0 OPEN:** 5
 
 ## Current Architecture
 
@@ -209,7 +210,7 @@ The command refuses to run when the certification URL equals the shared `DATABAS
 | Browser E2E | 0 | 0 | 0 | Authenticated environment | BLOCKED |
 | Recovery | Pure domain recovery cases only | 0 | 0 | Managed restore and operations recovery | BLOCKED |
 
-The default API command reports 66 passing tests and one intentionally skipped database fixture without the certification URL. The certification runner now emits all eight P0 gates individually and exits nonzero whenever any P0 is not `PASS`. The expanded database-backed fixture must be rerun against the isolated Neon URL before P0-07 can be marked certified.
+The default API command reports 66 passing tests and one intentionally skipped database fixture without the certification URL. The certification runner now emits all eight P0 gates individually and exits nonzero whenever any P0 is not `PASS`. The expanded database-backed fixture was rerun against the isolated Neon URL and passed with zero failures; the runner still exits nonzero because five other P0 gates remain open.
 
 ## Exact Repeatable Commands
 
@@ -324,10 +325,10 @@ AI cannot:
 | Identity | PARTIAL | Clerk wiring and signed-out rejection pass; authenticated browser identity journey is open |
 | Tenant isolation | PARTIAL | Targeted two-household fixture passes; full route matrix is open |
 | Authorization | PARTIAL | Viewer denial and permission loading pass; complete role/grant/revocation matrix is open |
-| Origin / CSRF | PARTIAL | Middleware matrix passes 24 method/origin scenarios; complete authenticated HTTP/browser route matrix is open |
+| Origin / CSRF | PASS for published-origin boundary | Middleware matrix and five published-origin write-safety probes pass; authenticated browser journey remains open |
 | Concurrency | PARTIAL | Targeted transfer race, 100-request contention with balanced ledger totals, concurrent capital-request creation, and concurrent distribution preparation pass; broader economic paths remain open |
-| Idempotency | PARTIAL | Contribution and transfer replay plus capital-request and distribution-preparation same-key creation pass; broader event and mismatch coverage remains open |
-| Migration | PARTIAL | Clean isolated baseline passes; existing-schema upgrade/data preservation remains open |
+| Idempotency | PASS for current keyed economic writes | All current keyed economic write paths pass same-key concurrency and mismatched replay checks in the isolated fixture |
+| Migration | PASS for disposable existing-schema upgrade | Historical records, balances, statuses, and audit actor survived the additive current-schema upgrade; managed restore remains open |
 | Restore | BLOCKED | Managed backup/restore unavailable |
 | Browser E2E | BLOCKED | Authenticated test environment unavailable |
 | Accounting | PARTIAL | Exact cents and empty-ledger safeguards pass; cross-view treatment remains incomplete |
@@ -340,7 +341,7 @@ AI cannot:
 These are listed as resolved only where current source and targeted test evidence support the claim:
 
 1. **Contribution Goal IDOR:** goal lookup/update require the current household; foreign-goal contribution is rejected without a partial write.
-2. **Fail-open origin policy:** production state-changing requests fail closed when no explicit allowed-origin policy is configured; cross-site writes are rejected.
+2. **Fail-open origin policy:** production state-changing requests fail closed when no explicit allowed-origin policy is configured; cross-site writes are rejected. Five published-origin probes also passed.
 3. **Transfer overdraft race:** tested parallel debits use an atomic balance condition and do not overdraw the source account.
 4. **Contribution idempotency:** concurrent duplicate requests return the same persisted result rather than creating duplicate economic events.
 5. **Treasury protected-capital lock:** decision logic uses persisted lock state.
@@ -351,6 +352,9 @@ These are listed as resolved only where current source and targeted test evidenc
 10. **Clean migration baseline:** `CAPITAL_OS_CERTIFICATION_ALLOW_RESET=1 pnpm run certify:migrations` reset and applied the generated baseline on the isolated Neon certification branch and verified representative tables with exit code `0`.
 11. **High-contention transfer ledger:** the isolated PostgreSQL HTTP fixture completed 100 concurrent `$25` transfers from `$1,000`, produced 40 successes/60 overdraft rejections, ended at `$0`, and reconciled `$1,000` debits to `$1,000` credits.
 12. **Capital-request and business-distribution idempotency:** concurrent same-key HTTP requests returned the same persisted record for each operation, created one row per operation, and recorded the authenticated actor in one audit event per created record.
+13. **Published-origin certification:** missing, malformed, cross-site, allowed, and invalid-credential-origin write probes returned the expected fail-closed responses.
+14. **Existing-schema upgrade preservation:** representative users, memberships, accounts, ledger entries, balances, transaction state, and audit actor survived the isolated additive upgrade.
+15. **Current keyed-write idempotency breadth:** strategy allocation and mismatched replay cases were added to the isolated fixture; the full fixture passed with zero failures.
 
 ## Remaining Risks
 
@@ -359,12 +363,9 @@ These are listed as resolved only where current source and targeted test evidenc
 | Issue | Impact | Current safeguard | Required fix | Release effect |
 |---|---|---|---|---|
 | Full caller-controlled identifier matrix is unexecuted | Unreached route paths could regress tenant isolation | Request-scoped household services and targeted fixture | Add per-route A→A/A→B/malformed/mass-assignment HTTP cases | Blocks candidate promotion |
-| Complete origin/CSRF matrix is unexecuted | Browser credentialed requests are not fully certified | Fail-closed missing-policy and cross-site middleware cases | Test same-origin, explicit allow, disallow, malformed, missing, and all state-changing methods | Blocks candidate promotion |
-| Existing-schema upgrade is unexecuted | Existing user data could be lost or transformed incorrectly | Approved historical snapshot from the repository’s real schema history | Apply the snapshot to an isolated target, migrate, compare counts/totals/state | Blocks candidate promotion |
 | Managed backup/restore is unexecuted | Recovery capability and RPO/RTO are unknown | Restore runbook and explicit blocked record | Execute provider backup and isolated restore drill | Blocks candidate promotion |
 | Authenticated browser journey is unexecuted | UI persistence, auth lifecycle, and tenant navigation are unproven | Preview render and server contract tests | Run real Clerk sign-up/onboarding/reload/sign-out/sign-in journeys | Blocks candidate promotion |
 | Complete role/effective-permission HTTP proof is unexecuted | Partner/Advisor/Viewer and revocation behavior could be wrong | Centralized checks and targeted Viewer denial | Execute full role/action and grant/revocation matrix | Blocks candidate promotion |
-| Complete concurrent idempotency breadth is unexecuted | Duplicate economic events could occur in untested workflows | Contribution, transfer, capital-request, and distribution-preparation proofs plus advisory locks | Extend the same-key and mismatch matrix across remaining economic workflows and independent processes/connections | Blocks candidate promotion |
 | Full actor attribution verification is unexecuted | Audit records could misidentify the responsible actor | Actor context propagation and audited capital-request/distribution writes | Query persisted audit records for Owner/Partner/Advisor permitted actions | Blocks candidate promotion |
 
 ### P1
@@ -428,7 +429,7 @@ Capital OS is not authorized by this report to:
 |---|---|---|
 | Clerk production instance and supported step-up | Required | Not fully configured/certified |
 | Managed PostgreSQL | Required | Must use the managed publication path and dedicated lifecycle evidence |
-| Explicit allowed origins | Required | Production `CAPITAL_OS_ALLOWED_ORIGIN` is configured for `https://capital-os-fund.replit.app`; republish and live verification are pending, and the candidate matrix remains open |
+| Explicit allowed origins | Required | Production `CAPITAL_OS_ALLOWED_ORIGIN` is configured for `https://capital-os-fund.replit.app`; published-origin probes pass |
 | Durable queue/scheduler | Required for operational candidate scope | Not implemented |
 | Structured logging/correlation | Required | Implemented at current level |
 | Audit retention/shipping | Required | Not recorded |
@@ -441,4 +442,4 @@ Capital OS is not authorized by this report to:
 
 **Capital OS is not qualified as a Production Candidate for its current non-executing family-capital scope.**
 
-The reason is evidence-based: eight P0 release blockers remain open, including complete tenant/role HTTP coverage, existing-schema upgrade execution, managed backup/restore, authenticated browser proof, expanded idempotency execution, and complete actor attribution. The historical schema artifact is now available from a real repository commit, but artifact creation is not upgrade evidence; the release gate correctly remains **NOT READY** until the remaining gaps are executed and recorded.
+The reason is evidence-based: five P0 release blockers remain open, covering complete tenant/role HTTP coverage, managed backup/restore, authenticated browser proof, and complete actor attribution. The historical upgrade, published-origin probes, and current keyed-write idempotency fixture are recorded as executed evidence; the release gate correctly remains **NOT READY** until the remaining gaps are executed and recorded.

@@ -206,7 +206,8 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
       headers: { "Idempotency-Key": capitalRequestKey },
       body: JSON.stringify({ ...capitalRequestInput, requestedAmount: "11.00" }),
     });
-    assert.equal(capitalRequestConflict.status, 400);
+    assert.equal(capitalRequestConflict.status, 409);
+    assert.equal((await capitalRequestConflict.json() as { code: string }).code, "IDEMPOTENCY_CONFLICT");
 
     const distributionInput = {
       businessId: business.id,
@@ -247,7 +248,8 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
       headers: { "Idempotency-Key": distributionKey },
       body: JSON.stringify({ ...distributionInput, amount: "11.00" }),
     });
-    assert.equal(distributionConflict.status, 400);
+    assert.equal(distributionConflict.status, 409);
+    assert.equal((await distributionConflict.json() as { code: string }).code, "IDEMPOTENCY_CONFLICT");
 
     const crossHouseholdContribution = await request("/contributions", {
       method: "POST",
@@ -322,7 +324,8 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
       headers: { "Idempotency-Key": key },
       body: JSON.stringify({ amount: "11.00", goalId: goalA.id }),
     });
-    assert.equal(contributionConflict.status, 400);
+    assert.equal(contributionConflict.status, 409);
+    assert.equal((await contributionConflict.json() as { code: string }).code, "IDEMPOTENCY_CONFLICT");
 
     const accountsResponse = await request("/accounts");
     assert.equal(accountsResponse.status, 200);
@@ -370,7 +373,8 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
       headers: { "Idempotency-Key": strategyAllocationKey },
       body: JSON.stringify({ sourceAccountId: source.id, amount: "0.02" }),
     });
-    assert.equal(strategyAllocationConflict.status, 400);
+    assert.equal(strategyAllocationConflict.status, 409);
+    assert.equal((await strategyAllocationConflict.json() as { code: string }).code, "IDEMPOTENCY_CONFLICT");
     const replayKey = `transfer-replay-${randomUUID()}`;
     const replayResponses = await Promise.all([1, 2].map(() => request("/transfers", {
       method: "POST",
@@ -404,7 +408,8 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
       headers: { "Idempotency-Key": replayKey },
       body: JSON.stringify({ sourceAccountId: source.id, destinationAccountId: destination.id, amount: "0.02" }),
     });
-    assert.equal(transferConflict.status, 400);
+    assert.equal(transferConflict.status, 409);
+    assert.equal((await transferConflict.json() as { code: string }).code, "IDEMPOTENCY_CONFLICT");
 
     resetRateLimitForTests();
     const [currentSource] = await db.select({

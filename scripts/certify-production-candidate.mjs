@@ -33,6 +33,15 @@ const frontendBuild = run("Frontend production build", "pnpm", ["--filter", "@wo
 const apiTests = run("Default API tests", "pnpm", ["--filter", "@workspace/api-server", "test"]);
 const routeParity = run("Express / OpenAPI route parity", "pnpm", ["--filter", "@workspace/api-server", "run", "check-contract"]);
 
+let originExecuted = false;
+let originPassed = false;
+if (process.env.CAPITAL_OS_CERTIFICATION_ORIGIN) {
+  originExecuted = true;
+  originPassed = run("Published production origin safety probes", "node", ["scripts/certify-production-origin.mjs"]);
+} else {
+  console.log("\nBLOCKED: Published production origin is not configured for certification.");
+}
+
 const certificationDbUrl = process.env.CAPITAL_OS_CERTIFICATION_DB_URL;
 const historicalSchemaArtifact = path.join(rootDir, "docs/certification/HISTORICAL_SCHEMA_2026-09-01.sql");
 let cleanMigrationExecuted = false;
@@ -92,13 +101,19 @@ const p0Gates = [
   {
     id: "P0-02",
     title: "Origin / CSRF certification",
-    status: !apiTests ? "FAIL" : "BLOCKED",
+    status: !apiTests || (originExecuted && !originPassed) ? "FAIL" : originPassed ? "PASS" : "BLOCKED",
     implementation: "IMPLEMENTED",
-    execution: apiTests ? "EXECUTED (middleware tests)" : "FAILED",
-    certification: "NOT CERTIFIED",
+    execution: !apiTests
+      ? "FAILED"
+      : originExecuted
+        ? "EXECUTED (middleware tests + published origin probes)"
+        : "EXECUTED (middleware tests)",
+    certification: originPassed ? "CERTIFIED" : "NOT CERTIFIED",
     reason: !apiTests
       ? "The API test suite failed."
-      : "Allowed, disallowed, malformed, missing, and credentialed-origin behavior has not been certified through the published production origin.",
+      : originPassed
+        ? "Published-origin probes passed missing, malformed, cross-site, allowed, and invalid-credential write cases."
+        : "Allowed, disallowed, malformed, missing, and credentialed-origin behavior has not been certified through the published production origin.",
   },
   {
     id: "P0-03",

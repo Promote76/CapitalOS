@@ -20,7 +20,7 @@ This release hardens the identity boundary and the most important operational co
 - Liveness and readiness are separate: `/api/health/live` does not touch Postgres, while `/api/health/ready` verifies Postgres and returns `503` when unavailable.
 - Correlation IDs are accepted only in a bounded safe format or generated server-side and returned in API responses.
 - Micro-Live route bodies and parameters use generated validators. Real order transmission remains disabled.
-- Drizzle has an explicit migration output and release-time migration command. API startup does not apply DDL.
+- Drizzle has an explicit migration output for review and CI. Managed development schema changes use post-merge push and production schema changes use the Publish diff flow; API startup does not apply DDL.
 - Existing financial, governance, exact-cents, idempotency, and Micro-Live domain tests pass.
 
 ### PARTIAL
@@ -63,9 +63,10 @@ The hardening release is not safe to call complete until the following are true:
 1. Change the Drizzle schema and run `pnpm --filter @workspace/db run generate`.
 2. Review the generated SQL for destructive statements, data loss, enum changes, and lock duration.
 3. Run the migration in a disposable or staging database and execute the API test suite.
-4. Apply the reviewed migration explicitly with `pnpm --filter @workspace/db run migrate` during a release window.
-5. Start the API only after migration success; the API does not create tables or run migrations.
-6. Record the migration tag, schema version, test result, and rollback/forward-fix decision in the release record.
+4. Let the development post-merge setup apply the reviewed schema to the managed development database.
+5. Re-publish the application so the Publish flow diffs and applies the reviewed schema to production; resolve any rename prompt explicitly.
+6. Start the API only after schema publication; the API does not create tables or run migrations.
+7. Record the migration tag, schema version, test result, and rollback/forward-fix decision in the release record.
 
 ## Backup and restore runbook
 

@@ -6,11 +6,4 @@
  * OpenAPI spec version: 0.3.0
  */
 
-export type OnboardHouseholdBody = {
-  /**
-     * @minLength 1
-     * @maxLength 120
-     */
-  name: string;
-  timezone?: string;
-};
+export type ContributionSummaryMetadata = { [key: string]: unknown };

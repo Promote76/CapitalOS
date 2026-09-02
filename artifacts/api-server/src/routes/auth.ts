@@ -2,27 +2,11 @@ import { Router, type IRouter } from "express";
 import { getAuth } from "@clerk/express";
 import { and, asc, eq } from "drizzle-orm";
 import { db, householdMembers, households, householdSettings, auditEvents } from "@workspace/db";
+import { OnboardHouseholdBody } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { resolveClerkIdentity } from "../middleware/request-context";
-import { GovernanceError } from "../domain/governance";
 
 const router: IRouter = Router();
-
-function parseOnboardBody(body: unknown): { name: string; timezone: string } {
-  if (!body || typeof body !== "object") {
-    throw new Error("Onboarding body must be an object");
-  }
-  const record = body as Record<string, unknown>;
-  const name = typeof record.name === "string" ? record.name.trim() : "";
-  const timezone =
-    typeof record.timezone === "string" && record.timezone.trim()
-      ? record.timezone.trim()
-      : "America/Chicago";
-  if (name.length < 1 || name.length > 120 || timezone.length > 80) {
-    throw new GovernanceError("INVALID_STATE", "Onboarding name and timezone are invalid");
-  }
-  return { name, timezone };
-}
 
 async function requireClerkIdentity(req: Parameters<typeof getAuth>[0]) {
   const auth = getAuth(req);
@@ -33,7 +17,7 @@ async function requireClerkIdentity(req: Parameters<typeof getAuth>[0]) {
 router.get("/auth/me", asyncRoute(async (req, res) => {
   const identity = await requireClerkIdentity(req);
   if (!identity) {
-    res.status(401).json({ code: "AUTHENTICATION_REQUIRED", message: "Sign in is required." });
+    res.status(401).json({ code: "AUTHENTICATION_REQUIRED", message: "Sign in is required.", correlationId: res.locals.correlationId });
     return;
   }
 
@@ -67,17 +51,17 @@ router.get("/auth/me", asyncRoute(async (req, res) => {
 router.post("/auth/onboard", asyncRoute(async (req, res) => {
   const identity = await requireClerkIdentity(req);
   if (!identity) {
-    res.status(401).json({ code: "AUTHENTICATION_REQUIRED", message: "Sign in is required." });
+    res.status(401).json({ code: "AUTHENTICATION_REQUIRED", message: "Sign in is required.", correlationId: res.locals.correlationId });
     return;
   }
-  const input = parseOnboardBody(req.body);
+  const input = OnboardHouseholdBody.parse(req.body);
   const existing = await db
     .select({ id: householdMembers.id })
     .from(householdMembers)
     .where(and(eq(householdMembers.userId, identity.userId), eq(householdMembers.active, true)))
     .limit(1);
   if (existing[0]) {
-    res.status(409).json({ code: "HOUSEHOLD_ALREADY_EXISTS", message: "This user already belongs to an active household." });
+    res.status(409).json({ code: "HOUSEHOLD_ALREADY_EXISTS", message: "This user already belongs to an active household.", correlationId: res.locals.correlationId });
     return;
   }
 

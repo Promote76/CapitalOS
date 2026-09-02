@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { ContributionSummaryMetadata } from './contributionSummaryMetadata';
 
 export interface ContributionSummary {
   id: string;
@@ -12,4 +13,5 @@ export interface ContributionSummary {
   status: string;
   createdAt: Date;
   idempotencyKey?: string;
+  metadata: ContributionSummaryMetadata;
 }

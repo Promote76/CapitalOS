@@ -1636,14 +1636,25 @@ function AppContent() {
   ]);
   const apiTransactions = useMemo(() => {
     if (!contributionsQuery.data?.length) return transactions;
-    return contributionsQuery.data.map((item, index) => ({
-      id: index + 1,
-      date: new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      name: 'Weekly allocation',
-      category: 'Duplex Reserve',
-      amount: Number(item.amount),
-      status: item.status === 'completed' ? 'Posted' : item.status,
-    }));
+    return contributionsQuery.data.flatMap((item, index) => {
+      const split = item.metadata?.split as Record<string, number | string> | undefined;
+      const destinations: Array<[string, number | string | undefined]> = [
+        ['Duplex Reserve', split?.duplex] as [string, number | string | undefined],
+        ['Capital OS', split?.capital] as [string, number | string | undefined],
+        ['Opportunity Reserve', split?.opportunity] as [string, number | string | undefined],
+      ].filter(([, amount]) => Number(amount ?? 0) > 0);
+      const rows: Array<[string, number | string]> = destinations.length
+        ? destinations.map(([category, amount]) => [category, amount ?? 0])
+        : [['Duplex Reserve', item.amount]];
+      return rows.map(([category, amount], rowIndex) => ({
+        id: index * 10 + rowIndex + 1,
+        date: new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        name: 'Weekly allocation',
+        category,
+        amount: destinations.length ? Number(amount) / 100 : Number(amount),
+        status: item.status === 'completed' ? 'Posted' : item.status,
+      }));
+    });
   }, [contributionsQuery.data, transactions]);
   useEffect(() => { if (!toast) return; const timeout = window.setTimeout(() => setToast(''), 3200); return () => window.clearTimeout(timeout); }, [toast]);
   const notify = (message: string) => setToast(message);

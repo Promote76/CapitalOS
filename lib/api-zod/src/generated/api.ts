@@ -266,7 +266,8 @@ export const ListContributionsResponseItem = zod.object({
   "amount": zod.string(),
   "status": zod.string(),
   "createdAt": zod.coerce.date(),
-  "idempotencyKey": zod.string().optional()
+  "idempotencyKey": zod.string().optional(),
+  "metadata": zod.record(zod.string(), zod.unknown())
 })
 export const ListContributionsResponse = zod.array(ListContributionsResponseItem)
 
@@ -299,7 +300,8 @@ export const CreateContributionResponse = zod.object({
   "amount": zod.string(),
   "status": zod.string(),
   "createdAt": zod.coerce.date(),
-  "idempotencyKey": zod.string().optional()
+  "idempotencyKey": zod.string().optional(),
+  "metadata": zod.record(zod.string(), zod.unknown())
 })
 
 

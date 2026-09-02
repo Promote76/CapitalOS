@@ -33,7 +33,7 @@ export function rateLimit(req: Request, res: Response, next: NextFunction) {
   }
   current.count += 1;
   if (current.count > MAX_REQUESTS_PER_WINDOW) {
-    res.status(429).json({ code: "RATE_LIMITED", message: "Too many requests; please try again shortly" });
+    res.status(429).json({ code: "RATE_LIMITED", message: "Too many requests; please try again shortly", correlationId: res.locals.correlationId });
     return;
   }
   next();
@@ -47,7 +47,7 @@ export function writeBoundary(req: Request, res: Response, next: NextFunction) {
   const origin = req.header("Origin");
   const allowedOrigin = process.env.CAPITAL_OS_ALLOWED_ORIGIN;
   if (origin && allowedOrigin && origin !== allowedOrigin) {
-    res.status(403).json({ code: "ORIGIN_NOT_ALLOWED", message: "Write origin is not allowed" });
+    res.status(403).json({ code: "ORIGIN_NOT_ALLOWED", message: "Write origin is not allowed", correlationId: res.locals.correlationId });
     return;
   }
   next();

@@ -7,6 +7,7 @@ import type { Actor } from "../services/capital-os";
 import {
   permissions as rolePermissions,
   type HouseholdRole,
+  GovernanceError,
 } from "../domain/governance";
 import {
   activeSecurityContext,
@@ -21,6 +22,7 @@ export type ResolvedClerkIdentity = {
   userId: string;
   email: string;
   displayName: string;
+  status: string;
 };
 
 export async function resolveClerkIdentity(req: Request): Promise<ResolvedClerkIdentity | null> {
@@ -34,17 +36,22 @@ export async function resolveClerkIdentity(req: Request): Promise<ResolvedClerkI
       externalAuthId: users.externalAuthId,
       email: users.email,
       displayName: users.displayName,
+      status: users.status,
     })
     .from(users)
     .where(eq(users.externalAuthId, externalAuthId))
     .limit(1);
 
   if (existing) {
+    if (existing.status !== "active") {
+      throw new GovernanceError("FORBIDDEN", "This Capital OS account is inactive.");
+    }
     return {
       externalAuthId,
       userId: existing.id,
       email: existing.email,
       displayName: existing.displayName,
+      status: existing.status,
     };
   }
 
@@ -81,6 +88,7 @@ export async function resolveClerkIdentity(req: Request): Promise<ResolvedClerkI
     userId: created.id,
     email: created.email,
     displayName: created.displayName,
+    status: "active",
   };
 }
 
@@ -142,6 +150,7 @@ export async function requestContext(req: Request, res: Response, next: NextFunc
       res.status(403).json({
         code: "HOUSEHOLD_MEMBERSHIP_REQUIRED",
         message: "Your authenticated account is not a member of a Capital OS household.",
+        correlationId: res.locals.correlationId,
       });
       return;
     }
@@ -150,6 +159,7 @@ export async function requestContext(req: Request, res: Response, next: NextFunc
       res.status(401).json({
         code: "AUTHENTICATION_REQUIRED",
         message: "Sign in is required to access Capital OS financial data.",
+        correlationId: res.locals.correlationId,
       });
       return;
     }

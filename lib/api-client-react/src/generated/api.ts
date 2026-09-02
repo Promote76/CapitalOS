@@ -94,7 +94,7 @@ import type {
   MicroLiveVenueReview,
   MicroLiveVenueReviewRequest,
   NotFoundResponse,
-  OnboardHouseholdBody,
+  OnboardHouseholdInput,
   OperationsAlert,
   OperationsAlertUpdate,
   OperationsApproval,
@@ -487,14 +487,14 @@ export const getOnboardHouseholdUrl = () => {
 /**
  * @summary Create the first household for an authenticated user
  */
-export const onboardHousehold = async (onboardHouseholdBody: OnboardHouseholdBody, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+export const onboardHousehold = async (onboardHouseholdInput: OnboardHouseholdInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
 
   return customFetch<void>(getOnboardHouseholdUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(onboardHouseholdBody)
+    body: JSON.stringify(onboardHouseholdInput)
   }
 );}
 
@@ -503,8 +503,8 @@ export const onboardHousehold = async (onboardHouseholdBody: OnboardHouseholdBod
 
 
 export const getOnboardHouseholdMutationOptions = <TError = ErrorType<UnauthorizedResponse | void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof onboardHousehold>>, TError,{data: BodyType<OnboardHouseholdBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof onboardHousehold>>, TError,{data: BodyType<OnboardHouseholdBody>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof onboardHousehold>>, TError,{data: BodyType<OnboardHouseholdInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof onboardHousehold>>, TError,{data: BodyType<OnboardHouseholdInput>}, TContext> => {
 
 const mutationKey = ['onboardHousehold'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -516,7 +516,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof onboardHousehold>>, {data: BodyType<OnboardHouseholdBody>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof onboardHousehold>>, {data: BodyType<OnboardHouseholdInput>}> = (props) => {
           const {data} = props ?? {};
 
           return  onboardHousehold(data,requestOptions)
@@ -530,18 +530,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type OnboardHouseholdMutationResult = NonNullable<Awaited<ReturnType<typeof onboardHousehold>>>
-    export type OnboardHouseholdMutationBody = BodyType<OnboardHouseholdBody>
+    export type OnboardHouseholdMutationBody = BodyType<OnboardHouseholdInput>
     export type OnboardHouseholdMutationError = ErrorType<UnauthorizedResponse | void>
 
     /**
  * @summary Create the first household for an authenticated user
  */
 export const useOnboardHousehold = <TError = ErrorType<UnauthorizedResponse | void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof onboardHousehold>>, TError,{data: BodyType<OnboardHouseholdBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof onboardHousehold>>, TError,{data: BodyType<OnboardHouseholdInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof onboardHousehold>>,
         TError,
-        {data: BodyType<OnboardHouseholdBody>},
+        {data: BodyType<OnboardHouseholdInput>},
         TContext
       > => {
       return useMutation(getOnboardHouseholdMutationOptions(options));

@@ -9,6 +9,15 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface OnboardHouseholdInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  timezone?: string;
+}
+
 /**
  * @nullable
  */
@@ -77,12 +86,15 @@ export interface AllocationSummary {
   opportunityReserve: string;
 }
 
+export type ContributionSummaryMetadata = { [key: string]: unknown };
+
 export interface ContributionSummary {
   id: string;
   amount: string;
   status: string;
   createdAt: string;
   idempotencyKey?: string;
+  metadata: ContributionSummaryMetadata;
 }
 
 export interface ContributionInput {
@@ -2704,15 +2716,6 @@ export type NotFoundResponse = ErrorResponse;
 export type ConflictResponse = ErrorResponse;
 
 export type IdempotencyKeyParameter = string;
-
-export type OnboardHouseholdBody = {
-  /**
-     * @minLength 1
-     * @maxLength 120
-     */
-  name: string;
-  timezone?: string;
-};
 
 export type ArmMicroLive200 = {
   status: string;

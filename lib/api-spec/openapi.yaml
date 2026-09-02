@@ -1878,13 +1878,16 @@ components:
         opportunityReserve: { type: string }
     ContributionSummary:
       type: object
-      required: [id, amount, status, createdAt]
+      required: [id, amount, status, createdAt, metadata]
       properties:
         id: { type: string }
         amount: { type: string }
         status: { type: string }
         createdAt: { type: string, format: date-time }
         idempotencyKey: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
     ContributionInput:
       type: object
       required: [amount]

@@ -190,6 +190,7 @@ export async function getContributions() {
     status: row.status,
     createdAt: dateTime(row.createdAt),
     idempotencyKey: row.idempotencyKey,
+    metadata: row.metadata ?? {},
   }));
 }
 
@@ -547,6 +548,7 @@ export async function recordContribution(actor: Actor, input: { amount: string; 
         status: existing[0].status,
         createdAt: dateTime(existing[0].createdAt),
         idempotencyKey: existing[0].idempotencyKey,
+        metadata: existing[0].metadata ?? {},
       };
     }
     const rule = await currentAllocation(ids.householdId);
@@ -616,6 +618,7 @@ export async function recordContribution(actor: Actor, input: { amount: string; 
       status: contribution.status,
       createdAt: dateTime(contribution.createdAt),
       idempotencyKey: contribution.idempotencyKey,
+      metadata: contribution.metadata ?? {},
     };
   });
 }

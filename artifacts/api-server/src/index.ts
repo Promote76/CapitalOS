@@ -24,9 +24,10 @@ app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
 });
 
-// Seed eagerly for warm starts, but never block the process liveness boundary.
-// Request context repeats this idempotent initialization before serving
-// database-backed routes, so a bootstrap failure remains visible to callers.
-void ensureSeedData().catch((error) => {
-  logger.error({ err: error }, "Database bootstrap failed");
-});
+// Development-only seed warmup. Production onboarding owns household creation;
+// a deployed process must never create the demo household as a side effect.
+if (process.env.NODE_ENV !== "production") {
+  void ensureSeedData().catch((error) => {
+    logger.error({ err: error }, "Development database bootstrap failed");
+  });
+}

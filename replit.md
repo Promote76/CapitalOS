@@ -9,8 +9,7 @@ Capital OS is a light-theme family-capital workspace for disciplined saving, pro
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/db run generate` — create a versioned Drizzle migration from schema changes
-- `pnpm --filter @workspace/db run migrate` — apply reviewed migrations in an explicit release step; never on API startup
+- `pnpm --filter @workspace/db run generate` — create a reviewed, versioned Drizzle schema artifact for CI and release review
 - `pnpm --filter @workspace/api-server run test` — run the direct financial and governance tests
 - Required env: `DATABASE_URL` — Postgres connection string
 
@@ -40,6 +39,7 @@ Capital OS is a light-theme family-capital workspace for disciplined saving, pro
 - All primary and secondary destinations share one responsive shell with local state for contribution, transfer, strategy, property-note, settings, and risk-review interactions.
 - PostgreSQL `numeric(18,2)` values are converted to integer cents for server calculations; ledger and audit records are written with capital movements in one database transaction.
 - Clerk sessions resolve to internal users, active household memberships, and role permissions on the server. The `X-Household-Role` header is accepted only by explicit test runs; development seed identity is never used in production.
+- Managed PostgreSQL schema changes use the platform's development post-merge push and production Publish diff flow; generated SQL is reviewed but is not run by the API, a build hook, or a deploy hook.
 - AI is advisory-only, and Arbitrum/Base/Ethereum adapters are disabled stubs. No live trading, bank connection, smart contract, or autonomous capital movement is enabled.
 
 ## Product

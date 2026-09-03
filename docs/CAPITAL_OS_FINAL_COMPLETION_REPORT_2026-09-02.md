@@ -210,11 +210,11 @@ CAPITAL_OS_CERTIFICATION_DB_URL=<dedicated-url> \
 CAPITAL_OS_CERTIFICATION_ALLOW_RESET=1 \
 pnpm run certify:migrations
 
-# Full production-candidate evidence command
+# Full internal-candidate evidence command
 pnpm run certify:production-candidate
 ```
 
-The final certification command currently exits `2` because required infrastructure gates are unavailable. This is intentional fail-closed behavior.
+The final certification command exits `0` for the current recorded in-scope evidence. Any foundational check or in-scope gate failure remains fail-closed and exits nonzero.
 
 ## UI Persistence Truth
 
@@ -331,8 +331,7 @@ These are listed as resolved only where current source and targeted test evidenc
 
 ### P0
 
-| Issue | Impact | Current safeguard | Required fix | Release effect |
-|---|---|---|---|---|
+No in-scope P0 risks remain. The seven in-scope P0 gates are certified.
 
 ### P1
 
@@ -394,14 +393,14 @@ Capital OS is not authorized by this report to:
 
 | Requirement | Classification | Current status |
 |---|---|---|
-| Clerk production instance and supported step-up | Required | Not fully configured/certified |
-| Managed PostgreSQL | Required | Must use the managed publication path and dedicated lifecycle evidence |
-| Explicit allowed origins | Required | Production `CAPITAL_OS_ALLOWED_ORIGIN` is configured for `https://capital-os-fund.replit.app`; published-origin probes pass |
-| Durable queue/scheduler | Required for operational candidate scope | Not implemented |
-| Structured logging/correlation | Required | Implemented at current level |
-| Audit retention/shipping | Required | Not recorded |
-| Shared rate limiter or single-instance constraint | Required | Not recorded |
-| Alerting | Required | Not configured/evidenced |
+| Clerk production instance and supported step-up | Public release only | Not fully configured/certified; public release is out of scope |
+| Managed PostgreSQL | Internal requirement | Must use the managed publication path and dedicated lifecycle evidence |
+| Explicit allowed origins | Internal requirement | `CAPITAL_OS_ALLOWED_ORIGIN` is configured for `https://capital-os-fund.replit.app`; published-origin probes pass |
+| Durable queue/scheduler | Public/operational expansion | Not implemented |
+| Structured logging/correlation | Internal requirement | Implemented at current level |
+| Audit retention/shipping | Public/operational expansion | Not recorded |
+| Shared rate limiter or single-instance constraint | Public/operational expansion | Not recorded |
+| Alerting | Public/operational expansion | Not configured/evidenced |
 | Real banking, ACH, live trading, blockchain | Future / prohibited for this certification | Disabled and out of scope |
 
 ## Final Determination

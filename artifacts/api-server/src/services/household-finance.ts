@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   auditEvents,
@@ -244,13 +244,11 @@ function financeDataConfidence(data: Awaited<ReturnType<typeof loadFinanceData>>
     const lastSync = account.lastSuccessfulSync ?? account.lastSync;
     return !lastSync || Date.now() - lastSync.getTime() > 1000 * 60 * 60 * 24 * 45;
   }).length;
-  const unreviewedTransactions = data.transactions.filter((transaction) => transaction.reviewStatus !== "approved").length;
   let score = 100;
   if (!data.capitalAccounts.length) score -= 45;
   if (!data.categories.length) score -= 25;
   if (!data.income.length) score -= 15;
   score -= staleAccounts * 10;
-  score -= Math.min(unreviewedTransactions * 2, 20);
   return Math.max(0, Math.min(100, score));
 }
 
@@ -268,6 +266,7 @@ function transactionWithCategory(
   });
 }
 
+type TransactionReviewStatus = "approved" | "needs_review" | "excluded" | "possible_transfer" | "possible_business";
 export async function getBudget(actor?: Actor) {
   const data = await loadFinanceData(actor);
   const period = currentPeriod();
@@ -697,7 +696,7 @@ export async function importFinanceCsv(actor: Actor, accountId: string, csv: str
   if (!csv.trim()) throw new GovernanceError("INVALID_STATE", "CSV content is required");
   const id = await householdId(actor);
   const account = await db.select().from(financialAccounts).where(and(eq(financialAccounts.id, accountId), eq(financialAccounts.householdId, id))).limit(1);
-  if (!account[0]) throw new Error("Financial account was not found");
+  if (!account[0]) throw new GovernanceError("INVALID_STATE", "Financial account was not found");
   const imported = csvImportBankingAdapter.importTransactions(csv);
   if (!imported.length) throw new GovernanceError("INVALID_STATE", "CSV must include a header and at least one transaction row");
   const fallbackIdentityCounts = new Map<string, number>();
@@ -849,3 +848,176 @@ export async function getFinanceSnapshots(actor?: Actor) {
 }
 
 export { getBankingStatus };
+
+function reviewMetadata(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return {};
+  const review = (metadata as Record<string, unknown>).review;
+  if (!review || typeof review !== "object" || Array.isArray(review)) return {};
+  return review as Record<string, unknown>;
+}
+
+export async function reviewFinancialTransaction(actor: Actor, transactionId: string, input: {
+  status: TransactionReviewStatus;
+  categoryId?: string | null;
+  note?: string | null;
+}) {
+  assertPermission(actor.role, "approve");
+  const id = await householdId(actor);
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`finance-review:${id}:${transactionId}`}, 0))`);
+    const [transaction] = await tx.select().from(financeTransactions).where(and(
+      eq(financeTransactions.id, transactionId),
+      eq(financeTransactions.householdId, id),
+    )).limit(1);
+    if (!transaction) return planningNotFound("Imported transaction");
+    if (transaction.dataSource !== "csv_import") {
+      throw new GovernanceError("INVALID_STATE", "Only CSV-imported transactions can be reviewed here");
+    }
+
+    const categoryId = input.categoryId !== undefined ? input.categoryId : transaction.categoryId;
+    if (categoryId) {
+      const [category] = await tx.select({ id: financeCategories.id })
+        .from(financeCategories)
+        .where(and(eq(financeCategories.id, categoryId), eq(financeCategories.householdId, id), eq(financeCategories.active, true)))
+        .limit(1);
+      if (!category) throw new GovernanceError("INVALID_STATE", "The selected category is not available in this household");
+    }
+    if (input.status === "approved" && !categoryId) {
+      throw new GovernanceError("INVALID_STATE", "An approved transaction must have a household category");
+    }
+    const review = reviewMetadata(transaction.metadata);
+    const existingNote = typeof review.note === "string" ? review.note : null;
+    const nextNote = input.note === undefined ? existingNote : input.note;
+    const nextExcluded = input.status !== "approved";
+    if (
+      transaction.reviewStatus === input.status &&
+      transaction.categoryId === categoryId &&
+      transaction.excludedFromBudget === nextExcluded &&
+      existingNote === nextNote
+    ) {
+      const [account] = await tx.select({ nickname: financialAccounts.nickname })
+        .from(financialAccounts)
+        .where(and(eq(financialAccounts.id, transaction.accountId), eq(financialAccounts.householdId, id)))
+        .limit(1);
+      const [category] = categoryId
+        ? await tx.select({ name: financeCategories.name })
+          .from(financeCategories)
+          .where(and(eq(financeCategories.id, categoryId), eq(financeCategories.householdId, id)))
+          .limit(1)
+        : [];
+      return reviewedTransaction(transaction, account?.nickname ?? "Unknown account", category?.name ?? null);
+    }
+
+    const reviewedAt = new Date().toISOString();
+    const nextMetadata = {
+      ...(transaction.metadata ?? {}),
+      review: {
+        status: input.status,
+        note: nextNote,
+        reviewedBy: actor.userId,
+        reviewedAt,
+      },
+    };
+    const [updated] = await tx.update(financeTransactions).set({
+      categoryId,
+      reviewStatus: input.status,
+      businessTag: input.status === "possible_business" ? "business" : input.status === "approved" ? "household" : transaction.businessTag,
+      excludedFromBudget: nextExcluded,
+      metadata: nextMetadata,
+      updatedAt: new Date(),
+    }).where(and(
+      eq(financeTransactions.id, transactionId),
+      eq(financeTransactions.householdId, id),
+    )).returning();
+    if (!updated) return planningNotFound("Imported transaction");
+    await tx.insert(auditEvents).values({
+      householdId: id,
+      eventType: "finance_transaction_reviewed",
+      actor: actor.userId,
+      entity: "finance_transaction",
+      entityId: transactionId,
+      reason: "Household review decision controls whether imported activity enters planning",
+      beforeState: {
+        reviewStatus: transaction.reviewStatus,
+        categoryId: transaction.categoryId,
+        excludedFromBudget: transaction.excludedFromBudget,
+      },
+      afterState: {
+        reviewStatus: input.status,
+        categoryId,
+        excludedFromBudget: nextExcluded,
+        note: nextNote,
+      },
+      metadata: { source: "household-finance-review", idempotent: false },
+    });
+    const [account] = await tx.select({ nickname: financialAccounts.nickname })
+      .from(financialAccounts)
+      .where(and(eq(financialAccounts.id, updated.accountId), eq(financialAccounts.householdId, id)))
+      .limit(1);
+    const [category] = updated.categoryId
+      ? await tx.select({ name: financeCategories.name })
+        .from(financeCategories)
+        .where(and(eq(financeCategories.id, updated.categoryId), eq(financeCategories.householdId, id)))
+        .limit(1)
+      : [];
+    return reviewedTransaction(updated, account?.nickname ?? "Unknown account", category?.name ?? null);
+  });
+}
+
+export async function getTransactionReviewQueue(actor?: Actor) {
+  const id = await householdId(actor);
+  const [transactions, accounts, categories] = await Promise.all([
+    db.select().from(financeTransactions).where(and(
+      eq(financeTransactions.householdId, id),
+      eq(financeTransactions.dataSource, "csv_import"),
+      ne(financeTransactions.reviewStatus, "approved"),
+    )),
+    db.select({ id: financialAccounts.id, nickname: financialAccounts.nickname })
+      .from(financialAccounts)
+      .where(eq(financialAccounts.householdId, id)),
+    db.select({ id: financeCategories.id, name: financeCategories.name })
+      .from(financeCategories)
+      .where(and(eq(financeCategories.householdId, id), eq(financeCategories.active, true))),
+  ]);
+  const accountsById = new Map(accounts.map((account) => [account.id, account.nickname]));
+  const categoriesById = new Map(categories.map((category) => [category.id, category.name]));
+  return {
+    transactions: transactions.map((transaction) => reviewedTransaction(
+      transaction,
+      accountsById.get(transaction.accountId) ?? "Unknown account",
+      transaction.categoryId ? categoriesById.get(transaction.categoryId) ?? null : null,
+    )),
+    categories,
+  };
+}
+
+function reviewedTransaction(
+  transaction: typeof financeTransactions.$inferSelect,
+  accountName: string,
+  categoryName: string | null,
+) {
+  const review = reviewMetadata(transaction.metadata);
+  const reviewedAt = typeof review.reviewedAt === "string" ? review.reviewedAt : null;
+  const reviewedBy = typeof review.reviewedBy === "string" ? review.reviewedBy : null;
+  const reviewNote = typeof review.note === "string" ? review.note : null;
+  return {
+    id: transaction.id,
+    accountId: transaction.accountId,
+    accountName,
+    transactionDate: transaction.transactionDate,
+    description: transaction.description,
+    merchant: transaction.merchant,
+    amount: transaction.amount,
+    originalAmount: transaction.originalAmount,
+    categoryId: transaction.categoryId,
+    categoryName,
+    dataSource: transaction.dataSource,
+    reviewStatus: transaction.reviewStatus,
+    businessTag: transaction.businessTag,
+    excludedFromBudget: transaction.excludedFromBudget,
+    pending: transaction.pending,
+    reviewNote,
+    reviewedBy,
+    reviewedAt,
+  };
+}

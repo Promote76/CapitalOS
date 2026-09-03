@@ -33,6 +33,9 @@ import {
   ListFinancialAccountsResponse,
   ListIncomeSourcesResponse,
   ListUpcomingExpensesResponse,
+  ReviewFinancialTransactionBody,
+  ListTransactionReviewQueueResponse,
+  ReviewFinancialTransactionResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
@@ -63,6 +66,8 @@ import {
   pauseIncomeSource,
   resumeIncomeSource,
   deleteIncomeSource,
+  getTransactionReviewQueue,
+  reviewFinancialTransaction,
 } from "../services/household-finance";
 
 const router: IRouter = Router();
@@ -88,6 +93,16 @@ router.post("/financial-accounts/:accountId/import-csv", asyncRoute(async (req, 
   const accountId = Array.isArray(req.params.accountId) ? req.params.accountId[0] : req.params.accountId;
   const body = ImportFinancialAccountCsvBody.parse(req.body);
   res.json(ImportFinancialAccountCsvResponse.parse(await importFinanceCsv(actorFrom(res), accountId, body.csv)));
+}));
+
+router.get("/financial-transactions/review-queue", asyncRoute(async (_req, res) => {
+  res.json(ListTransactionReviewQueueResponse.parse(await getTransactionReviewQueue(actorFrom(res))));
+}));
+
+router.post("/financial-transactions/:transactionId/review", asyncRoute(async (req, res) => {
+  const transactionId = Array.isArray(req.params.transactionId) ? req.params.transactionId[0] : req.params.transactionId;
+  const body = ReviewFinancialTransactionBody.parse(req.body);
+  res.json(ReviewFinancialTransactionResponse.parse(await reviewFinancialTransaction(actorFrom(res), transactionId, body)));
 }));
 
 router.post("/financial-accounts/:accountId/transactions", asyncRoute(async (req, res) => {

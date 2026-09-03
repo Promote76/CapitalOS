@@ -139,6 +139,7 @@ import type {
   ReportDescriptor,
   ResearchJournalEntry,
   ResearchStrategyCreated,
+  ReviewedFinancialTransaction,
   RiskSummary,
   RunStrategyExperimentInput,
   SafeToDeploy,
@@ -149,6 +150,8 @@ import type {
   StrategyPromotionInput,
   StrategySummary,
   StrategyVersionCreated,
+  TransactionReviewInput,
+  TransactionReviewQueue,
   TransactionSummary,
   TransferInput,
   TreasurySnapshot,
@@ -4989,6 +4992,155 @@ export const useImportFinancialAccountCsv = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getImportFinancialAccountCsvMutationOptions(options));
+    }
+
+export const getListTransactionReviewQueueUrl = () => {
+
+
+
+
+  return `/api/financial-transactions/review-queue`
+}
+
+/**
+ * @summary List imported transactions awaiting household review
+ */
+export const listTransactionReviewQueue = async ( options?: Parameters<typeof customFetch>[1]): Promise<TransactionReviewQueue> => {
+
+  return customFetch<TransactionReviewQueue>(getListTransactionReviewQueueUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTransactionReviewQueueQueryKey = () => {
+    return [
+    `/api/financial-transactions/review-queue`
+    ] as const;
+    }
+
+
+export const getListTransactionReviewQueueQueryOptions = <TData = Awaited<ReturnType<typeof listTransactionReviewQueue>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransactionReviewQueue>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTransactionReviewQueueQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTransactionReviewQueue>>> = ({ signal }) => listTransactionReviewQueue({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTransactionReviewQueue>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTransactionReviewQueueQueryResult = NonNullable<Awaited<ReturnType<typeof listTransactionReviewQueue>>>
+export type ListTransactionReviewQueueQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List imported transactions awaiting household review
+ */
+
+export function useListTransactionReviewQueue<TData = Awaited<ReturnType<typeof listTransactionReviewQueue>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransactionReviewQueue>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTransactionReviewQueueQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReviewFinancialTransactionUrl = (transactionId: string,) => {
+
+
+
+
+  return `/api/financial-transactions/${transactionId}/review`
+}
+
+/**
+ * @summary Categorize or decide the planning treatment of an imported transaction
+ */
+export const reviewFinancialTransaction = async (transactionId: string,
+    transactionReviewInput: TransactionReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<ReviewedFinancialTransaction> => {
+
+  return customFetch<ReviewedFinancialTransaction>(getReviewFinancialTransactionUrl(transactionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(transactionReviewInput)
+  }
+);}
+
+
+
+
+
+export const getReviewFinancialTransactionMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewFinancialTransaction>>, TError,{transactionId: string;data: BodyType<TransactionReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewFinancialTransaction>>, TError,{transactionId: string;data: BodyType<TransactionReviewInput>}, TContext> => {
+
+const mutationKey = ['reviewFinancialTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewFinancialTransaction>>, {transactionId: string;data: BodyType<TransactionReviewInput>}> = (props) => {
+          const {transactionId,data} = props ?? {};
+
+          return  reviewFinancialTransaction(transactionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewFinancialTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof reviewFinancialTransaction>>>
+    export type ReviewFinancialTransactionMutationBody = BodyType<TransactionReviewInput>
+    export type ReviewFinancialTransactionMutationError = ErrorType<ForbiddenResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Categorize or decide the planning treatment of an imported transaction
+ */
+export const useReviewFinancialTransaction = <TError = ErrorType<ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewFinancialTransaction>>, TError,{transactionId: string;data: BodyType<TransactionReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewFinancialTransaction>>,
+        TError,
+        {transactionId: string;data: BodyType<TransactionReviewInput>},
+        TContext
+      > => {
+      return useMutation(getReviewFinancialTransactionMutationOptions(options));
     }
 
 export const getCreateManualFinanceTransactionUrl = (accountId: string,) => {

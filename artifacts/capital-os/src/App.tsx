@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import {
   ClerkProvider,
@@ -20,6 +20,10 @@ import {
   useListFinancialAccounts,
   useCreateManualFinancialAccount,
   useCreateManualFinanceTransaction,
+  useImportFinancialAccountCsv,
+  useListTransactionReviewQueue,
+  useReviewFinancialTransaction,
+  getListTransactionReviewQueueQueryKey,
   useGetBudget,
   useGetHousehold,
   useGetPropertyUnderwriting,
@@ -91,6 +95,7 @@ import {
   type MicroLiveVenueApprovalRequest,
   type MicroLiveIncidentReviewInput,
   type TreasurySnapshot,
+  type TransactionReviewInput,
   useGetTreasury,
 } from '@workspace/api-client-react';
 import {
@@ -1076,7 +1081,7 @@ function BudgetPage() {
   return <main className="content">
     <PageHeading eyebrow="Household finance / budget" title={<>Give every dollar<br /><em>a clear job.</em></>} description="A calm view of what came in, what went out, and what remains available for the plan." actions={<Link className="btn btn-primary" href="/cash-flow"><TrendingUp size={15} /> View cash flow</Link>} />
     {query.isError && <div className="card card-pad" role="alert">Budget data is temporarily unavailable.</div>}
-    {!query.isError && <div className="finance-data-banner" role="note"><div className="finance-data-banner-icon"><ShieldCheck size={16} /></div><div><strong>{hasBudgetData ? 'Household planning data' : 'Start with your household facts'}</strong><span>{hasBudgetData ? 'Manual entries are read-only source records. New transactions stay in review until approved.' : 'Add a manual account, income source, or transaction to build this household view. No demo household data is shared here.'}</span></div></div>}
+    {!query.isError && <div className="finance-data-banner" role="note"><div className="finance-data-banner-icon"><ShieldCheck size={16} /></div><div><strong>{hasBudgetData ? 'Household planning data' : 'Start with your household facts'}</strong><span>{hasBudgetData ? 'Manual entries and CSV imports are read-only source records. Imported rows stay in review until approved.' : 'Add a manual account, income source, or CSV ledger to build this household view. No demo household data is shared here.'}</span></div></div>}
     <section className="card card-pad page-section animate-in">
       <CardTitle title="Record a transaction" subtitle="Enter it once, then review it before it reaches your budget or Safe-to-Deploy." />
       {!accounts.isLoading && !(accounts.data?.accounts.length) ? <div className="finance-empty-state"><strong>Add an account first</strong><span>Transactions need a household account so balances and history stay attributable.</span><Link className="btn btn-secondary" href="/accounts">Open accounts</Link></div> : <form className="account-form transaction-form" onSubmit={submitTransaction}>
@@ -1100,7 +1105,7 @@ function BudgetPage() {
     </div>
     <section className="card card-pad page-section animate-in delay-2">
       <CardTitle title="Budget performance" subtitle="Projected pace helps surface pressure before it becomes a surprise." />
-       {!hasBudgetData && <div className="finance-empty-state"><strong>No budget categories yet</strong><span>Your authenticated household starts empty. Add facts from Accounts, Income, or a transaction entry before relying on calculated planning outputs.</span><Link className="btn btn-secondary" href="/accounts">Open accounts</Link></div>}
+       {!hasBudgetData && <div className="finance-empty-state"><strong>No budget categories yet</strong><span>Your authenticated household starts empty. Add facts from Accounts, Income, or a CSV import before relying on calculated planning outputs.</span><Link className="btn btn-secondary" href="/accounts">Open accounts</Link></div>}
        <div className="finance-table">
         {(data?.categories ?? []).map((category) => <div className="finance-row" key={category.id}>
           <div><strong>{category.name}</strong><span>{category.essentialStatus === 'essential' ? 'Essential' : category.essentialStatus === 'discretionary' ? 'Flexible' : 'Mixed'}</span></div>
@@ -1384,8 +1389,12 @@ function CashFlowPage() {
 function AccountsPage({ onFeedback }: { onFeedback: (message: string) => void }) {
   const query = useListFinancialAccounts();
   const create = useCreateManualFinancialAccount();
+  const importCsv = useImportFinancialAccountCsv();
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ institution: '', nickname: '', accountType: 'checking', currentBalance: '' });
+  const [importingAccountId, setImportingAccountId] = useState<string | null>(null);
+  const [csvText, setCsvText] = useState('');
+  const [csvFileName, setCsvFileName] = useState('');
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     try {
@@ -1398,10 +1407,34 @@ function AccountsPage({ onFeedback }: { onFeedback: (message: string) => void })
       onFeedback(error instanceof Error ? error.message : 'Account could not be added.');
     }
   };
+  const loadCsvFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setCsvFileName(file.name);
+    setCsvText(await file.text());
+  };
+  const submitCsv = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!importingAccountId || !csvText.trim()) {
+      onFeedback('Choose an account and CSV file before importing.');
+      return;
+    }
+    try {
+      const result = await importCsv.mutateAsync({ accountId: importingAccountId, data: { csv: csvText } });
+      await queryClient.invalidateQueries({ queryKey: ['/api/financial-accounts'] });
+      onFeedback(`${result.imported} row${result.imported === 1 ? '' : 's'} imported for review; ${result.skippedDuplicates} duplicate${result.skippedDuplicates === 1 ? '' : 's'} skipped.`);
+      setCsvText('');
+      setCsvFileName('');
+      setImportingAccountId(null);
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'CSV could not be imported.');
+    }
+  };
   return <main className="content">
     <PageHeading eyebrow="Household finance / accounts" title={<>Know where the money<br /><em>is held.</em></>} description="Manual and imported accounts give the Capital Governor enough context to protect the household—without storing bank credentials or moving money." actions={<button className="btn btn-primary" onClick={() => setAdding(!adding)} data-testid="button-add-financial-account"><Plus size={15} /> Add manual account</button>} />
     {adding && <section className="card card-pad page-section"><CardTitle title="Add a manual account" subtitle="Balances stay read-only after they are entered." /><form className="account-form" onSubmit={submit}><div className="field"><label>Institution</label><input required value={form.institution} onChange={(event) => setForm({ ...form, institution: event.target.value })} /></div><div className="field"><label>Nickname</label><input required value={form.nickname} onChange={(event) => setForm({ ...form, nickname: event.target.value })} /></div><div className="field"><label>Account type</label><select value={form.accountType} onChange={(event) => setForm({ ...form, accountType: event.target.value })}><option value="checking">Checking</option><option value="savings">Savings</option><option value="credit_card">Credit card</option><option value="loan">Loan</option></select></div><div className="field"><label>Current balance</label><input inputMode="decimal" value={form.currentBalance} onChange={(event) => setForm({ ...form, currentBalance: event.target.value })} placeholder="0.00" /></div><div className="modal-actions"><button type="button" className="btn" onClick={() => setAdding(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={create.isPending}><Check size={14} /> Save account</button></div></form></section>}
-    <section className="card card-pad animate-in delay-1"><CardTitle title="Connected financial accounts" subtitle={`${query.data?.totals.accountCount ?? 0} accounts · read-only by design`} /><div className="table-wrap"><table className="table"><thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>Source</th><th>Status</th></tr></thead><tbody>{(query.data?.accounts ?? []).map((account) => <tr key={account.id}><td><strong>{account.nickname}</strong><br /><span className="table-secondary">{account.institution}</span></td><td>{account.accountType.replace('_', ' ')}</td><td className="font-mono">{account.restricted ? 'Restricted' : displayMoney(account.currentBalance ?? undefined, '$0')}</td><td>{account.dataSource.replace('_', ' ')}</td><td><span className="status">{account.protected ? 'Protected' : 'Read only'}</span></td></tr>)}</tbody></table></div>{!query.isLoading && !(query.data?.accounts.length) && <div className="finance-empty-state"><strong>Add an account before recording history</strong><span>Use a manual account for the current balance, then record transactions from the Budget route. New entries stay in review until you approve them for planning.</span><Link className="btn btn-secondary" href="/budget">Open Budget</Link></div>}<div className="finance-note"><LockKeyhole size={16} /><span>Capital OS never stores bank credentials. Plaid is disabled; manual accounts and direct Budget entries are the active provider-neutral paths.</span></div></section>
+    <section className="card card-pad animate-in delay-1"><CardTitle title="Connected financial accounts" subtitle={`${query.data?.totals.accountCount ?? 0} accounts · read-only by design`} /><div className="table-wrap"><table className="table"><thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>Source</th><th>Status</th><th>History</th></tr></thead><tbody>{(query.data?.accounts ?? []).map((account) => <tr key={account.id}><td><strong>{account.nickname}</strong><br /><span className="table-secondary">{account.institution}</span></td><td>{account.accountType.replace('_', ' ')}</td><td className="font-mono">{account.restricted ? 'Restricted' : displayMoney(account.currentBalance ?? undefined, '$0')}</td><td>{account.dataSource.replace('_', ' ')}</td><td><span className="status">{account.protected ? 'Protected' : 'Read only'}</span></td><td><button className="btn btn-small" onClick={() => { setImportingAccountId(account.id); setCsvText(''); setCsvFileName(''); }}><FileText size={13} /> Import CSV</button></td></tr>)}</tbody></table></div>{!query.isLoading && !(query.data?.accounts.length) && <div className="finance-empty-state"><strong>Add an account before importing history</strong><span>Use a manual account for the current balance, then import a CSV ledger. Imported rows stay in review until you approve them for planning.</span></div>}<div className="finance-note"><LockKeyhole size={16} /><span>Capital OS never stores bank credentials. Plaid is disabled; manual entry and CSV import are the active provider-neutral paths.</span></div></section>
+    {importingAccountId && <section className="card card-pad page-section"><CardTitle title="Import read-only transaction history" subtitle="CSV rows are stored for review and never move money or change a balance automatically." /><form className="account-form" onSubmit={submitCsv}><div className="field"><label htmlFor="finance-csv-file">CSV file</label><input id="finance-csv-file" type="file" accept=".csv,text/csv" onChange={loadCsvFile} /><span className="table-secondary">{csvFileName || 'Expected columns: date, description, amount; merchant and externalId are optional.'}</span></div><div className="field"><label htmlFor="finance-csv-text">Or paste CSV</label><textarea id="finance-csv-text" rows={7} value={csvText} onChange={(event) => setCsvText(event.target.value)} placeholder={'date,description,amount\\n2026-09-01,"Household market",-42.50'} /></div><div className="modal-actions"><button type="button" className="btn" onClick={() => { setImportingAccountId(null); setCsvText(''); setCsvFileName(''); }}>Cancel</button><button type="submit" className="btn btn-primary" disabled={importCsv.isPending}><Database size={14} /> {importCsv.isPending ? 'Importing…' : 'Import for review'}</button></div></form></section>}
   </main>;
 }
 
@@ -1510,6 +1543,251 @@ function TransactionTable({ transactions }: { transactions: Transaction[] }) {
   const [filter, setFilter] = useState('All');
   const filtered = filter === 'All' ? transactions : transactions.filter((item) => item.category === filter);
   return <section className="card card-pad animate-in delay-1"><div className="filter-bar"><SlidersHorizontal size={14} color="var(--ink-soft)" />{['All', 'Duplex Reserve', 'Opportunity Reserve', 'Capital OS'].map((label) => <button className={`filter-chip ${filter === label ? 'active' : ''}`} key={label} onClick={() => setFilter(label)} data-testid={`button-filter-transactions-${label.replaceAll(' ', '-').toLowerCase()}`}>{label}</button>)}</div><div className="table-wrap"><table className="table"><thead><tr><th>Date</th><th>Movement</th><th>Category</th><th>Status</th><th>Amount</th></tr></thead><tbody>{filtered.map((item) => <tr key={item.id}><td className="font-mono">{item.date}</td><td><strong>{item.name}</strong></td><td>{item.category}</td><td><span className={`status ${item.status === 'Scheduled' ? 'pending' : ''}`}>{item.status}</span></td><td className="font-mono">+${item.amount}</td></tr>)}</tbody></table></div>{filtered.length === 0 && <div className="empty-state" style={{ marginTop:15 }}><Search size={20} /><h3>Nothing in this sleeve yet</h3><p>Try another category to see your complete capital record.</p></div>}</section>;
+}
+
+type ReviewQueueRecord = Record<string, unknown>;
+
+type ReviewDraft = { categoryId: string; note: string };
+
+function reviewRecord(value: unknown): ReviewQueueRecord {
+  return value && typeof value === 'object' ? value as ReviewQueueRecord : {};
+}
+
+function firstString(record: ReviewQueueRecord, keys: string[], fallback = '') {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === 'string' && value.trim()) return value;
+    if (typeof value === 'number') return String(value);
+  }
+  return fallback;
+}
+
+function normalizeReviewRows(value: unknown): ReviewQueueRecord[] {
+  if (Array.isArray(value)) return value.map(reviewRecord);
+  const root = reviewRecord(value);
+  for (const key of ['transactions', 'items', 'queue', 'reviewQueue', 'rows']) {
+    if (Array.isArray(root[key])) return root[key].map(reviewRecord);
+  }
+  return [];
+}
+
+function normalizeReviewRow(value: ReviewQueueRecord) {
+  const id = firstString(value, ['transactionId', 'id'], 'unknown');
+  const amount = value.amount;
+  return {
+    id,
+    date: firstString(value, ['transactionDate', 'date', 'createdAt'], 'Date not supplied'),
+    merchant: firstString(value, ['merchant', 'description'], 'Imported transaction'),
+    description: firstString(value, ['description', 'merchant'], 'No description supplied'),
+    amount: typeof amount === 'number' || typeof amount === 'string' ? amount : '0',
+    account: firstString(value, ['accountName', 'account', 'financialAccountName'], 'Account not supplied'),
+    categoryId: firstString(value, ['categoryId', 'suggestedCategoryId']),
+    categoryName: firstString(value, ['categoryName', 'category', 'suggestedCategory']),
+    status: firstString(value, ['reviewStatus', 'status'], 'needs_review'),
+    reason: firstString(value, ['reviewReason', 'reason', 'queueReason'], 'Imported rows stay outside planning until reviewed.'),
+    note: firstString(value, ['note', 'reviewNote']),
+  };
+}
+
+function formatReviewDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatReviewAmount(value: string | number) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return 'Amount unavailable';
+  return `${amount < 0 ? '−' : '+'}$${Math.abs(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function reviewStatusLabel(status: string) {
+  return status.replaceAll('_', ' ');
+}
+
+function TransactionReviewPage({ onFeedback }: { onFeedback: (message: string) => void }) {
+  const queryClient = useQueryClient();
+  const queue = useListTransactionReviewQueue({
+    query: {
+      queryKey: getListTransactionReviewQueueQueryKey(),
+      staleTime: 30 * 1000,
+    },
+  });
+  const review = useReviewFinancialTransaction();
+  const budget = useGetBudget();
+  const [filter, setFilter] = useState<'all' | 'needs_category'>('all');
+  const [search, setSearch] = useState('');
+  const [drafts, setDrafts] = useState<Record<string, ReviewDraft>>({});
+
+  const rows = useMemo(() => normalizeReviewRows(queue.data).map(normalizeReviewRow), [queue.data]);
+  const categoryOptions = useMemo(() => {
+    const root = reviewRecord(queue.data);
+    const supplied = Array.isArray(root.categories) ? root.categories.map(reviewRecord) : [];
+    const budgetCategories = (budget.data?.categories ?? []).map((category) => ({ id: category.id, name: category.name }));
+    const merged = [...budgetCategories, ...supplied.map((category) => ({
+      id: firstString(category, ['id', 'categoryId']),
+      name: firstString(category, ['name', 'categoryName']),
+    }))].filter((category) => category.id && category.name);
+    return Array.from(new Map(merged.map((category) => [category.id, category])).values());
+  }, [budget.data?.categories, queue.data]);
+  const visibleRows = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return rows.filter((row) => {
+      const needsCategory = !row.categoryId && !row.categoryName;
+      if (filter === 'needs_category' && !needsCategory) return false;
+      if (!query) return true;
+      return [row.merchant, row.description, row.account, row.categoryName].some((value) => value.toLowerCase().includes(query));
+    });
+  }, [filter, rows, search]);
+  const heldAmount = useMemo(() => rows.reduce((sum, row) => {
+    const amount = Number(row.amount);
+    return Number.isFinite(amount) ? sum + Math.abs(amount) : sum;
+  }, 0), [rows]);
+  const needsCategory = rows.filter((row) => !row.categoryId && !row.categoryName).length;
+
+  const draftFor = (row: ReturnType<typeof normalizeReviewRow>): ReviewDraft =>
+    drafts[row.id] ?? { categoryId: row.categoryId, note: row.note };
+  const updateDraft = (id: string, next: Partial<ReviewDraft>) => {
+    const row = rows.find((item) => item.id === id) ?? normalizeReviewRow({ id });
+    setDrafts((current) => ({ ...current, [id]: { ...draftFor(row), ...next } }));
+  };
+  const submitReview = async (row: ReturnType<typeof normalizeReviewRow>, status: TransactionReviewInput['status']) => {
+    const draft = draftFor(row);
+    try {
+      const payload: TransactionReviewInput = { status };
+      if (draft.categoryId) payload.categoryId = draft.categoryId;
+      if (draft.note.trim()) payload.note = draft.note.trim();
+      await review.mutateAsync({ transactionId: row.id, data: payload });
+      setDrafts((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
+      await queryClient.invalidateQueries();
+      await queue.refetch();
+      onFeedback(`${row.merchant} was ${status === 'approved' ? 'approved and added to the household record' : status === 'needs_review' ? 'categorized and kept outside planning' : status === 'excluded' ? 'rejected and excluded from planning' : status === 'possible_transfer' ? 'marked as a transfer and kept outside planning' : 'marked as a business item and kept outside planning'}.`);
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'This transaction could not be reviewed.');
+    }
+  };
+
+  return <main className="content">
+    <style>{`
+      .review-intro { max-width: 650px; }
+      .review-summary { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:1px; background:var(--line); overflow:hidden; }
+      .review-summary-cell { background:rgba(255,253,248,.8); padding:20px 22px; }
+      .review-summary-value { font:400 29px var(--app-font-serif); letter-spacing:-.045em; margin-top:7px; }
+      .review-summary-detail { color:var(--ink-soft); font-size:11px; margin-top:3px; }
+      .review-governance { display:flex; gap:12px; align-items:flex-start; padding:16px 18px; background:#e3ece4; border:1px solid #cfddd1; color:var(--ink); }
+      .review-governance svg { flex:0 0 auto; margin-top:1px; color:#9b742e; }
+      .review-governance strong { display:block; font-size:12px; }
+      .review-governance span { display:block; margin-top:4px; color:#4e6b5e; font-size:11px; line-height:1.5; }
+      .review-toolbar { display:flex; align-items:center; justify-content:space-between; gap:15px; margin-bottom:16px; flex-wrap:wrap; }
+      .review-search { position:relative; min-width:235px; flex:1; max-width:360px; }
+      .review-search svg { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--ink-soft); }
+      .review-search input { width:100%; height:37px; border:1px solid var(--line); border-radius:7px; background:var(--paper); color:var(--ink); padding:0 12px 0 35px; outline:none; font-size:12px; }
+      .review-search input:focus { border-color:var(--marigold); box-shadow:0 0 0 3px rgba(226,189,103,.16); }
+      .review-list { display:grid; gap:11px; }
+      .review-item { border:1px solid var(--line); background:rgba(255,253,248,.78); padding:19px; display:grid; grid-template-columns:minmax(0,1fr) minmax(250px,.72fr); gap:22px; }
+      .review-item:hover { border-color:#cfc4b2; }
+      .review-item-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+      .review-item-title { font-size:14px; font-weight:700; letter-spacing:-.02em; }
+      .review-item-description { color:var(--ink-soft); font-size:11px; line-height:1.5; margin:6px 0 0; }
+      .review-item-amount { font:400 24px var(--app-font-serif); letter-spacing:-.04em; white-space:nowrap; }
+      .review-item-amount.negative { color:#9e5d47; }
+      .review-item-meta { display:flex; gap:18px; flex-wrap:wrap; padding:18px 0 0; margin-top:17px; border-top:1px solid #eee9df; }
+      .review-item-meta span { color:var(--ink-soft); display:block; font-size:10px; }
+      .review-item-meta strong { color:var(--ink); display:block; font-size:11px; font-weight:600; margin-top:4px; }
+      .review-item-reason { color:#785f32; background:#f7f0df; padding:9px 11px; margin-top:16px; font-size:10px; line-height:1.45; }
+      .review-item-form { background:rgba(240,237,227,.55); padding:15px; border:1px solid #e7e0d4; }
+      .review-form-label { display:block; color:var(--ink-soft); font:10px var(--app-font-mono); text-transform:uppercase; letter-spacing:.08em; margin-bottom:7px; }
+      .review-item-form select, .review-item-form textarea { width:100%; border:1px solid var(--line); border-radius:6px; background:var(--paper); color:var(--ink); font-size:12px; padding:9px 10px; outline:none; }
+      .review-item-form select:focus, .review-item-form textarea:focus { border-color:var(--marigold); }
+      .review-item-form textarea { min-height:64px; resize:vertical; line-height:1.4; }
+      .review-form-field + .review-form-field { margin-top:13px; }
+      .review-form-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:14px; }
+      .review-form-foot span { color:var(--ink-soft); font-size:10px; line-height:1.35; }
+      .review-action-group { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+      .review-action-secondary { display:flex; gap:15px; justify-content:flex-end; margin-top:13px; padding-top:11px; border-top:1px solid #e7e0d4; }
+      .review-action-secondary .text-link { font-size:10px; }
+      .review-empty { text-align:center; padding:46px 22px; border:1px dashed #cfc8b9; background:rgba(255,253,248,.48); }
+      .review-empty svg { color:var(--marigold); }
+      .review-empty h3 { font:400 25px var(--app-font-serif); margin:12px 0 7px; }
+      .review-empty p { color:var(--ink-soft); font-size:12px; margin:0 auto; max-width:390px; line-height:1.55; }
+      .review-error { display:flex; align-items:flex-start; gap:12px; }
+      .review-error p { margin:4px 0 0; color:var(--ink-soft); font-size:11px; line-height:1.5; }
+      @media (max-width: 700px) {
+        .review-summary { grid-template-columns:1fr; }
+        .review-item { grid-template-columns:1fr; gap:16px; }
+        .review-toolbar { align-items:stretch; }
+        .review-search { max-width:none; min-width:0; }
+      }
+    `}</style>
+    <PageHeading
+      eyebrow="Household finance / review queue"
+      title={<>Give imported rows<br /><em>a clear place.</em></>}
+      description="Imported transactions stay outside the plan until a household member reviews them. Approve a row with its category, or leave it here for a later pass."
+      actions={<button className="btn" onClick={() => { void queue.refetch(); }} disabled={queue.isLoading} data-testid="button-refresh-transaction-review"><RotateCcw size={14} /> {queue.isLoading ? 'Refreshing…' : 'Refresh queue'}</button>}
+    />
+    <section className="review-governance animate-in delay-1" data-testid="banner-transaction-review-governance">
+      <ShieldCheck size={17} />
+      <div><strong>Planning stays conservative while this queue is open.</strong><span>CSV source records are read-only. Reviewing a row records a household decision; it does not move money or change the original imported details.</span></div>
+    </section>
+    <section className="card review-summary page-section animate-in delay-1" data-testid="summary-transaction-review">
+      <div className="review-summary-cell"><div className="mono-label">Awaiting review</div><div className="review-summary-value" data-testid="stat-transactions-awaiting-review">{rows.length}</div><div className="review-summary-detail">imported rows held outside planning</div></div>
+      <div className="review-summary-cell"><div className="mono-label">Needs a category</div><div className="review-summary-value" data-testid="stat-transactions-needing-category">{needsCategory}</div><div className="review-summary-detail">rows without a household category</div></div>
+      <div className="review-summary-cell"><div className="mono-label">Value held</div><div className="review-summary-value" data-testid="stat-transactions-value-held">{formatReviewAmount(heldAmount).replace('+', '')}</div><div className="review-summary-detail">absolute value of queued rows</div></div>
+    </section>
+    <section className="card card-pad page-section animate-in delay-2">
+      <div className="review-toolbar">
+        <div className="review-search"><Search size={14} /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search merchant, account, or category" aria-label="Search transaction review queue" data-testid="input-search-transaction-review" /></div>
+        <div className="filter-bar" style={{ marginBottom: 0 }}>
+          <button className={`filter-chip ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')} data-testid="button-filter-transaction-review-all">All rows</button>
+          <button className={`filter-chip ${filter === 'needs_category' ? 'active' : ''}`} onClick={() => setFilter('needs_category')} data-testid="button-filter-transaction-review-needs-category">Needs category <span>({needsCategory})</span></button>
+        </div>
+      </div>
+      {queue.isLoading && <div className="review-list" aria-label="Loading transaction review queue" data-testid="loading-transaction-review"><div className="review-item" style={{ minHeight: 155, opacity: .55 }} /><div className="review-item" style={{ minHeight: 155, opacity: .35 }} /></div>}
+      {queue.isError && <div className="review-empty review-error" role="alert" data-testid="error-transaction-review"><ShieldAlert size={19} /><div><strong>Review queue unavailable</strong><p>{queue.error instanceof Error ? queue.error.message : 'The household review service could not be reached.'}</p><button className="btn btn-primary" style={{ marginTop: 15 }} onClick={() => { void queue.refetch(); }} data-testid="button-retry-transaction-review"><RotateCcw size={14} /> Try again</button></div></div>}
+      {!queue.isLoading && !queue.isError && visibleRows.length === 0 && <div className="review-empty" data-testid="empty-transaction-review"><ClipboardCheck size={22} /><h3>{rows.length === 0 ? 'The ledger is caught up.' : 'No rows match this view.'}</h3><p>{rows.length === 0 ? 'New imported transactions will appear here before they can influence household planning.' : 'Clear the search or choose All rows to see the rest of the queue.'}</p>{rows.length > 0 && <button className="btn" style={{ marginTop: 17 }} onClick={() => { setSearch(''); setFilter('all'); }} data-testid="button-clear-transaction-review-filters">Show all rows</button>}</div>}
+      {!queue.isLoading && !queue.isError && visibleRows.length > 0 && <div className="review-list" data-testid="list-transaction-review">
+        {visibleRows.map((row) => {
+          const draft = draftFor(row);
+          const amount = Number(row.amount);
+          return <article className="review-item" key={row.id} data-testid={`card-transaction-review-${row.id}`}>
+            <div>
+              <div className="review-item-head">
+                <div><div className="review-item-title" data-testid={`text-transaction-merchant-${row.id}`}>{row.merchant}</div><p className="review-item-description">{row.description}</p></div>
+                <div className={`review-item-amount ${amount < 0 ? 'negative' : ''}`} data-testid={`text-transaction-amount-${row.id}`}>{formatReviewAmount(row.amount)}</div>
+              </div>
+              <div className="review-item-meta">
+                <div><span>Date</span><strong>{formatReviewDate(row.date)}</strong></div>
+                <div><span>Account</span><strong>{row.account}</strong></div>
+                <div><span>Source</span><strong>CSV import</strong></div>
+                <div><span>Status</span><strong><span className="status pending">{reviewStatusLabel(row.status)}</span></strong></div>
+              </div>
+              <div className="review-item-reason"><strong>Why it is here</strong> · {row.reason}</div>
+            </div>
+            <div className="review-item-form">
+              <div className="review-form-field"><label className="review-form-label" htmlFor={`transaction-category-${row.id}`}>Household category</label><select id={`transaction-category-${row.id}`} value={draft.categoryId} onChange={(event) => updateDraft(row.id, { categoryId: event.target.value })} data-testid={`select-transaction-category-${row.id}`}><option value="">Leave uncategorized</option>{categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>{categoryOptions.length === 0 && <span className="table-secondary">Categories will appear when household budget data is available.</span>}</div>
+              <div className="review-form-field"><label className="review-form-label" htmlFor={`transaction-note-${row.id}`}>Review note <span>(optional)</span></label><textarea id={`transaction-note-${row.id}`} value={draft.note} onChange={(event) => updateDraft(row.id, { note: event.target.value })} maxLength={500} placeholder="What should the household remember?" data-testid={`textarea-transaction-note-${row.id}`} /></div>
+              <div className="review-form-foot">
+                <span>Only approved rows can inform planning.</span>
+                <div className="review-action-group">
+                  <button className="btn" onClick={() => { void submitReview(row, 'needs_review'); }} disabled={review.isPending} data-testid={`button-categorize-transaction-${row.id}`}><ClipboardCheck size={14} /> Save category</button>
+                  <button className="btn btn-primary" onClick={() => { void submitReview(row, 'approved'); }} disabled={review.isPending || !draft.categoryId} data-testid={`button-approve-transaction-${row.id}`}><Check size={14} /> {review.isPending ? 'Saving…' : 'Approve & include'}</button>
+                </div>
+              </div>
+              <div className="review-action-secondary">
+                <button className="text-link danger" onClick={() => { void submitReview(row, 'excluded'); }} disabled={review.isPending} data-testid={`button-reject-transaction-${row.id}`}>Reject</button>
+                <button className="text-link" onClick={() => { void submitReview(row, 'possible_transfer'); }} disabled={review.isPending} data-testid={`button-transfer-transaction-${row.id}`}>Mark transfer</button>
+                <button className="text-link" onClick={() => { void submitReview(row, 'possible_business'); }} disabled={review.isPending} data-testid={`button-business-transaction-${row.id}`}>Mark business</button>
+              </div>
+            </div>
+          </article>;
+        })}
+      </div>}
+    </section>
+  </main>;
 }
 
 function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }) {
@@ -1742,7 +2020,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue
     <Route path="/financing" component={() => <FinancingPage onFeedback={onFeedback} />} />
     <Route path="/risk" component={() => <RiskPage onFeedback={onFeedback} />} />
     <Route path="/settings" component={() => <SettingsPage onFeedback={onFeedback} />} />
-     <Route path="/transactions" component={() => <UtilityPage kind="transactions" onAction={onAction} transactions={transactions} dashboard={dashboard} />} />
+     <Route path="/transactions" component={() => <TransactionReviewPage onFeedback={onFeedback} />} />
      <Route path="/contributions" component={() => <UtilityPage kind="contributions" onAction={onAction} transactions={transactions} dashboard={dashboard} />} />
     <Route path="/reports" component={() => <UtilityPage kind="reports" onAction={onAction} transactions={transactions} />} />
     <Route path="/documents" component={() => <UtilityPage kind="documents" onAction={onAction} transactions={transactions} />} />

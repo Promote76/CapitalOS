@@ -1615,6 +1615,79 @@ export interface FinanceTransaction {
   reviewStatus: string;
 }
 
+/**
+ * Use needs_review to save a category without including the row in planning.
+ */
+export type TransactionReviewInputStatus = typeof TransactionReviewInputStatus[keyof typeof TransactionReviewInputStatus];
+
+
+export const TransactionReviewInputStatus = {
+  approved: 'approved',
+  needs_review: 'needs_review',
+  excluded: 'excluded',
+  possible_transfer: 'possible_transfer',
+  possible_business: 'possible_business',
+} as const;
+
+export interface TransactionReviewInput {
+  /** Use needs_review to save a category without including the row in planning. */
+  status: TransactionReviewInputStatus;
+  /**
+     * @nullable
+     * @pattern ^[0-9a-fA-F-]{36}$
+     */
+  categoryId?: string | null;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  note?: string | null;
+}
+
+export interface ReviewedFinancialTransaction {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  accountId: string;
+  accountName: string;
+  transactionDate: string;
+  description: string;
+  /** @nullable */
+  merchant?: string | null;
+  amount: string;
+  /** @nullable */
+  originalAmount?: string | null;
+  /**
+     * @nullable
+     * @pattern ^[0-9a-fA-F-]{36}$
+     */
+  categoryId: string | null;
+  /** @nullable */
+  categoryName: string | null;
+  dataSource: string;
+  reviewStatus: string;
+  businessTag: string;
+  excludedFromBudget: boolean;
+  pending: boolean;
+  /** @nullable */
+  reviewNote: string | null;
+  /** @nullable */
+  reviewedBy: string | null;
+  /** @nullable */
+  reviewedAt: string | null;
+}
+
+export type TransactionReviewQueueCategoriesItem = {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  name: string;
+};
+
+export interface TransactionReviewQueue {
+  transactions: ReviewedFinancialTransaction[];
+  categories: TransactionReviewQueueCategoriesItem[];
+}
+
 export type BillStatus = typeof BillStatus[keyof typeof BillStatus];
 
 

@@ -2373,6 +2373,91 @@ export const ImportFinancialAccountCsvResponse = zod.object({
 
 
 /**
+ * @summary List imported transactions awaiting household review
+ */
+export const listTransactionReviewQueueResponseTransactionsItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listTransactionReviewQueueResponseTransactionsItemAccountIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listTransactionReviewQueueResponseTransactionsItemCategoryIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listTransactionReviewQueueResponseCategoriesItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ListTransactionReviewQueueResponse = zod.object({
+  "transactions": zod.array(zod.object({
+  "id": zod.string().regex(listTransactionReviewQueueResponseTransactionsItemIdRegExp),
+  "accountId": zod.string().regex(listTransactionReviewQueueResponseTransactionsItemAccountIdRegExp),
+  "accountName": zod.string(),
+  "transactionDate": zod.coerce.date(),
+  "description": zod.string(),
+  "merchant": zod.string().nullish(),
+  "amount": zod.string(),
+  "originalAmount": zod.string().nullish(),
+  "categoryId": zod.string().regex(listTransactionReviewQueueResponseTransactionsItemCategoryIdRegExp).nullable(),
+  "categoryName": zod.string().nullable(),
+  "dataSource": zod.string(),
+  "reviewStatus": zod.string(),
+  "businessTag": zod.string(),
+  "excludedFromBudget": zod.boolean(),
+  "pending": zod.boolean(),
+  "reviewNote": zod.string().nullable(),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable()
+})),
+  "categories": zod.array(zod.object({
+  "id": zod.string().regex(listTransactionReviewQueueResponseCategoriesItemIdRegExp),
+  "name": zod.string()
+}))
+})
+
+
+/**
+ * @summary Categorize or decide the planning treatment of an imported transaction
+ */
+export const reviewFinancialTransactionPathTransactionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ReviewFinancialTransactionParams = zod.object({
+  "transactionId": zod.coerce.string().regex(reviewFinancialTransactionPathTransactionIdRegExp)
+})
+
+export const reviewFinancialTransactionBodyCategoryIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reviewFinancialTransactionBodyNoteMax = 500;
+
+
+
+export const ReviewFinancialTransactionBody = zod.object({
+  "status": zod.enum(['approved', 'needs_review', 'excluded', 'possible_transfer', 'possible_business']).describe('Use needs_review to save a category without including the row in planning.'),
+  "categoryId": zod.string().regex(reviewFinancialTransactionBodyCategoryIdRegExp).nullish(),
+  "note": zod.string().max(reviewFinancialTransactionBodyNoteMax).nullish()
+})
+
+export const reviewFinancialTransactionResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reviewFinancialTransactionResponseAccountIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reviewFinancialTransactionResponseCategoryIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ReviewFinancialTransactionResponse = zod.object({
+  "id": zod.string().regex(reviewFinancialTransactionResponseIdRegExp),
+  "accountId": zod.string().regex(reviewFinancialTransactionResponseAccountIdRegExp),
+  "accountName": zod.string(),
+  "transactionDate": zod.coerce.date(),
+  "description": zod.string(),
+  "merchant": zod.string().nullish(),
+  "amount": zod.string(),
+  "originalAmount": zod.string().nullish(),
+  "categoryId": zod.string().regex(reviewFinancialTransactionResponseCategoryIdRegExp).nullable(),
+  "categoryName": zod.string().nullable(),
+  "dataSource": zod.string(),
+  "reviewStatus": zod.string(),
+  "businessTag": zod.string(),
+  "excludedFromBudget": zod.boolean(),
+  "pending": zod.boolean(),
+  "reviewNote": zod.string().nullable(),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable()
+})
+
+
+/**
  * @summary Record a manual transaction for household review
  */
 export const createManualFinanceTransactionPathAccountIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');

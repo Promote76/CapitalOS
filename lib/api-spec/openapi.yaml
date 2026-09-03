@@ -1068,6 +1068,41 @@ paths:
                   imported: { type: number }
                   skippedDuplicates: { type: number }
                   readOnly: { type: boolean }
+  /financial-transactions/review-queue:
+    get:
+      operationId: listTransactionReviewQueue
+      tags: [household-finance]
+      summary: List imported transactions awaiting household review
+      responses:
+        "200":
+          description: Household-scoped transaction review queue
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TransactionReviewQueue" }
+  /financial-transactions/{transactionId}/review:
+    post:
+      operationId: reviewFinancialTransaction
+      tags: [household-finance]
+      summary: Categorize or decide the planning treatment of an imported transaction
+      parameters:
+        - $ref: "#/components/parameters/FinancialTransactionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TransactionReviewInput" }
+      responses:
+        "200":
+          description: Reviewed transaction
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReviewedFinancialTransaction" }
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
   /financial-accounts/{accountId}/transactions:
     post:
       operationId: createManualFinanceTransaction
@@ -1963,6 +1998,13 @@ components:
         pattern: "^[0-9a-fA-F-]{36}$"
     FinancialAccountId:
       name: accountId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[0-9a-fA-F-]{36}$"
+    FinancialTransactionId:
+      name: transactionId
       in: path
       required: true
       schema:
@@ -3506,6 +3548,53 @@ components:
         amount: { type: string }
         dataSource: { type: string }
         reviewStatus: { type: string }
+    TransactionReviewInput:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [approved, needs_review, excluded, possible_transfer, possible_business]
+          description: Use needs_review to save a category without including the row in planning.
+        categoryId: { type: ["string", "null"], pattern: "^[0-9a-fA-F-]{36}$" }
+        note: { type: ["string", "null"], maxLength: 500 }
+    ReviewedFinancialTransaction:
+      type: object
+      required: [id, accountId, accountName, transactionDate, description, amount, dataSource, reviewStatus, businessTag, excludedFromBudget, pending, categoryId, categoryName, reviewNote, reviewedBy, reviewedAt]
+      properties:
+        id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        accountId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        accountName: { type: string }
+        transactionDate: { type: string, format: date }
+        description: { type: string }
+        merchant: { type: ["string", "null"] }
+        amount: { type: string }
+        originalAmount: { type: ["string", "null"] }
+        categoryId: { type: ["string", "null"], pattern: "^[0-9a-fA-F-]{36}$" }
+        categoryName: { type: ["string", "null"] }
+        dataSource: { type: string }
+        reviewStatus: { type: string }
+        businessTag: { type: string }
+        excludedFromBudget: { type: boolean }
+        pending: { type: boolean }
+        reviewNote: { type: ["string", "null"] }
+        reviewedBy: { type: ["string", "null"] }
+        reviewedAt: { type: ["string", "null"], format: date-time }
+    TransactionReviewQueue:
+      type: object
+      required: [transactions, categories]
+      properties:
+        transactions:
+          type: array
+          items: { $ref: "#/components/schemas/ReviewedFinancialTransaction" }
+        categories:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+              name: { type: string }
     Bill:
       type: object
       required: [id, householdId, billName, dueDate, expectedAmount, status, essential, autoPay, active]

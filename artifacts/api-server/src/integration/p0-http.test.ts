@@ -4,7 +4,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { resetRateLimitForTests } from "../middleware/safety.ts";
 
 const enabled = process.env.CAPITAL_OS_RUN_INTEGRATION === "1";
@@ -795,6 +795,7 @@ const pathIdTables: Record<string, string> = {
   taskId: "operations_tasks",
   venueId: "venue_registry",
   approvalId: "operations_approvals",
+  transactionId: "finance_transactions",
 };
 
 function discoverRouteProbes(): RouteProbe[] {
@@ -920,7 +921,7 @@ function replaceRouteParams(route: RouteProbe, values: Record<string, string>, f
   return route.path.replace(/:([A-Za-z0-9_]+)/g, (_match, name: string) => values[name] ?? fallback);
 }
 
-test("P0-01 preflight inventories all 108 routes and rejects unsafe generic probes", { skip: !enabled }, async () => {
+test("P0-01 preflight inventories all 110 routes and rejects unsafe generic probes", { skip: !enabled }, async () => {
   process.env.NODE_ENV = "test";
   process.env.CAPITAL_OS_TEST_CONTEXT = "1";
   process.env.CAPITAL_OS_ALLOWED_ORIGIN = "http://capitalos.test";
@@ -950,7 +951,7 @@ test("P0-01 preflight inventories all 108 routes and rejects unsafe generic prob
 
   try {
     const routes = discoverRouteProbes();
-    assert.equal(routes.length, 108, "The route inventory changed; update the certification matrix before running it.");
+    assert.equal(routes.length, 110, "The route inventory changed; update the certification matrix before running it.");
     const { idsA, idsB } = await warmRouteMatrixResources(request, fixture);
     const allAIds = Object.values(idsA);
     const allBIds = Object.values(idsB);
@@ -1483,6 +1484,13 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     assert.equal(accountAResponse.status, 201);
     const accountA = await accountAResponse.json() as { id: string; dataSource: string };
     assert.equal(accountA.dataSource, "manual");
+    const [categoryA] = await database.db.insert(database.financeCategories).values({
+      householdId: fixture.householdA,
+      name: "Household dining",
+      categoryType: "variable_discretionary",
+      essentialStatus: "discretionary",
+      monthlyTarget: "200.00",
+    }).returning({ id: database.financeCategories.id });
 
     const accountBResponse = await request("/financial-accounts", fixture.userB, fixture.householdB, {
       method: "POST",
@@ -1523,10 +1531,121 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     assert.equal(crossHouseholdImport.status, 400);
 
     const importedRows = await database.db
-      .select({ householdId: database.financeTransactions.householdId, dataSource: database.financeTransactions.dataSource, reviewStatus: database.financeTransactions.reviewStatus })
+      .select({ id: database.financeTransactions.id, householdId: database.financeTransactions.householdId, dataSource: database.financeTransactions.dataSource, reviewStatus: database.financeTransactions.reviewStatus })
       .from(database.financeTransactions)
       .where(eq(database.financeTransactions.accountId, accountA.id));
-    assert.deepEqual(importedRows, [{ householdId: fixture.householdA, dataSource: "csv_import", reviewStatus: "needs_review" }]);
+    assert.deepEqual(importedRows.map(({ householdId, dataSource, reviewStatus }) => ({ householdId, dataSource, reviewStatus })), [{ householdId: fixture.householdA, dataSource: "csv_import", reviewStatus: "needs_review" }]);
+
+    const reviewQueue = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
+    assert.equal(reviewQueue.status, 200);
+    const reviewQueueBody = await reviewQueue.json() as { transactions: Array<{ id: string; accountName: string; reviewStatus: string }>; categories: Array<{ id: string }> };
+    assert.deepEqual(reviewQueueBody.transactions.map(({ id, accountName, reviewStatus }) => ({ id, accountName, reviewStatus })), [{
+      id: importedRows[0].id,
+      accountName: "Primary checking",
+      reviewStatus: "needs_review",
+    }]);
+    assert.deepEqual(reviewQueueBody.categories.map(({ id }) => id), [categoryA.id]);
+
+    const householdBQueue = await request("/financial-transactions/review-queue", fixture.userB, fixture.householdB);
+    assert.equal(householdBQueue.status, 200);
+    assert.deepEqual((await householdBQueue.json() as { transactions: unknown[] }).transactions, []);
+
+    const crossHouseholdReview = await request(`/financial-transactions/${importedRows[0].id}/review`, fixture.userB, fixture.householdB, {
+      method: "POST",
+      body: JSON.stringify({ status: "excluded" }),
+    });
+    assert.equal(crossHouseholdReview.status, 400);
+
+    const viewerDecision = await request(`/financial-transactions/${importedRows[0].id}/review`, fixture.viewerA, fixture.householdA, {
+      method: "POST",
+      body: JSON.stringify({ status: "approved", categoryId: categoryA.id }),
+    });
+    assert.equal(viewerDecision.status, 403);
+
+    const categorize = await request(`/financial-transactions/${importedRows[0].id}/review`, fixture.userA, fixture.householdA, {
+      method: "POST",
+      body: JSON.stringify({ status: "needs_review", categoryId: categoryA.id, note: "Dining receipt confirmed by household." }),
+    });
+    assert.equal(categorize.status, 200);
+    const categorizedBody = await categorize.json() as { reviewStatus: string; categoryId: string; reviewNote: string; reviewedBy: string };
+    assert.deepEqual(categorizedBody, {
+      reviewStatus: "needs_review",
+      categoryId: categoryA.id,
+      reviewNote: "Dining receipt confirmed by household.",
+      reviewedBy: fixture.userA,
+    });
+    const heldBudget = await request("/budget", fixture.userA, fixture.householdA);
+    assert.equal(heldBudget.status, 200);
+    assert.equal((await heldBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "0.00");
+
+    const repeatedCategorize = await request(`/financial-transactions/${importedRows[0].id}/review`, fixture.userA, fixture.householdA, {
+      method: "POST",
+      body: JSON.stringify({ status: "needs_review", categoryId: categoryA.id, note: "Dining receipt confirmed by household." }),
+    });
+    assert.equal(repeatedCategorize.status, 200);
+    const reviewAuditBeforeApproval = await database.db
+      .select({ eventType: database.auditEvents.eventType })
+      .from(database.auditEvents)
+      .where(and(eq(database.auditEvents.householdId, fixture.householdA), eq(database.auditEvents.entityId, importedRows[0].id)));
+    assert.equal(reviewAuditBeforeApproval.filter((event) => event.eventType === "finance_transaction_reviewed").length, 1);
+
+    const approve = await request(`/financial-transactions/${importedRows[0].id}/review`, fixture.userA, fixture.householdA, {
+      method: "POST",
+      body: JSON.stringify({ status: "approved", categoryId: categoryA.id, note: "Ready for planning." }),
+    });
+    assert.equal(approve.status, 200);
+    const approvedBody = await approve.json() as { reviewStatus: string; excludedFromBudget: boolean; reviewedBy: string };
+    assert.deepEqual(approvedBody, { reviewStatus: "approved", excludedFromBudget: false, reviewedBy: fixture.userA });
+
+    const clearedQueue = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
+    assert.deepEqual((await clearedQueue.json() as { transactions: unknown[] }).transactions, []);
+    const appliedBudget = await request("/budget", fixture.userA, fixture.householdA);
+    assert.equal((await appliedBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "4.25");
+    const persistedReview = await database.db
+      .select({ reviewStatus: database.financeTransactions.reviewStatus, categoryId: database.financeTransactions.categoryId, excludedFromBudget: database.financeTransactions.excludedFromBudget, metadata: database.financeTransactions.metadata })
+      .from(database.financeTransactions)
+      .where(eq(database.financeTransactions.id, importedRows[0].id));
+    assert.equal(persistedReview[0].reviewStatus, "approved");
+    assert.equal(persistedReview[0].categoryId, categoryA.id);
+    assert.equal(persistedReview[0].excludedFromBudget, false);
+    assert.deepEqual((persistedReview[0].metadata as { review: { reviewedBy: string } }).review.reviewedBy, fixture.userA);
+
+    const additionalImport = await request(`/financial-accounts/${accountA.id}/import-csv`, fixture.userA, fixture.householdA, {
+      method: "POST",
+      body: JSON.stringify({
+        csv: [
+          "date,description,amount",
+          "2026-09-02,Internal transfer,-100.00",
+          "2026-09-02,Consulting reimbursement,-80.00",
+          "2026-09-03,Office supplies,-25.00",
+        ].join("\n"),
+      }),
+    });
+    assert.deepEqual(await additionalImport.json(), { imported: 3, skippedDuplicates: 0, readOnly: true });
+    const additionalRows = await database.db
+      .select({ id: database.financeTransactions.id })
+      .from(database.financeTransactions)
+      .where(and(
+        eq(database.financeTransactions.accountId, accountA.id),
+        ne(database.financeTransactions.reviewStatus, "approved"),
+      ));
+    assert.equal(additionalRows.length, 3);
+    for (const [row, status] of additionalRows.map((row, index) => [row, (["possible_transfer", "possible_business", "excluded"] as const)[index]] as const)) {
+      const decision = await request(`/financial-transactions/${row.id}/review`, fixture.userA, fixture.householdA, {
+        method: "POST",
+        body: JSON.stringify({ status }),
+      });
+      assert.equal(decision.status, 200);
+    }
+    const finalQueue = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
+    assert.deepEqual((await finalQueue.json() as { transactions: unknown[] }).transactions, []);
+    const additionalPersisted = await database.db
+      .select({ reviewStatus: database.financeTransactions.reviewStatus, businessTag: database.financeTransactions.businessTag, excludedFromBudget: database.financeTransactions.excludedFromBudget })
+      .from(database.financeTransactions)
+      .where(inArray(database.financeTransactions.id, additionalRows.map((row) => row.id)));
+    assert.deepEqual(additionalPersisted.map((row) => row.reviewStatus).sort(), ["excluded", "possible_business", "possible_transfer"]);
+    assert.equal(additionalPersisted.find((row) => row.reviewStatus === "possible_business")?.businessTag, "business");
+    assert.equal(additionalPersisted.every((row) => row.excludedFromBudget), true);
 
     const financeAudit = await database.db
       .select({ actor: database.auditEvents.actor, eventType: database.auditEvents.eventType })

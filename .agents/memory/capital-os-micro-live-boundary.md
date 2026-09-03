@@ -22,3 +22,18 @@ explicit, current, and auditable.
 **How to apply:** Register providers in deployment code, not request payloads
 or venue rows. Bind adapters to a dedicated Micro-Live account and reject
 unallowlisted assets/markets before returning venue state to the OMS.
+
+Certification also requires an explicit operator evidence manifest for the one
+selected provider venue; missing evidence must leave the status `DISABLED`.
+Provider capabilities for withdrawals, transfers, administration, and security
+changes are rejected at adapter construction, and a first fill holds new
+orders until clean reconciliation and explicit human approval.
+
+**Why:** Repository code and rehearsal tests cannot prove provider health,
+durable restart behavior, authenticated browser arming, or a real first fill.
+Treating those as passed from static implementation would create false
+real-money certification.
+
+**How to apply:** Keep provider evidence external and reference-only, never
+store credentials or fabricate fills/funding, and keep Limited-Live locked even
+when Micro-Live evidence is complete.

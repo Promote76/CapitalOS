@@ -9,6 +9,8 @@ import {
   defaultMicroLivePolicy,
   duplicateClientOrderIds,
   evaluateLiveEnablement,
+  firstFillHoldDecision,
+  isMicroLiveExecutionStatus,
   guardianDecision,
   recoverExecutionState,
   reconcileExecutionState,
@@ -49,6 +51,7 @@ function validValidationInput(overrides: Partial<OrderValidationInput> = {}): Or
     cancelsInMinute: 0,
     notionalInMinuteCents: 0,
     positionChangeInMinuteCents: 0,
+    authorizationExpiresAt: new Date(Date.now() + 60_000),
     ...overrides,
   };
 }
@@ -149,6 +152,7 @@ test("server-configured venue adapter is isolated, allowlisted, and credential-s
     spot: true, derivative: false, predictionMarket: false, onChain: false,
     makerOrders: true, marketOrders: true, postOnly: true, reduceOnly: false,
     clientOrderIds: true, bulkCancel: true, positionApi: true, balanceApi: true,
+    withdrawals: false, transfers: false, administration: false, securityChanges: false,
   };
   let connectedWith: { credential: string; accountId: string } | null = null;
   let placeCalls = 0;
@@ -176,7 +180,8 @@ test("server-configured venue adapter is isolated, allowlisted, and credential-s
   };
   registerReviewedVenueAdapter({
     adapterType: "reviewed-exchange",
-    reviewReference: "review://capital-os/security/test-registration",
+    securityReviewReference: "review://capital-os/security/test-registration",
+    jurisdictionReviewReference: "review://capital-os/jurisdiction/test-registration",
     create: (options) => new ServerConfiguredVenueAdapter(options),
   });
   const adapter = new ServerConfiguredVenueAdapter({
@@ -208,6 +213,57 @@ test("server-configured venue adapter is isolated, allowlisted, and credential-s
   await adapter.placeOrder({ clientOrderId: "client-2", marketId: "BTC-USD", side: "buy", orderType: "market", quantity: 1 });
   assert.equal(placeCalls, 1);
   await adapter.disconnect();
+});
+
+test("provider registration requires both reviews and rejects privileged venue capabilities", () => {
+  assert.throws(() => registerReviewedVenueAdapter({
+    adapterType: "reviewed-exchange",
+    securityReviewReference: "review://capital-os/security/duplicate",
+    jurisdictionReviewReference: "review://capital-os/jurisdiction/duplicate",
+    create: (options) => new ServerConfiguredVenueAdapter(options),
+  }), /unique security and jurisdiction reviews/);
+  assert.throws(() => registerReviewedVenueAdapter({
+    adapterType: "security-only-provider",
+    securityReviewReference: "review://capital-os/security/security-only",
+    jurisdictionReviewReference: "review://capital-os/security/wrong-kind",
+    create: (options) => new ServerConfiguredVenueAdapter(options),
+  }), /security and jurisdiction reviews/);
+
+  const capabilities: VenueCapability = {
+    spot: true, derivative: false, predictionMarket: false, onChain: false,
+    makerOrders: true, marketOrders: true, postOnly: true, reduceOnly: false,
+    clientOrderIds: true, bulkCancel: true, positionApi: true, balanceApi: true,
+    withdrawals: true, transfers: false, administration: false, securityChanges: false,
+  };
+  assert.throws(() => new ServerConfiguredVenueAdapter({
+    name: "Privileged test venue",
+    capabilities,
+    account: {
+      venueId: "venue-1",
+      accountId: "micro-live-account",
+      capitalClass: "micro_live",
+      householdCapitalAccessible: false,
+      protectedCapitalAccessible: false,
+      allowedAssets: ["USD"],
+    },
+    allowedMarkets: ["BTC-USD"],
+    credentialsReference: "secret://capital-os/venues/test-venue",
+    resolveCredential: async () => "server-only-credential",
+    transport: {
+      async connect() {},
+      async disconnect() {},
+      async healthCheck() { return { status: "HEALTHY" as const, lastExchangeTimestamp: null, lastReceiveTimestamp: null, sequence: 1 }; },
+      async getOrderBook() { return { bid: 99, ask: 101, depth: 10 }; },
+      async getBalances() { return []; },
+      async getPositions() { return []; },
+      async getOpenOrders() { return []; },
+      async getRecentFills() { return []; },
+      async placeOrder() { throw new Error("not used"); },
+      async cancelOrder() { throw new Error("not used"); },
+      async cancelAllOrders() {},
+      async getOrder() { return null; },
+    },
+  }), /outside the reviewed Micro-Live boundary/);
 });
 
 test("live enablement cannot pass when household or protected capital is reachable", () => {
@@ -242,10 +298,49 @@ test("pre-trade validation blocks stale data and oversized orders", () => {
     strategyExposureCents: 0, venueExposureCents: 0, totalActiveExposureCents: 0, dailyLossCents: 0,
     drawdownBps: 0, inventoryCents: 0, ordersInSecond: 0, ordersInMinute: 0, cancelsInMinute: 0,
     notionalInMinuteCents: 0, positionChangeInMinuteCents: 0,
+    authorizationExpiresAt: new Date(Date.now() + 60_000),
   });
   assert.equal(result.accepted, false);
   assert.ok(result.failures.some((failure) => failure.includes("stale")));
   assert.ok(result.failures.some((failure) => failure.includes("individual order")));
+});
+
+test("live order validation rejects expired authorization and keeps Limited-Live locked", () => {
+  assert.equal(isMicroLiveExecutionStatus("MICRO_LIVE_ARMED"), true);
+  assert.equal(isMicroLiveExecutionStatus("LIMITED_LIVE_ACTIVE"), false);
+  const expired = validatePreTrade(defaultMicroLivePolicy, validValidationInput({
+    authorizationExpiresAt: new Date(Date.now() - 1),
+  }));
+  assert.equal(expired.accepted, false);
+  assert.ok(expired.failures.includes("human authorization is missing or expired"));
+  const limited = validatePreTrade(defaultMicroLivePolicy, validValidationInput({
+    liveStatus: "LIMITED_LIVE_ACTIVE",
+  }));
+  assert.equal(limited.accepted, false);
+  assert.ok(limited.failures.includes("Limited-Live is locked and cannot submit orders"));
+});
+
+test("first fill always holds new orders until clean reconciliation and explicit approval", () => {
+  assert.equal(firstFillHoldDecision({
+    fillObserved: false,
+    reconciliationClean: true,
+    explicitResumeApproval: false,
+  }).allowNewOrders, true);
+  assert.equal(firstFillHoldDecision({
+    fillObserved: true,
+    reconciliationClean: false,
+    explicitResumeApproval: true,
+  }).status, "LOCKED");
+  assert.equal(firstFillHoldDecision({
+    fillObserved: true,
+    reconciliationClean: true,
+    explicitResumeApproval: false,
+  }).status, "HOLD");
+  assert.equal(firstFillHoldDecision({
+    fillObserved: true,
+    reconciliationClean: true,
+    explicitResumeApproval: true,
+  }).allowNewOrders, true);
 });
 
 test("OMS transitions model partial fills and cancel/fill races", () => {

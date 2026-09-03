@@ -20,6 +20,7 @@ import {
   calculateLiveReadiness,
   defaultMicroLivePolicy,
   evaluateLiveEnablement,
+  firstFillHoldDecision,
   guardianDecision,
   recoverExecutionState,
   reconcileExecutionState,
@@ -65,7 +66,20 @@ async function ensureMicroLiveSeed() {
         name: "Simulated venue adapter",
         adapterType: "simulated",
         status: "Approved for Paper",
-        capabilities: { spot: true, makerOrders: true, marketOrders: true, postOnly: true, clientOrderIds: true, bulkCancel: true, balanceApi: true, positionApi: true },
+        capabilities: {
+          spot: true,
+          makerOrders: true,
+          marketOrders: true,
+          postOnly: true,
+          clientOrderIds: true,
+          bulkCancel: true,
+          balanceApi: true,
+          positionApi: true,
+          withdrawals: false,
+          transfers: false,
+          administration: false,
+          securityChanges: false,
+        },
         jurisdictionConfirmed: false,
         integrationApproved: false,
         termsReviewed: false,
@@ -310,6 +324,11 @@ export async function getMicroLiveSnapshot() {
     db.select().from(positionSnapshots).where(eq(positionSnapshots.householdId, session.householdId)).orderBy(desc(positionSnapshots.capturedAt)).limit(50),
     db.select().from(fillSnapshots).where(eq(fillSnapshots.householdId, session.householdId)).orderBy(desc(fillSnapshots.capturedAt)).limit(50),
   ]);
+  const firstFillHold = firstFillHoldDecision({
+    fillObserved: fills.some((fill) => fill.sessionId === session.id && fill.source === "VENUE"),
+    reconciliationClean: reconciliation.clean,
+    explicitResumeApproval: false,
+  });
   const incidents = allIncidents.map((incident) => toIncident(incident, reviews, requirements));
   const sessionIntents = await db.select({ id: orderIntents.id }).from(orderIntents).where(and(
     eq(orderIntents.sessionId, session.id),
@@ -362,7 +381,8 @@ export async function getMicroLiveSnapshot() {
     incidentReviews: reviews.map((review) => toIncidentReview(review, requirements)),
     reactivationRequirements: requirements,
     events,
-    safety: { liveOrderTransmissionEnabled: false, householdCapitalAccessible: false, protectedCapitalAccessible: false, autoScale: false, aiCanPlaceOrders: false, aiCanChangeRisk: false },
+    firstFillHold,
+    safety: { liveOrderTransmissionEnabled: false, householdCapitalAccessible: false, protectedCapitalAccessible: false, autoScale: false, aiCanPlaceOrders: false, aiCanChangeRisk: false, firstFillHoldActive: !firstFillHold.allowNewOrders },
   };
 }
 
@@ -507,6 +527,13 @@ export async function approveMicroLiveVenue(
     eq(venueRegistry.householdId, householdId),
   )).limit(1);
   if (!venue) throw new GovernanceError("INVALID_STATE", "Venue is not registered for this household");
+  const [otherApprovedVenue] = await db.select({ id: venueRegistry.id }).from(venueRegistry).where(and(
+    eq(venueRegistry.householdId, householdId),
+    eq(venueRegistry.integrationApproved, true),
+  )).limit(1);
+  if (otherApprovedVenue && otherApprovedVenue.id !== venueId) {
+    throw new GovernanceError("INVALID_STATE", "Only one provider venue may be approved for Micro-Live");
+  }
 
   const approval = evaluateVenueApproval({
     adapterType: venue.adapterType,
@@ -584,6 +611,14 @@ export async function armMicroLive(actor: Actor, venueId: string) {
   const snapshot = await getMicroLiveSnapshot();
   const venue = snapshot.venues.find((candidate) => candidate.id === venueId);
   if (!venue) throw new GovernanceError("INVALID_STATE", "Venue is not registered for this household");
+  const providerVenues = snapshot.venues.filter((candidate) =>
+    candidate.adapterType !== "simulated" && candidate.adapterType !== "provider-neutral");
+  if (providerVenues.length !== 1 || providerVenues[0]?.id !== venueId) {
+    throw new GovernanceError("INVALID_STATE", "Micro-Live requires exactly one selected provider venue");
+  }
+  if (!snapshot.firstFillHold.allowNewOrders) {
+    throw new GovernanceError("INVALID_STATE", "First-fill review hold must be explicitly cleared before re-arming");
+  }
 
   const approval = venue.approval;
   const enablement = evaluateLiveEnablement({

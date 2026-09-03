@@ -14,6 +14,10 @@ export type VenueCapability = {
   bulkCancel: boolean;
   positionApi: boolean;
   balanceApi: boolean;
+  withdrawals: boolean;
+  transfers: boolean;
+  administration: boolean;
+  securityChanges: boolean;
 };
 
 export type VenueBalance = { asset: string; available: number; committed: number };
@@ -132,7 +136,11 @@ function assertCapabilityBoundary(capabilities: VenueCapability) {
     capabilities.onChain ||
     !capabilities.clientOrderIds ||
     !capabilities.balanceApi ||
-    !capabilities.positionApi
+    !capabilities.positionApi ||
+    capabilities.withdrawals ||
+    capabilities.transfers ||
+    capabilities.administration ||
+    capabilities.securityChanges
   ) {
     throw new Error("Venue adapter capabilities are outside the reviewed Micro-Live boundary");
   }
@@ -277,7 +285,8 @@ export class ServerConfiguredVenueAdapter implements VenueAdapter {
 
 export type ReviewedVenueAdapterRegistration = {
   adapterType: string;
-  reviewReference: string;
+  securityReviewReference: string;
+  jurisdictionReviewReference: string;
   create: (options: ServerConfiguredVenueAdapterOptions) => VenueAdapter;
 };
 
@@ -286,16 +295,20 @@ const reviewedVenueAdapterRegistry = new Map<string, ReviewedVenueAdapterRegistr
 /**
  * This registry is intentionally empty in the application. A real provider
  * must be added in a separately reviewed deployment change, not by changing a
- * database adapterType or posting an approval request.
+ * database adapterType or posting an approval request. Registration requires
+ * both independent review references so a provider cannot become executable
+ * after only a security review.
  */
 export function registerReviewedVenueAdapter(registration: ReviewedVenueAdapterRegistration) {
   if (
     !registration.adapterType.trim() ||
     registration.adapterType === "simulated" ||
     registration.adapterType === "provider-neutral" ||
-    !isIndependentReviewReference(registration.reviewReference, "security")
+    !isIndependentReviewReference(registration.securityReviewReference, "security") ||
+    !isIndependentReviewReference(registration.jurisdictionReviewReference, "jurisdiction") ||
+    reviewedVenueAdapterRegistry.has(registration.adapterType)
   ) {
-    throw new Error("Venue adapter registration requires an independent security review");
+    throw new Error("Venue adapter registration requires unique security and jurisdiction reviews");
   }
   reviewedVenueAdapterRegistry.set(registration.adapterType, registration);
 }
@@ -404,6 +417,7 @@ export class SimulatedVenueAdapter implements VenueAdapter {
     spot: true, derivative: false, predictionMarket: false, onChain: false,
     makerOrders: true, marketOrders: true, postOnly: true, reduceOnly: true,
     clientOrderIds: true, bulkCancel: true, positionApi: true, balanceApi: true,
+    withdrawals: false, transfers: false, administration: false, securityChanges: false,
   };
 
   private health: VenueHealth;

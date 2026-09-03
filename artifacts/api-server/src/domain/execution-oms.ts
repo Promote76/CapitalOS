@@ -143,6 +143,27 @@ export function buildClientOrderId(input: { strategyId: string; venueId: string;
   return `cos_${compact(input.strategyId)}_${compact(input.venueId)}_${compact(input.marketId)}_${compact(input.quoteCycle)}_${compact(input.intent)}`.slice(0, 96);
 }
 
+export function isMicroLiveExecutionStatus(status: LiveStatus): boolean {
+  return status === "MICRO_LIVE_ARMED" || status === "MICRO_LIVE_ACTIVE";
+}
+
+export function firstFillHoldDecision(input: {
+  fillObserved: boolean;
+  reconciliationClean: boolean;
+  explicitResumeApproval: boolean;
+}) {
+  if (!input.fillObserved) {
+    return { status: "NOT_TRIGGERED" as const, allowNewOrders: true, reason: "No first fill has been observed" };
+  }
+  if (!input.reconciliationClean) {
+    return { status: "LOCKED" as const, allowNewOrders: false, reason: "First-fill reconciliation is not clean" };
+  }
+  if (!input.explicitResumeApproval) {
+    return { status: "HOLD" as const, allowNewOrders: false, reason: "Explicit human approval is required after the first fill" };
+  }
+  return { status: "RESUMED" as const, allowNewOrders: true, reason: "First-fill review was explicitly approved" };
+}
+
 export type OrderValidationInput = {
   liveStatus: LiveStatus;
   strategyAuthorized: boolean;
@@ -171,11 +192,25 @@ export type OrderValidationInput = {
   lossPerMinuteCents?: number;
   sessionLossCents?: number;
   protectedCapitalAttempted?: boolean;
+  authorizationExpiresAt?: string | Date | null;
+  now?: Date;
+  firstFillHoldActive?: boolean;
 };
 
 export function validatePreTrade(policy: MicroLivePolicy, input: OrderValidationInput) {
   const failures: string[] = [];
-  if (input.liveStatus !== "MICRO_LIVE_ACTIVE" && input.liveStatus !== "MICRO_LIVE_ARMED") failures.push("live status is not armed or active");
+  if (!isMicroLiveExecutionStatus(input.liveStatus)) {
+    failures.push(input.liveStatus.startsWith("LIMITED_LIVE_")
+      ? "Limited-Live is locked and cannot submit orders"
+      : "live status is not armed or active");
+  }
+  if (isMicroLiveExecutionStatus(input.liveStatus)) {
+    const expiresAt = input.authorizationExpiresAt
+      ? new Date(input.authorizationExpiresAt).getTime()
+      : Number.NaN;
+    const now = (input.now ?? new Date()).getTime();
+    if (!Number.isFinite(expiresAt) || expiresAt <= now) failures.push("human authorization is missing or expired");
+  }
   if (!input.strategyAuthorized) failures.push("strategy is not authorized");
   if (!input.venueAuthorized) failures.push("venue is not authorized");
   if (!input.marketAuthorized) failures.push("market is not authorized");
@@ -202,6 +237,7 @@ export function validatePreTrade(policy: MicroLivePolicy, input: OrderValidation
   if ((input.lossPerMinuteCents ?? 0) >= policy.maxLossPerMinuteCents) failures.push("loss-per-minute velocity limit has been reached");
   if ((input.sessionLossCents ?? 0) >= policy.sessionLossLimitCents) failures.push("session loss limit has been reached");
   if (input.protectedCapitalAttempted) failures.push("protected capital is not available to experimental strategies");
+  if (input.firstFillHoldActive) failures.push("first-fill review hold is active");
   return { accepted: failures.length === 0, failures, state: failures.length === 0 ? "VALIDATED" as const : "REJECTED" as const };
 }
 

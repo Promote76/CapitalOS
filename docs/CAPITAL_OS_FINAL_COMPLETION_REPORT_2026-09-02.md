@@ -320,7 +320,7 @@ existing internal certification as authorization for live trading.
 | Scope | Certification status | Current state | Evidence boundary |
 |---|---|---|---|
 | Internal Core Certification | **PASS** | Ready for controlled internal use | Seven in-scope P0 gates remain certified; this scope is family-capital-only and non-executing |
-| Micro-Live Certification | **BLOCKED** | **DISABLED** | The server-side rehearsal controls, OMS, Guardian, reconciliation, incident, and capital-isolation boundaries are implemented; no reviewed real venue, credential workflow, authenticated arming evidence, durable worker restart evidence, or real fills exist |
+| Micro-Live Certification | **BLOCKED** | **DISABLED** | The server-side rehearsal controls, OMS, Guardian, reconciliation, incident, and capital-isolation boundaries are implemented; no independently recorded provider evidence manifest, reviewed real venue, credential workflow, authenticated arming evidence, durable worker restart evidence, or real fills exist |
 | Limited-Live Certification | **NOT CERTIFIED** | **LOCKED** | Graduation evidence is absent; no automatic scaling or promotion is permitted |
 
 The controlled Micro-Live envelope is capped at $20 total capital, $10 venue
@@ -330,6 +330,16 @@ soft/hard drawdown. Leverage, withdrawals, automatic refill, AI execution, and
 automation-driven strategy discretion remain disabled. The new
 `pnpm run certify:micro-live` command reports every ML-01 through ML-20 gate and
 exits fail-closed when a critical gate is blocked or failed.
+
+The certification command accepts only an operator-supplied, venue-bound
+evidence manifest via `MICRO_LIVE_CERTIFICATION_EVIDENCE`. The manifest must
+prove exactly one reviewed provider venue, one dedicated Micro-Live account,
+manual funding of the approved envelope, read-only transport, durable restart
+recovery, authenticated arming, and first-fill hold behavior. It must also
+state `limitedLiveStatus: LOCKED`. The manifest contains evidence references,
+not credentials or fabricated fills; without it the command remains
+`BLOCKED` and Micro-Live remains `DISABLED`. See
+`docs/MICRO_LIVE_CERTIFICATION_EVIDENCE.md`.
 
 No real order, fill, venue credential, or funding action is claimed in this
 report. Micro-Live remains disabled until a separately reviewed provider

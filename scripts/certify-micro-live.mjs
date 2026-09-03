@@ -31,13 +31,48 @@ function check(id, title, passed, reason, status = passed ? "PASS" : "BLOCKED") 
   if (status === "FAIL") failures.push(`${id} ${title}: ${reason}`);
 }
 
+const MAX_EVIDENCE_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+const MAX_FUTURE_SKEW_MS = 5 * 60 * 1000;
+const retainedEvidenceReferencePattern = /^evidence:\/\/capital-os\/[A-Za-z0-9_-]{8,128}$/;
+const credentialReferencePattern = /^secret:\/\/capital-os\/venues\/[A-Za-z0-9_-]{8,128}$/;
+const reviewReferencePatterns = {
+  security: /^review:\/\/capital-os\/security\/[A-Za-z0-9_-]{8,128}$/,
+  jurisdiction: /^review:\/\/capital-os\/jurisdiction\/[A-Za-z0-9_-]{8,128}$/,
+};
+
+function nonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function currentTimestamp(value, now = Date.now()) {
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) &&
+    timestamp <= now + MAX_FUTURE_SKEW_MS &&
+    timestamp >= now - MAX_EVIDENCE_AGE_MS;
+}
+
+function retainedEvidenceReference(value) {
+  return typeof value === "string" &&
+    value.length <= 160 &&
+    retainedEvidenceReferencePattern.test(value);
+}
+
+function currentReview(review, kind, approvingActorId, now = Date.now()) {
+  return Boolean(review) &&
+    reviewReferencePatterns[kind].test(review.reference ?? "") &&
+    nonEmptyString(review.reviewerId) &&
+    review.reviewerId !== approvingActorId &&
+    currentTimestamp(review.reviewedAt, now) &&
+    Number.isFinite(Date.parse(review.expiresAt)) &&
+    Date.parse(review.expiresAt) > now &&
+    Date.parse(review.expiresAt) <= now + 366 * 24 * 60 * 60 * 1000;
+}
+
 function evidencePass(id) {
   const gate = certificationEvidence?.gates?.[id];
   return gate?.status === "PASS" &&
-    typeof gate.evidenceRef === "string" &&
-    gate.evidenceRef.trim().length > 0 &&
-    typeof gate.observedAt === "string" &&
-    !Number.isNaN(Date.parse(gate.observedAt));
+    retainedEvidenceReference(gate.evidenceRef) &&
+    currentTimestamp(gate.observedAt);
 }
 
 function evidenceFailureStatus() {
@@ -91,18 +126,41 @@ const registryEmptyByDefault = adapters.includes("const reviewedVenueAdapterRegi
 const hasTest = source("artifacts/api-server/src/domain/execution-oms.test.ts").length > 0 && apiTests;
 const reportKeepsLimitedLocked = report.includes("LIMITED-LIVE") || report.includes("Limited-Live");
 const venueEvidence = certificationEvidence?.venue;
+const manifestShape = Boolean(
+  certificationEvidence &&
+  certificationEvidence.manifestVersion === 1 &&
+  certificationEvidence.isolatedRun === true &&
+  nonEmptyString(certificationEvidence.runId),
+);
 const exactlyOneVenue = Array.isArray(certificationEvidence?.venues) &&
   certificationEvidence.venues.length === 1 &&
   venueEvidence?.id === certificationEvidence.venues[0]?.id &&
-  !["simulated", "provider-neutral"].includes(venueEvidence?.adapterType);
+  nonEmptyString(venueEvidence?.name) &&
+  nonEmptyString(venueEvidence?.providerId) &&
+  nonEmptyString(venueEvidence?.adapterType) &&
+  !["simulated", "provider-neutral"].includes(venueEvidence?.adapterType) &&
+  !venueEvidence.adapterType.includes("simulated") &&
+  !venueEvidence.adapterType.includes("provider-neutral");
+const currentSecurityReview = currentReview(
+  venueEvidence?.securityReview,
+  "security",
+  venueEvidence?.approvingActorId,
+);
+const currentJurisdictionReview = currentReview(
+  venueEvidence?.jurisdictionReview,
+  "jurisdiction",
+  venueEvidence?.approvingActorId,
+);
 const independentlyReviewedVenue = exactlyOneVenue &&
   venueEvidence.adapterRegistered === true &&
-  typeof venueEvidence.securityReviewReference === "string" &&
-  venueEvidence.securityReviewReference.startsWith("review://capital-os/security/") &&
-  typeof venueEvidence.jurisdictionReviewReference === "string" &&
-  venueEvidence.jurisdictionReviewReference.startsWith("review://capital-os/jurisdiction/") &&
-  venueEvidence.securityReviewReference !== venueEvidence.jurisdictionReviewReference;
+  currentSecurityReview &&
+  currentJurisdictionReview &&
+  venueEvidence.securityReviewReference === venueEvidence.securityReview?.reference &&
+  venueEvidence.jurisdictionReviewReference === venueEvidence.jurisdictionReview?.reference &&
+  venueEvidence.securityReviewReference !== venueEvidence.jurisdictionReviewReference &&
+  venueEvidence.securityReview?.reviewerId !== venueEvidence.jurisdictionReview?.reviewerId;
 const leastPrivilegeVenue = independentlyReviewedVenue &&
+  credentialReferencePattern.test(venueEvidence.credentialsReference ?? "") &&
   venueEvidence.readOnlyTransportVerified === true &&
   venueEvidence.validationPhaseVerified === true &&
   venueEvidence.capabilities?.withdrawals === false &&
@@ -112,14 +170,15 @@ const leastPrivilegeVenue = independentlyReviewedVenue &&
 const isolatedAccount = venueEvidence?.account?.capitalClass === "micro_live" &&
   typeof venueEvidence?.account?.accountId === "string" &&
   venueEvidence.account.accountId.trim().length > 0 &&
+  venueEvidence.account.dedicated === true &&
   venueEvidence.account.householdCapitalAccessible === false &&
   venueEvidence.account.protectedCapitalAccessible === false;
 const boundedFunding = venueEvidence?.funding?.dedicated === true &&
+  venueEvidence.funding.method === "manual" &&
   venueEvidence.funding.amountCents === 2000 &&
-  typeof venueEvidence.funding.evidenceRef === "string" &&
-  venueEvidence.funding.evidenceRef.trim().length > 0;
-const oneStrategy = typeof venueEvidence?.strategy?.id === "string" &&
-  typeof venueEvidence.strategy?.versionId === "string";
+  retainedEvidenceReference(venueEvidence.funding.evidenceRef);
+const oneStrategy = nonEmptyString(venueEvidence?.strategy?.id) &&
+  nonEmptyString(venueEvidence.strategy?.versionId);
 const explicitAllowlist = Array.isArray(venueEvidence?.marketAllowlist) &&
   venueEvidence.marketAllowlist.length > 0 &&
   venueEvidence.marketAllowlist.every((market) => typeof market === "string" && market.trim().length > 0);
@@ -127,14 +186,17 @@ const limitedLiveLocked = certificationEvidence?.limitedLiveStatus === "LOCKED";
 const firstFillHoldEvidence = certificationEvidence?.firstFillHold?.required === true &&
   certificationEvidence.firstFillHold.verified === true &&
   certificationEvidence.firstFillHold.realFillObserved === true &&
+  Number.isInteger(certificationEvidence?.fillCount) &&
+  certificationEvidence.fillCount >= 1 &&
   Number.isInteger(certificationEvidence.firstFillHold.notionalCents) &&
   certificationEvidence.firstFillHold.notionalCents > 0 &&
   certificationEvidence.firstFillHold.notionalCents <= 100 &&
   certificationEvidence.firstFillHold.marketAllowlisted === true &&
-  typeof certificationEvidence.firstFillHold.evidenceRef === "string" &&
-  certificationEvidence.firstFillHold.evidenceRef.trim().length > 0;
+  retainedEvidenceReference(certificationEvidence.firstFillHold.evidenceRef) &&
+  currentTimestamp(certificationEvidence.firstFillHold.observedAt);
 const providerEvidenceReady = Boolean(
   certificationEvidence &&
+  manifestShape &&
   leastPrivilegeVenue &&
   isolatedAccount &&
   boundedFunding &&
@@ -144,7 +206,7 @@ const providerEvidenceReady = Boolean(
   firstFillHoldEvidence,
 );
 const completeProviderEvidence = providerEvidenceReady &&
-  ["ML-02", "ML-03", "ML-09", "ML-13", "ML-16", "ML-17", "ML-20"].every(evidencePass);
+  ["ML-02", "ML-03", "ML-07", "ML-09", "ML-12", "ML-13", "ML-16", "ML-17", "ML-20"].every(evidencePass);
 
 check("ML-01", "Capital Isolation", boundedPolicy && service.includes("householdCapitalAccessible: false") && service.includes("protectedCapitalAccessible: false"),
   "Server policy and execution boundary keep the Micro-Live envelope separate from household and protected capital.");
@@ -229,11 +291,11 @@ console.log(`RECONCILIATION: ${checks.find((gate) => gate.id === "ML-12")?.statu
 console.log(`RESTART RECOVERY: ${checks.find((gate) => gate.id === "ML-13")?.status === "PASS" ? "PASS" : "BLOCKED"}`);
 console.log(`CAPITAL ISOLATION: ${checks.find((gate) => gate.id === "ML-01")?.status === "PASS" ? "PASS" : "FAIL"}`);
 console.log(`CREDENTIAL PERMISSIONS: ${checks.find((gate) => gate.id === "ML-02")?.status}`);
-console.log(`VENUE: ${exactlyOneVenue ? `${venueEvidence.name ?? venueEvidence.adapterType} (${venueEvidence.adapterType})` : "NOT CONFIGURED"}`);
+console.log(`VENUE: ${completeProviderEvidence && exactlyOneVenue ? `${venueEvidence.name} (${venueEvidence.adapterType})` : "NOT CONFIGURED"}`);
 console.log("FIRST REAL ORDER: NOT SENT");
-console.log(`MICRO-LIVE FILL COUNT: ${certificationEvidence?.fillCount ?? 0}`);
+console.log(`MICRO-LIVE FILL COUNT: ${completeProviderEvidence ? certificationEvidence.fillCount : 0}`);
 console.log("DAILY P&L: N/A");
-console.log(`OPEN INCIDENTS: ${certificationEvidence?.openIncidentCount ?? "N/A — no certified venue session exists"}`);
+console.log(`OPEN INCIDENTS: ${completeProviderEvidence ? certificationEvidence.openIncidentCount ?? "N/A" : "N/A — no certified venue session exists"}`);
 console.log("LIMITED LIVE: LOCKED");
 console.log("LIVE GRADUATION: NOT ELIGIBLE");
 console.log(`INTERNAL CERTIFICATION EXIT: ${internalCore ? 0 : 2}`);

@@ -1,0 +1,2650 @@
+Replit Prompt — Capital OS Debt, Credit & Financing Engine v1
+
+Continue working on the existing Capital OS repository.
+
+Use:
+
+docs/CAPITAL_OS_FINAL_COMPLETION_REPORT_2026-09-02.md
+
+as the authoritative certification record.
+
+Capital OS currently operates under:
+
+INTERNAL-ONLY
+NON-PUBLIC
+NON-EXECUTING
+FAMILY-CAPITAL SCOPE
+
+Do not weaken that boundary.
+
+This sprint introduces the next approved product module:
+
+DEBT / CREDIT / FINANCING ENGINE v1
+
+This is an:
+
+ADVISORY
+PLANNING
+READINESS
+MODELING
+DOCUMENTATION
+DECISION-SUPPORT
+
+module.
+
+It is NOT:
+
+a lender
+a loan broker
+a credit bureau
+a loan application portal
+an autonomous financing system
+a money-movement system
+
+---
+
+1. PRE-BUILD SAFETY GATE
+
+Before changing the schema or UI, run the existing Capital OS internal certification baseline.
+
+Required:
+
+pnpm run certify:production-candidate
+
+Expected:
+
+all currently in-scope P0 gates PASS
+
+If any previously certified P0 fails:
+
+STOP FEATURE DEVELOPMENT
+INTERNAL STATUS = SUSPENDED
+
+Fix the regression before building this module.
+
+Do not trade a certified security boundary for new functionality.
+
+---
+
+2. P1 READINESS CHECK
+
+Inspect the current P1 reliability state.
+
+Debt/Credit development may proceed only if:
+
+tenant isolation remains certified
+role authorization remains certified
+actor attribution remains certified
+keyed-write idempotency remains certified
+browser auth lifecycle remains certified
+no unresolved CRITICAL financial-integrity defect exists
+
+P1 items may remain open if they do not invalidate advisory financing functionality.
+
+Record the decision in the existing completion report.
+
+---
+
+3. CORE FINANCING PRINCIPLES
+
+Capital OS must encode these distinctions everywhere:
+
+Credit Score
+≠
+Creditworthiness
+≠
+Lender Approval
+
+Prequalification
+≠
+Preapproval
+≠
+Conditional Approval
+≠
+Final Approval
+≠
+Clear to Close
+
+Available Credit
+≠
+Safe-to-Borrow
+
+Loan Proceeds
+≠
+Income
+
+Estimated Qualification
+≠
+Lender Commitment
+
+Never blur these distinctions in UI, AI recommendations, reports, or calculations.
+
+---
+
+4. PRIMARY PURPOSE
+
+The Financing Engine should answer:
+
+What debt do we currently have?
+
+What does that debt actually cost us?
+
+How much financing might we reasonably support?
+
+How does borrowing affect liquidity?
+
+How does borrowing affect the duplex goal?
+
+What would payments look like?
+
+What cash-to-close would be required?
+
+What reserves might remain afterward?
+
+What financing structures should we research?
+
+What documents would a lender likely request?
+
+What financing risks should the family understand?
+
+What should we do before approaching a lender?
+
+---
+
+5. CAPITAL OS AUTHORITY BOUNDARY
+
+The module may:
+
+track liabilities
+model financing scenarios
+estimate payments
+calculate DTI
+calculate DSCR where appropriate
+calculate utilization
+estimate cash-to-close
+compare loan structures
+model reserves
+model interest-rate sensitivity
+track financing readiness
+organize documents
+prepare lender questions
+prepare financing checklists
+summarize user-entered offers
+recommend next actions
+
+It may NOT:
+
+submit loan applications
+submit credit applications
+pull credit reports without a future approved provider
+hard-pull credit
+soft-pull credit without future approved provider
+accept loan offers
+sign disclosures
+authorize electronic consent
+move funds
+send down payments
+send earnest money
+open credit accounts
+automatically refinance debt
+negotiate legally on behalf of the user
+represent lender approval as certain
+
+---
+
+6. NAVIGATION
+
+Add a new top-level section:
+
+Financing
+
+Suggested sub-navigation:
+
+Financing Overview
+Liabilities
+Credit Readiness
+Borrowing Capacity
+Mortgage Readiness
+Property Financing
+Loan Scenarios
+Offers
+Cash to Close
+Documents
+Financing Pipeline
+
+Keep navigation consistent with the existing Capital OS design system.
+
+Do not redesign the application shell.
+
+---
+
+7. FINANCING OVERVIEW
+
+Create an executive financing dashboard.
+
+Cards:
+
+Total Debt
+Monthly Debt Service
+Estimated DTI
+Credit Utilization
+Liquid Reserves
+Duplex Financing Readiness
+Safe-to-Borrow
+Cash-to-Close Gap
+Financing Pipeline Status
+
+Use clear statuses.
+
+Do not overemphasize credit score.
+
+---
+
+8. LIABILITY REGISTRY
+
+Create a canonical Liability model.
+
+Suggested fields:
+
+id
+householdId
+ownerUserId nullable
+businessId nullable
+propertyId nullable
+
+name
+lenderName nullable
+
+liabilityType
+accountType
+
+originalPrincipalCents nullable
+currentBalanceCents
+
+interestRateBps nullable
+
+minimumPaymentCents nullable
+scheduledPaymentCents nullable
+
+termMonths nullable
+remainingTermMonths nullable
+
+originationDate nullable
+maturityDate nullable
+
+secured boolean
+collateralType nullable
+collateralReferenceId nullable
+
+personalGuarantee boolean nullable
+
+paymentFrequency
+
+status
+
+sourceType
+sourceReference
+verifiedAt nullable
+
+createdAt
+updatedAt
+
+---
+
+9. LIABILITY TYPES
+
+Support categories such as:
+
+Mortgage
+Auto Loan
+Truck / Equipment Loan
+Personal Loan
+Credit Card
+Line of Credit
+Business Loan
+Student Loan
+Tax Liability
+HELOC
+Seller Financing
+Private Loan
+Other
+
+Do not assume all liabilities belong to the household.
+
+Support:
+
+HOUSEHOLD
+BUSINESS
+PROPERTY
+
+economic ownership.
+
+---
+
+10. NO BUSINESS / HOUSEHOLD COMMINGLING
+
+Maintain existing entity boundaries.
+
+Business debt should not automatically become household debt.
+
+Household debt should not automatically reduce business cash.
+
+Personal guarantee exposure should be represented separately.
+
+Conceptually:
+
+Borrower Entity
+≠
+Guarantor
+≠
+Economic Payment Source
+
+---
+
+11. LIABILITY STATUS
+
+Use explicit states:
+
+ACTIVE
+CURRENT
+PAID_OFF
+DELINQUENT
+DEFERRED
+IN_FORBEARANCE
+CHARGED_OFF
+DISPUTED
+UNKNOWN
+
+Do not infer derogatory status from missing data.
+
+---
+
+12. CREDIT PROFILE MODEL
+
+Create an internal CreditProfile abstraction.
+
+Do not call it a credit report unless sourced from an approved provider.
+
+Suggested fields:
+
+householdId
+userId
+
+reportedScore nullable
+scoreModel nullable
+scoreSource
+
+scoreAsOf nullable
+
+revolvingLimitCents nullable
+revolvingBalanceCents nullable
+
+utilizationBps nullable
+
+monthlyDebtPaymentsCents
+
+oldestAccountAgeMonths nullable
+averageAccountAgeMonths nullable
+
+recentInquiries nullable
+derogatoryCount nullable
+
+sourceType
+confidence
+lastUpdatedAt
+
+---
+
+13. CREDIT SCORE LABELING
+
+If the user manually enters a score:
+
+display:
+
+USER-REPORTED CREDIT SCORE
+
+If eventually imported from a provider:
+
+display the actual provider/source.
+
+Never display:
+
+VERIFIED CREDIT SCORE
+
+unless the source warrants it.
+
+---
+
+14. CREDIT READINESS ≠ CREDIT SCORE
+
+Create:
+
+Credit Readiness
+
+as a Capital OS internal planning score.
+
+It must be explicitly labeled:
+
+CAPITAL OS INTERNAL READINESS
+NOT A CREDIT SCORE
+NOT A LENDER SCORE
+
+---
+
+15. CREDIT READINESS INPUTS
+
+Possible factors:
+
+Payment burden
+Revolving utilization
+Liquidity
+Recent credit activity
+Debt concentration
+Income stability
+Documentation completeness
+Cash reserves
+Known derogatory information
+Financing objective
+
+Keep factors transparent.
+
+Do not use opaque AI scoring.
+
+---
+
+16. CREDIT READINESS OUTPUT
+
+Example:
+
+Credit Readiness: 64 / 100
+
+Status:
+PREPARATION NEEDED
+
+Primary constraints:
+- Revolving utilization
+- Limited post-close reserve
+- Income documentation incomplete
+
+Positive factors:
+- Low installment debt
+- Consistent savings behavior
+
+Recommended next action:
+Increase documented reserves before applying.
+
+---
+
+17. NO GUARANTEE LANGUAGE
+
+Prohibit:
+
+You will qualify
+You are approved
+Guaranteed approval
+This lender will accept you
+You can definitely borrow $X
+
+Prefer:
+
+Estimated
+Modeled
+Potential
+Illustrative
+May
+Could
+Subject to lender underwriting
+
+---
+
+18. DTI ENGINE
+
+Implement deterministic Debt-to-Income calculations.
+
+Support at least:
+
+Front-End DTI
+Back-End DTI
+
+Conceptually:
+
+Front-End DTI
+=
+Housing Expense
+/
+Gross Monthly Income
+
+Back-End DTI
+=
+Total Monthly Debt Obligations
+/
+Gross Monthly Income
+
+Store values in basis points internally where appropriate.
+
+---
+
+19. DTI INPUT TRANSPARENCY
+
+Always show:
+
+Income used
+Housing payment used
+Debt payments used
+Excluded payments
+Calculation date
+Source confidence
+
+Never output a DTI number without its inputs being inspectable.
+
+---
+
+20. VARIABLE INCOME
+
+Capital OS already supports variable/business income concepts.
+
+Financing calculations must distinguish:
+
+Observed Income
+Normalized Income
+Projected Income
+Qualifying Income Estimate
+
+These are not interchangeable.
+
+---
+
+21. QUALIFYING INCOME ESTIMATE
+
+Create:
+
+Estimated Qualifying Income
+
+only as an internal planning estimate.
+
+Label:
+
+NOT LENDER-DETERMINED QUALIFYING INCOME
+
+Allow configurable averaging periods such as:
+
+3 months
+6 months
+12 months
+24 months
+
+depending on data availability.
+
+Do not claim lender methodology unless sourced.
+
+---
+
+22. INCOME SOURCE CLASSIFICATION
+
+Support:
+
+W-2
+1099
+Business Distribution
+Business Profit
+Lease-Operator Income
+Rental Income
+Investment Income
+Other
+
+Do not automatically treat:
+
+Business Revenue
+
+as:
+
+Household Qualifying Income
+
+---
+
+23. BORROWING CAPACITY ENGINE
+
+Create a deterministic internal:
+
+Borrowing Capacity Estimate
+
+It should consider:
+
+Income
+Debt service
+Estimated housing expense
+Interest rate
+Loan term
+Taxes
+Insurance
+Mortgage insurance if modeled
+HOA if applicable
+Reserve requirements
+Capital OS liquidity floor
+Duplex protected capital
+
+---
+
+24. SAFE-TO-BORROW
+
+This is a Capital OS internal risk metric.
+
+It is NOT lender approval.
+
+Conceptually:
+
+Safe-to-Borrow
+=
+financing amount that does not violate
+Capital OS liquidity and capital-protection rules
+
+It should be governed by:
+
+Capital Governor
+Liquidity Floor
+Emergency Reserve
+Duplex Reserve
+Cash-to-Close
+Post-Close Reserve
+Debt-Service Stress
+
+---
+
+25. SAFE-TO-BORROW MAY BE LOWER THAN LENDER CAPACITY
+
+Explicitly support:
+
+Lender may theoretically approve:
+$X
+
+Capital OS Safe-to-Borrow:
+$Y
+
+where:
+
+Y < X
+
+if liquidity or risk constraints require it.
+
+That is a feature, not an error.
+
+---
+
+26. SAFE-TO-BORROW DEFENSE STATES
+
+Use financing risk states such as:
+
+NORMAL
+CAUTION
+DEFENSIVE
+CAPITAL_PRESERVATION
+CRITICAL
+
+Tie them to the existing Capital Governor rather than creating an independent competing risk engine.
+
+---
+
+27. MORTGAGE READINESS
+
+Create a Mortgage Readiness view specifically for:
+
+Owner-Occupied 1–4 Unit Property
+
+because Capital OS already contains the first-duplex acquisition objective.
+
+---
+
+28. PROPERTY FINANCING CONNECTION
+
+Connect financing scenarios to existing property candidates.
+
+A property candidate may have:
+
+Purchase Price
+Estimated Loan Amount
+Down Payment
+Closing Costs
+Prepaids
+Escrows
+Reserves
+Repairs
+Credits
+Expected Rent
+Owner-Occupied Unit
+Other Units
+
+Do not create duplicate property models.
+
+Reference existing property IDs.
+
+---
+
+29. CASH TO CLOSE ENGINE
+
+Calculate:
+
+Down Payment
++
+Closing Costs
++
+Prepaids
++
+Initial Escrows
++
+Required Reserves
++
+Immediate Repairs
+-
+Seller Credits
+-
+Lender Credits
+-
+Eligible Assistance
+=
+Estimated Cash to Close
+
+Every input must be visible.
+
+---
+
+30. CASH-TO-CLOSE GAP
+
+Calculate:
+
+Cash-to-Close Gap
+=
+Estimated Cash to Close
+-
+Eligible Available Acquisition Capital
+
+Do not include:
+
+Emergency reserve
+protected capital not authorized for property
+business operating cash
+paper strategy P&L
+unrealized projections
+
+unless policy explicitly permits the category.
+
+---
+
+31. TIME TO CASH-TO-CLOSE
+
+Use current contribution behavior to estimate:
+
+Weeks to Required Cash
+
+Example:
+
+Remaining Gap:
+$5,200
+
+Protected Duplex Contribution:
+$200/week
+
+Estimated Time:
+26 weeks
+
+Allow scenarios.
+
+---
+
+32. POST-CLOSE LIQUIDITY
+
+Critical metric:
+
+Post-Close Liquid Reserves
+
+Calculate:
+
+Eligible Liquid Capital
+-
+Actual Cash to Close
+-
+Immediate Required Repairs
+=
+Post-Close Liquidity
+
+Then compare against Capital OS liquidity floors.
+
+---
+
+33. POST-CLOSE STRESS TEST
+
+Model:
+
+1 month vacancy
+3 month vacancy
+major repair
+income reduction
+insurance increase
+tax increase
+interest-rate increase where adjustable
+unexpected business-income decline
+
+Do not overfit to one optimistic acquisition case.
+
+---
+
+34. RENTAL INCOME MODEL
+
+For owner-occupied multifamily scenarios, allow lender-assumption fields such as:
+
+Gross Scheduled Rent
+Vacancy Factor
+Lender-Recognized Percentage
+Net Recognized Rent
+
+But do not hardcode one underwriting percentage globally.
+
+Use:
+
+configurable program assumption
+
+with source/provenance.
+
+---
+
+35. PROGRAM TEMPLATE SYSTEM
+
+Create:
+
+FinancingProgramTemplate
+
+Suggested fields:
+
+name
+programType
+occupancyType
+propertyUnitsMin
+propertyUnitsMax
+
+downPaymentRule
+mortgageInsuranceRule
+
+dtiGuideline
+reserveGuideline
+
+creditGuideline
+rentalIncomeGuideline
+
+loanLimitRule
+
+sourceName
+sourceUrl
+sourceEffectiveDate
+sourceExpirationDate nullable
+
+verifiedAt
+confidence
+status
+
+---
+
+36. PROGRAM TYPES
+
+Support templates for research such as:
+
+FHA
+Conventional
+VA
+USDA
+Portfolio
+DSCR
+Commercial
+Private
+Seller Financing
+Business Term Loan
+Equipment Finance
+HELOC
+Line of Credit
+
+But do not populate regulatory/current rules from memory.
+
+Provider/program assumptions must be entered from sourced material or configured manually.
+
+---
+
+37. REQUIREMENT SET VERSIONING
+
+Create:
+
+RequirementSet
+
+with:
+
+source
+effectiveDate
+version
+expiry
+verifiedAt
+
+because lender and program requirements change.
+
+Never silently rely on stale underwriting assumptions.
+
+---
+
+38. FINANCING SCENARIO MODEL
+
+Create:
+
+FinancingScenario
+
+Suggested fields:
+
+id
+householdId
+propertyId nullable
+
+scenarioName
+
+loanProgram
+loanAmountCents
+purchasePriceCents
+
+downPaymentCents
+
+interestRateBps
+termMonths
+
+propertyTaxMonthlyCents
+insuranceMonthlyCents
+mortgageInsuranceMonthlyCents
+hoaMonthlyCents
+
+otherHousingCostCents
+
+estimatedPrincipalInterestCents
+estimatedHousingPaymentCents
+
+estimatedCashToCloseCents
+postCloseLiquidityCents
+
+frontEndDtiBps
+backEndDtiBps
+
+safeToBorrowStatus
+
+createdBy
+createdAt
+
+---
+
+39. AMORTIZATION ENGINE
+
+Implement deterministic standard amortization calculations.
+
+Inputs:
+
+Principal
+Interest Rate
+Term
+Payment Frequency
+
+Outputs:
+
+Principal + Interest Payment
+Interest Paid
+Principal Paid
+Remaining Balance
+Amortization Schedule
+
+Use exact deterministic code.
+
+AI must not calculate authoritative amortization.
+
+---
+
+40. RATE SCENARIOS
+
+Provide side-by-side scenarios such as:
+
+5.5%
+6.0%
+6.5%
+7.0%
+7.5%
+
+using user-selected ranges.
+
+Show impact on:
+
+Monthly Payment
+DTI
+Total Interest
+Safe-to-Borrow
+Cash Flow
+Property Economics
+
+---
+
+41. TERM SCENARIOS
+
+Support comparison:
+
+15 year
+20 year
+30 year
+
+where applicable.
+
+Do not assume every program offers every term.
+
+---
+
+42. LOAN OFFER MODEL
+
+Create:
+
+LoanOffer
+
+for manually entered or future provider-imported offers.
+
+Suggested fields:
+
+lenderName
+programName
+
+loanAmount
+interestRate
+apr nullable
+
+term
+monthlyPI
+
+mortgageInsurance
+fees
+points
+credits
+
+estimatedCashToClose
+
+prepaymentPenalty
+balloon
+adjustableRate
+rateLockExpiration
+
+reserveRequirement
+
+receivedAt
+expiresAt nullable
+
+sourceDocumentId nullable
+
+status
+
+---
+
+43. OFFER STATUS
+
+Use:
+
+DRAFT
+INDICATIVE
+PREQUALIFICATION
+PREAPPROVAL
+CONDITIONAL_APPROVAL
+FINAL_APPROVAL
+CLEAR_TO_CLOSE
+EXPIRED
+DECLINED
+WITHDRAWN
+
+Do not allow status transitions without explicit evidence/user action.
+
+---
+
+44. OFFER COMPARISON
+
+Build a comparison table.
+
+Compare:
+
+Rate
+APR if provided
+Payment
+Points
+Fees
+Credits
+Cash to Close
+Required Reserves
+Term
+Prepayment Penalty
+Balloon
+Rate Type
+Total Interest
+Capital OS Liquidity Impact
+
+Do not rank only by interest rate.
+
+---
+
+45. EFFECTIVE BORROWING COST
+
+Calculate an internal comparison metric based on known inputs.
+
+Clearly distinguish from legally defined APR if APR is not supplied by lender.
+
+Use label:
+
+Capital OS Modeled Cost
+
+not APR.
+
+---
+
+46. DEBT SERVICE COVERAGE RATIO
+
+For applicable income-producing properties/business financing:
+
+DSCR
+=
+Net Operating Income
+/
+Debt Service
+
+Inputs must be explicit.
+
+Do not apply DSCR to ordinary consumer financing where it is irrelevant.
+
+---
+
+47. PROPERTY DSCR
+
+Allow:
+
+NOI
+Annual Debt Service
+DSCR
+
+for non-owner-occupied scenarios where appropriate.
+
+Keep separate from household DTI.
+
+---
+
+48. HOUSEHOLD DTI ≠ PROPERTY DSCR
+
+Always preserve:
+
+DTI
+≠
+DSCR
+
+They answer different questions.
+
+---
+
+49. DEBT SERVICE BURDEN
+
+Create Capital OS metric:
+
+Debt Service Burden
+
+that evaluates:
+
+required monthly debt payments
+/
+reliable household cash flow
+
+This may differ from lender DTI.
+
+Label it internal.
+
+---
+
+50. UTILIZATION
+
+For revolving credit:
+
+Utilization
+=
+Balance
+/
+Credit Limit
+
+Support:
+
+Per-account utilization
+Aggregate utilization
+
+Do not invent unavailable limits.
+
+---
+
+51. PAYDOWN SCENARIOS
+
+Allow:
+
+Pay $X toward Card A
+Pay $X toward Loan B
+
+Then model effects on:
+
+Cash reserves
+Utilization
+Monthly debt service if applicable
+Estimated DTI
+Credit readiness
+Duplex timeline
+Safe-to-Borrow
+
+---
+
+52. NEVER OPTIMIZE CREDIT AT THE EXPENSE OF LIQUIDITY BLINDLY
+
+A paydown scenario must consider:
+
+Credit benefit
+versus
+Cash reserve reduction
+
+Capital OS may recommend retaining liquidity instead.
+
+---
+
+53. FINANCING PIPELINE
+
+Create a financing workflow:
+
+RESEARCH
+PREPARATION
+PREQUALIFICATION
+PREAPPROVAL
+PROPERTY IDENTIFIED
+APPLICATION
+UNDERWRITING
+CONDITIONAL APPROVAL
+CLEAR TO CLOSE
+CLOSED
+DECLINED
+PAUSED
+WITHDRAWN
+
+Capital OS records state.
+
+It does not autonomously advance lender-controlled stages.
+
+---
+
+54. PIPELINE EVENT HISTORY
+
+Persist:
+
+stage
+changedAt
+changedBy
+source
+notes
+evidence/document reference
+
+Audit material stage changes.
+
+---
+
+55. DOCUMENT CHECKLIST
+
+Create financing document readiness categories.
+
+Examples:
+
+Identity
+Income
+Bank Statements
+Business Income
+Asset Statements
+Liabilities
+Housing History
+Property Documents
+Insurance
+Entity Documents
+Tax Documents
+Letters of Explanation
+Other
+
+Do not assume every financing program requires every item.
+
+---
+
+56. DOCUMENT STATUS
+
+Use:
+
+NOT_REQUESTED
+REQUESTED
+AVAILABLE
+UPLOADED
+REVIEWED
+STALE
+MISSING
+NOT_APPLICABLE
+
+---
+
+57. DOCUMENT SECURITY
+
+Financing documents may contain highly sensitive data.
+
+Do not expose:
+
+SSN
+full account numbers
+passwords
+PINs
+security questions
+OTP
+
+to AI prompts unnecessarily.
+
+Use existing data-classification boundaries.
+
+---
+
+58. SOURCE-OF-FUNDS TRACKING
+
+Create an advisory Source of Funds view.
+
+Classify:
+
+Checking
+Savings
+Duplex Reserve
+Gift
+Business Distribution
+Sale Proceeds
+Investment Liquidation
+Assistance
+Other
+
+Do not label a source lender-acceptable unless sourced.
+
+---
+
+59. DUPLEX RESERVE INTEGRATION
+
+Capital OS already treats Duplex capital as protected.
+
+Financing Engine may model using Duplex Reserve for:
+
+Down Payment
+Closing Costs
+Eligible Acquisition Costs
+
+according to configured property-goal policy.
+
+Do not let unrelated financing consume it.
+
+---
+
+60. EMERGENCY FUND PROTECTION
+
+Default:
+
+Emergency Reserve
+=
+NOT AVAILABLE FOR CASH TO CLOSE
+
+unless the user explicitly changes a policy through an authorized workflow.
+
+AI must not unlock it.
+
+---
+
+61. BUSINESS CASH PROTECTION
+
+Default:
+
+Business Operating Cash
+=
+NOT HOUSEHOLD CASH TO CLOSE
+
+A completed authorized distribution is required before household use.
+
+Prepared distribution does not count.
+
+---
+
+62. CAPITAL STACK VIEW
+
+For a property acquisition show:
+
+Purchase Price
+
+Senior Debt
++
+Down Payment
++
+Assistance
++
+Seller Credit
++
+Other Eligible Capital
+=
+Sources
+
+and:
+
+Purchase
++
+Closing Costs
++
+Prepaids
++
+Repairs
++
+Reserves
+=
+Uses
+
+Require:
+
+Sources = Uses
+
+for a complete scenario.
+
+---
+
+63. CAPITAL STACK GAP
+
+If:
+
+Sources < Uses
+
+display:
+
+FUNDING GAP
+
+Do not fill the gap automatically with debt.
+
+---
+
+64. PERSONAL GUARANTEE RISK
+
+Where business financing involves a personal guarantee, surface:
+
+PERSONAL GUARANTEE
+
+prominently.
+
+Explain:
+
+Business obligation may create personal exposure.
+
+Do not provide legal conclusions.
+
+---
+
+65. COLLATERAL
+
+Track:
+
+Unsecured
+Real Estate Secured
+Vehicle / Equipment Secured
+Business Asset Secured
+Other
+
+Do not represent collateral lien priority unless known.
+
+---
+
+66. COVENANTS
+
+Allow manual tracking of material financing covenants:
+
+Minimum liquidity
+DSCR covenant
+Reporting requirement
+Debt limitation
+Distribution restriction
+Other
+
+This is advisory tracking only.
+
+---
+
+67. REFINANCE SCENARIOS
+
+Support:
+
+Current Debt
+vs
+Proposed Refinance
+
+Compare:
+
+New payment
+Closing costs
+Rate
+Term reset
+Break-even
+Liquidity impact
+Total modeled interest
+
+---
+
+68. BREAK-EVEN
+
+For a refinance:
+
+Break-even months
+=
+Refinance Costs
+/
+Monthly Payment Savings
+
+when appropriate.
+
+Make assumptions explicit.
+
+---
+
+69. DO NOT ASSUME LOWER PAYMENT = BETTER
+
+Show if lower payment results from:
+
+longer term
+higher total interest
+cash-out balance increase
+
+---
+
+70. HELOC / LINE OF CREDIT
+
+Support modeling only.
+
+Show:
+
+Credit Limit
+Outstanding Balance
+Available Line
+Variable Rate
+Minimum Payment
+Collateral
+
+But preserve:
+
+Available Credit
+≠
+Safe-to-Borrow
+
+---
+
+71. CREDIT CARD STRATEGY
+
+Allow household visibility into:
+
+Limits
+Balances
+Utilization
+Payments
+Interest
+
+But do not create manufactured-spending or deceptive credit-building strategies.
+
+---
+
+72. FINANCING READINESS SCORE
+
+Create one Capital OS internal:
+
+Financing Readiness
+0–100
+
+Distinct from Credit Readiness.
+
+Possible components:
+
+Income Documentation
+Debt Burden
+Liquidity
+Cash to Close
+Post-Close Reserves
+Credit Profile
+Property Readiness
+Document Completeness
+Risk Stress Results
+
+---
+
+73. FINANCING READINESS BANDS
+
+Example:
+
+0–39     Not Ready
+40–59    Preparation Required
+60–74    Research Lenders
+75–89    Application Preparation
+90–100   Strong Internal Readiness
+
+Label:
+
+INTERNAL CAPITAL OS ASSESSMENT
+NOT LENDER APPROVAL
+
+---
+
+74. OFFER READINESS GATE
+
+Before Capital OS recommends applying:
+
+require deterministic review of:
+
+Cash-to-close gap
+Liquidity floor
+Debt burden
+Documentation
+Credit readiness
+Property state
+Financing readiness
+Capital Governor
+
+AI may explain.
+
+AI may not override.
+
+---
+
+75. FINANCING GOVERNOR
+
+Create a deterministic FinancingGovernor.
+
+Possible outputs:
+
+RESEARCH_ONLY
+PREPARATION
+LENDER_DISCUSSION_READY
+APPLICATION_READY
+HOLD
+CAPITAL_PRESERVATION
+
+Do NOT output:
+
+APPROVED
+
+because Capital OS is not the lender.
+
+---
+
+76. FINANCING GOVERNOR HARD STOPS
+
+Examples:
+
+Insufficient cash to close
+Post-close liquidity below floor
+Protected reserve violation
+Unresolved data integrity issue
+Unknown liability burden
+Critical document gap
+Capital Governor in CRITICAL state
+
+---
+
+77. AI FINANCING ANALYST
+
+Add:
+
+AI Financing Analyst
+
+as a specialized advisory role under AI CIO.
+
+It may:
+
+Explain financing scenarios
+Summarize offers
+Compare structures
+Explain DTI/DSCR
+Identify documentation gaps
+Explain cash-to-close
+Recommend questions for lenders
+Summarize scenario tradeoffs
+
+---
+
+78. AI FINANCING ANALYST MAY NOT
+
+Approve borrowing
+Override Safe-to-Borrow
+Override Capital Governor
+Submit application
+Contact lender without explicit future authority
+Accept lender offer
+Certify qualification
+Alter credit data
+Invent lender requirements
+
+---
+
+79. AI RESPONSE FORMAT
+
+Use structured recommendations:
+
+Recommendation
+Reason
+Evidence
+Liquidity Impact
+Duplex Impact
+Debt-Service Impact
+Risk
+Uncertainty
+Next Action
+
+---
+
+80. AI SOURCE DISCIPLINE
+
+When discussing financing requirements:
+
+distinguish:
+
+Capital OS calculation
+User-entered information
+Provider/lender information
+Program-source information
+AI interpretation
+
+Do not blend them.
+
+---
+
+81. EXTERNAL PROVIDER ARCHITECTURE
+
+Do NOT integrate a live financing provider yet.
+
+Create provider abstractions only where useful.
+
+For example:
+
+interface FinancingProvider {
+  getPrograms()
+  getRequirements()
+  getIndicativeTerms()
+  getApplicationStatus()
+}
+
+All methods should remain disabled/stubbed unless explicitly approved later.
+
+---
+
+82. CREDIT DATA PROVIDER ABSTRACTION
+
+Create future-compatible:
+
+interface CreditDataProvider {
+  getCreditProfile()
+  getScore()
+  getTradelines()
+}
+
+No real provider integration now.
+
+---
+
+83. LENDER DATA PROVIDER ABSTRACTION
+
+Create future-compatible:
+
+interface LenderProgramProvider {
+  getPrograms()
+  getRequirementSet()
+  getRateSheet()
+}
+
+No scraping.
+
+No lender-site automation.
+
+---
+
+84. NO TERMS-OF-SERVICE VIOLATIONS
+
+Future provider integrations must use:
+
+authorized API
+licensed data
+user-provided documents
+approved integration
+
+Do not scrape lender portals or credit bureaus.
+
+---
+
+85. DOCUMENT IMPORT
+
+Allow future/manual upload of:
+
+Loan Estimate
+Preapproval Letter
+Term Sheet
+Promissory Note
+Mortgage Statement
+Credit Card Statement
+Loan Statement
+
+If document ingestion already exists, reuse it.
+
+Do not build a duplicate document system.
+
+---
+
+86. EXTRACTION STATUS
+
+Any extracted financing terms must be:
+
+EXTRACTED
+NOT VERIFIED
+
+until reviewed.
+
+---
+
+87. USER REVIEW
+
+Before extracted terms become authoritative:
+
+require:
+
+Human Review
+
+or a sufficiently reliable provider source.
+
+---
+
+88. ACCOUNTING INTEGRATION
+
+Debt principal must remain a liability.
+
+Loan proceeds should create:
+
+Cash increase
++
+Liability increase
+
+not income.
+
+---
+
+89. PRINCIPAL VS INTEREST
+
+Payments must distinguish:
+
+Principal
+Interest
+Fees
+Escrow
+Other
+
+where data is available.
+
+Do not expense principal.
+
+---
+
+90. BALANCE SHEET EFFECT
+
+Model:
+
+Borrow $100,000
+
+Cash:
++ $100,000
+
+Liability:
++ $100,000
+
+Net Worth:
+approximately unchanged before fees
+
+Do not treat borrowing as wealth creation.
+
+---
+
+91. PROPERTY ACQUISITION ACCOUNTING
+
+When future actual acquisition is recorded:
+
+Property Asset
+Debt Liability
+Cash Reduction
+Closing Costs
+
+must reconcile according to existing accounting policy.
+
+Do not implement automatic acquisition booking in this sprint unless required by existing owned-property functionality.
+
+---
+
+92. BUSINESS DEBT ACCOUNTING
+
+Business liability belongs to business balance sheet unless economic/legal structure dictates otherwise.
+
+Personal guarantee can be tracked as contingent exposure without automatically duplicating liability.
+
+---
+
+93. REPORTS
+
+Create internal reports:
+
+Debt Summary
+Monthly Debt Service
+Credit Readiness
+Financing Readiness
+Mortgage Readiness
+Cash-to-Close Report
+Loan Scenario Comparison
+Offer Comparison
+Liability Maturity Schedule
+Financing Pipeline
+
+---
+
+94. EXPORTS
+
+If current reporting remains local/read-only, maintain existing truth classification.
+
+Do not claim durable server reports unless actually persisted.
+
+---
+
+95. FINANCING COMMAND CENTER
+
+Add a concise Financing Overview containing:
+
+Current Debt
+Monthly Obligations
+Utilization
+Estimated DTI
+Safe-to-Borrow
+Duplex Financing Readiness
+Cash-to-Close Gap
+Post-Close Reserves
+Next Best Financing Action
+
+---
+
+96. DUPLEX OBJECTIVE MUST REMAIN PRIMARY
+
+Financing recommendations should respect:
+
+FIRST DUPLEX ACQUISITION
+
+as the current protected property objective.
+
+Debt that materially damages the acquisition path should be flagged.
+
+---
+
+97. FINANCING OPPORTUNITY COST
+
+For proposed borrowing calculate impact on:
+
+Duplex timeline
+Weekly savings capacity
+Emergency reserves
+Safe-to-Deploy
+Debt service
+Future financing flexibility
+
+---
+
+98. STRESS TESTING
+
+Every major borrowing scenario should support:
+
+Income -10%
+Income -20%
+Housing expenses +10%
+Insurance +20%
+Property taxes +20%
+Interest rate +100 bps
+Major repair
+Temporary income interruption
+
+Allow configurable scenarios.
+
+---
+
+99. DEBT MATURITY WALL
+
+Create timeline visualization of:
+
+loan maturity
+rate reset
+balloon payment
+promo APR expiration
+lease payoff
+
+when known.
+
+---
+
+100. RATE-TYPE CLASSIFICATION
+
+Support:
+
+FIXED
+VARIABLE
+ADJUSTABLE
+PROMOTIONAL
+UNKNOWN
+
+Do not assume fixed rate.
+
+---
+
+101. CREDIT SCORE SCENARIOS
+
+You may allow user-entered hypothetical score scenarios.
+
+Example:
+
+Current reported score:
+640
+
+Scenario:
+680
+
+But do not claim exact lender pricing improvements unless sourced.
+
+---
+
+102. FINANCING SCENARIO COMPARISON UI
+
+Allow comparison of up to several scenarios side-by-side:
+
+FHA Scenario
+Conventional Scenario
+Alternative Scenario
+
+Show:
+
+Cash Required
+Monthly Payment
+Post-Close Liquidity
+DTI
+Safe-to-Borrow Status
+Reserve Status
+Modeled Cost
+Major Risks
+
+---
+
+103. EXPLAIN WHY A SCENARIO FAILS
+
+Example:
+
+Scenario not recommended.
+
+Primary reason:
+Post-close liquidity falls below the Capital OS minimum.
+
+Lender qualification:
+Unknown.
+
+Capital OS internal result:
+HOLD.
+
+---
+
+104. DO NOT HIDE UNCERTAINTY
+
+If values are missing:
+
+show:
+
+UNKNOWN
+
+rather than inventing assumptions silently.
+
+Allow user to enter explicit assumptions.
+
+---
+
+105. PROVENANCE
+
+Every critical financing number should know its source.
+
+Examples:
+
+USER_ENTERED
+CALCULATED
+DOCUMENT_EXTRACTED
+PROVIDER_IMPORTED
+ESTIMATED
+
+---
+
+106. SOURCE FRESHNESS
+
+Track:
+
+asOf
+verifiedAt
+expiresAt
+
+where requirements/rates may become stale.
+
+---
+
+107. PRIVACY
+
+Classify financing data appropriately.
+
+High-sensitivity examples:
+
+credit information
+income documentation
+bank statements
+loan statements
+mortgage documents
+tax documents
+identity documents
+
+Use the existing security model.
+
+---
+
+108. AI DATA MINIMIZATION
+
+Do not send full sensitive documents to AI when structured derived fields suffice.
+
+Prefer:
+
+monthly income
+balance
+payment
+rate
+term
+
+instead of entire raw statements.
+
+---
+
+109. ROLE PERMISSIONS
+
+Add financing permissions to the existing centralized role system.
+
+Examples:
+
+financing:view
+financing:edit
+financing:review
+financing:manage_documents
+financing:manage_offers
+
+Do not create a second permission system.
+
+---
+
+110. DEFAULT ROLE POLICY
+
+Use current household role philosophy.
+
+Owner:
+
+full internal financing management
+
+Partner:
+
+meaningful household financing access according to existing policy
+
+Advisor:
+
+review/advisory access
+
+Viewer:
+
+read-only according to configured permissions
+
+Actual implementation must follow existing role architecture and explicit membership overrides.
+
+---
+
+111. AUDIT
+
+Audit high-value financing actions:
+
+Liability creation/change
+Offer creation/change
+Financing scenario approval for internal planning
+Financing pipeline stage
+Document review status
+Credit profile changes
+Readiness overrides if any
+
+Correct authenticated actor attribution must remain certified.
+
+---
+
+112. NO AUTHORITY THROUGH URL/BODY
+
+Run tenant/mass-assignment regressions against all new financing IDs.
+
+Attack:
+
+householdId
+userId
+liabilityId
+propertyId
+offerId
+scenarioId
+creditProfileId
+
+from another household.
+
+Require denial.
+
+---
+
+113. IDEMPOTENCY
+
+Any new keyed economic mutation must follow existing idempotency standards.
+
+Do not invent keyed semantics for ordinary non-economic edits without need.
+
+---
+
+114. FINANCIAL PRECISION
+
+Use exact cents.
+
+Use integer basis points for rates when practical.
+
+No floating-point financial authority.
+
+---
+
+115. TESTS — DTI
+
+Test:
+
+normal income
+zero income
+missing income
+high debt
+no debt
+variable income
+rounding
+
+---
+
+116. TESTS — AMORTIZATION
+
+Use known amortization fixtures and verify:
+
+payment
+principal
+interest
+remaining balance
+final payoff
+
+---
+
+117. TESTS — CASH TO CLOSE
+
+Test:
+
+seller credit
+lender credit
+assistance
+repairs
+reserves
+protected-capital exclusion
+business-cash exclusion
+
+---
+
+118. TESTS — SAFE-TO-BORROW
+
+Attack with:
+
+high apparent lender capacity
+low household liquidity
+
+Expected:
+
+Capital OS may return lower Safe-to-Borrow
+
+---
+
+119. TESTS — LOAN PROCEEDS
+
+Verify loan proceeds:
+
+do not increase income
+do increase liabilities
+
+---
+
+120. TESTS — BUSINESS DEBT
+
+Verify business liability does not automatically contaminate household debt unless configuration dictates exposure.
+
+---
+
+121. TESTS — DUPLEX RESERVE
+
+Ensure unrelated debt service or financing scenarios cannot redirect protected Duplex Reserve.
+
+---
+
+122. TESTS — TENANT ISOLATION
+
+Run all new Financing routes through tenant preflight.
+
+Household A must never access Household B:
+
+Liability
+Credit Profile
+Scenario
+Offer
+Financing Pipeline
+Documents
+
+---
+
+123. TESTS — ROLE MATRIX
+
+Add all new Financing actions to:
+
+docs/ROLE_CERTIFICATION_MATRIX.md
+
+and execute.
+
+---
+
+124. TESTS — ACTOR ATTRIBUTION
+
+Query persisted audit records for financing writes by multiple authorized actors.
+
+---
+
+125. TESTS — BROWSER
+
+Create authenticated browser coverage for:
+
+Financing Overview
+Add Liability
+Create Scenario
+Reload
+Compare Scenarios
+Unauthorized Viewer write
+Cross-household denial
+
+---
+
+126. REGRESSION P0
+
+After Financing Engine implementation run:
+
+pnpm run certify:production-candidate
+
+Require:
+
+all existing in-scope P0 = PASS
+
+---
+
+127. P1 RELIABILITY REGRESSION
+
+If:
+
+pnpm run certify:internal-reliability
+
+exists, run it.
+
+Do not let new financing jobs break operational reliability.
+
+---
+
+128. AI AUTHORITY REGRESSION
+
+Prove AI Financing Analyst cannot:
+
+submit application
+change liability balance as verified fact
+unlock protected capital
+approve debt
+alter household permissions
+move funds
+
+---
+
+129. AUTOMATION AUTHORITY REGRESSION
+
+Automation may:
+
+remind
+prepare
+review
+calculate
+notify
+
+It may not:
+
+apply
+borrow
+accept
+sign
+transfer
+
+---
+
+130. SEEDED INTERNAL DEMO
+
+If existing internal demo data is used, add a clearly marked financing scenario.
+
+Never seed demo data into a new real household.
+
+---
+
+131. DOCUMENTATION
+
+Update architecture documentation with:
+
+Debt / Financing Engine
+Authority boundary
+Liability model
+Credit readiness
+Financing readiness
+Safe-to-Borrow
+Cash-to-close
+Provider abstractions
+AI Financing Analyst
+
+Do not create another overarching white paper.
+
+---
+
+132. UPDATE FINAL COMPLETION REPORT
+
+Update:
+
+docs/CAPITAL_OS_FINAL_COMPLETION_REPORT_2026-09-02.md
+
+with:
+
+Financing module maturity
+New routes
+New tests
+Tenant certification
+Role certification
+Audit certification
+Financial invariant coverage
+AI authority boundary
+Remaining limitations
+
+Preserve existing internal certification history.
+
+---
+
+133. MODULE MATURITY
+
+At first completion classify Financing as:
+
+IMPLEMENTED / ADVISORY / INTERNAL
+
+or more conservative if evidence warrants.
+
+Do not label it production-lender integrated.
+
+---
+
+134. STILL OUT OF SCOPE
+
+After this sprint these remain prohibited:
+
+Public release
+External users unless separately authorized
+Credit bureau integration
+Loan application submission
+Bank money movement
+ACH
+Live trading
+Blockchain execution
+Autonomous AI
+Outside investor capital
+
+---
+
+135. NEXT PHASE AFTER FINANCING
+
+Do NOT implement this now.
+
+If Financing Engine passes regression certification, the next approved feature phase is:
+
+EXTERNAL EQUITY RESEARCH PROVIDER LAYER
+
+with Simply Wall St treated as:
+
+external advisory research input
+
+not financial truth or execution authority.
+
+---
+
+136. FINAL RESPONSE FORMAT
+
+When complete return:
+
+INTERNAL STATUS:
+<READY / DEGRADED / SUSPENDED>
+
+FINANCING ENGINE:
+<IMPLEMENTED / PARTIAL / BLOCKED>
+
+LIABILITY REGISTRY:
+<PASS / PARTIAL>
+
+CREDIT READINESS:
+<PASS / PARTIAL>
+
+FINANCING READINESS:
+<PASS / PARTIAL>
+
+DTI:
+<PASS / PARTIAL>
+
+DSCR:
+<PASS / PARTIAL / NOT APPLICABLE>
+
+SAFE-TO-BORROW:
+<PASS / PARTIAL>
+
+CASH TO CLOSE:
+<PASS / PARTIAL>
+
+POST-CLOSE LIQUIDITY:
+<PASS / PARTIAL>
+
+AMORTIZATION:
+<PASS / PARTIAL>
+
+LOAN SCENARIOS:
+<PASS / PARTIAL>
+
+OFFER COMPARISON:
+<PASS / PARTIAL>
+
+FINANCING PIPELINE:
+<PASS / PARTIAL>
+
+AI FINANCING ANALYST:
+<ADVISORY ONLY / BLOCKED>
+
+TENANT CERTIFICATION:
+<PASS / FAIL>
+
+ROLE CERTIFICATION:
+<PASS / FAIL>
+
+ACTOR ATTRIBUTION:
+<PASS / FAIL>
+
+P0 REGRESSION:
+<PASS / FAIL>
+
+P1 RELIABILITY:
+<PASS / PARTIAL / BLOCKED>
+
+REAL CREDIT PULL:
+DISABLED
+
+LOAN APPLICATION SUBMISSION:
+DISABLED
+
+BANKING / ACH:
+DISABLED
+
+LIVE TRADING:
+DISABLED
+
+AUTONOMOUS AI:
+DISABLED
+
+NEXT FEATURE:
+EXTERNAL EQUITY RESEARCH PROVIDER LAYER
+
+FINAL DOCUMENT:
+docs/CAPITAL_OS_FINAL_COMPLETION_REPORT_2026-09-02.md
+
+---
+
+FINAL DIRECTIVE
+
+Capital OS must become better at answering:
+
+Can we safely borrow?
+
+without pretending to answer:
+
+Will a lender approve us?
+
+The Financing Engine should coordinate:
+
+Debt
++
+Income
++
+Liquidity
++
+Credit Readiness
++
+Property Economics
++
+Cash to Close
++
+Post-Close Reserves
++
+Capital Protection
++
+Risk
+
+into one disciplined family-capital decision system.
+
+Preserve the existing certified internal trust boundary.
+
+Do not connect real credit, real lenders, real money movement, or automated execution in this phase.

@@ -26,7 +26,7 @@ import type { VenueCapability, VenueTransport } from "./execution-adapters.ts";
 
 function validValidationInput(overrides: Partial<OrderValidationInput> = {}): OrderValidationInput {
   return {
-    liveStatus: "ACTIVE",
+    liveStatus: "MICRO_LIVE_ACTIVE",
     strategyAuthorized: true,
     venueAuthorized: true,
     marketAuthorized: true,
@@ -236,7 +236,7 @@ test("live enablement cannot pass when household or protected capital is reachab
 
 test("pre-trade validation blocks stale data and oversized orders", () => {
   const result = validatePreTrade(defaultMicroLivePolicy, {
-    liveStatus: "ACTIVE", strategyAuthorized: true, venueAuthorized: true, marketAuthorized: true,
+    liveStatus: "MICRO_LIVE_ACTIVE", strategyAuthorized: true, venueAuthorized: true, marketAuthorized: true,
     marketDataAgeMs: 4000, venueHealthy: true, reconciled: true, riskHeartbeatHealthy: true,
     orderNotionalCents: 10001, priceBps: 10000, referencePriceBps: 10000, marketExposureCents: 0,
     strategyExposureCents: 0, venueExposureCents: 0, totalActiveExposureCents: 0, dailyLossCents: 0,
@@ -262,8 +262,8 @@ test("reconciliation mismatch stops new exposure and identifies missing fills", 
 });
 
 test("Guardian locks on disagreement and stops on stale heartbeat", () => {
-  assert.equal(guardianDecision({ liveStatus: "ACTIVE", heartbeatAgeMs: 10, maxHeartbeatAgeMs: 1000, reportedExposureCents: 0, observedVenueExposureCents: 1, hardExposureCents: 500, riskEngineHealthy: true }).action, "LOCKED");
-  assert.equal(guardianDecision({ liveStatus: "ACTIVE", heartbeatAgeMs: 1001, maxHeartbeatAgeMs: 1000, reportedExposureCents: 0, observedVenueExposureCents: 0, hardExposureCents: 500, riskEngineHealthy: true }).action, "STOP");
+  assert.equal(guardianDecision({ liveStatus: "MICRO_LIVE_ACTIVE", heartbeatAgeMs: 10, maxHeartbeatAgeMs: 1000, reportedExposureCents: 0, observedVenueExposureCents: 1, hardExposureCents: 500, riskEngineHealthy: true }).action, "LOCKED");
+  assert.equal(guardianDecision({ liveStatus: "MICRO_LIVE_ACTIVE", heartbeatAgeMs: 1001, maxHeartbeatAgeMs: 1000, reportedExposureCents: 0, observedVenueExposureCents: 0, hardExposureCents: 500, riskEngineHealthy: true }).action, "STOP");
 });
 
 test("client order IDs are deterministic and encode the audit boundary", () => {
@@ -412,7 +412,7 @@ test("stale data, venue failure, heartbeat loss, and Guardian disagreement conta
   assert.equal(heartbeatLoss.accepted, false);
   assert.ok(heartbeatLoss.failures.includes("risk engine heartbeat is unavailable"));
   assert.equal(guardianDecision({
-    liveStatus: "ACTIVE",
+    liveStatus: "MICRO_LIVE_ACTIVE",
     heartbeatAgeMs: 4001,
     maxHeartbeatAgeMs: 4000,
     reportedExposureCents: 100,
@@ -421,7 +421,7 @@ test("stale data, venue failure, heartbeat loss, and Guardian disagreement conta
     riskEngineHealthy: true,
   }).action, "STOP");
   assert.equal(guardianDecision({
-    liveStatus: "ACTIVE",
+    liveStatus: "MICRO_LIVE_ACTIVE",
     heartbeatAgeMs: 1,
     maxHeartbeatAgeMs: 4000,
     reportedExposureCents: 100,

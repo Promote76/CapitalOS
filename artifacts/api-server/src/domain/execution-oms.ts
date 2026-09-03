@@ -1,6 +1,18 @@
 import type { VenueAdapter, VenueFill, VenueOrder } from "./execution-adapters.ts";
 
-export const LIVE_STATUSES = ["DISABLED", "ARMED", "ACTIVE", "SAFE_MODE", "STOP", "EVACUATE", "LOCKED"] as const;
+export const LIVE_STATUSES = [
+  "DISABLED",
+  "MICRO_LIVE_ELIGIBLE",
+  "MICRO_LIVE_ARMED",
+  "MICRO_LIVE_ACTIVE",
+  "SAFE_MODE",
+  "STOP",
+  "EVACUATE",
+  "LOCKED",
+  "LIMITED_LIVE_ELIGIBLE",
+  "LIMITED_LIVE_ARMED",
+  "LIMITED_LIVE_ACTIVE",
+] as const;
 export type LiveStatus = typeof LIVE_STATUSES[number];
 
 export const ORDER_STATES = [
@@ -101,7 +113,7 @@ export function evaluateLiveEnablement(input: EnablementInput) {
   ];
   return {
     enabled: gates.every((gate) => gate.passed),
-    status: gates.every((gate) => gate.passed) ? "ARMED" as const : "DISABLED" as const,
+    status: gates.every((gate) => gate.passed) ? "MICRO_LIVE_ELIGIBLE" as const : "DISABLED" as const,
     gates,
     note: "Eligibility is not activation. A separate human arming action and expiring session are required.",
   };
@@ -163,7 +175,7 @@ export type OrderValidationInput = {
 
 export function validatePreTrade(policy: MicroLivePolicy, input: OrderValidationInput) {
   const failures: string[] = [];
-  if (input.liveStatus !== "ACTIVE" && input.liveStatus !== "ARMED") failures.push("live status is not armed or active");
+  if (input.liveStatus !== "MICRO_LIVE_ACTIVE" && input.liveStatus !== "MICRO_LIVE_ARMED") failures.push("live status is not armed or active");
   if (!input.strategyAuthorized) failures.push("strategy is not authorized");
   if (!input.venueAuthorized) failures.push("venue is not authorized");
   if (!input.marketAuthorized) failures.push("market is not authorized");
@@ -350,7 +362,7 @@ export async function recoverExecutionState(
 }
 
 export function guardianDecision(input: {
-  liveStatus: LiveStatus;
+   liveStatus: LiveStatus;
   heartbeatAgeMs: number;
   maxHeartbeatAgeMs: number;
   reportedExposureCents: number;
@@ -411,7 +423,7 @@ export function runLiveRehearsal(policy = defaultMicroLivePolicy) {
   });
   return {
     mode: "LIVE_REHEARSAL",
-    status: "SAFE_MODE" as const,
+   status: "SAFE_MODE" as const,
     liveOrderTransmission: false,
     sequence: [
       "OrderIntentCreated",

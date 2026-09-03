@@ -8,6 +8,7 @@
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "certify:production-candidate": "node scripts/certify-production-candidate.mjs",
+    "certify:micro-live": "node scripts/certify-micro-live.mjs",
     "certify:migrations": "node scripts/certify-migrations.mjs",
     "certify:internal-reliability": "node scripts/certify-internal-reliability.mjs",
     "verify-future-restore": "node scripts/verify-future-restore.mjs"

@@ -262,7 +262,7 @@ export async function getMicroLiveSnapshot() {
     heartbeatAgeMs <= 3000,
   );
   const guardian = guardianDecision({
-    liveStatus: session.status as "DISABLED" | "ARMED" | "ACTIVE" | "SAFE_MODE" | "STOP" | "EVACUATE" | "LOCKED",
+    liveStatus: session.status as "DISABLED" | "MICRO_LIVE_ELIGIBLE" | "MICRO_LIVE_ARMED" | "MICRO_LIVE_ACTIVE" | "SAFE_MODE" | "STOP" | "EVACUATE" | "LOCKED" | "LIMITED_LIVE_ELIGIBLE" | "LIMITED_LIVE_ARMED" | "LIMITED_LIVE_ACTIVE",
     heartbeatAgeMs,
     maxHeartbeatAgeMs: 3000,
     reportedExposureCents: asCents(heartbeat?.reportedExposure),
@@ -613,7 +613,7 @@ export async function armMicroLive(actor: Actor, venueId: string) {
   const [session] = await db.update(microLiveSessions)
     .set({
       venueId,
-      status: "ARMED",
+      status: "MICRO_LIVE_ARMED",
       mode: "MICRO_LIVE",
       authorizationExpiresAt: expiresAt,
       armedBy: actor.userId,

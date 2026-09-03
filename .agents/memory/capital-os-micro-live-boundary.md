@@ -7,7 +7,7 @@ Micro-Live must remain disabled by default and separate rehearsal, eligibility, 
 
 **Why:** A family-capital system must assume strategy, venue, data, database, and risk components can fail independently; no one component should be able to create catastrophic exposure.
 
-**How to apply:** Keep household and protected capital inaccessible, require venue and market allowlists, enforce server-side limits before any adapter call, reconcile against venue-authoritative state, and keep Guardian authority limited to containment.
+**How to apply:** Keep household and protected capital inaccessible, require venue and market allowlists, enforce server-side limits before any adapter call, reconcile against venue-authoritative state, and keep Guardian authority limited to containment. Certification must report rehearsal controls separately from real-venue evidence and exit blocked when critical evidence is absent.
 
 Real venue connectivity also requires a server-side reviewed adapter registry,
 an opaque credential reference resolved only by server code, and current

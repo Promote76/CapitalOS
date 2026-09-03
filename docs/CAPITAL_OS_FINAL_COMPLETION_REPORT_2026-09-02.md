@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-02  
 **Repository / release:** Current Capital OS workspace; no public release is certified by this report  
-**Certification scope:** Internal-only, non-public, non-executing family-capital scope  
+**Certification scope:** Internal-only, non-public, non-executing family-capital scope plus separately assessed Controlled Micro-Live boundary
 **Release decision:** **IN-HOUSE ONLY — READY FOR CONTROLLED INTERNAL USE**  
 **Public Production Candidate status:** **NOT APPLICABLE**
 
@@ -311,6 +311,30 @@ AI cannot:
 | Automation order authority | Disabled |
 | AI order authority | Disabled |
 | Remaining requirements | Additional persisted order-event, reconciliation-failure, incident-recovery, and provider review evidence before any future controlled integration |
+
+## Execution Scope
+
+The execution prompt represents a new trust boundary. It does not reinterpret the
+existing internal certification as authorization for live trading.
+
+| Scope | Certification status | Current state | Evidence boundary |
+|---|---|---|---|
+| Internal Core Certification | **PASS** | Ready for controlled internal use | Seven in-scope P0 gates remain certified; this scope is family-capital-only and non-executing |
+| Micro-Live Certification | **BLOCKED** | **DISABLED** | The server-side rehearsal controls, OMS, Guardian, reconciliation, incident, and capital-isolation boundaries are implemented; no reviewed real venue, credential workflow, authenticated arming evidence, durable worker restart evidence, or real fills exist |
+| Limited-Live Certification | **NOT CERTIFIED** | **LOCKED** | Graduation evidence is absent; no automatic scaling or promotion is permitted |
+
+The controlled Micro-Live envelope is capped at $20 total capital, $10 venue
+exposure, $10 strategy exposure, $5 market exposure, $1 per order, $5
+inventory, a $0.75 daily soft loss, a $1.50 daily hard loss, and 4%/6%
+soft/hard drawdown. Leverage, withdrawals, automatic refill, AI execution, and
+automation-driven strategy discretion remain disabled. The new
+`pnpm run certify:micro-live` command reports every ML-01 through ML-20 gate and
+exits fail-closed when a critical gate is blocked or failed.
+
+No real order, fill, venue credential, or funding action is claimed in this
+report. Micro-Live remains disabled until a separately reviewed provider
+integration and all critical execution evidence are completed. Limited-Live
+remains locked regardless of rehearsal readiness.
 
 ## Release Gate
 

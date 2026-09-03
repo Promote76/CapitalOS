@@ -1439,3 +1439,107 @@ test("Financing Engine isolates households, permissions, actors, and idempotent 
     ]));
   }
 });
+
+test("household finance stays tenant-scoped and CSV imports are reviewable and duplicate-safe", { skip: !enabled }, async () => {
+  process.env.NODE_ENV = "test";
+  process.env.CAPITAL_OS_TEST_CONTEXT = "1";
+  process.env.CAPITAL_OS_ALLOWED_ORIGIN = "http://capitalos.test";
+  const fixture = await createFixture();
+  database ??= await import("@workspace/db");
+  const { default: app } = await import("../app.ts");
+  const server = app.listen(0);
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+  const baseUrl = `http://127.0.0.1:${address.port}/api`;
+  const request = (route: string, userId: string, householdId: string, init: RequestInit = {}) =>
+    fetch(`${baseUrl}${route}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Test-User-Id": userId,
+        "X-Test-Household-Id": householdId,
+        "X-Household-Role": "owner",
+        "X-Test-Step-Up": "verified",
+        ...(init.headers ?? {}),
+      },
+    });
+
+  try {
+    const emptyBudget = await request("/budget", fixture.userA, fixture.householdA);
+    assert.equal(emptyBudget.status, 200);
+    const emptyBudgetBody = await emptyBudget.json() as { categories: unknown[]; month: string };
+    assert.deepEqual(emptyBudgetBody.categories, []);
+    assert.match(emptyBudgetBody.month, /^[A-Z][a-z]+ 20\d{2}$/);
+
+    const accountAResponse = await request("/financial-accounts", fixture.userA, fixture.householdA, {
+      method: "POST",
+      body: JSON.stringify({
+        institution: "Household bank",
+        nickname: "Primary checking",
+        accountType: "checking",
+        currentBalance: "1250.00",
+      }),
+    });
+    assert.equal(accountAResponse.status, 201);
+    const accountA = await accountAResponse.json() as { id: string; dataSource: string };
+    assert.equal(accountA.dataSource, "manual");
+
+    const accountBResponse = await request("/financial-accounts", fixture.userB, fixture.householdB, {
+      method: "POST",
+      body: JSON.stringify({
+        institution: "Other bank",
+        nickname: "Other checking",
+        accountType: "checking",
+        currentBalance: "900.00",
+      }),
+    });
+    assert.equal(accountBResponse.status, 201);
+    const accountB = await accountBResponse.json() as { id: string };
+
+    const csv = "date,description,amount\n2026-09-01,\"Coffee, shop\",-4.25";
+    const firstImport = await request(`/financial-accounts/${accountA.id}/import-csv`, fixture.userA, fixture.householdA, {
+      method: "POST",
+      body: JSON.stringify({ csv }),
+    });
+    assert.equal(firstImport.status, 200);
+    assert.deepEqual(await firstImport.json(), { imported: 1, skippedDuplicates: 0, readOnly: true });
+
+    const repeatedImport = await request(`/financial-accounts/${accountA.id}/import-csv`, fixture.userA, fixture.householdA, {
+      method: "POST",
+      body: JSON.stringify({ csv }),
+    });
+    assert.equal(repeatedImport.status, 200);
+    assert.deepEqual(await repeatedImport.json(), { imported: 0, skippedDuplicates: 1, readOnly: true });
+
+    const householdBAccounts = await request("/financial-accounts", fixture.userB, fixture.householdB);
+    assert.equal(householdBAccounts.status, 200);
+    const householdBBody = await householdBAccounts.json() as { accounts: Array<{ id: string }> };
+    assert.deepEqual(householdBBody.accounts.map((account) => account.id), [accountB.id]);
+
+    const crossHouseholdImport = await request(`/financial-accounts/${accountB.id}/import-csv`, fixture.userA, fixture.householdA, {
+      method: "POST",
+      body: JSON.stringify({ csv }),
+    });
+    assert.equal(crossHouseholdImport.status, 400);
+
+    const importedRows = await database.db
+      .select({ householdId: database.financeTransactions.householdId, dataSource: database.financeTransactions.dataSource, reviewStatus: database.financeTransactions.reviewStatus })
+      .from(database.financeTransactions)
+      .where(eq(database.financeTransactions.accountId, accountA.id));
+    assert.deepEqual(importedRows, [{ householdId: fixture.householdA, dataSource: "csv_import", reviewStatus: "needs_review" }]);
+
+    const financeAudit = await database.db
+      .select({ actor: database.auditEvents.actor, eventType: database.auditEvents.eventType })
+      .from(database.auditEvents)
+      .where(and(eq(database.auditEvents.householdId, fixture.householdA), eq(database.auditEvents.entityId, accountA.id)));
+    assert.ok(financeAudit.some((event) => event.actor === fixture.userA && event.eventType === "finance_csv_imported"));
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    const householdIds = [fixture.householdA, fixture.householdB];
+    await database.db.delete(database.households).where(inArray(database.households.id, householdIds));
+    await database.db.delete(database.users).where(inArray(database.users.id, [
+      fixture.userA, fixture.partnerA, fixture.advisorA, fixture.viewerA,
+      fixture.userB, fixture.partnerB, fixture.advisorB, fixture.viewerB,
+    ]));
+  }
+});

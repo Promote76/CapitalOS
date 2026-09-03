@@ -1,8 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
 import { clerkClient, getAuth } from "@clerk/express";
 import { reverificationError } from "@clerk/shared/authorization-errors";
-import { and, asc, eq } from "drizzle-orm";
-import { db, householdMembers, users } from "@workspace/db";
+import { and, asc, eq, sql } from "drizzle-orm";
+import { auditEvents, db, householdMembers, households, users } from "@workspace/db";
 import { ensureSeedData } from "../services/seed";
 import type { Actor } from "../services/capital-os";
 import {
@@ -113,7 +113,7 @@ async function authenticatedContext(req: Request): Promise<RequestSecurityContex
   const identity = await resolveClerkIdentity(req);
   if (!identity) return null;
 
-  const [membership] = await db
+  const [existingMembership] = await db
     .select({
       householdId: householdMembers.householdId,
       role: householdMembers.role,
@@ -124,9 +124,42 @@ async function authenticatedContext(req: Request): Promise<RequestSecurityContex
     .orderBy(asc(householdMembers.createdAt))
     .limit(1);
 
-  if (!membership) {
-    return null;
-  }
+  const membership = existingMembership ?? await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`household-provision:${identity.userId}`}))`);
+    const [raceSafeMembership] = await tx
+      .select({
+        householdId: householdMembers.householdId,
+        role: householdMembers.role,
+        permissions: householdMembers.permissions,
+      })
+      .from(householdMembers)
+      .where(and(eq(householdMembers.userId, identity.userId), eq(householdMembers.active, true)))
+      .orderBy(asc(householdMembers.createdAt))
+      .limit(1);
+    if (raceSafeMembership) return raceSafeMembership;
+
+    const [household] = await tx.insert(households).values({
+      name: `${identity.displayName}'s household`,
+      timezone: "America/Chicago",
+    }).returning({ id: households.id });
+    const permissions = Array.from(rolePermissions.owner);
+    await tx.insert(householdMembers).values({
+      householdId: household.id,
+      userId: identity.userId,
+      role: "owner",
+      permissions,
+    });
+    await tx.insert(auditEvents).values({
+      householdId: household.id,
+      eventType: "household_initialized",
+      actor: identity.userId,
+      entity: "household",
+      entityId: household.id,
+      reason: "Provisioned authenticated household",
+      metadata: { source: "clerk-sign-in", seeded: false },
+    });
+    return { householdId: household.id, role: "owner" as const, permissions };
+  });
 
   const permissions = membership.permissions.length
     ? membership.permissions

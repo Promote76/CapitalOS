@@ -10,6 +10,7 @@ import {
   deduplicateImportedTransactions,
   detectRecurringTransactions,
 } from "./household-finance.ts";
+import { csvImportBankingAdapter } from "../adapters/banking.ts";
 
 test("budget totals use signed transaction amounts and exclude transfers", () => {
   const [housing] = calculateBudgetPerformance(
@@ -121,4 +122,22 @@ test("advisors cannot see protected account balances", () => {
   assert.equal(canViewFinancialBalance("advisor", true), false);
   assert.equal(canViewFinancialBalance("advisor", false), true);
   assert.equal(canViewFinancialBalance("owner", true), true);
+});
+
+test("CSV imports preserve quoted descriptions and reject malformed rows", () => {
+  const imported = csvImportBankingAdapter.importTransactions(
+    'date,description,amount,merchant\n2026-09-01,"Market, weekly",-42.50,"Corner Market"',
+  );
+  assert.equal(imported.length, 1);
+  assert.deepEqual(imported[0], {
+    externalId: undefined,
+    transactionDate: "2026-09-01",
+    description: "Market, weekly",
+    amount: "-42.50",
+    merchant: "Corner Market",
+  });
+  assert.throws(
+    () => csvImportBankingAdapter.importTransactions("date,description,amount\n2026-09-01,Missing amount"),
+    /same number of columns/,
+  );
 });

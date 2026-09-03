@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import {
   ClerkProvider,
@@ -19,6 +19,7 @@ import {
   useGetSafeToDeploy,
   useListFinancialAccounts,
   useCreateManualFinancialAccount,
+  useImportFinancialAccountCsv,
   useGetBudget,
   useGetHousehold,
   useGetPropertyUnderwriting,
@@ -1024,9 +1025,11 @@ function BudgetPage() {
   const query = useGetBudget();
   const safe = useGetSafeToDeploy();
   const data = query.data;
+  const hasBudgetData = (data?.categories.length ?? 0) > 0;
   return <main className="content">
     <PageHeading eyebrow="Household finance / budget" title={<>Give every dollar<br /><em>a clear job.</em></>} description="A calm view of what came in, what went out, and what remains available for the plan." actions={<Link className="btn btn-primary" href="/cash-flow"><TrendingUp size={15} /> View cash flow</Link>} />
     {query.isError && <div className="card card-pad" role="alert">Budget data is temporarily unavailable.</div>}
+    {!query.isError && <div className="finance-data-banner" role="note"><div className="finance-data-banner-icon"><ShieldCheck size={16} /></div><div><strong>{hasBudgetData ? 'Household planning data' : 'Start with your household facts'}</strong><span>{hasBudgetData ? 'Manual entries and CSV imports are read-only source records. Imported rows stay in review until approved.' : 'Add a manual account, income source, or CSV ledger to build this household view. No demo household data is shared here.'}</span></div></div>}
     <div className="finance-grid animate-in delay-1">
       <FinanceMetric label="Month planned" value={displayMoney(data?.totals.budgeted, '$0')} detail="household categories" tone="blue" />
       <FinanceMetric label="Spent so far" value={displayMoney(data?.totals.actual, '$0')} detail={`${data?.totals.percentageUsed ?? 0}% of planned`} tone="amber" />
@@ -1035,7 +1038,8 @@ function BudgetPage() {
     </div>
     <section className="card card-pad page-section animate-in delay-2">
       <CardTitle title="Budget performance" subtitle="Projected pace helps surface pressure before it becomes a surprise." />
-      <div className="finance-table">
+       {!hasBudgetData && <div className="finance-empty-state"><strong>No budget categories yet</strong><span>Your authenticated household starts empty. Add facts from Accounts, Income, or a CSV import before relying on calculated planning outputs.</span><Link className="btn btn-secondary" href="/accounts">Open accounts</Link></div>}
+       <div className="finance-table">
         {(data?.categories ?? []).map((category) => <div className="finance-row" key={category.id}>
           <div><strong>{category.name}</strong><span>{category.essentialStatus === 'essential' ? 'Essential' : category.essentialStatus === 'discretionary' ? 'Flexible' : 'Mixed'}</span></div>
           <div className="finance-bar"><b style={{ width: `${Math.min(category.percentageUsed, 100)}%` }} /></div>
@@ -1043,7 +1047,7 @@ function BudgetPage() {
           <span className={`status ${category.status === 'above_pace' ? 'review' : category.status === 'on_pace' ? 'pending' : ''}`}>{category.status.replace('_', ' ')}</span>
         </div>)}
       </div>
-      <div className="finance-note"><ShieldCheck size={16} /><span>{data?.notes[0]}</span></div>
+       <div className="finance-note"><ShieldCheck size={16} /><span>{data?.notes[0]} {data?.notes[2]}</span></div>
     </section>
   </main>;
 }
@@ -1318,8 +1322,12 @@ function CashFlowPage() {
 function AccountsPage({ onFeedback }: { onFeedback: (message: string) => void }) {
   const query = useListFinancialAccounts();
   const create = useCreateManualFinancialAccount();
+  const importCsv = useImportFinancialAccountCsv();
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ institution: '', nickname: '', accountType: 'checking', currentBalance: '' });
+  const [importingAccountId, setImportingAccountId] = useState<string | null>(null);
+  const [csvText, setCsvText] = useState('');
+  const [csvFileName, setCsvFileName] = useState('');
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     try {
@@ -1332,10 +1340,34 @@ function AccountsPage({ onFeedback }: { onFeedback: (message: string) => void })
       onFeedback(error instanceof Error ? error.message : 'Account could not be added.');
     }
   };
+  const loadCsvFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setCsvFileName(file.name);
+    setCsvText(await file.text());
+  };
+  const submitCsv = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!importingAccountId || !csvText.trim()) {
+      onFeedback('Choose an account and CSV file before importing.');
+      return;
+    }
+    try {
+      const result = await importCsv.mutateAsync({ accountId: importingAccountId, data: { csv: csvText } });
+      await queryClient.invalidateQueries({ queryKey: ['/api/financial-accounts'] });
+      onFeedback(`${result.imported} row${result.imported === 1 ? '' : 's'} imported for review; ${result.skippedDuplicates} duplicate${result.skippedDuplicates === 1 ? '' : 's'} skipped.`);
+      setCsvText('');
+      setCsvFileName('');
+      setImportingAccountId(null);
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'CSV could not be imported.');
+    }
+  };
   return <main className="content">
     <PageHeading eyebrow="Household finance / accounts" title={<>Know where the money<br /><em>is held.</em></>} description="Manual and imported accounts give the Capital Governor enough context to protect the household—without storing bank credentials or moving money." actions={<button className="btn btn-primary" onClick={() => setAdding(!adding)} data-testid="button-add-financial-account"><Plus size={15} /> Add manual account</button>} />
     {adding && <section className="card card-pad page-section"><CardTitle title="Add a manual account" subtitle="Balances stay read-only after they are entered." /><form className="account-form" onSubmit={submit}><div className="field"><label>Institution</label><input required value={form.institution} onChange={(event) => setForm({ ...form, institution: event.target.value })} /></div><div className="field"><label>Nickname</label><input required value={form.nickname} onChange={(event) => setForm({ ...form, nickname: event.target.value })} /></div><div className="field"><label>Account type</label><select value={form.accountType} onChange={(event) => setForm({ ...form, accountType: event.target.value })}><option value="checking">Checking</option><option value="savings">Savings</option><option value="credit_card">Credit card</option><option value="loan">Loan</option></select></div><div className="field"><label>Current balance</label><input inputMode="decimal" value={form.currentBalance} onChange={(event) => setForm({ ...form, currentBalance: event.target.value })} placeholder="0.00" /></div><div className="modal-actions"><button type="button" className="btn" onClick={() => setAdding(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={create.isPending}><Check size={14} /> Save account</button></div></form></section>}
-    <section className="card card-pad animate-in delay-1"><CardTitle title="Connected financial accounts" subtitle={`${query.data?.totals.accountCount ?? 0} accounts · read-only by design`} /><div className="table-wrap"><table className="table"><thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>Source</th><th>Status</th></tr></thead><tbody>{(query.data?.accounts ?? []).map((account) => <tr key={account.id}><td><strong>{account.nickname}</strong><br /><span className="table-secondary">{account.institution}</span></td><td>{account.accountType.replace('_', ' ')}</td><td className="font-mono">{account.restricted ? 'Restricted' : displayMoney(account.currentBalance ?? undefined, '$0')}</td><td>{account.dataSource.replace('_', ' ')}</td><td><span className="status">{account.protected ? 'Protected' : 'Read only'}</span></td></tr>)}</tbody></table></div><div className="finance-note"><LockKeyhole size={16} /><span>Capital OS never stores bank credentials. Plaid is disabled; manual entry and CSV import are the active provider-neutral paths.</span></div></section>
+    <section className="card card-pad animate-in delay-1"><CardTitle title="Connected financial accounts" subtitle={`${query.data?.totals.accountCount ?? 0} accounts · read-only by design`} /><div className="table-wrap"><table className="table"><thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>Source</th><th>Status</th><th>History</th></tr></thead><tbody>{(query.data?.accounts ?? []).map((account) => <tr key={account.id}><td><strong>{account.nickname}</strong><br /><span className="table-secondary">{account.institution}</span></td><td>{account.accountType.replace('_', ' ')}</td><td className="font-mono">{account.restricted ? 'Restricted' : displayMoney(account.currentBalance ?? undefined, '$0')}</td><td>{account.dataSource.replace('_', ' ')}</td><td><span className="status">{account.protected ? 'Protected' : 'Read only'}</span></td><td><button className="btn btn-small" onClick={() => { setImportingAccountId(account.id); setCsvText(''); setCsvFileName(''); }}><FileText size={13} /> Import CSV</button></td></tr>)}</tbody></table></div>{!query.isLoading && !(query.data?.accounts.length) && <div className="finance-empty-state"><strong>Add an account before importing history</strong><span>Use a manual account for the current balance, then import a CSV ledger. Imported rows stay in review until you approve them for planning.</span></div>}<div className="finance-note"><LockKeyhole size={16} /><span>Capital OS never stores bank credentials. Plaid is disabled; manual entry and CSV import are the active provider-neutral paths.</span></div></section>
+    {importingAccountId && <section className="card card-pad page-section"><CardTitle title="Import read-only transaction history" subtitle="CSV rows are stored for review and never move money or change a balance automatically." /><form className="account-form" onSubmit={submitCsv}><div className="field"><label htmlFor="finance-csv-file">CSV file</label><input id="finance-csv-file" type="file" accept=".csv,text/csv" onChange={loadCsvFile} /><span className="table-secondary">{csvFileName || 'Expected columns: date, description, amount; merchant and externalId are optional.'}</span></div><div className="field"><label htmlFor="finance-csv-text">Or paste CSV</label><textarea id="finance-csv-text" rows={7} value={csvText} onChange={(event) => setCsvText(event.target.value)} placeholder={'date,description,amount\\n2026-09-01,"Household market",-42.50'} /></div><div className="modal-actions"><button type="button" className="btn" onClick={() => { setImportingAccountId(null); setCsvText(''); setCsvFileName(''); }}>Cancel</button><button type="submit" className="btn btn-primary" disabled={importCsv.isPending}><Database size={14} /> {importCsv.isPending ? 'Importing…' : 'Import for review'}</button></div></form></section>}
   </main>;
 }
 

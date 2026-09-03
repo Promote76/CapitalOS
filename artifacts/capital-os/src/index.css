@@ -812,6 +812,13 @@ button { cursor: pointer; }
 .finance-row div:first-child { display:grid; gap:4px; } .finance-row div:first-child span, .finance-amount span, .table-secondary { color:var(--text-secondary); font-size:10px; }
 .finance-bar { height:7px; background:var(--surface-soft); border-radius:99px; overflow:hidden; } .finance-bar b { display:block; height:100%; background:var(--color-primary); border-radius:inherit; }
 .finance-amount { display:grid; gap:4px; text-align:right; } .finance-note { display:flex; align-items:flex-start; gap:9px; border-top:1px solid var(--border-default); margin-top:18px; padding-top:15px; color:var(--text-secondary); font-size:11px; line-height:1.5; } .finance-note svg { flex:0 0 auto; color:var(--color-primary); }
+.finance-data-banner { display:flex; align-items:flex-start; gap:12px; margin:18px 0 4px; padding:14px 16px; border:1px solid #cfe5dc; border-radius:14px; background:#f4fbf7; color:var(--text-secondary); font-size:12px; line-height:1.45; }
+.finance-data-banner strong, .finance-data-banner span { display:block; }
+.finance-data-banner strong { margin-bottom:3px; color:var(--text-primary); font-size:12px; }
+.finance-data-banner-icon { display:grid; place-items:center; flex:0 0 auto; width:28px; height:28px; border-radius:9px; background:#dcefe7; color:var(--color-primary); }
+.finance-empty-state { display:grid; gap:7px; padding:28px 18px; border:1px dashed var(--border-default); border-radius:12px; color:var(--text-secondary); font-size:12px; line-height:1.5; }
+.finance-empty-state strong { color:var(--text-primary); font-size:14px; }
+.finance-empty-state .btn { justify-self:start; margin-top:6px; }
 .flow-list { display:grid; gap:0; } .flow-row { display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-top:1px solid var(--border-default); font-size:12px; } .flow-row:first-child { border-top:0; } .flow-row span { display:flex; align-items:center; gap:9px; } .flow-row i { width:8px; height:8px; border-radius:50%; }
 .reserve-figure { display:flex; align-items:baseline; gap:9px; margin:23px 0 16px; } .reserve-figure strong { font:500 42px var(--app-font-mono); letter-spacing:-.08em; } .reserve-figure span { color:var(--text-secondary); font-size:11px; }
 .reserve-meta { display:flex; justify-content:space-between; margin-top:9px; color:var(--text-secondary); font:10px var(--app-font-mono); }

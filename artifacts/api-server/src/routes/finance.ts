@@ -65,11 +65,11 @@ import {
 const router: IRouter = Router();
 
 router.get("/budget", asyncRoute(async (_req, res) => {
-  res.json(GetBudgetResponse.parse(await getBudget()));
+  res.json(GetBudgetResponse.parse(await getBudget(actorFrom(res))));
 }));
 
 router.get("/cash-flow", asyncRoute(async (_req, res) => {
-  res.json(GetCashFlowResponse.parse(await getCashFlow()));
+  res.json(GetCashFlowResponse.parse(await getCashFlow(actorFrom(res))));
 }));
 
 router.get("/financial-accounts", asyncRoute(async (_req, res) => {
@@ -88,7 +88,7 @@ router.post("/financial-accounts/:accountId/import-csv", asyncRoute(async (req, 
 }));
 
 router.get("/bills", asyncRoute(async (_req, res) => {
-  res.json(ListBillsResponse.parse((await getFinanceLists()).bills));
+  res.json(ListBillsResponse.parse((await getFinanceLists(actorFrom(res))).bills));
 }));
 
 router.post("/bills", asyncRoute(async (req, res) => {
@@ -126,7 +126,7 @@ router.delete("/bills/:billId", asyncRoute(async (req, res) => {
 }));
 
 router.get("/upcoming-expenses", asyncRoute(async (_req, res) => {
-  res.json(ListUpcomingExpensesResponse.parse((await getFinanceLists()).upcomingExpenses));
+  res.json(ListUpcomingExpensesResponse.parse((await getFinanceLists(actorFrom(res))).upcomingExpenses));
 }));
 
 router.post("/upcoming-expenses", asyncRoute(async (req, res) => {
@@ -164,7 +164,7 @@ router.delete("/upcoming-expenses/:expenseId", asyncRoute(async (req, res) => {
 }));
 
 router.get("/income", asyncRoute(async (_req, res) => {
-  res.json(ListIncomeSourcesResponse.parse((await getFinanceLists()).incomeSources));
+  res.json(ListIncomeSourcesResponse.parse((await getFinanceLists(actorFrom(res))).incomeSources));
 }));
 
 router.post("/income", asyncRoute(async (req, res) => {
@@ -201,15 +201,15 @@ router.delete("/income/:incomeId", asyncRoute(async (req, res) => {
 }));
 
 router.get("/safe-to-deploy", asyncRoute(async (_req, res) => {
-  res.json(GetSafeToDeployResponse.parse(await getSafeToDeploy()));
+  res.json(GetSafeToDeployResponse.parse(await getSafeToDeploy(actorFrom(res))));
 }));
 
 router.get("/finance-insights", asyncRoute(async (_req, res) => {
-  res.json(GetFinanceInsightsResponse.parse(await getFinanceInsights()));
+  res.json(GetFinanceInsightsResponse.parse(await getFinanceInsights(actorFrom(res))));
 }));
 
 router.get("/finance-snapshots", asyncRoute(async (_req, res) => {
-  res.json(await getFinanceSnapshots());
+  res.json(await getFinanceSnapshots(actorFrom(res)));
 }));
 
 router.get("/banking/status", asyncRoute(async (_req, res) => {

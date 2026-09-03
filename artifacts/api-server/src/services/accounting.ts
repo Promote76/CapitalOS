@@ -2,7 +2,6 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { db, financeCategories, financeSnapshots, financeTransactions, financialAccounts, ledgerEntries, ledgerTransactions } from "@workspace/db";
 import { canViewFinancialBalance } from "../domain/household-finance";
 import { calculateNetWorth, calculateNetWorthAttribution, ledgerDebitsEqualCredits, reconcileCrossViewTotals, summarizeCashFlow } from "../domain/accounting";
-import { ensureSeedData } from "./seed";
 import type { Actor } from "./capital-os";
 
 const cents = (value: string | number | null | undefined) => {
@@ -22,7 +21,7 @@ function categoryName(category: { id: string; name: string } | undefined) {
 }
 
 export async function getAccountingOverview(actor: Actor) {
-  const householdId = (await ensureSeedData()).householdId;
+  const householdId = actor.householdId;
   const [accountRows, transactions, categories, snapshots, ledgerRows] = await Promise.all([
     db.select().from(financialAccounts).where(eq(financialAccounts.householdId, householdId)),
     db.select().from(financeTransactions).where(eq(financeTransactions.householdId, householdId)),

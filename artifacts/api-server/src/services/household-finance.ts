@@ -1,6 +1,7 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
+  auditEvents,
   accounts,
   bankConnections,
   emergencyReserves,
@@ -29,11 +30,29 @@ import { csvImportBankingAdapter } from "../adapters/banking";
 import { ensureSeedData } from "./seed";
 import type { Actor } from "./capital-os";
 import { assertPermission, GovernanceError } from "../domain/governance";
+import { activeSecurityContext } from "../middleware/request-scope";
 
 const numeric = (value: string | number | null | undefined) => Number(value ?? 0);
 const cents = (value: string | number | null | undefined) => Math.round(numeric(value) * 100);
 const nowMonth = () => new Date().toISOString().slice(0, 7);
 const calendarToday = () => new Date().toISOString().slice(0, 10);
+const validFinancialAccountTypes = new Set([
+  "checking",
+  "savings",
+  "money_market",
+  "credit_card",
+  "loan",
+  "mortgage",
+  "brokerage",
+  "retirement",
+  "crypto",
+  "business_checking",
+  "protected_duplex",
+  "opportunity_reserve",
+  "other",
+]);
+const moneyPattern = /^-?(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/;
+const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 type IncomeTimingSource = {
   active: boolean;
@@ -91,7 +110,13 @@ function hasPayDateInPeriod(source: IncomeTimingSource, start: string, end: stri
   return false;
 }
 
-async function householdId() {
+async function householdId(actor?: Pick<Actor, "householdId">) {
+  if (actor) return actor.householdId;
+  const active = activeSecurityContext();
+  if (active) return active.householdId;
+  if (process.env.NODE_ENV === "production") {
+    throw new GovernanceError("FORBIDDEN", "An authenticated household context is required for finance data");
+  }
   return (await ensureSeedData()).householdId;
 }
 
@@ -114,8 +139,46 @@ function accountVisibility(actor: Actor, account: typeof financialAccounts.$infe
   };
 }
 
+function assertMoney(value: string | undefined, label: string, { required = false } = {}) {
+  if (value === undefined && !required) return;
+  if (!value || !moneyPattern.test(value)) {
+    throw new GovernanceError("INVALID_STATE", `${label} must be a valid amount with at most two decimal places`);
+  }
+}
+
+function assertDate(value: string, label: string) {
+  if (!datePattern.test(value)) throw new GovernanceError("INVALID_STATE", `${label} must use YYYY-MM-DD format`);
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+    throw new GovernanceError("INVALID_STATE", `${label} is not a valid calendar date`);
+  }
+}
+
+function hashImportIdentity(value: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `csv-${(hash >>> 0).toString(16)}`;
+}
+
+async function auditFinanceMutation(actor: Actor, eventType: string, entity: string, entityId: string, afterState?: Record<string, unknown>, beforeState?: Record<string, unknown>) {
+  await db.insert(auditEvents).values({
+    householdId: actor.householdId,
+    eventType,
+    actor: actor.userId,
+    entity,
+    entityId,
+    beforeState,
+    afterState,
+    reason: "Household finance planning record",
+    metadata: { source: "household-finance", readOnlyExternal: true },
+  });
+}
+
 export async function getFinancialAccounts(actor: Actor) {
-  const id = await householdId();
+  const id = await householdId(actor);
   const [rows, connections] = await Promise.all([
     db.select().from(financialAccounts).where(eq(financialAccounts.householdId, id)),
     db.select().from(bankConnections).where(eq(bankConnections.householdId, id)),
@@ -137,8 +200,8 @@ export async function getFinancialAccounts(actor: Actor) {
   };
 }
 
-async function loadFinanceData() {
-  const id = await householdId();
+async function loadFinanceData(actor?: Pick<Actor, "householdId">) {
+  const id = await householdId(actor);
   const [categories, transactions, bills, recurring, expenses, income, reserve, capitalAccounts, goalsRows, risks] = await Promise.all([
     db.select().from(financeCategories).where(eq(financeCategories.householdId, id)),
     db.select().from(financeTransactions).where(eq(financeTransactions.householdId, id)),
@@ -154,8 +217,48 @@ async function loadFinanceData() {
   return { id, categories, transactions, bills, recurring, expenses, income, reserve: reserve[0], capitalAccounts, goalsRows, risk: risks[0] };
 }
 
-function transactionWithCategory(data: Awaited<ReturnType<typeof loadFinanceData>>) {
-  return data.transactions.map((transaction) => {
+function currentPeriod(asOf = calendarToday()) {
+  const date = new Date(`${asOf}T00:00:00.000Z`);
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const endDate = new Date(Date.UTC(year, month + 1, 1));
+  const end = endDate.toISOString().slice(0, 10);
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const daysElapsed = Math.min(date.getUTCDate(), daysInMonth);
+  const label = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(date);
+  return { start, end, daysInMonth, daysElapsed, label };
+}
+
+function currentPeriodTransactions(data: Awaited<ReturnType<typeof loadFinanceData>>, asOf = calendarToday()) {
+  const period = currentPeriod(asOf);
+  return data.transactions.filter((transaction) =>
+    transaction.transactionDate >= period.start &&
+    transaction.transactionDate < period.end &&
+    transaction.reviewStatus === "approved"
+  );
+}
+
+function financeDataConfidence(data: Awaited<ReturnType<typeof loadFinanceData>>) {
+  const staleAccounts = data.capitalAccounts.filter((account) => {
+    const lastSync = account.lastSuccessfulSync ?? account.lastSync;
+    return !lastSync || Date.now() - lastSync.getTime() > 1000 * 60 * 60 * 24 * 45;
+  }).length;
+  const unreviewedTransactions = data.transactions.filter((transaction) => transaction.reviewStatus !== "approved").length;
+  let score = 100;
+  if (!data.capitalAccounts.length) score -= 45;
+  if (!data.categories.length) score -= 25;
+  if (!data.income.length) score -= 15;
+  score -= staleAccounts * 10;
+  score -= Math.min(unreviewedTransactions * 2, 20);
+  return Math.max(0, Math.min(100, score));
+}
+
+function transactionWithCategory(
+  data: Awaited<ReturnType<typeof loadFinanceData>>,
+  transactions = data.transactions,
+) {
+  return transactions.map((transaction) => {
     const category = data.categories.find((item) => item.id === transaction.categoryId);
     return {
       ...transaction,
@@ -165,8 +268,9 @@ function transactionWithCategory(data: Awaited<ReturnType<typeof loadFinanceData
   });
 }
 
-export async function getBudget() {
-  const data = await loadFinanceData();
+export async function getBudget(actor?: Actor) {
+  const data = await loadFinanceData(actor);
+  const period = currentPeriod();
   const performance = calculateBudgetPerformance(
     data.categories.map((category) => ({
       id: category.id,
@@ -176,14 +280,14 @@ export async function getBudget() {
       monthlyTarget: category.monthlyTarget,
       warningThreshold: category.warningThreshold,
     })),
-    data.transactions.map((transaction) => ({
+    currentPeriodTransactions(data).map((transaction) => ({
       id: transaction.id,
       amount: transaction.amount,
       categoryId: transaction.categoryId,
       excludedFromBudget: transaction.excludedFromBudget,
     })),
-    25,
-    31,
+    period.daysElapsed,
+    period.daysInMonth,
   );
   const totals = performance.reduce((result, category) => {
     result.budgeted += numeric(category.budgeted);
@@ -191,7 +295,7 @@ export async function getBudget() {
     return result;
   }, { budgeted: 0, actual: 0 });
   return {
-    month: "August 2026",
+    month: period.label,
     categories: performance,
     totals: {
       budgeted: totals.budgeted.toFixed(2),
@@ -199,13 +303,18 @@ export async function getBudget() {
       remaining: (totals.budgeted - totals.actual).toFixed(2),
       percentageUsed: totals.budgeted === 0 ? 0 : Number(((totals.actual / totals.budgeted) * 100).toFixed(1)),
     },
-    notes: ["Transfers and credit-card payments are excluded from spending totals to avoid double counting.", "Refunds reduce category spend when categorized to the original category."],
+    notes: [
+      `Current period: ${period.start} through ${calendarToday()}.`,
+      "Only approved user-entered or CSV-imported transactions affect budget totals; transfers and credit-card payments are excluded to avoid double counting.",
+      "Imported rows remain reviewable until a household member approves them.",
+    ],
   };
 }
 
-export async function getCashFlow() {
-  const data = await loadFinanceData();
-  const cashFlow = calculateCashFlowMetrics(transactionWithCategory(data));
+export async function getCashFlow(actor?: Actor) {
+  const data = await loadFinanceData(actor);
+  const periodTransactions = currentPeriodTransactions(data);
+  const cashFlow = calculateCashFlowMetrics(transactionWithCategory(data, periodTransactions));
   const reserve = calculateEmergencyReserve({
     essentialMonthlyExpenses: cents(data.reserve?.essentialMonthlyExpenses),
     targetMonths: data.reserve?.targetMonths ?? 3,
@@ -234,7 +343,7 @@ export async function getCashFlow() {
     .filter((category) => category.essentialStatus === "essential" && category.categoryType !== "income")
     .reduce((sum, category) => sum + numeric(category.monthlyTarget), 0);
   return {
-    month: "August 2026",
+    month: currentPeriod().label,
     metrics: cashFlow,
     reserve,
     financialHealth: health,
@@ -248,8 +357,8 @@ export async function getCashFlow() {
   };
 }
 
-export async function getSafeToDeploy() {
-  const data = await loadFinanceData();
+export async function getSafeToDeploy(actor?: Actor) {
+  const data = await loadFinanceData(actor);
   const asOf = calendarToday();
   const incomeDate = nextIncomeDate(data.income, asOf);
   const liquid = data.capitalAccounts.filter((account) => ["checking", "savings", "money_market"].includes(account.accountType)).reduce((sum, account) => sum + cents(account.availableBalance ?? account.currentBalance), 0);
@@ -270,12 +379,12 @@ export async function getSafeToDeploy() {
     knownUpcomingExpenses: upcoming,
     requiredSafetyBuffer: 1000 * 100,
     maximumDeployablePercentage: 0.25,
-    dataConfidence: 86,
+    dataConfidence: financeDataConfidence(data),
   });
 }
 
-export async function getFinanceInsights() {
-  const data = await loadFinanceData();
+export async function getFinanceInsights(actor?: Actor) {
+  const data = await loadFinanceData(actor);
   const transactions = transactionWithCategory(data);
   const subscriptions = data.recurring.filter((item) => item.essentialStatus === "discretionary");
   const anomalies = transactions.filter((transaction) => transaction.reviewStatus !== "approved");
@@ -283,15 +392,15 @@ export async function getFinanceInsights() {
     insights: [
       { type: "positive", title: "Savings rhythm is holding", description: "Protected and opportunity contributions are on their planned monthly pace.", severity: "low" },
       { type: "advisory", title: "Streaming bundle is discretionary", description: `${subscriptions[0]?.merchant ?? "One subscription"} costs ${subscriptions[0]?.annualCost ?? "0.00"} annually and can be reviewed without affecting essential coverage.`, severity: "low" },
-      { type: anomalies.length ? "review" : "positive", title: anomalies.length ? "Review uncategorized activity" : "Ledger is reconciled", description: anomalies.length ? `${anomalies.length} transactions need a household review.` : "No duplicate or uncategorized transactions are in the current seed view.", severity: anomalies.length ? "medium" : "low" },
+      { type: anomalies.length ? "review" : "positive", title: anomalies.length ? "Review imported activity" : "Ledger is reconciled", description: anomalies.length ? `${anomalies.length} transactions need a household review before they affect planning totals.` : "No unapproved transactions are waiting for household review.", severity: anomalies.length ? "medium" : "low" },
     ],
     subscriptions: subscriptions.map((item) => ({ merchant: item.merchant, monthlyAmount: item.averageAmount, annualCost: item.annualCost, essentialStatus: item.essentialStatus })),
     anomalyCount: anomalies.length,
   };
 }
 
-export async function getFinanceLists() {
-  const data = await loadFinanceData();
+export async function getFinanceLists(actor?: Actor) {
+  const data = await loadFinanceData(actor);
   return {
     bills: data.bills,
     upcomingExpenses: data.expenses,
@@ -313,7 +422,10 @@ export async function createBill(actor: Actor, input: {
   autoPay?: boolean;
 }) {
   assertPermission(actor.role, "contribute");
-  const id = await householdId();
+  if (!input.billName.trim()) throw new GovernanceError("INVALID_STATE", "Bill name is required");
+  assertDate(input.dueDate, "Bill due date");
+  assertMoney(input.expectedAmount, "Bill amount", { required: true });
+  const id = await householdId(actor);
   const [bill] = await db.insert(financeBills).values({
     householdId: id,
     billName: input.billName,
@@ -324,6 +436,7 @@ export async function createBill(actor: Actor, input: {
     autoPay: input.autoPay ?? false,
     active: true,
   }).returning();
+  await auditFinanceMutation(actor, "finance_bill_created", "finance_bill", bill.id, { billName: bill.billName, expectedAmount: bill.expectedAmount });
   return bill;
 }
 
@@ -336,22 +449,28 @@ export async function updateBill(actor: Actor, billId: string, input: {
   autoPay?: boolean;
 }) {
   assertPermission(actor.role, "contribute");
-  const id = await householdId();
+  if (input.dueDate) assertDate(input.dueDate, "Bill due date");
+  if (input.expectedAmount !== undefined) assertMoney(input.expectedAmount, "Bill amount", { required: true });
+  const id = await householdId(actor);
   const [bill] = await db.update(financeBills)
     .set({ ...input, updatedAt: new Date() })
     .where(and(eq(financeBills.id, billId), eq(financeBills.householdId, id)))
     .returning();
-  return bill ?? planningNotFound("Bill");
+  if (!bill) return planningNotFound("Bill");
+  await auditFinanceMutation(actor, "finance_bill_updated", "finance_bill", bill.id, { ...input });
+  return bill;
 }
 
 async function setBillActive(actor: Actor, billId: string, active: boolean) {
   assertPermission(actor.role, "contribute");
-  const id = await householdId();
+  const id = await householdId(actor);
   const [bill] = await db.update(financeBills)
     .set({ active, updatedAt: new Date() })
     .where(and(eq(financeBills.id, billId), eq(financeBills.householdId, id)))
     .returning();
-  return bill ?? planningNotFound("Bill");
+  if (!bill) return planningNotFound("Bill");
+  await auditFinanceMutation(actor, active ? "finance_bill_resumed" : "finance_bill_paused", "finance_bill", bill.id, { active });
+  return bill;
 }
 
 export const pauseBill = (actor: Actor, billId: string) => setBillActive(actor, billId, false);
@@ -359,11 +478,12 @@ export const resumeBill = (actor: Actor, billId: string) => setBillActive(actor,
 
 export async function deleteBill(actor: Actor, billId: string) {
   assertPermission(actor.role, "contribute");
-  const id = await householdId();
+  const id = await householdId(actor);
   const [bill] = await db.delete(financeBills)
     .where(and(eq(financeBills.id, billId), eq(financeBills.householdId, id)))
     .returning({ id: financeBills.id });
   if (!bill) return planningNotFound("Bill");
+  await auditFinanceMutation(actor, "finance_bill_deleted", "finance_bill", bill.id);
 }
 
 export async function createUpcomingExpense(actor: Actor, input: {
@@ -375,7 +495,11 @@ export async function createUpcomingExpense(actor: Actor, input: {
   fundedAmount?: string;
 }) {
   assertPermission(actor.role, "contribute");
-  const id = await householdId();
+  if (!input.name.trim()) throw new GovernanceError("INVALID_STATE", "Expense name is required");
+  assertDate(input.expectedDate, "Expense date");
+  assertMoney(input.estimatedAmount, "Expense amount", { required: true });
+  if (input.fundedAmount !== undefined) assertMoney(input.fundedAmount, "Funded amount", { required: true });
+  const id = await householdId(actor);
   const [expense] = await db.insert(upcomingExpenses).values({
     householdId: id,
     name: input.name,
@@ -386,6 +510,7 @@ export async function createUpcomingExpense(actor: Actor, input: {
     fundedAmount: input.fundedAmount ?? "0.00",
     active: true,
   }).returning();
+  await auditFinanceMutation(actor, "finance_expense_created", "upcoming_expense", expense.id, { name: expense.name, estimatedAmount: expense.estimatedAmount });
   return expense;
 }
 
@@ -398,22 +523,29 @@ export async function updateUpcomingExpense(actor: Actor, expenseId: string, inp
   fundedAmount?: string;
 }) {
   assertPermission(actor.role, "contribute");
-  const id = await householdId();
+  if (input.expectedDate) assertDate(input.expectedDate, "Expense date");
+  if (input.estimatedAmount !== undefined) assertMoney(input.estimatedAmount, "Expense amount", { required: true });
+  if (input.fundedAmount !== undefined) assertMoney(input.fundedAmount, "Funded amount", { required: true });
+  const id = await householdId(actor);
   const [expense] = await db.update(upcomingExpenses)
     .set({ ...input, updatedAt: new Date() })
     .where(and(eq(upcomingExpenses.id, expenseId), eq(upcomingExpenses.householdId, id)))
     .returning();
-  return expense ?? planningNotFound("Upcoming expense");
+  if (!expense) return planningNotFound("Upcoming expense");
+  await auditFinanceMutation(actor, "finance_expense_updated", "upcoming_expense", expense.id, { ...input });
+  return expense;
 }
 
 async function setUpcomingExpenseActive(actor: Actor, expenseId: string, active: boolean) {
   assertPermission(actor.role, "contribute");
-  const id = await householdId();
+  const id = await householdId(actor);
   const [expense] = await db.update(upcomingExpenses)
     .set({ active, updatedAt: new Date() })
     .where(and(eq(upcomingExpenses.id, expenseId), eq(upcomingExpenses.householdId, id)))
     .returning();
-  return expense ?? planningNotFound("Upcoming expense");
+  if (!expense) return planningNotFound("Upcoming expense");
+  await auditFinanceMutation(actor, active ? "finance_expense_resumed" : "finance_expense_paused", "upcoming_expense", expense.id, { active });
+  return expense;
 }
 
 export const pauseUpcomingExpense = (actor: Actor, expenseId: string) => setUpcomingExpenseActive(actor, expenseId, false);
@@ -421,11 +553,12 @@ export const resumeUpcomingExpense = (actor: Actor, expenseId: string) => setUpc
 
 export async function deleteUpcomingExpense(actor: Actor, expenseId: string) {
   assertPermission(actor.role, "contribute");
-  const id = await householdId();
+  const id = await householdId(actor);
   const [expense] = await db.delete(upcomingExpenses)
     .where(and(eq(upcomingExpenses.id, expenseId), eq(upcomingExpenses.householdId, id)))
     .returning({ id: upcomingExpenses.id });
   if (!expense) planningNotFound("Upcoming expense");
+  await auditFinanceMutation(actor, "finance_expense_deleted", "upcoming_expense", expense.id);
 }
 
 export async function createIncomeSource(actor: Actor, input: {
@@ -436,7 +569,10 @@ export async function createIncomeSource(actor: Actor, input: {
   nextPayDate: string;
 }) {
   assertPermission(actor.role, "contribute");
-  const id = await householdId();
+  if (!input.name.trim()) throw new GovernanceError("INVALID_STATE", "Income source name is required");
+  assertMoney(input.expectedMonthly, "Expected monthly income", { required: true });
+  assertDate(input.nextPayDate, "Next pay date");
+  const id = await householdId(actor);
   const [source] = await db.insert(incomeSources).values({
     householdId: id,
     name: input.name,
@@ -446,6 +582,7 @@ export async function createIncomeSource(actor: Actor, input: {
     nextPayDate: input.nextPayDate,
     active: true,
   }).returning();
+  await auditFinanceMutation(actor, "finance_income_created", "income_source", source.id, { name: source.name, expectedMonthly: source.expectedMonthly });
   return source;
 }
 
@@ -457,22 +594,28 @@ export async function updateIncomeSource(actor: Actor, incomeId: string, input: 
   nextPayDate?: string;
 }) {
   assertPermission(actor.role, "contribute");
-  const id = await householdId();
+  if (input.expectedMonthly !== undefined) assertMoney(input.expectedMonthly, "Expected monthly income", { required: true });
+  if (input.nextPayDate) assertDate(input.nextPayDate, "Next pay date");
+  const id = await householdId(actor);
   const [source] = await db.update(incomeSources)
     .set({ ...input, updatedAt: new Date() })
     .where(and(eq(incomeSources.id, incomeId), eq(incomeSources.householdId, id)))
     .returning();
-  return source ?? planningNotFound("Income source");
+  if (!source) return planningNotFound("Income source");
+  await auditFinanceMutation(actor, "finance_income_updated", "income_source", source.id, { ...input });
+  return source;
 }
 
 async function setIncomeSourceActive(actor: Actor, incomeId: string, active: boolean) {
   assertPermission(actor.role, "contribute");
-  const id = await householdId();
+  const id = await householdId(actor);
   const [source] = await db.update(incomeSources)
     .set({ active, updatedAt: new Date() })
     .where(and(eq(incomeSources.id, incomeId), eq(incomeSources.householdId, id)))
     .returning();
-  return source ?? planningNotFound("Income source");
+  if (!source) return planningNotFound("Income source");
+  await auditFinanceMutation(actor, active ? "finance_income_resumed" : "finance_income_paused", "income_source", source.id, { active });
+  return source;
 }
 
 export const pauseIncomeSource = (actor: Actor, incomeId: string) => setIncomeSourceActive(actor, incomeId, false);
@@ -480,11 +623,12 @@ export const resumeIncomeSource = (actor: Actor, incomeId: string) => setIncomeS
 
 export async function deleteIncomeSource(actor: Actor, incomeId: string) {
   assertPermission(actor.role, "contribute");
-  const id = await householdId();
+  const id = await householdId(actor);
   const [source] = await db.delete(incomeSources)
     .where(and(eq(incomeSources.id, incomeId), eq(incomeSources.householdId, id)))
     .returning({ id: incomeSources.id });
   if (!source) planningNotFound("Income source");
+  await auditFinanceMutation(actor, "finance_income_deleted", "income_source", source.id);
 }
 
 export async function createManualFinancialAccount(actor: Actor, input: {
@@ -494,65 +638,144 @@ export async function createManualFinancialAccount(actor: Actor, input: {
   currentBalance?: string;
 }) {
   assertPermission(actor.role, "contribute");
-  const id = await householdId();
-  let [connection] = await db.select().from(bankConnections).where(and(eq(bankConnections.householdId, id), eq(bankConnections.provider, "manual"))).limit(1);
-  if (!connection) {
-    [connection] = await db.insert(bankConnections).values({
-      householdId: id,
-      provider: "manual",
-      status: "manual",
-      institutionName: input.institution,
-    }).returning();
+  if (!input.institution.trim() || !input.nickname.trim()) {
+    throw new GovernanceError("INVALID_STATE", "Institution and account nickname are required");
   }
-  const [account] = await db.insert(financialAccounts).values({
-    householdId: id,
-    bankConnectionId: connection.id,
-    institution: input.institution,
-    nickname: input.nickname,
-    accountType: input.accountType as typeof financialAccounts.$inferInsert.accountType,
-    currentBalance: input.currentBalance ?? "0.00",
-    availableBalance: input.currentBalance ?? "0.00",
-    connectionStatus: "manual",
-    dataSource: "manual",
-  }).returning();
-  return accountVisibility(actor, account);
+  if (!validFinancialAccountTypes.has(input.accountType)) {
+    throw new GovernanceError("INVALID_STATE", "Unsupported financial account type");
+  }
+  assertMoney(input.currentBalance, "Current balance");
+  const id = await householdId(actor);
+  const recordedAt = new Date();
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`finance-manual-account:${id}`}, 0))`);
+    let [connection] = await tx.select().from(bankConnections).where(and(eq(bankConnections.householdId, id), eq(bankConnections.provider, "manual"))).limit(1);
+    if (!connection) {
+      [connection] = await tx.insert(bankConnections).values({
+        householdId: id,
+        provider: "manual",
+        status: "manual",
+        institutionName: input.institution,
+        lastSuccessfulSync: recordedAt,
+        lastBalanceRefresh: recordedAt,
+      }).returning();
+    }
+    const [account] = await tx.insert(financialAccounts).values({
+      householdId: id,
+      bankConnectionId: connection.id,
+      institution: input.institution,
+      nickname: input.nickname,
+      accountType: input.accountType as typeof financialAccounts.$inferInsert.accountType,
+      currentBalance: input.currentBalance ?? "0.00",
+      availableBalance: input.currentBalance ?? "0.00",
+      connectionStatus: "manual",
+      dataSource: "manual",
+      lastSync: recordedAt,
+      lastSuccessfulSync: recordedAt,
+    }).returning();
+    await tx.insert(auditEvents).values({
+      householdId: actor.householdId,
+      eventType: "finance_account_created",
+      actor: actor.userId,
+      entity: "financial_account",
+      entityId: account.id,
+      afterState: {
+        institution: account.institution,
+        nickname: account.nickname,
+        accountType: account.accountType,
+        dataSource: account.dataSource,
+      },
+      reason: "Household finance planning record",
+      metadata: { source: "household-finance", readOnlyExternal: true },
+    });
+    return accountVisibility(actor, account);
+  });
 }
 
 export async function importFinanceCsv(actor: Actor, accountId: string, csv: string) {
   assertPermission(actor.role, "contribute");
-  const id = await householdId();
+  if (!csv.trim()) throw new GovernanceError("INVALID_STATE", "CSV content is required");
+  const id = await householdId(actor);
   const account = await db.select().from(financialAccounts).where(and(eq(financialAccounts.id, accountId), eq(financialAccounts.householdId, id))).limit(1);
   if (!account[0]) throw new Error("Financial account was not found");
   const imported = csvImportBankingAdapter.importTransactions(csv);
-  const existing = await db.select({ externalId: financeTransactions.externalId }).from(financeTransactions).where(eq(financeTransactions.accountId, accountId));
-  const existingIds = new Set(existing.map((item) => item.externalId).filter((id): id is string => Boolean(id)));
-  const deduplicated = deduplicateImportedTransactions(imported, existingIds);
-  const fresh = deduplicated.fresh;
-  if (fresh.length) {
-    await db.insert(financeTransactions).values(fresh.map((item) => ({
-      householdId: id,
-      accountId,
-      externalId: item.externalId,
-      transactionDate: item.transactionDate,
-      description: item.description,
-      merchant: item.merchant,
-      originalAmount: item.amount,
-      amount: item.amount,
-      dataSource: "csv_import" as const,
-      reviewStatus: "needs_review" as const,
-    })));
-  }
-  return { imported: fresh.length, skippedDuplicates: deduplicated.skippedDuplicates, readOnly: true };
+  if (!imported.length) throw new GovernanceError("INVALID_STATE", "CSV must include a header and at least one transaction row");
+  const fallbackIdentityCounts = new Map<string, number>();
+  const normalized = imported.map((item) => {
+    const transactionDate = item.transactionDate?.trim();
+    const description = item.description?.trim();
+    const amount = item.amount?.trim();
+    if (!transactionDate || !description || !amount) {
+      throw new GovernanceError("INVALID_STATE", "Each CSV row requires date, description, and amount");
+    }
+    assertDate(transactionDate, "CSV transaction date");
+    assertMoney(amount, "CSV transaction amount", { required: true });
+    const merchant = item.merchant?.trim() || undefined;
+    const fallbackIdentity = `${transactionDate}|${description}|${merchant ?? ""}|${amount}`;
+    const fallbackOccurrence = (fallbackIdentityCounts.get(fallbackIdentity) ?? 0) + 1;
+    fallbackIdentityCounts.set(fallbackIdentity, fallbackOccurrence);
+    const externalId = item.externalId?.trim() || `${hashImportIdentity(fallbackIdentity)}-${fallbackOccurrence}`;
+    return { ...item, transactionDate, description, amount, merchant, externalId };
+  });
+
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`finance-import:${id}:${accountId}`}, 0))`);
+    const existing = await tx.select({ externalId: financeTransactions.externalId }).from(financeTransactions).where(and(
+      eq(financeTransactions.accountId, accountId),
+      eq(financeTransactions.householdId, id),
+    ));
+    const existingIds = new Set(existing.map((item) => item.externalId).filter((value): value is string => Boolean(value)));
+    const deduplicated = deduplicateImportedTransactions(normalized, existingIds);
+    const fresh = deduplicated.fresh;
+    if (fresh.length) {
+      await tx.insert(financeTransactions).values(fresh.map((item) => ({
+        householdId: id,
+        accountId,
+        externalId: item.externalId,
+        transactionDate: item.transactionDate,
+        description: item.description,
+        merchant: item.merchant,
+        originalAmount: item.amount,
+        amount: item.amount,
+        dataSource: "csv_import" as const,
+        reviewStatus: "needs_review" as const,
+      })));
+      const refreshedAt = new Date();
+      await tx.update(financialAccounts).set({
+        lastSync: refreshedAt,
+        lastSuccessfulSync: refreshedAt,
+        updatedAt: refreshedAt,
+      }).where(and(eq(financialAccounts.id, accountId), eq(financialAccounts.householdId, id)));
+      await tx.update(bankConnections).set({
+        lastTransactionSync: refreshedAt,
+        lastSuccessfulSync: refreshedAt,
+        updatedAt: refreshedAt,
+      }).where(and(eq(bankConnections.id, account[0].bankConnectionId!), eq(bankConnections.householdId, id)));
+    }
+    const [audit] = fresh.length
+      ? await tx.insert(auditEvents).values({
+        householdId: actor.householdId,
+        eventType: "finance_csv_imported",
+        actor: actor.userId,
+        entity: "financial_account",
+        entityId: accountId,
+        reason: "Imported rows require household review before planning use",
+        metadata: { source: "csv_import", imported: fresh.length, skippedDuplicates: deduplicated.skippedDuplicates, readOnlyExternal: true },
+      }).returning({ id: auditEvents.id })
+      : [];
+    void audit;
+    return { imported: fresh.length, skippedDuplicates: deduplicated.skippedDuplicates, readOnly: true };
+  });
 }
 
-export async function getFinanceSnapshot() {
-  const id = await householdId();
+export async function getFinanceSnapshot(actor?: Actor) {
+  const id = await householdId(actor);
   const [snapshot] = await db.select().from(financeSnapshots).where(and(eq(financeSnapshots.householdId, id), eq(financeSnapshots.snapshotDate, nowMonth() + "-01"))).limit(1);
   return snapshot ?? null;
 }
 
-export async function getFinanceSnapshots() {
-  const id = await householdId();
+export async function getFinanceSnapshots(actor?: Actor) {
+  const id = await householdId(actor);
   return db.select().from(financeSnapshots).where(eq(financeSnapshots.householdId, id));
 }
 

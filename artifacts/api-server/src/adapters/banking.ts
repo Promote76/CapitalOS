@@ -18,9 +18,35 @@ export interface BankingAdapter {
 function parseCsv(input: string): ImportedBankTransaction[] {
   const rows = input.trim().split(/\r?\n/);
   if (rows.length < 2) return [];
-  const headers = rows[0].split(",").map((header) => header.trim().toLowerCase());
+  const parseLine = (line: string) => {
+    const values: string[] = [];
+    let value = "";
+    let quoted = false;
+    for (let index = 0; index < line.length; index += 1) {
+      const character = line[index];
+      if (character === '"') {
+        if (quoted && line[index + 1] === '"') {
+          value += '"';
+          index += 1;
+        } else {
+          quoted = !quoted;
+        }
+      } else if (character === "," && !quoted) {
+        values.push(value.trim());
+        value = "";
+      } else {
+        value += character;
+      }
+    }
+    if (quoted) throw new Error("CSV contains an unterminated quoted field");
+    values.push(value.trim());
+    return values;
+  };
+  const headers = parseLine(rows[0]).map((header) => header.toLowerCase());
+  if (!headers.length || headers.some((header) => !header)) throw new Error("CSV header contains an empty column");
   return rows.slice(1).filter(Boolean).map((row) => {
-    const values = row.split(",").map((value) => value.trim().replace(/^"|"$/g, ""));
+    const values = parseLine(row);
+    if (values.length !== headers.length) throw new Error("CSV row does not have the same number of columns as the header");
     const record = Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""]));
     return {
       externalId: record.id || record.externalid || record.external_id || undefined,

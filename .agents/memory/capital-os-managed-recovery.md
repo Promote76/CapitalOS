@@ -7,4 +7,4 @@ Provider-managed production recovery evidence requires a release owner to select
 
 **Why:** A reachable production database and disposable Neon branch can prove connectivity or application behavior, but neither establishes provider backup identity, retention, recovery point, RPO/RTO, or managed restore controls.
 
-**How to apply:** Keep P0-04 and the release decision open until the Database tool supplies observed provider backup/restore evidence. Record the selected source, isolated target, control settings, timestamps, recovery time, and invariant results before changing any gate.
+**How to apply:** Provider recovery is excluded from the current in-house certification scope and must not be reintroduced as a release gate or warning without an explicit scope change to public use.

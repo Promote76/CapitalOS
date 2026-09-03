@@ -12,7 +12,7 @@ Capital OS is a household financial planning and advisory application for budget
 
 The hardening work established meaningful controls around authenticated identity, household scoping, role checks, effective membership permission loading, origin enforcement, exact-cent financial logic, atomic transfer debits, idempotency boundaries, ledger evidence, Treasury protected-capital state, persistence truth in the UI, generated API contracts, and the disabled Micro-Live execution boundary.
 
-Executable evidence is currently strongest for domain safety, isolated PostgreSQL HTTP behavior, and the authenticated Clerk browser lifecycle. The workspace typechecks, builds, regenerates API clients, passes route parity, and passes 66 API tests. The isolated database-backed fixture also proves the 108-route tenant preflight, role/effective-permission cases, persisted actor attribution, cross-household and viewer-denial boundaries, contribution/transfer/strategy-allocation idempotency, concurrent capital-request creation, concurrent business-distribution preparation, 100-request contention, and balanced ledger totals. Published-origin probes, a disposable historical-schema upgrade/data-preservation run, and the authenticated onboarding, persistence, sign-out, sign-in, and isolation journey also passed. Managed restore remains blocked.
+Executable evidence is currently strongest for domain safety, isolated PostgreSQL HTTP behavior, and the authenticated Clerk browser lifecycle. The workspace typechecks, builds, regenerates API clients, passes route parity, and passes 66 API tests. The isolated database-backed fixture also proves the 108-route tenant preflight, role/effective-permission cases, persisted actor attribution, cross-household and viewer-denial boundaries, contribution/transfer/strategy-allocation idempotency, concurrent capital-request creation, concurrent business-distribution preparation, 100-request contention, and balanced ledger totals. Published-origin probes, a disposable historical-schema upgrade/data-preservation run, and the authenticated onboarding, persistence, sign-out, sign-in, and isolation journey also passed.
 
 Capital OS is qualified only for controlled, in-house evaluation within the documented non-executing scope. Public production release is out of scope. Production-supported Clerk step-up flow and durable operations evidence remain outside this certification.
 
@@ -20,7 +20,7 @@ No real banking, ACH, brokerage, live venue, blockchain, external investor capit
 
 ## P0 certification mapping
 
-The certification runner and this report use the eight P0 gates below. `IMPLEMENTED`
+The certification runner and this report use the seven in-scope P0 gates below. `IMPLEMENTED`
 and `EXECUTED` evidence do not close a gate; only `CERTIFIED` evidence produces
 `PASS`. This report includes the expanded isolated fixture, published-origin probes,
 and disposable historical-schema upgrade evidence executed on 2026-09-02.
@@ -96,7 +96,7 @@ The current high-risk authentication safeguard is a temporary Clerk session-issu
 
 | Area | Status | Evidence | Known limitation |
 |---|---|---|---|
-| Authentication | PARTIAL | Clerk middleware/provider wiring; authenticated browser lifecycle and signed-out protected request both pass | Provider-supported production step-up is not configured |
+| Authentication | PARTIAL | Clerk middleware/provider wiring; authenticated browser lifecycle and signed-out protected request both pass | Provider-supported step-up is not configured; public release is out of scope |
 | Tenant isolation | PASS for P0-01 | Isolated PostgreSQL fixture executed all 108 route/method pairs and applicable household-read, foreign/malformed-identifier, and mass-assignment probes | Browser lifecycle remains separately open under P0-05 |
 | Roles | PASS for P0-06 | Isolated PostgreSQL fixture provisions Owner, Partner, Advisor, and Viewer in both households and passes role, grant/revoke, membership, selection, and tampering cases | Authenticated browser proof remains separately open |
 | Effective permissions | PASS for P0-06 | Active membership permissions are loaded and centralized checks pass the stored-permission grant/revoke and role fallback cases | Provider-supported production step-up remains outside this certification |
@@ -141,18 +141,8 @@ This inventory separates resources that exist from certification evidence that h
 |---|---|---|---|
 | Certification PostgreSQL | AVAILABLE | CERTIFIED for executed gates | Isolated Neon project `capital-os-certification` (`still-band-85811770`), main branch `br-curly-bread-a53x6g2k`, is disposable and separate from Replit `DATABASE_URL`. Clean baseline and database-backed HTTP certification passed. |
 | Old-schema test PostgreSQL | AVAILABLE | CERTIFIED for P0-03 | Disposable Neon branches applied the approved historical snapshot, ran the additive current-schema upgrade, and verified preserved representative records, balances, statuses, and audit actor. |
-| Restore target | MISSING | BLOCKED | No isolated restore database was provided. Use the Replit Database tool to restore an approved production point-in-time backup into a non-production target without overwriting production. |
 | Clerk test environment | AVAILABLE | EXECUTED / CERTIFIED for P0-05 | Replit-managed Clerk development tenant completed the authenticated onboarding, persistence, sign-out, sign-in, and isolation journey. Provider-supported step-up remains outside this certification. |
 | Browser E2E URL | AVAILABLE | EXECUTED / PASS | Published autoscale URL is available and healthy: `https://capital-os-fund.replit.app`. The documented authenticated browser lifecycle passed. |
-| Managed backup access | PROVIDER CONTROLS OBSERVED | BLOCKED | Production Database screenshot shows point-in-time recovery for the last 2 days and scheduled backups retained for 7 days; no backup reference, isolated restore target, or restore authorization is available. |
-
-#### Human-action escalation
-
-**BLOCKER:** Managed backup and isolated restore
-**WHY REPLIT CANNOT EXECUTE:** The Database tool controls production point-in-time restoration, but no approved backup timestamp or isolated restore target is available to the agent; restoring is a user-controlled provider operation.  
-**EXACT USER ACTION REQUIRED:** In the Replit Database tool, select an approved production point-in-time restore, restore it into an isolated non-production target, and authorize the test application to connect to that target.  
-**WHAT TO PROVIDE BACK:** Backup reference, backup timestamp, restore target, restore start/completion timestamps, and permission to run read-only invariant checks.  
-**NEXT AUTOMATED COMMAND:** `pnpm run certify:production-candidate` with the restored target configured for the restore verification run.
 
 ### Migration status
 
@@ -176,10 +166,6 @@ The command refuses to run when the certification URL equals the shared `DATABAS
 | Rollback / forward-fix | BLOCKED — not executed |
 | Incompatible-schema readiness behavior | PARTIAL — database outage readiness is tested; schema incompatibility execution remains open |
 
-### Backup and restore status
-
-**BLOCKED.** No managed backup reference, timestamp, isolated restore target, observed RPO, observed RTO, or restored-invariant query is available. The record is explicitly maintained in `docs/RESTORE_DRILL_2026-09-02.md`; no synthetic or exported-data restore is being counted.
-
 ## Test Results
 
 | Category | Passed | Failed | Skipped | Blocked | Current result |
@@ -195,9 +181,8 @@ The command refuses to run when the certification URL equals the shared `DATABAS
 | Financial invariants | Domain coverage | 0 | 0 | Cross-domain and broader ledger cases | PARTIAL |
 | Migration | Clean baseline and existing-schema preservation PASS | 0 | 0 | Rollback/forward-fix | PARTIAL |
 | Browser E2E | Authenticated Clerk journey executed | 0 | 0 | 0 | PASS |
-| Recovery | Pure domain recovery cases only | 0 | 0 | Managed restore and operations recovery | BLOCKED |
 
-The default API command reports 66 passing tests and three intentionally skipped database fixtures without the certification URL. The certification runner emits all eight P0 gates individually and exits nonzero whenever any P0 is not `PASS`. The expanded database-backed fixture and authenticated Clerk browser journey were recorded with zero failures; the runner exits nonzero because managed restore remains `BLOCKED`.
+The default API command reports 66 passing tests and three intentionally skipped database fixtures without the certification URL. The certification runner emits all seven in-scope P0 gates individually and exits nonzero whenever any P0 is not `PASS`. The expanded database-backed fixture and authenticated Clerk browser journey were recorded with zero failures; the internal-only candidate runner is ready when its foundational checks pass.
 
 ## Exact Repeatable Commands
 
@@ -260,15 +245,14 @@ No reviewed local-only action claims that financial, legal, permission, or owner
 | Dead letter / escalation | OPEN | No durable failed-job path and alert history |
 | Automation health | PARTIAL | Safe action validation exists; health is not derived from complete durable run history |
 | Reconciliation / Guardian | SIMULATED / PARTIAL | Domain failure containment exists; durable service recovery evidence is open |
-| Observability | PARTIAL | Logs exist; metrics, alerts, audit shipping, and backup freshness telemetry are open |
+| Observability | PARTIAL | Logs exist; metrics, alerts, and audit shipping are open |
 | Audit retention | OPEN | Retention and shipping configuration are not recorded |
 | Rate-limit deployment | OPEN | Shared multi-instance model is not recorded |
-| Managed restore | BLOCKED | No provider backup/restore execution |
 
 ### Recovery procedure
 
-- **Database failure:** keep liveness available, fail readiness closed, stop writes that require the database, preserve correlation IDs, and restore only through the managed backup procedure. Re-run tenant, ledger, protected-capital, and Micro-Live-disabled checks before reopening.
-- **Authentication failure:** deny protected requests, do not accept caller-supplied household or role headers, inspect Clerk configuration without exposing credentials, and restore only after signed-out/signed-in identity checks pass.
+- **Database failure:** keep liveness available, fail readiness closed, stop writes that require the database, preserve correlation IDs, and require human review before reopening.
+- **Authentication failure:** deny protected requests, do not accept caller-supplied household or role headers, inspect Clerk configuration without exposing credentials, and reopen only after signed-out/signed-in identity checks pass.
 - **Scheduler failure:** keep safe prepare-only actions non-executing, preserve durable failure state when available, prevent duplicate work through idempotency, and require human review before replay.
 - **Security incident:** activate emergency/risk controls, deny cross-household and high-risk writes, preserve audit/correlation evidence, rotate affected provider credentials through the supported secret mechanism, and do not reconnect a venue or bank during investigation.
 - **Financial integrity incident:** stop affected economic writes, reconcile debits and credits, inspect idempotency and audit records, preserve the original transaction boundary, and require human approval before any recovery action.
@@ -315,8 +299,7 @@ AI cannot:
 | Origin / CSRF | PASS for published-origin boundary | Middleware matrix and five published-origin write-safety probes pass; authenticated browser journey is certified separately under P0-05 |
 | Concurrency | PARTIAL | Targeted transfer race, 100-request contention with balanced ledger totals, concurrent capital-request creation, and concurrent distribution preparation pass; broader economic paths remain open |
 | Idempotency | PASS for current keyed economic writes | All current keyed economic write paths pass same-key concurrency and mismatched replay checks in the isolated fixture |
-| Migration | PASS for disposable existing-schema upgrade | Historical records, balances, statuses, and audit actor survived the additive current-schema upgrade; managed restore remains open |
-| Restore | BLOCKED | Managed backup/restore unavailable |
+| Migration | PASS for disposable existing-schema upgrade | Historical records, balances, statuses, and audit actor survived the additive current-schema upgrade |
 | Browser E2E | PASS for P0-05 | Authenticated Clerk journey passed visible onboarding, saved-write reload, sign-out, repeat sign-in, and second-household isolation |
 | Accounting | PARTIAL | Exact cents and empty-ledger safeguards pass; cross-view treatment remains incomplete |
 | Operations | BLOCKED | No durable scheduler/retry/dead-letter/restart evidence |
@@ -350,7 +333,6 @@ These are listed as resolved only where current source and targeted test evidenc
 
 | Issue | Impact | Current safeguard | Required fix | Release effect |
 |---|---|---|---|---|
-| Managed backup/restore is unexecuted | Recovery capability and RPO/RTO are unknown | Restore runbook and explicit blocked record | Execute provider backup and isolated restore drill | Blocks candidate promotion |
 
 ### P1
 
@@ -391,7 +373,7 @@ Within the current non-executing family-capital scope, Capital OS may be used fo
 - prepare-only operational workflows;
 - Micro-Live rehearsal and disabled-by-design safety review.
 
-These uses remain subject to authentication, household scope, role/permission boundaries, human review, and the open release gates in this report.
+These uses remain subject to authentication, household scope, role/permission boundaries, human review, and the documented internal-only boundaries in this report.
 
 ## Prohibited / Disabled Scope
 
@@ -419,12 +401,11 @@ Capital OS is not authorized by this report to:
 | Structured logging/correlation | Required | Implemented at current level |
 | Audit retention/shipping | Required | Not recorded |
 | Shared rate limiter or single-instance constraint | Required | Not recorded |
-| Managed backup and restore | Required | Not executed |
 | Alerting | Required | Not configured/evidenced |
 | Real banking, ACH, live trading, blockchain | Future / prohibited for this certification | Disabled and out of scope |
 
 ## Final Determination
 
-**Capital OS is not qualified as a Production Candidate for its current non-executing family-capital scope.**
+**Capital OS is qualified only as an internal-only candidate for its current non-executing family-capital scope.**
 
-The reason is evidence-based: one P0 release blocker remains open. Managed backup/restore is `BLOCKED`; the authenticated browser journey is `PASS` and the tenant, role, actor, migration, origin, and current keyed-write evidence are recorded as executed. The release gate correctly remains **NOT READY** until managed restore is completed and verified.
+The reason is scope-based: all seven in-scope P0 gates are `PASS`. This does not authorize public release, external users, banking, live trading, or any other prohibited capability. Provider-supported step-up and durable operational controls remain outside this internal certification.

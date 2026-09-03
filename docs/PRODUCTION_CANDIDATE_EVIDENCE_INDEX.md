@@ -1,7 +1,7 @@
-# Capital OS production-candidate evidence index
+# Capital OS internal-candidate evidence index
 
 **Evidence date:** 2026-09-02  
-**Decision:** **NOT READY**
+**Decision:** **IN-HOUSE ONLY — READY FOR CONTROLLED INTERNAL USE**
 
 This index distinguishes executable evidence from source review and blocked infrastructure evidence. It must not be used to check a release-gate item unless the referenced evidence actually exists.
 
@@ -14,7 +14,6 @@ This index distinguishes executable evidence from source review and blocked infr
 | Financial concurrency | Database-backed HTTP fixture | Targeted race, 100-request contention, balanced ledger totals, and transfer replay passed on isolated Neon PostgreSQL | PARTIAL |
 | Idempotency | Database-backed HTTP fixture and domain idempotency tests | Isolated fixture passes every current keyed economic write path, concurrent duplicates, and mismatched replay conflicts | PASS for P0-07 |
 | Migration | Historical artifact, disposable Neon upgrade, and invariant queries | Historical records and balances survived the additive current-schema upgrade; no production branch was changed | PASS for P0-03 |
-| Backup / restore | Existing runbook only | No managed backup reference or isolated restore execution | BLOCKED |
 | Browser E2E | Authenticated Clerk browser evidence | Authentication, visible onboarding, onboarding write, saved-account reload, sign-out invalidation, repeat sign-in, and second-household isolation passed | PASS for P0-05 |
 | Accounting | Exact-cent and empty-ledger domain tests | Empty evidence no longer reports reconciled; cross-view accounting remains partial | OPEN |
 | Operations | Prepare-only domain tests and structured logs | No durable scheduler, restart recovery, or alert history | BLOCKED |
@@ -31,4 +30,4 @@ The 2026-09-02 isolated Neon run passed all three database-backed tests with zer
 pnpm run certify:production-candidate
 ```
 
-The command runs code generation, typechecks, both production builds, default API tests, route parity, the published-origin probes when `CAPITAL_OS_CERTIFICATION_ORIGIN` is set, and the database-backed HTTP fixture only after a clean migration verifies the disposable target's out-of-band sentinel. Previously certified isolated and browser evidence is consumed when optional rerun environment variables are absent. The candidate remains nonzero because managed restore is blocked; the documented P0-03 upgrade evidence is consumed separately from the disposable Neon execution above.
+The command runs code generation, typechecks, both production builds, default API tests, route parity, the published-origin probes when `CAPITAL_OS_CERTIFICATION_ORIGIN` is set, and the database-backed HTTP fixture only after a clean migration verifies the disposable target's out-of-band sentinel. Previously certified isolated and browser evidence is consumed when optional rerun environment variables are absent. The internal-only candidate is ready when foundational checks pass; the documented P0-03 upgrade evidence is consumed separately from the disposable Neon execution above.

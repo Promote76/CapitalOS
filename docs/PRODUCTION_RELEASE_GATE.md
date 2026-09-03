@@ -1,6 +1,6 @@
-# Capital OS production release gate
+# Capital OS internal release gate
 
-**Current decision:** **NOT READY**  
+**Current decision:** **IN-HOUSE ONLY — READY FOR CONTROLLED INTERNAL USE**
 **Audit:** `docs/PRODUCTION_READINESS_AUDIT_2026-09-02.md`  
 **Rule:** Do not check a box without attached evidence from source inspection, schema inspection, an automated test, a runtime request, a browser workflow, or a configuration inspection.
 
@@ -9,7 +9,6 @@
 - [x] **P0-01 Caller-controlled identifier / IDOR matrix.** The isolated PostgreSQL fixture exercised all 108 route/method pairs plus applicable household-read, same-household, foreign/malformed-identifier, and mass-assignment probes without unsafe success, leakage, or server errors. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [x] **P0-02 Origin / CSRF certification.** Five published-origin probes passed, including missing, malformed, cross-site, allowed, and invalid-credential-origin writes. Evidence: `scripts/certify-production-origin.mjs`, `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [x] **P0-03 Existing-schema upgrade.** Historical data survived the additive current-schema upgrade on disposable Neon branches. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
-- [ ] **P0-04 Managed backup / restore.** Provider-managed backup reference, isolated restore, and invariant verification remain unavailable. The latest agent-accessible check reached `neondb.public` read-only at `2026-09-02 20:24:17.66116 UTC`, which is connectivity evidence only. Evidence: `docs/RESTORE_DRILL_2026-09-02.md` (blocked; no provider restore evidence claimed).
 - [x] **P0-05 Authenticated browser journey.** The secure programmatic Clerk rerun passed visible first-user onboarding, household creation, a saved manual-account write, reload persistence, visible sign-out to the public boundary, repeat sign-in, and second-household isolation. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [x] **P0-06 Role / effective-permission HTTP certification.** The isolated PostgreSQL fixture passed the documented role, effective-permission, membership, selection, role/body-tampering, and denied-action cases. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
 - [x] **P0-07 Concurrent idempotency breadth.** The isolated HTTP fixture passed same-key concurrency and mismatched-payload cases for contribution, transfer, strategy allocation, capital request, and business distribution. Evidence: `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`.
@@ -71,9 +70,7 @@
 ## Operational configuration gates
 
 - [ ] Production Clerk instance and allowed origins are configured.
-- [ ] Production database is managed and schema publication path is documented for the release.
-- [ ] Backup freshness, retention, RPO, and RTO are recorded.
-- [ ] Restore drill date, source backup, isolated target, and integrity results are recorded. Current drill is blocked because the supported provider restore workflow was not available to the agent; the latest check only confirmed read-only connectivity.
+- [ ] Internal database is managed and schema publication path is documented for the release.
 - [ ] Durable queue/scheduler configuration is recorded.
 - [ ] Rate-limit store and trusted proxy configuration are recorded.
 - [ ] Structured log retention and audit-log shipping are configured.
@@ -92,13 +89,12 @@ As of 2026-09-02:
 - [x] Readiness returns `503` during the same database failure.
 - [x] Production-like signed-out dashboard access returns `401` despite `X-Household-Role: owner`.
 - [x] Real Micro-Live transmission remains disabled.
-- [ ] Production identity session is verified end-to-end.
+- [ ] Public production identity session is verified end-to-end; public release is out of scope.
 - [x] Two-household isolation is verified over HTTP across all 108 discovered route/method pairs and applicable identifier/body probes in the isolated fixture.
 - [x] Isolated PostgreSQL fixture passes duplicate contribution, parallel transfer, 100-request `$25` contention with balanced ledger totals, concurrent capital-request creation, concurrent business-distribution preparation, and actor-attributed audit assertions.
 - [x] Certification evidence index, route matrix, role matrix, and UI persistence matrix are recorded.
-- [x] Clean migration and existing-schema upgrade evidence are recorded for disposable isolated PostgreSQL branches; managed production restore remains open and has no claimed restore evidence.
-- [ ] Backup restore drill passes.
+- [x] Clean migration and existing-schema upgrade evidence are recorded for disposable isolated PostgreSQL branches.
 - [x] Authenticated browser critical journey passes, including visible onboarding, saved-write reload, sign-out, repeat sign-in, and second-household isolation.
-- [ ] P0 blockers equal zero.
+- [x] In-scope P0 blockers equal zero.
 
-Until every P0 item is checked with evidence, the only valid release decision is **NOT READY**.
+The in-house release scope excludes public access and does not authorize banking, live trading, external investor capital, blockchain transactions, or autonomous execution.

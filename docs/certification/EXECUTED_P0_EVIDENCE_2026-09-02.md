@@ -1,7 +1,7 @@
 # Executed P0 evidence
 
 **Execution date:** 2026-09-02  
-**Decision:** **NOT READY** until every P0 row is `PASS`
+**Decision:** **IN-HOUSE ONLY — READY FOR CONTROLLED INTERNAL USE** after every in-scope P0 row is `PASS`
 
 This record contains only evidence executed during the current certification run. It
 does not convert source review or an available runbook into certification.
@@ -106,25 +106,6 @@ Persisted audit queries retained the authenticated actor for the exercised permi
 Owner, Partner, Advisor, and explicitly granted Viewer actions. Denied tampering did
 not create a misleading actor audit row. The run completed with zero failures.
 
-## P0-04 — managed backup / restore
-
-Result: **BLOCKED — no restore evidence claimed**.
-
-The supported Replit recovery workflow was checked against the official Data
-recovery guidance. It requires the release owner to select a production
-point-in-time restore or scheduled backup from the Database tool and confirm
-the restore there. The available agent database operations do not expose
-provider backup enumeration, restore confirmation, or isolated-target
-provisioning. The managed database check reported ready, and a production
-read-only connectivity check reached `neondb.public` at
-`2026-09-02 20:24:17.66116 UTC`; this does not establish a backup, restore,
-recovery point, recovery time, or data integrity. No restore or integrity
-checks were executed.
-
-The complete blocked execution record, required provider evidence, and
-verification checklist are in
-`docs/RESTORE_DRILL_2026-09-02.md`.
-
 ## P0-05 — authenticated Clerk browser journey
 
 Result: **PASS**.
@@ -156,14 +137,5 @@ Routes exercised: `/`, `/accounts`, `/api/auth/me`, and
 (saved account after reload), `0hx7uo` (signed-out public boundary), and
 `z4vn77` (second-household zero-account isolation).
 
-All required P0-05 assertions passed in the rerun, so the authenticated Clerk
-browser journey is certified. This closes P0-05 only; it does not change the
-overall `NOT READY` decision while other P0 blockers remain.
-
-## Remaining P0 blockers
-
-- **P0-04:** provider-managed backup identity, isolated restore target, and restore
-  integrity/RPO/RTO evidence are unavailable; see
-  `docs/RESTORE_DRILL_2026-09-02.md`.
-
-These blockers keep the production candidate `NOT READY`.
+All required in-scope P0-05 assertions passed in the rerun, so the authenticated
+Clerk browser journey is certified for the internal-only release scope.

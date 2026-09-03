@@ -1285,6 +1285,93 @@ export const ArmMicroLiveResponse = zod.object({
 
 
 /**
+ * @summary Submit one authenticated Micro-Live order through the durable OMS
+ */
+export const submitMicroLiveOrderHeaderIdempotencyKeyMin = 8;
+export const submitMicroLiveOrderHeaderIdempotencyKeyMax = 128;
+
+
+
+export const SubmitMicroLiveOrderHeader = zod.object({
+  "Idempotency-Key": zod.string().min(submitMicroLiveOrderHeaderIdempotencyKeyMin).max(submitMicroLiveOrderHeaderIdempotencyKeyMax)
+})
+
+export const submitMicroLiveOrderBodyMarketIdMax = 120;
+
+export const submitMicroLiveOrderBodyQuantityExclusiveMin = 0;
+
+export const submitMicroLiveOrderBodyPriceExclusiveMin = 0;
+
+export const submitMicroLiveOrderBodyStrategyIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const submitMicroLiveOrderBodyStrategyVersionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const submitMicroLiveOrderBodyQuoteCycleMax = 120;
+
+export const submitMicroLiveOrderBodyReferencePriceBpsExclusiveMin = 0;
+
+export const submitMicroLiveOrderBodyPriceBpsExclusiveMin = 0;
+
+export const submitMicroLiveOrderBodyMarketDataAgeMsMin = 0;
+
+
+
+export const SubmitMicroLiveOrderBody = zod.object({
+  "marketId": zod.string().min(1).max(submitMicroLiveOrderBodyMarketIdMax),
+  "side": zod.enum(['buy', 'sell']),
+  "orderType": zod.enum(['limit', 'market']),
+  "quantity": zod.number().gt(submitMicroLiveOrderBodyQuantityExclusiveMin),
+  "price": zod.number().gt(submitMicroLiveOrderBodyPriceExclusiveMin).optional(),
+  "strategyId": zod.string().regex(submitMicroLiveOrderBodyStrategyIdRegExp).optional(),
+  "strategyVersionId": zod.string().regex(submitMicroLiveOrderBodyStrategyVersionIdRegExp).optional(),
+  "quoteCycle": zod.string().min(1).max(submitMicroLiveOrderBodyQuoteCycleMax),
+  "referencePriceBps": zod.number().gt(submitMicroLiveOrderBodyReferencePriceBpsExclusiveMin),
+  "priceBps": zod.number().gt(submitMicroLiveOrderBodyPriceBpsExclusiveMin),
+  "marketDataAgeMs": zod.number().min(submitMicroLiveOrderBodyMarketDataAgeMsMin),
+  "postOnly": zod.boolean().optional()
+})
+
+export const SubmitMicroLiveOrderResponse = zod.object({
+  "orderIntentId": zod.string(),
+  "clientOrderId": zod.string(),
+  "state": zod.string(),
+  "idempotent": zod.boolean(),
+  "venueOrder": zod.record(zod.string(), zod.unknown()).nullable(),
+  "reconciliation": zod.record(zod.string(), zod.unknown()).nullable()
+})
+
+
+/**
+ * @summary Cancel one provider order through the durable OMS
+ */
+export const cancelMicroLiveOrderPathOrderIntentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const CancelMicroLiveOrderParams = zod.object({
+  "orderIntentId": zod.coerce.string().regex(cancelMicroLiveOrderPathOrderIntentIdRegExp)
+})
+
+export const CancelMicroLiveOrderResponse = zod.object({
+  "orderIntentId": zod.string(),
+  "clientOrderId": zod.string(),
+  "state": zod.string(),
+  "idempotent": zod.boolean(),
+  "venueOrder": zod.record(zod.string(), zod.unknown()).nullable(),
+  "reconciliation": zod.record(zod.string(), zod.unknown()).nullable()
+})
+
+
+/**
+ * @summary Approve resuming new orders after clean first-fill reconciliation
+ */
+export const ApproveMicroLiveFirstFillResumeResponse = zod.object({
+  "sessionId": zod.string(),
+  "approvedAt": zod.coerce.date(),
+  "approvedBy": zod.string(),
+  "allowNewOrders": zod.boolean(),
+  "liveExecutionEnabled": zod.boolean()
+})
+
+
+/**
  * @summary List persisted Micro-Live reconciliation runs
  */
 export const ListMicroLiveReconciliationRunsResponseItem = zod.object({

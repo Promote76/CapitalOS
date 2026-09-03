@@ -501,6 +501,69 @@ paths:
                   sessionId: { type: string }
                   authorizationExpiresAt: { type: string, format: date-time }
                   liveExecutionEnabled: { type: boolean }
+  /micro-live/orders:
+    post:
+      operationId: submitMicroLiveOrder
+      tags: [planning]
+      summary: Submit one authenticated Micro-Live order through the durable OMS
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MicroLiveOrderRequest" }
+      responses:
+        "201":
+          description: Durable order intent, provider acknowledgement, and reconciliation result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MicroLiveOrderResponse" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /micro-live/orders/{orderIntentId}/cancel:
+    post:
+      operationId: cancelMicroLiveOrder
+      tags: [planning]
+      summary: Cancel one provider order through the durable OMS
+      parameters:
+        - name: orderIntentId
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+      responses:
+        "200":
+          description: Durable cancellation acknowledgement and reconciliation result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MicroLiveOrderResponse" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /micro-live/first-fill/approve:
+    post:
+      operationId: approveMicroLiveFirstFillResume
+      tags: [planning]
+      summary: Approve resuming new orders after clean first-fill reconciliation
+      responses:
+        "200":
+          description: First-fill hold approval
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sessionId, approvedAt, approvedBy, allowNewOrders, liveExecutionEnabled]
+                properties:
+                  sessionId: { type: string }
+                  approvedAt: { type: string, format: date-time }
+                  approvedBy: { type: string }
+                  allowNewOrders: { type: boolean }
+                  liveExecutionEnabled: { type: boolean }
   /micro-live/reconciliation-runs:
     get:
       operationId: listMicroLiveReconciliationRuns
@@ -2700,6 +2763,36 @@ components:
       required: [venueId]
       properties:
         venueId: { type: string }
+    MicroLiveOrderRequest:
+      type: object
+      required: [marketId, side, orderType, quantity, quoteCycle, referencePriceBps, priceBps, marketDataAgeMs]
+      properties:
+        marketId: { type: string, minLength: 1, maxLength: 120 }
+        side: { type: string, enum: [buy, sell] }
+        orderType: { type: string, enum: [limit, market] }
+        quantity: { type: number, exclusiveMinimum: 0 }
+        price: { type: number, exclusiveMinimum: 0 }
+        strategyId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        strategyVersionId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        quoteCycle: { type: string, minLength: 1, maxLength: 120 }
+        referencePriceBps: { type: number, exclusiveMinimum: 0 }
+        priceBps: { type: number, exclusiveMinimum: 0 }
+        marketDataAgeMs: { type: number, minimum: 0 }
+        postOnly: { type: boolean }
+    MicroLiveOrderResponse:
+      type: object
+      required: [orderIntentId, clientOrderId, state, idempotent, venueOrder, reconciliation]
+      properties:
+        orderIntentId: { type: string }
+        clientOrderId: { type: string }
+        state: { type: string }
+        idempotent: { type: boolean }
+        venueOrder:
+          type: ["object", "null"]
+          additionalProperties: true
+        reconciliation:
+          type: ["object", "null"]
+          additionalProperties: true
     MicroLivePolicy:
       type: object
       required: [version, limits, autoScale, leverageEnabled, marginEnabled, borrowingEnabled]

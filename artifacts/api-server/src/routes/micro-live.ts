@@ -3,17 +3,25 @@ import {
   ApproveMicroLiveVenueBody,
   ApproveMicroLiveVenueParams,
   ArmMicroLiveBody,
+  ApproveMicroLiveFirstFillResumeResponse,
+  CancelMicroLiveOrderParams,
+  CancelMicroLiveOrderResponse,
   CompleteMicroLiveReactivationRequirementParams,
   CreateMicroLiveIncidentReviewBody,
   CreateMicroLiveIncidentReviewParams,
   RecordMicroLiveVenueReviewBody,
   RecordMicroLiveVenueReviewParams,
+  SubmitMicroLiveOrderBody,
+  SubmitMicroLiveOrderHeader,
+  SubmitMicroLiveOrderResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
 import {
   approveMicroLiveVenue,
+  approveMicroLiveFirstFillResume,
   armMicroLive,
+  cancelMicroLiveOrder,
   completeMicroLiveReactivationRequirement,
   createMicroLiveIncidentReview,
   getMicroLiveSnapshot,
@@ -27,6 +35,7 @@ import {
   reviewMicroLiveEnablement,
   runMicroLiveReconciliation,
   runMicroLiveRehearsal,
+  submitMicroLiveOrder,
 } from "../services/micro-live";
 
 const router: IRouter = Router();
@@ -58,6 +67,23 @@ router.post("/micro-live/venues/:venueId/reviews/:kind", asyncRoute(async (req, 
 router.post("/micro-live/arm", asyncRoute(async (req, res) => {
   const { venueId } = ArmMicroLiveBody.parse(req.body);
   res.json(await armMicroLive(actorFrom(res), venueId));
+}));
+
+router.post("/micro-live/orders", asyncRoute(async (req, res) => {
+  const headers = SubmitMicroLiveOrderHeader.parse({ "Idempotency-Key": req.header("Idempotency-Key") });
+  const body = SubmitMicroLiveOrderBody.parse(req.body);
+  res.status(201).json(SubmitMicroLiveOrderResponse.parse(
+    await submitMicroLiveOrder(actorFrom(res), body, headers["Idempotency-Key"]),
+  ));
+}));
+
+router.post("/micro-live/orders/:orderIntentId/cancel", asyncRoute(async (req, res) => {
+  const { orderIntentId } = CancelMicroLiveOrderParams.parse(req.params);
+  res.json(CancelMicroLiveOrderResponse.parse(await cancelMicroLiveOrder(actorFrom(res), orderIntentId)));
+}));
+
+router.post("/micro-live/first-fill/approve", asyncRoute(async (_req, res) => {
+  res.json(ApproveMicroLiveFirstFillResumeResponse.parse(await approveMicroLiveFirstFillResume(actorFrom(res))));
 }));
 
 router.get("/micro-live/reconciliation-runs", asyncRoute(async (_req, res) => {

@@ -125,7 +125,10 @@ async function currentAllocation(householdId: string) {
 }
 
 async function accountRows(householdId: string): Promise<Account[]> {
-  return db.select().from(accounts).where(eq(accounts.householdId, householdId));
+  return db.select().from(accounts).where(and(
+    eq(accounts.householdId, householdId),
+    eq(accounts.executionOnly, false),
+  ));
 }
 
 export async function getHousehold(actor: Actor) {
@@ -140,7 +143,7 @@ export async function getHousehold(actor: Actor) {
     role: actor.role,
      permissions: actor.permissions ?? Array.from(
        actor.role === "owner"
-         ? ["read", "contribute", "transfer", "allocate", "approve", "manage_risk"]
+         ? ["read", "contribute", "transfer", "allocate", "approve", "manage_risk", "execute_micro_live_order"]
          : actor.role === "partner"
            ? ["read", "contribute", "transfer", "allocate"]
            : actor.role === "advisor"
@@ -221,7 +224,10 @@ export async function getPortfolio() {
     })
     .from(ledgerTransactions)
     .innerJoin(ledgerEntries, eq(ledgerEntries.transactionId, ledgerTransactions.id))
-    .where(eq(ledgerTransactions.householdId, ids.householdId));
+    .where(and(
+      eq(ledgerTransactions.householdId, ids.householdId),
+      sql`coalesce(${ledgerTransactions.metadata}->>'executionOnly', 'false') <> 'true'`,
+    ));
   const ledgerTotals = new Map<string, { debit: number; credit: number }>();
   for (const row of ledgerRows) {
     const current = ledgerTotals.get(row.transactionId) ?? { debit: 0, credit: 0 };
@@ -545,10 +551,12 @@ async function writeMovement(
     tx.select({ id: accounts.id }).from(accounts).where(and(
       eq(accounts.id, input.sourceAccountId),
       eq(accounts.householdId, input.householdId),
+      eq(accounts.executionOnly, false),
     )).limit(1),
     tx.select({ id: accounts.id }).from(accounts).where(and(
       eq(accounts.id, input.destinationAccountId),
       eq(accounts.householdId, input.householdId),
+      eq(accounts.executionOnly, false),
     )).limit(1),
   ]);
   if (!source[0] || !destination[0]) {
@@ -710,8 +718,16 @@ export async function createTransfer(
         createdAt: dateTime(existing[0].timestamp),
       };
     }
-    const [source] = await tx.select().from(accounts).where(and(eq(accounts.id, input.sourceAccountId), eq(accounts.householdId, ids.householdId))).limit(1);
-    const [destination] = await tx.select().from(accounts).where(and(eq(accounts.id, input.destinationAccountId), eq(accounts.householdId, ids.householdId))).limit(1);
+    const [source] = await tx.select().from(accounts).where(and(
+      eq(accounts.id, input.sourceAccountId),
+      eq(accounts.householdId, ids.householdId),
+      eq(accounts.executionOnly, false),
+    )).limit(1);
+    const [destination] = await tx.select().from(accounts).where(and(
+      eq(accounts.id, input.destinationAccountId),
+      eq(accounts.householdId, ids.householdId),
+      eq(accounts.executionOnly, false),
+    )).limit(1);
     if (!source || !destination || source.id === destination.id) throw new GovernanceError("INVALID_STATE", "Transfer accounts are invalid");
     const [risk] = await tx.select().from(riskStates).where(and(
       eq(riskStates.id, ids.riskStateId),

@@ -2,7 +2,7 @@ export type HouseholdRole = "owner" | "partner" | "viewer" | "advisor";
 import { activeSecurityContext } from "../middleware/request-scope.ts";
 
 export const permissions: Record<HouseholdRole, Set<string>> = {
-  owner: new Set(["read", "contribute", "transfer", "allocate", "approve", "manage_risk", "review_venue_security", "review_venue_jurisdiction"]),
+  owner: new Set(["read", "contribute", "transfer", "allocate", "approve", "manage_risk", "execute_micro_live_order", "review_venue_security", "review_venue_jurisdiction"]),
   partner: new Set(["read", "contribute", "transfer", "allocate"]),
   advisor: new Set(["read", "recommend", "review_venue_security", "review_venue_jurisdiction"]),
   viewer: new Set(["read"]),

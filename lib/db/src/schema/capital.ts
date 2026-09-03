@@ -33,6 +33,7 @@ export const accounts = pgTable(
     accountType: accountTypeEnum("account_type").notNull(),
     balance: money("balance"),
     protected: boolean("protected").notNull().default(false),
+    executionOnly: boolean("execution_only").notNull().default(false),
     riskClass: riskClassEnum("risk_class").notNull().default("conservative"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

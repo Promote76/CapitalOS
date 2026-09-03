@@ -25,6 +25,7 @@ import type {
   AllocationImpact,
   AllocationInput,
   AllocationSummary,
+  ApproveMicroLiveFirstFillResume200,
   ArmMicroLive200,
   AuditEventSummary,
   BadRequestResponse,
@@ -97,6 +98,8 @@ import type {
   MicroLiveIncident,
   MicroLiveIncidentReview,
   MicroLiveIncidentReviewInput,
+  MicroLiveOrderRequest,
+  MicroLiveOrderResponse,
   MicroLivePositionSnapshot,
   MicroLiveReactivationRequirement,
   MicroLiveReconciliationRun,
@@ -2403,6 +2406,219 @@ export const useArmMicroLive = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getArmMicroLiveMutationOptions(options));
+    }
+
+export const getSubmitMicroLiveOrderUrl = () => {
+
+
+
+
+  return `/api/micro-live/orders`
+}
+
+/**
+ * @summary Submit one authenticated Micro-Live order through the durable OMS
+ */
+export const submitMicroLiveOrder = async (microLiveOrderRequest: MicroLiveOrderRequest, options?: Parameters<typeof customFetch>[1]): Promise<MicroLiveOrderResponse> => {
+
+  return customFetch<MicroLiveOrderResponse>(getSubmitMicroLiveOrderUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(microLiveOrderRequest)
+  }
+);}
+
+
+
+
+
+export const getSubmitMicroLiveOrderMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitMicroLiveOrder>>, TError,{data: BodyType<MicroLiveOrderRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitMicroLiveOrder>>, TError,{data: BodyType<MicroLiveOrderRequest>}, TContext> => {
+
+const mutationKey = ['submitMicroLiveOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitMicroLiveOrder>>, {data: BodyType<MicroLiveOrderRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitMicroLiveOrder(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitMicroLiveOrderMutationResult = NonNullable<Awaited<ReturnType<typeof submitMicroLiveOrder>>>
+    export type SubmitMicroLiveOrderMutationBody = BodyType<MicroLiveOrderRequest>
+    export type SubmitMicroLiveOrderMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Submit one authenticated Micro-Live order through the durable OMS
+ */
+export const useSubmitMicroLiveOrder = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitMicroLiveOrder>>, TError,{data: BodyType<MicroLiveOrderRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitMicroLiveOrder>>,
+        TError,
+        {data: BodyType<MicroLiveOrderRequest>},
+        TContext
+      > => {
+      return useMutation(getSubmitMicroLiveOrderMutationOptions(options));
+    }
+
+export const getCancelMicroLiveOrderUrl = (orderIntentId: string,) => {
+
+
+
+
+  return `/api/micro-live/orders/${orderIntentId}/cancel`
+}
+
+/**
+ * @summary Cancel one provider order through the durable OMS
+ */
+export const cancelMicroLiveOrder = async (orderIntentId: string, options?: Parameters<typeof customFetch>[1]): Promise<MicroLiveOrderResponse> => {
+
+  return customFetch<MicroLiveOrderResponse>(getCancelMicroLiveOrderUrl(orderIntentId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCancelMicroLiveOrderMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelMicroLiveOrder>>, TError,{orderIntentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelMicroLiveOrder>>, TError,{orderIntentId: string}, TContext> => {
+
+const mutationKey = ['cancelMicroLiveOrder'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelMicroLiveOrder>>, {orderIntentId: string}> = (props) => {
+          const {orderIntentId} = props ?? {};
+
+          return  cancelMicroLiveOrder(orderIntentId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelMicroLiveOrderMutationResult = NonNullable<Awaited<ReturnType<typeof cancelMicroLiveOrder>>>
+
+    export type CancelMicroLiveOrderMutationError = ErrorType<BadRequestResponse | ForbiddenResponse>
+
+    /**
+ * @summary Cancel one provider order through the durable OMS
+ */
+export const useCancelMicroLiveOrder = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelMicroLiveOrder>>, TError,{orderIntentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelMicroLiveOrder>>,
+        TError,
+        {orderIntentId: string},
+        TContext
+      > => {
+      return useMutation(getCancelMicroLiveOrderMutationOptions(options));
+    }
+
+export const getApproveMicroLiveFirstFillResumeUrl = () => {
+
+
+
+
+  return `/api/micro-live/first-fill/approve`
+}
+
+/**
+ * @summary Approve resuming new orders after clean first-fill reconciliation
+ */
+export const approveMicroLiveFirstFillResume = async ( options?: Parameters<typeof customFetch>[1]): Promise<ApproveMicroLiveFirstFillResume200> => {
+
+  return customFetch<ApproveMicroLiveFirstFillResume200>(getApproveMicroLiveFirstFillResumeUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getApproveMicroLiveFirstFillResumeMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveMicroLiveFirstFillResume>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveMicroLiveFirstFillResume>>, TError,void, TContext> => {
+
+const mutationKey = ['approveMicroLiveFirstFillResume'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveMicroLiveFirstFillResume>>, void> = () => {
+
+
+          return  approveMicroLiveFirstFillResume(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveMicroLiveFirstFillResumeMutationResult = NonNullable<Awaited<ReturnType<typeof approveMicroLiveFirstFillResume>>>
+
+    export type ApproveMicroLiveFirstFillResumeMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Approve resuming new orders after clean first-fill reconciliation
+ */
+export const useApproveMicroLiveFirstFillResume = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveMicroLiveFirstFillResume>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveMicroLiveFirstFillResume>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getApproveMicroLiveFirstFillResumeMutationOptions(options));
     }
 
 export const getListMicroLiveReconciliationRunsUrl = () => {

@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { households, users } from "./households.ts";
 import { strategies, strategyVersions } from "./property-strategy.ts";
+import { accounts, ledgerTransactions } from "./capital.ts";
 
 export type StoredIndependentVenueReview = {
   reference: string;
@@ -79,6 +80,8 @@ export const microLiveSessions = pgTable(
     armedBy: uuid("armed_by").references(() => users.id),
     armedAt: timestamp("armed_at", { withTimezone: true }),
     stoppedAt: timestamp("stopped_at", { withTimezone: true }),
+    firstFillResumeApprovedBy: uuid("first_fill_resume_approved_by").references(() => users.id, { onDelete: "set null" }),
+    firstFillResumeApprovedAt: timestamp("first_fill_resume_approved_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -96,17 +99,22 @@ export const orderIntents = pgTable(
     venueId: uuid("venue_id").references(() => venueRegistry.id, { onDelete: "set null" }),
     marketId: text("market_id").notNull(),
     clientOrderId: text("client_order_id").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
     side: text("side").notNull(),
     orderType: text("order_type").notNull(),
     price: numeric("price", { precision: 18, scale: 8 }),
     quantity: numeric("quantity", { precision: 18, scale: 8 }).notNull(),
     state: text("state").notNull().default("CREATED"),
     validation: jsonb("validation").$type<Record<string, unknown>>().notNull().default({}),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
+    lastError: text("last_error"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
     householdIdx: index("order_intents_household_idx").on(table.householdId),
+    idempotencyIdx: uniqueIndex("order_intents_household_idempotency_idx").on(table.householdId, table.idempotencyKey),
     clientOrderIdx: uniqueIndex("order_intents_client_order_id_idx").on(table.clientOrderId),
   }),
 );
@@ -118,6 +126,11 @@ export const venueOrders = pgTable(
     orderIntentId: uuid("order_intent_id").notNull().references(() => orderIntents.id, { onDelete: "cascade" }),
     externalOrderId: text("external_order_id"),
     venueStatus: text("venue_status"),
+    side: text("side"),
+    orderType: text("order_type"),
+    price: numeric("price", { precision: 18, scale: 8 }),
+    quantity: numeric("quantity", { precision: 18, scale: 8 }),
+    filledQuantity: numeric("filled_quantity", { precision: 18, scale: 8 }),
     rawResponse: jsonb("raw_response").$type<Record<string, unknown>>().notNull().default({}),
     firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).defaultNow().notNull(),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).defaultNow().notNull(),
@@ -156,12 +169,33 @@ export const executionFills = pgTable(
     quantity: numeric("quantity", { precision: 18, scale: 8 }).notNull(),
     price: numeric("price", { precision: 18, scale: 8 }).notNull(),
     fee: numeric("fee", { precision: 18, scale: 8 }).notNull().default("0"),
+    ledgerTransactionId: uuid("ledger_transaction_id").references(() => ledgerTransactions.id, { onDelete: "set null" }),
+    feeLedgerTransactionId: uuid("fee_ledger_transaction_id").references(() => ledgerTransactions.id, { onDelete: "set null" }),
     markouts: jsonb("markouts").$type<Record<string, number>>().notNull().default({}),
     filledAt: timestamp("filled_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
     householdIdx: index("execution_fills_household_idx").on(table.householdId),
-    externalFillIdx: uniqueIndex("execution_fills_external_fill_idx").on(table.externalFillId),
+    externalFillIdx: uniqueIndex("execution_fills_external_fill_idx").on(table.householdId, table.externalFillId),
+  }),
+);
+
+export const venueBalanceSnapshots = pgTable(
+  "venue_balance_snapshots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").references(() => microLiveSessions.id, { onDelete: "set null" }),
+    venueId: uuid("venue_id").references(() => venueRegistry.id, { onDelete: "set null" }),
+    asset: text("asset").notNull(),
+    available: numeric("available", { precision: 18, scale: 8 }).notNull(),
+    committed: numeric("committed", { precision: 18, scale: 8 }).notNull(),
+    source: text("source").notNull().default("VENUE"),
+    capturedAt: timestamp("captured_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("venue_balance_snapshots_household_idx").on(table.householdId),
+    capturedIdx: index("venue_balance_snapshots_captured_idx").on(table.householdId, table.capturedAt),
   }),
 );
 
@@ -306,6 +340,7 @@ export type VenueRegistryEntry = typeof venueRegistry.$inferSelect;
 export type MicroLiveSession = typeof microLiveSessions.$inferSelect;
 export type PositionSnapshot = typeof positionSnapshots.$inferSelect;
 export type FillSnapshot = typeof fillSnapshots.$inferSelect;
+export type VenueBalanceSnapshot = typeof venueBalanceSnapshots.$inferSelect;
 export type ReconciliationRun = typeof reconciliationRuns.$inferSelect;
 export type TradingIncident = typeof tradingIncidents.$inferSelect;
 export type PostIncidentReview = typeof postIncidentReviews.$inferSelect;

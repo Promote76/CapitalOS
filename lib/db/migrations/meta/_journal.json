@@ -15,6 +15,13 @@
       "when": 1788410940965,
       "tag": "0001_shared_rate_limit_and_audit_archive",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788431446492,
+      "tag": "0002_micro_live_oms",
+      "breakpoints": true
     }
   ]
 }

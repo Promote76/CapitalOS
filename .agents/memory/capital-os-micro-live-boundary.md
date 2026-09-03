@@ -37,3 +37,15 @@ real-money certification.
 **How to apply:** Keep provider evidence external and reference-only, never
 store credentials or fabricate fills/funding, and keep Limited-Live locked even
 when Micro-Live evidence is complete.
+
+The durable OMS must verify acknowledged and cancelled orders with the
+provider's order lookup in addition to open-order and recent-fill feeds.
+
+**Why:** Terminal orders commonly disappear from open-order feeds, so treating
+that feed as complete can falsely report an active order or lose a cancellation
+state after a restart.
+
+**How to apply:** Persist the intent before placement, persist the provider
+acknowledgement, then reconcile balances, positions, open orders, order
+lookups, and bounded recent fills in one audited transaction. Keep execution-only
+ledger transactions out of ordinary household account and net-worth views.

@@ -22,8 +22,27 @@ export type VenueCapability = {
 
 export type VenueBalance = { asset: string; available: number; committed: number };
 export type VenuePosition = { marketId: string; quantity: number; averagePrice: number };
-export type VenueOrder = { externalOrderId: string; clientOrderId: string; marketId: string; state: OrderState; quantity: number; filledQuantity: number };
-export type VenueFill = { externalFillId: string; externalOrderId: string; marketId: string; quantity: number; price: number; fee: number; timestamp: string };
+export type VenueOrder = {
+  externalOrderId: string;
+  clientOrderId: string;
+  marketId: string;
+  state: OrderState;
+  quantity: number;
+  filledQuantity: number;
+  side?: "buy" | "sell";
+  orderType?: "limit" | "market";
+  price?: number;
+};
+export type VenueFill = {
+  externalFillId: string;
+  externalOrderId: string;
+  marketId: string;
+  side?: "buy" | "sell";
+  quantity: number;
+  price: number;
+  fee: number;
+  timestamp: string;
+};
 export type OrderRequest = { clientOrderId: string; marketId: string; side: "buy" | "sell"; orderType: "limit" | "market"; quantity: number; price?: number; postOnly?: boolean };
 export type RehearsalVenueSnapshot = {
   health?: VenueHealth;

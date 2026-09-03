@@ -344,6 +344,8 @@ test("first fill always holds new orders until clean reconciliation and explicit
 });
 
 test("OMS transitions model partial fills and cancel/fill races", () => {
+  assert.equal(canTransitionOrder("SUBMITTING", "FILLED"), true);
+  assert.equal(canTransitionOrder("SUBMITTING", "CANCELLED"), true);
   assert.equal(canTransitionOrder("ACKNOWLEDGED", "PARTIALLY_FILLED"), true);
   assert.equal(canTransitionOrder("CANCEL_REQUESTED", "FILLED"), true);
   assert.equal(canTransitionOrder("FILLED", "CANCELLED"), false);

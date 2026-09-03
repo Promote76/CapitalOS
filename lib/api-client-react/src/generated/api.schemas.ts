@@ -856,6 +856,73 @@ export interface MicroLiveArmRequest {
   venueId: string;
 }
 
+export type MicroLiveOrderRequestSide = typeof MicroLiveOrderRequestSide[keyof typeof MicroLiveOrderRequestSide];
+
+
+export const MicroLiveOrderRequestSide = {
+  buy: 'buy',
+  sell: 'sell',
+} as const;
+
+export type MicroLiveOrderRequestOrderType = typeof MicroLiveOrderRequestOrderType[keyof typeof MicroLiveOrderRequestOrderType];
+
+
+export const MicroLiveOrderRequestOrderType = {
+  limit: 'limit',
+  market: 'market',
+} as const;
+
+export interface MicroLiveOrderRequest {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  marketId: string;
+  side: MicroLiveOrderRequestSide;
+  orderType: MicroLiveOrderRequestOrderType;
+  /** @exclusiveMinimum 0 */
+  quantity: number;
+  /** @exclusiveMinimum 0 */
+  price?: number;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  strategyId?: string;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  strategyVersionId?: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  quoteCycle: string;
+  /** @exclusiveMinimum 0 */
+  referencePriceBps: number;
+  /** @exclusiveMinimum 0 */
+  priceBps: number;
+  /** @minimum 0 */
+  marketDataAgeMs: number;
+  postOnly?: boolean;
+}
+
+/**
+ * @nullable
+ */
+export type MicroLiveOrderResponseVenueOrder = { [key: string]: unknown } | null;
+
+/**
+ * @nullable
+ */
+export type MicroLiveOrderResponseReconciliation = { [key: string]: unknown } | null;
+
+export interface MicroLiveOrderResponse {
+  orderIntentId: string;
+  clientOrderId: string;
+  state: string;
+  idempotent: boolean;
+  /** @nullable */
+  venueOrder: MicroLiveOrderResponseVenueOrder;
+  /** @nullable */
+  reconciliation: MicroLiveOrderResponseReconciliation;
+}
+
 export type MicroLivePolicyLimits = {[key: string]: string | number | boolean};
 
 export interface MicroLivePolicy {
@@ -3057,6 +3124,14 @@ export type ArmMicroLive200 = {
   status: string;
   sessionId: string;
   authorizationExpiresAt: string;
+  liveExecutionEnabled: boolean;
+};
+
+export type ApproveMicroLiveFirstFillResume200 = {
+  sessionId: string;
+  approvedAt: string;
+  approvedBy: string;
+  allowNewOrders: boolean;
   liveExecutionEnabled: boolean;
 };
 

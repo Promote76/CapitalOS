@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db, financeCategories, financeSnapshots, financeTransactions, financialAccounts, ledgerEntries, ledgerTransactions } from "@workspace/db";
 import { canViewFinancialBalance } from "../domain/household-finance";
 import { calculateNetWorth, calculateNetWorthAttribution, ledgerDebitsEqualCredits, reconcileCrossViewTotals, summarizeCashFlow } from "../domain/accounting";
@@ -31,7 +31,10 @@ export async function getAccountingOverview(actor: Actor) {
     db.select({ transactionId: ledgerTransactions.id, debit: ledgerEntries.debit, credit: ledgerEntries.credit })
       .from(ledgerTransactions)
       .innerJoin(ledgerEntries, eq(ledgerEntries.transactionId, ledgerTransactions.id))
-      .where(eq(ledgerTransactions.householdId, householdId)),
+       .where(and(
+         eq(ledgerTransactions.householdId, householdId),
+         sql`coalesce(${ledgerTransactions.metadata}->>'executionOnly', 'false') <> 'true'`,
+       )),
   ]);
 
   const visibleRows = accountRows.filter((account) => account.includedInNetWorth && canViewFinancialBalance(actor.role, account.protected));

@@ -24,6 +24,23 @@ The execution boundary is split into:
 7. Hard risk and inventory limits.
 8. An independent Guardian process boundary that can stop, lock, or request cancel-all but cannot trade or change policy.
 
+The real-order OMS path is durable and authenticated even though it is not
+enabled in the checked-in deployment. An owner command requires an
+`Idempotency-Key`, records the intent and `SUBMITTING` transition before the
+provider placement call, and never retries an uncertain placement. Provider
+acknowledgements, cancellation results, bounded authoritative fill data,
+balances, positions, and reconciliation runs are stored before the command
+returns. Fills are deduplicated by the household/provider fill identity and
+each fill and fee is linked to balanced execution-only ledger entries. Those
+accounts are excluded from household spendable-capital views.
+
+Persistence, audit, unknown-order, provider-mismatch, timeout, and
+reconciliation failures stop the session and create a critical incident. A
+venue fill activates a durable first-fill hold; only a clean reconciliation
+and a separate owner approval can clear it. A reviewed server-side adapter
+factory is required, so no request body, database edit, or browser action can
+activate a provider by itself.
+
 The checked-in adapter is a simulated rehearsal adapter. Its `placeOrder` method always refuses transmission.
 
 ## Real venue approval boundary

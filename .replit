@@ -28,6 +28,11 @@ channel = "stable-25_05"
 
 [userenv.production]
 CAPITAL_OS_ALLOWED_ORIGIN = "https://capital-os-fund.replit.app"
+CAPITAL_OS_AUDIT_ARCHIVE_DESTINATION = "postgresql://audit_events_archive"
+CAPITAL_OS_AUDIT_RETENTION_DAYS = "2555"
+CAPITAL_OS_RATE_LIMIT_STORE = "postgres"
+CAPITAL_OS_RELIABILITY_OWNER = "internal-reliability"
+CAPITAL_OS_TRUSTED_PROXY = "loopback,linklocal,uniquelocal"
 
 [userenv.development]
 CAPITAL_OS_ALLOWED_ORIGIN = "https://a275880a-7e86-4ab1-a13b-802e51c9d9ab-00-10p8dc0vsi6ft-007rz75b.spock.replit.dev"

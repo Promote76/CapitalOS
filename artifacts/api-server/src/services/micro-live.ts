@@ -150,6 +150,60 @@ function toIncidentReview(
   };
 }
 
+async function persistMicroLiveRecoveryFailure(input: {
+  householdId: string;
+  session: typeof microLiveSessions.$inferSelect;
+  actor: Actor;
+  error: unknown;
+  capturedAt: Date;
+}) {
+  const reason = input.error instanceof Error ? input.error.message : "Unknown reconciliation failure";
+  const [run] = await db.insert(reconciliationRuns).values({
+    householdId: input.householdId,
+    sessionId: input.session.id,
+    status: "FAILURE",
+    mismatches: { ...emptyMismatches, recoveryError: reason },
+    internalState: { source: "capital_os_oms", recovery: "FAILED" },
+    venueState: { source: "simulated_rehearsal_adapter", recovery: "UNAVAILABLE" },
+    completedAt: input.capturedAt,
+  }).returning();
+  await db.update(microLiveSessions).set({
+    status: "STOP",
+    stoppedAt: input.capturedAt,
+    updatedAt: input.capturedAt,
+  }).where(and(eq(microLiveSessions.id, input.session.id), eq(microLiveSessions.householdId, input.householdId)));
+  const [existingIncident] = await db.select({ id: tradingIncidents.id }).from(tradingIncidents).where(and(
+    eq(tradingIncidents.householdId, input.householdId),
+    eq(tradingIncidents.incidentType, "RECONCILIATION_FAILURE"),
+    eq(tradingIncidents.status, "OPEN"),
+  )).limit(1);
+  if (!existingIncident) {
+    await db.insert(tradingIncidents).values({
+      householdId: input.householdId,
+      sessionId: input.session.id,
+      severity: "CRITICAL",
+      incidentType: "RECONCILIATION_FAILURE",
+      title: "Execution reconciliation failed closed",
+      timeline: [
+        `Reconciliation run ${run.id} could not complete: ${reason}`,
+        "The Micro-Live session was stopped and no new exposure is permitted.",
+        "A human post-incident review is required before any future reactivation.",
+      ],
+      status: "OPEN",
+    });
+  }
+  await db.insert(auditEvents).values({
+    householdId: input.householdId,
+    eventType: "micro_live_reconciliation_failed_closed",
+    actor: input.actor.userId,
+    entity: "reconciliation_run",
+    entityId: run.id,
+    reason: "Reconciliation failure persisted and session stopped",
+    metadata: { error: reason, liveExecutionEnabled: false },
+  });
+  return toReconciliationRun(run);
+}
+
 async function ensureMicroLiveBaseline(session: typeof microLiveSessions.$inferSelect) {
   const [existingRun] = await db
     .select()
@@ -193,20 +247,28 @@ export async function getMicroLiveSnapshot() {
   const { policy, venues, session } = await ensureMicroLiveSeed();
   await ensureMicroLiveBaseline(session);
   const rehearsal = runLiveRehearsal();
+  const [heartbeat] = await db.select().from(guardianHeartbeats).where(eq(guardianHeartbeats.householdId, session.householdId)).orderBy(desc(guardianHeartbeats.lastHeartbeatAt)).limit(1);
   const [latestReconciliation] = await db.select().from(reconciliationRuns)
     .where(and(eq(reconciliationRuns.householdId, session.householdId), eq(reconciliationRuns.sessionId, session.id)))
     .orderBy(desc(reconciliationRuns.completedAt)).limit(1);
   const reconciliation = latestReconciliation
     ? { ...reconcileExecutionState({ internalPositionCents: 0, venuePositionCents: 0, internalOpenOrders: 0, venueOpenOrders: 0, internalFillIds: [], venueFillIds: [] }), clean: latestReconciliation.status === "CLEAN", mismatches: { ...emptyMismatches, ...(latestReconciliation.mismatches as Record<string, unknown>) }, action: latestReconciliation.status === "CLEAN" ? "CONTINUE" as const : "STOP_CANCEL_FETCH_REBUILD_VERIFY" as const }
     : reconcileExecutionState({ internalPositionCents: 0, venuePositionCents: 0, internalOpenOrders: 0, venueOpenOrders: 0, internalFillIds: [], venueFillIds: [] });
+  const heartbeatAgeMs = heartbeat ? Math.max(0, Date.now() - heartbeat.lastHeartbeatAt.getTime()) : Number.POSITIVE_INFINITY;
+  const heartbeatHealthy = Boolean(
+    heartbeat &&
+    heartbeat.status === "HEALTHY" &&
+    heartbeat.signatureValid &&
+    heartbeatAgeMs <= 3000,
+  );
   const guardian = guardianDecision({
     liveStatus: session.status as "DISABLED" | "ARMED" | "ACTIVE" | "SAFE_MODE" | "STOP" | "EVACUATE" | "LOCKED",
-    heartbeatAgeMs: 0,
+    heartbeatAgeMs,
     maxHeartbeatAgeMs: 3000,
-    reportedExposureCents: 0,
-    observedVenueExposureCents: 0,
+    reportedExposureCents: asCents(heartbeat?.reportedExposure),
+    observedVenueExposureCents: asCents(heartbeat?.observedExposure),
     hardExposureCents: Number(policy.limits.maxMarketExposureCents ?? 500),
-    riskEngineHealthy: true,
+    riskEngineHealthy: heartbeatHealthy,
   });
   const readiness = calculateLiveReadiness({
     strategyEvidence: false,
@@ -216,7 +278,7 @@ export async function getMicroLiveSnapshot() {
     oms: true,
     riskGovernor: true,
     capitalGovernor: true,
-    guardian: true,
+    guardian: heartbeatHealthy,
     reconciliation: reconciliation.clean,
     security: false,
     chaosTests: true,
@@ -240,7 +302,6 @@ export async function getMicroLiveSnapshot() {
     householdCapitalAccessible: false,
     protectedCapitalAccessible: false,
   });
-  const [heartbeat] = await db.select().from(guardianHeartbeats).where(eq(guardianHeartbeats.householdId, session.householdId)).orderBy(desc(guardianHeartbeats.lastHeartbeatAt)).limit(1);
   const [allIncidents, reviews, requirements, reconciliationHistory, positions, fills] = await Promise.all([
     db.select().from(tradingIncidents).where(and(eq(tradingIncidents.householdId, session.householdId), eq(tradingIncidents.status, "OPEN"))).orderBy(desc(tradingIncidents.createdAt)).limit(20),
     db.select().from(postIncidentReviews).where(eq(postIncidentReviews.householdId, session.householdId)).orderBy(desc(postIncidentReviews.reviewedAt)).limit(20),
@@ -286,7 +347,7 @@ export async function getMicroLiveSnapshot() {
     }),
     readiness,
     enablement,
-    guardian: { status: heartbeat?.status ?? "HEALTHY", lastHeartbeatAt: heartbeat?.lastHeartbeatAt ?? null, decision: guardian.action, reason: guardian.reason, independentDeployment: "Guardian is modeled as a separate process boundary for future independent hosting." },
+    guardian: { status: heartbeat?.status ?? "STOP", lastHeartbeatAt: heartbeat?.lastHeartbeatAt ?? null, decision: guardian.action, reason: guardian.reason, independentDeployment: "Guardian is modeled as a separate process boundary for future independent hosting." },
     reconciliation: { runId: latestReconciliation?.id ?? null, status: latestReconciliation?.status ?? (reconciliation.clean ? "CLEAN" : "FAILURE"), action: reconciliation.action, mismatches: reconciliation.mismatches, completedAt: latestReconciliation?.completedAt ?? null },
     reconciliationRuns: reconciliationHistory.map(toReconciliationRun),
     positionSnapshots: positions,
@@ -595,11 +656,17 @@ export async function runMicroLiveReconciliation(actor: Actor) {
   const internalFills = await db.select({ externalFillId: executionFills.externalFillId }).from(executionFills)
     .where(eq(executionFills.householdId, householdId));
   const internalPositionCents = asCents(internalPosition?.notional);
-  const recovery = await recoverExecutionState(rehearsalAdapter, {
-    internalPositionCents,
-    internalOpenOrders: 0,
-    internalFillIds: internalFills.map((fill) => fill.externalFillId),
-  });
+  let recovery: Awaited<ReturnType<typeof recoverExecutionState>>;
+  try {
+    recovery = await recoverExecutionState(rehearsalAdapter, {
+      internalPositionCents,
+      internalOpenOrders: 0,
+      internalFillIds: internalFills.map((fill) => fill.externalFillId),
+    });
+  } catch (error) {
+    await rehearsalAdapter.disconnect().catch(() => undefined);
+    return persistMicroLiveRecoveryFailure({ householdId, session, actor, error, capturedAt });
+  }
   await rehearsalAdapter.disconnect();
   const venuePositionCents = recovery.venuePositionCents;
   const venueFills = recovery.fills;
@@ -645,6 +712,11 @@ export async function runMicroLiveReconciliation(actor: Actor) {
   }).returning();
 
   if (!result.clean) {
+    await db.update(microLiveSessions).set({
+      status: "STOP",
+      stoppedAt: capturedAt,
+      updatedAt: capturedAt,
+    }).where(and(eq(microLiveSessions.id, session.id), eq(microLiveSessions.householdId, householdId)));
     const [existingIncident] = await db.select({ id: tradingIncidents.id }).from(tradingIncidents).where(and(
       eq(tradingIncidents.householdId, householdId),
       eq(tradingIncidents.incidentType, "RECONCILIATION_MISMATCH"),

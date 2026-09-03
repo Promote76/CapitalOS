@@ -1382,7 +1382,7 @@ function IntelligencePage({ onFeedback }: { onFeedback: (message: string) => voi
   </main>;
 }
 
-function UtilityPage({ kind, onAction, transactions }: { kind: string; onAction: (kind: Exclude<ModalKind, null>) => void; transactions: Transaction[] }) {
+function UtilityPage({ kind, onAction, transactions, dashboard }: { kind: string; onAction: (kind: Exclude<ModalKind, null>) => void; transactions: Transaction[]; dashboard?: DashboardSnapshot }) {
   const meta: Record<string, { eyebrow: string; title: ReactNode; description: string; icon: typeof ReceiptText }> = {
     transactions: { eyebrow: 'Keep track / transactions', title: <>A clean record of<br /><em>the small decisions.</em></>, description: 'Every contribution and transfer has a place, so the plan never depends on memory.', icon: ReceiptText },
     contributions: { eyebrow: 'Keep track / contributions', title: <>Keep the promise<br /><em>visible.</em></>, description: 'The weekly rhythm is simple on purpose. This is where you see it accumulate.', icon: WalletCards },
@@ -1392,7 +1392,11 @@ function UtilityPage({ kind, onAction, transactions }: { kind: string; onAction:
   };
   const item = meta[kind] || meta.transactions; const Icon = item.icon;
   if (kind === 'transactions') return <main className="content"><PageHeading eyebrow={item.eyebrow} title={item.title} description={item.description} actions={<button className="btn btn-primary" data-testid="button-add-transaction" onClick={() => onAction('contribution')}><Plus size={15} /> Add movement</button>} /><TransactionTable transactions={transactions} /></main>;
-  if (kind === 'contributions') return <main className="content"><PageHeading eyebrow={item.eyebrow} title={item.title} description={item.description} actions={<button className="btn btn-primary" data-testid="button-add-contribution-page" onClick={() => onAction('contribution')}><Plus size={15} /> Record contribution</button>} /><section className="card card-pad stat-strip animate-in delay-1">{[['$10,650', 'contributed this year', '42 weekly deposits'], ['$250', 'current weekly pace', 'Next on 18 Oct'], ['96%', 'on-time rhythm', 'One skipped week']].map(([value, label, detail]) => <div className="stat-cell" key={label}><div className="mono-label">{label}</div><div className="stat-value">{value}</div><div className="stat-detail">{detail}</div></div>)}</section><section className="card card-pad page-section"><CardTitle title="Allocation rhythm" subtitle="A quiet, repeatable split." />{[['Duplex Reserve', '$200', '80%'], ['Capital OS', '$25', '10%'], ['Opportunity Reserve', '$25', '10%']].map(([name, amount, pct]) => <div className="goal-row" key={name}><div className="goal-label"><i />{name}</div><div className="goal-progress"><b style={{ width:pct, background:name === 'Duplex Reserve' ? 'var(--color-protected)' : name === 'Capital OS' ? 'var(--color-primary)' : 'var(--color-opportunity)' }} /></div><div className="goal-pct">{amount}</div></div>)}</section></main>;
+  if (kind === 'contributions') {
+    const contributed = transactions.reduce((sum, transaction) => sum + transaction.amount, 0);
+    const weeklyPace = Number(dashboard?.allocation?.totalWeekly ?? 0);
+    return <main className="content"><PageHeading eyebrow={item.eyebrow} title={item.title} description={item.description} actions={<button className="btn btn-primary" data-testid="button-add-contribution-page" onClick={() => onAction('contribution')}><Plus size={15} /> Record contribution</button>} /><section className="card card-pad stat-strip animate-in delay-1">{[[`$${contributed.toFixed(2)}`, 'contributed in loaded history', `${transactions.length} recorded movements`], [`$${weeklyPace.toFixed(2)}`, 'current weekly pace', 'From the active household rule'], ['—', 'on-time rhythm', 'Requires contribution schedule data']].map(([value, label, detail]) => <div className="stat-cell" key={label}><div className="mono-label">{label}</div><div className="stat-value">{value}</div><div className="stat-detail">{detail}</div></div>)}</section><section className="card card-pad page-section"><CardTitle title="Allocation rhythm" subtitle="The server applies the active household rule when a contribution is recorded." />{[['Duplex Reserve', '$200', '80%'], ['Capital OS', '$25', '10%'], ['Opportunity Reserve', '$25', '10%']].map(([name, amount, pct]) => <div className="goal-row" key={name}><div className="goal-label"><i />{name}</div><div className="goal-progress"><b style={{ width:pct, background:name === 'Duplex Reserve' ? 'var(--color-protected)' : name === 'Capital OS' ? 'var(--color-primary)' : 'var(--color-opportunity)' }} /></div><div className="goal-pct">{amount}</div></div>)}</section></main>;
+  }
   return <main className="content"><PageHeading eyebrow={item.eyebrow} title={item.title} description={item.description} actions={<button className="btn btn-primary" data-testid={`button-add-${kind}`} onClick={() => onAction(kind === 'documents' ? 'property' : 'strategy')}><Plus size={15} /> {kind === 'documents' ? 'Add document note' : kind === 'reports' ? 'Build a report' : 'Save an insight'}</button>} /><section className="empty-state animate-in delay-1"><Icon size={25} /><h3>{kind === 'documents' ? 'Your future self will thank you.' : kind === 'reports' ? 'A report worth opening.' : 'A little perspective helps.'}</h3><p>{kind === 'documents' ? 'Add a note about a statement, inspection checklist, or lender conversation when it becomes useful.' : kind === 'reports' ? 'Your first monthly capital report will appear after the next contribution cycle.' : 'Insights will become more personal as your weekly rhythm builds a longer story.'}</p><button className="btn btn-gold" data-testid={`button-create-${kind}`} onClick={() => onAction(kind === 'documents' ? 'property' : 'strategy')}><FilePlus2 size={14} /> Create the first one</button></section></main>;
 }
 
@@ -1573,7 +1577,7 @@ function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }
   </main>;
 }
 
-function ActionModal({ kind, close, onComplete }: { kind: Exclude<ModalKind, null>; close: () => void; onComplete: (kind: Exclude<ModalKind, null>, values: { amount?: number; name?: string; note?: string }) => void }) {
+function ActionModal({ kind, close, onComplete }: { kind: Exclude<ModalKind, null>; close: () => void; onComplete: (kind: Exclude<ModalKind, null>, values: { amount?: number; name?: string; note?: string; idempotencyKey?: string }) => void | Promise<void> }) {
   const copy = {
     contribution: { title: 'Record a contribution', desc: 'Add a movement to your weekly capital rhythm.', submit: 'Save contribution' },
     transfer: { title: 'Move capital with purpose', desc: 'A transfer is just a change of job—not a change of plan.', submit: 'Save transfer' },
@@ -1583,8 +1587,20 @@ function ActionModal({ kind, close, onComplete }: { kind: Exclude<ModalKind, nul
   const [amount, setAmount] = useState(kind === 'contribution' ? '250' : '');
   const [name, setName] = useState(kind === 'property' ? 'Separate utilities' : kind === 'strategy' ? 'Review duplex criteria' : '');
   const [note, setNote] = useState('');
-  const submit = (event: FormEvent) => { event.preventDefault(); onComplete(kind, { amount: amount ? Number(amount) : undefined, name, note }); };
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) close(); }}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div className="modal-header"><div><div className="eyebrow">Capital OS / quick action</div><h2 id="modal-title">{copy.title}</h2><p>{copy.desc}</p></div><button className="icon-btn" aria-label="Close dialog" data-testid="button-close-modal" onClick={close}><X size={17} /></button></div><form className="modal-form" onSubmit={submit}>{(kind === 'contribution' || kind === 'transfer') && <div className="field"><label>Amount</label><input autoFocus required inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} data-testid="input-action-amount" placeholder="250" /></div>}{kind === 'contribution' && <div className="field"><label>Allocate to</label><select data-testid="select-contribution-sleeve" defaultValue="Duplex Reserve"><option>Duplex Reserve</option><option>Capital OS</option><option>Opportunity Reserve</option></select></div>}{(kind === 'strategy' || kind === 'property') && <div className="field"><label>{kind === 'property' ? 'Note title' : 'Strategy title'}</label><input autoFocus required value={name} onChange={(event) => setName(event.target.value)} data-testid="input-action-name" /></div>}<div className="field"><label>Note <span style={{ textTransform:'none', letterSpacing:0 }}>(optional)</span></label><textarea value={note} onChange={(event) => setNote(event.target.value)} data-testid="textarea-action-note" placeholder="A little context for later..." /></div><div className="modal-actions"><button type="button" className="btn" data-testid="button-cancel-modal" onClick={close}>Cancel</button><button type="submit" className="btn btn-primary" data-testid="button-submit-modal"><Check size={14} /> {copy.submit}</button></div></form></div></div>;
+  const idempotencyKey = useRef(kind === 'contribution' ? `web-${crypto.randomUUID()}` : '');
+  const [submitting, setSubmitting] = useState(false);
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (submitting) return;
+    if ((kind === 'contribution' || kind === 'transfer') && (!Number.isFinite(Number(amount)) || Number(amount) <= 0)) return;
+    setSubmitting(true);
+    try {
+      await onComplete(kind, { amount: amount ? Number(amount) : undefined, name, note, idempotencyKey: idempotencyKey.current || undefined });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !submitting) close(); }}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div className="modal-header"><div><div className="eyebrow">Capital OS / quick action</div><h2 id="modal-title">{copy.title}</h2><p>{copy.desc}</p></div><button className="icon-btn" aria-label="Close dialog" data-testid="button-close-modal" onClick={close} disabled={submitting}><X size={17} /></button></div><form className="modal-form" onSubmit={(event) => { void submit(event); }}>{(kind === 'contribution' || kind === 'transfer') && <div className="field"><label>Amount</label><input autoFocus required inputMode="decimal" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} data-testid="input-action-amount" placeholder="250" /></div>}{kind === 'contribution' && <div className="field"><label>Allocation rule</label><div className="field-help">The active household allocation rule applies server-side; this contribution is not manually routed to a sleeve.</div></div>}{(kind === 'strategy' || kind === 'property') && <div className="field"><label>{kind === 'property' ? 'Note title' : 'Strategy title'}</label><input autoFocus required value={name} onChange={(event) => setName(event.target.value)} data-testid="input-action-name" /></div>}<div className="field"><label>Note <span style={{ textTransform:'none', letterSpacing:0 }}>(optional)</span></label><textarea value={note} onChange={(event) => setNote(event.target.value)} data-testid="textarea-action-note" placeholder="A little context for later..." /></div><div className="modal-actions"><button type="button" className="btn" data-testid="button-cancel-modal" onClick={close} disabled={submitting}>Cancel</button><button type="submit" className="btn btn-primary" data-testid="button-submit-modal" disabled={submitting}><Check size={14} /> {submitting ? 'Saving…' : copy.submit}</button></div></form></div></div>;
 }
 
 function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void; transactions: Transaction[]; dashboard?: DashboardSnapshot; backendIssue?: boolean }) {
@@ -1607,8 +1623,8 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue
     <Route path="/properties" component={() => <PropertiesPage onAction={onAction} />} />
     <Route path="/risk" component={() => <RiskPage onFeedback={onFeedback} />} />
     <Route path="/settings" component={() => <SettingsPage onFeedback={onFeedback} />} />
-    <Route path="/transactions" component={() => <UtilityPage kind="transactions" onAction={onAction} transactions={transactions} />} />
-    <Route path="/contributions" component={() => <UtilityPage kind="contributions" onAction={onAction} transactions={transactions} />} />
+     <Route path="/transactions" component={() => <UtilityPage kind="transactions" onAction={onAction} transactions={transactions} dashboard={dashboard} />} />
+     <Route path="/contributions" component={() => <UtilityPage kind="contributions" onAction={onAction} transactions={transactions} dashboard={dashboard} />} />
     <Route path="/reports" component={() => <UtilityPage kind="reports" onAction={onAction} transactions={transactions} />} />
     <Route path="/documents" component={() => <UtilityPage kind="documents" onAction={onAction} transactions={transactions} />} />
      <Route path="/insights" component={() => <IntelligencePage onFeedback={onFeedback} />} />
@@ -1657,13 +1673,13 @@ function AppContent() {
   }, [contributionsQuery.data, transactions]);
   useEffect(() => { if (!toast) return; const timeout = window.setTimeout(() => setToast(''), 3200); return () => window.clearTimeout(timeout); }, [toast]);
   const notify = (message: string) => setToast(message);
-  const complete = async (kind: Exclude<ModalKind, null>, values: { amount?: number; name?: string; note?: string }) => {
+  const complete = async (kind: Exclude<ModalKind, null>, values: { amount?: number; name?: string; note?: string; idempotencyKey?: string }) => {
     const labels = { contribution: 'Contribution recorded', transfer: 'Transfer draft prepared', strategy: 'Strategy note prepared', property: 'Property note prepared' };
     if (kind === 'contribution') {
       try {
         await createContribution(
           { amount: (values.amount || 0).toFixed(2) },
-          { headers: { 'Idempotency-Key': `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}` } },
+          { headers: { 'Idempotency-Key': values.idempotencyKey || `web-${crypto.randomUUID()}` } },
         );
         await queryClient.invalidateQueries();
       } catch (error) {

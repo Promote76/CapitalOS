@@ -1944,12 +1944,26 @@ export interface AccountingMetrics {
   returnOnCapital: number;
 }
 
+export type AccountingReconciliationCrossViewSeparateScopesItem = {
+  scope: string;
+  amount: string;
+  status: string;
+};
+
+export type AccountingReconciliationCrossView = {
+  status: string;
+  accountingNetWorth: string;
+  separateScopes: AccountingReconciliationCrossViewSeparateScopesItem[];
+  note: string;
+};
+
 export interface AccountingReconciliation {
   ledgerBalanced: boolean;
   accountsIncluded: number;
   uncategorizedTransactions: number;
   staleAccounts: number;
   status: string;
+  crossView: AccountingReconciliationCrossView;
 }
 
 export interface AccountingConfidence {

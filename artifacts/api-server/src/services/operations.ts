@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, lte, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import { db } from "@workspace/db";
 import {
   financeBills,
@@ -6,6 +7,7 @@ import {
   operationsApprovals,
   operationsAutomations,
   operationsNotificationPreferences,
+  operationsJobs,
   operationsRuns,
   operationsTasks,
 } from "@workspace/db/schema";
@@ -290,16 +292,95 @@ async function ensureOperationsSeed(householdId: string, ownerId: string): Promi
 async function loadOperations(actor: Actor) {
   const ids = await ensureSeedData();
   await ensureOperationsSeed(ids.householdId, ids.ownerId);
-  const [tasks, approvals, alerts, automations, preferences, bills] = await Promise.all([
+  const [tasks, approvals, alerts, automations, preferences, bills, jobs] = await Promise.all([
     db.select().from(operationsTasks).where(eq(operationsTasks.householdId, ids.householdId)).orderBy(asc(operationsTasks.dueDate), asc(operationsTasks.priority)),
     db.select().from(operationsApprovals).where(eq(operationsApprovals.householdId, ids.householdId)).orderBy(desc(operationsApprovals.createdAt)),
     db.select().from(operationsAlerts).where(eq(operationsAlerts.householdId, ids.householdId)).orderBy(desc(operationsAlerts.lastSeen)),
     db.select().from(operationsAutomations).where(eq(operationsAutomations.householdId, ids.householdId)).orderBy(asc(operationsAutomations.priority)),
     db.select().from(operationsNotificationPreferences).where(and(eq(operationsNotificationPreferences.householdId, ids.householdId), eq(operationsNotificationPreferences.userId, ids.ownerId))).limit(1),
     db.select({ id: financeBills.id, status: financeBills.status, dueDate: financeBills.dueDate }).from(financeBills).where(and(eq(financeBills.householdId, ids.householdId), eq(financeBills.active, true), lte(financeBills.dueDate, dateAfter(7)))),
+    db.select().from(operationsJobs).where(eq(operationsJobs.householdId, ids.householdId)).orderBy(desc(operationsJobs.createdAt)).limit(100),
   ]);
   if (!preferences[0]) throw new Error("Operations notification preferences are missing");
-  return { ids, tasks, approvals, alerts, automations, preferences: preferences[0], bills };
+  return { ids, tasks, approvals, alerts, automations, preferences: preferences[0], bills, jobs };
+}
+
+type OperationsJobPayload = Record<string, unknown>;
+
+export async function enqueueOperationsJob(input: {
+  householdId: string;
+  kind: string;
+  payload?: OperationsJobPayload;
+  jobKey?: string;
+  maxAttempts?: number;
+}) {
+  const [job] = await db.insert(operationsJobs).values({
+    householdId: input.householdId,
+    jobKey: input.jobKey ?? randomUUID(),
+    kind: input.kind,
+    payload: input.payload ?? {},
+    maxAttempts: input.maxAttempts ?? 3,
+    status: "QUEUED",
+  }).returning();
+  return job;
+}
+
+export async function claimNextOperationsJob(householdId: string, workerId: string) {
+  return db.transaction(async (tx) => {
+    const [job] = await tx.select().from(operationsJobs).where(and(
+      eq(operationsJobs.householdId, householdId),
+      eq(operationsJobs.status, "QUEUED"),
+      lte(operationsJobs.availableAt, new Date()),
+    )).orderBy(asc(operationsJobs.availableAt), asc(operationsJobs.createdAt)).limit(1).for("update", { skipLocked: true });
+    if (!job) return null;
+    const [claimed] = await tx.update(operationsJobs).set({
+      status: "RUNNING",
+      attempts: job.attempts + 1,
+      claimedAt: new Date(),
+      claimedBy: workerId,
+      updatedAt: new Date(),
+    }).where(and(eq(operationsJobs.id, job.id), eq(operationsJobs.status, "QUEUED"))).returning();
+    return claimed ?? null;
+  });
+}
+
+export async function completeOperationsJob(jobId: string, householdId: string) {
+  const [job] = await db.update(operationsJobs).set({
+    status: "COMPLETED",
+    completedAt: new Date(),
+    updatedAt: new Date(),
+  }).where(and(eq(operationsJobs.id, jobId), eq(operationsJobs.householdId, householdId), eq(operationsJobs.status, "RUNNING"))).returning();
+  return job ?? null;
+}
+
+export async function failOperationsJob(jobId: string, householdId: string, error: unknown) {
+  const [existing] = await db.select().from(operationsJobs).where(and(eq(operationsJobs.id, jobId), eq(operationsJobs.householdId, householdId))).limit(1);
+  if (!existing) return null;
+  const message = error instanceof Error ? error.message : "Operations job failed";
+  const terminal = existing.attempts >= existing.maxAttempts;
+  const [job] = await db.update(operationsJobs).set({
+    status: terminal ? "DEAD_LETTERED" : "FAILED",
+    availableAt: terminal ? existing.availableAt : new Date(Date.now() + Math.min(60_000, 2 ** existing.attempts * 1_000)),
+    lastError: message,
+    deadLetterReason: terminal ? message : null,
+    updatedAt: new Date(),
+  }).where(and(eq(operationsJobs.id, jobId), eq(operationsJobs.householdId, householdId))).returning();
+  return job ?? null;
+}
+
+export async function recoverStaleOperationsJobs(householdId: string, staleAfterMs = 5 * 60_000) {
+  const cutoff = new Date(Date.now() - staleAfterMs);
+  return db.update(operationsJobs).set({
+    status: "QUEUED",
+    claimedAt: null,
+    claimedBy: null,
+    availableAt: new Date(),
+    updatedAt: new Date(),
+  }).where(and(
+    eq(operationsJobs.householdId, householdId),
+    eq(operationsJobs.status, "RUNNING"),
+    lte(operationsJobs.claimedAt, cutoff),
+  )).returning();
 }
 
 export async function getOperationsOverview(actor: Actor) {
@@ -309,7 +390,7 @@ export async function getOperationsOverview(actor: Actor) {
   const openTasks = data.tasks.filter((item) => !["COMPLETED", "DISMISSED", "EXPIRED"].includes(item.status));
   const overdueTasks = openTasks.filter((item) => item.dueDate < today()).length;
   const criticalAlerts = activeAlerts.filter((item) => item.severity === "CRITICAL").length;
-  const automationFailures = 0;
+  const automationFailures = data.jobs.filter((job) => ["FAILED", "DEAD_LETTERED"].includes(job.status)).length;
   const nextTask = [...openTasks].sort((a, b) => {
     const weight = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
     return (weight[a.priority as keyof typeof weight] ?? 4) - (weight[b.priority as keyof typeof weight] ?? 4) || a.dueDate.localeCompare(b.dueDate);
@@ -445,21 +526,36 @@ export async function runOperationsAutomation(actor: Actor, automationId: string
   if (!automation) throw new GovernanceError("INVALID_STATE", "Automation rule was not found");
   if (!automation.enabled) throw new GovernanceError("INVALID_STATE", "Automation rule is disabled");
   assertSafeAutomationAction(automation.action);
-  const startedAt = new Date();
-  const [run] = await db.insert(operationsRuns).values({
+  const job = await enqueueOperationsJob({
     householdId: ids.householdId,
-    automationId: automation.id,
-    result: "PREPARED",
-    actionsCreated: [`${automation.action}: ${automation.name}`],
-    errors: [],
-    safeBoundary: "This run may create tasks, alerts, reviews, or reports only. No funds, orders, credentials, or ownership changed.",
-    startedAt,
-    completedAt: new Date(),
-  }).returning();
-  await db.update(operationsAutomations).set({ lastRun: run.completedAt }).where(and(
-    eq(operationsAutomations.id, automation.id),
-    eq(operationsAutomations.householdId, ids.householdId),
-  ));
+    kind: "SAFE_AUTOMATION",
+    payload: { automationId: automation.id, action: automation.action },
+    jobKey: `automation:${automation.id}:${randomUUID()}`,
+  });
+  const claimed = await claimNextOperationsJob(ids.householdId, `api:${actor.userId}`);
+  if (!claimed || claimed.id !== job.id) throw new GovernanceError("INVALID_STATE", "Safe automation job could not be claimed");
+  let run: typeof operationsRuns.$inferSelect;
+  try {
+    const startedAt = new Date();
+    [run] = await db.insert(operationsRuns).values({
+      householdId: ids.householdId,
+      automationId: automation.id,
+      result: "PREPARED",
+      actionsCreated: [`${automation.action}: ${automation.name}`],
+      errors: [],
+      safeBoundary: "This run may create tasks, alerts, reviews, or reports only. No funds, orders, credentials, or ownership changed.",
+      startedAt,
+      completedAt: new Date(),
+    }).returning();
+    await db.update(operationsAutomations).set({ lastRun: run.completedAt }).where(and(
+      eq(operationsAutomations.id, automation.id),
+      eq(operationsAutomations.householdId, ids.householdId),
+    ));
+    await completeOperationsJob(claimed.id, ids.householdId);
+  } catch (error) {
+    await failOperationsJob(claimed.id, ids.householdId, error);
+    throw error;
+  }
   return {
     id: run.id,
     automationId: run.automationId,

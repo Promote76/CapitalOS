@@ -3554,13 +3554,29 @@ components:
         returnOnCapital: { type: number }
     AccountingReconciliation:
       type: object
-      required: [ledgerBalanced, accountsIncluded, uncategorizedTransactions, staleAccounts, status]
+      required: [ledgerBalanced, accountsIncluded, uncategorizedTransactions, staleAccounts, status, crossView]
       properties:
         ledgerBalanced: { type: boolean }
         accountsIncluded: { type: number }
         uncategorizedTransactions: { type: number }
         staleAccounts: { type: number }
         status: { type: string }
+        crossView:
+          type: object
+          required: [status, accountingNetWorth, separateScopes, note]
+          properties:
+            status: { type: string }
+            accountingNetWorth: { type: string }
+            separateScopes:
+              type: array
+              items:
+                type: object
+                required: [scope, amount, status]
+                properties:
+                  scope: { type: string }
+                  amount: { type: string }
+                  status: { type: string }
+            note: { type: string }
     AccountingConfidence:
       type: object
       required: [score, bankSyncFreshness, ledgerReconciliation, categorization, valuationFreshness, label]

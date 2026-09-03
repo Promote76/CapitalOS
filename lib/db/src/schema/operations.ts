@@ -125,6 +125,33 @@ export const operationsRuns = pgTable(
   }),
 );
 
+export const operationsJobs = pgTable(
+  "operations_jobs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    jobKey: text("job_key").notNull(),
+    kind: text("kind").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    status: text("status").notNull().default("QUEUED"),
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(3),
+    availableAt: timestamp("available_at", { withTimezone: true }).defaultNow().notNull(),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    claimedBy: text("claimed_by"),
+    lastError: text("last_error"),
+    deadLetterReason: text("dead_letter_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => ({
+    householdJobKeyUnique: uniqueIndex("operations_jobs_household_job_key_unique").on(table.householdId, table.jobKey),
+    claimIdx: index("operations_jobs_claim_idx").on(table.status, table.availableAt),
+    householdStatusIdx: index("operations_jobs_household_status_idx").on(table.householdId, table.status),
+  }),
+);
+
 export const operationsNotificationPreferences = pgTable(
   "operations_notification_preferences",
   {
@@ -155,4 +182,5 @@ export type OperationsApproval = typeof operationsApprovals.$inferSelect;
 export type OperationsAlert = typeof operationsAlerts.$inferSelect;
 export type OperationsAutomation = typeof operationsAutomations.$inferSelect;
 export type OperationsRun = typeof operationsRuns.$inferSelect;
+export type OperationsJob = typeof operationsJobs.$inferSelect;
 export type OperationsNotificationPreferences = typeof operationsNotificationPreferences.$inferSelect;

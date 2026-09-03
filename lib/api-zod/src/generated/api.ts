@@ -3103,7 +3103,17 @@ export const GetAccountingOverviewResponse = zod.object({
   "accountsIncluded": zod.number(),
   "uncategorizedTransactions": zod.number(),
   "staleAccounts": zod.number(),
+  "status": zod.string(),
+  "crossView": zod.object({
+  "status": zod.string(),
+  "accountingNetWorth": zod.string(),
+  "separateScopes": zod.array(zod.object({
+  "scope": zod.string(),
+  "amount": zod.string(),
   "status": zod.string()
+})),
+  "note": zod.string()
+})
 }),
   "confidence": zod.object({
   "score": zod.number(),

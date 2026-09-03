@@ -12,6 +12,38 @@ export function calculateNetWorth(assetCents: number, liabilityCents: number) {
   return assetCents - liabilityCents;
 }
 
+export type CrossViewScope = "accounting" | "planning" | "treasury" | "business" | "property";
+
+export function reconcileCrossViewTotals(input: {
+  accountingNetWorthCents: number;
+  accountingAssetsCents: number;
+  accountingLiabilitiesCents: number;
+  planningCapitalCents?: number;
+  treasuryCapitalCents?: number;
+  businessEquityCents?: number;
+  propertyEquityCents?: number;
+}) {
+  const accountingBalances = input.accountingAssetsCents - input.accountingLiabilitiesCents;
+  const accountingReconciles = accountingBalances === input.accountingNetWorthCents;
+  const separateScopes: Array<{ scope: CrossViewScope; amountCents: number; status: "separate_scope" }> = [
+    { scope: "planning", amountCents: input.planningCapitalCents ?? 0, status: "separate_scope" },
+    { scope: "treasury", amountCents: input.treasuryCapitalCents ?? 0, status: "separate_scope" },
+    { scope: "business", amountCents: input.businessEquityCents ?? 0, status: "separate_scope" },
+    { scope: "property", amountCents: input.propertyEquityCents ?? 0, status: "separate_scope" },
+  ];
+  return {
+    status: accountingReconciles ? "RECONCILED" as const : "REVIEW_REQUIRED" as const,
+    accounting: {
+      assetsCents: input.accountingAssetsCents,
+      liabilitiesCents: input.accountingLiabilitiesCents,
+      netWorthCents: input.accountingNetWorthCents,
+      reconciles: accountingReconciles,
+    },
+    separateScopes,
+    note: "Planning, Treasury, business, and property values are intentionally not aggregated into household accounting net worth.",
+  };
+}
+
 export function summarizeCashFlow(lines: CashFlowLine[]) {
   return lines.reduce(
     (summary, line) => {

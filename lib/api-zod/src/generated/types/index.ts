@@ -22,6 +22,8 @@ export * from './accountingNetWorth';
 export * from './accountingOverview';
 export * from './accountingOverviewPeriod';
 export * from './accountingReconciliation';
+export * from './accountingReconciliationCrossView';
+export * from './accountingReconciliationCrossViewSeparateScopesItem';
 export * from './accountingTaxYear';
 export * from './accountSummary';
 export * from './allocationImpact';

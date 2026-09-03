@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { assertSafeAutomationAction, calculateOperationsHealth } from "./operations.ts";
+import { RELIABILITY_ALERTS, RELIABILITY_METRICS, reliabilityEvent } from "./reliability.ts";
 
 describe("operations safety", () => {
   it("blocks automation actions that would control capital or security", () => {
@@ -32,5 +33,19 @@ describe("operations safety", () => {
       }),
       0,
     );
+  });
+
+  it("defines provider-neutral reliability signals with fail-closed responses", () => {
+    assert.ok(RELIABILITY_METRICS.includes("operations.job_dead_lettered"));
+    const alert = RELIABILITY_ALERTS.find((item) => item.metric === "micro_live.reconciliation_failure");
+    assert.equal(alert?.severity, "CRITICAL");
+    assert.match(alert?.response ?? "", /stop/i);
+    const event = reliabilityEvent({
+      metric: "idempotency.conflict",
+      severity: "HIGH",
+      message: "Replay rejected",
+    });
+    assert.equal(event.householdId, null);
+    assert.deepEqual(event.metadata, {});
   });
 });

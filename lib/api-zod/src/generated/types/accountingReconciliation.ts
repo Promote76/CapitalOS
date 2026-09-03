@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { AccountingReconciliationCrossView } from './accountingReconciliationCrossView';
 
 export interface AccountingReconciliation {
   ledgerBalanced: boolean;
@@ -12,4 +13,5 @@ export interface AccountingReconciliation {
   uncategorizedTransactions: number;
   staleAccounts: number;
   status: string;
+  crossView: AccountingReconciliationCrossView;
 }

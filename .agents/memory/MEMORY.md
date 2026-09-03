@@ -13,3 +13,4 @@
 - [HTTP fixture runner](capital-os-http-fixtures.md) — database-backed API fixtures need the workspace TypeScript runner because the source app retains extensionless relative imports.
 - [Certification evidence boundary](capital-os-certification-evidence.md) — close release gates only from isolated execution; never substitute fabricated legacy schemas or synthetic restore evidence.
 - [Managed recovery controls](capital-os-managed-recovery.md) — provider PITR and scheduled-backup selection require the Database tool; agent SQL access cannot certify a restore.
+- [Database schema declaration refresh](db-schema-declaration-refresh.md) — rebuild database declarations after schema edits; do not rewrite baseline migrations around the generator path quirk.

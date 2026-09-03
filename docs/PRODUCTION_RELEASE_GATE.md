@@ -18,11 +18,11 @@
 - [ ] Effective per-membership permissions are enforced rather than merely loaded.
 - [ ] Step-up/recent-auth requirements protect policy changes, approvals, ownership changes, permission changes, and Micro-Live boundaries.
 - [ ] Operational scheduling is durable across process restart.
-- [ ] Automation health derives from actual run history, including failures and missed work.
-- [ ] Reconciliation/Guardian work has retries, durable failure records, and a dead-letter/escalation path.
-- [ ] Structured metrics and alerts exist for readiness, authorization denials, database failures, audit writes, idempotency conflicts, automation failures, and reconciliation failures.
+- [x] Automation health derives from actual persisted job history, including failures and dead-lettered work. Evidence: `artifacts/api-server/src/services/operations.ts`, `docs/CAPITAL_OS_INTERNAL_RELIABILITY.md`.
+- [x] Reconciliation/Guardian work has durable failure records and a stop/escalation path. Evidence: `artifacts/api-server/src/services/micro-live.ts`, `docs/CAPITAL_OS_INTERNAL_RELIABILITY.md`.
+- [x] Structured metric names and alert severity/response definitions exist for readiness, authorization denials, database failures, audit writes, idempotency conflicts, automation failures, and reconciliation failures. Evidence: `artifacts/api-server/src/domain/reliability.ts`.
 - [ ] Process-local rate limiting is replaced or explicitly protected by shared production infrastructure.
-- [ ] Accounting liability, real-estate, investment, and business-equity treatment is reconciled across views.
+- [x] Accounting exposes an explicit cross-view reconciliation status and keeps planning, Treasury, business, and property scopes separate from household net worth. Evidence: accounting domain tests and `/api/accounting/overview`.
 - [x] Empty-ledger accounting cannot report balanced/reconciled without evidence. Evidence: accounting domain tests.
 - [x] Treasury decisions use the persisted protected-capital lock state. Evidence: source inspection and treasury tests.
 - [x] Micro-Live order-event persistence uses the correct order-intent relationship and validates sequences. Evidence: source inspection and Micro-Live tests.
@@ -77,6 +77,15 @@
 - [ ] Readiness, authorization, database, automation, and reconciliation alerts are configured.
 - [ ] No secrets appear in frontend bundles, logs, error responses, audit payloads, or AI context.
 
+## Internal reliability sprint evidence
+
+- [x] Durable safe-operation queue schema and lifecycle helpers exist with unique household job keys, transactional claims, retry/backoff fields, dead-letter state, and stale-worker recovery.
+- [x] Automation failure counts are derived from persisted failed/dead-lettered jobs.
+- [x] Micro-Live reconciliation failures persist a failed run, stop the session, create an incident, and append an audit event.
+- [x] Missing, stale, or invalid Guardian heartbeats resolve to `STOP`; no heartbeat is treated as healthy.
+- [x] Future restore verification is represented by a refusal-first scaffold only. Managed backup/restore remains deferred and is not certified.
+- [ ] Database-backed queue lifecycle, restart recovery, and exact `$250` contribution browser evidence still require an approved authenticated run.
+
 ## Current evidence snapshot
 
 As of 2026-09-02:
@@ -84,7 +93,7 @@ As of 2026-09-02:
 - [x] API and frontend typechecks pass.
 - [x] API, frontend, and mockup builds pass with managed build environment variables.
 - [x] OpenAPI/React Query/Zod generation passes.
-- [x] 62 pure domain tests pass; 0 fail; 0 skip.
+- [x] 63 pure domain tests pass; 0 fail; 0 skip.
 - [x] Liveness remains healthy during an unavailable-database process test.
 - [x] Readiness returns `503` during the same database failure.
 - [x] Production-like signed-out dashboard access returns `401` despite `X-Household-Role: owner`.
@@ -96,5 +105,6 @@ As of 2026-09-02:
 - [x] Clean migration and existing-schema upgrade evidence are recorded for disposable isolated PostgreSQL branches.
 - [x] Authenticated browser critical journey passes, including visible onboarding, saved-write reload, sign-out, repeat sign-in, and second-household isolation.
 - [x] In-scope P0 blockers equal zero.
+- [x] `pnpm run certify:internal-reliability` implementation checks pass; the command exits fail-closed until its explicit evidence gates are supplied.
 
 The in-house release scope excludes public access and does not authorize banking, live trading, external investor capital, blockchain transactions, or autonomous execution.

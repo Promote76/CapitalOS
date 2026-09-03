@@ -4,11 +4,38 @@ import {
   calculateNetWorth,
   calculateNetWorthAttribution,
   ledgerDebitsEqualCredits,
+  reconcileCrossViewTotals,
   summarizeCashFlow,
 } from "./accounting.ts";
 
 test("assets minus liabilities equals net worth", () => {
   assert.equal(calculateNetWorth(11_600 * 100, 780 * 100), 10_820 * 100);
+});
+
+test("cross-view reconciliation keeps non-accounting scopes separate", () => {
+  const result = reconcileCrossViewTotals({
+    accountingAssetsCents: 125_000,
+    accountingLiabilitiesCents: 25_000,
+    accountingNetWorthCents: 100_000,
+    planningCapitalCents: 90_000,
+    treasuryCapitalCents: 12_000,
+    businessEquityCents: 50_000,
+    propertyEquityCents: 300_000,
+  });
+  assert.equal(result.status, "RECONCILED");
+  assert.deepEqual(result.separateScopes.map((scope) => scope.scope), ["planning", "treasury", "business", "property"]);
+  assert.equal(result.separateScopes.reduce((sum, scope) => sum + scope.amountCents, 0), 452_000);
+  assert.equal(result.accounting.netWorthCents, 100_000);
+});
+
+test("cross-view reconciliation requires review when accounting arithmetic is wrong", () => {
+  const result = reconcileCrossViewTotals({
+    accountingAssetsCents: 10_000,
+    accountingLiabilitiesCents: 3_000,
+    accountingNetWorthCents: 6_000,
+  });
+  assert.equal(result.status, "REVIEW_REQUIRED");
+  assert.equal(result.accounting.reconciles, false);
 });
 
 test("contributions are capital movement, not profit", () => {

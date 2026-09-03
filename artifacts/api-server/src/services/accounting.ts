@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db, financeCategories, financeSnapshots, financeTransactions, financialAccounts, ledgerEntries, ledgerTransactions } from "@workspace/db";
 import { canViewFinancialBalance } from "../domain/household-finance";
-import { calculateNetWorth, calculateNetWorthAttribution, ledgerDebitsEqualCredits, summarizeCashFlow } from "../domain/accounting";
+import { calculateNetWorth, calculateNetWorthAttribution, ledgerDebitsEqualCredits, reconcileCrossViewTotals, summarizeCashFlow } from "../domain/accounting";
 import { ensureSeedData } from "./seed";
 import type { Actor } from "./capital-os";
 
@@ -113,6 +113,11 @@ export async function getAccountingOverview(actor: Actor) {
   const ledgerBalanced = ledgerDebitsEqualCredits(
     Array.from(ledgerTotals.values()).map((total) => ({ debitCents: total.debit, creditCents: total.credit })),
   );
+  const crossView = reconcileCrossViewTotals({
+    accountingAssetsCents: totalAssets,
+    accountingLiabilitiesCents: totalLiabilities,
+    accountingNetWorthCents: netWorth,
+  });
   const dataConfidence = Math.max(0, Math.min(100, 94 - uncategorized * 3 - staleAccounts * 4 - (ledgerBalanced ? 0 : 20)));
   const previousSnapshot = snapshots.find((row) => row.snapshotDate < period);
   const ytdSnapshots = snapshots.filter((row) => row.snapshotDate.slice(0, 4) === period.slice(0, 4));
@@ -200,6 +205,16 @@ export async function getAccountingOverview(actor: Actor) {
       uncategorizedTransactions: uncategorized,
       staleAccounts,
       status: ledgerBalanced && uncategorized === 0 ? "RECONCILED" : "REVIEW_REQUIRED",
+      crossView: {
+        status: crossView.status,
+        accountingNetWorth: money(crossView.accounting.netWorthCents),
+        separateScopes: crossView.separateScopes.map((scope) => ({
+          scope: scope.scope,
+          amount: money(scope.amountCents),
+          status: scope.status,
+        })),
+        note: crossView.note,
+      },
     },
     confidence: {
       score: dataConfidence,

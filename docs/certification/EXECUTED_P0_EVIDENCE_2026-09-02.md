@@ -139,3 +139,10 @@ Routes exercised: `/`, `/accounts`, `/api/auth/me`, and
 
 All required in-scope P0-05 assertions passed in the rerun, so the authenticated
 Clerk browser journey is certified for the internal-only release scope.
+
+### P0-05 contribution addendum
+
+The contribution-specific proof is recorded separately in
+`docs/certification/P0_05_CONTRIBUTION_FUNCTIONAL_PROOF_2026-09-03.md`. It is not
+folded into the Clerk browser result above: no approved provider-browser execution
+or MFA evidence was available in this run.

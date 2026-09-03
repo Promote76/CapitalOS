@@ -4,7 +4,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { resetRateLimitForTests } from "../middleware/safety.ts";
 
 const enabled = process.env.CAPITAL_OS_RUN_INTEGRATION === "1";
@@ -103,6 +103,291 @@ async function createFixture(): Promise<Fixture> {
     viewerB: viewerB.id,
   };
 }
+
+test("P0-05 contribution journey keeps the exact $250 movement after fresh reads and replay", { skip: !enabled }, async () => {
+  process.env.NODE_ENV = "test";
+  process.env.CAPITAL_OS_TEST_CONTEXT = "1";
+  process.env.CAPITAL_OS_ALLOWED_ORIGIN = "http://capitalos.test";
+  const fixture = await createFixture();
+  database ??= await import("@workspace/db");
+  const { default: app } = await import("../app.ts");
+  const server = app.listen(0);
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+  const baseUrl = `http://127.0.0.1:${address.port}/api`;
+  const request = (route: string, init: RequestInit = {}) =>
+    fetch(`${baseUrl}${route}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Test-User-Id": fixture.userA,
+        "X-Test-Household-Id": fixture.householdA,
+        "X-Household-Role": "owner",
+        "X-Test-Step-Up": "verified",
+        ...(init.headers ?? {}),
+      },
+    });
+
+  try {
+    const { db, accounts, allocationRules, auditEvents, contributions, goals, ledgerEntries, ledgerTransactions } = database;
+    const goalsBeforeResponse = await request("/goals");
+    assert.equal(goalsBeforeResponse.status, 200);
+    const goalsBefore = await goalsBeforeResponse.json() as Array<{
+      id: string;
+      currentAmount: string;
+      protectedAmount: string;
+    }>;
+    const goalBefore = goalsBefore[0];
+    assert.ok(goalBefore?.id);
+
+    const [rule] = await db
+      .select()
+      .from(allocationRules)
+      .where(and(eq(allocationRules.householdId, fixture.householdA), eq(allocationRules.active, true)))
+      .orderBy(desc(allocationRules.createdAt))
+      .limit(1);
+    assert.ok(rule);
+    assert.equal(rule.totalWeekly, "250.00", "The certification contribution must exercise the active $250 rule");
+
+    const householdAccounts = await db
+      .select({
+        id: accounts.id,
+        accountType: accounts.accountType,
+        balance: accounts.balance,
+      })
+      .from(accounts)
+      .where(eq(accounts.householdId, fixture.householdA));
+    const accountByType = (accountType: string) => householdAccounts.find((account) => account.accountType === accountType);
+    const treasury = accountByType("treasury");
+    const duplex = accountByType("duplex_reserve");
+    const active = accountByType("active_capital");
+    const opportunity = accountByType("opportunity_reserve");
+    assert.ok(treasury?.id && duplex?.id && active?.id && opportunity?.id);
+    await db.update(accounts).set({ balance: "1000.00" }).where(eq(accounts.id, treasury.id));
+
+    const amountCents = 25_000;
+    const ruleTotalCents = Number(toCents(rule.totalWeekly));
+    const expectedSplit: { duplex: number; capitalOs: number; opportunity: number } = {
+      duplex: Math.floor((amountCents * Number(toCents(rule.duplexReserve))) / ruleTotalCents),
+      capitalOs: Math.floor((amountCents * Number(toCents(rule.capitalOs))) / ruleTotalCents),
+      opportunity: 0,
+    };
+    expectedSplit.opportunity = amountCents - expectedSplit.duplex - expectedSplit.capitalOs;
+    const key = `browser-contribution-${randomUUID()}`;
+    const input = {
+      amount: "250.00",
+      goalId: goalBefore.id,
+      note: "P0-05 authenticated browser contribution",
+    };
+
+    const first = await request("/contributions", {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify(input),
+    });
+    assert.equal(first.status, 201);
+    const firstBody = await first.json() as {
+      id: string;
+      amount: string;
+      status: string;
+      createdAt: string;
+      idempotencyKey: string;
+      metadata: { split?: { duplex?: number; capitalOs?: number; opportunity?: number } };
+    };
+    assert.equal(firstBody.amount, "250.00");
+    assert.equal(firstBody.status, "completed");
+    assert.equal(firstBody.idempotencyKey, key);
+    assert.deepEqual(firstBody.metadata.split, expectedSplit);
+
+    const replay = await request("/contributions", {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify(input),
+    });
+    assert.equal(replay.status, 201);
+    const replayBody = await replay.json() as { id: string; amount: string; idempotencyKey: string };
+    assert.deepEqual(replayBody, {
+      id: firstBody.id,
+      amount: "250.00",
+      status: "completed",
+      createdAt: firstBody.createdAt,
+      idempotencyKey: key,
+      metadata: firstBody.metadata,
+    });
+
+    const conflict = await request("/contributions", {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify({ ...input, amount: "250.01" }),
+    });
+    assert.equal(conflict.status, 409);
+    assert.equal((await conflict.json() as { code: string }).code, "IDEMPOTENCY_CONFLICT");
+
+    const [storedContributionCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(contributions)
+      .where(and(
+        eq(contributions.householdId, fixture.householdA),
+        eq(contributions.idempotencyKey, key),
+      ));
+    assert.equal(storedContributionCount?.count, 1, "Replay must not create a second contribution record");
+
+    const movementRows = await db
+      .select({
+        id: ledgerTransactions.id,
+        amount: ledgerTransactions.amount,
+        sourceAccountId: ledgerTransactions.sourceAccountId,
+        destinationAccountId: ledgerTransactions.destinationAccountId,
+        createdBy: ledgerTransactions.createdBy,
+        metadata: ledgerTransactions.metadata,
+      })
+      .from(ledgerTransactions)
+      .where(and(
+        eq(ledgerTransactions.householdId, fixture.householdA),
+        eq(ledgerTransactions.category, "contribution"),
+        sql`${ledgerTransactions.metadata}->>'idempotencyKey' = ${key}`,
+      ));
+    assert.equal(movementRows.length, 3);
+    assert.deepEqual(
+      movementRows.map((row) => [row.sourceAccountId, row.destinationAccountId, row.amount]).sort(),
+      [
+        [treasury.id, duplex.id, "200.00"],
+        [treasury.id, active.id, "25.00"],
+        [treasury.id, opportunity.id, "25.00"],
+      ].sort(),
+    );
+    assert.ok(movementRows.every((row) => row.createdBy === fixture.userA));
+    const [movementLedgerTotals] = await db
+      .select({
+        debits: sql<string>`coalesce(sum(${ledgerEntries.debit}), 0)::text`,
+        credits: sql<string>`coalesce(sum(${ledgerEntries.credit}), 0)::text`,
+      })
+      .from(ledgerEntries)
+      .where(inArray(ledgerEntries.transactionId, movementRows.map((row) => row.id)));
+    assert.deepEqual(movementLedgerTotals, { debits: "250.00", credits: "250.00" });
+
+    const [storedContribution] = await db
+      .select({
+        goalId: contributions.goalId,
+        allocationRuleId: contributions.allocationRuleId,
+        createdBy: contributions.createdBy,
+      })
+      .from(contributions)
+      .where(eq(contributions.id, firstBody.id))
+      .limit(1);
+    assert.deepEqual(storedContribution, {
+      goalId: goalBefore.id,
+      allocationRuleId: rule.id,
+      createdBy: fixture.userA,
+    });
+    const [contributionAudit] = await db
+      .select({
+        eventType: auditEvents.eventType,
+        actor: auditEvents.actor,
+        entity: auditEvents.entity,
+        entityId: auditEvents.entityId,
+      })
+      .from(auditEvents)
+      .where(and(
+        eq(auditEvents.householdId, fixture.householdA),
+        eq(auditEvents.entity, "contribution"),
+        eq(auditEvents.entityId, firstBody.id),
+      ))
+      .limit(1);
+    assert.deepEqual(contributionAudit, {
+      eventType: "contribution_completed",
+      actor: fixture.userA,
+      entity: "contribution",
+      entityId: firstBody.id,
+    });
+
+    const freshContributionsResponse = await request("/contributions");
+    assert.equal(freshContributionsResponse.status, 200);
+    const freshContributions = await freshContributionsResponse.json() as Array<{ id: string; amount: string; idempotencyKey: string }>;
+    assert.deepEqual(
+      freshContributions.filter((contribution) => contribution.idempotencyKey === key),
+      [{ id: firstBody.id, amount: "250.00", status: "completed", createdAt: firstBody.createdAt, idempotencyKey: key, metadata: firstBody.metadata }],
+    );
+
+    const freshGoalsResponse = await request("/goals");
+    assert.equal(freshGoalsResponse.status, 200);
+    const freshGoal = (await freshGoalsResponse.json() as Array<{ id: string; currentAmount: string; protectedAmount: string }>)
+      .find((goal) => goal.id === goalBefore.id);
+    assert.equal(freshGoal?.currentAmount, fromCents(toCents(goalBefore.currentAmount) + BigInt(expectedSplit.duplex)));
+    assert.equal(freshGoal?.protectedAmount, fromCents(toCents(goalBefore.protectedAmount) + BigInt(expectedSplit.duplex)));
+
+    const freshAccountsResponse = await request("/accounts");
+    assert.equal(freshAccountsResponse.status, 200);
+    const freshAccounts = await freshAccountsResponse.json() as Array<{ id: string; balance: string }>;
+    const freshBalance = (id: string) => freshAccounts.find((account) => account.id === id)?.balance;
+    assert.equal(freshBalance(duplex.id), fromCents(toCents(duplex.balance) + BigInt(expectedSplit.duplex)));
+    assert.equal(freshBalance(active.id), fromCents(toCents(active.balance) + BigInt(expectedSplit.capitalOs)));
+    assert.equal(freshBalance(opportunity.id), fromCents(toCents(opportunity.balance) + BigInt(expectedSplit.opportunity)));
+    const [freshTreasuryAccount] = await db
+      .select({ balance: accounts.balance })
+      .from(accounts)
+      .where(eq(accounts.id, treasury.id))
+      .limit(1);
+    assert.equal(freshTreasuryAccount?.balance, "750.00", "Treasury must fund exactly one $250 contribution");
+
+    const freshTreasuryResponse = await request("/treasury");
+    assert.equal(freshTreasuryResponse.status, 200);
+    const freshTreasury = await freshTreasuryResponse.json() as { buckets?: Array<{ bucketType?: string }> };
+    assert.ok(Array.isArray(freshTreasury.buckets), "Fresh Treasury read must remain available after contribution");
+    assert.ok(freshTreasury.buckets.some((bucket) => bucket.bucketType === "PROTECTED_GOAL"));
+
+    const freshPortfolioResponse = await request("/portfolio");
+    assert.equal(freshPortfolioResponse.status, 200);
+    assert.equal((await freshPortfolioResponse.json() as { ledgerBalanced: boolean }).ledgerBalanced, true);
+    const freshAuditResponse = await request("/audit");
+    assert.equal(freshAuditResponse.status, 200);
+    const freshAudit = await freshAuditResponse.json() as Array<{ actor: string; entityId: string; eventType: string }>;
+    assert.ok(freshAudit.some((event) =>
+      event.entityId === firstBody.id &&
+      event.eventType === "contribution_completed" &&
+      event.actor === fixture.userA,
+    ));
+    console.log(JSON.stringify({
+      gate: "P0-05-CONTRIBUTION",
+      amount: firstBody.amount,
+      activeRule: {
+        totalWeekly: rule.totalWeekly,
+        duplexReserve: rule.duplexReserve,
+        capitalOs: rule.capitalOs,
+        opportunityReserve: rule.opportunityReserve,
+      },
+      split: expectedSplit,
+      replayId: replayBody.id,
+      contributionRecordsForKey: storedContributionCount?.count,
+      ledgerMovementCount: movementRows.length,
+      ledgerBalanced: true,
+      auditActor: fixture.userA,
+      conflictStatus: conflict.status,
+    }));
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    const { db, households, users } = database;
+    const householdIds = [fixture.householdA, fixture.householdB];
+    const householdIdList = sql.join(householdIds.map((id) => sql`${id}::uuid`), sql`, `);
+    await db.execute(sql`DELETE FROM ledger_entries
+      WHERE account_id IN (
+        SELECT id FROM capital_accounts
+        WHERE household_id IN (${householdIdList})
+      )`);
+    await db.execute(sql`DELETE FROM ledger_transactions WHERE household_id IN (${householdIdList})`);
+    await db.delete(households).where(inArray(households.id, householdIds));
+    await db.delete(users).where(inArray(users.id, [
+      fixture.userA,
+      fixture.partnerA,
+      fixture.advisorA,
+      fixture.viewerA,
+      fixture.userB,
+      fixture.partnerB,
+      fixture.advisorB,
+      fixture.viewerB,
+    ]));
+  }
+});
 
 test("authenticated HTTP fixtures enforce household ownership, ignore role headers, and serialize idempotency", { skip: !enabled }, async () => {
   process.env.NODE_ENV = "test";

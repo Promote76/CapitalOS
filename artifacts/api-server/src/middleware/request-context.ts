@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { clerkClient, getAuth } from "@clerk/express";
+import { reverificationError } from "@clerk/shared/authorization-errors";
 import { and, asc, eq } from "drizzle-orm";
 import { db, householdMembers, users } from "@workspace/db";
 import { ensureSeedData } from "../services/seed";
@@ -14,9 +15,9 @@ import {
   runWithSecurityContext,
   type RequestSecurityContext,
 } from "./request-scope";
+import { hasProviderReverification } from "./reverification";
 
 const roles = new Set<HouseholdRole>(["owner", "partner", "viewer", "advisor"]);
-const RECENT_AUTH_WINDOW_MS = 15 * 60 * 1000;
 
 function requiresRecentAuthentication(req: Request) {
   if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return false;
@@ -30,16 +31,6 @@ function requiresRecentAuthentication(req: Request) {
     path.includes("/treasury/requests/") ||
     path.startsWith("/business/distributions") ||
     path.startsWith("/micro-live/");
-}
-
-function hasRecentAuthentication(req: Request, context: RequestSecurityContext) {
-  if (context.authStrength === "test_database") {
-    return req.header("X-Test-Step-Up") === "verified";
-  }
-  if (context.authStrength !== "clerk_session") return true;
-  const claims = getAuth(req).sessionClaims as { iat?: number; fva?: unknown } | undefined;
-  const issuedAt = typeof claims?.iat === "number" ? claims.iat * 1000 : 0;
-  return issuedAt > 0 && Date.now() - issuedAt <= RECENT_AUTH_WINDOW_MS;
 }
 
 export type ResolvedClerkIdentity = {
@@ -198,10 +189,14 @@ export async function requestContext(req: Request, res: Response, next: NextFunc
   try {
     const auth = await authenticatedContext(req) ?? await testDatabaseContext(req);
     if (auth) {
-      if (requiresRecentAuthentication(req) && !hasRecentAuthentication(req, auth)) {
+      if (requiresRecentAuthentication(req) && !hasProviderReverification(req, auth)) {
+        if (auth.authStrength === "clerk_session") {
+          res.status(403).json(reverificationError("strict"));
+          return;
+        }
         res.status(403).json({
           code: "STEP_UP_REQUIRED",
-          message: "Recent authentication is required before this protected action.",
+          message: "A test-only step-up marker is required by the isolated fixture.",
           correlationId: res.locals.correlationId,
         });
         return;

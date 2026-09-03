@@ -16,7 +16,7 @@
 ## P1 release risks
 
 - [ ] Effective per-membership permissions are enforced rather than merely loaded.
-- [ ] Step-up/recent-auth requirements protect policy changes, approvals, ownership changes, permission changes, and Micro-Live boundaries.
+- [ ] **Step-up/reverification certification.** The implementation uses Clerk's provider-supported reverification contract for policy changes, approvals, ownership changes, permission changes, and Micro-Live boundaries; the approved authenticated browser evidence is still open.
 - [ ] Operational scheduling is durable across process restart.
 - [x] Automation health derives from actual persisted job history, including failures and dead-lettered work. Evidence: `artifacts/api-server/src/services/operations.ts`, `docs/CAPITAL_OS_INTERNAL_RELIABILITY.md`.
 - [x] Reconciliation/Guardian work has durable failure records and a stop/escalation path. Evidence: `artifacts/api-server/src/services/micro-live.ts`, `docs/CAPITAL_OS_INTERNAL_RELIABILITY.md`.
@@ -27,6 +27,12 @@
 - [x] Treasury decisions use the persisted protected-capital lock state. Evidence: source inspection and treasury tests.
 - [x] Micro-Live order-event persistence uses the correct order-intent relationship and validates sequences. Evidence: source inspection and Micro-Live tests.
 - [ ] Secret references have a vault, rotation, access-audit, and least-privilege workflow.
+
+## Step-up evidence status
+
+- [x] **Implementation.** Clerk-backed requests now check `auth.has({ reverification: "strict" })`, return Clerk's standardized reverification hint, and the Capital OS client wraps protected actions with `useReverification()` so the provider UI can verify and retry the original action.
+- [ ] **Certification.** A project owner with Clerk dashboard access must configure/confirm the supported reverification factor in the approved Clerk Development environment, then run a browser test user through a stale protected action, the provider reverification UI, a successful retry, and authorization denial that remains denied after reverification.
+- **Not evidence:** session age, `iat` freshness, `X-Test-Step-Up`, invented OTPs, or source inspection alone.
 
 ## Required financial invariants
 

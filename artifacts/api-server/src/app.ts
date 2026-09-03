@@ -45,7 +45,7 @@ app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(cors({
   origin: process.env.CAPITAL_OS_ALLOWED_ORIGIN ?? false,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Idempotency-Key", "X-Correlation-ID", "X-Test-User-Id", "X-Test-Household-Id", "X-Test-Step-Up"],
+  allowedHeaders: ["Content-Type", "Idempotency-Key", "X-Correlation-ID", "X-Test-User-Id", "X-Test-Household-Id"],
 }));
 app.use(
   clerkMiddleware((req) => ({

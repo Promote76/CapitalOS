@@ -14,7 +14,7 @@ The hardening work established meaningful controls around authenticated identity
 
 Executable evidence is currently strongest for domain safety, isolated PostgreSQL HTTP behavior, and the authenticated Clerk browser lifecycle. The workspace typechecks, builds, regenerates API clients, passes route parity, and passes 69 API tests. The isolated database-backed fixture also proves the 108-route tenant preflight, role/effective-permission cases, persisted actor attribution, cross-household and viewer-denial boundaries, contribution/transfer/strategy-allocation idempotency, concurrent capital-request creation, concurrent business-distribution preparation, 100-request contention, and balanced ledger totals. Published-origin probes, a disposable historical-schema upgrade/data-preservation run, and the authenticated onboarding, persistence, sign-out, sign-in, and isolation journey also passed.
 
-Capital OS is qualified only for controlled, in-house evaluation within the documented non-executing scope. Public production release is out of scope. Provider-supported Clerk step-up flow and contribution-specific authenticated browser evidence remain outside this certification. Durable queue and reconciliation controls are implemented locally, but their database-backed restart run is not claimed as executed evidence.
+Capital OS is qualified only for controlled, in-house evaluation within the documented non-executing scope. Public production release is out of scope. The provider-supported Clerk reverification flow is implemented but its approved authenticated browser evidence remains outside this certification, as does contribution-specific authenticated browser evidence. Durable queue and reconciliation controls are implemented locally, but their database-backed restart run is not claimed as executed evidence.
 
 No real banking, ACH, brokerage, live venue, blockchain, external investor capital, automated withdrawal, or autonomous AI capability was added or enabled.
 
@@ -65,7 +65,7 @@ Audit Attribution
 Persisted Result
 ```
 
-The current high-risk authentication safeguard is a temporary Clerk session-issued-at freshness check. It is not a provider-supported reauthentication proof and therefore does not satisfy the final production step-up gate.
+High-risk authenticated writes now use Clerk's provider-supported reverification contract: the server checks `auth.has({ reverification: "strict" })`, returns Clerk's standardized reverification hint, and the client uses `useReverification()` to open the provider UI and retry the original action. This is implementation evidence only until the approved browser run passes.
 
 ## Module Inventory
 
@@ -96,11 +96,11 @@ The current high-risk authentication safeguard is a temporary Clerk session-issu
 
 | Area | Status | Evidence | Known limitation |
 |---|---|---|---|
-| Authentication | PARTIAL | Clerk middleware/provider wiring; authenticated browser lifecycle and signed-out protected request both pass | Provider-supported step-up is not configured; public release is out of scope |
+| Authentication | PARTIAL | Clerk middleware/provider wiring; authenticated browser lifecycle and signed-out protected request both pass | Provider-supported reverification is implemented; approved browser evidence is not certified; public release is out of scope |
 | Tenant isolation | PASS for P0-01 | Isolated PostgreSQL fixture executed all 108 route/method pairs and applicable household-read, foreign/malformed-identifier, and mass-assignment probes | Browser lifecycle remains separately open under P0-05 |
 | Roles | PASS for P0-06 | Isolated PostgreSQL fixture provisions Owner, Partner, Advisor, and Viewer in both households and passes role, grant/revoke, membership, selection, and tampering cases | Authenticated browser proof remains separately open |
-| Effective permissions | PASS for P0-06 | Active membership permissions are loaded and centralized checks pass the stored-permission grant/revoke and role fallback cases | Provider-supported production step-up remains outside this certification |
-| Step-up | PARTIAL | Recent-auth middleware denies missing test step-up on protected writes | Production-supported Clerk reverification is not configured |
+| Effective permissions | PASS for P0-06 | Active membership permissions are loaded and centralized checks pass the stored-permission grant/revoke and role fallback cases | Provider-supported reverification remains an independent evidence gate |
+| Step-up | IMPLEMENTED / NOT CERTIFIED | Protected Clerk requests use `auth.has({ reverification: "strict" })`; the client uses `useReverification()` and retries only after the provider hint is satisfied | Approved browser evidence is still required; session age, test headers, and invented OTPs are not proof |
 | Origin / CSRF | PASS for P0-02 | Middleware matrix and five published-origin write-safety probes pass, including missing, malformed, cross-site, allowed, and invalid-credential origins | Broader security operations and production configuration evidence remain open |
 | IDOR | PASS for P0-01 | Isolated PostgreSQL fixture passed all 108 route/method pairs plus applicable foreign/malformed-identifier and mass-assignment probes | Browser lifecycle is certified separately under P0-05 |
 | Mass assignment | PASS for P0-01/P0-06 | Isolated HTTP probes inject household, actor, role, permission, and protected-field tampering into applicable writes | No caller-supplied server-owned field was accepted as another household or actor |
@@ -141,7 +141,7 @@ This inventory separates resources that exist from certification evidence that h
 |---|---|---|---|
 | Certification PostgreSQL | AVAILABLE | CERTIFIED for executed gates | Isolated Neon project `capital-os-certification` (`still-band-85811770`), main branch `br-curly-bread-a53x6g2k`, is disposable and separate from Replit `DATABASE_URL`. Clean baseline and database-backed HTTP certification passed. |
 | Old-schema test PostgreSQL | AVAILABLE | CERTIFIED for P0-03 | Disposable Neon branches applied the approved historical snapshot, ran the additive current-schema upgrade, and verified preserved representative records, balances, statuses, and audit actor. |
-| Clerk test environment | AVAILABLE | EXECUTED / CERTIFIED for P0-05 | Replit-managed Clerk development tenant completed the authenticated onboarding, persistence, sign-out, sign-in, and isolation journey. Provider-supported step-up remains outside this certification. |
+| Clerk test environment | AVAILABLE | EXECUTED / CERTIFIED for P0-05; step-up NOT CERTIFIED | Replit-managed Clerk development tenant completed the authenticated onboarding, persistence, sign-out, sign-in, and isolation journey. Provider-supported reverification needs a separate approved browser run. |
 | Browser E2E URL | AVAILABLE | EXECUTED / PASS | Published autoscale URL is available and healthy: `https://capital-os-fund.replit.app`. The documented authenticated browser lifecycle passed. |
 
 ### Migration status
@@ -198,7 +198,7 @@ The sprint added durable safe-operation state, cross-view accounting reconciliat
 | Micro-Live durability | IMPLEMENTED | Recovery failure persists `FAILURE`, stops the session, opens an incident, and audits the transition; real transmission remains disabled |
 | Rate-limit topology | DOCUMENTED | Shared store/trusted-proxy requirements are documented; current limiter is not a horizontal production guarantee |
 | Contribution browser proof | OPEN | Exact `$250` allocation, reload, duplicate submission, and failure UX need a fresh approved authenticated Clerk browser run |
-| Provider step-up | OPEN | No provider-supported Clerk reverification/MFA evidence exists; no test header or session-age claim is used as proof |
+| Provider step-up | IMPLEMENTED / OPEN EVIDENCE | Server-side Clerk reverification and client retry flow are wired for protected actions; no approved browser evidence has been executed. A project owner with Clerk dashboard access must configure/confirm the supported factor in the approved Development environment and run the browser matrix. Session age, test headers, and invented OTPs are not used as proof. |
 | Restore | DEFERRED | Refusal-first future verifier scaffold only; managed backup/restore is not a release gate and is not certified |
 
 ## Exact Repeatable Commands
@@ -361,7 +361,7 @@ No in-scope P0 risks remain. The seven in-scope P0 gates are certified.
 | Issue | Impact | Current safeguard | Required fix | Release effect |
 |---|---|---|---|---|
 | Contribution-specific browser allocation proof is unexercised | The complete contribution allocation and cross-view reload assertions are not yet browser-certified | Authenticated browser lifecycle and server-side contribution tests pass | Add the contribution-specific browser assertions when the next browser certification run is available | P1 evidence gap; P0-05 current lifecycle gate is certified |
-| Provider-supported Clerk step-up not configured | Recent-auth freshness is not final reauthentication | Temporary recent-auth middleware | Configure and E2E-test supported Clerk reverification | P1; no high-risk production promotion |
+| Provider-supported Clerk step-up browser evidence absent | The implementation cannot be treated as certified without observing the provider flow | Clerk `auth.has({ reverification: "strict" })` plus client `useReverification()` | Run the approved Development browser matrix with a real supported factor and attach the result | P1; no high-risk production promotion |
 | Durable worker restart evidence absent | A worker deployment could mishandle in-flight safe work | Durable job state, retry/backoff, dead-letter, and stale-worker recovery | Execute an isolated database-backed restart/claim/recovery fixture | P1 evidence gap |
 | Metrics/alert sink configuration absent | Failures may not be detected or escalated outside the process | Provider-neutral metric names, severity, and fail-closed responses | Configure and verify the deployment sink and operator routing | P1 deployment block |
 | Shared rate limiting not configured | Per-process controls may fail under multiple instances | No multi-instance claim | Record single-instance constraint or provide shared limiter/trusted proxy | P1 deployment block |
@@ -416,7 +416,7 @@ Capital OS is not authorized by this report to:
 
 | Requirement | Classification | Current status |
 |---|---|---|
-| Clerk production instance and supported step-up | Public release only | Not fully configured/certified; public release is out of scope |
+| Clerk production instance and supported step-up | Public release only | Reverification is implemented but not browser-certified; public release is out of scope |
 | Managed PostgreSQL | Internal requirement | Must use the managed publication path and dedicated lifecycle evidence |
 | Explicit allowed origins | Internal requirement | `CAPITAL_OS_ALLOWED_ORIGIN` is configured for `https://capital-os-fund.replit.app`; published-origin probes pass |
 | Durable queue/scheduler | Public/operational expansion | Implemented/prepared; worker deployment and restart evidence remain open |
@@ -430,4 +430,4 @@ Capital OS is not authorized by this report to:
 
 **Capital OS is qualified only as an internal-only candidate for its current non-executing family-capital scope.**
 
-The reason is scope-based: all seven in-scope P0 gates are `PASS`. This does not authorize public release, external users, banking, live trading, or any other prohibited capability. Provider-supported step-up, contribution-specific browser evidence, and deployment-level operational evidence remain open; the newly implemented reliability controls are explicitly not treated as certification until those evidence gates execute.
+The reason is scope-based: all seven in-scope P0 gates are `PASS`. This does not authorize public release, external users, banking, live trading, or any other prohibited capability. Provider-supported step-up browser evidence, contribution-specific browser evidence, and deployment-level operational evidence remain open; the newly implemented reverification and reliability controls are explicitly not treated as certification until those evidence gates execute.

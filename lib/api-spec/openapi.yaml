@@ -1724,11 +1724,11 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Clerk-issued session token resolved to an active Capital OS household membership.
-    recentAuthentication:
-      type: apiKey
-      in: header
-      name: X-Capital-Recent-Auth
-      description: Server-verified recent-authentication proof required for protected policy, approval, and Micro-Live boundary writes.
+    clerkReverification:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Clerk provider-supported reverification is required by the server for protected policy, approval, permission, ownership, and Micro-Live boundary writes. The client receives Clerk's reverification hint and retries after provider verification.
   parameters:
     IdempotencyKey:
       name: Idempotency-Key

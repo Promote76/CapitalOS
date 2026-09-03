@@ -7,6 +7,7 @@ import {
   Show,
   useAuth,
   useClerk,
+  useReverification,
   useUser,
 } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
@@ -269,6 +270,31 @@ function ClerkQueryClientCacheInvalidator() {
     previousUserId.current = currentUserId;
   }, [isLoaded, userId]);
   return null;
+}
+
+function isClerkReverificationHint(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const error = value as { clerk_error?: { type?: unknown; reason?: unknown } };
+  return error.clerk_error?.type === 'forbidden' && error.clerk_error.reason === 'reverification-error';
+}
+
+function useProviderProtectedAction<Args extends unknown[], Result>(
+  action: (...args: Args) => Promise<Result>,
+) {
+  return useReverification(async (...args: Args) => {
+    try {
+      return await action(...args);
+    } catch (error) {
+      // The generated API client wraps non-2xx JSON in ApiError.data. Return
+      // Clerk's standardized hint so useReverification can open its provider
+      // UI and retry the exact original action after verification.
+      const data = error && typeof error === 'object' && 'data' in error
+        ? (error as { data?: unknown }).data
+        : error;
+      if (isClerkReverificationHint(data)) return data as Result;
+      throw error;
+    }
+  });
 }
 
 function SessionControls() {
@@ -564,12 +590,15 @@ function IntelligenceRecommendationCard({ snapshot, onFeedback }: { snapshot: In
   const decision = useDecideRecommendation();
   const feedback = useRecordIntelligenceFeedback();
   const recommendation = snapshot.recommendation;
+  const decideWithReverification = useProviderProtectedAction(async (value: 'approved' | 'rejected') =>
+    decision.mutateAsync({
+      recommendationId: recommendation.id,
+      data: { decision: value, reason: value === 'approved' ? 'Accepted for human review.' : 'Rejected after household review.' },
+    }),
+  );
   const decide = async (value: 'approved' | 'rejected') => {
     try {
-      await decision.mutateAsync({
-        recommendationId: recommendation.id,
-        data: { decision: value, reason: value === 'approved' ? 'Accepted for human review.' : 'Rejected after household review.' },
-      });
+      await decideWithReverification(value);
       await queryClient.invalidateQueries({ queryKey: getGetIntelligenceQueryKey() });
       onFeedback(value === 'approved' ? 'Recommendation accepted for human review.' : 'Recommendation rejected and recorded.');
     } catch (error) {
@@ -940,6 +969,9 @@ function SettingsPage({ onFeedback }: { onFeedback: (message: string) => void })
   const household = useGetHousehold();
   const updatePrivacy = useUpdatePrivacySettings();
   const [privacy, setPrivacy] = useState({ financeDataPrivate: true, shareHealthSummary: false });
+  const updatePrivacyWithReverification = useProviderProtectedAction((data: typeof privacy) =>
+    updatePrivacy.mutateAsync({ data }),
+  );
   const toggle = (key: keyof typeof settings) => setSettings((current) => ({ ...current, [key]: !current[key] }));
   useEffect(() => {
     if (household.data?.privacy) {
@@ -953,7 +985,7 @@ function SettingsPage({ onFeedback }: { onFeedback: (message: string) => void })
     const next = { ...privacy, [key]: !privacy[key] };
     setPrivacy(next);
     try {
-      await updatePrivacy.mutateAsync({ data: next });
+      await updatePrivacyWithReverification(next);
       onFeedback('Privacy controls saved to this household.');
     } catch (error) {
       setPrivacy(privacy);
@@ -1417,6 +1449,21 @@ function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }
   const armSession = useArmMicroLive();
   const incidentReview = useCreateMicroLiveIncidentReview();
   const completeRequirement = useCompleteMicroLiveReactivationRequirement();
+  const runRehearsalWithReverification = useProviderProtectedAction(() => rehearsal.mutateAsync());
+  const runReconciliationWithReverification = useProviderProtectedAction(() => reconciliationRun.mutateAsync());
+  const reviewWithReverification = useProviderProtectedAction(() => review.mutateAsync());
+  const approveVenueWithReverification = useProviderProtectedAction((input: MicroLiveVenueApprovalRequest & { venueId: string }) =>
+    approveVenue.mutateAsync({ venueId: input.venueId, data: input }),
+  );
+  const armSessionWithReverification = useProviderProtectedAction((venueId: string) =>
+    armSession.mutateAsync({ data: { venueId } }),
+  );
+  const incidentReviewWithReverification = useProviderProtectedAction((input: MicroLiveIncidentReviewInput & { incidentId: string }) =>
+    incidentReview.mutateAsync({ incidentId: input.incidentId, data: input }),
+  );
+  const completeRequirementWithReverification = useProviderProtectedAction((requirementId: string) =>
+    completeRequirement.mutateAsync({ requirementId }),
+  );
   const snapshot = query.data as MicroLiveSnapshot | undefined;
   const isOwner = household.data?.role === 'owner';
   const [reviewingVenueId, setReviewingVenueId] = useState<string | null>(null);
@@ -1460,10 +1507,7 @@ function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }
     if (!reviewingVenueId) return;
     const marketPermissions = marketPermissionsText.split(/[,\n]/).map((market) => market.trim()).filter(Boolean);
     try {
-      await approveVenue.mutateAsync({
-        venueId: reviewingVenueId,
-        data: { ...venueApprovalDraft, marketPermissions },
-      });
+      await approveVenueWithReverification({ ...venueApprovalDraft, marketPermissions, venueId: reviewingVenueId });
       await refresh();
       setReviewingVenueId(null);
       onFeedback('Venue approval review recorded. Live execution remains disabled.');
@@ -1480,7 +1524,7 @@ function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }
     event.preventDefault();
     if (!armingVenueId || !armingConfirmed) return;
     try {
-      const result = await armSession.mutateAsync({ data: { venueId: armingVenueId } });
+      const result = await armSessionWithReverification(armingVenueId);
       await refresh();
       setArmingVenueId(null);
       setArmingConfirmed(false);
@@ -1505,7 +1549,7 @@ function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }
       reactivationRequirements: lines(reviewText.reactivationRequirements),
     };
     try {
-      await incidentReview.mutateAsync({ incidentId: reviewingIncidentId, data });
+      await incidentReviewWithReverification({ ...data, incidentId: reviewingIncidentId });
       await refresh();
       setReviewingIncidentId(null);
       onFeedback('Post-incident review saved. Human reactivation requirements remain open.');
@@ -1519,13 +1563,13 @@ function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }
   const latestRun = snapshot.reconciliationRuns[0];
   const openRequirements = snapshot.reactivationRequirements.filter((requirement) => requirement.status !== 'COMPLETE');
   return <main className="content">
-    <PageHeading eyebrow="Execution / Micro-Live" title={<>Containment before <span className="accent-text">connectivity.</span></>} description="A small, reviewable control plane for future Micro-Live experiments. This workspace transmits no orders and cannot access household capital." actions={<button className="btn btn-primary" onClick={async () => { await rehearsal.mutateAsync(); await refresh(); onFeedback('Live rehearsal completed without transmitting an order.'); }} disabled={rehearsal.isPending}><RotateCcw size={14} /> {rehearsal.isPending ? 'Running…' : 'Run live rehearsal'}</button>} />
+    <PageHeading eyebrow="Execution / Micro-Live" title={<>Containment before <span className="accent-text">connectivity.</span></>} description="A small, reviewable control plane for future Micro-Live experiments. This workspace transmits no orders and cannot access household capital." actions={<button className="btn btn-primary" onClick={async () => { await runRehearsalWithReverification(); await refresh(); onFeedback('Live rehearsal completed without transmitting an order.'); }} disabled={rehearsal.isPending}><RotateCcw size={14} /> {rehearsal.isPending ? 'Running…' : 'Run live rehearsal'}</button>} />
     <section className="micro-live-banner"><div className="micro-live-banner-icon"><Lock size={19} /></div><div><strong>Live execution is disabled</strong><span>Rehearsal mode only · credential values never displayed · no order transmission</span></div><span className="status review">DISABLED</span></section>
     <section className="micro-live-grid">
       <div className="card card-pad micro-live-status-card"><CardTitle title="Execution status" subtitle="Global fail-closed state" action={<Activity size={17} color="var(--blue)" />} /><div className="micro-live-status-value"><span className="status-pill">{snapshot.status}</span><strong>0</strong><small>open orders</small></div><div className="micro-live-stat-row"><span>Capital allocated</span><b>{money(snapshot.session.capitalAllocated)}</b></div><div className="micro-live-stat-row"><span>Current position</span><b>{snapshot.session.currentPosition}</b></div><div className="micro-live-stat-row"><span>Net P&amp;L</span><b>{money(snapshot.session.netPnl)}</b></div></div>
       <div className="card card-pad"><CardTitle title="Micro-Live sandbox" subtitle="Configurable policy · no leverage" action={<Gauge size={17} color="var(--green)" />} /><div className="micro-live-limit-grid"><div><span>Max venue</span><strong>{money(String(Number(snapshot.policy.limits.maxVenueCapitalCents ?? 1000) / 100))}</strong></div><div><span>Max strategy</span><strong>{money(String(Number(snapshot.policy.limits.maxStrategyCapitalCents ?? 1000) / 100))}</strong></div><div><span>Max order</span><strong>{money(String(Number(snapshot.policy.limits.maxIndividualOrderCents ?? 100) / 100))}</strong></div><div><span>Hard daily loss</span><strong>{money(String(Number(snapshot.policy.limits.hardDailyLossCents ?? 150) / 100))}</strong></div></div><div className="safety-inline"><CheckCircle2 size={15} /> Leverage, margin, borrowing, and auto-scale are off</div></div>
     </section>
-    <section className="card card-pad page-section"><CardTitle title="Readiness gates" subtitle={`Live readiness ${snapshot.readiness.score}/100 · a high score never guarantees profitability`} action={<button className="btn" onClick={async () => { await review.mutateAsync(); onFeedback('Enablement review recorded. Live execution remains disabled.'); }} disabled={review.isPending}>{review.isPending ? 'Reviewing…' : 'Review gates'}</button>} /><div className="readiness-grid">{snapshot.readiness.checks.map((check) => <div className={`readiness-check ${check.passed ? 'passed' : 'blocked'}`} key={check.name}><span>{check.passed ? <CheckCircle2 size={15} /> : <ShieldAlert size={15} />}</span><span>{check.name}</span><b>{check.passed ? 'Pass' : 'Blocked'}</b></div>)}</div></section>
+    <section className="card card-pad page-section"><CardTitle title="Readiness gates" subtitle={`Live readiness ${snapshot.readiness.score}/100 · a high score never guarantees profitability`} action={<button className="btn" onClick={async () => { await reviewWithReverification(); onFeedback('Enablement review recorded. Live execution remains disabled.'); }} disabled={review.isPending}>{review.isPending ? 'Reviewing…' : 'Review gates'}</button>} /><div className="readiness-grid">{snapshot.readiness.checks.map((check) => <div className={`readiness-check ${check.passed ? 'passed' : 'blocked'}`} key={check.name}><span>{check.passed ? <CheckCircle2 size={15} /> : <ShieldAlert size={15} />}</span><span>{check.name}</span><b>{check.passed ? 'Pass' : 'Blocked'}</b></div>)}</div></section>
     <section className="micro-live-columns">
       <div className="card card-pad"><CardTitle title="Venue approval review" subtitle="Review every boundary before a venue can be considered for Micro-Live" action={<Landmark size={17} color="var(--ink-soft)" />} /><div className="venue-review-list">{snapshot.venues.map((venue) => <article className="venue-review-card" key={venue.id}>
         <div className="venue-review-header"><div><strong>{venue.name}</strong><span>{venue.adapterType} · {venue.status}</span></div><span className={`status ${venue.approval.approved ? '' : 'review'}`}>{venue.approval.approved ? 'Approved' : 'Not approved'}</span></div>
@@ -1552,7 +1596,7 @@ function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }
     </section>
      <section className="micro-live-columns page-section">
        <div className="card card-pad">
-         <CardTitle title="Persistent reconciliation" subtitle={`Latest venue-authoritative run · ${latestRun ? new Date(latestRun.completedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'not recorded'}`} action={<button className="btn" onClick={async () => { try { await reconciliationRun.mutateAsync(); await refresh(); onFeedback('Reconciliation run persisted. No order transmission occurred.'); } catch (error) { onFeedback(error instanceof Error ? error.message : 'Reconciliation could not be recorded.'); } }} disabled={reconciliationRun.isPending}><RotateCcw size={13} /> {reconciliationRun.isPending ? 'Running…' : 'Run reconciliation'}</button>} />
+         <CardTitle title="Persistent reconciliation" subtitle={`Latest venue-authoritative run · ${latestRun ? new Date(latestRun.completedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'not recorded'}`} action={<button className="btn" onClick={async () => { try { await runReconciliationWithReverification(); await refresh(); onFeedback('Reconciliation run persisted. No order transmission occurred.'); } catch (error) { onFeedback(error instanceof Error ? error.message : 'Reconciliation could not be recorded.'); } }} disabled={reconciliationRun.isPending}><RotateCcw size={13} /> {reconciliationRun.isPending ? 'Running…' : 'Run reconciliation'}</button>} />
          <div className="reconciliation-summary"><span className={`status ${snapshot.reconciliation.status === 'CLEAN' ? '' : 'critical'}`}>{snapshot.reconciliation.status}</span><strong>{snapshot.reconciliation.action}</strong><p>{snapshot.reconciliation.status === 'CLEAN' ? 'Internal OMS state matches the persisted venue snapshot. New exposure remains disabled by policy.' : 'Mismatch contained. New exposure is blocked until state is rebuilt and reviewed.'}</p></div>
          <div className="micro-live-history">{snapshot.reconciliationRuns.slice(0, 5).map((run) => <div className="micro-live-history-row" key={run.id}><div><strong>{run.status}</strong><span>{new Date(run.completedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span></div><span className="mono-label">{run.id.slice(0, 8)}</span></div>)}</div>
        </div>
@@ -1570,7 +1614,7 @@ function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }
      </section>
      <section className="micro-live-columns page-section">
        <div className="card card-pad"><CardTitle title="Post-incident reviews" subtitle="A review records what happened without granting permission to trade" action={<ScrollText size={17} color="var(--ink-soft)" />} />{snapshot.incidentReviews.length === 0 && <div className="micro-live-empty">No post-incident reviews recorded.</div>}<div className="review-list">{snapshot.incidentReviews.map((item) => <div className="review-row" key={item.id}><div><strong>{item.rootCause}</strong><span>{new Date(item.reviewedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {item.requiredFixes.length} fixes recorded</span></div><span className="status review">Human review</span></div>)}</div></div>
-       <div className="card card-pad"><CardTitle title="Human reactivation requirements" subtitle="Completing these records does not arm or enable live execution" action={<ShieldAlert size={17} color="var(--amber)" />} />{openRequirements.length === 0 && <div className="micro-live-empty"><CheckCircle2 size={17} /><div><strong>No open requirements</strong><span>Any future reactivation still requires a separate human arming review.</span></div></div>}<div className="requirement-list">{snapshot.reactivationRequirements.map((requirement) => <div className="requirement-row" key={requirement.id}><div><strong>{requirement.requirement}</strong><span className={`status ${requirement.status === 'COMPLETE' ? '' : 'pending'}`}>{requirement.status}</span></div>{requirement.status !== 'COMPLETE' && <button className="text-link" onClick={async () => { try { await completeRequirement.mutateAsync({ requirementId: requirement.id }); await refresh(); onFeedback('Reactivation requirement marked complete. Live execution remains disabled.'); } catch (error) { onFeedback(error instanceof Error ? error.message : 'The requirement could not be completed.'); } }} disabled={completeRequirement.isPending}>Mark complete</button>}</div>)}</div></div>
+       <div className="card card-pad"><CardTitle title="Human reactivation requirements" subtitle="Completing these records does not arm or enable live execution" action={<ShieldAlert size={17} color="var(--amber)" />} />{openRequirements.length === 0 && <div className="micro-live-empty"><CheckCircle2 size={17} /><div><strong>No open requirements</strong><span>Any future reactivation still requires a separate human arming review.</span></div></div>}<div className="requirement-list">{snapshot.reactivationRequirements.map((requirement) => <div className="requirement-row" key={requirement.id}><div><strong>{requirement.requirement}</strong><span className={`status ${requirement.status === 'COMPLETE' ? '' : 'pending'}`}>{requirement.status}</span></div>{requirement.status !== 'COMPLETE' && <button className="text-link" onClick={async () => { try { await completeRequirementWithReverification(requirement.id); await refresh(); onFeedback('Reactivation requirement marked complete. Live execution remains disabled.'); } catch (error) { onFeedback(error instanceof Error ? error.message : 'The requirement could not be completed.'); } }} disabled={completeRequirement.isPending}>Mark complete</button>}</div>)}</div></div>
      </section>
     <section className="card card-pad page-section"><CardTitle title="Rehearsal timeline" subtitle="Production-shaped flow with no order transmission" action={<History size={17} color="var(--ink-soft)" />} /><div className="execution-timeline">{snapshot.rehearsal.sequence.map((event, index) => <div className="timeline-step" key={event}><span>{String(index + 1).padStart(2, '0')}</span><strong>{event.replaceAll(/([A-Z])/g, ' $1').trim()}</strong>{index < snapshot.rehearsal.sequence.length - 1 && <ChevronRight size={14} />}</div>)}</div><div className="rehearsal-note"><CheckCircle2 size={16} /> {snapshot.rehearsal.note}</div></section>
     <section className="card card-pad page-section"><CardTitle title="Protection summary" subtitle="The order of priorities remains containment, state accuracy, risk, reliability, execution, then return." /><div className="protection-grid">{[['Household capital', snapshot.safety.householdCapitalAccessible ? 'Accessible' : 'Inaccessible'], ['Protected capital', snapshot.safety.protectedCapitalAccessible ? 'Accessible' : 'Inaccessible'], ['AI order authority', snapshot.safety.aiCanPlaceOrders ? 'Allowed' : 'Not allowed'], ['Risk rule changes', snapshot.safety.aiCanChangeRisk ? 'Allowed' : 'Not allowed'], ['Auto scaling', snapshot.safety.autoScale ? 'Enabled' : 'Disabled'], ['Order transmission', snapshot.safety.liveOrderTransmissionEnabled ? 'Enabled' : 'Disabled']].map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div></section>

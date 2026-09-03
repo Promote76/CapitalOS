@@ -154,6 +154,7 @@ import TreasuryPage from '@/pages/treasury';
 import AccountingPage from '@/pages/accounting';
 import OperationsPage from '@/pages/operations';
 import BusinessPage from '@/pages/business';
+import FinancingPage from '@/pages/financing';
 import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 
 const queryClient = new QueryClient();
@@ -457,6 +458,7 @@ const primaryNav = [
   { href: '/treasury', label: 'Treasury', icon: WalletCards },
   { href: '/portfolio', label: 'Portfolio', icon: BarChart3 },
   { href: '/properties', label: 'Properties', icon: Building2 },
+  { href: '/financing', label: 'Financing', icon: CircleDollarSign },
   { href: '/business', label: 'Business', icon: BriefcaseBusiness },
   { href: '/risk', label: 'Risk & readiness', icon: ShieldCheck },
 ];
@@ -1671,6 +1673,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue
     <Route path="/treasury" component={() => <TreasuryPage onFeedback={onFeedback} />} />
     <Route path="/portfolio" component={() => <PortfolioPage onFeedback={onFeedback} />} />
     <Route path="/properties" component={() => <PropertiesPage onAction={onAction} />} />
+    <Route path="/financing" component={() => <FinancingPage onFeedback={onFeedback} />} />
     <Route path="/risk" component={() => <RiskPage onFeedback={onFeedback} />} />
     <Route path="/settings" component={() => <SettingsPage onFeedback={onFeedback} />} />
      <Route path="/transactions" component={() => <UtilityPage kind="transactions" onAction={onAction} transactions={transactions} dashboard={dashboard} />} />

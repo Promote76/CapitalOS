@@ -30,7 +30,8 @@ function requiresRecentAuthentication(req: Request) {
     path.startsWith("/operations/approvals/") ||
     path.includes("/treasury/requests/") ||
     path.startsWith("/business/distributions") ||
-    path.startsWith("/micro-live/");
+    path.startsWith("/micro-live/") ||
+    path.startsWith("/financing");
 }
 
 export type ResolvedClerkIdentity = {

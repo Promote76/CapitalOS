@@ -22,6 +22,7 @@ tags:
   - name: accounting
   - name: operations
   - name: business
+  - name: financing
 paths:
   /healthz:
     get:
@@ -1364,6 +1365,130 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AccountingOverview" }
+  /financing:
+    get:
+      operationId: getFinancingSnapshot
+      tags: [financing]
+      summary: Get the household advisory financing workspace
+      responses:
+        "200":
+          description: Financing readiness, liabilities, scenarios, offers, and pipeline
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinancingSnapshot" }
+  /financing/liabilities:
+    post:
+      operationId: createFinancingLiability
+      tags: [financing]
+      summary: Record a household or business liability for advisory planning
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinancingLiabilityInput" }
+      responses:
+        "201":
+          description: Liability recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinancingLiability" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /financing/credit-profile:
+    patch:
+      operationId: updateFinancingCreditProfile
+      tags: [financing]
+      summary: Update manually supplied credit planning inputs without a credit pull
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinancingCreditProfileUpdate" }
+      responses:
+        "200":
+          description: Credit planning profile updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinancingCreditProfile" }
+  /financing/scenarios:
+    post:
+      operationId: createFinancingScenario
+      tags: [financing]
+      summary: Create an illustrative financing scenario
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinancingScenarioInput" }
+      responses:
+        "201":
+          description: Illustrative scenario created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinancingScenario" }
+  /financing/offers:
+    post:
+      operationId: createFinancingOffer
+      tags: [financing]
+      summary: Record a non-binding lender or rate indication for comparison
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinancingOfferInput" }
+      responses:
+        "201":
+          description: Offer indication recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinancingOffer" }
+  /financing/pipeline/events:
+    post:
+      operationId: createFinancingPipelineEvent
+      tags: [financing]
+      summary: Record an advisory financing pipeline stage change
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinancingPipelineEventInput" }
+      responses:
+        "201":
+          description: Pipeline event recorded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinancingPipelineEvent" }
+  /financing/documents/{documentId}:
+    patch:
+      operationId: updateFinancingDocument
+      tags: [financing]
+      summary: Update a financing document readiness requirement
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - name: documentId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinancingDocumentUpdate" }
+      responses:
+        "200":
+          description: Document requirement updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinancingDocument" }
   /operations:
     get:
       operationId: getOperationsOverview
@@ -3934,6 +4059,206 @@ components:
               expiresAt: { type: ["string", "null"], format: date }
               status: { type: string }
         lastUpdated: { type: string, format: date-time }
+    FinancingPolicy:
+      type: object
+      required: [mode, executionEnabled, providersEnabled, lenderApprovalClaimsAllowed, disclaimer, prohibitedActions, moneyTreatment]
+      properties:
+        mode: { type: string }
+        executionEnabled: { type: boolean }
+        providersEnabled: { type: boolean }
+        lenderApprovalClaimsAllowed: { type: boolean }
+        disclaimer: { type: string }
+        prohibitedActions: { type: array, items: { type: string } }
+        moneyTreatment: { type: string }
+    FinancingLiability:
+      type: object
+      required: [id, name, liabilityType, ownership, status, originalBalance, currentBalance, monthlyPayment, interestRate, creditLimit, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        liabilityType: { type: string }
+        ownership: { type: string }
+        businessEntityId: { type: ["string", "null"] }
+        status: { type: string }
+        originalBalance: { type: string }
+        currentBalance: { type: string }
+        monthlyPayment: { type: string }
+        interestRate: { type: string }
+        termMonths: { type: ["number", "null"] }
+        remainingTermMonths: { type: ["number", "null"] }
+        creditLimit: { type: string }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    FinancingLiabilityInput:
+      type: object
+      required: [name, liabilityType, ownership, currentBalance, monthlyPayment]
+      properties:
+        name: { type: string, minLength: 1 }
+        liabilityType: { type: string }
+        ownership: { type: string, enum: [household, business] }
+        businessEntityId: { type: ["string", "null"] }
+        currentBalance: { type: string }
+        monthlyPayment: { type: string }
+        interestRate: { type: number, minimum: 0, maximum: 100 }
+        termMonths: { type: ["number", "null"], minimum: 1 }
+        remainingTermMonths: { type: ["number", "null"], minimum: 0 }
+        creditLimit: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+    FinancingCreditProfile:
+      type: object
+      required: [id, score, scoreSource, scoreAsOf, scoreConfidence, creditworthinessStatus, utilizationPercent, paymentHistoryStatus, scoreIsNotApproval, updatedAt]
+      properties:
+        id: { type: string }
+        score: { type: ["number", "null"], minimum: 300, maximum: 850 }
+        scoreSource: { type: string }
+        scoreAsOf: { type: ["string", "null"] }
+        scoreConfidence: { type: string }
+        creditworthinessStatus: { type: string }
+        utilizationPercent: { type: string }
+        paymentHistoryStatus: { type: string }
+        notes: { type: ["string", "null"] }
+        scoreIsNotApproval: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+    FinancingCreditProfileUpdate:
+      type: object
+      properties:
+        score: { type: ["number", "null"], minimum: 300, maximum: 850 }
+        scoreSource: { type: string }
+        scoreAsOf: { type: ["string", "null"] }
+        scoreConfidence: { type: string }
+        creditworthinessStatus: { type: string }
+        paymentHistoryStatus: { type: string }
+        notes: { type: ["string", "null"] }
+    FinancingScenario:
+      type: object
+      required: [id, name, loanType, purchasePrice, downPaymentPercent, interestRate, termYears, loanAmount, monthlyPrincipalInterest, estimatedMonthlyHousingCost, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        propertyCandidateId: { type: ["string", "null"] }
+        loanType: { type: string }
+        purchasePrice: { type: string }
+        downPaymentPercent: { type: string }
+        interestRate: { type: string }
+        termYears: { type: string }
+        mortgageInsurance: { type: string }
+        loanFees: { type: string }
+        closingCosts: { type: string }
+        initialReserves: { type: string }
+        loanAmount: { type: string }
+        monthlyPrincipalInterest: { type: string }
+        estimatedMonthlyHousingCost: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    FinancingScenarioInput:
+      type: object
+      required: [name, loanType, purchasePrice, downPaymentPercent, interestRate, termYears]
+      properties:
+        name: { type: string, minLength: 1 }
+        propertyCandidateId: { type: ["string", "null"] }
+        loanType: { type: string }
+        purchasePrice: { type: string }
+        downPaymentPercent: { type: number, minimum: 0, maximum: 1 }
+        interestRate: { type: number, minimum: 0, maximum: 100 }
+        termYears: { type: number, minimum: 1, maximum: 50 }
+        mortgageInsurance: { type: string }
+        loanFees: { type: string }
+        closingCosts: { type: string }
+        initialReserves: { type: string }
+    FinancingOffer:
+      type: object
+      required: [id, name, programLabel, loanType, commitmentStatus, offerStatus, loanAmount, interestRate, termYears, estimatedMonthlyPayment, estimatedCashToClose, executionEnabled, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        propertyCandidateId: { type: ["string", "null"] }
+        lenderLabel: { type: ["string", "null"] }
+        programLabel: { type: string }
+        loanType: { type: string }
+        commitmentStatus: { type: string }
+        offerStatus: { type: string }
+        loanAmount: { type: string }
+        interestRate: { type: string }
+        termYears: { type: number }
+        estimatedMonthlyPayment: { type: string }
+        estimatedCashToClose: { type: string }
+        expirationDate: { type: ["string", "null"] }
+        assumptions: { type: object, additionalProperties: true }
+        notes: { type: ["string", "null"] }
+        executionEnabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    FinancingOfferInput:
+      type: object
+      required: [name, programLabel, loanType, commitmentStatus, offerStatus, loanAmount, interestRate, termYears, estimatedMonthlyPayment, estimatedCashToClose]
+      properties:
+        name: { type: string }
+        propertyCandidateId: { type: ["string", "null"] }
+        lenderLabel: { type: ["string", "null"] }
+        programLabel: { type: string }
+        loanType: { type: string }
+        commitmentStatus: { type: string, enum: [illustrative, indicative, conditional, verified] }
+        offerStatus: { type: string }
+        loanAmount: { type: string }
+        interestRate: { type: number, minimum: 0, maximum: 100 }
+        termYears: { type: number, minimum: 1, maximum: 50 }
+        estimatedMonthlyPayment: { type: string }
+        estimatedCashToClose: { type: string }
+        expirationDate: { type: ["string", "null"] }
+        assumptions: { type: object, additionalProperties: true }
+        notes: { type: ["string", "null"] }
+    FinancingPipelineEvent:
+      type: object
+      required: [id, pipelineId, toStage, executionEnabled, createdAt]
+      properties:
+        id: { type: string }
+        pipelineId: { type: string }
+        fromStage: { type: ["string", "null"] }
+        toStage: { type: string }
+        note: { type: ["string", "null"] }
+        executionEnabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    FinancingPipelineEventInput:
+      type: object
+      required: [toStage]
+      properties:
+        toStage: { type: string, enum: [research, readiness, comparison, human_review, paused] }
+        note: { type: ["string", "null"] }
+    FinancingDocument:
+      type: object
+      required: [id, category, name, status, sensitivity, metadata, updatedAt]
+      properties:
+        id: { type: string }
+        category: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [needed, in_review, complete, expired] }
+        sensitivity: { type: string }
+        dueDate: { type: ["string", "null"] }
+        storagePath: { type: ["string", "null"] }
+        metadata: { type: object, additionalProperties: true }
+        notes: { type: ["string", "null"] }
+        updatedAt: { type: string, format: date-time }
+    FinancingDocumentUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [needed, in_review, complete, expired] }
+        notes: { type: ["string", "null"] }
+    FinancingSnapshot:
+      type: object
+      required: [policy, creditProfile, liabilities, scenarios, offers, pipeline, documents, readiness, cashToClose, capitalGovernor]
+      properties:
+        policy: { $ref: "#/components/schemas/FinancingPolicy" }
+        creditProfile: { $ref: "#/components/schemas/FinancingCreditProfile" }
+        liabilities: { type: array, items: { $ref: "#/components/schemas/FinancingLiability" } }
+        scenarios: { type: array, items: { $ref: "#/components/schemas/FinancingScenario" } }
+        offers: { type: array, items: { $ref: "#/components/schemas/FinancingOffer" } }
+        pipeline: { type: object, additionalProperties: true }
+        documents: { type: array, items: { $ref: "#/components/schemas/FinancingDocument" } }
+        readiness: { type: object, additionalProperties: true }
+        cashToClose: { type: object, additionalProperties: true }
+        capitalGovernor: { type: object, additionalProperties: true }
     OperationsTask:
       type: object
       required: [id, title, description, domain, priority, status, dueDate, assignedTo, source, requiresApproval, createdAt, completedAt]

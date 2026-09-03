@@ -66,6 +66,19 @@ import type {
   FinanceSnapshot,
   FinancialAccount,
   FinancialAccountsSummary,
+  FinancingCreditProfile,
+  FinancingCreditProfileUpdate,
+  FinancingDocument,
+  FinancingDocumentUpdate,
+  FinancingLiability,
+  FinancingLiabilityInput,
+  FinancingOffer,
+  FinancingOfferInput,
+  FinancingPipelineEvent,
+  FinancingPipelineEventInput,
+  FinancingScenario,
+  FinancingScenarioInput,
+  FinancingSnapshot,
   ForbiddenResponse,
   GoalSummary,
   HealthStatus,
@@ -6663,6 +6676,510 @@ export function useGetAccountingOverview<TData = Awaited<ReturnType<typeof getAc
 
 
 
+
+export const getGetFinancingSnapshotUrl = () => {
+
+
+
+
+  return `/api/financing`
+}
+
+/**
+ * @summary Get the household advisory financing workspace
+ */
+export const getFinancingSnapshot = async ( options?: Parameters<typeof customFetch>[1]): Promise<FinancingSnapshot> => {
+
+  return customFetch<FinancingSnapshot>(getGetFinancingSnapshotUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFinancingSnapshotQueryKey = () => {
+    return [
+    `/api/financing`
+    ] as const;
+    }
+
+
+export const getGetFinancingSnapshotQueryOptions = <TData = Awaited<ReturnType<typeof getFinancingSnapshot>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinancingSnapshot>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFinancingSnapshotQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFinancingSnapshot>>> = ({ signal }) => getFinancingSnapshot({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFinancingSnapshot>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFinancingSnapshotQueryResult = NonNullable<Awaited<ReturnType<typeof getFinancingSnapshot>>>
+export type GetFinancingSnapshotQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the household advisory financing workspace
+ */
+
+export function useGetFinancingSnapshot<TData = Awaited<ReturnType<typeof getFinancingSnapshot>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinancingSnapshot>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFinancingSnapshotQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateFinancingLiabilityUrl = () => {
+
+
+
+
+  return `/api/financing/liabilities`
+}
+
+/**
+ * @summary Record a household or business liability for advisory planning
+ */
+export const createFinancingLiability = async (financingLiabilityInput: FinancingLiabilityInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancingLiability> => {
+
+  return customFetch<FinancingLiability>(getCreateFinancingLiabilityUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financingLiabilityInput)
+  }
+);}
+
+
+
+
+
+export const getCreateFinancingLiabilityMutationOptions = <TError = ErrorType<ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinancingLiability>>, TError,{data: BodyType<FinancingLiabilityInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createFinancingLiability>>, TError,{data: BodyType<FinancingLiabilityInput>}, TContext> => {
+
+const mutationKey = ['createFinancingLiability'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createFinancingLiability>>, {data: BodyType<FinancingLiabilityInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createFinancingLiability(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateFinancingLiabilityMutationResult = NonNullable<Awaited<ReturnType<typeof createFinancingLiability>>>
+    export type CreateFinancingLiabilityMutationBody = BodyType<FinancingLiabilityInput>
+    export type CreateFinancingLiabilityMutationError = ErrorType<ConflictResponse>
+
+    /**
+ * @summary Record a household or business liability for advisory planning
+ */
+export const useCreateFinancingLiability = <TError = ErrorType<ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinancingLiability>>, TError,{data: BodyType<FinancingLiabilityInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createFinancingLiability>>,
+        TError,
+        {data: BodyType<FinancingLiabilityInput>},
+        TContext
+      > => {
+      return useMutation(getCreateFinancingLiabilityMutationOptions(options));
+    }
+
+export const getUpdateFinancingCreditProfileUrl = () => {
+
+
+
+
+  return `/api/financing/credit-profile`
+}
+
+/**
+ * @summary Update manually supplied credit planning inputs without a credit pull
+ */
+export const updateFinancingCreditProfile = async (financingCreditProfileUpdate: FinancingCreditProfileUpdate, options?: Parameters<typeof customFetch>[1]): Promise<FinancingCreditProfile> => {
+
+  return customFetch<FinancingCreditProfile>(getUpdateFinancingCreditProfileUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financingCreditProfileUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateFinancingCreditProfileMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFinancingCreditProfile>>, TError,{data: BodyType<FinancingCreditProfileUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateFinancingCreditProfile>>, TError,{data: BodyType<FinancingCreditProfileUpdate>}, TContext> => {
+
+const mutationKey = ['updateFinancingCreditProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateFinancingCreditProfile>>, {data: BodyType<FinancingCreditProfileUpdate>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateFinancingCreditProfile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateFinancingCreditProfileMutationResult = NonNullable<Awaited<ReturnType<typeof updateFinancingCreditProfile>>>
+    export type UpdateFinancingCreditProfileMutationBody = BodyType<FinancingCreditProfileUpdate>
+    export type UpdateFinancingCreditProfileMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update manually supplied credit planning inputs without a credit pull
+ */
+export const useUpdateFinancingCreditProfile = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFinancingCreditProfile>>, TError,{data: BodyType<FinancingCreditProfileUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateFinancingCreditProfile>>,
+        TError,
+        {data: BodyType<FinancingCreditProfileUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateFinancingCreditProfileMutationOptions(options));
+    }
+
+export const getCreateFinancingScenarioUrl = () => {
+
+
+
+
+  return `/api/financing/scenarios`
+}
+
+/**
+ * @summary Create an illustrative financing scenario
+ */
+export const createFinancingScenario = async (financingScenarioInput: FinancingScenarioInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancingScenario> => {
+
+  return customFetch<FinancingScenario>(getCreateFinancingScenarioUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financingScenarioInput)
+  }
+);}
+
+
+
+
+
+export const getCreateFinancingScenarioMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinancingScenario>>, TError,{data: BodyType<FinancingScenarioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createFinancingScenario>>, TError,{data: BodyType<FinancingScenarioInput>}, TContext> => {
+
+const mutationKey = ['createFinancingScenario'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createFinancingScenario>>, {data: BodyType<FinancingScenarioInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createFinancingScenario(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateFinancingScenarioMutationResult = NonNullable<Awaited<ReturnType<typeof createFinancingScenario>>>
+    export type CreateFinancingScenarioMutationBody = BodyType<FinancingScenarioInput>
+    export type CreateFinancingScenarioMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create an illustrative financing scenario
+ */
+export const useCreateFinancingScenario = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinancingScenario>>, TError,{data: BodyType<FinancingScenarioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createFinancingScenario>>,
+        TError,
+        {data: BodyType<FinancingScenarioInput>},
+        TContext
+      > => {
+      return useMutation(getCreateFinancingScenarioMutationOptions(options));
+    }
+
+export const getCreateFinancingOfferUrl = () => {
+
+
+
+
+  return `/api/financing/offers`
+}
+
+/**
+ * @summary Record a non-binding lender or rate indication for comparison
+ */
+export const createFinancingOffer = async (financingOfferInput: FinancingOfferInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancingOffer> => {
+
+  return customFetch<FinancingOffer>(getCreateFinancingOfferUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financingOfferInput)
+  }
+);}
+
+
+
+
+
+export const getCreateFinancingOfferMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinancingOffer>>, TError,{data: BodyType<FinancingOfferInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createFinancingOffer>>, TError,{data: BodyType<FinancingOfferInput>}, TContext> => {
+
+const mutationKey = ['createFinancingOffer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createFinancingOffer>>, {data: BodyType<FinancingOfferInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createFinancingOffer(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateFinancingOfferMutationResult = NonNullable<Awaited<ReturnType<typeof createFinancingOffer>>>
+    export type CreateFinancingOfferMutationBody = BodyType<FinancingOfferInput>
+    export type CreateFinancingOfferMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Record a non-binding lender or rate indication for comparison
+ */
+export const useCreateFinancingOffer = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinancingOffer>>, TError,{data: BodyType<FinancingOfferInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createFinancingOffer>>,
+        TError,
+        {data: BodyType<FinancingOfferInput>},
+        TContext
+      > => {
+      return useMutation(getCreateFinancingOfferMutationOptions(options));
+    }
+
+export const getCreateFinancingPipelineEventUrl = () => {
+
+
+
+
+  return `/api/financing/pipeline/events`
+}
+
+/**
+ * @summary Record an advisory financing pipeline stage change
+ */
+export const createFinancingPipelineEvent = async (financingPipelineEventInput: FinancingPipelineEventInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancingPipelineEvent> => {
+
+  return customFetch<FinancingPipelineEvent>(getCreateFinancingPipelineEventUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financingPipelineEventInput)
+  }
+);}
+
+
+
+
+
+export const getCreateFinancingPipelineEventMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinancingPipelineEvent>>, TError,{data: BodyType<FinancingPipelineEventInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createFinancingPipelineEvent>>, TError,{data: BodyType<FinancingPipelineEventInput>}, TContext> => {
+
+const mutationKey = ['createFinancingPipelineEvent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createFinancingPipelineEvent>>, {data: BodyType<FinancingPipelineEventInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createFinancingPipelineEvent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateFinancingPipelineEventMutationResult = NonNullable<Awaited<ReturnType<typeof createFinancingPipelineEvent>>>
+    export type CreateFinancingPipelineEventMutationBody = BodyType<FinancingPipelineEventInput>
+    export type CreateFinancingPipelineEventMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Record an advisory financing pipeline stage change
+ */
+export const useCreateFinancingPipelineEvent = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinancingPipelineEvent>>, TError,{data: BodyType<FinancingPipelineEventInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createFinancingPipelineEvent>>,
+        TError,
+        {data: BodyType<FinancingPipelineEventInput>},
+        TContext
+      > => {
+      return useMutation(getCreateFinancingPipelineEventMutationOptions(options));
+    }
+
+export const getUpdateFinancingDocumentUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/financing/documents/${documentId}`
+}
+
+/**
+ * @summary Update a financing document readiness requirement
+ */
+export const updateFinancingDocument = async (documentId: string,
+    financingDocumentUpdate: FinancingDocumentUpdate, options?: Parameters<typeof customFetch>[1]): Promise<FinancingDocument> => {
+
+  return customFetch<FinancingDocument>(getUpdateFinancingDocumentUrl(documentId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financingDocumentUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateFinancingDocumentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFinancingDocument>>, TError,{documentId: string;data: BodyType<FinancingDocumentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateFinancingDocument>>, TError,{documentId: string;data: BodyType<FinancingDocumentUpdate>}, TContext> => {
+
+const mutationKey = ['updateFinancingDocument'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateFinancingDocument>>, {documentId: string;data: BodyType<FinancingDocumentUpdate>}> = (props) => {
+          const {documentId,data} = props ?? {};
+
+          return  updateFinancingDocument(documentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateFinancingDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof updateFinancingDocument>>>
+    export type UpdateFinancingDocumentMutationBody = BodyType<FinancingDocumentUpdate>
+    export type UpdateFinancingDocumentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update a financing document readiness requirement
+ */
+export const useUpdateFinancingDocument = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFinancingDocument>>, TError,{documentId: string;data: BodyType<FinancingDocumentUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateFinancingDocument>>,
+        TError,
+        {documentId: string;data: BodyType<FinancingDocumentUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateFinancingDocumentMutationOptions(options));
+    }
 
 export const getGetOperationsOverviewUrl = () => {
 

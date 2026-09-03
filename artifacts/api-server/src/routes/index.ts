@@ -14,6 +14,7 @@ import treasuryRouter from "./treasury";
 import accountingRouter from "./accounting";
 import operationsRouter from "./operations";
 import businessRouter from "./business";
+import financingRouter from "./financing";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(treasuryRouter);
 router.use(accountingRouter);
 router.use(operationsRouter);
 router.use(businessRouter);
+router.use(financingRouter);
 
 export default router;

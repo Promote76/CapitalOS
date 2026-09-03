@@ -2398,6 +2398,328 @@ export interface TreasurySnapshot {
   lastUpdated: string;
 }
 
+export interface FinancingPolicy {
+  mode: string;
+  executionEnabled: boolean;
+  providersEnabled: boolean;
+  lenderApprovalClaimsAllowed: boolean;
+  disclaimer: string;
+  prohibitedActions: string[];
+  moneyTreatment: string;
+}
+
+export interface FinancingLiability {
+  id: string;
+  name: string;
+  liabilityType: string;
+  ownership: string;
+  /** @nullable */
+  businessEntityId?: string | null;
+  status: string;
+  originalBalance: string;
+  currentBalance: string;
+  monthlyPayment: string;
+  interestRate: string;
+  /** @nullable */
+  termMonths?: number | null;
+  /** @nullable */
+  remainingTermMonths?: number | null;
+  creditLimit: string;
+  /** @nullable */
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type FinancingLiabilityInputOwnership = typeof FinancingLiabilityInputOwnership[keyof typeof FinancingLiabilityInputOwnership];
+
+
+export const FinancingLiabilityInputOwnership = {
+  household: 'household',
+  business: 'business',
+} as const;
+
+export interface FinancingLiabilityInput {
+  /** @minLength 1 */
+  name: string;
+  liabilityType: string;
+  ownership: FinancingLiabilityInputOwnership;
+  /** @nullable */
+  businessEntityId?: string | null;
+  currentBalance: string;
+  monthlyPayment: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  interestRate?: number;
+  /**
+     * @minimum 1
+     * @nullable
+     */
+  termMonths?: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  remainingTermMonths?: number | null;
+  /** @nullable */
+  creditLimit?: string | null;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface FinancingCreditProfile {
+  id: string;
+  /**
+     * @minimum 300
+     * @maximum 850
+     * @nullable
+     */
+  score: number | null;
+  scoreSource: string;
+  /** @nullable */
+  scoreAsOf: string | null;
+  scoreConfidence: string;
+  creditworthinessStatus: string;
+  utilizationPercent: string;
+  paymentHistoryStatus: string;
+  /** @nullable */
+  notes?: string | null;
+  scoreIsNotApproval: boolean;
+  updatedAt: string;
+}
+
+export interface FinancingCreditProfileUpdate {
+  /**
+     * @minimum 300
+     * @maximum 850
+     * @nullable
+     */
+  score?: number | null;
+  scoreSource?: string;
+  /** @nullable */
+  scoreAsOf?: string | null;
+  scoreConfidence?: string;
+  creditworthinessStatus?: string;
+  paymentHistoryStatus?: string;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface FinancingScenario {
+  id: string;
+  name: string;
+  /** @nullable */
+  propertyCandidateId?: string | null;
+  loanType: string;
+  purchasePrice: string;
+  downPaymentPercent: string;
+  interestRate: string;
+  termYears: string;
+  mortgageInsurance?: string;
+  loanFees?: string;
+  closingCosts?: string;
+  initialReserves?: string;
+  loanAmount: string;
+  monthlyPrincipalInterest: string;
+  estimatedMonthlyHousingCost: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinancingScenarioInput {
+  /** @minLength 1 */
+  name: string;
+  /** @nullable */
+  propertyCandidateId?: string | null;
+  loanType: string;
+  purchasePrice: string;
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  downPaymentPercent: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  interestRate: number;
+  /**
+     * @minimum 1
+     * @maximum 50
+     */
+  termYears: number;
+  mortgageInsurance?: string;
+  loanFees?: string;
+  closingCosts?: string;
+  initialReserves?: string;
+}
+
+export type FinancingOfferAssumptions = { [key: string]: unknown };
+
+export interface FinancingOffer {
+  id: string;
+  name: string;
+  /** @nullable */
+  propertyCandidateId?: string | null;
+  /** @nullable */
+  lenderLabel?: string | null;
+  programLabel: string;
+  loanType: string;
+  commitmentStatus: string;
+  offerStatus: string;
+  loanAmount: string;
+  interestRate: string;
+  termYears: number;
+  estimatedMonthlyPayment: string;
+  estimatedCashToClose: string;
+  /** @nullable */
+  expirationDate?: string | null;
+  assumptions?: FinancingOfferAssumptions;
+  /** @nullable */
+  notes?: string | null;
+  executionEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type FinancingOfferInputCommitmentStatus = typeof FinancingOfferInputCommitmentStatus[keyof typeof FinancingOfferInputCommitmentStatus];
+
+
+export const FinancingOfferInputCommitmentStatus = {
+  illustrative: 'illustrative',
+  indicative: 'indicative',
+  conditional: 'conditional',
+  verified: 'verified',
+} as const;
+
+export type FinancingOfferInputAssumptions = { [key: string]: unknown };
+
+export interface FinancingOfferInput {
+  name: string;
+  /** @nullable */
+  propertyCandidateId?: string | null;
+  /** @nullable */
+  lenderLabel?: string | null;
+  programLabel: string;
+  loanType: string;
+  commitmentStatus: FinancingOfferInputCommitmentStatus;
+  offerStatus: string;
+  loanAmount: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  interestRate: number;
+  /**
+     * @minimum 1
+     * @maximum 50
+     */
+  termYears: number;
+  estimatedMonthlyPayment: string;
+  estimatedCashToClose: string;
+  /** @nullable */
+  expirationDate?: string | null;
+  assumptions?: FinancingOfferInputAssumptions;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface FinancingPipelineEvent {
+  id: string;
+  pipelineId: string;
+  /** @nullable */
+  fromStage?: string | null;
+  toStage: string;
+  /** @nullable */
+  note?: string | null;
+  executionEnabled: boolean;
+  createdAt: string;
+}
+
+export type FinancingPipelineEventInputToStage = typeof FinancingPipelineEventInputToStage[keyof typeof FinancingPipelineEventInputToStage];
+
+
+export const FinancingPipelineEventInputToStage = {
+  research: 'research',
+  readiness: 'readiness',
+  comparison: 'comparison',
+  human_review: 'human_review',
+  paused: 'paused',
+} as const;
+
+export interface FinancingPipelineEventInput {
+  toStage: FinancingPipelineEventInputToStage;
+  /** @nullable */
+  note?: string | null;
+}
+
+export type FinancingDocumentStatus = typeof FinancingDocumentStatus[keyof typeof FinancingDocumentStatus];
+
+
+export const FinancingDocumentStatus = {
+  needed: 'needed',
+  in_review: 'in_review',
+  complete: 'complete',
+  expired: 'expired',
+} as const;
+
+export type FinancingDocumentMetadata = { [key: string]: unknown };
+
+export interface FinancingDocument {
+  id: string;
+  category: string;
+  name: string;
+  status: FinancingDocumentStatus;
+  sensitivity: string;
+  /** @nullable */
+  dueDate?: string | null;
+  /** @nullable */
+  storagePath?: string | null;
+  metadata: FinancingDocumentMetadata;
+  /** @nullable */
+  notes?: string | null;
+  updatedAt: string;
+}
+
+export type FinancingDocumentUpdateStatus = typeof FinancingDocumentUpdateStatus[keyof typeof FinancingDocumentUpdateStatus];
+
+
+export const FinancingDocumentUpdateStatus = {
+  needed: 'needed',
+  in_review: 'in_review',
+  complete: 'complete',
+  expired: 'expired',
+} as const;
+
+export interface FinancingDocumentUpdate {
+  status: FinancingDocumentUpdateStatus;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export type FinancingSnapshotPipeline = { [key: string]: unknown };
+
+export type FinancingSnapshotReadiness = { [key: string]: unknown };
+
+export type FinancingSnapshotCashToClose = { [key: string]: unknown };
+
+export type FinancingSnapshotCapitalGovernor = { [key: string]: unknown };
+
+export interface FinancingSnapshot {
+  policy: FinancingPolicy;
+  creditProfile: FinancingCreditProfile;
+  liabilities: FinancingLiability[];
+  scenarios: FinancingScenario[];
+  offers: FinancingOffer[];
+  pipeline: FinancingSnapshotPipeline;
+  documents: FinancingDocument[];
+  readiness: FinancingSnapshotReadiness;
+  cashToClose: FinancingSnapshotCashToClose;
+  capitalGovernor: FinancingSnapshotCapitalGovernor;
+}
+
 export type OperationsTaskPriority = typeof OperationsTaskPriority[keyof typeof OperationsTaskPriority];
 
 

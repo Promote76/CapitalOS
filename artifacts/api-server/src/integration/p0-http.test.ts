@@ -1324,3 +1324,118 @@ test("P0-06 and P0-08 preflight role, effective-permission, selection, tampering
     ]));
   }
 });
+
+test("Financing Engine isolates households, permissions, actors, and idempotent writes", { skip: !enabled }, async () => {
+  process.env.NODE_ENV = "test";
+  process.env.CAPITAL_OS_TEST_CONTEXT = "1";
+  process.env.CAPITAL_OS_ALLOWED_ORIGIN = "http://capitalos.test";
+  const fixture = await createFixture();
+  database ??= await import("@workspace/db");
+  const { default: app } = await import("../app.ts");
+  const server = app.listen(0);
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+  const baseUrl = `http://127.0.0.1:${address.port}/api`;
+  const request = (route: string, userId: string, householdId: string, role: string, init: RequestInit = {}) =>
+    fetch(`${baseUrl}${route}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        "Origin": "http://capitalos.test",
+        "X-Test-User-Id": userId,
+        "X-Test-Household-Id": householdId,
+        "X-Household-Role": role,
+        "X-Test-Step-Up": "verified",
+        ...(init.headers ?? {}),
+      },
+    });
+
+  const liability = {
+    name: "Household auto loan",
+    liabilityType: "auto",
+    ownership: "household",
+    currentBalance: "12000.00",
+    monthlyPayment: "375.00",
+    notes: "Financing integration fixture",
+  };
+  const key = `financing-isolation-${randomUUID()}`;
+
+  try {
+    const ownerSnapshot = await request("/financing", fixture.userA, fixture.householdA, "owner");
+    assert.equal(ownerSnapshot.status, 200);
+    const initial = await ownerSnapshot.json() as {
+      liabilities: Array<{ id: string; householdId?: string }>;
+      cashToClose: { protectedCashExcluded: string; businessOperatingCashExcluded: string; fundingGap: string };
+      readiness: { dtiPercent: number | null };
+    };
+    assert.equal(initial.liabilities.length, 0);
+    assert.ok(Number(initial.cashToClose.fundingGap) >= 0);
+    assert.ok(initial.cashToClose.protectedCashExcluded !== undefined);
+    assert.ok(initial.cashToClose.businessOperatingCashExcluded !== undefined);
+
+    const first = await request("/financing/liabilities", fixture.userA, fixture.householdA, "owner", {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify(liability),
+    });
+    assert.equal(first.status, 201);
+    const firstBody = await first.json() as { id: string };
+    assert.ok(firstBody.id);
+
+    const replay = await request("/financing/liabilities", fixture.userA, fixture.householdA, "owner", {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify(liability),
+    });
+    assert.equal(replay.status, 201);
+    assert.deepEqual(await replay.json(), firstBody);
+
+    const conflict = await request("/financing/liabilities", fixture.userA, fixture.householdA, "owner", {
+      method: "POST",
+      headers: { "Idempotency-Key": key },
+      body: JSON.stringify({ ...liability, name: "Changed after replay" }),
+    });
+    assert.equal(conflict.status, 409);
+
+    const viewerWrite = await request("/financing/liabilities", fixture.viewerA, fixture.householdA, "owner", {
+      method: "POST",
+      headers: { "Idempotency-Key": `viewer-${randomUUID()}` },
+      body: JSON.stringify(liability),
+    });
+    assert.equal(viewerWrite.status, 403);
+
+    const householdB = await request("/financing", fixture.userB, fixture.householdB, "owner");
+    assert.equal(householdB.status, 200);
+    const otherSnapshot = await householdB.json() as { liabilities: Array<{ id: string }> };
+    assert.equal(otherSnapshot.liabilities.some((item) => item.id === firstBody.id), false);
+
+    const householdA = await request("/financing", fixture.userA, fixture.householdA, "owner");
+    assert.equal(householdA.status, 200);
+    const finalSnapshot = await householdA.json() as {
+      liabilities: Array<{ id: string }>;
+      readiness: { dtiPercent: number | null };
+    };
+    assert.equal(finalSnapshot.liabilities.some((item) => item.id === firstBody.id), true);
+    assert.ok(finalSnapshot.readiness.dtiPercent === null || Number.isFinite(finalSnapshot.readiness.dtiPercent));
+
+    const persisted = await database.db
+      .select({ createdBy: database.financingLiabilities.createdBy, householdId: database.financingLiabilities.householdId })
+      .from(database.financingLiabilities)
+      .where(eq(database.financingLiabilities.id, firstBody.id));
+    assert.deepEqual(persisted, [{ createdBy: fixture.userA, householdId: fixture.householdA }]);
+
+    const audit = await database.db
+      .select({ actor: database.auditEvents.actor })
+      .from(database.auditEvents)
+      .where(and(eq(database.auditEvents.householdId, fixture.householdA), eq(database.auditEvents.entityId, firstBody.id)));
+    assert.deepEqual(audit, [{ actor: fixture.userA }]);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    const householdIds = [fixture.householdA, fixture.householdB];
+    await database.db.delete(database.households).where(inArray(database.households.id, householdIds));
+    await database.db.delete(database.users).where(inArray(database.users.id, [
+      fixture.userA, fixture.partnerA, fixture.advisorA, fixture.viewerA,
+      fixture.userB, fixture.partnerB, fixture.advisorB, fixture.viewerB,
+    ]));
+  }
+});

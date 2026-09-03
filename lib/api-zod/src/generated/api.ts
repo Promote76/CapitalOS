@@ -3147,6 +3147,397 @@ export const GetAccountingOverviewResponse = zod.object({
 
 
 /**
+ * @summary Get the household advisory financing workspace
+ */
+export const getFinancingSnapshotResponseCreditProfileScoreMin = 300;
+export const getFinancingSnapshotResponseCreditProfileScoreMax = 850;
+
+
+
+export const GetFinancingSnapshotResponse = zod.object({
+  "policy": zod.object({
+  "mode": zod.string(),
+  "executionEnabled": zod.boolean(),
+  "providersEnabled": zod.boolean(),
+  "lenderApprovalClaimsAllowed": zod.boolean(),
+  "disclaimer": zod.string(),
+  "prohibitedActions": zod.array(zod.string()),
+  "moneyTreatment": zod.string()
+}),
+  "creditProfile": zod.object({
+  "id": zod.string(),
+  "score": zod.number().min(getFinancingSnapshotResponseCreditProfileScoreMin).max(getFinancingSnapshotResponseCreditProfileScoreMax).nullable(),
+  "scoreSource": zod.string(),
+  "scoreAsOf": zod.string().nullable(),
+  "scoreConfidence": zod.string(),
+  "creditworthinessStatus": zod.string(),
+  "utilizationPercent": zod.string(),
+  "paymentHistoryStatus": zod.string(),
+  "notes": zod.string().nullish(),
+  "scoreIsNotApproval": zod.boolean(),
+  "updatedAt": zod.coerce.date()
+}),
+  "liabilities": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "liabilityType": zod.string(),
+  "ownership": zod.string(),
+  "businessEntityId": zod.string().nullish(),
+  "status": zod.string(),
+  "originalBalance": zod.string(),
+  "currentBalance": zod.string(),
+  "monthlyPayment": zod.string(),
+  "interestRate": zod.string(),
+  "termMonths": zod.number().nullish(),
+  "remainingTermMonths": zod.number().nullish(),
+  "creditLimit": zod.string(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "scenarios": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "propertyCandidateId": zod.string().nullish(),
+  "loanType": zod.string(),
+  "purchasePrice": zod.string(),
+  "downPaymentPercent": zod.string(),
+  "interestRate": zod.string(),
+  "termYears": zod.string(),
+  "mortgageInsurance": zod.string().optional(),
+  "loanFees": zod.string().optional(),
+  "closingCosts": zod.string().optional(),
+  "initialReserves": zod.string().optional(),
+  "loanAmount": zod.string(),
+  "monthlyPrincipalInterest": zod.string(),
+  "estimatedMonthlyHousingCost": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "offers": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "propertyCandidateId": zod.string().nullish(),
+  "lenderLabel": zod.string().nullish(),
+  "programLabel": zod.string(),
+  "loanType": zod.string(),
+  "commitmentStatus": zod.string(),
+  "offerStatus": zod.string(),
+  "loanAmount": zod.string(),
+  "interestRate": zod.string(),
+  "termYears": zod.number(),
+  "estimatedMonthlyPayment": zod.string(),
+  "estimatedCashToClose": zod.string(),
+  "expirationDate": zod.string().nullish(),
+  "assumptions": zod.record(zod.string(), zod.unknown()).optional(),
+  "notes": zod.string().nullish(),
+  "executionEnabled": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "pipeline": zod.record(zod.string(), zod.unknown()),
+  "documents": zod.array(zod.object({
+  "id": zod.string(),
+  "category": zod.string(),
+  "name": zod.string(),
+  "status": zod.enum(['needed', 'in_review', 'complete', 'expired']),
+  "sensitivity": zod.string(),
+  "dueDate": zod.string().nullish(),
+  "storagePath": zod.string().nullish(),
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "notes": zod.string().nullish(),
+  "updatedAt": zod.coerce.date()
+})),
+  "readiness": zod.record(zod.string(), zod.unknown()),
+  "cashToClose": zod.record(zod.string(), zod.unknown()),
+  "capitalGovernor": zod.record(zod.string(), zod.unknown())
+})
+
+
+/**
+ * @summary Record a household or business liability for advisory planning
+ */
+export const createFinancingLiabilityHeaderIdempotencyKeyMin = 8;
+export const createFinancingLiabilityHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CreateFinancingLiabilityHeader = zod.object({
+  "Idempotency-Key": zod.string().min(createFinancingLiabilityHeaderIdempotencyKeyMin).max(createFinancingLiabilityHeaderIdempotencyKeyMax)
+})
+
+
+export const createFinancingLiabilityBodyInterestRateMin = 0;
+export const createFinancingLiabilityBodyInterestRateMax = 100;
+
+
+export const createFinancingLiabilityBodyRemainingTermMonthsMin = 0;
+
+
+
+export const CreateFinancingLiabilityBody = zod.object({
+  "name": zod.string().min(1),
+  "liabilityType": zod.string(),
+  "ownership": zod.enum(['household', 'business']),
+  "businessEntityId": zod.string().nullish(),
+  "currentBalance": zod.string(),
+  "monthlyPayment": zod.string(),
+  "interestRate": zod.number().min(createFinancingLiabilityBodyInterestRateMin).max(createFinancingLiabilityBodyInterestRateMax).optional(),
+  "termMonths": zod.number().min(1).nullish(),
+  "remainingTermMonths": zod.number().min(createFinancingLiabilityBodyRemainingTermMonthsMin).nullish(),
+  "creditLimit": zod.string().nullish(),
+  "notes": zod.string().nullish()
+})
+
+export const CreateFinancingLiabilityResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "liabilityType": zod.string(),
+  "ownership": zod.string(),
+  "businessEntityId": zod.string().nullish(),
+  "status": zod.string(),
+  "originalBalance": zod.string(),
+  "currentBalance": zod.string(),
+  "monthlyPayment": zod.string(),
+  "interestRate": zod.string(),
+  "termMonths": zod.number().nullish(),
+  "remainingTermMonths": zod.number().nullish(),
+  "creditLimit": zod.string(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update manually supplied credit planning inputs without a credit pull
+ */
+export const updateFinancingCreditProfileHeaderIdempotencyKeyMin = 8;
+export const updateFinancingCreditProfileHeaderIdempotencyKeyMax = 128;
+
+
+
+export const UpdateFinancingCreditProfileHeader = zod.object({
+  "Idempotency-Key": zod.string().min(updateFinancingCreditProfileHeaderIdempotencyKeyMin).max(updateFinancingCreditProfileHeaderIdempotencyKeyMax)
+})
+
+export const updateFinancingCreditProfileBodyScoreMin = 300;
+export const updateFinancingCreditProfileBodyScoreMax = 850;
+
+
+
+export const UpdateFinancingCreditProfileBody = zod.object({
+  "score": zod.number().min(updateFinancingCreditProfileBodyScoreMin).max(updateFinancingCreditProfileBodyScoreMax).nullish(),
+  "scoreSource": zod.string().optional(),
+  "scoreAsOf": zod.string().nullish(),
+  "scoreConfidence": zod.string().optional(),
+  "creditworthinessStatus": zod.string().optional(),
+  "paymentHistoryStatus": zod.string().optional(),
+  "notes": zod.string().nullish()
+})
+
+export const updateFinancingCreditProfileResponseScoreMin = 300;
+export const updateFinancingCreditProfileResponseScoreMax = 850;
+
+
+
+export const UpdateFinancingCreditProfileResponse = zod.object({
+  "id": zod.string(),
+  "score": zod.number().min(updateFinancingCreditProfileResponseScoreMin).max(updateFinancingCreditProfileResponseScoreMax).nullable(),
+  "scoreSource": zod.string(),
+  "scoreAsOf": zod.string().nullable(),
+  "scoreConfidence": zod.string(),
+  "creditworthinessStatus": zod.string(),
+  "utilizationPercent": zod.string(),
+  "paymentHistoryStatus": zod.string(),
+  "notes": zod.string().nullish(),
+  "scoreIsNotApproval": zod.boolean(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Create an illustrative financing scenario
+ */
+export const createFinancingScenarioHeaderIdempotencyKeyMin = 8;
+export const createFinancingScenarioHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CreateFinancingScenarioHeader = zod.object({
+  "Idempotency-Key": zod.string().min(createFinancingScenarioHeaderIdempotencyKeyMin).max(createFinancingScenarioHeaderIdempotencyKeyMax)
+})
+
+
+export const createFinancingScenarioBodyDownPaymentPercentMin = 0;
+export const createFinancingScenarioBodyDownPaymentPercentMax = 1;
+
+export const createFinancingScenarioBodyInterestRateMin = 0;
+export const createFinancingScenarioBodyInterestRateMax = 100;
+
+export const createFinancingScenarioBodyTermYearsMax = 50;
+
+
+
+export const CreateFinancingScenarioBody = zod.object({
+  "name": zod.string().min(1),
+  "propertyCandidateId": zod.string().nullish(),
+  "loanType": zod.string(),
+  "purchasePrice": zod.string(),
+  "downPaymentPercent": zod.number().min(createFinancingScenarioBodyDownPaymentPercentMin).max(createFinancingScenarioBodyDownPaymentPercentMax),
+  "interestRate": zod.number().min(createFinancingScenarioBodyInterestRateMin).max(createFinancingScenarioBodyInterestRateMax),
+  "termYears": zod.number().min(1).max(createFinancingScenarioBodyTermYearsMax),
+  "mortgageInsurance": zod.string().optional(),
+  "loanFees": zod.string().optional(),
+  "closingCosts": zod.string().optional(),
+  "initialReserves": zod.string().optional()
+})
+
+export const CreateFinancingScenarioResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "propertyCandidateId": zod.string().nullish(),
+  "loanType": zod.string(),
+  "purchasePrice": zod.string(),
+  "downPaymentPercent": zod.string(),
+  "interestRate": zod.string(),
+  "termYears": zod.string(),
+  "mortgageInsurance": zod.string().optional(),
+  "loanFees": zod.string().optional(),
+  "closingCosts": zod.string().optional(),
+  "initialReserves": zod.string().optional(),
+  "loanAmount": zod.string(),
+  "monthlyPrincipalInterest": zod.string(),
+  "estimatedMonthlyHousingCost": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Record a non-binding lender or rate indication for comparison
+ */
+export const createFinancingOfferHeaderIdempotencyKeyMin = 8;
+export const createFinancingOfferHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CreateFinancingOfferHeader = zod.object({
+  "Idempotency-Key": zod.string().min(createFinancingOfferHeaderIdempotencyKeyMin).max(createFinancingOfferHeaderIdempotencyKeyMax)
+})
+
+export const createFinancingOfferBodyInterestRateMin = 0;
+export const createFinancingOfferBodyInterestRateMax = 100;
+
+export const createFinancingOfferBodyTermYearsMax = 50;
+
+
+
+export const CreateFinancingOfferBody = zod.object({
+  "name": zod.string(),
+  "propertyCandidateId": zod.string().nullish(),
+  "lenderLabel": zod.string().nullish(),
+  "programLabel": zod.string(),
+  "loanType": zod.string(),
+  "commitmentStatus": zod.enum(['illustrative', 'indicative', 'conditional', 'verified']),
+  "offerStatus": zod.string(),
+  "loanAmount": zod.string(),
+  "interestRate": zod.number().min(createFinancingOfferBodyInterestRateMin).max(createFinancingOfferBodyInterestRateMax),
+  "termYears": zod.number().min(1).max(createFinancingOfferBodyTermYearsMax),
+  "estimatedMonthlyPayment": zod.string(),
+  "estimatedCashToClose": zod.string(),
+  "expirationDate": zod.string().nullish(),
+  "assumptions": zod.record(zod.string(), zod.unknown()).optional(),
+  "notes": zod.string().nullish()
+})
+
+export const CreateFinancingOfferResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "propertyCandidateId": zod.string().nullish(),
+  "lenderLabel": zod.string().nullish(),
+  "programLabel": zod.string(),
+  "loanType": zod.string(),
+  "commitmentStatus": zod.string(),
+  "offerStatus": zod.string(),
+  "loanAmount": zod.string(),
+  "interestRate": zod.string(),
+  "termYears": zod.number(),
+  "estimatedMonthlyPayment": zod.string(),
+  "estimatedCashToClose": zod.string(),
+  "expirationDate": zod.string().nullish(),
+  "assumptions": zod.record(zod.string(), zod.unknown()).optional(),
+  "notes": zod.string().nullish(),
+  "executionEnabled": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Record an advisory financing pipeline stage change
+ */
+export const createFinancingPipelineEventHeaderIdempotencyKeyMin = 8;
+export const createFinancingPipelineEventHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CreateFinancingPipelineEventHeader = zod.object({
+  "Idempotency-Key": zod.string().min(createFinancingPipelineEventHeaderIdempotencyKeyMin).max(createFinancingPipelineEventHeaderIdempotencyKeyMax)
+})
+
+export const CreateFinancingPipelineEventBody = zod.object({
+  "toStage": zod.enum(['research', 'readiness', 'comparison', 'human_review', 'paused']),
+  "note": zod.string().nullish()
+})
+
+export const CreateFinancingPipelineEventResponse = zod.object({
+  "id": zod.string(),
+  "pipelineId": zod.string(),
+  "fromStage": zod.string().nullish(),
+  "toStage": zod.string(),
+  "note": zod.string().nullish(),
+  "executionEnabled": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a financing document readiness requirement
+ */
+export const UpdateFinancingDocumentParams = zod.object({
+  "documentId": zod.coerce.string()
+})
+
+export const updateFinancingDocumentHeaderIdempotencyKeyMin = 8;
+export const updateFinancingDocumentHeaderIdempotencyKeyMax = 128;
+
+
+
+export const UpdateFinancingDocumentHeader = zod.object({
+  "Idempotency-Key": zod.string().min(updateFinancingDocumentHeaderIdempotencyKeyMin).max(updateFinancingDocumentHeaderIdempotencyKeyMax)
+})
+
+export const UpdateFinancingDocumentBody = zod.object({
+  "status": zod.enum(['needed', 'in_review', 'complete', 'expired']),
+  "notes": zod.string().nullish()
+})
+
+export const UpdateFinancingDocumentResponse = zod.object({
+  "id": zod.string(),
+  "category": zod.string(),
+  "name": zod.string(),
+  "status": zod.enum(['needed', 'in_review', 'complete', 'expired']),
+  "sensitivity": zod.string(),
+  "dueDate": zod.string().nullish(),
+  "storagePath": zod.string().nullish(),
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "notes": zod.string().nullish(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Get the household Operations Command Center snapshot
  */
 export const getOperationsOverviewResponseTodayCriticalAlertsMin = 0;

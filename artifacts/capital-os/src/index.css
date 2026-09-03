@@ -1768,3 +1768,109 @@ body { background: var(--surface-page); }
   .auth-landing-card .brand-mark { margin-bottom: 42px; }
   .auth-landing-card h1 { font-size: 44px; }
 }
+
+/* Advisory financing workspace */
+.financing-page { max-width: 1440px; display: grid; gap: 16px; padding-bottom: 52px; }
+.financing-page .page-heading { margin-bottom: 0; }
+.financing-header-note { display: flex; align-items: flex-start; gap: 10px; max-width: 430px; padding: 12px 14px; border: 1px solid #d5e1d6; border-radius: 10px; color: #4d6b5d; background: #edf4ed; font-size: 10px; line-height: 1.45; }
+.financing-header-note svg { flex: 0 0 auto; margin-top: 1px; color: #61866e; }
+.financing-index { display: grid; gap: 14px; }
+.financing-policy { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 15px; align-items: center; padding: 18px 20px; border: 1px solid #d9cda9; border-radius: 11px; background: #f7f0dc; }
+.financing-policy-seal { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; color: #8a6b28; background: #eadcad; }
+.financing-policy-copy { display: grid; gap: 4px; }
+.financing-policy-copy strong { color: var(--ink); font-size: 12px; }
+.financing-policy-copy span { color: #766746; font-size: 10px; line-height: 1.45; }
+.financing-policy-tags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.financing-policy-tags span { padding: 5px 7px; border-radius: 5px; color: #766746; background: rgba(255,255,255,.55); font: 9px var(--app-font-mono); }
+.financing-main-grid { display: grid; grid-template-columns: minmax(0,1.12fr) minmax(330px,.88fr); gap: 16px; align-items: start; }
+.financing-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 16px; }
+.financing-section-heading h2 { margin: 5px 0 0; color: var(--ink); font: 400 25px var(--app-font-serif); letter-spacing: -.04em; }
+.financing-section-heading p { max-width: 560px; margin: 5px 0 0; color: var(--ink-soft); font-size: 10px; line-height: 1.5; }
+.mono-label, .financing-kicker { color: var(--ink-soft); font: 500 9px var(--app-font-mono); letter-spacing: .11em; text-transform: uppercase; }
+.financing-readiness { overflow: hidden; border-color: #cadbd0; background: linear-gradient(135deg,#f4f8f2,#fffdf8); }
+.financing-readiness-body { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 20px; align-items: center; }
+.financing-score-ring { display: grid; place-items: center; width: 118px; height: 118px; border-radius: 50%; background: conic-gradient(#5f876e calc(var(--score, 0) * 1%), #e7ece3 0); position: relative; }
+.financing-score-ring::after { content: ""; position: absolute; inset: 9px; border-radius: 50%; background: #f7faf4; }
+.financing-score-ring > div { position: relative; z-index: 1; display: grid; justify-items: center; gap: 1px; }
+.financing-score-ring strong { color: var(--ink); font: 400 32px var(--app-font-serif); }
+.financing-score-ring span { color: var(--ink-soft); font: 8px var(--app-font-mono); text-transform: uppercase; }
+.financing-readiness-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 16px; }
+.financing-readiness-grid > div, .ratio-row { display: grid; gap: 4px; padding: 11px 12px; border: 1px solid #e4e9df; border-radius: 8px; background: rgba(255,255,255,.65); }
+.financing-readiness-grid span, .ratio-row span { color: var(--ink-soft); font-size: 9px; }
+.financing-readiness-grid strong, .ratio-row strong { color: var(--ink); font: 400 19px var(--app-font-serif); }
+.financing-reasons { display: grid; gap: 6px; margin-top: 14px; }
+.financing-reason { display: flex; align-items: flex-start; gap: 7px; color: var(--ink-soft); font-size: 10px; line-height: 1.45; }
+.financing-reason svg { flex: 0 0 auto; margin-top: 1px; color: var(--marigold); }
+.ratio-list { display: grid; gap: 8px; }
+.ratio-row { grid-template-columns: auto minmax(0,1fr) auto; align-items: center; }
+.ratio-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; color: #567a69; background: #e8f0e8; }
+.ratio-row strong { font-size: 16px; text-align: right; }
+.ratio-row small { color: #9b9c91; font-size: 9px; }
+.utilization-block { display: grid; gap: 7px; margin-top: 14px; }
+.utilization-block > div:first-child { display: flex; justify-content: space-between; color: var(--ink-soft); font-size: 9px; }
+.utilization-fill, .progress-track { overflow: hidden; height: 6px; border-radius: 8px; background: #e7ebe4; }
+.utilization-fill span, .progress-fill { display: block; height: 100%; border-radius: inherit; background: #6b8d79; }
+.financing-cash-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.financing-metric { display: grid; gap: 6px; min-height: 104px; padding: 16px 17px; border: 1px solid var(--line); border-radius: 9px; background: rgba(255,253,248,.78); }
+.financing-metric.pending { border-color: #ead9ae; background: #f7f0dc; }
+.financing-metric.positive { border-color: #c7dbcd; background: #edf4ed; }
+.financing-metric-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.financing-metric-icon { color: #678474; }
+.financing-metric > strong { color: var(--ink); font: 400 26px var(--app-font-serif); letter-spacing: -.04em; }
+.financing-metric > span:last-child { color: var(--ink-soft); font-size: 10px; line-height: 1.35; }
+.financing-cash-grid .financing-metric:first-child { grid-column: span 2; }
+.financing-liabilities, .financing-scenario-table, .financing-offer-list, .financing-document-list, .financing-timeline { display: grid; }
+.financing-liability-columns { display: grid; grid-template-columns: minmax(0,1.4fr) 110px 120px 120px; gap: 14px; padding: 0 0 9px; color: var(--ink-soft); font: 9px var(--app-font-mono); text-transform: uppercase; letter-spacing: .08em; }
+.financing-liability-row { display: grid; grid-template-columns: minmax(0,1.4fr) 110px 120px 120px; gap: 14px; align-items: center; padding: 13px 0; border-top: 1px solid #eee9df; }
+.financing-liability-copy, .financing-offer-main { display: grid; gap: 4px; min-width: 0; }
+.financing-liability-copy strong, .financing-offer-main strong, .financing-scenario-name strong { color: var(--ink); font-size: 11px; }
+.financing-liability-copy span, .financing-offer-main span, .financing-scenario-name span { color: var(--ink-soft); font-size: 9px; }
+.financing-liability-number { color: var(--ink); font: 11px var(--app-font-mono); text-align: right; }
+.financing-liability-symbol, .financing-offer-icon, .financing-document-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: #587d6d; background: #e8f0e9; }
+.financing-liability-copy > div, .financing-offer-main > div { display: flex; align-items: center; gap: 8px; }
+.financing-scenario-row, .financing-offer-row, .financing-document-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 14px; align-items: center; padding: 13px 0; border-top: 1px solid #eee9df; }
+.financing-scenario-row > div, .financing-offer-row > div { display: grid; gap: 4px; }
+.financing-scenario-row span, .financing-offer-row span { color: var(--ink-soft); font-size: 9px; }
+.financing-scenario-row strong, .financing-offer-row strong { color: var(--ink); font: 400 18px var(--app-font-serif); }
+.financing-document-copy { display: grid; gap: 4px; min-width: 0; }
+.financing-document-copy strong { color: var(--ink); font-size: 11px; }
+.financing-document-copy span { color: var(--ink-soft); font-size: 9px; }
+.financing-document-actions { display: flex; gap: 5px; }
+.financing-document-actions button, .financing-status-buttons button { padding: 5px 7px; border: 1px solid var(--line); border-radius: 5px; color: var(--ink-soft); background: transparent; cursor: pointer; font: 9px var(--app-font-mono); }
+.financing-document-actions button.active, .financing-status-buttons button.active { color: #fff; border-color: var(--ink); background: var(--ink); }
+.financing-timeline-item { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 10px; align-items: start; padding: 12px 0; border-top: 1px solid #eee9df; }
+.financing-timeline-dot { width: 9px; height: 9px; margin-top: 4px; border-radius: 50%; background: #759580; box-shadow: 0 0 0 4px #e6efe7; }
+.financing-timeline-item > div:nth-child(2) { display: grid; gap: 4px; }
+.financing-timeline-item strong { color: var(--ink); font-size: 10px; }
+.financing-timeline-item span { color: var(--ink-soft); font-size: 9px; line-height: 1.4; }
+.financing-pipeline-form { display: flex; gap: 8px; align-items: end; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.financing-pipeline-form .field { flex: 1; }
+.financing-form { display: grid; gap: 15px; padding: 0 24px 24px; }
+.financing-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 11px; }
+.financing-form .field { display: grid; gap: 6px; }
+.financing-field-wide { grid-column: 1 / -1; }
+.financing-form label { color: var(--ink-soft); font-size: 10px; font-weight: 700; }
+.financing-form input, .financing-form select, .financing-form textarea, .financing-pipeline-form select { width: 100%; min-height: 38px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--ink); background: #fff; font: 11px var(--app-font-sans); }
+.financing-form textarea { min-height: 70px; resize: vertical; }
+.financing-form-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.financing-segmented { display: flex; gap: 6px; }
+.financing-segmented button { display: inline-flex; align-items: center; gap: 5px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink-soft); background: transparent; cursor: pointer; font: 10px var(--app-font-mono); }
+.financing-segmented button.active { color: #fff; border-color: var(--ink); background: var(--ink); }
+.financing-boundary-note { display: flex; align-items: flex-start; gap: 8px; padding: 10px 11px; border: 1px solid #d9e4d9; border-radius: 7px; color: #4d6b5d; background: #edf4ed; font-size: 10px; line-height: 1.45; }
+.financing-boundary-note svg { flex: 0 0 auto; color: #678b74; }
+.financing-modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(24,50,46,.28); }
+.financing-modal { width: min(100%, 660px); max-height: min(92vh, 760px); overflow: auto; box-shadow: 0 24px 70px rgba(24,50,46,.2); }
+.financing-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 24px 24px 16px; }
+.financing-modal-head h2 { margin: 6px 0; color: var(--ink); font: 400 27px var(--app-font-serif); letter-spacing: -.04em; }
+.financing-modal-head p { margin: 0; color: var(--ink-soft); font-size: 10px; line-height: 1.5; }
+.financing-disclaimer { display: flex; gap: 8px; align-items: flex-start; padding: 13px 14px; border: 1px solid #e5dcc1; border-radius: 8px; color: #766746; background: #fbf6e8; font-size: 10px; line-height: 1.45; }
+.financing-disclaimer svg { flex: 0 0 auto; color: #a07d35; }
+.financing-inline-error, .financing-empty { display: flex; align-items: center; gap: 10px; color: var(--ink-soft); font-size: 11px; }
+.financing-inline-error { color: #9e5d47; }
+.financing-empty { justify-content: center; padding: 25px 10px; text-align: center; }
+.financing-empty-line { color: var(--ink-soft); font-size: 10px; }
+.financing-loading-grid { display: grid; gap: 14px; }
+.financing-skeleton { min-height: 180px; border-radius: 10px; background: linear-gradient(100deg,#ebe9e0 25%,#f4f1e9 42%,#ebe9e0 58%); background-size: 300% 100%; animation: accounting-shimmer 1.6s ease-in-out infinite; }
+.financing-skeleton.wide { min-height: 280px; }
+@media (max-width: 980px) { .financing-main-grid { grid-template-columns: 1fr; } .financing-policy { grid-template-columns: auto 1fr; } .financing-policy-tags { grid-column: 2; justify-content: flex-start; } }
+@media (max-width: 700px) { .financing-cash-grid, .financing-readiness-grid { grid-template-columns: 1fr 1fr; } .financing-cash-grid .financing-metric:first-child { grid-column: 1 / -1; } .financing-readiness-body { grid-template-columns: 1fr; justify-items: start; } .financing-liability-columns { display: none; } .financing-liability-row { grid-template-columns: auto minmax(0,1fr); } .financing-liability-row > .financing-liability-number { text-align: left; } .financing-liability-row > .status { justify-self: start; } .financing-scenario-row, .financing-offer-row, .financing-document-row { grid-template-columns: minmax(0,1fr) auto; } .financing-scenario-row > .status, .financing-offer-row > .status { grid-column: 2; } .financing-document-actions { grid-column: 1 / -1; } .financing-policy { grid-template-columns: 1fr; } .financing-policy-tags { grid-column: auto; } .financing-form-grid { grid-template-columns: 1fr; } .financing-field-wide { grid-column: auto; } .financing-pipeline-form { display: grid; } }

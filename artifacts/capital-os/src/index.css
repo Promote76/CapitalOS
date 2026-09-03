@@ -824,6 +824,7 @@ button { cursor: pointer; }
 .reserve-meta { display:flex; justify-content:space-between; margin-top:9px; color:var(--text-secondary); font:10px var(--app-font-mono); }
 .forecast-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; }
 .account-form { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; align-items:end; } .account-form .modal-actions { grid-column:1 / -1; justify-content:flex-end; }
+.transaction-form { grid-template-columns:repeat(3, minmax(0, 1fr)); } .transaction-form .modal-actions { grid-column:1 / -1; } .form-feedback { margin-top:14px; border-radius:10px; padding:11px 13px; font-size:12px; line-height:1.45; } .form-feedback.success { color:#166534; background:#F0FDF4; border:1px solid #BBF7D0; } .form-feedback.error { color:#991B1B; background:#FEF2F2; border:1px solid #FECACA; }
 .planning-form-card { position:relative; }
 .planning-form-close { position:absolute; top:18px; right:18px; }
 .planning-form { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; align-items:end; }

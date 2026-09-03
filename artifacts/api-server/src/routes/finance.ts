@@ -9,6 +9,8 @@ import {
   GetSafeToDeployResponse,
   ImportFinancialAccountCsvBody,
   ImportFinancialAccountCsvResponse,
+  CreateManualFinanceTransactionBody,
+  CreateManualFinanceTransactionResponse,
   CreateBillBody,
   CreateBillResponse,
   UpdateBillBody,
@@ -45,6 +47,7 @@ import {
   getFinancialAccounts,
   getSafeToDeploy,
   importFinanceCsv,
+  createManualFinanceTransaction,
   createBill,
   updateBill,
   pauseBill,
@@ -85,6 +88,17 @@ router.post("/financial-accounts/:accountId/import-csv", asyncRoute(async (req, 
   const accountId = Array.isArray(req.params.accountId) ? req.params.accountId[0] : req.params.accountId;
   const body = ImportFinancialAccountCsvBody.parse(req.body);
   res.json(ImportFinancialAccountCsvResponse.parse(await importFinanceCsv(actorFrom(res), accountId, body.csv)));
+}));
+
+router.post("/financial-accounts/:accountId/transactions", asyncRoute(async (req, res) => {
+  const accountId = Array.isArray(req.params.accountId) ? req.params.accountId[0] : req.params.accountId;
+  const body = CreateManualFinanceTransactionBody.parse(req.body);
+  res.status(201).json(CreateManualFinanceTransactionResponse.parse(
+    await createManualFinanceTransaction(actorFrom(res), accountId, {
+      ...body,
+      transactionDate: body.transactionDate.toISOString().slice(0, 10),
+    }),
+  ));
 }));
 
 router.get("/bills", asyncRoute(async (_req, res) => {

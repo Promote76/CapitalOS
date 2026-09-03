@@ -768,6 +768,75 @@ export async function importFinanceCsv(actor: Actor, accountId: string, csv: str
   });
 }
 
+export async function createManualFinanceTransaction(actor: Actor, accountId: string, input: {
+  transactionDate: string;
+  description: string;
+  merchant?: string | null;
+  amount: string;
+  direction: "inflow" | "outflow";
+}) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId(actor);
+  const [account] = await db.select({ id: financialAccounts.id })
+    .from(financialAccounts)
+    .where(and(eq(financialAccounts.id, accountId), eq(financialAccounts.householdId, id)))
+    .limit(1);
+  if (!account) return planningNotFound("Financial account");
+  if (!input.description.trim()) {
+    throw new GovernanceError("INVALID_STATE", "Transaction description is required");
+  }
+  assertDate(input.transactionDate, "Transaction date");
+  assertMoney(input.amount, "Transaction amount", { required: true });
+  if (cents(input.amount) === 0) {
+    throw new GovernanceError("INVALID_STATE", "Transaction amount must be greater than zero");
+  }
+  const signedAmount = (input.direction === "outflow" ? -cents(input.amount) : cents(input.amount)) / 100;
+  const amount = signedAmount.toFixed(2);
+  const originalAmount = cents(input.amount).toFixed(2);
+  const merchant = input.merchant?.trim() || null;
+
+  return db.transaction(async (tx) => {
+    const [transaction] = await tx.insert(financeTransactions).values({
+      householdId: id,
+      accountId,
+      transactionDate: input.transactionDate,
+      description: input.description.trim(),
+      merchant,
+      originalAmount,
+      amount,
+      dataSource: "manual",
+      reviewStatus: "needs_review",
+    }).returning({
+      id: financeTransactions.id,
+      accountId: financeTransactions.accountId,
+      transactionDate: financeTransactions.transactionDate,
+      description: financeTransactions.description,
+      merchant: financeTransactions.merchant,
+      originalAmount: financeTransactions.originalAmount,
+      amount: financeTransactions.amount,
+      dataSource: financeTransactions.dataSource,
+      reviewStatus: financeTransactions.reviewStatus,
+    });
+    await tx.insert(auditEvents).values({
+      householdId: actor.householdId,
+      eventType: "finance_transaction_created",
+      actor: actor.userId,
+      entity: "finance_transaction",
+      entityId: transaction.id,
+      afterState: {
+        accountId,
+        transactionDate: transaction.transactionDate,
+        amount: transaction.amount,
+        dataSource: transaction.dataSource,
+        reviewStatus: transaction.reviewStatus,
+      },
+      reason: "Manual household finance entry requires review before planning use",
+      metadata: { source: "manual", readOnlyExternal: true },
+    });
+    return transaction;
+  });
+}
+
 export async function getFinanceSnapshot(actor?: Actor) {
   const id = await householdId(actor);
   const [snapshot] = await db.select().from(financeSnapshots).where(and(eq(financeSnapshots.householdId, id), eq(financeSnapshots.snapshotDate, nowMonth() + "-01"))).limit(1);

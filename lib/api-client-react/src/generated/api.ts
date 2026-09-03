@@ -65,6 +65,7 @@ import type {
   EmergencyStopInput,
   FinanceInsights,
   FinanceSnapshot,
+  FinanceTransaction,
   FinancialAccount,
   FinancialAccountsSummary,
   FinancingCreditProfile,
@@ -91,6 +92,7 @@ import type {
   IntelligenceFeedbackInput,
   IntelligenceScenarioInput,
   IntelligenceSnapshot,
+  ManualFinanceTransactionInput,
   ManualFinancialAccountInput,
   MicroLiveArmRequest,
   MicroLiveEnablementReview,
@@ -4987,6 +4989,78 @@ export const useImportFinancialAccountCsv = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getImportFinancialAccountCsvMutationOptions(options));
+    }
+
+export const getCreateManualFinanceTransactionUrl = (accountId: string,) => {
+
+
+
+
+  return `/api/financial-accounts/${accountId}/transactions`
+}
+
+/**
+ * @summary Record a manual transaction for household review
+ */
+export const createManualFinanceTransaction = async (accountId: string,
+    manualFinanceTransactionInput: ManualFinanceTransactionInput, options?: Parameters<typeof customFetch>[1]): Promise<FinanceTransaction> => {
+
+  return customFetch<FinanceTransaction>(getCreateManualFinanceTransactionUrl(accountId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(manualFinanceTransactionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateManualFinanceTransactionMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createManualFinanceTransaction>>, TError,{accountId: string;data: BodyType<ManualFinanceTransactionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createManualFinanceTransaction>>, TError,{accountId: string;data: BodyType<ManualFinanceTransactionInput>}, TContext> => {
+
+const mutationKey = ['createManualFinanceTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createManualFinanceTransaction>>, {accountId: string;data: BodyType<ManualFinanceTransactionInput>}> = (props) => {
+          const {accountId,data} = props ?? {};
+
+          return  createManualFinanceTransaction(accountId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateManualFinanceTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof createManualFinanceTransaction>>>
+    export type CreateManualFinanceTransactionMutationBody = BodyType<ManualFinanceTransactionInput>
+    export type CreateManualFinanceTransactionMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Record a manual transaction for household review
+ */
+export const useCreateManualFinanceTransaction = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createManualFinanceTransaction>>, TError,{accountId: string;data: BodyType<ManualFinanceTransactionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createManualFinanceTransaction>>,
+        TError,
+        {accountId: string;data: BodyType<ManualFinanceTransactionInput>},
+        TContext
+      > => {
+      return useMutation(getCreateManualFinanceTransactionMutationOptions(options));
     }
 
 export const getListBillsUrl = () => {

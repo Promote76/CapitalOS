@@ -2373,6 +2373,44 @@ export const ImportFinancialAccountCsvResponse = zod.object({
 
 
 /**
+ * @summary Record a manual transaction for household review
+ */
+export const createManualFinanceTransactionPathAccountIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const CreateManualFinanceTransactionParams = zod.object({
+  "accountId": zod.coerce.string().regex(createManualFinanceTransactionPathAccountIdRegExp)
+})
+
+export const createManualFinanceTransactionBodyDescriptionMax = 240;
+
+export const createManualFinanceTransactionBodyMerchantMax = 160;
+
+export const createManualFinanceTransactionBodyAmountRegExp = new RegExp('^(?:0|[1-9][0-9]{0,15})(\\.[0-9]{1,2})?$');
+
+
+export const CreateManualFinanceTransactionBody = zod.object({
+  "transactionDate": zod.coerce.date(),
+  "description": zod.string().min(1).max(createManualFinanceTransactionBodyDescriptionMax),
+  "merchant": zod.string().max(createManualFinanceTransactionBodyMerchantMax).nullish(),
+  "amount": zod.string().regex(createManualFinanceTransactionBodyAmountRegExp),
+  "direction": zod.enum(['inflow', 'outflow'])
+})
+
+export const CreateManualFinanceTransactionResponse = zod.object({
+  "id": zod.string(),
+  "accountId": zod.string(),
+  "transactionDate": zod.coerce.date(),
+  "description": zod.string(),
+  "merchant": zod.string().nullable(),
+  "originalAmount": zod.string().nullable(),
+  "amount": zod.string(),
+  "dataSource": zod.string(),
+  "reviewStatus": zod.string()
+})
+
+
+/**
  * @summary List upcoming household bills
  */
 export const ListBillsResponseItem = zod.object({

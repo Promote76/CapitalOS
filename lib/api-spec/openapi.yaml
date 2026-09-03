@@ -1068,6 +1068,27 @@ paths:
                   imported: { type: number }
                   skippedDuplicates: { type: number }
                   readOnly: { type: boolean }
+  /financial-accounts/{accountId}/transactions:
+    post:
+      operationId: createManualFinanceTransaction
+      tags: [household-finance]
+      summary: Record a manual transaction for household review
+      parameters:
+        - $ref: "#/components/parameters/FinancialAccountId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ManualFinanceTransactionInput" }
+      responses:
+        "201":
+          description: Transaction recorded for review
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinanceTransaction" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /bills:
     get:
       operationId: listBills
@@ -3463,6 +3484,28 @@ components:
       required: [csv]
       properties:
         csv: { type: string, minLength: 1, maxLength: 100000 }
+    ManualFinanceTransactionInput:
+      type: object
+      required: [transactionDate, description, amount, direction]
+      properties:
+        transactionDate: { type: string, format: date }
+        description: { type: string, minLength: 1, maxLength: 240 }
+        merchant: { type: ["string", "null"], maxLength: 160 }
+        amount: { type: string, pattern: "^(?:0|[1-9][0-9]{0,15})(\\.[0-9]{1,2})?$" }
+        direction: { type: string, enum: [inflow, outflow] }
+    FinanceTransaction:
+      type: object
+      required: [id, accountId, transactionDate, description, merchant, originalAmount, amount, dataSource, reviewStatus]
+      properties:
+        id: { type: string }
+        accountId: { type: string }
+        transactionDate: { type: string, format: date }
+        description: { type: string }
+        merchant: { type: ["string", "null"] }
+        originalAmount: { type: ["string", "null"] }
+        amount: { type: string }
+        dataSource: { type: string }
+        reviewStatus: { type: string }
     Bill:
       type: object
       required: [id, householdId, billName, dueDate, expectedAmount, status, essential, autoPay, active]

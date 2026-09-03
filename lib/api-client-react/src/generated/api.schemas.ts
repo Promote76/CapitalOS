@@ -1576,6 +1576,45 @@ export interface CsvImportInput {
   csv: string;
 }
 
+export type ManualFinanceTransactionInputDirection = typeof ManualFinanceTransactionInputDirection[keyof typeof ManualFinanceTransactionInputDirection];
+
+
+export const ManualFinanceTransactionInputDirection = {
+  inflow: 'inflow',
+  outflow: 'outflow',
+} as const;
+
+export interface ManualFinanceTransactionInput {
+  transactionDate: string;
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  description: string;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  merchant?: string | null;
+  /** @pattern ^(?:0|[1-9][0-9]{0,15})(\.[0-9]{1,2})?$ */
+  amount: string;
+  direction: ManualFinanceTransactionInputDirection;
+}
+
+export interface FinanceTransaction {
+  id: string;
+  accountId: string;
+  transactionDate: string;
+  description: string;
+  /** @nullable */
+  merchant: string | null;
+  /** @nullable */
+  originalAmount: string | null;
+  amount: string;
+  dataSource: string;
+  reviewStatus: string;
+}
+
 export type BillStatus = typeof BillStatus[keyof typeof BillStatus];
 
 

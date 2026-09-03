@@ -31,15 +31,69 @@ The provider-neutral metric names and alert severity mapping live in `artifacts/
 | Micro-Live reconciliation failure | CRITICAL | Persist failure, stop the session, require post-incident review |
 | Guardian stop | CRITICAL | Do not re-arm until an independent healthy heartbeat exists |
 
+The alert thresholds are intentionally fail-closed and are verified by the
+non-production reliability test suite. The reliability operator owns all
+signals:
+
+| Metric | Threshold | Window |
+|---|---:|---:|
+| `readiness.blocked` | 1 | 1 minute |
+| `authorization.denied` | 10 | 5 minutes |
+| `database.failure` | 1 | 1 minute |
+| `rate_limit.unavailable` | 1 | 1 minute |
+| `rate_limit.exceeded` | 5 | 5 minutes |
+| `audit.write_failure` | 1 | 1 minute |
+| `idempotency.conflict` | 5 | 5 minutes |
+| `operations.job_failure` | 3 | 15 minutes |
+| `operations.job_dead_lettered` | 1 | 1 minute |
+| `micro_live.reconciliation_failure` | 1 | 1 minute |
+| `micro_live.guardian_stop` | 1 | 1 minute |
+
 The operations overview derives automation failures from persisted job state rather than a constant. Micro-Live reconciliation failures persist a failed run, stop the session, create an open incident, and append an audit event. Missing or invalid Guardian heartbeats are `STOP`, never synthetic `HEALTHY`.
 
 ## Audit controls
 
-Audit events remain append-only application evidence: mutation paths insert them, and no application route updates or deletes them. The required provider-neutral sink contract is an immutable append destination with restricted writer access, UTC timestamps, actor, household, entity, event type, reason, and structured metadata. Retention and shipping are deployment controls and remain configuration work for the internal operator; this sprint does not claim an external archive or immutable provider bucket is configured.
+Audit events are append-only application evidence: mutation paths insert them,
+and no application route updates or deletes them. Migration
+`0001_shared_rate_limit_and_audit_archive.sql` installs a database-owned
+`AFTER INSERT` shipper into `audit_events_archive`, backfills existing events,
+removes household-delete cascading from the source history, and installs
+append-only triggers on both tables. The archive denies direct public
+`INSERT`, `UPDATE`, `DELETE`, and `TRUNCATE` privileges; the security-definer
+shipper is the only writer path. It contains UTC event and archive timestamps,
+actor, household, entity, event type, reason, and structured before/after
+metadata.
+
+The documented retention period is **2,555 days (seven years)**. The archive
+destination is configured as `postgresql://audit_events_archive`, and the
+internal reliability operator owns retention monitoring and export access.
+This is a restricted immutable database destination, not a claim of a
+provider-managed object-lock bucket.
 
 ## Rate-limit topology
 
-The current in-process limiter is suitable for local and single-process internal evaluation only. It is not a horizontal production guarantee. Before any public or horizontally scaled deployment, use a shared atomic store (for example, a managed Redis-compatible service) behind a trusted proxy. Keys must include route class, authenticated actor, household, and client network identity as appropriate; forwarded headers must be accepted only from the trusted proxy. Fail closed for protected mutations when the shared limiter is unavailable, and keep the limiter independent from household financial state.
+The API now uses the shared PostgreSQL `rate_limit_buckets` table. Each request
+atomically upserts one bucket with a 60-second window and a 120-request limit.
+The bucket key includes route class, authenticated actor when available,
+household when resolved, and the client network identity. A limiter outage
+returns `503 RATE_LIMITER_UNAVAILABLE` for every state-changing method; reads
+continue so liveness remains observable.
+
+Production configuration must set:
+
+```text
+CAPITAL_OS_RATE_LIMIT_STORE=postgres
+CAPITAL_OS_TRUSTED_PROXY=<explicit ingress proxy IP, CIDR, or Express token>
+CAPITAL_OS_AUDIT_RETENTION_DAYS=2555
+CAPITAL_OS_AUDIT_ARCHIVE_DESTINATION=postgresql://audit_events_archive
+CAPITAL_OS_RELIABILITY_OWNER=<named internal operator>
+```
+
+The app sets Express `trust proxy` only from `CAPITAL_OS_TRUSTED_PROXY`; when
+unset it trusts no forwarded address, and production startup refuses to run.
+Forwarded headers are therefore usable for rate-limit network identity only
+when they came through the configured ingress topology. The limiter remains
+independent from household financial state.
 
 ## Future restore verifier scaffold
 

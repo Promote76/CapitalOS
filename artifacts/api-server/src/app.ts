@@ -14,13 +14,17 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import { requestContext } from "./middleware/request-context";
 import { errorHandler } from "./middleware/errors";
-import { correlationId, rateLimit, securityHeaders, writeBoundary } from "./middleware/safety";
+import { correlationId, rateLimit, securityHeaders, trustedProxySetting, writeBoundary } from "./middleware/safety";
+import { readReliabilityConfiguration } from "./domain/reliability.ts";
 
 const app: Express = express();
 
 app.disable("x-powered-by");
+if (process.env.NODE_ENV === "production") {
+  readReliabilityConfiguration();
+}
+app.set("trust proxy", trustedProxySetting());
 app.use(securityHeaders);
-app.use(rateLimit);
 app.use(correlationId);
 app.use(
   pinoHttp({
@@ -55,6 +59,7 @@ app.use(
     ),
   })),
 );
+app.use(rateLimit);
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(writeBoundary);

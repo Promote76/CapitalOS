@@ -18,8 +18,11 @@ function run(label, command, args) {
 
 const requiredFiles = [
   "artifacts/api-server/src/domain/reliability.ts",
+  "artifacts/api-server/src/middleware/safety.ts",
   "artifacts/api-server/src/domain/accounting.ts",
   "lib/db/src/schema/operations.ts",
+  "lib/db/src/schema/reliability.ts",
+  "lib/db/migrations/0001_shared_rate_limit_and_audit_archive.sql",
   "docs/CAPITAL_OS_INTERNAL_RELIABILITY.md",
   "scripts/verify-future-restore.mjs",
 ];
@@ -31,6 +34,9 @@ const sourceAssertions = [
   ["micro-live failure persistence", "artifacts/api-server/src/services/micro-live.ts", /RECONCILIATION_FAILURE/],
   ["guardian fail-closed default", "artifacts/api-server/src/services/micro-live.ts", /status: heartbeat\?\.status \?\? "STOP"/],
   ["accounting scope separation", "artifacts/api-server/src/domain/accounting.ts", /separate_scope/],
+  ["shared atomic rate limit", "artifacts/api-server/src/middleware/safety.ts", /rate_limit_buckets|RATE_LIMITER_UNAVAILABLE/],
+  ["trusted proxy fail closed", "artifacts/api-server/src/middleware/safety.ts", /CAPITAL_OS_TRUSTED_PROXY/],
+  ["immutable audit archive", "lib/db/migrations/0001_shared_rate_limit_and_audit_archive.sql", /audit_events_archive_append_only|audit_events_archive_restricted_insert|REVOKE INSERT, UPDATE, DELETE/],
 ];
 for (const [label, file, pattern] of sourceAssertions) {
   const content = fs.existsSync(path.join(rootDir, file)) ? fs.readFileSync(path.join(rootDir, file), "utf8") : "";

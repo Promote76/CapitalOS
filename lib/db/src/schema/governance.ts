@@ -137,7 +137,7 @@ export const auditEvents = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     householdId: uuid("household_id")
       .notNull()
-      .references(() => households.id, { onDelete: "cascade" }),
+      .references(() => households.id),
     eventType: text("event_type").notNull(),
     actor: text("actor").notNull(),
     entity: text("entity").notNull(),

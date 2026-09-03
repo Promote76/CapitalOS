@@ -16,3 +16,4 @@
 - [Database schema declaration refresh](db-schema-declaration-refresh.md) — rebuild database declarations after schema edits; do not rewrite baseline migrations around the generator path quirk.
 - [Clerk reverification transport](clerk-reverification-transport.md) — generated API clients must expose Clerk's reverification hint from wrapped error data before useReverification can retry.
 - [Financing response boundaries](financing-response-boundaries.md) — advisory financing responses normalize date fields and preserve explicit non-approval semantics at the API boundary.
+- [Capital OS audit archive](capital-os-audit-archive.md) — ship audit rows synchronously into a restricted append-only archive; never let household deletion cascade into history.

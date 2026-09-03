@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { writeBoundary } from "./safety.ts";
+import {
+  buildRateLimitKey,
+  rateLimit,
+  setRateLimitStoreForTests,
+  trustedProxySetting,
+  writeBoundary,
+} from "./safety.ts";
 
 function runBoundary(
   env: Record<string, string | undefined>,
@@ -134,4 +140,118 @@ test("the complete production origin matrix covers every state-changing method",
       }
     }
   }
+});
+
+function runRateLimit(
+  method: string,
+  store: { consume: () => Promise<{
+    allowed: boolean;
+    count: number;
+    resetAt: Date;
+  }> },
+) {
+  const req = {
+    method,
+    path: "/api/transfers",
+    ip: "203.0.113.10",
+    socket: { remoteAddress: "10.0.0.4" },
+    header() {
+      return undefined;
+    },
+  } as never;
+  let statusCode = 200;
+  let payload: unknown;
+  let continued = false;
+  const responseHeaders = new Map<string, number | string>();
+  const res = {
+    locals: { correlationId: "test-correlation" },
+    setHeader(name: string, value: number | string) {
+      responseHeaders.set(name, value);
+      return this;
+    },
+    status(code: number) {
+      statusCode = code;
+      return this;
+    },
+    json(value: unknown) {
+      payload = value;
+      return this;
+    },
+  } as never;
+  setRateLimitStoreForTests(store);
+  return rateLimit(req, res, () => {
+    continued = true;
+  }).then(() => ({ statusCode, payload, continued, responseHeaders }));
+}
+
+test("rate-limit keys include route, actor, household, and client network", () => {
+  const req = {
+    method: "POST",
+    path: "/api/transfers/123e4567-e89b-12d3-a456-426614174000",
+    ip: "203.0.113.10",
+    socket: { remoteAddress: "10.0.0.4" },
+    header(name: string) {
+      return name === "X-Test-Household-Id" ? "household-1" : undefined;
+    },
+  } as never;
+  const res = {
+    locals: {
+      securityContext: { userId: "user-1" },
+      householdId: "household-1",
+    },
+  } as never;
+  process.env.NODE_ENV = "test";
+  process.env.CAPITAL_OS_TEST_CONTEXT = "1";
+  const key = buildRateLimitKey(req, res);
+  assert.match(key, /POST:api\/transfers\/:id/);
+  assert.match(key, /actor:user-1/);
+  assert.match(key, /household:household-1/);
+  assert.match(key, /network:203\.0\.113\.10/);
+});
+
+test("protected mutations fail closed when the shared limiter is unavailable", async () => {
+  const result = await runRateLimit("POST", {
+    async consume() {
+      throw new Error("database unavailable");
+    },
+  });
+  assert.equal(result.statusCode, 503);
+  assert.equal(result.continued, false);
+  assert.equal((result.payload as { code: string }).code, "RATE_LIMITER_UNAVAILABLE");
+});
+
+test("read traffic preserves liveness while the limiter is unavailable", async () => {
+  const result = await runRateLimit("GET", {
+    async consume() {
+      throw new Error("database unavailable");
+    },
+  });
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.continued, true);
+});
+
+test("rate-limit responses include a retry window", async () => {
+  const result = await runRateLimit("POST", {
+    async consume() {
+      return { allowed: false, count: 121, resetAt: new Date(Date.now() + 30_000) };
+    },
+  });
+  assert.equal(result.statusCode, 429);
+  assert.equal(result.continued, false);
+  assert.equal(result.responseHeaders.get("Retry-After"), 30);
+});
+
+test("trusted proxy configuration never trusts forwarded addresses by default", () => {
+  assert.equal(trustedProxySetting({ NODE_ENV: "development" }), false);
+  assert.deepEqual(
+    trustedProxySetting({
+      NODE_ENV: "production",
+      CAPITAL_OS_TRUSTED_PROXY: "10.0.0.0/8, 192.0.2.10",
+    }),
+    ["10.0.0.0/8", "192.0.2.10"],
+  );
+  assert.throws(
+    () => trustedProxySetting({ NODE_ENV: "production" }),
+    /CAPITAL_OS_TRUSTED_PROXY/,
+  );
 });

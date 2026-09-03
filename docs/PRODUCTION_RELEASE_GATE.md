@@ -78,9 +78,9 @@
 - [ ] Production Clerk instance and allowed origins are configured.
 - [ ] Internal database is managed and schema publication path is documented for the release.
 - [ ] Durable queue/scheduler configuration is recorded.
-- [ ] Rate-limit store and trusted proxy configuration are recorded.
-- [ ] Structured log retention and audit-log shipping are configured.
-- [ ] Readiness, authorization, database, automation, and reconciliation alerts are configured.
+- [x] Rate-limit store and trusted proxy configuration are recorded. Shared PostgreSQL buckets, explicit `CAPITAL_OS_TRUSTED_PROXY`, and write fail-closed behavior are documented in `docs/CAPITAL_OS_INTERNAL_RELIABILITY.md`.
+- [x] Audit-log shipping and immutable audit retention are configured. The append-only `audit_events_archive` destination, trigger shipper, restricted privileges, and 2,555-day retention policy are recorded in `docs/CAPITAL_OS_INTERNAL_RELIABILITY.md`; generic platform log retention remains deployment-specific.
+- [x] Readiness, authorization, database, rate-limit, audit, automation, and reconciliation alert thresholds and operator ownership are configured and verified by the non-production reliability test suite.
 - [ ] No secrets appear in frontend bundles, logs, error responses, audit payloads, or AI context.
 
 ## Internal reliability sprint evidence

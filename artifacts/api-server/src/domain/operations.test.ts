@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { assertSafeAutomationAction, calculateOperationsHealth } from "./operations.ts";
-import { RELIABILITY_ALERTS, RELIABILITY_METRICS, reliabilityEvent } from "./reliability.ts";
+import {
+  AUDIT_ARCHIVE_DESTINATION,
+  AUDIT_RETENTION_DAYS,
+  RELIABILITY_ALERTS,
+  RELIABILITY_ALERT_OWNER,
+  RELIABILITY_ALERT_THRESHOLDS,
+  RELIABILITY_METRICS,
+  readReliabilityConfiguration,
+  reliabilityEvent,
+} from "./reliability.ts";
 
 describe("operations safety", () => {
   it("blocks automation actions that would control capital or security", () => {
@@ -47,5 +56,46 @@ describe("operations safety", () => {
     });
     assert.equal(event.householdId, null);
     assert.deepEqual(event.metadata, {});
+  });
+
+  it("requires explicit non-production ownership and records the shared controls", () => {
+    const configuration = readReliabilityConfiguration({
+      NODE_ENV: "test",
+      CAPITAL_OS_TRUSTED_PROXY: "10.0.0.0/8",
+      CAPITAL_OS_RELIABILITY_OWNER: "internal-reliability",
+    });
+    assert.equal(configuration.rateLimitStore, "postgres");
+    assert.equal(configuration.auditArchiveDestination, AUDIT_ARCHIVE_DESTINATION);
+    assert.equal(configuration.auditRetentionDays, AUDIT_RETENTION_DAYS);
+    assert.equal(RELIABILITY_ALERT_OWNER, "reliability-operator");
+    assert.deepEqual(RELIABILITY_ALERT_THRESHOLDS["rate_limit.unavailable"], {
+      threshold: 1,
+      windowMinutes: 1,
+    });
+    assert.throws(
+      () => readReliabilityConfiguration({ NODE_ENV: "test", CAPITAL_OS_TRUSTED_PROXY: "10.0.0.0/8" }),
+      /CAPITAL_OS_RELIABILITY_OWNER/,
+    );
+    assert.throws(
+      () => readReliabilityConfiguration({
+        NODE_ENV: "test",
+        CAPITAL_OS_TRUSTED_PROXY: "10.0.0.0/8",
+        CAPITAL_OS_RELIABILITY_OWNER: "internal-reliability",
+        CAPITAL_OS_AUDIT_RETENTION_DAYS: "30",
+      }),
+      /at least 365/,
+    );
+    assert.throws(
+      () => readReliabilityConfiguration({ NODE_ENV: "production" }),
+      /CAPITAL_OS_TRUSTED_PROXY/,
+    );
+    assert.doesNotThrow(() => readReliabilityConfiguration({
+      NODE_ENV: "production",
+      CAPITAL_OS_TRUSTED_PROXY: "10.0.0.0/8",
+      CAPITAL_OS_RATE_LIMIT_STORE: "postgres",
+      CAPITAL_OS_AUDIT_RETENTION_DAYS: "2555",
+      CAPITAL_OS_AUDIT_ARCHIVE_DESTINATION: AUDIT_ARCHIVE_DESTINATION,
+      CAPITAL_OS_RELIABILITY_OWNER: "internal-reliability",
+    }));
   });
 });

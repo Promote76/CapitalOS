@@ -4,13 +4,20 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const rootDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+);
 const generatedPaths = [
   "lib/api-client-react/src/generated",
   "lib/api-zod/src/generated",
   "lib/db/migrations",
 ];
-const snapshotDir = fs.mkdtempSync(path.join(os.tmpdir(), "capital-os-generated-"));
+const apiCodegenCommand =
+  "Regenerate API artifacts with `pnpm --filter @workspace/api-spec run codegen`.";
+const snapshotDir = fs.mkdtempSync(
+  path.join(os.tmpdir(), "capital-os-generated-"),
+);
 
 function copyDirectory(source, destination) {
   if (fs.existsSync(source)) {
@@ -20,7 +27,10 @@ function copyDirectory(source, destination) {
 
 function snapshotGeneratedOutput() {
   for (const relativePath of generatedPaths) {
-    copyDirectory(path.join(rootDir, relativePath), path.join(snapshotDir, relativePath));
+    copyDirectory(
+      path.join(rootDir, relativePath),
+      path.join(snapshotDir, relativePath),
+    );
   }
 }
 
@@ -60,10 +70,12 @@ function listFiles(directory, rootDirectory = directory) {
 function directoryContents(relativePath) {
   const directory = path.join(rootDir, relativePath);
   const files = listFiles(directory);
-  return new Map(files.map((file) => {
-    const filePath = path.join(directory, file);
-    return [file, fs.readFileSync(filePath)];
-  }));
+  return new Map(
+    files.map((file) => {
+      const filePath = path.join(directory, file);
+      return [file, fs.readFileSync(filePath)];
+    }),
+  );
 }
 
 function changedFiles(relativePath) {
@@ -76,18 +88,29 @@ function changedFiles(relativePath) {
   const after = directoryContents(relativePath);
   const files = new Set([...before.keys(), ...after.keys()]);
 
-  return [...files].filter((file) => {
-    const beforeContents = before.get(file);
-    const afterContents = after.get(file);
-    return !beforeContents || !afterContents || !beforeContents.equals(afterContents);
-  }).sort();
+  return [...files]
+    .filter((file) => {
+      const beforeContents = before.get(file);
+      const afterContents = after.get(file);
+      return (
+        !beforeContents ||
+        !afterContents ||
+        !beforeContents.equals(afterContents)
+      );
+    })
+    .sort();
 }
 
 function printStaleArtifacts() {
   const staleArtifacts = new Map(
-    generatedPaths.map((relativePath) => [relativePath, changedFiles(relativePath)]),
+    generatedPaths.map((relativePath) => [
+      relativePath,
+      changedFiles(relativePath),
+    ]),
   );
-  const hasStaleArtifacts = [...staleArtifacts.values()].some((files) => files.length > 0);
+  const hasStaleArtifacts = [...staleArtifacts.values()].some(
+    (files) => files.length > 0,
+  );
 
   if (!hasStaleArtifacts) {
     console.log("\nGenerated finance artifacts are fresh.");
@@ -105,12 +128,11 @@ function printStaleArtifacts() {
     );
   }
   if (
-    (staleArtifacts.get("lib/api-client-react/src/generated") ?? []).length > 0 ||
+    (staleArtifacts.get("lib/api-client-react/src/generated") ?? []).length >
+      0 ||
     (staleArtifacts.get("lib/api-zod/src/generated") ?? []).length > 0
   ) {
-    console.error(
-      "\nRegenerate API artifacts with `pnpm --filter @workspace/api-spec run codegen`.",
-    );
+    console.error(`\n${apiCodegenCommand}`);
   }
   console.error("Commit the generated files, then rerun this check.");
   return false;
@@ -142,6 +164,9 @@ try {
       "run",
       "codegen",
     ]);
+  if (migrationsGenerated && !apiArtifactsGenerated) {
+    console.error(`\nAPI artifact generation failed. ${apiCodegenCommand}`);
+  }
   passed = apiArtifactsGenerated && printStaleArtifacts();
 } finally {
   restoreGeneratedOutput();

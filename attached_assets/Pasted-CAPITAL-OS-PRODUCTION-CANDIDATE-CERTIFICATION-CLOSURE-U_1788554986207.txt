@@ -1,0 +1,587 @@
+CAPITAL OS — PRODUCTION CANDIDATE CERTIFICATION CLOSURE
+
+Use BOTH of these documents as historical/current evidence:
+
+1. PRODUCTION_CANDIDATE_CERTIFICATION_2026-09-02.md
+2. Current PRODUCTION_READINESS_AUDIT dated 2026-09-04
+
+The September 2 certification returned:
+
+NOT READY
+
+Do not change that result merely by editing documentation.
+
+The purpose of this task is to determine which blocked/partial gates
+have actually been fixed in the current HEAD and produce NEW runtime
+evidence.
+
+DO NOT:
+
+- enable Micro-Live
+- enable live trading
+- transmit brokerage orders
+- enable ACH
+- move money
+- enable autonomous AI execution
+- fabricate PASS evidence
+
+==================================================
+PHASE 1 — RECONCILE CERTIFICATION EVIDENCE
+==================================================
+
+Compare the September 2 certification against current HEAD.
+
+For every previous:
+
+PASS
+PARTIAL PASS
+BLOCKED
+FAIL
+
+determine:
+
+1. Has implementation changed?
+2. Is the required test now executable?
+3. Has runtime evidence actually been generated?
+4. Is documentation stale?
+
+Create an evidence matrix containing:
+
+Gate
+Old Result
+Current Implementation
+Runtime Test
+Current Result
+Evidence Location
+
+The stricter result governs whenever evidence conflicts.
+
+==================================================
+PHASE 2 — EXISTING-SCHEMA UPGRADE
+==================================================
+
+The older certification states the historical schema artifact was
+unavailable.
+
+The newer audit indicates an approved historical snapshot is now
+committed.
+
+Locate it.
+
+Execute an actual:
+
+historical schema
+→ populate representative data
+→ current migration/upgrade
+→ verify data preservation
+→ verify constraints
+→ verify household ownership
+→ verify financial invariants
+
+Test at minimum:
+
+households
+memberships
+accounts
+transactions
+budgets
+goals
+contributions
+Treasury
+business
+property
+audit records
+
+Do not mark PASS from file existence alone.
+
+==================================================
+PHASE 3 — COMPLETE TWO-HOUSEHOLD IDOR MATRIX
+==================================================
+
+Create Household A and Household B.
+
+Systematically attack every authenticated API using caller-controlled
+identifiers.
+
+Include:
+
+Treasury
+Strategy Lab
+Operations
+Capital
+Business
+Property
+Micro-Live
+Finance
+Goals
+Contributions
+Accounts
+Transactions
+Transfers
+Documents
+Reports
+
+For each applicable resource test:
+
+GET foreign ID
+POST foreign ID
+PATCH foreign ID
+DELETE foreign ID
+nested foreign ID
+foreign householdId
+foreign userId
+
+Expected:
+
+403 or 404 according to policy
+
+NEVER foreign data.
+
+Generate a machine-readable matrix.
+
+Critical cross-household failure = certification FAIL.
+
+==================================================
+PHASE 4 — TREASURY
+==================================================
+
+Verify current Treasury implementation.
+
+Require:
+
+actor-scoped reads
+actor-scoped writes
+role-aware protected-balance redaction
+atomic approvals
+atomic reservations/debits
+decision idempotency
+immutable decision audit
+concurrency safety
+
+Execute runtime tests.
+
+Repeated approval must create only ONE economic effect.
+
+==================================================
+PHASE 5 — MANUAL FINANCE RUNTIME
+==================================================
+
+Execute the database-backed test for:
+
+CREATE
+→ REVIEW
+→ APPROVE
+→ FRESH READ
+→ BUDGET RECALCULATION
+→ CASH-FLOW RECALCULATION
+→ SAFE-TO-DEPLOY RECALCULATION
+
+Also execute REJECT path.
+
+Fix the test runner/environment if necessary.
+
+A test existing in source is not certification.
+
+==================================================
+PHASE 6 — AUTHENTICATED BROWSER E2E
+==================================================
+
+Establish an authenticated test environment.
+
+Execute actual browser journeys for:
+
+sign in
+onboarding
+household selection
+reload persistence
+Owner access
+Partner access
+Advisor restrictions
+Viewer denial
+cross-household denial
+recent-auth challenge
+failed reverification
+successful reverification
+sign out
+sign back in
+
+Verify:
+
+authentication strength never changes authorization.
+
+Browser rendering alone is not PASS.
+
+==================================================
+PHASE 7 — SERVER EMERGENCY STOP
+==================================================
+
+Verify Emergency Stop is authoritative server state.
+
+If still React/local-only, fix it.
+
+Required states:
+
+DISABLED
+MICRO_LIVE_ELIGIBLE
+MICRO_LIVE_ARMED
+MICRO_LIVE_ACTIVE
+SAFE_MODE
+STOP
+EVACUATE
+LOCKED
+
+STOP must survive:
+
+browser reload
+new browser
+API process restart
+
+Frontend must not independently enable execution.
+
+==================================================
+PHASE 8 — BACKUP / RESTORE
+==================================================
+
+Use an approved managed backup mechanism available to the deployed
+database.
+
+Execute:
+
+backup
+→ isolated restore
+→ application connection
+→ invariant verification
+
+Measure:
+
+backup timestamp
+restore start
+restore completion
+RPO observation
+RTO observation
+
+Verify restored:
+
+households
+accounts
+ledger totals
+audit records
+protected capital
+transaction state
+
+No simulated restore evidence.
+
+If infrastructure genuinely prevents execution:
+
+BLOCKED
+
+not PASS.
+
+==================================================
+PHASE 9 — OPERATIONS RECOVERY
+==================================================
+
+Execute real worker/scheduler lifecycle testing.
+
+Test:
+
+job creation
+lease
+execution
+worker crash
+restart
+stale lease recovery
+retry
+maximum retry
+dead-letter
+operator visibility
+idempotent reprocessing
+
+Prepared durable rows without a running/recoverable worker do not PASS.
+
+==================================================
+PHASE 10 — OBSERVABILITY
+==================================================
+
+Prove actual runtime telemetry for:
+
+API failure
+database failure
+queue depth
+queue lag
+worker heartbeat
+scheduler heartbeat
+audit failure
+reconciliation failure
+bank provider failure
+Guardian state
+execution state
+
+Prove at least one named alert destination receives a synthetic
+critical alert.
+
+Documentation-only metrics = PARTIAL.
+
+==================================================
+PHASE 11 — ACCOUNTING
+==================================================
+
+Inspect every remaining placeholder/hardcoded financial value.
+
+Replace with:
+
+authoritative calculation
+
+or:
+
+UNAVAILABLE
+
+or:
+
+REVIEW_REQUIRED
+
+Specifically inspect:
+
+liabilities
+real estate
+investments
+business equity
+withdrawals
+fees
+realized gains
+tax values
+return on capital
+
+Do not represent incomplete accounting as a complete financial
+statement.
+
+==================================================
+PHASE 12 — SAFE-TO-DEPLOY
+==================================================
+
+Execute cross-domain invariant tests proving Safe-to-Deploy excludes:
+
+Duplex Reserve
+Emergency Reserve
+protected capital
+business cash without approved distribution
+unapproved transactions
+unreviewed imported transactions
+paper P&L
+shadow P&L
+simulated P&L
+projected income
+unverified assets
+unrealized hypothetical returns
+
+==================================================
+PHASE 13 — MICRO-LIVE FOUNDATION
+==================================================
+
+DO NOT ACTIVATE IT.
+
+Only certify the foundation.
+
+Verify:
+
+execution default = DISABLED
+AI execution = FALSE
+automation capital movement = FALSE
+server Emergency Stop
+Guardian
+OMS
+OrderIntent durability
+idempotent clientOrderId
+UNKNOWN state recovery
+reconciliation
+restart reconciliation
+capital isolation
+credential isolation
+loss governors
+drawdown governors
+
+No real order.
+
+==================================================
+PHASE 14 — SCHWAB
+==================================================
+
+Do not send an order.
+
+Do not expose credentials.
+
+Determine whether Capital OS is technically eligible for a future
+READ-ONLY Schwab connection.
+
+Return:
+
+SCHWAB READ-ONLY = ELIGIBLE
+
+only if the security, tenant, credential, audit, and provider-boundary
+requirements necessary for read-only access pass.
+
+Trading remains:
+
+DISABLED
+
+==================================================
+PHASE 15 — RERUN PRODUCTION CERTIFICATION
+==================================================
+
+Run the complete current certification suite.
+
+No critical skips may produce READY.
+
+Rules:
+
+critical PASS = runtime evidence exists
+critical BLOCKED = NOT READY
+critical FAIL = NOT READY
+critical SKIPPED = NOT READY
+
+==================================================
+PHASE 16 — CREATE ONE NEW AUTHORITATIVE DOCUMENT
+==================================================
+
+Create:
+
+docs/CAPITAL_OS_CURRENT_CERTIFICATION.md
+
+This becomes the single CURRENT certification document.
+
+Preserve older reports as historical evidence.
+
+Do not rewrite history.
+
+Include:
+
+Current date
+Current HEAD
+Previous certification result
+Changes since certification
+Complete gate matrix
+Runtime evidence
+Blocked evidence
+Security status
+Financial-integrity status
+Operational status
+Banking status
+Execution status
+Micro-Live status
+Release decision
+
+Explicitly state:
+
+REAL BANK PROVIDER:
+<status>
+
+MONEY MOVEMENT:
+<status>
+
+MICRO-LIVE:
+<status>
+
+LIVE TRADING:
+<status>
+
+AI EXECUTION:
+<status>
+
+==================================================
+FINAL RESPONSE
+==================================================
+
+Return exactly:
+
+CURRENT HEAD:
+<hash>
+
+PREVIOUS CERTIFICATION:
+NOT READY
+
+TOTAL CRITICAL GATES:
+<number>
+
+PASS:
+<number>
+
+PARTIAL:
+<number>
+
+BLOCKED:
+<number>
+
+FAIL:
+<number>
+
+TENANT / IDOR:
+PASS / PARTIAL / FAIL
+
+TREASURY:
+PASS / PARTIAL / FAIL
+
+MANUAL FINANCE:
+PASS / PARTIAL / FAIL
+
+AUTHENTICATED BROWSER E2E:
+PASS / BLOCKED / FAIL
+
+CLERK REVERIFICATION:
+PASS / BLOCKED / FAIL
+
+MIGRATION UPGRADE:
+PASS / BLOCKED / FAIL
+
+BACKUP / RESTORE:
+PASS / BLOCKED / FAIL
+
+WORKER / SCHEDULER:
+PASS / PARTIAL / FAIL
+
+OBSERVABILITY:
+PASS / PARTIAL / FAIL
+
+ACCOUNTING:
+PASS / PARTIAL / FAIL
+
+SAFE-TO-DEPLOY:
+PASS / FAIL
+
+SERVER EMERGENCY STOP:
+PASS / FAIL
+
+GUARDIAN:
+PASS / FAIL
+
+OMS:
+PASS / FAIL
+
+RECONCILIATION:
+PASS / FAIL
+
+MICRO-LIVE FOUNDATION:
+PASS / FAIL
+
+SCHWAB READ-ONLY:
+ELIGIBLE / BLOCKED
+
+SCHWAB TRADING:
+DISABLED
+
+MICRO-LIVE EXECUTION:
+DISABLED
+
+LIVE TRADING:
+DISABLED
+
+AI EXECUTION:
+DISABLED
+
+PRODUCTION CANDIDATE:
+READY / NOT READY
+
+NEXT BLOCKER:
+<single highest-priority unresolved blocker>
+
+AUTHORITATIVE DOCUMENT:
+docs/CAPITAL_OS_CURRENT_CERTIFICATION.md

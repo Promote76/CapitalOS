@@ -1,0 +1,448 @@
+CAPITAL OS — EXECUTION BLOCKER REMEDIATION
+
+Use PRODUCTION_READINESS_AUDIT_2026-09-02 (3).md,
+review date 2026-09-04, HEAD 53c7cb6, as the authoritative
+current readiness audit.
+
+OBJECTIVE:
+
+Do NOT activate Schwab trading.
+Do NOT activate Micro-Live.
+Do NOT send real orders.
+Do NOT configure production trading credentials yet.
+
+Before continuing the Micro-Live activation plan, remediate every
+current P0 and execution-relevant high-priority defect identified
+by the September 4 audit.
+
+PHASE 1 — TENANT ISOLATION
+
+Remove seeded household context from every authenticated service,
+especially:
+
+- treasury.ts
+- micro-live.ts
+- business.ts
+- property-underwriting.ts
+- capital-os.ts
+- all related callers
+
+Every authenticated read and mutation must derive household scope
+from the authenticated request actor.
+
+Create a two-household adversarial certification suite.
+
+For Household A and Household B, attack every caller-controlled:
+
+- householdId
+- userId
+- accountId
+- strategyId
+- executionSessionId
+- orderIntentId
+- treasuryId
+- propertyId
+- businessId
+- positionId
+- fillId
+
+Require cross-household access to fail closed.
+
+Micro-Live cannot become execution-eligible until this passes.
+
+
+PHASE 2 — TREASURY
+
+Fix Treasury so:
+
+- getTreasury receives authenticated actor context
+- protected balances follow role-aware response policy
+- approvals are atomic
+- reservations/debits are atomic where applicable
+- decisions are idempotent
+- decision audit events are immutable
+- repeated approval cannot create duplicate economic effects
+
+Certify with concurrency tests.
+
+
+PHASE 3 — MANUAL FINANCE
+
+Fix the broken manual transaction lifecycle.
+
+Current problem:
+
+manual transaction
+→ needs_review
+→ review service rejects manual source
+
+Implement and certify:
+
+CREATE
+→ REVIEW
+→ APPROVE / REJECT
+→ BUDGET RECALCULATION
+→ CASH-FLOW RECALCULATION
+→ SAFE-TO-DEPLOY RECALCULATION
+
+No manual financial transaction may become stranded.
+
+
+PHASE 4 — REMOVE FALSE FINANCIAL STATE
+
+Remove all hardcoded financial fallback values presented as
+household truth.
+
+Implement explicit:
+
+LOADING
+EMPTY
+UNAVAILABLE
+STALE
+ERROR
+DEMO
+
+states.
+
+Demo data must never masquerade as authenticated household data.
+
+Replace misleading local-only success actions.
+
+A toast must never imply a financial or safety action occurred
+unless authoritative server state confirms it.
+
+
+PHASE 5 — EMERGENCY STOP
+
+The audit reports Emergency Stop is currently local React state.
+
+This is unacceptable for future real execution.
+
+Implement authoritative server-side execution state:
+
+DISABLED
+MICRO_LIVE_ELIGIBLE
+MICRO_LIVE_ARMED
+MICRO_LIVE_ACTIVE
+SAFE_MODE
+STOP
+EVACUATE
+LOCKED
+
+Emergency Stop must persist server-side.
+
+Frontend state cannot enable or override execution.
+
+
+PHASE 6 — AUDIT ATTRIBUTION
+
+Correct incomplete audit attribution across:
+
+- Operations
+- Treasury
+- Business
+- Micro-Live
+- future execution paths
+
+Persist:
+
+actor
+household
+action
+before state
+after state
+timestamp
+correlation ID
+reason where applicable
+
+High-value audit history must be append-only.
+
+
+PHASE 7 — CLERK REVERIFICATION
+
+Complete authenticated browser certification for protected actions.
+
+Prove:
+
+successful reverification
+failed reverification
+retry
+authorization after reverification
+Viewer remains Viewer after reverification
+
+Authentication strength must never increase authorization.
+
+
+PHASE 8 — ACCOUNTING
+
+Replace hardcoded/incomplete accounting values with:
+
+- authoritative calculations
+OR
+- explicit UNAVAILABLE / REVIEW_REQUIRED states
+
+Do not manufacture:
+
+investment values
+real-estate values
+withdrawals
+realized gains
+fees
+tax values
+return-on-capital
+
+Cross-domain accounting must reconcile before live trading.
+
+
+PHASE 9 — SAFE-TO-DEPLOY
+
+Build cross-domain invariant tests proving Safe-to-Deploy cannot
+include:
+
+- Duplex protected capital
+- Emergency reserves
+- unauthorized business cash
+- unapproved transactions
+- paper trading P&L
+- simulated P&L
+- projected income
+- unverified assets
+
+Execution capital must be separately authorized.
+
+
+PHASE 10 — OPERATIONS RELIABILITY
+
+Complete:
+
+- durable worker startup
+- scheduler execution
+- worker restart recovery
+- retry processing
+- dead-letter handling
+- queue health
+- metrics
+- named alert delivery
+
+A process restart must not silently lose prepared work.
+
+
+PHASE 11 — EXECUTION-SPECIFIC MICRO-LIVE FIXES
+
+Before connecting Schwab for trading, certify:
+
+1. Actor-scoped Micro-Live service
+2. Server-side Emergency Stop
+3. Capital isolation
+4. Durable OrderIntent
+5. OMS state machine
+6. Guardian
+7. Pre-trade risk
+8. Idempotent client order IDs
+9. Unknown-order recovery
+10. Fill reconciliation
+11. Restart reconciliation
+12. Venue/internal position reconciliation
+13. Immutable execution audit
+14. Loss/drawdown governors
+15. No leverage
+16. AI execution authority = FALSE
+17. Automation execution authority = FALSE
+
+
+PHASE 12 — SCHWAB ADAPTER BOUNDARY
+
+Build the Schwab adapter interface, but DO NOT enable trading yet.
+
+Support:
+
+getAccounts()
+getBalances()
+getPositions()
+getOpenOrders()
+getOrder()
+getFills()
+getMarketData()
+getMarketRules()
+
+Trading methods may exist behind:
+
+LIVE_EXECUTION_ENABLED = false
+
+Do not configure real production credentials as part of automated
+development.
+
+Never store Client Secret in:
+
+database plaintext
+frontend
+browser storage
+logs
+AI prompts
+audit payloads
+
+
+PHASE 13 — READ-ONLY SCHWAB CERTIFICATION
+
+Only after P0 remediation passes may the operator manually configure
+Schwab OAuth.
+
+First certification must be READ ONLY.
+
+Verify:
+
+OAuth
+token refresh
+account discovery
+balances
+positions
+market data
+open orders
+fills
+disconnect/reconnect
+expired credentials
+API outage
+rate limiting
+
+No orders.
+
+
+PHASE 14 — CREATE NEW CERTIFICATION
+
+Create:
+
+pnpm run certify:execution-foundation
+
+Required gates:
+
+EF-01 Tenant Isolation
+EF-02 Treasury Integrity
+EF-03 Manual Finance Lifecycle
+EF-04 Financial Truth UI
+EF-05 Accounting Integrity
+EF-06 Safe-to-Deploy Isolation
+EF-07 Server Emergency Stop
+EF-08 Actor Attribution
+EF-09 Clerk Reverification
+EF-10 Worker Recovery
+EF-11 Observability
+EF-12 Micro-Live Tenant Isolation
+EF-13 Guardian
+EF-14 OMS
+EF-15 Reconciliation
+EF-16 Restart Recovery
+EF-17 AI Authority
+EF-18 Automation Authority
+EF-19 Credential Boundary
+EF-20 Capital Isolation
+
+NO SKIPPED CRITICAL GATES.
+
+Any critical failure:
+
+MICRO_LIVE = DISABLED
+
+
+PHASE 15 — DO NOT ACTIVATE TRADING
+
+At completion of this prompt:
+
+Schwab Read-Only:
+ELIGIBLE only if certification passes
+
+Schwab Trading:
+DISABLED
+
+Micro-Live:
+DISABLED
+
+Live Trading:
+DISABLED
+
+AI Execution:
+DISABLED
+
+
+PHASE 16 — UPDATE THE AUTHORITATIVE AUDIT
+
+Update the September 4 production-readiness audit with:
+
+- each defect
+- code change
+- test
+- certification evidence
+- unresolved issue
+- exact execution status
+
+Do not mark a finding closed from source inspection alone when
+runtime/browser evidence is required.
+
+
+FINAL RESPONSE
+
+Return:
+
+P0 DEFECTS FOUND AT START:
+<number>
+
+P0 DEFECTS CLOSED:
+<number>
+
+P0 DEFECTS OPEN:
+<number>
+
+TENANT ISOLATION:
+PASS / FAIL
+
+MICRO-LIVE TENANT ISOLATION:
+PASS / FAIL
+
+TREASURY:
+PASS / FAIL
+
+MANUAL TRANSACTION LIFECYCLE:
+PASS / FAIL
+
+FINANCIAL UI TRUTH:
+PASS / FAIL
+
+ACCOUNTING:
+PASS / PARTIAL / FAIL
+
+SAFE-TO-DEPLOY:
+PASS / FAIL
+
+SERVER EMERGENCY STOP:
+PASS / FAIL
+
+CLERK REVERIFICATION:
+PASS / FAIL
+
+WORKER RECOVERY:
+PASS / FAIL
+
+OBSERVABILITY:
+PASS / PARTIAL / FAIL
+
+EXECUTION FOUNDATION:
+PASS / FAIL
+
+SCHWAB ADAPTER:
+READY / PARTIAL / NOT READY
+
+SCHWAB READ-ONLY:
+ELIGIBLE / BLOCKED
+
+SCHWAB TRADING:
+DISABLED
+
+MICRO-LIVE:
+DISABLED
+
+LIVE TRADING:
+DISABLED
+
+NEXT REQUIRED ACTION:
+<exact action>
+
+Do not activate real-money execution.

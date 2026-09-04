@@ -1,0 +1,697 @@
+CAPITAL OS — OPERATIONS RECOVERY CERTIFICATION CLOSURE
+
+Use:
+
+docs/CAPITAL_OS_CURRENT_CERTIFICATION.md
+
+as the single authoritative current certification.
+
+Do not add new product features.
+
+CURRENT STATUS:
+
+Server Emergency Stop = PASS
+Guardian = PASS
+OMS = PASS
+Reconciliation = PASS
+Worker / Scheduler = PARTIAL
+
+The durable operations implementation already includes:
+
+- durable PostgreSQL jobs
+- leases
+- lease-owner fencing
+- attempts
+- workers
+- schedules
+- scheduler leadership
+- retries
+- dead letters
+- authorized reprocessing
+- Operations UI projections
+- opt-in runtime loops
+
+Do NOT rewrite those components merely to satisfy this prompt.
+
+This sprint exists to EXECUTE AND CLOSE the remaining
+Worker / Scheduler certification evidence.
+
+DO NOT:
+
+- activate Micro-Live
+- connect Schwab
+- transmit brokerage orders
+- enable ACH
+- move real money
+- introduce production financial credentials
+- grant AI execution authority
+
+==================================================
+1. INSPECT EXISTING OPERATIONS CERTIFICATION
+==================================================
+
+Inspect:
+
+scripts/certify-operations-recovery.mjs
+
+and:
+
+artifacts/api-server/src/integration/operations-recovery.test.ts
+
+Determine which OR gates already have actual runtime evidence.
+
+Do not duplicate passing tests.
+
+Produce an initial matrix:
+
+OR gate
+Implementation
+Existing runtime evidence
+Missing evidence
+Required action
+
+==================================================
+2. GRACEFUL SHUTDOWN
+==================================================
+
+Execute a real worker lifecycle:
+
+create jobs
+→ start worker
+→ worker leases job
+→ send SIGTERM or platform-equivalent graceful shutdown
+→ worker stops claiming new jobs
+→ current work finishes OR safely relinquishes lease
+→ authoritative state persists
+→ process exits
+→ replacement worker starts
+→ remaining work completes
+
+Verify:
+
+no lost jobs
+no duplicate economic effects
+no permanently stranded leases
+
+==================================================
+3. HARD-CRASH RECOVERY
+==================================================
+
+Execute an actual non-graceful worker termination.
+
+Required:
+
+create durable job
+→ Worker A claims job
+→ Worker A begins
+→ kill Worker A WITHOUT cleanup
+→ verify job remains durably represented
+→ lease becomes stale
+→ Worker B starts
+→ stale lease recovered
+→ authoritative state reconstructed
+→ job resumes/retries
+→ job reaches correct terminal state
+
+This must be actual runtime evidence.
+
+Source inspection is not sufficient.
+
+==================================================
+4. EXACTLY-ONCE ECONOMIC EFFECT
+==================================================
+
+Simulate:
+
+worker performs economic/persistent effect
+→ crashes before completion acknowledgement
+→ job retries
+
+Verify the system produces:
+
+ONE economic effect
+
+not:
+
+two reservations
+two audit economic events
+two ledger effects
+two execution transitions
+two provider-sync effects
+
+Use persisted idempotency/fencing.
+
+==================================================
+5. RETRY CERTIFICATION
+==================================================
+
+Execute:
+
+TRANSIENT FAILURE
+→ RETRY_PENDING
+→ backoff
+→ retry
+→ success
+
+Verify attempt count and timestamps.
+
+Then:
+
+PERMANENT FAILURE
+→ no inappropriate retry storm
+
+Then:
+
+REPEATED TRANSIENT FAILURE
+→ maxAttempts reached
+→ DEAD_LETTER
+
+==================================================
+6. BACKOFF
+==================================================
+
+Certify the actual persisted backoff implementation.
+
+Verify:
+
+retry delay increases according to policy
+maximum backoff is bounded
+next available execution time is persisted
+jitter does not violate bounds
+
+Do not require wall-clock waits unnecessarily.
+
+Use controllable certification clocks where safe.
+
+==================================================
+7. DEAD LETTER
+==================================================
+
+Execute a job through maxAttempts.
+
+Verify DEAD_LETTER retains:
+
+job ID
+household
+job type
+correlation ID
+attempt count
+error history
+timestamps
+original safe payload reference
+
+No secret material may be exposed.
+
+==================================================
+8. OPERATOR REPROCESSING
+==================================================
+
+Using the authorized reprocessing path:
+
+DEAD_LETTER
+→ authorized operator requests reprocess
+→ audit event written
+→ safe new attempt/recovery occurs
+→ idempotency preserved
+
+Test unauthorized reprocessing.
+
+Expected:
+
+DENIED.
+
+Test cross-household reprocessing.
+
+Expected:
+
+DENIED.
+
+==================================================
+9. STOP DURING JOB
+==================================================
+
+This is a critical execution-safety test.
+
+Required:
+
+Execution Control = ACTIVE/eligible simulated state
+→ execution-capable background workflow begins
+→ transition authoritative server state to STOP
+→ worker reaches next safety boundary
+
+Expected:
+
+NO NEW EXPOSURE
+
+Worker must consult authoritative execution state before any
+exposure-increasing operation.
+
+STOP dominates continuation.
+
+No live venue is required.
+
+Use simulated execution.
+
+==================================================
+10. GUARDIAN FAILURE DURING JOB
+==================================================
+
+Simulate Guardian:
+
+STALE
+UNAVAILABLE
+STOP
+DISAGREEMENT
+
+during an execution-capable background workflow.
+
+Expected in every unsafe case:
+
+NO NEW EXPOSURE.
+
+Worker must fail closed.
+
+==================================================
+11. RISK GOVERNOR FAILURE
+==================================================
+
+Simulate unavailable/denying risk governor.
+
+Expected:
+
+NO NEW EXPOSURE.
+
+Background processing may perform safe reconciliation/reporting
+where appropriate, but may not increase exposure.
+
+==================================================
+12. RECONCILIATION CRASH RECOVERY
+==================================================
+
+Create a simulated reconciliation discrepancy.
+
+Then:
+
+create reconciliation job
+→ worker leases
+→ reconciliation begins
+→ kill worker
+→ replacement worker recovers
+→ discrepancy evidence remains
+→ reconciliation completes or safely escalates
+
+Verify:
+
+no discrepancy evidence lost
+no duplicate order submission
+no false reconciled state
+
+==================================================
+13. UNKNOWN ORDER RECOVERY
+==================================================
+
+Using simulated venue state only:
+
+OrderIntent = UNKNOWN
+→ durable recovery job
+→ worker begins
+→ worker crashes
+→ replacement worker recovers
+→ simulated venue queried
+→ internal state reconciled
+
+Verify:
+
+NO duplicate order transmission.
+
+==================================================
+14. SCHEDULER LEADERSHIP
+==================================================
+
+Run two scheduler instances concurrently.
+
+Both see the same due schedule.
+
+Expected:
+
+ONE authoritative scheduled job.
+
+Verify leadership fencing prevents duplicate creation.
+
+Kill scheduler leader.
+
+Verify another scheduler safely assumes leadership.
+
+==================================================
+15. MISSED-SCHEDULE RECOVERY
+==================================================
+
+Execute:
+
+persistent schedule exists
+→ scheduler stopped
+→ due time passes
+→ scheduler restarts
+
+Verify explicit policy:
+
+CATCH_UP
+
+or:
+
+SKIP
+
+according to job definition.
+
+Required work must not silently disappear.
+
+==================================================
+16. MULTI-WORKER CONTENTION
+==================================================
+
+Run multiple workers simultaneously.
+
+Create at least:
+
+100 jobs
+
+Verify:
+
+100 jobs accounted for
+0 lost
+0 duplicate valid leases
+0 duplicate terminal economic effects
+0 invalid state transitions
+
+Record worker distribution.
+
+==================================================
+17. HOUSEHOLD ISOLATION
+==================================================
+
+Execute two-household job tests.
+
+Worker handling Household A must not:
+
+read Household B job details
+mutate Household B job
+reprocess Household B dead letter
+access Household B financial state
+
+Do not trust arbitrary householdId inside payload.
+
+==================================================
+18. AUDIT ATTRIBUTION
+==================================================
+
+Certify audit evidence for:
+
+job creation
+lease
+start
+heartbeat
+retry
+lease recovery
+success
+failure
+dead letter
+operator reprocess
+scheduler creation
+missed schedule recovery
+
+Capture appropriate:
+
+system principal / actor
+household
+job
+action
+worker
+attempt
+timestamp
+correlation ID
+result
+
+==================================================
+19. WORKER METRICS
+==================================================
+
+Expose and certify actual metric values for:
+
+queue_depth
+oldest_pending_job_age
+retry_queue_depth
+dead_letter_count
+active_worker_count
+stale_worker_count
+worker_heartbeat_age
+job_execution_duration
+job_failure_count
+job_retry_count
+recovered_job_count
+
+Tests must demonstrate metrics changing in response to runtime events.
+
+==================================================
+20. SCHEDULER METRICS
+==================================================
+
+Expose and certify:
+
+scheduler_heartbeat
+scheduler_leader
+scheduler_lag
+missed_schedule_count
+schedule_recovery_count
+
+Again, prove actual runtime values.
+
+Do NOT mark the broader Observability gate PASS merely because
+operations metrics now exist.
+
+Named alert delivery remains a separate certification requirement.
+
+==================================================
+21. PROCESS RESTART
+==================================================
+
+Restart:
+
+API
+worker
+scheduler
+
+in appropriate combinations.
+
+Verify durable authoritative state survives.
+
+No restart may silently:
+
+delete jobs
+reset attempts
+unlock execution
+lose dead letters
+erase schedules
+duplicate economic effects
+
+==================================================
+22. DATABASE FAILURE
+==================================================
+
+Simulate temporary database unavailability.
+
+Workers must not continue financial/execution-capable work based
+only on memory.
+
+Expected:
+
+FAIL CLOSED
+
+then recover safely when authoritative persistence returns.
+
+==================================================
+23. CERTIFICATION
+==================================================
+
+Complete:
+
+pnpm run certify:operations-recovery
+
+Required:
+
+OR-01 Durable Persistence
+OR-02 Atomic Leasing
+OR-03 Worker Heartbeat
+OR-04 Stale Worker Detection
+OR-05 Graceful Shutdown
+OR-06 Hard Crash Recovery
+OR-07 Retry Policy
+OR-08 Backoff
+OR-09 Dead Letter
+OR-10 Operator Reprocessing
+OR-11 Idempotent Recovery
+OR-12 Scheduler Persistence
+OR-13 Scheduler Leadership
+OR-14 Missed Schedule Recovery
+OR-15 Household Isolation
+OR-16 Execution Control Integration
+OR-17 Guardian Integration
+OR-18 STOP During Job
+OR-19 Reconciliation Recovery
+OR-20 UNKNOWN Order Recovery
+OR-21 Audit Attribution
+OR-22 Multi-Worker Contention
+OR-23 Queue Metrics
+OR-24 Scheduler Metrics
+
+NO CRITICAL SKIPS.
+
+Any unexecuted critical OR gate means:
+
+WORKER / SCHEDULER = PARTIAL
+
+not PASS.
+
+==================================================
+24. REGRESSION
+==================================================
+
+After operations certification run:
+
+pnpm run typecheck
+
+PostgreSQL API integration suite
+
+pnpm run certify:execution-control
+
+pnpm run certify:micro-live
+
+current production-candidate certification
+
+Verify no regression to:
+
+Server Emergency Stop
+Guardian
+OMS
+Reconciliation
+tenant isolation
+Treasury
+Manual Finance
+Safe-to-Deploy
+
+==================================================
+25. UPDATE CURRENT CERTIFICATION
+==================================================
+
+Update:
+
+docs/CAPITAL_OS_CURRENT_CERTIFICATION.md
+
+Change:
+
+Worker / Scheduler = PASS
+
+ONLY if OR-01 through OR-24 all pass with runtime evidence.
+
+Otherwise leave:
+
+PARTIAL
+
+and state the exact remaining OR gate(s).
+
+Do not change unrelated certification gates without new evidence.
+
+==================================================
+FINAL RESPONSE
+==================================================
+
+Return:
+
+CURRENT HEAD:
+<hash>
+
+OPERATIONS RECOVERY:
+PASS / PARTIAL / FAIL
+
+OR GATES:
+<passed>/24
+
+GRACEFUL SHUTDOWN:
+PASS / FAIL
+
+HARD CRASH RECOVERY:
+PASS / FAIL
+
+IDEMPOTENT RECOVERY:
+PASS / FAIL
+
+RETRY:
+PASS / FAIL
+
+BACKOFF:
+PASS / FAIL
+
+DEAD LETTER:
+PASS / FAIL
+
+OPERATOR REPROCESSING:
+PASS / FAIL
+
+SCHEDULER LEADERSHIP:
+PASS / FAIL
+
+MISSED SCHEDULE:
+PASS / FAIL
+
+STOP DURING JOB:
+PASS / FAIL
+
+GUARDIAN DURING JOB:
+PASS / FAIL
+
+RECONCILIATION RECOVERY:
+PASS / FAIL
+
+UNKNOWN ORDER RECOVERY:
+PASS / FAIL
+
+MULTI-WORKER 100-JOB TEST:
+PASS / FAIL
+
+HOUSEHOLD ISOLATION:
+PASS / FAIL
+
+AUDIT:
+PASS / FAIL
+
+QUEUE METRICS:
+PASS / FAIL
+
+SCHEDULER METRICS:
+PASS / FAIL
+
+REAL ORDERS SENT:
+0
+
+MICRO-LIVE:
+DISABLED
+
+SCHWAB:
+DISABLED
+
+AI EXECUTION:
+DISABLED
+
+CURRENT CRITICAL GATE COUNTS:
+PASS <n>
+PARTIAL <n>
+BLOCKED <n>
+FAIL <n>
+
+PRODUCTION CANDIDATE:
+<actual status>
+
+NEXT HIGHEST-PRIORITY BLOCKER:
+<one exact blocker>
+
+UPDATED CERTIFICATION:
+docs/CAPITAL_OS_CURRENT_CERTIFICATION.md

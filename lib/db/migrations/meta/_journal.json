@@ -50,6 +50,13 @@
       "when": 1788555894013,
       "tag": "0006_ancient_scalphunter",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788558139543,
+      "tag": "0007_charming_multiple_man",
+      "breakpoints": true
     }
   ]
 }

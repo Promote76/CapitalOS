@@ -38,3 +38,17 @@ export function calculateOperationsHealth(input: {
     ),
   );
 }
+
+export type OperationFailureClass = "TRANSIENT" | "PERMANENT" | "UNKNOWN";
+export function classifyOperationsFailure(error: unknown): OperationFailureClass {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  if (/invalid|unauthori|forbidden|payload|state/.test(message)) return "PERMANENT";
+  if (/timeout|tempor|contention|network|unavailable/.test(message)) return "TRANSIENT";
+  return "UNKNOWN";
+}
+export function operationsBackoffMs(attempt: number, base = 1000, cap = 60_000) {
+  return Math.min(cap, base * 2 ** Math.max(0, attempt - 1));
+}
+export function isSafeOperationsJobKind(kind: string) {
+  return ["SAFE_AUTOMATION", "ADVISORY", "RECONCILIATION"].includes(kind);
+}

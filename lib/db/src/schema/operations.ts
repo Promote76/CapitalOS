@@ -134,11 +134,18 @@ export const operationsJobs = pgTable(
     kind: text("kind").notNull(),
     payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
     status: text("status").notNull().default("QUEUED"),
+    priority: integer("priority").notNull().default(100),
     attempts: integer("attempts").notNull().default(0),
     maxAttempts: integer("max_attempts").notNull().default(3),
     availableAt: timestamp("available_at", { withTimezone: true }).defaultNow().notNull(),
     claimedAt: timestamp("claimed_at", { withTimezone: true }),
     claimedBy: text("claimed_by"),
+    leaseOwner: text("lease_owner"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    idempotencyKey: text("idempotency_key"),
+    correlationId: text("correlation_id"),
+    payloadReference: text("payload_reference"),
     lastError: text("last_error"),
     deadLetterReason: text("dead_letter_reason"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -147,10 +154,80 @@ export const operationsJobs = pgTable(
   },
   (table) => ({
     householdJobKeyUnique: uniqueIndex("operations_jobs_household_job_key_unique").on(table.householdId, table.jobKey),
+    idempotencyUnique: uniqueIndex("operations_jobs_household_idempotency_unique").on(table.householdId, table.idempotencyKey),
     claimIdx: index("operations_jobs_claim_idx").on(table.status, table.availableAt),
     householdStatusIdx: index("operations_jobs_household_status_idx").on(table.householdId, table.status),
   }),
 );
+
+/** Immutable record of each lease/attempt. Payloads are intentionally absent. */
+export const operationsJobAttempts = pgTable(
+  "operations_job_attempts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    jobId: uuid("job_id").notNull().references(() => operationsJobs.id, { onDelete: "cascade" }),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    attempt: integer("attempt").notNull(),
+    workerId: text("worker_id").notNull(),
+    status: text("status").notNull().default("LEASED"),
+    classification: text("classification"),
+    error: text("error"),
+    leasedAt: timestamp("leased_at", { withTimezone: true }).defaultNow().notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+  },
+  (table) => ({
+    jobAttemptUnique: uniqueIndex("operations_job_attempts_job_attempt_unique").on(table.jobId, table.attempt),
+    householdIdx: index("operations_job_attempts_household_idx").on(table.householdId, table.leasedAt),
+  }),
+);
+
+export const operationsWorkers = pgTable("operations_workers", {
+  workerId: text("worker_id").primaryKey(),
+  status: text("status").notNull().default("STARTING"),
+  currentJobId: uuid("current_job_id").references(() => operationsJobs.id, { onDelete: "set null" }),
+  startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+  lastHeartbeatAt: timestamp("last_heartbeat_at", { withTimezone: true }).defaultNow().notNull(),
+  version: text("version").notNull().default("unknown"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const operationsSchedulers = pgTable("operations_schedulers", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  jobKind: text("job_kind").notNull(),
+  cadence: text("cadence").notNull(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  missedRunPolicy: text("missed_run_policy").notNull().default("SKIP"),
+  enabled: boolean("enabled").notNull().default(true),
+  nextRunAt: timestamp("next_run_at", { withTimezone: true }).notNull(),
+  lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  householdNameUnique: uniqueIndex("operations_schedulers_household_name_unique").on(table.householdId, table.name),
+  dueIdx: index("operations_schedulers_due_idx").on(table.enabled, table.nextRunAt),
+}));
+
+export const operationsSchedulerLeases = pgTable("operations_scheduler_leases", {
+  singleton: text("singleton").primaryKey().default("operations"),
+  ownerId: text("owner_id").notNull(),
+  leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }).notNull(),
+  heartbeatAt: timestamp("heartbeat_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const operationsMetrics = pgTable("operations_metrics", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id").references(() => households.id, { onDelete: "cascade" }),
+  metric: text("metric").notNull(),
+  value: integer("value").notNull().default(0),
+  observedAt: timestamp("observed_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  metricIdx: index("operations_metrics_metric_observed_idx").on(table.metric, table.observedAt),
+}));
 
 export const operationsNotificationPreferences = pgTable(
   "operations_notification_preferences",
@@ -183,4 +260,8 @@ export type OperationsAlert = typeof operationsAlerts.$inferSelect;
 export type OperationsAutomation = typeof operationsAutomations.$inferSelect;
 export type OperationsRun = typeof operationsRuns.$inferSelect;
 export type OperationsJob = typeof operationsJobs.$inferSelect;
+export type OperationsJobAttempt = typeof operationsJobAttempts.$inferSelect;
+export type OperationsWorker = typeof operationsWorkers.$inferSelect;
+export type OperationsScheduler = typeof operationsSchedulers.$inferSelect;
+export type OperationsMetric = typeof operationsMetrics.$inferSelect;
 export type OperationsNotificationPreferences = typeof operationsNotificationPreferences.$inferSelect;

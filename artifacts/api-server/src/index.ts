@@ -1,6 +1,8 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { ensureSeedData } from "./services/seed";
+import { startOperationsWorker } from "./services/operations-worker";
+import { startOperationsScheduler } from "./services/operations-scheduler";
 
 const rawPort = process.env["PORT"];
 
@@ -16,13 +18,22 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
+const server = app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
   }
   logger.info({ port }, "Server listening");
 });
+const stopOperationsWorker = startOperationsWorker();
+const stopOperationsScheduler = startOperationsScheduler();
+const shutdown = () => {
+  stopOperationsWorker();
+  stopOperationsScheduler();
+  server.close(() => process.exit(0));
+};
+process.once("SIGTERM", shutdown);
+process.once("SIGINT", shutdown);
 
 // Development-only seed warmup. Production onboarding owns household creation;
 // a deployed process must never create the demo household as a side effect.

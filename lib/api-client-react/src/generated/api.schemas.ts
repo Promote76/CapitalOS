@@ -3381,6 +3381,114 @@ export interface OperationsOverview {
   notifications: OperationsNotificationPreferences;
 }
 
+export type OperationsJobStatus = typeof OperationsJobStatus[keyof typeof OperationsJobStatus];
+
+
+export const OperationsJobStatus = {
+  QUEUED: 'QUEUED',
+  LEASED: 'LEASED',
+  RUNNING: 'RUNNING',
+  RETRY_PENDING: 'RETRY_PENDING',
+  SUCCEEDED: 'SUCCEEDED',
+  DEAD_LETTER: 'DEAD_LETTER',
+} as const;
+
+export interface OperationsJob {
+  id: string;
+  householdId: string;
+  jobKey: string;
+  kind: string;
+  status: OperationsJobStatus;
+  priority: number;
+  /** @minimum 0 */
+  attempts: number;
+  /** @minimum 1 */
+  maxAttempts: number;
+  availableAt: string;
+  /** @nullable */
+  claimedAt: string | null;
+  /** @nullable */
+  claimedBy: string | null;
+  /** @nullable */
+  leaseOwner: string | null;
+  /** @nullable */
+  leaseExpiresAt: string | null;
+  /** @nullable */
+  startedAt: string | null;
+  /** @nullable */
+  idempotencyKey: string | null;
+  /** @nullable */
+  correlationId: string | null;
+  /** @nullable */
+  payloadReference: string | null;
+  /** @nullable */
+  lastError: string | null;
+  /** @nullable */
+  deadLetterReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** @nullable */
+  completedAt: string | null;
+}
+
+export type OperationsJobMetricsStatuses = {[key: string]: number};
+
+export interface OperationsJobMetrics {
+  /** @minimum 0 */
+  queueDepth: number;
+  /** @minimum 0 */
+  retryQueueDepth: number;
+  /** @minimum 0 */
+  deadLetterCount: number;
+  statuses: OperationsJobMetricsStatuses;
+}
+
+export interface OperationsWorker {
+  workerId: string;
+  status: string;
+  /** @nullable */
+  currentJobId: string | null;
+  startedAt: string;
+  lastHeartbeatAt: string;
+  version: string;
+  updatedAt: string;
+}
+
+export type OperationsSchedulerPayload = { [key: string]: unknown };
+
+export type OperationsSchedulerMissedRunPolicy = typeof OperationsSchedulerMissedRunPolicy[keyof typeof OperationsSchedulerMissedRunPolicy];
+
+
+export const OperationsSchedulerMissedRunPolicy = {
+  CATCH_UP: 'CATCH_UP',
+  SKIP: 'SKIP',
+} as const;
+
+export interface OperationsScheduler {
+  id: string;
+  householdId: string;
+  name: string;
+  jobKind: string;
+  cadence: string;
+  payload: OperationsSchedulerPayload;
+  missedRunPolicy: OperationsSchedulerMissedRunPolicy;
+  enabled: boolean;
+  nextRunAt: string;
+  /** @nullable */
+  lastRunAt: string | null;
+  /** @nullable */
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OperationsSchedulerLease {
+  singleton: string;
+  ownerId: string;
+  leaseExpiresAt: string;
+  heartbeatAt: string;
+}
+
 /**
  * Invalid request
  */
@@ -3433,5 +3541,10 @@ export type ReceiveReadOnlyBankWebhook202 = {
   accepted: boolean;
   duplicate: boolean;
   eventId: string;
+};
+
+export type RecoverMissedOperationsSchedules200 = {
+  /** @minimum 0 */
+  recovered: number;
 };
 

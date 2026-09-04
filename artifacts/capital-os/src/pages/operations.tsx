@@ -1,6 +1,8 @@
 import { FormEvent, useMemo, useState } from "react";
 import {
   AlertCircle,
+  Activity,
+  ArchiveRestore,
   BellRing,
   CalendarClock,
   Check,
@@ -13,6 +15,7 @@ import {
   Play,
   Plus,
   RefreshCw,
+  Server,
   ShieldCheck,
   SlidersHorizontal,
   UserRound,
@@ -21,19 +24,30 @@ import {
 } from "lucide-react";
 import {
   getGetOperationsOverviewQueryKey,
+  getGetOperationsJobMetricsQueryKey,
   getGetOperationsNotificationPreferencesQueryKey,
   getListOperationsAlertsQueryKey,
   getListOperationsApprovalsQueryKey,
   getListOperationsAutomationsQueryKey,
   getListOperationsTasksQueryKey,
+  getListOperationsJobsQueryKey,
+  getListOperationsSchedulersQueryKey,
+  getListOperationsWorkerHealthQueryKey,
   useCreateOperationsTask,
   useDecideOperationsApproval,
   useGetOperationsNotificationPreferences,
   useGetOperationsOverview,
+  useGetOperationsJobMetrics,
   useListOperationsAlerts,
   useListOperationsApprovals,
   useListOperationsAutomations,
   useListOperationsTasks,
+  useListOperationsJobs,
+  useListOperationsSchedulers,
+  useListOperationsWorkerHealth,
+  useReprocessOperationsJob,
+  useAcquireOperationsSchedulerLeadership,
+  useRecoverMissedOperationsSchedules,
   useRunOperationsAutomation,
   useUpdateOperationsAlert,
   useUpdateOperationsNotificationPreferences,
@@ -41,6 +55,9 @@ import {
   type OperationsAlert,
   type OperationsApproval,
   type OperationsAutomation,
+  type OperationsJob,
+  type OperationsScheduler,
+  type OperationsWorker,
   type OperationsNotificationPreferences,
   type OperationsTask,
 } from "@workspace/api-client-react";
@@ -148,6 +165,76 @@ function AlertRow({ alert, onUpdate, pending }: { alert: OperationsAlert; onUpda
   );
 }
 
+function jobStatusTone(status: string) {
+  if (status === "DEAD_LETTER") return "review";
+  if (status === "RETRY_PENDING" || status === "LEASED" || status === "RUNNING") return "pending";
+  return "";
+}
+
+function DurableOperationsPanel({
+  jobs,
+  metrics,
+  workers,
+  schedulers,
+  loading,
+  onReprocess,
+  onLeadership,
+  onRecoverSchedules,
+  pendingJobId,
+  leadershipPending,
+  recoveryPending,
+}: {
+  jobs: OperationsJob[];
+  metrics?: { queueDepth: number; retryQueueDepth: number; deadLetterCount: number; statuses: Record<string, number> };
+  workers: OperationsWorker[];
+  schedulers: OperationsScheduler[];
+  loading: boolean;
+  onReprocess: (job: OperationsJob) => void;
+  onLeadership: () => void;
+  onRecoverSchedules: () => void;
+  pendingJobId: string;
+  leadershipPending: boolean;
+  recoveryPending: boolean;
+}) {
+  const statusOrder = ["QUEUED", "LEASED", "RUNNING", "RETRY_PENDING", "DEAD_LETTER", "SUCCEEDED"];
+  return (
+    <section className="card card-pad operations-runtime animate-in delay-2" data-testid="card-operations-runtime">
+      <div className="operations-section-heading">
+        <div><span className="operations-kicker">Durable runtime</span><h2>Work that survives a restart.</h2><p>Jobs, leases, retries, and scheduler state remain PostgreSQL-backed. This surface is advisory-only and cannot move capital or submit orders.</p></div>
+        <Activity size={18} />
+      </div>
+      {loading && <div className="operations-loading-line">Reading durable runtime state…</div>}
+      <div className="operations-runtime-metrics">
+        <div><span>Queue depth</span><strong>{metrics?.queueDepth ?? "—"}</strong></div>
+        <div><span>Retry queue</span><strong>{metrics?.retryQueueDepth ?? "—"}</strong></div>
+        <div><span>Dead letter</span><strong>{metrics?.deadLetterCount ?? "—"}</strong></div>
+        <div><span>Workers</span><strong>{workers.length || "—"}</strong></div>
+      </div>
+      <div className="operations-runtime-grid">
+        <div>
+          <div className="operations-runtime-subheading"><strong>Queue status</strong><span>{jobs.length} recent jobs</span></div>
+          <div className="operations-status-pills">
+            {statusOrder.map((status) => <span key={status} className={`operations-status-pill ${jobStatusTone(status)}`}><b>{metrics?.statuses?.[status] ?? 0}</b>{titleCase(status)}</span>)}
+          </div>
+          {jobs.length === 0 && <div className="operations-empty-line"><ArchiveRestore size={14} /> No durable jobs have been recorded.</div>}
+          {jobs.slice(0, 6).map((job) => <article className="operations-job-row" key={job.id} data-testid={`row-operations-job-${job.id}`}>
+            <div className="operations-job-icon"><Server size={14} /></div>
+            <div><strong>{titleCase(job.kind)}</strong><span>{job.correlationId || job.jobKey} · attempt {job.attempts}/{job.maxAttempts}</span><small>{job.lastError || `Available ${dateLabel(job.availableAt)}`}</small></div>
+            <div className="operations-job-side"><span className={`status ${jobStatusTone(job.status)}`}>{titleCase(job.status)}</span>{job.status === "DEAD_LETTER" && <button className="btn" type="button" disabled={pendingJobId === job.id} onClick={() => onReprocess(job)} data-testid={`button-reprocess-job-${job.id}`}>{pendingJobId === job.id ? "Requeueing…" : "Reprocess"}</button>}</div>
+          </article>)}
+        </div>
+        <div>
+          <div className="operations-runtime-subheading"><strong>Workers & scheduler</strong><span>{schedulers.length} schedules</span></div>
+          {workers.length === 0 && <div className="operations-empty-line"><Activity size={14} /> No worker heartbeat has been recorded.</div>}
+          {workers.slice(0, 3).map((worker) => <div className="operations-runtime-line" key={worker.workerId}><span><Server size={13} /> {worker.workerId}</span><span className="status">{titleCase(worker.status)} · {dateLabel(worker.lastHeartbeatAt, "No heartbeat")}</span></div>)}
+          {schedulers.slice(0, 3).map((schedule) => <div className="operations-runtime-line" key={schedule.id}><span><CalendarClock size={13} /> {schedule.name}</span><span>{titleCase(schedule.missedRunPolicy)} · {dateLabel(schedule.nextRunAt)}</span></div>)}
+          <div className="operations-runtime-actions"><button className="btn" type="button" disabled={leadershipPending} onClick={onLeadership} data-testid="button-operations-scheduler-leadership">{leadershipPending ? "Acquiring…" : "Acquire scheduler lease"}</button><button className="btn" type="button" disabled={recoveryPending} onClick={onRecoverSchedules} data-testid="button-recover-operations-schedules">{recoveryPending ? "Recovering…" : "Recover missed runs"}</button></div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function NotificationPreferences({ preferences, onSaved, onFeedback }: { preferences: OperationsNotificationPreferences; onSaved: (data: Partial<OperationsNotificationPreferences>) => Promise<void>; onFeedback: Feedback }) {
   const [draft, setDraft] = useState(preferences);
   const [quietStart, setQuietStart] = useState(preferences.quietHoursStart || "");
@@ -182,24 +269,32 @@ export default function OperationsPage({ onFeedback }: { onFeedback: Feedback })
   const alertsQuery = useListOperationsAlerts();
   const automationsQuery = useListOperationsAutomations();
   const preferencesQuery = useGetOperationsNotificationPreferences();
+  const jobsQuery = useListOperationsJobs();
+  const jobMetricsQuery = useGetOperationsJobMetrics();
+  const workersQuery = useListOperationsWorkerHealth();
+  const schedulersQuery = useListOperationsSchedulers();
   const createTask = useCreateOperationsTask();
   const updateTask = useUpdateOperationsTask();
   const decideApproval = useDecideOperationsApproval();
   const updateAlert = useUpdateOperationsAlert();
   const runAutomation = useRunOperationsAutomation();
   const updatePreferences = useUpdateOperationsNotificationPreferences();
+  const reprocessJob = useReprocessOperationsJob();
+  const acquireLeadership = useAcquireOperationsSchedulerLeadership();
+  const recoverSchedules = useRecoverMissedOperationsSchedules();
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskFilter, setTaskFilter] = useState<"ALL" | TaskStatus>("ALL");
   const [taskForm, setTaskForm] = useState({ title: "", description: "", domain: "household", priority: "MEDIUM" as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW", dueDate: "", assignedTo: "" });
   const [mutationId, setMutationId] = useState("");
   const [automationRun, setAutomationRun] = useState("");
+  const [runtimeMutationId, setRuntimeMutationId] = useState("");
 
   const tasks = tasksQuery.data || overview.data?.tasks || [];
   const approvals = approvalsQuery.data || overview.data?.approvals || [];
   const alerts = alertsQuery.data || overview.data?.alerts || [];
   const automations = automationsQuery.data || overview.data?.automations || [];
   const filteredTasks = useMemo(() => taskFilter === "ALL" ? tasks : tasks.filter((task) => task.status === taskFilter), [taskFilter, tasks]);
-  const refreshAll = () => { void Promise.all([overview.refetch(), tasksQuery.refetch(), approvalsQuery.refetch(), alertsQuery.refetch(), automationsQuery.refetch(), preferencesQuery.refetch()]); };
+  const refreshAll = () => { void Promise.all([overview.refetch(), tasksQuery.refetch(), approvalsQuery.refetch(), alertsQuery.refetch(), automationsQuery.refetch(), preferencesQuery.refetch(), jobsQuery.refetch(), jobMetricsQuery.refetch(), workersQuery.refetch(), schedulersQuery.refetch()]); };
   const invalidateOperations = async (...keys: ReadonlyArray<readonly unknown[]>) => {
     await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
   };
@@ -233,6 +328,22 @@ export default function OperationsPage({ onFeedback }: { onFeedback: Feedback })
   const savePreferences = async (data: Partial<OperationsNotificationPreferences>) => {
     try { await updatePreferences.mutateAsync({ data }); await invalidateOperations(getGetOperationsNotificationPreferencesQueryKey(), getGetOperationsOverviewQueryKey()); } catch (error) { onFeedback(error instanceof Error ? error.message : "Preferences could not be saved."); }
   };
+  const reprocess = async (job: OperationsJob) => {
+    setRuntimeMutationId(job.id);
+    try {
+      await reprocessJob.mutateAsync({ jobId: job.id });
+      await invalidateOperations(getListOperationsJobsQueryKey(), getGetOperationsJobMetricsQueryKey(), getGetOperationsOverviewQueryKey());
+      onFeedback("Dead-letter job requeued with its original failure history preserved.");
+    } catch (error) { onFeedback(error instanceof Error ? error.message : "Job could not be reprocessed."); } finally { setRuntimeMutationId(""); }
+  };
+  const acquireSchedulerLease = async () => {
+    setRuntimeMutationId("scheduler");
+    try { await acquireLeadership.mutateAsync(); await invalidateOperations(getListOperationsWorkerHealthQueryKey(), getListOperationsSchedulersQueryKey()); onFeedback("Scheduler leadership lease acquired."); } catch (error) { onFeedback(error instanceof Error ? error.message : "Scheduler lease could not be acquired."); } finally { setRuntimeMutationId(""); }
+  };
+  const recoverSchedulesNow = async () => {
+    setRuntimeMutationId("schedules");
+    try { const result = await recoverSchedules.mutateAsync(); await invalidateOperations(getListOperationsJobsQueryKey(), getGetOperationsJobMetricsQueryKey(), getListOperationsSchedulersQueryKey()); onFeedback(`${result.recovered} missed schedule${result.recovered === 1 ? "" : "s"} reviewed.`); } catch (error) { onFeedback(error instanceof Error ? error.message : "Missed schedules could not be recovered."); } finally { setRuntimeMutationId(""); }
+  };
 
   if (overview.isLoading && !overview.data) return <main className="content operations-page"><OperationsSkeleton /></main>;
   if (overview.isError && !overview.data) return <main className="content operations-page"><OperationsError onRetry={refreshAll} /></main>;
@@ -256,6 +367,19 @@ export default function OperationsPage({ onFeedback }: { onFeedback: Feedback })
         <OperationsMetric label="Alerts" value={today?.criticalAlerts ?? "—"} detail={`${health?.criticalAlerts ?? 0} critical · ${health?.overdueTasks ?? 0} overdue`} tone={today?.criticalAlerts ? "attention" : ""} />
         <OperationsMetric label="Plan actions" value={(today?.billsDue ?? 0) + (today?.goalActions ?? 0) + (today?.propertyActions ?? 0)} detail={`${today?.billsDue ?? 0} bills · ${today?.goalActions ?? 0} goal · ${today?.propertyActions ?? 0} property`} />
       </section>
+      <DurableOperationsPanel
+        jobs={jobsQuery.data || []}
+        metrics={jobMetricsQuery.data}
+        workers={workersQuery.data || []}
+        schedulers={schedulersQuery.data || []}
+        loading={jobsQuery.isLoading || jobMetricsQuery.isLoading || workersQuery.isLoading || schedulersQuery.isLoading}
+        onReprocess={(job) => { void reprocess(job); }}
+        onLeadership={() => { void acquireSchedulerLease(); }}
+        onRecoverSchedules={() => { void recoverSchedulesNow(); }}
+        pendingJobId={runtimeMutationId}
+        leadershipPending={runtimeMutationId === "scheduler"}
+        recoveryPending={runtimeMutationId === "schedules"}
+      />
       {showTaskForm && <form className="card card-pad operations-task-form animate-in" onSubmit={(event) => { void submitTask(event); }} data-testid="form-create-operations-task"><div className="operations-section-heading"><div><span className="operations-kicker">New queue item</span><h2>Give the next move a home.</h2></div><button className="icon-btn" type="button" aria-label="Close add task form" onClick={() => setShowTaskForm(false)} data-testid="button-close-task-form"><X size={15} /></button></div><div className="operations-form-grid"><label>Task title<input required value={taskForm.title} onChange={(event) => setTaskForm({ ...taskForm, title: event.target.value })} placeholder="e.g. Confirm insurance renewal" data-testid="input-operations-task-title" /></label><label>Domain<input required value={taskForm.domain} onChange={(event) => setTaskForm({ ...taskForm, domain: event.target.value })} placeholder="bills, property, accounting" data-testid="input-operations-task-domain" /></label><label className="wide">Description<textarea required value={taskForm.description} onChange={(event) => setTaskForm({ ...taskForm, description: event.target.value })} placeholder="What does done look like?" data-testid="input-operations-task-description" /></label><label>Due date<input required type="date" value={taskForm.dueDate} onChange={(event) => setTaskForm({ ...taskForm, dueDate: event.target.value })} data-testid="input-operations-task-due-date" /></label><label>Owner<input value={taskForm.assignedTo} onChange={(event) => setTaskForm({ ...taskForm, assignedTo: event.target.value })} placeholder="Household" data-testid="input-operations-task-owner" /></label><label>Priority<select value={taskForm.priority} onChange={(event) => setTaskForm({ ...taskForm, priority: event.target.value as typeof taskForm.priority })} data-testid="select-operations-task-priority"><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option></select></label></div><div className="operations-form-footer"><span>Tasks are persisted to the household queue.</span><button className="btn btn-primary" type="submit" disabled={createTask.isPending} data-testid="button-submit-operations-task">{createTask.isPending ? "Adding…" : "Add to queue"}</button></div></form>}
       <div className="operations-main-grid page-section">
         <section className="card card-pad animate-in delay-2" data-testid="card-operations-task-queue"><div className="operations-section-heading"><div><span className="operations-kicker">Owned work</span><h2>The household queue.</h2><p>Keep the next action small enough to finish, and visible enough to trust.</p></div><ListChecks size={18} /></div><div className="operations-filter-bar">{["ALL", ...taskStatuses].map((status) => <button className={`filter-chip ${taskFilter === status ? "active" : ""}`} type="button" key={status} onClick={() => setTaskFilter(status as "ALL" | TaskStatus)} data-testid={`button-filter-tasks-${status.toLowerCase()}`}>{status === "ALL" ? "All tasks" : titleCase(status)}</button>)}</div>{tasksQuery.isLoading && <div className="operations-loading-line">Loading the household queue…</div>}{tasksQuery.isError && <div className="operations-empty-line"><AlertCircle size={15} /> Tasks could not be loaded separately. Showing the command center snapshot.</div>}{filteredTasks.length === 0 && <div className="operations-empty-state"><ListChecks size={22} /><strong>No tasks in this view.</strong><span>Add a task when a next step needs an owner.</span><button className="btn" type="button" onClick={() => setShowTaskForm(true)} data-testid="button-empty-add-task"><Plus size={14} /> Add task</button></div>}{filteredTasks.map((task) => <TaskRow key={task.id} task={task} onUpdate={updateTaskStatus} pending={mutationId === task.id} />)}</section>

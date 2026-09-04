@@ -1837,6 +1837,104 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/OperationsOverview" }
+  /operations/jobs:
+    get:
+      operationId: listOperationsJobs
+      tags: [operations]
+      summary: List the household's durable advisory jobs
+      responses:
+        "200":
+          description: Durable operations jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OperationsJob" }
+  /operations/jobs/metrics:
+    get:
+      operationId: getOperationsJobMetrics
+      tags: [operations]
+      summary: Get durable operations queue metrics
+      responses:
+        "200":
+          description: Queue metrics
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperationsJobMetrics" }
+  /operations/jobs/{jobId}/reprocess:
+    post:
+      operationId: reprocessOperationsJob
+      tags: [operations]
+      summary: Reprocess an authorized household dead-letter job
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Requeued durable job
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperationsJob" }
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /operations/workers:
+    get:
+      operationId: listOperationsWorkerHealth
+      tags: [operations]
+      summary: List internal operations worker health
+      responses:
+        "200":
+          description: Worker health
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OperationsWorker" }
+  /operations/schedulers:
+    get:
+      operationId: listOperationsSchedulers
+      tags: [operations]
+      summary: List persistent household scheduler definitions
+      responses:
+        "200":
+          description: Scheduler definitions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OperationsScheduler" }
+  /operations/schedulers/leadership:
+    post:
+      operationId: acquireOperationsSchedulerLeadership
+      tags: [operations]
+      summary: Acquire the serialized scheduler leadership lease
+      responses:
+        "200":
+          description: Scheduler leadership lease
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperationsSchedulerLease" }
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /operations/schedulers/missed-runs/recover:
+    post:
+      operationId: recoverMissedOperationsSchedules
+      tags: [operations]
+      summary: Recover due persistent scheduler definitions
+      responses:
+        "200":
+          description: Number of recovered schedules
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [recovered]
+                properties:
+                  recovered: { type: number, minimum: 0 }
   /operations/tasks:
     get:
       operationId: listOperationsTasks
@@ -4991,3 +5089,73 @@ components:
         alerts: { type: array, items: { $ref: "#/components/schemas/OperationsAlert" } }
         automations: { type: array, items: { $ref: "#/components/schemas/OperationsAutomation" } }
         notifications: { $ref: "#/components/schemas/OperationsNotificationPreferences" }
+    OperationsJob:
+      type: object
+      required: [id, householdId, jobKey, kind, status, priority, attempts, maxAttempts, availableAt, claimedAt, claimedBy, leaseOwner, leaseExpiresAt, startedAt, idempotencyKey, correlationId, payloadReference, lastError, deadLetterReason, createdAt, updatedAt, completedAt]
+      properties:
+        id: { type: string }
+        householdId: { type: string }
+        jobKey: { type: string }
+        kind: { type: string }
+        status: { type: string, enum: [QUEUED, LEASED, RUNNING, RETRY_PENDING, SUCCEEDED, DEAD_LETTER] }
+        priority: { type: number }
+        attempts: { type: number, minimum: 0 }
+        maxAttempts: { type: number, minimum: 1 }
+        availableAt: { type: string, format: date-time }
+        claimedAt: { type: ["string", "null"], format: date-time }
+        claimedBy: { type: ["string", "null"] }
+        leaseOwner: { type: ["string", "null"] }
+        leaseExpiresAt: { type: ["string", "null"], format: date-time }
+        startedAt: { type: ["string", "null"], format: date-time }
+        idempotencyKey: { type: ["string", "null"] }
+        correlationId: { type: ["string", "null"] }
+        payloadReference: { type: ["string", "null"] }
+        lastError: { type: ["string", "null"] }
+        deadLetterReason: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        completedAt: { type: ["string", "null"], format: date-time }
+    OperationsJobMetrics:
+      type: object
+      required: [queueDepth, retryQueueDepth, deadLetterCount, statuses]
+      properties:
+        queueDepth: { type: number, minimum: 0 }
+        retryQueueDepth: { type: number, minimum: 0 }
+        deadLetterCount: { type: number, minimum: 0 }
+        statuses: { type: object, additionalProperties: { type: number } }
+    OperationsWorker:
+      type: object
+      required: [workerId, status, currentJobId, startedAt, lastHeartbeatAt, version, updatedAt]
+      properties:
+        workerId: { type: string }
+        status: { type: string }
+        currentJobId: { type: ["string", "null"] }
+        startedAt: { type: string, format: date-time }
+        lastHeartbeatAt: { type: string, format: date-time }
+        version: { type: string }
+        updatedAt: { type: string, format: date-time }
+    OperationsScheduler:
+      type: object
+      required: [id, householdId, name, jobKind, cadence, payload, missedRunPolicy, enabled, nextRunAt, lastRunAt, createdBy, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        householdId: { type: string }
+        name: { type: string }
+        jobKind: { type: string }
+        cadence: { type: string }
+        payload: { type: object, additionalProperties: true }
+        missedRunPolicy: { type: string, enum: [CATCH_UP, SKIP] }
+        enabled: { type: boolean }
+        nextRunAt: { type: string, format: date-time }
+        lastRunAt: { type: ["string", "null"], format: date-time }
+        createdBy: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    OperationsSchedulerLease:
+      type: object
+      required: [singleton, ownerId, leaseExpiresAt, heartbeatAt]
+      properties:
+        singleton: { type: string }
+        ownerId: { type: string }
+        leaseExpiresAt: { type: string, format: date-time }
+        heartbeatAt: { type: string, format: date-time }

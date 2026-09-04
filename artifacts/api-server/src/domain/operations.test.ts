@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { assertSafeAutomationAction, calculateOperationsHealth } from "./operations.ts";
+import { assertSafeAutomationAction, calculateOperationsHealth, classifyOperationsFailure, operationsBackoffMs, isSafeOperationsJobKind } from "./operations.ts";
 import {
   AUDIT_ARCHIVE_DESTINATION,
   AUDIT_RETENTION_DAYS,
@@ -13,6 +13,16 @@ import {
 } from "./reliability.ts";
 
 describe("operations safety", () => {
+  it("classifies failures and bounds retry backoff", () => {
+    assert.equal(classifyOperationsFailure(new Error("network timeout")), "TRANSIENT");
+    assert.equal(classifyOperationsFailure(new Error("invalid payload")), "PERMANENT");
+    assert.equal(classifyOperationsFailure(new Error("opaque")), "UNKNOWN");
+    assert.equal(operationsBackoffMs(20), 60_000);
+  });
+  it("allows only advisory worker kinds", () => {
+    assert.equal(isSafeOperationsJobKind("SAFE_AUTOMATION"), true);
+    assert.equal(isSafeOperationsJobKind("MICRO_LIVE_ORDER"), false);
+  });
   it("blocks automation actions that would control capital or security", () => {
     assert.throws(() => assertSafeAutomationAction("transfer_money"), /not permitted/);
     assert.throws(() => assertSafeAutomationAction("enable_live_trading"), /not permitted/);

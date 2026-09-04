@@ -8,13 +8,18 @@ import {
   operationsAutomations,
   operationsNotificationPreferences,
   operationsJobs,
+  operationsJobAttempts,
+  operationsWorkers,
+  operationsSchedulers,
+  operationsSchedulerLeases,
+  auditEvents,
   operationsRuns,
   operationsTasks,
 } from "@workspace/db/schema";
 import type { Actor } from "./capital-os";
 import { ensureTenantCore } from "./seed";
 import { assertPermission, GovernanceError } from "../domain/governance";
-import { assertSafeAutomationAction, calculateOperationsHealth } from "../domain/operations";
+import { assertSafeAutomationAction, calculateOperationsHealth, classifyOperationsFailure, operationsBackoffMs } from "../domain/operations";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const dateAfter = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
@@ -307,12 +312,42 @@ async function loadOperations(actor: Actor) {
 
 type OperationsJobPayload = Record<string, unknown>;
 
+function operationsJobResponse(job: typeof operationsJobs.$inferSelect) {
+  return {
+    id: job.id,
+    householdId: job.householdId,
+    jobKey: job.jobKey,
+    kind: job.kind,
+    status: job.status,
+    priority: job.priority,
+    attempts: job.attempts,
+    maxAttempts: job.maxAttempts,
+    availableAt: job.availableAt,
+    claimedAt: job.claimedAt,
+    claimedBy: job.claimedBy,
+    leaseOwner: job.leaseOwner,
+    leaseExpiresAt: job.leaseExpiresAt,
+    startedAt: job.startedAt,
+    idempotencyKey: job.idempotencyKey,
+    correlationId: job.correlationId,
+    payloadReference: job.payloadReference,
+    lastError: job.lastError,
+    deadLetterReason: job.deadLetterReason,
+    createdAt: job.createdAt,
+    updatedAt: job.updatedAt,
+    completedAt: job.completedAt,
+  };
+}
+
 export async function enqueueOperationsJob(input: {
   householdId: string;
   kind: string;
   payload?: OperationsJobPayload;
   jobKey?: string;
   maxAttempts?: number;
+  idempotencyKey?: string;
+  correlationId?: string;
+  priority?: number;
 }) {
   const [job] = await db.insert(operationsJobs).values({
     householdId: input.householdId,
@@ -321,66 +356,252 @@ export async function enqueueOperationsJob(input: {
     payload: input.payload ?? {},
     maxAttempts: input.maxAttempts ?? 3,
     status: "QUEUED",
-  }).returning();
-  return job;
+    priority: input.priority ?? 100,
+    idempotencyKey: input.idempotencyKey,
+    correlationId: input.correlationId,
+  }).onConflictDoNothing({ target: [operationsJobs.householdId, operationsJobs.idempotencyKey] }).returning();
+  if (job) return job;
+  if (input.idempotencyKey) {
+    const [existing] = await db.select().from(operationsJobs).where(and(eq(operationsJobs.householdId, input.householdId), eq(operationsJobs.idempotencyKey, input.idempotencyKey))).limit(1);
+    if (existing) return existing;
+  }
+  throw new GovernanceError("INVALID_STATE", "Durable operation job could not be persisted");
 }
 
 export async function claimNextOperationsJob(householdId: string, workerId: string) {
   return db.transaction(async (tx) => {
     const [job] = await tx.select().from(operationsJobs).where(and(
       eq(operationsJobs.householdId, householdId),
-      eq(operationsJobs.status, "QUEUED"),
+      sql`${operationsJobs.status} in ('QUEUED', 'RETRY_PENDING')`,
       lte(operationsJobs.availableAt, new Date()),
-    )).orderBy(asc(operationsJobs.availableAt), asc(operationsJobs.createdAt)).limit(1).for("update", { skipLocked: true });
+    )).orderBy(desc(operationsJobs.priority), asc(operationsJobs.availableAt), asc(operationsJobs.createdAt)).limit(1).for("update", { skipLocked: true });
     if (!job) return null;
     const [claimed] = await tx.update(operationsJobs).set({
-      status: "RUNNING",
+      status: "LEASED",
       attempts: job.attempts + 1,
       claimedAt: new Date(),
       claimedBy: workerId,
+      leaseOwner: workerId,
+      leaseExpiresAt: new Date(Date.now() + 5 * 60_000),
       updatedAt: new Date(),
-    }).where(and(eq(operationsJobs.id, job.id), eq(operationsJobs.status, "QUEUED"))).returning();
+    }).where(and(eq(operationsJobs.id, job.id), sql`${operationsJobs.status} in ('QUEUED', 'RETRY_PENDING')`)).returning();
+    if (claimed) {
+      await tx.insert(operationsJobAttempts).values({ jobId: claimed.id, householdId, attempt: claimed.attempts, workerId, leaseExpiresAt: claimed.leaseExpiresAt });
+      await tx.insert(auditEvents).values({ householdId, eventType: "operations_job_leased", actor: "system", entity: "operations_job", entityId: claimed.id, reason: "Atomic durable worker lease", metadata: { workerId, attempt: claimed.attempts } });
+    }
     return claimed ?? null;
   });
 }
 
-export async function completeOperationsJob(jobId: string, householdId: string) {
+export async function startOperationsJob(jobId: string, householdId: string, workerId: string) {
+  const now = new Date();
   const [job] = await db.update(operationsJobs).set({
-    status: "COMPLETED",
-    completedAt: new Date(),
-    updatedAt: new Date(),
-  }).where(and(eq(operationsJobs.id, jobId), eq(operationsJobs.householdId, householdId), eq(operationsJobs.status, "RUNNING"))).returning();
+    status: "RUNNING",
+    startedAt: now,
+    updatedAt: now,
+  }).where(and(
+    eq(operationsJobs.id, jobId),
+    eq(operationsJobs.householdId, householdId),
+    eq(operationsJobs.leaseOwner, workerId),
+    eq(operationsJobs.status, "LEASED"),
+    sql`${operationsJobs.leaseExpiresAt} > ${now}`,
+  )).returning();
+  if (job) {
+    await db.update(operationsJobAttempts).set({ status: "RUNNING", startedAt: now }).where(and(
+      eq(operationsJobAttempts.jobId, jobId),
+      eq(operationsJobAttempts.attempt, job.attempts),
+      eq(operationsJobAttempts.workerId, workerId),
+    ));
+  }
   return job ?? null;
 }
 
-export async function failOperationsJob(jobId: string, householdId: string, error: unknown) {
-  const [existing] = await db.select().from(operationsJobs).where(and(eq(operationsJobs.id, jobId), eq(operationsJobs.householdId, householdId))).limit(1);
+export async function completeOperationsJob(jobId: string, householdId: string, workerId: string) {
+  const now = new Date();
+  const [job] = await db.update(operationsJobs).set({
+    status: "SUCCEEDED",
+    completedAt: now,
+    updatedAt: now,
+    leaseOwner: null,
+    leaseExpiresAt: null,
+  }).where(and(
+    eq(operationsJobs.id, jobId),
+    eq(operationsJobs.householdId, householdId),
+    eq(operationsJobs.leaseOwner, workerId),
+    sql`${operationsJobs.status} in ('LEASED', 'RUNNING')`,
+    sql`${operationsJobs.leaseExpiresAt} > ${now}`,
+  )).returning();
+  if (job) {
+    await db.update(operationsJobAttempts).set({ status: "SUCCEEDED", finishedAt: now }).where(and(
+      eq(operationsJobAttempts.jobId, jobId),
+      eq(operationsJobAttempts.attempt, job.attempts),
+      eq(operationsJobAttempts.workerId, workerId),
+    ));
+    await db.insert(auditEvents).values({ householdId, eventType: "operations_job_completed", actor: workerId, entity: "operations_job", entityId: job.id, reason: "Durable worker completed job", metadata: { attempt: job.attempts } });
+  }
+  return job ?? null;
+}
+
+export async function failOperationsJob(jobId: string, householdId: string, workerId: string, error: unknown) {
+  const [existing] = await db.select().from(operationsJobs).where(and(
+    eq(operationsJobs.id, jobId),
+    eq(operationsJobs.householdId, householdId),
+    eq(operationsJobs.leaseOwner, workerId),
+    sql`${operationsJobs.status} in ('LEASED', 'RUNNING')`,
+  )).limit(1);
   if (!existing) return null;
   const message = error instanceof Error ? error.message : "Operations job failed";
-  const terminal = existing.attempts >= existing.maxAttempts;
+  const classification = classifyOperationsFailure(error);
+  const terminal = existing.attempts >= existing.maxAttempts || classification === "PERMANENT";
+  const now = new Date();
   const [job] = await db.update(operationsJobs).set({
-    status: terminal ? "DEAD_LETTERED" : "FAILED",
-    availableAt: terminal ? existing.availableAt : new Date(Date.now() + Math.min(60_000, 2 ** existing.attempts * 1_000)),
+    status: terminal ? "DEAD_LETTER" : "RETRY_PENDING",
+    availableAt: terminal ? existing.availableAt : new Date(Date.now() + operationsBackoffMs(existing.attempts)),
     lastError: message,
     deadLetterReason: terminal ? message : null,
-    updatedAt: new Date(),
-  }).where(and(eq(operationsJobs.id, jobId), eq(operationsJobs.householdId, householdId))).returning();
+    updatedAt: now,
+    leaseOwner: null,
+    leaseExpiresAt: null,
+  }).where(and(
+    eq(operationsJobs.id, jobId),
+    eq(operationsJobs.householdId, householdId),
+    eq(operationsJobs.leaseOwner, workerId),
+    sql`${operationsJobs.status} in ('LEASED', 'RUNNING')`,
+  )).returning();
+  if (job) {
+    await db.update(operationsJobAttempts).set({
+      status: terminal ? "DEAD_LETTER" : "RETRY_PENDING",
+      classification,
+      error: message,
+      finishedAt: now,
+    }).where(and(
+      eq(operationsJobAttempts.jobId, jobId),
+      eq(operationsJobAttempts.attempt, existing.attempts),
+      eq(operationsJobAttempts.workerId, workerId),
+    ));
+    await db.insert(auditEvents).values({ householdId, eventType: terminal ? "operations_job_dead_lettered" : "operations_job_retry_scheduled", actor: workerId, entity: "operations_job", entityId: job.id, reason: message, metadata: { attempt: job.attempts, classification } });
+  }
   return job ?? null;
 }
 
 export async function recoverStaleOperationsJobs(householdId: string, staleAfterMs = 5 * 60_000) {
   const cutoff = new Date(Date.now() - staleAfterMs);
-  return db.update(operationsJobs).set({
-    status: "QUEUED",
+  const recovered = await db.update(operationsJobs).set({
+    status: "RETRY_PENDING",
     claimedAt: null,
     claimedBy: null,
+    leaseOwner: null,
+    leaseExpiresAt: null,
+    startedAt: null,
     availableAt: new Date(),
     updatedAt: new Date(),
   }).where(and(
     eq(operationsJobs.householdId, householdId),
-    eq(operationsJobs.status, "RUNNING"),
-    lte(operationsJobs.claimedAt, cutoff),
+    sql`${operationsJobs.status} in ('LEASED', 'RUNNING')`,
+    lte(operationsJobs.leaseExpiresAt, cutoff),
   )).returning();
+  for (const job of recovered) {
+    await db.update(operationsJobAttempts).set({ status: "RECOVERED", finishedAt: new Date() }).where(and(
+      eq(operationsJobAttempts.jobId, job.id),
+      eq(operationsJobAttempts.attempt, job.attempts),
+    ));
+    await db.insert(auditEvents).values({ householdId, eventType: "operations_job_recovered", actor: "system", entity: "operations_job", entityId: job.id, reason: "Lease expired before completion", metadata: { attempt: job.attempts } });
+  }
+  return recovered;
+}
+
+export async function heartbeatOperationsWorker(workerId: string, currentJobId?: string | null) {
+  const now = new Date();
+  const [worker] = await db.insert(operationsWorkers).values({
+    workerId, currentJobId: currentJobId ?? null, status: currentJobId ? "BUSY" : "IDLE",
+    lastHeartbeatAt: now, updatedAt: now, version: process.env.npm_package_version ?? "unknown",
+  }).onConflictDoUpdate({
+    target: operationsWorkers.workerId,
+    set: { currentJobId: currentJobId ?? null, status: currentJobId ? "BUSY" : "IDLE", lastHeartbeatAt: now, updatedAt: now },
+  }).returning();
+  if (currentJobId) {
+    await db.update(operationsJobs).set({ leaseExpiresAt: new Date(Date.now() + 5 * 60_000), updatedAt: now })
+      .where(and(eq(operationsJobs.id, currentJobId), eq(operationsJobs.leaseOwner, workerId), sql`${operationsJobs.status} in ('LEASED', 'RUNNING')`));
+  }
+  return worker;
+}
+
+export async function getOperationsMetrics(householdId: string) {
+  const rows = await db.select({ status: operationsJobs.status, count: sql<number>`count(*)::int` })
+    .from(operationsJobs).where(eq(operationsJobs.householdId, householdId)).groupBy(operationsJobs.status);
+  return {
+    queueDepth: rows.filter((r) => ["QUEUED", "RETRY_PENDING"].includes(r.status)).reduce((n, r) => n + r.count, 0),
+    retryQueueDepth: rows.find((r) => r.status === "RETRY_PENDING")?.count ?? 0,
+    deadLetterCount: rows.find((r) => ["DEAD_LETTER", "DEAD_LETTERED"].includes(r.status))?.count ?? 0,
+    statuses: Object.fromEntries(rows.map((r) => [r.status, r.count])),
+  };
+}
+
+export async function listOperationsJobs(actor: Actor) {
+  assertPermission(actor.role, "read");
+  const jobs = await db.select().from(operationsJobs).where(eq(operationsJobs.householdId, actor.householdId)).orderBy(desc(operationsJobs.createdAt)).limit(200);
+  return jobs.map(operationsJobResponse);
+}
+
+export async function listOperationsWorkerHealth(actor: Actor) {
+  assertPermission(actor.role, "read");
+  const workers = await db.select().from(operationsWorkers).orderBy(desc(operationsWorkers.lastHeartbeatAt));
+  return workers.map((worker) => ({
+    workerId: worker.workerId,
+    status: worker.status,
+    currentJobId: null,
+    startedAt: worker.startedAt,
+    lastHeartbeatAt: worker.lastHeartbeatAt,
+    version: worker.version,
+    updatedAt: worker.updatedAt,
+  }));
+}
+
+export async function reprocessOperationsJob(actor: Actor, jobId: string) {
+  assertPermission(actor.role, "approve");
+  const [job] = await db.update(operationsJobs).set({
+    status: "RETRY_PENDING", availableAt: new Date(), deadLetterReason: null, updatedAt: new Date(),
+  }).where(and(eq(operationsJobs.id, jobId), eq(operationsJobs.householdId, actor.householdId), sql`${operationsJobs.status} in ('DEAD_LETTER', 'DEAD_LETTERED')`)).returning();
+  if (!job) throw new GovernanceError("INVALID_STATE", "Only a household dead-letter job can be reprocessed");
+  await db.insert(auditEvents).values({ householdId: actor.householdId, eventType: "operations_job_manual_reprocess", actor: actor.userId, entity: "operations_job", entityId: job.id, reason: "Authorized operator reprocessing", metadata: { correlationId: job.correlationId } });
+  return operationsJobResponse(job);
+}
+
+export async function listOperationsSchedulers(actor: Actor) {
+  assertPermission(actor.role, "read");
+  return db.select().from(operationsSchedulers).where(eq(operationsSchedulers.householdId, actor.householdId)).orderBy(asc(operationsSchedulers.nextRunAt));
+}
+
+export async function acquireOperationsSchedulerLeadership(actor: Actor) {
+  assertPermission(actor.role, "approve");
+  const now = new Date();
+  const expiry = new Date(Date.now() + 30_000);
+  const lease = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('operations-scheduler-leadership'))`);
+    const [current] = await tx.select().from(operationsSchedulerLeases).where(eq(operationsSchedulerLeases.singleton, "operations")).limit(1);
+    if (current && current.leaseExpiresAt > now && current.ownerId !== actor.userId) {
+      throw new GovernanceError("INVALID_STATE", "Another scheduler currently holds leadership");
+    }
+    const [updated] = current
+      ? await tx.update(operationsSchedulerLeases).set({ ownerId: actor.userId, leaseExpiresAt: expiry, heartbeatAt: now }).where(eq(operationsSchedulerLeases.singleton, "operations")).returning()
+      : await tx.insert(operationsSchedulerLeases).values({ ownerId: actor.userId, leaseExpiresAt: expiry, heartbeatAt: now }).returning();
+    if (!updated) throw new GovernanceError("INVALID_STATE", "Scheduler leadership could not be persisted");
+    return updated;
+  });
+  await db.insert(auditEvents).values({ householdId: actor.householdId, eventType: "operations_scheduler_leadership", actor: actor.userId, entity: "operations_scheduler_lease", entityId: lease.singleton, reason: "Scheduler leadership acquired", metadata: {} });
+  return lease;
+}
+
+export async function recoverMissedOperationsSchedules(actor: Actor) {
+  assertPermission(actor.role, "approve");
+  const due = await db.select().from(operationsSchedulers).where(and(eq(operationsSchedulers.householdId, actor.householdId), eq(operationsSchedulers.enabled, true), lte(operationsSchedulers.nextRunAt, new Date())));
+  for (const schedule of due) {
+    if (schedule.missedRunPolicy === "CATCH_UP") {
+      await enqueueOperationsJob({ householdId: actor.householdId, kind: schedule.jobKind, payload: schedule.payload, jobKey: `schedule:${schedule.id}:${schedule.nextRunAt.toISOString()}`, correlationId: `schedule:${schedule.id}` });
+    }
+    await db.update(operationsSchedulers).set({ lastRunAt: schedule.nextRunAt, nextRunAt: new Date(Date.now() + 86_400_000), updatedAt: new Date() }).where(eq(operationsSchedulers.id, schedule.id));
+  }
+  return due.length;
 }
 
 export async function getOperationsOverview(actor: Actor) {
@@ -551,9 +772,9 @@ export async function runOperationsAutomation(actor: Actor, automationId: string
       eq(operationsAutomations.id, automation.id),
       eq(operationsAutomations.householdId, ids.householdId),
     ));
-    await completeOperationsJob(claimed.id, ids.householdId);
+    await completeOperationsJob(claimed.id, ids.householdId, claimed.claimedBy ?? `api:${actor.userId}`);
   } catch (error) {
-    await failOperationsJob(claimed.id, ids.householdId, error);
+    await failOperationsJob(claimed.id, ids.householdId, claimed.claimedBy ?? `api:${actor.userId}`, error);
     throw error;
   }
   return {

@@ -33,6 +33,9 @@ import {
   updateOperationsAlert,
   updateOperationsNotificationPreferences,
   updateOperationsTask,
+  getOperationsMetrics,
+  listOperationsJobs, listOperationsWorkerHealth, reprocessOperationsJob,
+  listOperationsSchedulers, acquireOperationsSchedulerLeadership, recoverMissedOperationsSchedules,
 } from "../services/operations";
 
 const router: IRouter = Router();
@@ -40,6 +43,16 @@ const router: IRouter = Router();
 router.get("/operations", asyncRoute(async (_req, res) => {
   res.json(GetOperationsOverviewResponse.parse(await getOperationsOverview(actorFrom(res))));
 }));
+
+router.get("/operations/jobs/metrics", asyncRoute(async (_req, res) => {
+  res.json(await getOperationsMetrics(actorFrom(res).householdId));
+}));
+router.get("/operations/jobs", asyncRoute(async (_req, res) => res.json(await listOperationsJobs(actorFrom(res)))));
+router.get("/operations/workers", asyncRoute(async (_req, res) => res.json(await listOperationsWorkerHealth(actorFrom(res)))));
+router.post("/operations/jobs/:jobId/reprocess", asyncRoute(async (req, res) => res.json(await reprocessOperationsJob(actorFrom(res), String(req.params.jobId)))));
+router.get("/operations/schedulers", asyncRoute(async (_req, res) => res.json(await listOperationsSchedulers(actorFrom(res)))));
+router.post("/operations/schedulers/leadership", asyncRoute(async (_req, res) => res.json(await acquireOperationsSchedulerLeadership(actorFrom(res)))));
+router.post("/operations/schedulers/missed-runs/recover", asyncRoute(async (_req, res) => res.json({ recovered: await recoverMissedOperationsSchedules(actorFrom(res)) })));
 
 router.get("/operations/tasks", asyncRoute(async (_req, res) => {
   res.json(ListOperationsTasksResponse.parse(await listOperationsTasks(actorFrom(res))));

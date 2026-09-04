@@ -127,12 +127,17 @@ import type {
   OperationsApprovalDecision,
   OperationsAutomation,
   OperationsAutomationRun,
+  OperationsJob,
+  OperationsJobMetrics,
   OperationsNotificationPreferences,
   OperationsNotificationPreferencesUpdate,
   OperationsOverview,
+  OperationsScheduler,
+  OperationsSchedulerLease,
   OperationsTask,
   OperationsTaskInput,
   OperationsTaskUpdate,
+  OperationsWorker,
   PortfolioSummary,
   PrivacySettingsInput,
   PropertyAnalysis,
@@ -147,6 +152,7 @@ import type {
   RecommendationDecisionInput,
   RecommendationFeedback,
   RecommendationSummary,
+  RecoverMissedOperationsSchedules200,
   ReportDescriptor,
   ResearchJournalEntry,
   ResearchStrategyCreated,
@@ -8653,6 +8659,527 @@ export function useGetOperationsOverview<TData = Awaited<ReturnType<typeof getOp
 
 
 
+
+export const getListOperationsJobsUrl = () => {
+
+
+
+
+  return `/api/operations/jobs`
+}
+
+/**
+ * @summary List the household's durable advisory jobs
+ */
+export const listOperationsJobs = async ( options?: Parameters<typeof customFetch>[1]): Promise<OperationsJob[]> => {
+
+  return customFetch<OperationsJob[]>(getListOperationsJobsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOperationsJobsQueryKey = () => {
+    return [
+    `/api/operations/jobs`
+    ] as const;
+    }
+
+
+export const getListOperationsJobsQueryOptions = <TData = Awaited<ReturnType<typeof listOperationsJobs>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsJobs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOperationsJobsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOperationsJobs>>> = ({ signal }) => listOperationsJobs({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOperationsJobs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOperationsJobsQueryResult = NonNullable<Awaited<ReturnType<typeof listOperationsJobs>>>
+export type ListOperationsJobsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the household's durable advisory jobs
+ */
+
+export function useListOperationsJobs<TData = Awaited<ReturnType<typeof listOperationsJobs>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsJobs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOperationsJobsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOperationsJobMetricsUrl = () => {
+
+
+
+
+  return `/api/operations/jobs/metrics`
+}
+
+/**
+ * @summary Get durable operations queue metrics
+ */
+export const getOperationsJobMetrics = async ( options?: Parameters<typeof customFetch>[1]): Promise<OperationsJobMetrics> => {
+
+  return customFetch<OperationsJobMetrics>(getGetOperationsJobMetricsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOperationsJobMetricsQueryKey = () => {
+    return [
+    `/api/operations/jobs/metrics`
+    ] as const;
+    }
+
+
+export const getGetOperationsJobMetricsQueryOptions = <TData = Awaited<ReturnType<typeof getOperationsJobMetrics>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperationsJobMetrics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOperationsJobMetricsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOperationsJobMetrics>>> = ({ signal }) => getOperationsJobMetrics({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOperationsJobMetrics>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOperationsJobMetricsQueryResult = NonNullable<Awaited<ReturnType<typeof getOperationsJobMetrics>>>
+export type GetOperationsJobMetricsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get durable operations queue metrics
+ */
+
+export function useGetOperationsJobMetrics<TData = Awaited<ReturnType<typeof getOperationsJobMetrics>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperationsJobMetrics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOperationsJobMetricsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReprocessOperationsJobUrl = (jobId: string,) => {
+
+
+
+
+  return `/api/operations/jobs/${jobId}/reprocess`
+}
+
+/**
+ * @summary Reprocess an authorized household dead-letter job
+ */
+export const reprocessOperationsJob = async (jobId: string, options?: Parameters<typeof customFetch>[1]): Promise<OperationsJob> => {
+
+  return customFetch<OperationsJob>(getReprocessOperationsJobUrl(jobId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReprocessOperationsJobMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reprocessOperationsJob>>, TError,{jobId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reprocessOperationsJob>>, TError,{jobId: string}, TContext> => {
+
+const mutationKey = ['reprocessOperationsJob'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reprocessOperationsJob>>, {jobId: string}> = (props) => {
+          const {jobId} = props ?? {};
+
+          return  reprocessOperationsJob(jobId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReprocessOperationsJobMutationResult = NonNullable<Awaited<ReturnType<typeof reprocessOperationsJob>>>
+
+    export type ReprocessOperationsJobMutationError = ErrorType<ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Reprocess an authorized household dead-letter job
+ */
+export const useReprocessOperationsJob = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reprocessOperationsJob>>, TError,{jobId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reprocessOperationsJob>>,
+        TError,
+        {jobId: string},
+        TContext
+      > => {
+      return useMutation(getReprocessOperationsJobMutationOptions(options));
+    }
+
+export const getListOperationsWorkerHealthUrl = () => {
+
+
+
+
+  return `/api/operations/workers`
+}
+
+/**
+ * @summary List internal operations worker health
+ */
+export const listOperationsWorkerHealth = async ( options?: Parameters<typeof customFetch>[1]): Promise<OperationsWorker[]> => {
+
+  return customFetch<OperationsWorker[]>(getListOperationsWorkerHealthUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOperationsWorkerHealthQueryKey = () => {
+    return [
+    `/api/operations/workers`
+    ] as const;
+    }
+
+
+export const getListOperationsWorkerHealthQueryOptions = <TData = Awaited<ReturnType<typeof listOperationsWorkerHealth>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsWorkerHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOperationsWorkerHealthQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOperationsWorkerHealth>>> = ({ signal }) => listOperationsWorkerHealth({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOperationsWorkerHealth>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOperationsWorkerHealthQueryResult = NonNullable<Awaited<ReturnType<typeof listOperationsWorkerHealth>>>
+export type ListOperationsWorkerHealthQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List internal operations worker health
+ */
+
+export function useListOperationsWorkerHealth<TData = Awaited<ReturnType<typeof listOperationsWorkerHealth>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsWorkerHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOperationsWorkerHealthQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListOperationsSchedulersUrl = () => {
+
+
+
+
+  return `/api/operations/schedulers`
+}
+
+/**
+ * @summary List persistent household scheduler definitions
+ */
+export const listOperationsSchedulers = async ( options?: Parameters<typeof customFetch>[1]): Promise<OperationsScheduler[]> => {
+
+  return customFetch<OperationsScheduler[]>(getListOperationsSchedulersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOperationsSchedulersQueryKey = () => {
+    return [
+    `/api/operations/schedulers`
+    ] as const;
+    }
+
+
+export const getListOperationsSchedulersQueryOptions = <TData = Awaited<ReturnType<typeof listOperationsSchedulers>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsSchedulers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOperationsSchedulersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOperationsSchedulers>>> = ({ signal }) => listOperationsSchedulers({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOperationsSchedulers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOperationsSchedulersQueryResult = NonNullable<Awaited<ReturnType<typeof listOperationsSchedulers>>>
+export type ListOperationsSchedulersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List persistent household scheduler definitions
+ */
+
+export function useListOperationsSchedulers<TData = Awaited<ReturnType<typeof listOperationsSchedulers>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsSchedulers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOperationsSchedulersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getAcquireOperationsSchedulerLeadershipUrl = () => {
+
+
+
+
+  return `/api/operations/schedulers/leadership`
+}
+
+/**
+ * @summary Acquire the serialized scheduler leadership lease
+ */
+export const acquireOperationsSchedulerLeadership = async ( options?: Parameters<typeof customFetch>[1]): Promise<OperationsSchedulerLease> => {
+
+  return customFetch<OperationsSchedulerLease>(getAcquireOperationsSchedulerLeadershipUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAcquireOperationsSchedulerLeadershipMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acquireOperationsSchedulerLeadership>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acquireOperationsSchedulerLeadership>>, TError,void, TContext> => {
+
+const mutationKey = ['acquireOperationsSchedulerLeadership'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acquireOperationsSchedulerLeadership>>, void> = () => {
+
+
+          return  acquireOperationsSchedulerLeadership(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcquireOperationsSchedulerLeadershipMutationResult = NonNullable<Awaited<ReturnType<typeof acquireOperationsSchedulerLeadership>>>
+
+    export type AcquireOperationsSchedulerLeadershipMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Acquire the serialized scheduler leadership lease
+ */
+export const useAcquireOperationsSchedulerLeadership = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acquireOperationsSchedulerLeadership>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof acquireOperationsSchedulerLeadership>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getAcquireOperationsSchedulerLeadershipMutationOptions(options));
+    }
+
+export const getRecoverMissedOperationsSchedulesUrl = () => {
+
+
+
+
+  return `/api/operations/schedulers/missed-runs/recover`
+}
+
+/**
+ * @summary Recover due persistent scheduler definitions
+ */
+export const recoverMissedOperationsSchedules = async ( options?: Parameters<typeof customFetch>[1]): Promise<RecoverMissedOperationsSchedules200> => {
+
+  return customFetch<RecoverMissedOperationsSchedules200>(getRecoverMissedOperationsSchedulesUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRecoverMissedOperationsSchedulesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recoverMissedOperationsSchedules>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recoverMissedOperationsSchedules>>, TError,void, TContext> => {
+
+const mutationKey = ['recoverMissedOperationsSchedules'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recoverMissedOperationsSchedules>>, void> = () => {
+
+
+          return  recoverMissedOperationsSchedules(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecoverMissedOperationsSchedulesMutationResult = NonNullable<Awaited<ReturnType<typeof recoverMissedOperationsSchedules>>>
+
+    export type RecoverMissedOperationsSchedulesMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Recover due persistent scheduler definitions
+ */
+export const useRecoverMissedOperationsSchedules = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recoverMissedOperationsSchedules>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recoverMissedOperationsSchedules>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRecoverMissedOperationsSchedulesMutationOptions(options));
+    }
 
 export const getListOperationsTasksUrl = () => {
 

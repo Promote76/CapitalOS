@@ -4305,6 +4305,157 @@ export const GetOperationsOverviewResponse = zod.object({
 
 
 /**
+ * @summary List the household's durable advisory jobs
+ */
+export const listOperationsJobsResponseAttemptsMin = 0;
+
+
+
+
+export const ListOperationsJobsResponseItem = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "jobKey": zod.string(),
+  "kind": zod.string(),
+  "status": zod.enum(['QUEUED', 'LEASED', 'RUNNING', 'RETRY_PENDING', 'SUCCEEDED', 'DEAD_LETTER']),
+  "priority": zod.number(),
+  "attempts": zod.number().min(listOperationsJobsResponseAttemptsMin),
+  "maxAttempts": zod.number().min(1),
+  "availableAt": zod.coerce.date(),
+  "claimedAt": zod.coerce.date().nullable(),
+  "claimedBy": zod.string().nullable(),
+  "leaseOwner": zod.string().nullable(),
+  "leaseExpiresAt": zod.coerce.date().nullable(),
+  "startedAt": zod.coerce.date().nullable(),
+  "idempotencyKey": zod.string().nullable(),
+  "correlationId": zod.string().nullable(),
+  "payloadReference": zod.string().nullable(),
+  "lastError": zod.string().nullable(),
+  "deadLetterReason": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable()
+})
+export const ListOperationsJobsResponse = zod.array(ListOperationsJobsResponseItem)
+
+
+/**
+ * @summary Get durable operations queue metrics
+ */
+export const getOperationsJobMetricsResponseQueueDepthMin = 0;
+
+export const getOperationsJobMetricsResponseRetryQueueDepthMin = 0;
+
+export const getOperationsJobMetricsResponseDeadLetterCountMin = 0;
+
+
+
+export const GetOperationsJobMetricsResponse = zod.object({
+  "queueDepth": zod.number().min(getOperationsJobMetricsResponseQueueDepthMin),
+  "retryQueueDepth": zod.number().min(getOperationsJobMetricsResponseRetryQueueDepthMin),
+  "deadLetterCount": zod.number().min(getOperationsJobMetricsResponseDeadLetterCountMin),
+  "statuses": zod.record(zod.string(), zod.number())
+})
+
+
+/**
+ * @summary Reprocess an authorized household dead-letter job
+ */
+export const ReprocessOperationsJobParams = zod.object({
+  "jobId": zod.coerce.string()
+})
+
+export const reprocessOperationsJobResponseAttemptsMin = 0;
+
+
+
+
+export const ReprocessOperationsJobResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "jobKey": zod.string(),
+  "kind": zod.string(),
+  "status": zod.enum(['QUEUED', 'LEASED', 'RUNNING', 'RETRY_PENDING', 'SUCCEEDED', 'DEAD_LETTER']),
+  "priority": zod.number(),
+  "attempts": zod.number().min(reprocessOperationsJobResponseAttemptsMin),
+  "maxAttempts": zod.number().min(1),
+  "availableAt": zod.coerce.date(),
+  "claimedAt": zod.coerce.date().nullable(),
+  "claimedBy": zod.string().nullable(),
+  "leaseOwner": zod.string().nullable(),
+  "leaseExpiresAt": zod.coerce.date().nullable(),
+  "startedAt": zod.coerce.date().nullable(),
+  "idempotencyKey": zod.string().nullable(),
+  "correlationId": zod.string().nullable(),
+  "payloadReference": zod.string().nullable(),
+  "lastError": zod.string().nullable(),
+  "deadLetterReason": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary List internal operations worker health
+ */
+export const ListOperationsWorkerHealthResponseItem = zod.object({
+  "workerId": zod.string(),
+  "status": zod.string(),
+  "currentJobId": zod.string().nullable(),
+  "startedAt": zod.coerce.date(),
+  "lastHeartbeatAt": zod.coerce.date(),
+  "version": zod.string(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListOperationsWorkerHealthResponse = zod.array(ListOperationsWorkerHealthResponseItem)
+
+
+/**
+ * @summary List persistent household scheduler definitions
+ */
+export const ListOperationsSchedulersResponseItem = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "name": zod.string(),
+  "jobKind": zod.string(),
+  "cadence": zod.string(),
+  "payload": zod.record(zod.string(), zod.unknown()),
+  "missedRunPolicy": zod.enum(['CATCH_UP', 'SKIP']),
+  "enabled": zod.boolean(),
+  "nextRunAt": zod.coerce.date(),
+  "lastRunAt": zod.coerce.date().nullable(),
+  "createdBy": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListOperationsSchedulersResponse = zod.array(ListOperationsSchedulersResponseItem)
+
+
+/**
+ * @summary Acquire the serialized scheduler leadership lease
+ */
+export const AcquireOperationsSchedulerLeadershipResponse = zod.object({
+  "singleton": zod.string(),
+  "ownerId": zod.string(),
+  "leaseExpiresAt": zod.coerce.date(),
+  "heartbeatAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Recover due persistent scheduler definitions
+ */
+export const recoverMissedOperationsSchedulesResponseRecoveredMin = 0;
+
+
+
+export const RecoverMissedOperationsSchedulesResponse = zod.object({
+  "recovered": zod.number().min(recoverMissedOperationsSchedulesResponseRecoveredMin)
+})
+
+
+/**
  * @summary List household operations tasks
  */
 export const ListOperationsTasksResponseItem = zod.object({

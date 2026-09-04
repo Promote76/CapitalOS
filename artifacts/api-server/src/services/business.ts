@@ -11,7 +11,7 @@ import {
   idempotencyKeys,
 } from "@workspace/db/schema";
 import type { Actor } from "./capital-os";
-import { ensureSeedData, isDemoHousehold } from "./seed";
+import { isDemoHousehold } from "./seed";
 import { assertPermission, GovernanceError } from "../domain/governance";
 import { calculateBusinessCapital, calculateBusinessHealth, assertDistributionWithinReserve } from "../domain/business";
 import { centsToMoney, parseMoneyToCents } from "../domain/finance";
@@ -124,8 +124,8 @@ async function ensureBusinessSeed(householdId: string, ownerId: string) {
   });
 }
 
-async function loadBusinessData() {
-  const ids = await ensureSeedData();
+async function loadBusinessData(actor: Actor) {
+  const ids = { householdId: actor.householdId, ownerId: actor.userId };
   if (await isDemoHousehold(ids.householdId)) {
     await ensureBusinessSeed(ids.householdId, ids.ownerId);
   }
@@ -141,7 +141,7 @@ async function loadBusinessData() {
 }
 
 export async function getBusinessOverview(_actor: Actor) {
-  const data = await loadBusinessData();
+  const data = await loadBusinessData(_actor);
   const month = today().slice(0, 7);
   let totalRevenue = 0, totalExpenses = 0, totalDistributions = 0, businessCash = 0, ownedEquity = 0, safeToDistribute = 0;
   for (const business of data.businesses) {
@@ -202,7 +202,7 @@ export async function getBusinessOverview(_actor: Actor) {
 }
 
 export async function listBusinessEntities(_actor: Actor) {
-  const data = await loadBusinessData();
+  const data = await loadBusinessData(_actor);
   return data.businesses.map(entityResponse);
 }
 
@@ -217,7 +217,7 @@ type DistributionInput = { businessId: string; distributionDate: Date; amount: s
 
 export async function createBusinessEntity(actor: Actor, input: BusinessEntityInput) {
   assertPermission(actor.role, "contribute");
-  const ids = await ensureSeedData();
+  const ids = { householdId: actor.householdId, ownerId: actor.userId };
   if (Number(input.ownershipPercentage) <= 0 || Number(input.ownershipPercentage) > 100) throw new Error("Ownership percentage must be greater than 0 and no more than 100");
   const [row] = await db.insert(businessEntities).values({ ...input, formationDate: input.formationDate?.toISOString().slice(0, 10), householdId: ids.householdId, createdBy: actor.userId }).returning();
   await db.insert(businessReserves).values({ householdId: ids.householdId, businessId: row.id, updatedBy: actor.userId });
@@ -226,7 +226,7 @@ export async function createBusinessEntity(actor: Actor, input: BusinessEntityIn
 
 export async function updateBusinessEntity(actor: Actor, businessId: string, input: BusinessEntityUpdate) {
   assertPermission(actor.role, "contribute");
-  const ids = await ensureSeedData();
+  const ids = { householdId: actor.householdId, ownerId: actor.userId };
   if (input.ownershipPercentage != null && (Number(input.ownershipPercentage) <= 0 || Number(input.ownershipPercentage) > 100)) throw new Error("Ownership percentage must be greater than 0 and no more than 100");
   const [row] = await db.update(businessEntities).set({
     displayName: input.displayName,
@@ -251,7 +251,7 @@ async function assertBusiness(householdId: string, businessId: string) {
 
 export async function createBusinessRevenue(actor: Actor, input: RevenueInput) {
   assertPermission(actor.role, "contribute");
-  const ids = await ensureSeedData();
+  const ids = { householdId: actor.householdId, ownerId: actor.userId };
   await assertBusiness(ids.householdId, input.businessId);
   if (["owner_contribution", "intercompany_transfer"].includes(input.category ?? "")) throw new Error("Owner contributions and intercompany transfers cannot be recorded as revenue");
   const [row] = await db.insert(businessRevenue).values({ ...input, revenueDate: input.revenueDate.toISOString().slice(0, 10), householdId: ids.householdId, createdBy: actor.userId }).returning();
@@ -260,7 +260,7 @@ export async function createBusinessRevenue(actor: Actor, input: RevenueInput) {
 
 export async function createBusinessExpense(actor: Actor, input: ExpenseInput) {
   assertPermission(actor.role, "contribute");
-  const ids = await ensureSeedData();
+  const ids = { householdId: actor.householdId, ownerId: actor.userId };
   await assertBusiness(ids.householdId, input.businessId);
   if (input.classification === "owner_distribution") throw new Error("Owner distributions must use the distribution review flow");
   const [row] = await db.insert(businessExpenses).values({ ...input, expenseDate: input.expenseDate.toISOString().slice(0, 10), householdId: ids.householdId, createdBy: actor.userId }).returning();
@@ -269,7 +269,7 @@ export async function createBusinessExpense(actor: Actor, input: ExpenseInput) {
 
 export async function createBusinessDistribution(actor: Actor, input: DistributionInput, idempotencyKey: string) {
   assertPermission(actor.role, "approve");
-  const ids = await ensureSeedData();
+  const ids = { householdId: actor.householdId, ownerId: actor.userId };
   return db.transaction(async (tx) => {
     await lockIdempotency(tx, ids.householdId, BUSINESS_DISTRIBUTION_OPERATION, idempotencyKey);
     const [existing] = await tx.select().from(idempotencyKeys).where(and(
@@ -314,7 +314,7 @@ export async function createBusinessDistribution(actor: Actor, input: Distributi
 
 export async function updateBusinessReserve(actor: Actor, businessId: string, input: Partial<typeof businessReserves.$inferInsert>) {
   assertPermission(actor.role, "approve");
-  const ids = await ensureSeedData();
+  const ids = { householdId: actor.householdId, ownerId: actor.userId };
   await assertBusiness(ids.householdId, businessId);
   const [existing] = await db.select().from(businessReserves).where(and(eq(businessReserves.businessId, businessId), eq(businessReserves.householdId, ids.householdId))).limit(1);
   const reserveValues = {

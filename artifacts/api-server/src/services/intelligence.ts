@@ -1,12 +1,12 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { aiAnalyses, aiInsights, aiRecommendations, auditEvents, recommendationFeedback } from "@workspace/db";
+import { aiAnalyses, aiInsights, aiRecommendations, auditEvents, goals as goalsTable, recommendationFeedback } from "@workspace/db";
 import { calculateContributionScenario, calculateCioRecommendation, type SpecialistSignal } from "../domain/intelligence";
 import { parseMoneyToCents } from "../domain/finance";
 import { getCashFlow, getFinanceInsights, getSafeToDeploy } from "./household-finance";
 import { getGoals, getPortfolio, getRisk, getStrategies } from "./capital-os";
 import { getPropertyUnderwriting } from "./property-underwriting";
-import { ensureSeedData } from "./seed";
+import { ensureTenantCore } from "./seed";
 import type { Actor } from "./capital-os";
 
 const cents = (value: string | number | null | undefined) => parseMoneyToCents(String(value ?? "0"));
@@ -47,18 +47,31 @@ async function saveInsight(householdId: string, insight: {
   return db.insert(aiInsights).values({ householdId, ...insight });
 }
 
-export async function refreshIntelligence(actor?: Actor) {
-  const ids = await ensureSeedData();
+export async function refreshIntelligence(actor: Actor) {
   const [cashFlow, safeToDeploy, property, goals, portfolio, strategies, risk, financeInsights] = await Promise.all([
-    getCashFlow(),
-    getSafeToDeploy(),
-    getPropertyUnderwriting(),
-    getGoals(),
-    getPortfolio(),
-    getStrategies(),
-    getRisk(),
+    getCashFlow(actor),
+    getSafeToDeploy(actor),
+    getPropertyUnderwriting(actor),
+    getGoals(actor),
+    getPortfolio(actor),
+    getStrategies(actor),
+    getRisk(actor),
     getFinanceInsights(),
   ]);
+  const [goalRow] = await db.select({ id: goalsTable.id }).from(goalsTable)
+    .where(eq(goalsTable.householdId, actor.householdId))
+    .orderBy(goalsTable.priority)
+    .limit(1);
+  const [recommendationRow] = await db.select({ id: aiRecommendations.id }).from(aiRecommendations)
+    .where(eq(aiRecommendations.householdId, actor.householdId))
+    .orderBy(aiRecommendations.createdAt)
+    .limit(1);
+  const ids = {
+    householdId: actor.householdId,
+    ownerId: actor.userId,
+    goalId: goalRow?.id ?? "",
+    recommendationId: recommendationRow?.id ?? "",
+  };
   const goal = goals[0];
   const topCandidate = property.candidates[0];
   const strategyConfidence = strategies.length
@@ -211,17 +224,23 @@ export async function refreshIntelligence(actor?: Actor) {
   await db.insert(auditEvents).values({
     householdId: ids.householdId,
     eventType: "intelligence_refreshed",
-    actor: actor?.userId ?? "system",
+    actor: actor.userId,
     entity: "intelligence_snapshot",
     entityId: ids.recommendationId,
     reason: "Deterministic advisory intelligence refreshed from current household, property, portfolio, strategy, and risk data.",
     metadata: { advisoryOnly: true, externalProvider: false },
   });
-  return readIntelligenceSnapshot();
+  return readIntelligenceSnapshot(actor);
 }
 
-async function readIntelligenceSnapshot() {
-  const ids = await ensureSeedData();
+async function readIntelligenceSnapshot(actor: Actor) {
+  const seeded = await ensureTenantCore(actor.householdId, actor.userId);
+  const ids = { householdId: actor.householdId, recommendationId: seeded.recommendationId };
+  const [recommendationSeed] = await db.select({ id: aiRecommendations.id }).from(aiRecommendations)
+    .where(eq(aiRecommendations.householdId, actor.householdId))
+    .orderBy(aiRecommendations.createdAt)
+    .limit(1);
+  ids.recommendationId = recommendationSeed?.id ?? "";
   const [recommendation, analyses, insights, cashFlow, safeToDeploy, property, goals, portfolio, risk] = await Promise.all([
     db.select().from(aiRecommendations).where(and(
       eq(aiRecommendations.id, ids.recommendationId),
@@ -229,12 +248,12 @@ async function readIntelligenceSnapshot() {
     )).limit(1),
     db.select().from(aiAnalyses).where(eq(aiAnalyses.householdId, ids.householdId)),
     db.select().from(aiInsights).where(eq(aiInsights.householdId, ids.householdId)),
-    getCashFlow(),
-    getSafeToDeploy(),
-    getPropertyUnderwriting(),
-    getGoals(),
-    getPortfolio(),
-    getRisk(),
+    getCashFlow(actor),
+    getSafeToDeploy(actor),
+    getPropertyUnderwriting(actor),
+    getGoals(actor),
+    getPortfolio(actor),
+    getRisk(actor),
   ]);
   if (!recommendation[0]) throw new Error("CIO recommendation was not found");
   const row = recommendation[0];
@@ -309,14 +328,15 @@ async function readIntelligenceSnapshot() {
   };
 }
 
-export async function getIntelligenceSnapshot() {
-  const snapshot = await readIntelligenceSnapshot();
-  if (snapshot.analysts.length === 0) return refreshIntelligence();
+export async function getIntelligenceSnapshot(actor: Actor) {
+  const snapshot = await readIntelligenceSnapshot(actor);
+  if (snapshot.analysts.length === 0) return refreshIntelligence(actor);
   return snapshot;
 }
 
-export async function runContributionScenario(proposedWeekly: string, actor?: Actor) {
-  const [ids, goals] = await Promise.all([ensureSeedData(), getGoals()]);
+export async function runContributionScenario(proposedWeekly: string, actor: Actor) {
+  const [goals] = await Promise.all([getGoals(actor)]);
+  const ids = { householdId: actor.householdId, goalId: goals[0]?.id ?? "" };
   const goal = goals[0];
   if (!goal) throw new Error("Duplex goal was not found");
   const result = {
@@ -327,14 +347,14 @@ export async function runContributionScenario(proposedWeekly: string, actor?: Ac
       proposedWeeklyCents: cents(proposedWeekly),
       remainingGoalCents: cents(goal.amountRemaining),
     }),
-    currentSafeToDeploy: (await getSafeToDeploy()).safeToDeploy,
+    currentSafeToDeploy: (await getSafeToDeploy(actor)).safeToDeploy,
     productionDataChanged: false,
     householdId: ids.householdId,
   };
   await db.insert(auditEvents).values({
     householdId: ids.householdId,
     eventType: "intelligence_scenario_created",
-    actor: actor?.userId ?? "system",
+    actor: actor.userId,
     entity: "contribution_scenario",
     entityId: ids.goalId,
     reason: "Planning-only contribution pace scenario calculated; production data was not changed.",
@@ -347,7 +367,7 @@ export async function recordRecommendationFeedback(
   actor: Actor,
   input: { recommendationId: string; feedback: "helpful" | "not_helpful" | "implemented" | "dismissed"; note?: string },
 ) {
-  const ids = await ensureSeedData();
+  const ids = { householdId: actor.householdId };
   const [recommendation] = await db.select({ id: aiRecommendations.id }).from(aiRecommendations).where(and(
     eq(aiRecommendations.id, input.recommendationId),
     eq(aiRecommendations.householdId, ids.householdId),

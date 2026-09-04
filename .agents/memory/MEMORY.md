@@ -1,6 +1,7 @@
 - [Financial safety boundaries](capital-os-financial-safety.md) — keep financial decisions in integer-cents domain functions and commit idempotency, ledger, balance, and audit writes atomically.
 - [Property underwriting guardrails](capital-os-property-underwriting.md) — keep readiness, affordability, deal quality, and capital-governor decisions separate and advisory.
 - [Additive development seeding](capital-os-seed-evolution.md) — evolve an existing development household in place when new seed capabilities are added; never recreate it because one sleeve is missing.
+- [Actor-scoped household initialization](capital-os-actor-seeding.md) — initialize planning core from the authenticated household before resolving service-owned IDs; never fall back to the shared demo seed.
 - [OpenAPI and pinned Zod](openapi-zod-compatibility.md) — avoid unconstrained object schemas that generate APIs newer than the workspace’s pinned Zod version supports.
 - [Generated query hook options](query-hook-options.md) — custom React Query options need the matching generated query key supplied explicitly.
 - [Derived intelligence hydration](capital-os-intelligence-hydration.md) — derived advisory records must self-hydrate once after schema evolution so a first read is never an empty intelligence view.

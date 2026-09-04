@@ -41,7 +41,7 @@ import {
 const router: IRouter = Router();
 
 router.get("/micro-live", asyncRoute(async (_req, res) => {
-  res.json(await getMicroLiveSnapshot());
+  res.json(await getMicroLiveSnapshot(actorFrom(res)));
 }));
 
 router.post("/micro-live/rehearsal", asyncRoute(async (_req, res) => {
@@ -87,7 +87,7 @@ router.post("/micro-live/first-fill/approve", asyncRoute(async (_req, res) => {
 }));
 
 router.get("/micro-live/reconciliation-runs", asyncRoute(async (_req, res) => {
-  res.json(await listMicroLiveReconciliationRuns());
+  res.json(await listMicroLiveReconciliationRuns(actorFrom(res)));
 }));
 
 router.post("/micro-live/reconciliation-runs", asyncRoute(async (_req, res) => {
@@ -95,15 +95,15 @@ router.post("/micro-live/reconciliation-runs", asyncRoute(async (_req, res) => {
 }));
 
 router.get("/micro-live/position-snapshots", asyncRoute(async (_req, res) => {
-  res.json(await listMicroLivePositionSnapshots());
+  res.json(await listMicroLivePositionSnapshots(actorFrom(res)));
 }));
 
 router.get("/micro-live/fill-snapshots", asyncRoute(async (_req, res) => {
-  res.json(await listMicroLiveFillSnapshots());
+  res.json(await listMicroLiveFillSnapshots(actorFrom(res)));
 }));
 
 router.get("/micro-live/incidents", asyncRoute(async (_req, res) => {
-  res.json(await listMicroLiveIncidents());
+  res.json(await listMicroLiveIncidents(actorFrom(res)));
 }));
 
 router.post("/micro-live/incidents/:incidentId/reviews", asyncRoute(async (req, res) => {
@@ -113,11 +113,11 @@ router.post("/micro-live/incidents/:incidentId/reviews", asyncRoute(async (req, 
 }));
 
 router.get("/micro-live/incident-reviews", asyncRoute(async (_req, res) => {
-  res.json(await listMicroLiveIncidentReviews());
+  res.json(await listMicroLiveIncidentReviews(actorFrom(res)));
 }));
 
 router.get("/micro-live/reactivation-requirements", asyncRoute(async (_req, res) => {
-  res.json(await listMicroLiveReactivationRequirements());
+  res.json(await listMicroLiveReactivationRequirements(actorFrom(res)));
 }));
 
 router.post("/micro-live/reactivation-requirements/:requirementId/complete", asyncRoute(async (req, res) => {

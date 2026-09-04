@@ -44,7 +44,7 @@ import {
 } from "../domain/execution-adapters";
 import type { VenueAdapter, VenueFill, VenueOrder } from "../domain/execution-adapters";
 import { assertPermission, GovernanceError } from "../domain/governance";
-import { ensureSeedData } from "./seed";
+import { ensureSeedData, ensureTenantCore } from "./seed";
 import type { Actor } from "./capital-os";
 
 function policyLimits() {
@@ -54,8 +54,10 @@ function policyLimits() {
   };
 }
 
-async function ensureMicroLiveSeed() {
-  const ids = await ensureSeedData();
+async function ensureMicroLiveSeed(actor?: Actor) {
+  const ids = actor
+    ? await ensureTenantCore(actor.householdId, actor.userId)
+    : await ensureSeedData();
   let [policy] = await db.select().from(microLivePolicies).where(eq(microLivePolicies.householdId, ids.householdId)).limit(1);
   if (!policy) {
     [policy] = await db.insert(microLivePolicies).values({
@@ -1312,8 +1314,8 @@ async function ensureMicroLiveBaseline(session: typeof microLiveSessions.$inferS
   return run;
 }
 
-export async function getMicroLiveSnapshot() {
-  const { policy, venues, session } = await ensureMicroLiveSeed();
+export async function getMicroLiveSnapshot(actor: Actor) {
+  const { policy, venues, session } = await ensureMicroLiveSeed(actor);
   await ensureMicroLiveBaseline(session);
   const rehearsal = runLiveRehearsal();
   const [heartbeat] = await db.select().from(guardianHeartbeats).where(eq(guardianHeartbeats.householdId, session.householdId)).orderBy(desc(guardianHeartbeats.lastHeartbeatAt)).limit(1);
@@ -1443,7 +1445,7 @@ export async function getMicroLiveSnapshot() {
 
 export async function runMicroLiveRehearsal(actor: Actor) {
   assertPermission(actor.role, "contribute");
-  const { householdId, session } = await ensureMicroLiveSeed();
+  const { householdId, session } = await ensureMicroLiveSeed(actor);
   const rehearsal = runLiveRehearsal();
   await db.insert(auditEvents).values({
     householdId,
@@ -1459,8 +1461,8 @@ export async function runMicroLiveRehearsal(actor: Actor) {
 
 export async function reviewMicroLiveEnablement(actor: Actor) {
   assertPermission(actor.role, "approve");
-  const snapshot = await getMicroLiveSnapshot();
-  const { householdId } = await ensureSeedData();
+  const snapshot = await getMicroLiveSnapshot(actor);
+  const { householdId } = await ensureMicroLiveSeed(actor);
   await db.insert(auditEvents).values({
     householdId,
     eventType: "micro_live_enablement_reviewed",
@@ -1506,8 +1508,8 @@ function isVenueApprovalRequest(value: unknown): value is VenueApprovalRequest {
     !Object.prototype.hasOwnProperty.call(candidate, "jurisdictionReviewReference");
 }
 
-async function loadMicroLiveVenue(venueId: string) {
-  const { householdId } = await ensureSeedData();
+async function loadMicroLiveVenue(actor: Actor, venueId: string) {
+  const { householdId } = await ensureMicroLiveSeed(actor);
   const [venue] = await db.select().from(venueRegistry).where(and(
     eq(venueRegistry.id, venueId),
     eq(venueRegistry.householdId, householdId),
@@ -1526,7 +1528,7 @@ export async function recordMicroLiveVenueReview(
   if (!isVenueReviewRequest(request, kind)) {
     throw new GovernanceError("INVALID_STATE", "A valid independent review reference is required");
   }
-  const { householdId } = await loadMicroLiveVenue(venueId);
+  const { householdId } = await loadMicroLiveVenue(actor, venueId);
   const review = {
     reference: request.reviewReference,
     reviewerId: actor.userId,
@@ -1576,7 +1578,7 @@ export async function approveMicroLiveVenue(
     throw new GovernanceError("INVALID_STATE", "A complete venue approval review is required");
   }
 
-  const { householdId } = await ensureSeedData();
+  const { householdId } = await ensureMicroLiveSeed(actor);
   const [venue] = await db.select().from(venueRegistry).where(and(
     eq(venueRegistry.id, venueId),
     eq(venueRegistry.householdId, householdId),
@@ -1663,7 +1665,7 @@ export async function approveMicroLiveVenue(
 
 export async function armMicroLive(actor: Actor, venueId: string) {
   assertPermission(actor.role, "approve");
-  const snapshot = await getMicroLiveSnapshot();
+  const snapshot = await getMicroLiveSnapshot(actor);
   const venue = snapshot.venues.find((candidate) => candidate.id === venueId);
   if (!venue) throw new GovernanceError("INVALID_STATE", "Venue is not registered for this household");
   const providerVenues = snapshot.venues.filter((candidate) =>
@@ -1712,7 +1714,7 @@ export async function armMicroLive(actor: Actor, venueId: string) {
     })
     .where(and(
       eq(microLiveSessions.id, snapshot.session.id),
-      eq(microLiveSessions.householdId, (await ensureSeedData()).householdId),
+      eq(microLiveSessions.householdId, actor.householdId),
     ))
     .returning();
   await db.insert(auditEvents).values({
@@ -1729,7 +1731,7 @@ export async function armMicroLive(actor: Actor, venueId: string) {
 
 export async function runMicroLiveReconciliation(actor: Actor) {
   assertPermission(actor.role, "contribute");
-  const { householdId, session } = await ensureMicroLiveSeed();
+  const { householdId, session } = await ensureMicroLiveSeed(actor);
   const [sessionVenue] = await db.select().from(venueRegistry).where(and(
     eq(venueRegistry.id, session.venueId ?? ""),
     eq(venueRegistry.householdId, householdId),
@@ -1876,30 +1878,30 @@ export async function runMicroLiveReconciliation(actor: Actor) {
   return toReconciliationRun(run);
 }
 
-export async function listMicroLiveReconciliationRuns() {
-  const { householdId } = await ensureMicroLiveSeed();
+export async function listMicroLiveReconciliationRuns(actor: Actor) {
+  const { householdId } = await ensureMicroLiveSeed(actor);
   const runs = await db.select().from(reconciliationRuns)
     .where(eq(reconciliationRuns.householdId, householdId))
     .orderBy(desc(reconciliationRuns.completedAt)).limit(50);
   return runs.map(toReconciliationRun);
 }
 
-export async function listMicroLivePositionSnapshots() {
-  const { householdId } = await ensureMicroLiveSeed();
+export async function listMicroLivePositionSnapshots(actor: Actor) {
+  const { householdId } = await ensureMicroLiveSeed(actor);
   return db.select().from(positionSnapshots)
     .where(eq(positionSnapshots.householdId, householdId))
     .orderBy(desc(positionSnapshots.capturedAt)).limit(50);
 }
 
-export async function listMicroLiveFillSnapshots() {
-  const { householdId } = await ensureMicroLiveSeed();
+export async function listMicroLiveFillSnapshots(actor: Actor) {
+  const { householdId } = await ensureMicroLiveSeed(actor);
   return db.select().from(fillSnapshots)
     .where(eq(fillSnapshots.householdId, householdId))
     .orderBy(desc(fillSnapshots.capturedAt)).limit(50);
 }
 
-export async function listMicroLiveIncidents() {
-  const { householdId } = await ensureMicroLiveSeed();
+export async function listMicroLiveIncidents(actor: Actor) {
+  const { householdId } = await ensureMicroLiveSeed(actor);
   const [incidents, reviews, requirements] = await Promise.all([
     db.select().from(tradingIncidents).where(and(eq(tradingIncidents.householdId, householdId), eq(tradingIncidents.status, "OPEN"))).orderBy(desc(tradingIncidents.createdAt)).limit(50),
     db.select().from(postIncidentReviews).where(eq(postIncidentReviews.householdId, householdId)),
@@ -1908,8 +1910,8 @@ export async function listMicroLiveIncidents() {
   return incidents.map((incident) => toIncident(incident, reviews, requirements));
 }
 
-export async function listMicroLiveIncidentReviews() {
-  const { householdId } = await ensureMicroLiveSeed();
+export async function listMicroLiveIncidentReviews(actor: Actor) {
+  const { householdId } = await ensureMicroLiveSeed(actor);
   const [reviews, requirements] = await Promise.all([
     db.select().from(postIncidentReviews)
     .where(eq(postIncidentReviews.householdId, householdId))
@@ -1919,8 +1921,8 @@ export async function listMicroLiveIncidentReviews() {
   return reviews.map((review) => toIncidentReview(review, requirements));
 }
 
-export async function listMicroLiveReactivationRequirements() {
-  const { householdId } = await ensureMicroLiveSeed();
+export async function listMicroLiveReactivationRequirements(actor: Actor) {
+  const { householdId } = await ensureMicroLiveSeed(actor);
   return db.select().from(reactivationRequirements)
     .where(eq(reactivationRequirements.householdId, householdId))
     .orderBy(desc(reactivationRequirements.createdAt)).limit(100);
@@ -1950,7 +1952,7 @@ export async function createMicroLiveIncidentReview(actor: Actor, incidentId: st
   if (!isIncidentReviewRequest(request)) {
     throw new GovernanceError("INVALID_STATE", "A complete human post-incident review is required");
   }
-  const { householdId } = await ensureSeedData();
+  const { householdId } = await ensureMicroLiveSeed(actor);
   const [incident] = await db.select().from(tradingIncidents).where(and(
     eq(tradingIncidents.id, incidentId),
     eq(tradingIncidents.householdId, householdId),
@@ -2000,7 +2002,7 @@ export async function createMicroLiveIncidentReview(actor: Actor, incidentId: st
 
 export async function completeMicroLiveReactivationRequirement(actor: Actor, requirementId: string) {
   assertPermission(actor.role, "approve");
-  const { householdId } = await ensureSeedData();
+  const { householdId } = await ensureMicroLiveSeed(actor);
   const [requirement] = await db.select().from(reactivationRequirements).where(and(
     eq(reactivationRequirements.id, requirementId),
     eq(reactivationRequirements.householdId, householdId),

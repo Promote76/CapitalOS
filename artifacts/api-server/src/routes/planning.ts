@@ -23,7 +23,7 @@ import { analyzePropertyCandidate, createPropertyCandidate, getPropertyUnderwrit
 const router: IRouter = Router();
 
 router.get("/properties", asyncRoute(async (_req, res) => {
-  res.json(GetPropertiesResponse.parse(await getProperty()));
+  res.json(GetPropertiesResponse.parse(await getProperty(actorFrom(res))));
 }));
 
 router.post("/properties", asyncRoute(async (req, res) => {
@@ -32,7 +32,7 @@ router.post("/properties", asyncRoute(async (req, res) => {
 }));
 
 router.get("/properties/underwriting", asyncRoute(async (_req, res) => {
-  res.json(await getPropertyUnderwriting());
+  res.json(await getPropertyUnderwriting(actorFrom(res)));
 }));
 
 router.patch("/properties/buy-box", asyncRoute(async (req, res) => {
@@ -51,7 +51,7 @@ router.post("/properties/candidates/:candidateId/analyze", asyncRoute(async (req
 }));
 
 router.get("/strategies", asyncRoute(async (_req, res) => {
-  res.json(ListStrategiesResponse.parse(await getStrategies()));
+  res.json(ListStrategiesResponse.parse(await getStrategies(actorFrom(res))));
 }));
 
 router.post("/strategies/:strategyId/promote", asyncRoute(async (req, res) => {

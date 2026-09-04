@@ -25,7 +25,7 @@ import {
 } from "../domain/property-underwriting";
 import { assertPermission, GovernanceError } from "../domain/governance";
 import { getCashFlow, getSafeToDeploy } from "./household-finance";
-import { ensureSeedData } from "./seed";
+import { ensureTenantCore } from "./seed";
 import type { Actor } from "./capital-os";
 
 const moneyCents = (value: string | null | undefined) => parseMoneyToCents(value ?? "0");
@@ -58,8 +58,8 @@ function defaultBuyBoxValues(householdId: string) {
   };
 }
 
-async function getIds() {
-  return ensureSeedData();
+async function getIds(actor: Actor) {
+  return ensureTenantCore(actor.householdId, actor.userId);
 }
 
 async function getOrCreateBuyBox(householdId: string) {
@@ -159,8 +159,8 @@ function dealResponse(candidate: typeof propertyCandidates.$inferSelect, box: ty
   };
 }
 
-export async function getPropertyUnderwriting() {
-  const ids = await getIds();
+export async function getPropertyUnderwriting(actor: Actor) {
+  const ids = await getIds(actor);
   const [property, goal, box, candidates, scenarios, cashClose, stressTests, readiness, preapprovals, markets, documents, milestones] = await Promise.all([
     db.select().from(propertyGoals).where(and(
       eq(propertyGoals.id, ids.propertyGoalId),
@@ -182,7 +182,7 @@ export async function getPropertyUnderwriting() {
     db.select().from(propertyMilestones).where(eq(propertyMilestones.propertyGoalId, ids.propertyGoalId)).orderBy(propertyMilestones.sortOrder),
   ]);
   if (!property[0]) throw new GovernanceError("INVALID_STATE", "Property goal was not found");
-  const [cashFlow, safeToDeploy] = await Promise.all([getCashFlow(), getSafeToDeploy()]);
+  const [cashFlow, safeToDeploy] = await Promise.all([getCashFlow(actor), getSafeToDeploy(actor)]);
   const propertyReadiness = readiness[0]
     ? { score: Number(readiness[0].score), status: readiness[0].status, factors: [], nextAction: readiness[0].nextAction }
     : readinessFromFinance(goal[0], cashFlow);
@@ -221,7 +221,7 @@ export async function getPropertyUnderwriting() {
 
 export async function updateBuyBox(actor: Actor, input: Partial<typeof buyBoxes.$inferInsert>) {
   assertPermission(actor.role, "manage_risk");
-  const ids = await getIds();
+  const ids = await getIds(actor);
   const existing = await getOrCreateBuyBox(ids.householdId);
   const [updated] = await db.update(buyBoxes).set({ ...input, updatedAt: new Date() }).where(eq(buyBoxes.id, existing.id)).returning();
   return updated;
@@ -229,7 +229,7 @@ export async function updateBuyBox(actor: Actor, input: Partial<typeof buyBoxes.
 
 export async function createPropertyCandidate(actor: Actor, input: typeof propertyCandidates.$inferInsert) {
   assertPermission(actor.role, "manage_risk");
-  const ids = await getIds();
+  const ids = await getIds(actor);
   if (input.propertyGoalId !== ids.propertyGoalId) throw new GovernanceError("INVALID_STATE", "Property goal was not found");
   const {
     id: _id,
@@ -254,7 +254,7 @@ export async function createPropertyCandidate(actor: Actor, input: typeof proper
 
 export async function analyzePropertyCandidate(actor: Actor, candidateId: string) {
   assertPermission(actor.role, "read");
-  const ids = await getIds();
+  const ids = await getIds(actor);
   const [candidate] = await db.select().from(propertyCandidates).where(and(eq(propertyCandidates.id, candidateId), eq(propertyCandidates.propertyGoalId, ids.propertyGoalId))).limit(1);
   if (!candidate) throw new GovernanceError("INVALID_STATE", "Property candidate was not found");
   const box = await getOrCreateBuyBox(ids.householdId);
@@ -299,7 +299,7 @@ export async function analyzePropertyCandidate(actor: Actor, candidateId: string
     otherClosingCosts: money(cashToCloseInput.otherClosingCostsCents),
     estimatedCashToClose: money(totalCashToClose),
   }).returning();
-  const finance = await getCashFlow();
+  const finance = await getCashFlow(actor);
   const availableCents = moneyCents(finance.reserve.current);
   const governor = calculatePropertyGovernor({
     cashAfterClosingCents: availableCents - totalCashToClose,

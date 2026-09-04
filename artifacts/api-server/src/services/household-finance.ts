@@ -951,10 +951,7 @@ export async function reviewFinancialTransaction(actor: Actor, transactionId: st
       eq(financeTransactions.id, transactionId),
       eq(financeTransactions.householdId, id),
     )).limit(1);
-    if (!transaction) return planningNotFound("Imported transaction");
-    if (transaction.dataSource !== "csv_import" && transaction.dataSource !== "plaid") {
-      throw new GovernanceError("INVALID_STATE", "Only imported transactions can be reviewed here");
-    }
+    if (!transaction) return planningNotFound("Financial transaction");
 
     const categoryId = input.categoryId !== undefined ? input.categoryId : transaction.categoryId;
     if (categoryId) {
@@ -1051,7 +1048,7 @@ export async function getTransactionReviewQueue(actor?: Actor) {
   const [transactions, accounts, categories] = await Promise.all([
     db.select().from(financeTransactions).where(and(
       eq(financeTransactions.householdId, id),
-      inArray(financeTransactions.dataSource, ["csv_import", "plaid"]),
+      inArray(financeTransactions.dataSource, ["manual", "csv_import", "plaid"]),
       ne(financeTransactions.reviewStatus, "approved"),
     )),
     db.select({ id: financialAccounts.id, nickname: financialAccounts.nickname })

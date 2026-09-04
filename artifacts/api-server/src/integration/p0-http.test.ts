@@ -1491,6 +1491,72 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
       essentialStatus: "discretionary",
       monthlyTarget: "200.00",
     }).returning({ id: database.financeCategories.id });
+    const manualEntry = await request(`/financial-accounts/${accountA.id}/transactions`, fixture.userA, fixture.householdA, {
+      method: "POST",
+      body: JSON.stringify({
+        transactionDate: "2026-09-03",
+        description: "Manual household dinner",
+        merchant: "Local restaurant",
+        amount: "12.50",
+        direction: "outflow",
+      }),
+    });
+    assert.equal(manualEntry.status, 201);
+    const manualRow = await manualEntry.json() as { id: string; dataSource: string; reviewStatus: string; amount: string };
+    assert.equal(manualRow.dataSource, "manual");
+    assert.equal(manualRow.reviewStatus, "needs_review");
+    assert.equal(manualRow.amount, "-12.50");
+
+    const manualQueue = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
+    assert.equal(manualQueue.status, 200);
+    const queuedManual = (await manualQueue.json() as { transactions: Array<{ id: string }> }).transactions
+      .find((transaction) => transaction.id === manualRow.id);
+    assert.ok(queuedManual, "manual rows must be visible in the review queue");
+    const manualApproval = await request(`/financial-transactions/${manualRow.id}/review`, fixture.userA, fixture.householdA, {
+      method: "POST",
+      body: JSON.stringify({ status: "approved", categoryId: categoryA.id, note: "Reviewed manual entry." }),
+    });
+    assert.equal(manualApproval.status, 200);
+    const manualApprovalBody = await manualApproval.json() as {
+      id: string;
+      accountId: string;
+      accountName: string;
+      transactionDate: string;
+      description: string;
+      merchant: string;
+      amount: string;
+      originalAmount: string;
+      categoryId: string;
+      categoryName: string;
+      dataSource: string;
+      reviewStatus: string;
+      excludedFromBudget: boolean;
+      reviewedBy: string;
+      reviewedAt: string | null;
+      reviewNote: string | null;
+    };
+    assert.deepEqual({ ...manualApprovalBody, reviewedAt: undefined }, {
+      id: manualRow.id,
+      accountId: accountA.id,
+      accountName: "Primary checking",
+      transactionDate: "2026-09-03",
+      description: "Manual household dinner",
+      merchant: "Local restaurant",
+      amount: "-12.50",
+      originalAmount: "12.50",
+      categoryId: categoryA.id,
+      categoryName: "Household dining",
+      dataSource: "manual",
+      reviewStatus: "approved",
+      excludedFromBudget: false,
+      reviewedBy: fixture.userA,
+      reviewedAt: undefined,
+      reviewNote: "Reviewed manual entry.",
+    });
+    assert.ok(manualApprovalBody.reviewedAt);
+    const manualCashFlow = await request("/cash-flow", fixture.userA, fixture.householdA);
+    assert.equal(manualCashFlow.status, 200);
+    assert.equal((await manualCashFlow.json() as { metrics: { netCashFlow: string } }).metrics.netCashFlow, "-12.50");
 
     const accountBResponse = await request("/financial-accounts", fixture.userB, fixture.householdB, {
       method: "POST",
@@ -1600,7 +1666,7 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     const clearedQueue = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
     assert.deepEqual((await clearedQueue.json() as { transactions: unknown[] }).transactions, []);
     const appliedBudget = await request("/budget", fixture.userA, fixture.householdA);
-    assert.equal((await appliedBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "4.25");
+    assert.equal((await appliedBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "16.75");
     const persistedReview = await database.db
       .select({ reviewStatus: database.financeTransactions.reviewStatus, categoryId: database.financeTransactions.categoryId, excludedFromBudget: database.financeTransactions.excludedFromBudget, metadata: database.financeTransactions.metadata })
       .from(database.financeTransactions)

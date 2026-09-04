@@ -34,11 +34,11 @@ router.get("/accounts", asyncRoute(async (_req, res) => {
 }));
 
 router.get("/goals", asyncRoute(async (_req, res) => {
-  res.json(ListGoalsResponse.parse(await getGoals()));
+  res.json(ListGoalsResponse.parse(await getGoals(actorFrom(res))));
 }));
 
 router.get("/contributions", asyncRoute(async (_req, res) => {
-  res.json(ListContributionsResponse.parse(await getContributions()));
+  res.json(ListContributionsResponse.parse(await getContributions(actorFrom(res))));
 }));
 
 router.post("/contributions", asyncRoute(async (req, res) => {
@@ -55,7 +55,7 @@ router.post("/transfers", asyncRoute(async (req, res) => {
 
 router.post("/allocations/impact", asyncRoute(async (req, res) => {
   const body = PreviewAllocationImpactBody.parse(req.body);
-  res.json(PreviewAllocationImpactResponse.parse(await previewAllocation(body)));
+  res.json(PreviewAllocationImpactResponse.parse(await previewAllocation(actorFrom(res), body)));
 }));
 
 router.put("/allocations", asyncRoute(async (req, res) => {
@@ -64,7 +64,7 @@ router.put("/allocations", asyncRoute(async (req, res) => {
 }));
 
 router.get("/portfolio", asyncRoute(async (_req, res) => {
-  res.json(GetPortfolioResponse.parse(await getPortfolio()));
+  res.json(GetPortfolioResponse.parse(await getPortfolio(actorFrom(res))));
 }));
 
 export default router;

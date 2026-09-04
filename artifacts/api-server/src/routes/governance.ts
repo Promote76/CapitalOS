@@ -22,7 +22,7 @@ import {
 const router: IRouter = Router();
 
 router.get("/risk", asyncRoute(async (_req, res) => {
-  res.json(GetRiskResponse.parse(await getRisk()));
+  res.json(GetRiskResponse.parse(await getRisk(actorFrom(res))));
 }));
 
 router.post("/risk/emergency-stop", asyncRoute(async (req, res) => {
@@ -31,7 +31,7 @@ router.post("/risk/emergency-stop", asyncRoute(async (req, res) => {
 }));
 
 router.get("/recommendations", asyncRoute(async (_req, res) => {
-  res.json(ListRecommendationsResponse.parse(await listRecommendations()));
+  res.json(ListRecommendationsResponse.parse(await listRecommendations(actorFrom(res))));
 }));
 
 router.post("/recommendations/:recommendationId/decision", asyncRoute(async (req, res) => {
@@ -41,7 +41,7 @@ router.post("/recommendations/:recommendationId/decision", asyncRoute(async (req
 }));
 
 router.get("/audit", asyncRoute(async (_req, res) => {
-  res.json(ListAuditEventsResponse.parse(await getAuditEvents()));
+  res.json(ListAuditEventsResponse.parse(await getAuditEvents(actorFrom(res))));
 }));
 
 export default router;

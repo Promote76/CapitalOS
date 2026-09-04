@@ -603,7 +603,7 @@ export type SeedContext = {
 let seedContext: SeedContext | undefined;
 const tenantContexts = new Map<string, SeedContext>();
 
-async function ensureTenantCore(householdId: string, ownerId: string): Promise<SeedContext> {
+export async function ensureTenantCore(householdId: string, ownerId: string): Promise<SeedContext> {
   const cached = tenantContexts.get(householdId);
   if (cached) return cached;
 

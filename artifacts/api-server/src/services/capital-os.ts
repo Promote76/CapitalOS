@@ -42,8 +42,8 @@ import {
 } from "../domain/governance";
 import { chainAdapters, futureCapitalVaultInterface } from "../domain/blockchain";
 import { reportDescriptors } from "../domain/reports";
-import { ensureSeedData, type SeedContext } from "./seed";
 import { canViewFinancialBalance } from "../domain/household-finance";
+import { ensureTenantCore } from "./seed";
 
 export type Actor = {
   role: HouseholdRole;
@@ -103,8 +103,8 @@ function toGoalSummary(goal: Goal) {
   };
 }
 
-async function context(): Promise<SeedContext> {
-  return ensureSeedData();
+async function context(actor: Actor) {
+  return ensureTenantCore(actor.householdId, actor.userId);
 }
 
 async function currentAllocation(householdId: string) {
@@ -132,7 +132,7 @@ async function accountRows(householdId: string): Promise<Account[]> {
 }
 
 export async function getHousehold(actor: Actor) {
-  const ids = await context();
+  const ids = await context(actor);
   const [household] = await db.select().from(households).where(eq(households.id, ids.householdId)).limit(1);
   const [settings] = await db.select().from(householdSettings).where(eq(householdSettings.householdId, ids.householdId)).limit(1);
   if (!household) throw new Error("Household was not found");
@@ -161,7 +161,7 @@ export async function getHousehold(actor: Actor) {
 
 export async function updatePrivacySettings(actor: Actor, input: { financeDataPrivate: boolean; shareHealthSummary: boolean }) {
   assertPermission(actor.role, "approve");
-  const ids = await context();
+  const ids = await context(actor);
   const [settings] = await db.select().from(householdSettings).where(eq(householdSettings.householdId, ids.householdId)).limit(1);
   await db.update(householdSettings).set({
     settings: { ...(settings?.settings ?? {}), ...input, credentialsStored: false, bankActionsEnabled: false },
@@ -170,22 +170,22 @@ export async function updatePrivacySettings(actor: Actor, input: { financeDataPr
   return getHousehold(actor);
 }
 
-export async function getAccounts(actor?: Actor) {
-  const ids = await context();
+export async function getAccounts(actor: Actor) {
+  const ids = await context(actor);
   const rows = await accountRows(ids.householdId);
   return rows
     .filter((account) => account.accountType !== "treasury")
-    .map((account) => toAccountSummary(account, actor?.role ?? "owner"));
+    .map((account) => toAccountSummary(account, actor.role));
 }
 
-export async function getGoals() {
-  const ids = await context();
+export async function getGoals(actor: Actor) {
+  const ids = await context(actor);
   const rows = await db.select().from(goals).where(eq(goals.householdId, ids.householdId)).orderBy(desc(goals.priority));
   return rows.map(toGoalSummary);
 }
 
-export async function getContributions() {
-  const ids = await context();
+export async function getContributions(actor: Actor) {
+  const ids = await context(actor);
   const rows = await db
     .select()
     .from(contributions)
@@ -202,8 +202,8 @@ export async function getContributions() {
   }));
 }
 
-export async function getPortfolio() {
-  const ids = await context();
+export async function getPortfolio(actor: Actor) {
+  const ids = await context(actor);
   const rows = (await accountRows(ids.householdId)).filter((account) => account.accountType !== "treasury");
   const totals = rows.reduce(
     (result, row) => {
@@ -250,8 +250,8 @@ export async function getPortfolio() {
   };
 }
 
-export async function getProperty() {
-  const ids = await context();
+export async function getProperty(actor: Actor) {
+  const ids = await context(actor);
   const [property] = await db
     .select()
     .from(propertyGoals)
@@ -305,8 +305,8 @@ function strategySummary(strategy: Strategy, performance?: typeof strategyPerfor
   };
 }
 
-export async function getStrategies() {
-  const ids = await context();
+export async function getStrategies(actor: Actor) {
+  const ids = await context(actor);
   const rows = await db.select().from(strategies).where(eq(strategies.householdId, ids.householdId));
   const performances = await db
     .select()
@@ -334,8 +334,8 @@ function riskSummary(risk: RiskState) {
   };
 }
 
-export async function getRisk() {
-  const ids = await context();
+export async function getRisk(actor: Actor) {
+  const ids = await context(actor);
   const [risk] = await db.select().from(riskStates).where(and(
     eq(riskStates.id, ids.riskStateId),
     eq(riskStates.householdId, ids.householdId),
@@ -344,8 +344,8 @@ export async function getRisk() {
   return riskSummary(risk);
 }
 
-export async function getRecommendation() {
-  const ids = await context();
+export async function getRecommendation(actor: Actor) {
+  const ids = await context(actor);
   const [recommendation] = await db
     .select()
     .from(aiRecommendations)
@@ -367,8 +367,8 @@ export async function getRecommendation() {
   };
 }
 
-export async function getAuditEvents() {
-  const ids = await context();
+export async function getAuditEvents(actor: Actor) {
+  const ids = await context(actor);
   const rows = await db
     .select()
     .from(auditEvents)
@@ -387,16 +387,16 @@ export async function getAuditEvents() {
 }
 
 export async function getDashboard(actor: Actor) {
-  const ids = await context();
+  const ids = await context(actor);
   const [goal, portfolio, property, strategiesList, risk, recommendation, recentActivity, accountsList, allocation] =
     await Promise.all([
-      getGoals(),
-      getPortfolio(),
-      getProperty(),
-      getStrategies(),
-      getRisk(),
-      getRecommendation(),
-      getAuditEvents(),
+      getGoals(actor),
+      getPortfolio(actor),
+      getProperty(actor),
+      getStrategies(actor),
+      getRisk(actor),
+      getRecommendation(actor),
+      getAuditEvents(actor),
       getAccounts(actor),
       currentAllocation(ids.householdId),
     ]);
@@ -414,13 +414,13 @@ export async function getDashboard(actor: Actor) {
   };
 }
 
-export async function previewAllocation(input: {
+export async function previewAllocation(actor: Actor, input: {
   totalWeekly: string;
   duplexReserve: string;
   capitalOs: string;
   opportunityReserve: string;
 }) {
-  const ids = await context();
+  const ids = await context(actor);
   const currentRule = await currentAllocation(ids.householdId);
   const current: AllocationCents = {
     total: numeric(currentRule.totalWeekly),
@@ -461,8 +461,8 @@ export async function updateAllocation(actor: Actor, input: {
   opportunityReserve: string;
 }) {
   assertPermission(actor.role, "allocate");
-  const ids = await context();
-  const impact = await previewAllocation(input);
+  const ids = await context(actor);
+  const impact = await previewAllocation(actor, input);
   if (!impact.totalMatches) {
     throw new GovernanceError("INVALID_STATE", "Allocation sleeves must add up to the stated weekly contribution");
   }
@@ -587,7 +587,7 @@ async function writeMovement(
 
 export async function recordContribution(actor: Actor, input: { amount: string; goalId?: string | null; note?: string | null }, idempotencyKey: string) {
   assertPermission(actor.role, "contribute");
-  const ids = await context();
+  const ids = await context(actor);
   const amountCents = parseMoneyToCents(input.amount);
   if (amountCents <= 0) throw new GovernanceError("INVALID_STATE", "Contribution amount must be greater than zero");
   return db.transaction(async (tx) => {
@@ -698,7 +698,7 @@ export async function createTransfer(
   idempotencyKey: string,
 ) {
   assertPermission(actor.role, "transfer");
-  const ids = await context();
+  const ids = await context(actor);
   const amountCents = parseMoneyToCents(input.amount);
   if (amountCents <= 0) throw new GovernanceError("INVALID_STATE", "Transfer amount must be greater than zero");
   return db.transaction(async (tx) => {
@@ -784,7 +784,7 @@ export async function promoteStrategy(actor: Actor, strategyId: string, input: {
   evidence: { minimumObservations: boolean; reconciliationAccurate: boolean; noCriticalErrors: boolean };
 }) {
   assertPermission(actor.role, "approve");
-  const ids = await context();
+  const ids = await context(actor);
   const [strategy] = await db.select().from(strategies).where(and(eq(strategies.id, strategyId), eq(strategies.householdId, ids.householdId))).limit(1);
   if (!strategy) throw new GovernanceError("INVALID_STATE", "Strategy was not found");
   const [performance] = await db
@@ -830,7 +830,7 @@ export async function allocateStrategy(
   idempotencyKey: string,
 ) {
   assertPermission(actor.role, "allocate");
-  const ids = await context();
+  const ids = await context(actor);
   const amountCents = parseMoneyToCents(input.amount);
   if (amountCents <= 0) throw new GovernanceError("INVALID_STATE", "Strategy allocation must be greater than zero");
   return db.transaction(async (tx) => {
@@ -930,7 +930,7 @@ export async function allocateStrategy(
 export async function activateEmergencyStop(actor: Actor, confirmed: boolean, reason: string) {
   assertPermission(actor.role, "manage_risk");
   if (!confirmed) throw new GovernanceError("INVALID_STATE", "Emergency stop must be explicitly confirmed");
-  const ids = await context();
+  const ids = await context(actor);
   const [updated] = await db
     .update(riskStates)
     .set({ state: "locked", emergencyStopActive: true, updatedAt: new Date() })
@@ -948,8 +948,8 @@ export async function activateEmergencyStop(actor: Actor, confirmed: boolean, re
   return riskSummary(updated);
 }
 
-export async function listRecommendations() {
-  const ids = await context();
+export async function listRecommendations(actor: Actor) {
+  const ids = await context(actor);
   const rows = await db.select().from(aiRecommendations).where(eq(aiRecommendations.householdId, ids.householdId)).orderBy(desc(aiRecommendations.createdAt));
   return rows.map((recommendation) => ({
     id: recommendation.id,
@@ -966,7 +966,7 @@ export async function listRecommendations() {
 export async function decideRecommendation(actor: Actor, recommendationId: string, decision: "approved" | "rejected", reason: string) {
   assertPermission(actor.role, "approve");
   assertAIActionAllowed("move_money");
-  const ids = await context();
+  const ids = await context(actor);
   const [recommendation] = await db.select().from(aiRecommendations).where(and(eq(aiRecommendations.id, recommendationId), eq(aiRecommendations.householdId, ids.householdId))).limit(1);
   if (!recommendation) throw new GovernanceError("INVALID_STATE", "Recommendation was not found");
   const [updated] = await db.update(aiRecommendations).set({ status: decision, reviewedAt: new Date(), reviewedBy: actor.userId }).where(and(
@@ -998,7 +998,7 @@ export async function decideRecommendation(actor: Actor, recommendationId: strin
 
 export async function addPropertyNote(actor: Actor, propertyGoalId: string, body: string) {
   assertPermission(actor.role, "contribute");
-  const ids = await context();
+  const ids = await context(actor);
   if (propertyGoalId !== ids.propertyGoalId) throw new GovernanceError("INVALID_STATE", "Property goal was not found");
   const [property] = await db.select({ id: propertyGoals.id }).from(propertyGoals).where(and(
     eq(propertyGoals.id, propertyGoalId),

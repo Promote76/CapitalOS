@@ -18,7 +18,7 @@ import {
 const router: IRouter = Router();
 
 router.get("/intelligence", asyncRoute(async (_req, res) => {
-  res.json(GetIntelligenceResponse.parse(await getIntelligenceSnapshot()));
+  res.json(GetIntelligenceResponse.parse(await getIntelligenceSnapshot(actorFrom(res))));
 }));
 
 router.post("/intelligence/refresh", asyncRoute(async (_req, res) => {

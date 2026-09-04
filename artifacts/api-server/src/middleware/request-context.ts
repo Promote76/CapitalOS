@@ -31,6 +31,7 @@ function requiresRecentAuthentication(req: Request) {
     path.includes("/treasury/requests/") ||
     path.startsWith("/business/distributions") ||
     path.startsWith("/micro-live/") ||
+    path.startsWith("/execution-control/") ||
     path.startsWith("/financial-transactions/") ||
     path.startsWith("/financing");
 }

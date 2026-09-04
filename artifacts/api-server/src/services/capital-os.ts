@@ -44,6 +44,7 @@ import { chainAdapters, futureCapitalVaultInterface } from "../domain/blockchain
 import { reportDescriptors } from "../domain/reports";
 import { canViewFinancialBalance } from "../domain/household-finance";
 import { ensureTenantCore } from "./seed";
+import { requestExecutionStop } from "./execution-control";
 
 export type Actor = {
   role: HouseholdRole;
@@ -931,6 +932,11 @@ export async function activateEmergencyStop(actor: Actor, confirmed: boolean, re
   assertPermission(actor.role, "manage_risk");
   if (!confirmed) throw new GovernanceError("INVALID_STATE", "Emergency stop must be explicitly confirmed");
   const ids = await context(actor);
+  await requestExecutionStop(actor, {
+    reason,
+    correlationId: undefined,
+    idempotencyKey: null,
+  });
   const [updated] = await db
     .update(riskStates)
     .set({ state: "locked", emergencyStopActive: true, updatedAt: new Date() })

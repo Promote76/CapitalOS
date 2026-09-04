@@ -11,6 +11,7 @@
     "test:generated-finance-artifacts": "node scripts/test-generated-finance-artifacts.mjs",
     "certify:production-candidate": "node scripts/certify-production-candidate.mjs",
     "certify:micro-live": "node scripts/certify-micro-live.mjs",
+    "certify:execution-control": "node scripts/certify-execution-control.mjs",
     "certify:migrations": "node scripts/certify-migrations.mjs",
     "certify:internal-reliability": "node scripts/certify-internal-reliability.mjs",
     "verify-future-restore": "node scripts/verify-future-restore.mjs"

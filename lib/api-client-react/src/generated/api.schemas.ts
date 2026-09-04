@@ -902,6 +902,46 @@ export interface MicroLiveOrderRequest {
   postOnly?: boolean;
 }
 
+export interface ExecutionControlCommandInput {
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export type ExecutionControlStateState = typeof ExecutionControlStateState[keyof typeof ExecutionControlStateState];
+
+
+export const ExecutionControlStateState = {
+  DISABLED: 'DISABLED',
+  MICRO_LIVE_ELIGIBLE: 'MICRO_LIVE_ELIGIBLE',
+  MICRO_LIVE_ARMED: 'MICRO_LIVE_ARMED',
+  MICRO_LIVE_ACTIVE: 'MICRO_LIVE_ACTIVE',
+  SAFE_MODE: 'SAFE_MODE',
+  STOP: 'STOP',
+  EVACUATE: 'EVACUATE',
+  LOCKED: 'LOCKED',
+} as const;
+
+export interface ExecutionControlState {
+  id: string;
+  householdId: string;
+  state: ExecutionControlStateState;
+  version: number;
+  reason: string;
+  /** @nullable */
+  changedBy: string | null;
+  changedAt: string;
+  /** @nullable */
+  correlationId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  availableTransitions: string[];
+  executionPermitted: boolean;
+  idempotent: boolean;
+}
+
 /**
  * @nullable
  */

@@ -409,6 +409,97 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/MicroLiveSnapshot" }
+  /execution-control:
+    get:
+      operationId: getExecutionControl
+      tags: [planning]
+      summary: Get the household-scoped server execution control state
+      responses:
+        "200":
+          description: Execution control state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExecutionControlState" }
+  /execution-control/stop:
+    post:
+      operationId: requestExecutionStop
+      tags: [planning]
+      summary: Request an authoritative execution stop
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExecutionControlCommandInput" }
+      responses:
+        "200":
+          description: Confirmed execution state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExecutionControlState" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /execution-control/safe-mode:
+    post:
+      operationId: requestExecutionSafeMode
+      tags: [planning]
+      summary: Request an authoritative safe mode transition
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExecutionControlCommandInput" }
+      responses:
+        "200":
+          description: Confirmed execution state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExecutionControlState" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /execution-control/evacuate:
+    post:
+      operationId: requestExecutionEvacuate
+      tags: [planning]
+      summary: Request an authoritative evacuation state
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExecutionControlCommandInput" }
+      responses:
+        "200":
+          description: Confirmed execution state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExecutionControlState" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /execution-control/recover:
+    post:
+      operationId: recoverExecutionControl
+      tags: [planning]
+      summary: Recover a stopped or locked execution control to disabled
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExecutionControlCommandInput" }
+      responses:
+        "200":
+          description: Confirmed disabled execution state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExecutionControlState" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /micro-live/rehearsal:
     post:
       operationId: runMicroLiveRehearsal
@@ -2976,6 +3067,28 @@ components:
         priceBps: { type: number, exclusiveMinimum: 0 }
         marketDataAgeMs: { type: number, minimum: 0 }
         postOnly: { type: boolean }
+    ExecutionControlCommandInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    ExecutionControlState:
+      type: object
+      required: [id, householdId, state, version, reason, changedBy, changedAt, correlationId, createdAt, updatedAt, availableTransitions, executionPermitted, idempotent]
+      properties:
+        id: { type: string }
+        householdId: { type: string }
+        state: { type: string, enum: [DISABLED, MICRO_LIVE_ELIGIBLE, MICRO_LIVE_ARMED, MICRO_LIVE_ACTIVE, SAFE_MODE, STOP, EVACUATE, LOCKED] }
+        version: { type: number }
+        reason: { type: string }
+        changedBy: { type: ["string", "null"] }
+        changedAt: { type: string, format: date-time }
+        correlationId: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        availableTransitions: { type: array, items: { type: string } }
+        executionPermitted: { type: boolean }
+        idempotent: { type: boolean }
     MicroLiveOrderResponse:
       type: object
       required: [orderIntentId, clientOrderId, state, idempotent, venueOrder, reconciliation]

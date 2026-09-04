@@ -69,6 +69,8 @@ import type {
   CsvImportInput,
   DashboardSnapshot,
   EmergencyStopInput,
+  ExecutionControlCommandInput,
+  ExecutionControlState,
   FinanceInsights,
   FinanceSnapshot,
   FinanceTransaction,
@@ -2062,6 +2064,367 @@ export function useGetMicroLive<TData = Awaited<ReturnType<typeof getMicroLive>>
 
 
 
+
+export const getGetExecutionControlUrl = () => {
+
+
+
+
+  return `/api/execution-control`
+}
+
+/**
+ * @summary Get the household-scoped server execution control state
+ */
+export const getExecutionControl = async ( options?: Parameters<typeof customFetch>[1]): Promise<ExecutionControlState> => {
+
+  return customFetch<ExecutionControlState>(getGetExecutionControlUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetExecutionControlQueryKey = () => {
+    return [
+    `/api/execution-control`
+    ] as const;
+    }
+
+
+export const getGetExecutionControlQueryOptions = <TData = Awaited<ReturnType<typeof getExecutionControl>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExecutionControl>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetExecutionControlQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getExecutionControl>>> = ({ signal }) => getExecutionControl({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getExecutionControl>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetExecutionControlQueryResult = NonNullable<Awaited<ReturnType<typeof getExecutionControl>>>
+export type GetExecutionControlQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the household-scoped server execution control state
+ */
+
+export function useGetExecutionControl<TData = Awaited<ReturnType<typeof getExecutionControl>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExecutionControl>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetExecutionControlQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRequestExecutionStopUrl = () => {
+
+
+
+
+  return `/api/execution-control/stop`
+}
+
+/**
+ * @summary Request an authoritative execution stop
+ */
+export const requestExecutionStop = async (executionControlCommandInput: ExecutionControlCommandInput, options?: Parameters<typeof customFetch>[1]): Promise<ExecutionControlState> => {
+
+  return customFetch<ExecutionControlState>(getRequestExecutionStopUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(executionControlCommandInput)
+  }
+);}
+
+
+
+
+
+export const getRequestExecutionStopMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestExecutionStop>>, TError,{data: BodyType<ExecutionControlCommandInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestExecutionStop>>, TError,{data: BodyType<ExecutionControlCommandInput>}, TContext> => {
+
+const mutationKey = ['requestExecutionStop'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestExecutionStop>>, {data: BodyType<ExecutionControlCommandInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestExecutionStop(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestExecutionStopMutationResult = NonNullable<Awaited<ReturnType<typeof requestExecutionStop>>>
+    export type RequestExecutionStopMutationBody = BodyType<ExecutionControlCommandInput>
+    export type RequestExecutionStopMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Request an authoritative execution stop
+ */
+export const useRequestExecutionStop = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestExecutionStop>>, TError,{data: BodyType<ExecutionControlCommandInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestExecutionStop>>,
+        TError,
+        {data: BodyType<ExecutionControlCommandInput>},
+        TContext
+      > => {
+      return useMutation(getRequestExecutionStopMutationOptions(options));
+    }
+
+export const getRequestExecutionSafeModeUrl = () => {
+
+
+
+
+  return `/api/execution-control/safe-mode`
+}
+
+/**
+ * @summary Request an authoritative safe mode transition
+ */
+export const requestExecutionSafeMode = async (executionControlCommandInput: ExecutionControlCommandInput, options?: Parameters<typeof customFetch>[1]): Promise<ExecutionControlState> => {
+
+  return customFetch<ExecutionControlState>(getRequestExecutionSafeModeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(executionControlCommandInput)
+  }
+);}
+
+
+
+
+
+export const getRequestExecutionSafeModeMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestExecutionSafeMode>>, TError,{data: BodyType<ExecutionControlCommandInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestExecutionSafeMode>>, TError,{data: BodyType<ExecutionControlCommandInput>}, TContext> => {
+
+const mutationKey = ['requestExecutionSafeMode'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestExecutionSafeMode>>, {data: BodyType<ExecutionControlCommandInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestExecutionSafeMode(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestExecutionSafeModeMutationResult = NonNullable<Awaited<ReturnType<typeof requestExecutionSafeMode>>>
+    export type RequestExecutionSafeModeMutationBody = BodyType<ExecutionControlCommandInput>
+    export type RequestExecutionSafeModeMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Request an authoritative safe mode transition
+ */
+export const useRequestExecutionSafeMode = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestExecutionSafeMode>>, TError,{data: BodyType<ExecutionControlCommandInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestExecutionSafeMode>>,
+        TError,
+        {data: BodyType<ExecutionControlCommandInput>},
+        TContext
+      > => {
+      return useMutation(getRequestExecutionSafeModeMutationOptions(options));
+    }
+
+export const getRequestExecutionEvacuateUrl = () => {
+
+
+
+
+  return `/api/execution-control/evacuate`
+}
+
+/**
+ * @summary Request an authoritative evacuation state
+ */
+export const requestExecutionEvacuate = async (executionControlCommandInput: ExecutionControlCommandInput, options?: Parameters<typeof customFetch>[1]): Promise<ExecutionControlState> => {
+
+  return customFetch<ExecutionControlState>(getRequestExecutionEvacuateUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(executionControlCommandInput)
+  }
+);}
+
+
+
+
+
+export const getRequestExecutionEvacuateMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestExecutionEvacuate>>, TError,{data: BodyType<ExecutionControlCommandInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestExecutionEvacuate>>, TError,{data: BodyType<ExecutionControlCommandInput>}, TContext> => {
+
+const mutationKey = ['requestExecutionEvacuate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestExecutionEvacuate>>, {data: BodyType<ExecutionControlCommandInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestExecutionEvacuate(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestExecutionEvacuateMutationResult = NonNullable<Awaited<ReturnType<typeof requestExecutionEvacuate>>>
+    export type RequestExecutionEvacuateMutationBody = BodyType<ExecutionControlCommandInput>
+    export type RequestExecutionEvacuateMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Request an authoritative evacuation state
+ */
+export const useRequestExecutionEvacuate = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestExecutionEvacuate>>, TError,{data: BodyType<ExecutionControlCommandInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestExecutionEvacuate>>,
+        TError,
+        {data: BodyType<ExecutionControlCommandInput>},
+        TContext
+      > => {
+      return useMutation(getRequestExecutionEvacuateMutationOptions(options));
+    }
+
+export const getRecoverExecutionControlUrl = () => {
+
+
+
+
+  return `/api/execution-control/recover`
+}
+
+/**
+ * @summary Recover a stopped or locked execution control to disabled
+ */
+export const recoverExecutionControl = async (executionControlCommandInput: ExecutionControlCommandInput, options?: Parameters<typeof customFetch>[1]): Promise<ExecutionControlState> => {
+
+  return customFetch<ExecutionControlState>(getRecoverExecutionControlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(executionControlCommandInput)
+  }
+);}
+
+
+
+
+
+export const getRecoverExecutionControlMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recoverExecutionControl>>, TError,{data: BodyType<ExecutionControlCommandInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recoverExecutionControl>>, TError,{data: BodyType<ExecutionControlCommandInput>}, TContext> => {
+
+const mutationKey = ['recoverExecutionControl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recoverExecutionControl>>, {data: BodyType<ExecutionControlCommandInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  recoverExecutionControl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecoverExecutionControlMutationResult = NonNullable<Awaited<ReturnType<typeof recoverExecutionControl>>>
+    export type RecoverExecutionControlMutationBody = BodyType<ExecutionControlCommandInput>
+    export type RecoverExecutionControlMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Recover a stopped or locked execution control to disabled
+ */
+export const useRecoverExecutionControl = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recoverExecutionControl>>, TError,{data: BodyType<ExecutionControlCommandInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recoverExecutionControl>>,
+        TError,
+        {data: BodyType<ExecutionControlCommandInput>},
+        TContext
+      > => {
+      return useMutation(getRecoverExecutionControlMutationOptions(options));
+    }
 
 export const getRunMicroLiveRehearsalUrl = () => {
 

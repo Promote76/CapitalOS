@@ -43,6 +43,13 @@
       "when": 1788540696980,
       "tag": "0005_worried_rocket_raccoon",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788555894013,
+      "tag": "0006_ancient_scalphunter",
+      "breakpoints": true
     }
   ]
 }

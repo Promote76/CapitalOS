@@ -44,6 +44,7 @@ import {
 } from "../domain/execution-adapters";
 import type { VenueAdapter, VenueFill, VenueOrder } from "../domain/execution-adapters";
 import { assertPermission, GovernanceError } from "../domain/governance";
+import { armExecutionControl, assertExecutionPermitted } from "./execution-control";
 import { ensureSeedData, ensureTenantCore } from "./seed";
 import type { Actor } from "./capital-os";
 
@@ -840,6 +841,7 @@ export async function submitMicroLiveOrder(actor: Actor, input: MicroLiveOrderCo
     const [existingVenueOrder] = await db.select().from(venueOrders).where(eq(venueOrders.orderIntentId, existing.id)).limit(1);
     return { ...orderResponse(existing, existingVenueOrder), idempotent: true };
   }
+  await assertExecutionPermitted(actor);
 
   const [latestReconciliation] = await db.select().from(reconciliationRuns).where(and(
     eq(reconciliationRuns.householdId, actor.householdId),
@@ -1700,6 +1702,7 @@ export async function armMicroLive(actor: Actor, venueId: string) {
   if (!enablement.enabled) {
     throw new GovernanceError("INVALID_STATE", "Human arming is blocked until strategy, venue, market, risk, and reconciliation gates pass");
   }
+  await armExecutionControl(actor);
 
   const expiresAt = new Date(Date.now() + defaultMicroLivePolicy.authorizationHours * 60 * 60 * 1000);
   const [session] = await db.update(microLiveSessions)

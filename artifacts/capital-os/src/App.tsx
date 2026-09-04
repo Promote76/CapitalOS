@@ -50,6 +50,9 @@ import {
   useRecordIntelligenceFeedback,
   useGetStrategyLab,
   useGetMicroLive,
+  useGetExecutionControl,
+  requestExecutionStop,
+  getGetExecutionControlQueryKey,
   useRunMicroLiveRehearsal,
   useRunMicroLiveReconciliation,
   useReviewMicroLiveEnablement,
@@ -1008,15 +1011,38 @@ function PropertiesPage({ onAction }: { onAction: (kind: Exclude<ModalKind, null
 function RiskPage({ onFeedback }: { onFeedback: (message: string) => void }) {
   const [comfortable, setComfortable] = useState(true);
   const [emergencyOpen, setEmergencyOpen] = useState(false);
+  const executionControl = useGetExecutionControl();
+  const [stopping, setStopping] = useState(false);
+  const stopWithReverification = useProviderProtectedAction(() =>
+    requestExecutionStop(
+      { reason: 'Emergency stop confirmed by household operator' },
+      { headers: { 'Idempotency-Key': `web-emergency-stop-${crypto.randomUUID()}` } },
+    ),
+  );
+  const confirmEmergencyStop = async () => {
+    setStopping(true);
+    try {
+      const result = await stopWithReverification();
+      await queryClient.invalidateQueries({ queryKey: getGetExecutionControlQueryKey() });
+      setEmergencyOpen(false);
+      setComfortable(false);
+      onFeedback(`Emergency stop confirmed by the server. Execution state: ${result.state}.`);
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'The server could not confirm the emergency stop.');
+    } finally {
+      setStopping(false);
+    }
+  };
   return <main className="content">
     <PageHeading eyebrow="Plan / risk & readiness" title={<>Protect the plan<br /><em>you can explain.</em></>} description="Risk is a set of understandable safeguards. Review them before they need to do any work." actions={<><button className="btn" data-testid="button-risk-review" onClick={() => setComfortable(!comfortable)}><RotateCcw size={15} /> Re-run review</button><button className="btn emergency-btn" data-testid="button-emergency-stop" onClick={() => setEmergencyOpen(true)}><ShieldAlert size={15} /> Emergency stop</button></>} />
+    <section className="card card-pad animate-in delay-1"><CardTitle title="Server execution control" subtitle="The database-backed state is authoritative across reloads, sessions, and API restarts." action={<span className={`status ${executionControl.data?.state === 'STOP' ? 'blocked' : 'review'}`} data-testid="status-execution-control">{executionControl.isLoading ? 'Checking…' : executionControl.data?.state ?? 'Unavailable'}</span>} /><p className="finance-note"><ShieldCheck size={16} /> {executionControl.data?.state === 'STOP' ? 'New order intents are stopped by the server.' : executionControl.isError ? 'The control plane could not be read safely; execution remains denied.' : 'No browser-local state can override the server control plane.'}</p></section>
     <section className="card card-pad animate-in delay-1"><CardTitle title="Readiness posture" subtitle={comfortable ? 'Your plan has a comfortable margin today.' : 'Review in progress — compare this with your household budget.'} action={<span className={`status ${comfortable ? '' : 'pending'}`} data-testid="status-risk-posture">{comfortable ? 'Comfortable' : 'Reviewing'}</span>} /><div style={{ maxWidth:780 }}><div className="risk-meter"><span className="risk-marker" style={{ left: comfortable ? '37%' : '57%' }} /></div><div className="risk-scale"><span>Protected</span><span>Balanced</span><span>Stretched</span></div></div><div className="stat-strip" style={{ marginTop:28, marginLeft:-22, marginRight:-22, borderTop:'1px solid var(--line)' }}>{[['8.4 mo', 'cash runway', 'Above your 6 mo floor'], ['63%', 'largest sleeve', 'Concentration to watch'], ['0', 'high flags', 'No action needed now']].map(([value, label, detail]) => <div className="stat-cell" key={label}><div className="mono-label">{label}</div><div className="stat-value">{value}</div><div className="stat-detail">{detail}</div></div>)}</div></section>
     <section className="card card-pad page-section animate-in delay-2"><CardTitle title="Risk Governor safeguards" subtitle="Capital OS watches these boundaries so you do not have to watch a market screen." /><div className="safeguard-grid" data-testid="risk-safeguards">{[['Protected Capital Lock', 'Ring-fenced reserve cannot be allocated to experimental strategies.', LockKeyhole], ['Max Active Capital', 'Active capital stays within the approved household ceiling.', ShieldCheck], ['Reconciliation Health', 'All recent movements match the planned allocation.', Check], ['Strategy Exposure', 'No single strategy can quietly become the whole plan.', SlidersHorizontal], ['Venue Health', 'Connected accounts are reporting normally.', Landmark], ['Market Data Health', 'Reference data is current for the next review.', Gauge]].map(([title, desc, Icon]) => <div className="safeguard" key={title as string}><Icon size={16} /><div><strong>{title as string}</strong><span>{desc as string}</span></div><span className="status" style={{ marginLeft:'auto', flex:'0 0 auto' }}>Healthy</span></div>)}</div></section>
     <div className="section-grid">
       <section className="card card-pad page-section"><CardTitle title="The three questions" subtitle="A practical review, not a prediction." />{[['Could the household keep contributing?', 'Yes · the weekly plan is 4.8% of take-home income.', ShieldCheck], ['Could we pause without losing the thread?', 'Yes · the reserve is already separated by purpose.', LockKeyhole], ['Could we say no to the wrong property?', 'Yes · your opportunity reserve protects that choice.', Home]].map(([title, desc, Icon]) => <div className="activity-item" key={title as string}><div className="activity-icon"><Icon size={14} /></div><div className="activity-copy"><strong>{title as string}</strong><span>{desc as string}</span></div><Check size={16} color="var(--ink)" /></div>)}</section>
       <section className="card card-pad page-section"><CardTitle title="Watch next" subtitle="Low drama, high usefulness." />{['Confirm insurance estimate in Q4', 'Review beneficiaries before year end', 'Revisit purchase window in January'].map((item, index) => <div className="setting-row" key={item}><div><strong>{item}</strong><p>{['Due 15 Nov', 'Due 31 Dec', 'Due 06 Jan'][index]}</p></div><ChevronRight size={15} color="var(--ink-soft)" /></div>)}</section>
      </div>
-     {emergencyOpen && <div className="modal-backdrop" role="presentation"><div className="modal" role="dialog" aria-modal="true" aria-labelledby="emergency-title"><div className="modal-header"><div><div className="eyebrow" style={{ color:'var(--color-critical)' }}>Critical action / confirmation required</div><h2 id="emergency-title">Stop new activity?</h2><p>This action stops new automated orders and begins the configured capital-protection procedure. Existing protected capital remains ring-fenced.</p></div><button className="icon-btn" aria-label="Close emergency confirmation" data-testid="button-close-emergency-modal" onClick={() => setEmergencyOpen(false)}><X size={17} /></button></div><div className="modal-actions"><button className="btn" data-testid="button-cancel-emergency-stop" onClick={() => setEmergencyOpen(false)}>Keep system running</button><button className="btn emergency-btn" data-testid="button-confirm-emergency-stop" onClick={() => { setEmergencyOpen(false); setComfortable(false); onFeedback('Emergency stop confirmed. New automated activity is paused.'); }}><ShieldAlert size={14} /> Confirm emergency stop</button></div></div></div>}
+     {emergencyOpen && <div className="modal-backdrop" role="presentation"><div className="modal" role="dialog" aria-modal="true" aria-labelledby="emergency-title"><div className="modal-header"><div><div className="eyebrow" style={{ color:'var(--color-critical)' }}>Critical action / confirmation required</div><h2 id="emergency-title">Stop new activity?</h2><p>This sends a server-authoritative STOP command. It persists beyond this browser session and denies new order intents before they reach the OMS.</p></div><button className="icon-btn" aria-label="Close emergency confirmation" data-testid="button-close-emergency-modal" onClick={() => setEmergencyOpen(false)} disabled={stopping}><X size={17} /></button></div><div className="modal-actions"><button className="btn" data-testid="button-cancel-emergency-stop" onClick={() => setEmergencyOpen(false)} disabled={stopping}>Keep system running</button><button className="btn emergency-btn" data-testid="button-confirm-emergency-stop" onClick={() => { void confirmEmergencyStop(); }} disabled={stopping}><ShieldAlert size={14} /> {stopping ? 'Confirming…' : 'Confirm server stop'}</button></div></div></div>}
   </main>;
 }
 
@@ -1953,6 +1979,7 @@ function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }
   const queryClient = useQueryClient();
   const household = useGetHousehold();
   const query = useGetMicroLive();
+  const executionControl = useGetExecutionControl();
   const rehearsal = useRunMicroLiveRehearsal();
   const reconciliationRun = useRunMicroLiveReconciliation();
   const review = useReviewMicroLiveEnablement();
@@ -2076,6 +2103,7 @@ function MicroLivePage({ onFeedback }: { onFeedback: (message: string) => void }
   return <main className="content">
     <PageHeading eyebrow="Execution / Micro-Live" title={<>Containment before <span className="accent-text">connectivity.</span></>} description="A small, reviewable control plane for future Micro-Live experiments. This workspace transmits no orders and cannot access household capital." actions={<button className="btn btn-primary" onClick={async () => { await runRehearsalWithReverification(); await refresh(); onFeedback('Live rehearsal completed without transmitting an order.'); }} disabled={rehearsal.isPending}><RotateCcw size={14} /> {rehearsal.isPending ? 'Running…' : 'Run live rehearsal'}</button>} />
     <section className="micro-live-banner"><div className="micro-live-banner-icon"><Lock size={19} /></div><div><strong>Live execution is disabled</strong><span>Rehearsal mode only · credential values never displayed · no order transmission</span></div><span className="status review">DISABLED</span></section>
+    <section className="card card-pad page-section"><CardTitle title="Authoritative execution control" subtitle="This state is persisted per household and evaluated before OMS order-intent creation." action={<span className={`status ${executionControl.data?.state === 'STOP' ? 'blocked' : 'review'}`}>{executionControl.isLoading ? 'Checking…' : executionControl.data?.state ?? 'Unavailable'}</span>} /><div className="protection-grid"><div><span>Server state</span><strong>{executionControl.data?.state ?? 'UNAVAILABLE'}</strong></div><div><span>Version</span><strong>{executionControl.data?.version ?? '—'}</strong></div><div><span>New order intents</span><strong>{executionControl.data?.executionPermitted ? 'Permitted only with Guardian + risk checks' : 'Denied'}</strong></div><div><span>Recovery</span><strong>Owner + recent verification</strong></div></div></section>
     <section className="micro-live-grid">
       <div className="card card-pad micro-live-status-card"><CardTitle title="Execution status" subtitle="Global fail-closed state" action={<Activity size={17} color="var(--blue)" />} /><div className="micro-live-status-value"><span className="status-pill">{snapshot.status}</span><strong>0</strong><small>open orders</small></div><div className="micro-live-stat-row"><span>Capital allocated</span><b>{money(snapshot.session.capitalAllocated)}</b></div><div className="micro-live-stat-row"><span>Current position</span><b>{snapshot.session.currentPosition}</b></div><div className="micro-live-stat-row"><span>Net P&amp;L</span><b>{money(snapshot.session.netPnl)}</b></div></div>
       <div className="card card-pad"><CardTitle title="Micro-Live sandbox" subtitle="Configurable policy · no leverage" action={<Gauge size={17} color="var(--green)" />} /><div className="micro-live-limit-grid"><div><span>Max venue</span><strong>{money(String(Number(snapshot.policy.limits.maxVenueCapitalCents ?? 1000) / 100))}</strong></div><div><span>Max strategy</span><strong>{money(String(Number(snapshot.policy.limits.maxStrategyCapitalCents ?? 1000) / 100))}</strong></div><div><span>Max order</span><strong>{money(String(Number(snapshot.policy.limits.maxIndividualOrderCents ?? 100) / 100))}</strong></div><div><span>Hard daily loss</span><strong>{money(String(Number(snapshot.policy.limits.hardDailyLossCents ?? 150) / 100))}</strong></div></div><div className="safety-inline"><CheckCircle2 size={15} /> Leverage, margin, borrowing, and auto-scale are off</div></div>

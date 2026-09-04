@@ -1152,6 +1152,174 @@ export const GetMicroLiveResponse = zod.object({
 
 
 /**
+ * @summary Get the household-scoped server execution control state
+ */
+export const GetExecutionControlResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "state": zod.enum(['DISABLED', 'MICRO_LIVE_ELIGIBLE', 'MICRO_LIVE_ARMED', 'MICRO_LIVE_ACTIVE', 'SAFE_MODE', 'STOP', 'EVACUATE', 'LOCKED']),
+  "version": zod.number(),
+  "reason": zod.string(),
+  "changedBy": zod.string().nullable(),
+  "changedAt": zod.coerce.date(),
+  "correlationId": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "availableTransitions": zod.array(zod.string()),
+  "executionPermitted": zod.boolean(),
+  "idempotent": zod.boolean()
+})
+
+
+/**
+ * @summary Request an authoritative execution stop
+ */
+export const requestExecutionStopHeaderIdempotencyKeyMin = 8;
+export const requestExecutionStopHeaderIdempotencyKeyMax = 128;
+
+
+
+export const RequestExecutionStopHeader = zod.object({
+  "Idempotency-Key": zod.string().min(requestExecutionStopHeaderIdempotencyKeyMin).max(requestExecutionStopHeaderIdempotencyKeyMax)
+})
+
+export const requestExecutionStopBodyReasonMax = 500;
+
+
+
+export const RequestExecutionStopBody = zod.object({
+  "reason": zod.string().min(1).max(requestExecutionStopBodyReasonMax)
+})
+
+export const RequestExecutionStopResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "state": zod.enum(['DISABLED', 'MICRO_LIVE_ELIGIBLE', 'MICRO_LIVE_ARMED', 'MICRO_LIVE_ACTIVE', 'SAFE_MODE', 'STOP', 'EVACUATE', 'LOCKED']),
+  "version": zod.number(),
+  "reason": zod.string(),
+  "changedBy": zod.string().nullable(),
+  "changedAt": zod.coerce.date(),
+  "correlationId": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "availableTransitions": zod.array(zod.string()),
+  "executionPermitted": zod.boolean(),
+  "idempotent": zod.boolean()
+})
+
+
+/**
+ * @summary Request an authoritative safe mode transition
+ */
+export const requestExecutionSafeModeHeaderIdempotencyKeyMin = 8;
+export const requestExecutionSafeModeHeaderIdempotencyKeyMax = 128;
+
+
+
+export const RequestExecutionSafeModeHeader = zod.object({
+  "Idempotency-Key": zod.string().min(requestExecutionSafeModeHeaderIdempotencyKeyMin).max(requestExecutionSafeModeHeaderIdempotencyKeyMax)
+})
+
+export const requestExecutionSafeModeBodyReasonMax = 500;
+
+
+
+export const RequestExecutionSafeModeBody = zod.object({
+  "reason": zod.string().min(1).max(requestExecutionSafeModeBodyReasonMax)
+})
+
+export const RequestExecutionSafeModeResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "state": zod.enum(['DISABLED', 'MICRO_LIVE_ELIGIBLE', 'MICRO_LIVE_ARMED', 'MICRO_LIVE_ACTIVE', 'SAFE_MODE', 'STOP', 'EVACUATE', 'LOCKED']),
+  "version": zod.number(),
+  "reason": zod.string(),
+  "changedBy": zod.string().nullable(),
+  "changedAt": zod.coerce.date(),
+  "correlationId": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "availableTransitions": zod.array(zod.string()),
+  "executionPermitted": zod.boolean(),
+  "idempotent": zod.boolean()
+})
+
+
+/**
+ * @summary Request an authoritative evacuation state
+ */
+export const requestExecutionEvacuateHeaderIdempotencyKeyMin = 8;
+export const requestExecutionEvacuateHeaderIdempotencyKeyMax = 128;
+
+
+
+export const RequestExecutionEvacuateHeader = zod.object({
+  "Idempotency-Key": zod.string().min(requestExecutionEvacuateHeaderIdempotencyKeyMin).max(requestExecutionEvacuateHeaderIdempotencyKeyMax)
+})
+
+export const requestExecutionEvacuateBodyReasonMax = 500;
+
+
+
+export const RequestExecutionEvacuateBody = zod.object({
+  "reason": zod.string().min(1).max(requestExecutionEvacuateBodyReasonMax)
+})
+
+export const RequestExecutionEvacuateResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "state": zod.enum(['DISABLED', 'MICRO_LIVE_ELIGIBLE', 'MICRO_LIVE_ARMED', 'MICRO_LIVE_ACTIVE', 'SAFE_MODE', 'STOP', 'EVACUATE', 'LOCKED']),
+  "version": zod.number(),
+  "reason": zod.string(),
+  "changedBy": zod.string().nullable(),
+  "changedAt": zod.coerce.date(),
+  "correlationId": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "availableTransitions": zod.array(zod.string()),
+  "executionPermitted": zod.boolean(),
+  "idempotent": zod.boolean()
+})
+
+
+/**
+ * @summary Recover a stopped or locked execution control to disabled
+ */
+export const recoverExecutionControlHeaderIdempotencyKeyMin = 8;
+export const recoverExecutionControlHeaderIdempotencyKeyMax = 128;
+
+
+
+export const RecoverExecutionControlHeader = zod.object({
+  "Idempotency-Key": zod.string().min(recoverExecutionControlHeaderIdempotencyKeyMin).max(recoverExecutionControlHeaderIdempotencyKeyMax)
+})
+
+export const recoverExecutionControlBodyReasonMax = 500;
+
+
+
+export const RecoverExecutionControlBody = zod.object({
+  "reason": zod.string().min(1).max(recoverExecutionControlBodyReasonMax)
+})
+
+export const RecoverExecutionControlResponse = zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "state": zod.enum(['DISABLED', 'MICRO_LIVE_ELIGIBLE', 'MICRO_LIVE_ARMED', 'MICRO_LIVE_ACTIVE', 'SAFE_MODE', 'STOP', 'EVACUATE', 'LOCKED']),
+  "version": zod.number(),
+  "reason": zod.string(),
+  "changedBy": zod.string().nullable(),
+  "changedAt": zod.coerce.date(),
+  "correlationId": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "availableTransitions": zod.array(zod.string()),
+  "executionPermitted": zod.boolean(),
+  "idempotent": zod.boolean()
+})
+
+
+/**
  * @summary Run a no-transmission Micro-Live rehearsal
  */
 export const RunMicroLiveRehearsalResponse = zod.object({

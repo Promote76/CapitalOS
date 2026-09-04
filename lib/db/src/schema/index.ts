@@ -5,6 +5,7 @@ export * from "./property-strategy.ts";
 export * from "./governance.ts";
 export * from "./household-finance.ts";
 export * from "./micro-live.ts";
+export * from "./execution-control.ts";
 export * from "./treasury.ts";
 export * from "./operations.ts";
 export * from "./business.ts";

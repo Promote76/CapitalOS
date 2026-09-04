@@ -19,3 +19,4 @@
 - [Financing response boundaries](financing-response-boundaries.md) — advisory financing responses normalize date fields and preserve explicit non-approval semantics at the API boundary.
 - [Capital OS audit archive](capital-os-audit-archive.md) — ship audit rows synchronously into a restricted append-only archive; never let household deletion cascade into history.
 - [Bank sync release boundary](capital-os-bank-sync-boundary.md) — keep provider sync opt-in and fail closed until a real provider is separately approved and certified.
+- [Execution control authority](capital-os-execution-control.md) — server-persisted execution state gates OMS creation; legacy risk-stop state must reconcile, not become a second authority.

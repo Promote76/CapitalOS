@@ -15,6 +15,7 @@ import accountingRouter from "./accounting";
 import operationsRouter from "./operations";
 import businessRouter from "./business";
 import financingRouter from "./financing";
+import executionControlRouter from "./execution-control";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(accountingRouter);
 router.use(operationsRouter);
 router.use(businessRouter);
 router.use(financingRouter);
+router.use(executionControlRouter);
 
 export default router;

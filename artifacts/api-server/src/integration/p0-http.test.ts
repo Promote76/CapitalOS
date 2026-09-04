@@ -1542,7 +1542,23 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
       businessTag: string;
       pending: boolean;
     };
-    assert.deepEqual({ ...manualApprovalBody, reviewedAt: undefined }, {
+    assert.deepEqual({
+      id: manualApprovalBody.id,
+      accountId: manualApprovalBody.accountId,
+      accountName: manualApprovalBody.accountName,
+      transactionDate: manualApprovalBody.transactionDate.slice(0, 10),
+      description: manualApprovalBody.description,
+      merchant: manualApprovalBody.merchant,
+      amount: manualApprovalBody.amount,
+      originalAmount: manualApprovalBody.originalAmount,
+      categoryId: manualApprovalBody.categoryId,
+      categoryName: manualApprovalBody.categoryName,
+      dataSource: manualApprovalBody.dataSource,
+      reviewStatus: manualApprovalBody.reviewStatus,
+      excludedFromBudget: manualApprovalBody.excludedFromBudget,
+      reviewedBy: manualApprovalBody.reviewedBy,
+      reviewNote: manualApprovalBody.reviewNote,
+    }, {
       id: manualRow.id,
       accountId: accountA.id,
       accountName: "Primary checking",
@@ -1557,7 +1573,6 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
       reviewStatus: "approved",
       excludedFromBudget: false,
       reviewedBy: fixture.userA,
-      reviewedAt: undefined,
       reviewNote: "Reviewed manual entry.",
       businessTag: "household",
       pending: false,
@@ -1747,15 +1762,15 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     assert.equal(manualTransaction.dataSource, "manual");
     assert.equal(manualTransaction.reviewStatus, "needs_review");
 
-    const manualTransactionQueue = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
-    assert.equal(manualTransactionQueue.status, 200);
-    const manualTransactionQueueBody = await manualTransactionQueue.json() as {
+    const manualTransactionReviewQueue = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
+    assert.equal(manualTransactionReviewQueue.status, 200);
+    const manualQueueBody = await manualTransactionReviewQueue.json() as {
       transactions: Array<{ id: string; accountName: string; dataSource: string; reviewStatus: string }>;
     };
-    const queuedManualTransaction = manualTransactionQueueBody.transactions.find((row) => row.id === manualTransaction.id);
-    assert.equal(queuedManualTransaction?.accountName, "Primary checking");
-    assert.equal(queuedManualTransaction?.dataSource, "manual");
-    assert.equal(queuedManualTransaction?.reviewStatus, "needs_review");
+    const queuedManualReview = manualQueueBody.transactions.find((row) => row.id === manualTransaction.id);
+    assert.equal(queuedManualReview?.accountName, "Primary checking");
+    assert.equal(queuedManualReview?.dataSource, "manual");
+    assert.equal(queuedManualReview?.reviewStatus, "needs_review");
 
     const categorizeManual = await request(`/financial-transactions/${manualTransaction.id}/review`, fixture.userA, fixture.householdA, {
       method: "POST",

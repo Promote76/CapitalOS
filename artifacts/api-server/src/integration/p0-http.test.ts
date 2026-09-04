@@ -452,6 +452,16 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
       connectionStatus: "manual",
       dataSource: "manual",
     });
+    await db.insert(financialAccounts).values({
+      householdId: fixture.householdA,
+      institution: "P0 Household Bank",
+      nickname: "P0 Household Liquidity",
+      accountType: "checking",
+      currentBalance: "100000.00",
+      availableBalance: "100000.00",
+      connectionStatus: "manual",
+      dataSource: "manual",
+    });
 
     const capitalRequestInput = {
       requestingModule: "P0 Test Module",
@@ -506,13 +516,6 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
     };
     assert.equal(advisorTreasuryBody.totals.protectedCapital, "REDACTED");
     assert.ok(advisorTreasuryBody.buckets.some((bucket) => bucket.protected && bucket.currentBalance === "REDACTED"));
-    await db.update(financialAccounts).set({
-      currentBalance: "100000.00",
-      availableBalance: "100000.00",
-    }).where(and(
-      eq(financialAccounts.householdId, fixture.householdA),
-      inArray(financialAccounts.accountType, ["checking", "savings", "money_market"]),
-    ));
     const [fixtureRiskState] = await db.select({ id: database.riskStates.id }).from(database.riskStates)
       .where(eq(database.riskStates.householdId, fixture.householdA))
       .limit(1);
@@ -521,9 +524,6 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
       eq(database.riskStates.id, fixtureRiskState.id),
       eq(database.riskStates.householdId, fixture.householdA),
     ));
-    const safeToDeployProbe = await request("/safe-to-deploy");
-    console.error("TREASURY_TEST_SAFE", await safeToDeployProbe.json());
-
     const treasuryDecision = await request(`/treasury/requests/${capitalRequestIds[0]}/decision`, {
       method: "POST",
       body: JSON.stringify({ decision: "APPROVED", reason: "Treasury review approved the advisory allocation." }),

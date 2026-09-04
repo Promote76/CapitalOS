@@ -1,8 +1,8 @@
 # Capital OS production-readiness audit
 
 **Current review date:** 2026-09-04
-**Reviewed HEAD:** `d5e7ece`
-**Reviewed working-tree implementation:** actor-scoped household reads, manual transaction review lifecycle, PostgreSQL and authenticated-browser certification, generated-finance freshness enforcement, schema-drift detection, and the published application state
+**Reviewed HEAD:** `3e2bde7`
+**Reviewed working-tree implementation:** actor-scoped household reads, manual transaction review lifecycle, PostgreSQL and authenticated-browser certification, Treasury decision-boundary certification, generated-finance freshness enforcement, schema-drift detection, and the published application state
 **Reviewed banking merges:** `8ec4cba`, `23e4c81`, `32abb01`
 **Audit mode:** Current source, schema, routes, generated contracts, frontend flows, committed certification evidence, deployment/reliability documentation, and test inventory
 **Decision:** **CONTROLLED INTERNAL USE ONLY — NOT READY FOR PUBLIC OR MULTI-HOUSEHOLD FINANCIAL OPERATIONS**
@@ -15,13 +15,12 @@ Capital OS is a credible internal family-capital planning application with stron
 
 It is not ready to be treated as a production-grade multi-household financial platform because:
 
-1. Treasury and several remaining operational paths still use seeded context or lack complete actor/identifier certification.
-2. Treasury responses do not apply actor/role-aware balance redaction.
-3. Treasury role-aware balance redaction and atomic decision handling remain incomplete; the manual transaction review flow itself is now HTTP- and browser-certified.
-4. Several local-only financial and safety actions remain, even though misleading empty-household dashboard demo values were removed.
-5. The banking lifecycle is certified with fixtures, but no real production provider is registered; the Plaid adapter remains disabled.
-6. Webhook processing is mounted outside the global rate-limit, request-context, and browser-origin middleware.
-7. Migration upgrade, managed backup/restore, authenticated reverification, scheduler execution, alert delivery, and operational observability remain incomplete or inconsistently evidenced.
+1. Treasury and several remaining operational paths still lack complete actor/identifier certification.
+2. Treasury protected-balance redaction and decision integrity are partially certified, but the full role policy and economic concurrency matrix remain open.
+3. Several local-only financial and safety actions remain, even though misleading empty-household dashboard demo values were removed.
+4. The banking lifecycle is certified with fixtures, but no real production provider is registered; the Plaid adapter remains disabled.
+5. Webhook processing is mounted outside the global rate-limit, request-context, and browser-origin middleware.
+6. Migration upgrade, managed backup/restore, authenticated reverification, scheduler execution, alert delivery, and operational observability remain incomplete or inconsistently evidenced.
 
 The safe release boundary is: **authenticated internal evaluation, manual/CSV household finance, and provider-gated read-only banking only.** Do not enable money movement, live trading, ACH, external investor capital, autonomous execution, or a real bank provider without the remaining gates.
 
@@ -60,13 +59,13 @@ Production authentication must never reach those fallback branches. A route can 
 
 **Required proof:** every authenticated getter and mutation must derive household ownership from the request actor, and a two-household fixture must exercise every caller-controlled identifier across every affected module.
 
-### P0 — Treasury balance disclosure and mutation integrity
+### P0 — Treasury role and economic-boundary certification remains incomplete
 
-`artifacts/api-server/src/routes/treasury.ts:20-22` now passes the request actor into `getTreasury()`. `artifacts/api-server/src/services/treasury.ts:25-41,106-143` still returns bucket balances, reservations, and Safe-to-Deploy-derived values without role-aware redaction.
+`artifacts/api-server/src/routes/treasury.ts:20-22` passes the request actor into `getTreasury()`. `artifacts/api-server/src/services/treasury.ts:82-92,132-159` redacts protected bucket amounts and protected aggregate totals for advisor reads. The current policy is not yet a complete role matrix for every protected-data consumer or every household role.
 
-Treasury request decisions at `artifacts/api-server/src/services/treasury.ts:213-255` update request state but do not visibly create an atomic reservation/debit and decision audit event. Creation idempotency does not make decision handling idempotent.
+Decision handling at `artifacts/api-server/src/services/treasury.ts:235-342` now takes a household/request advisory lock, links at most one reservation to a request, checks replay equivalence, and writes the decision audit event in the same transaction. This is a planning reservation only: it does not debit a bank account or execute a transfer, consistent with the internal non-executing boundary.
 
-**Required proof:** actor-scoped reads, role-appropriate protected-balance visibility, atomic approval/reservation/audit behavior, and repeated-decision handling.
+The isolated PostgreSQL fixture now proves advisor protected-balance redaction, owner approval, linked reservation creation, actor-attributed decision audit, exact replay, and conflicting replay rejection. **Remaining proof:** complete role/identifier coverage across both households, concurrent decision contention, reservation expiry/release, and the full protected-balance policy for non-advisor roles.
 
 ### Manual transaction review lifecycle is implemented and certified
 
@@ -101,7 +100,7 @@ Provider signature verification is a necessary control, not a substitute for ing
 
 Operations approval decisions at `artifacts/api-server/src/services/operations.ts:481-495` persist status and time but not the deciding actor or an immutable audit event. Business mutation paths similarly persist row-level actor fields inconsistently without a complete before/after audit trail.
 
-Treasury decisions record `reviewedBy` but do not emit the corresponding decision audit event in the inspected path.
+Treasury decisions now persist `reviewedBy` and emit a transactionally coupled `capital_request_decided` audit event. Broader representative actor attribution outside Treasury and household finance remains open.
 
 ### Role enforcement is not fully certified
 
@@ -158,8 +157,8 @@ Therefore, the merged work certifies the read-only banking contract and recovery
 
 - Accounting still contains hardcoded or incomplete investment, real-estate, withdrawal, realized-gain, fee, tax-document, essential-month, and return-on-capital values in `artifacts/api-server/src/services/accounting.ts`.
 - Business liabilities and complete double-entry distribution posting are incomplete.
-- Treasury approval does not yet atomically reserve or debit capital.
-- Broader economic-event idempotency and concurrency coverage remains open.
+- Treasury approval now atomically records a planning reservation and decision audit event; it intentionally does not debit executable capital.
+- Broader economic-event idempotency, reservation lifecycle, and concurrency coverage remains open.
 - Safe-to-Deploy has conservative fixed confidence/buffer behavior but no complete cross-domain invariant suite.
 
 Accounting must remain labeled as an internal planning and recordkeeping view, not a complete financial statement.
@@ -235,7 +234,7 @@ Until evidence references are reconciled, the stricter result governs: **current
 | Read-only banking lifecycle | Amber — boundary and recovery certified with fixtures |
 | Production bank provider | Red — Plaid disabled; no registered live provider implementation |
 | Accounting | Red-Amber — API-backed but materially incomplete |
-| Treasury | Red — seed context, role redaction, decision atomicity, and audit gaps |
+| Treasury | Amber-Red — actor-scoped and decision/audit boundary certified for the exercised path; full role, identifier, reservation-lifecycle, and concurrency coverage remains open |
 | Property / financing | Amber-Red — planning features exist; tenant and accounting integration gaps |
 | Business | Amber-Red — authenticated reads and writes are actor-scoped; audit completeness and broader adversarial certification remain open |
 | Strategy Lab | Amber for research only |
@@ -247,7 +246,7 @@ Until evidence references are reconciled, the stricter result governs: **current
 ## Required next actions
 
 1. Complete the two-household route/role/identifier certification for the remaining Treasury, Strategy Lab, Operations, and optional fallback paths.
-2. Correct Treasury actor propagation, protected-balance response policy, reservation/debit atomicity, idempotency, and decision audit events.
+2. Complete Treasury role/identifier/concurrency certification, protected-balance policy for every role, reservation expiry/release behavior, and economic idempotency coverage.
 3. Keep generated-finance freshness and schema-drift checks mandatory in production-candidate certification, including after generator upgrades.
 4. Convert remaining local-only safety/product actions into explicit non-authoritative states or real persisted flows.
 5. Put banking webhooks behind an appropriately protected provider ingress and certify bounded/replay-safe recovery.

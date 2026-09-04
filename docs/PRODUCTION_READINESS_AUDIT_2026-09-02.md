@@ -1,7 +1,12 @@
 # Capital OS production-readiness audit
 
+> **Historical report:** the single current certification document is now
+> [`docs/CAPITAL_OS_CURRENT_CERTIFICATION.md`](./CAPITAL_OS_CURRENT_CERTIFICATION.md).
+> This report is retained as dated supporting evidence and is not the release
+> authority.
+
 **Current review date:** 2026-09-04
-**Reviewed HEAD:** `3e2bde7`
+**Reviewed HEAD:** `2752d566c9cbcffd0845450f648c329f2f5b48c3`
 **Reviewed working-tree implementation:** actor-scoped household reads, manual transaction review lifecycle, PostgreSQL and authenticated-browser certification, Treasury decision-boundary certification, generated-finance freshness enforcement, schema-drift detection, and the published application state
 **Reviewed banking merges:** `8ec4cba`, `23e4c81`, `32abb01`
 **Audit mode:** Current source, schema, routes, generated contracts, frontend flows, committed certification evidence, deployment/reliability documentation, and test inventory
@@ -216,7 +221,7 @@ The manual-finance regression has been executed against PostgreSQL through the w
 
 The repository now provides `pnpm run check:generated-finance-artifacts` and a configured `generated-finance-artifacts` validation workflow. The check regenerates the finance-related OpenAPI/client/Zod outputs and database schema declarations in a controlled temporary workspace, then fails when committed artifacts differ. Database migration SQL and Drizzle migration metadata are included so a schema edit cannot silently pass while its declarations or migration record remain stale.
 
-`scripts/certify-production-candidate.mjs` invokes this check before production-candidate certification can succeed. This closes the previously unguarded stale-generated-artifact bypass. Compatibility of the drift detector with future generator upgrades remains an active hardening item and must stay fail-closed.
+`scripts/certify-production-candidate.mjs` invokes this check before production-candidate certification can succeed. This closes the previously unguarded stale-generated-artifact bypass. The generator-upgrade compatibility path is now covered by the hermetic regression test in `scripts/test-generated-finance-artifacts.mjs`; the check remains fail-closed.
 
 ### Evidence conflicts requiring correction
 

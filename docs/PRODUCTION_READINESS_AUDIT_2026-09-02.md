@@ -1,7 +1,8 @@
 # Capital OS production-readiness audit
 
 **Current review date:** 2026-09-04
-**Reviewed HEAD:** `53c7cb6`
+**Reviewed HEAD:** `af579ae`
+**Reviewed working-tree implementation:** actor-scoped household reads, manual transaction review lifecycle, and focused regression coverage
 **Reviewed banking merges:** `8ec4cba`, `23e4c81`, `32abb01`
 **Audit mode:** Current source, schema, routes, generated contracts, frontend flows, committed certification evidence, deployment/reliability documentation, and test inventory
 **Decision:** **CONTROLLED INTERNAL USE ONLY — NOT READY FOR PUBLIC OR MULTI-HOUSEHOLD FINANCIAL OPERATIONS**
@@ -14,10 +15,10 @@ Capital OS is a credible internal family-capital planning application with stron
 
 It is not ready to be treated as a production-grade multi-household financial platform because:
 
-1. Several major services still use seeded household context instead of the authenticated actor.
+1. Treasury and several remaining operational paths still use seeded context or lack complete actor/identifier certification.
 2. Treasury responses do not apply actor/role-aware balance redaction.
-3. Manual Budget transactions are created as review-required but the review service still rejects manual sources.
-4. The dashboard and several actions can present hardcoded or local-only financial state as if it were current household state.
+3. Manual transaction review is implemented in source and covered by a focused regression test, but the database-backed HTTP certification has not been executed in the current environment.
+4. Several local-only financial and safety actions remain, even though misleading empty-household dashboard demo values were removed.
 5. The banking lifecycle is certified with fixtures, but no real production provider is registered; the Plaid adapter remains disabled.
 6. Webhook processing is mounted outside the global rate-limit, request-context, and browser-origin middleware.
 7. Migration upgrade, managed backup/restore, authenticated reverification, scheduler execution, alert delivery, and operational observability remain incomplete or inconsistently evidenced.

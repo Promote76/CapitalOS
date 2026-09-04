@@ -23,6 +23,15 @@ function run(label, command, args, extraEnv = {}) {
   return true;
 }
 
+const generatedArtifactsFresh = run("Generated finance artifacts", "pnpm", [
+  "run",
+  "check:generated-finance-artifacts",
+]);
+if (!generatedArtifactsFresh) {
+  console.error("\nIN-HOUSE CANDIDATE: NOT READY");
+  process.exit(1);
+}
+
 const generated = run("OpenAPI / React Query / Zod generation", "pnpm", ["--filter", "@workspace/api-spec", "run", "codegen"]);
 const typechecks = run("Workspace typechecks", "pnpm", ["run", "typecheck"]);
 const apiBuild = run("API production build", "pnpm", ["--filter", "@workspace/api-server", "run", "build"]);

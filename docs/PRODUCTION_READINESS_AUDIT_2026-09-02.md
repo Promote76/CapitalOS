@@ -34,6 +34,8 @@ The current build contains the following meaningful controls:
 - Exact-origin/write-boundary checks and fail-closed mutation rate limiting backed by PostgreSQL configuration.
 - Integer-cent decision logic with PostgreSQL `numeric(18,2)` storage.
 - Household-scoped manual accounts, CSV imports, transaction review records, audit events, and Safe-to-Deploy calculations.
+- Manual transaction creation now reaches the shared review queue; approval/rejection updates review state, budget inclusion, audit attribution, and downstream cash-flow/budget inputs.
+- Capital, Business, Property, Micro-Live, and Intelligence authenticated paths now initialize and resolve tenant core records from the request actor rather than the shared demo household.
 - Append-only audit archive schema and database-owned archive triggers.
 - Read-only bank consent, opaque credential references, account linking, cursor sync, reconciliation states, revocation, export, deletion, webhook verification, replay handling, and recovery categories.
 - OpenAPI/React Query/Zod generation and route/method parity evidence.
@@ -44,15 +46,16 @@ The current build contains the following meaningful controls:
 
 ### P0 — Authenticated household isolation is incomplete
 
-The following current paths still derive records from seeded context rather than the actor’s household:
+The latest implementation removed the previously identified seeded-context lookup from the authenticated Capital, Business, Property, Micro-Live, and Intelligence paths. They now initialize tenant core records from `actor.householdId` and `actor.userId`, and the affected GET routes pass the actor through.
+
+Remaining seed-dependent or incompletely certified paths include:
 
 - `artifacts/api-server/src/services/treasury.ts:106-116,159-160,219-220`
-- `artifacts/api-server/src/services/micro-live.ts:1316-1322,1446-1510,1579-1715,1879-2003`
-- `artifacts/api-server/src/services/business.ts:128-143,220-333`
-- `artifacts/api-server/src/services/property-underwriting.ts:62,162-185`
-- `artifacts/api-server/src/services/capital-os.ts:107` and related callers
+- `artifacts/api-server/src/services/strategy-lab.ts:361-592`
+- `artifacts/api-server/src/services/operations.ts:293-591`
+- Any remaining optional development/test fallback that calls `ensureSeedData()` without an authenticated actor.
 
-The routes may authenticate the caller correctly while the service selects the wrong household internally. This can expose seeded financial, business, property, Treasury, or Micro-Live data and can direct writes to the wrong tenant. Targeted HTTP certification does not close this gap while these callers remain seed-based.
+Treasury still selects seeded context for reads and writes, and the remaining modules require a complete caller-controlled identifier matrix. A route can authenticate the caller correctly while an incompletely scoped service still selects the wrong household internally.
 
 **Required proof:** every authenticated getter and mutation must derive household ownership from the request actor, and a two-household fixture must exercise every caller-controlled identifier across every affected module.
 
@@ -64,24 +67,24 @@ Treasury request decisions at `artifacts/api-server/src/services/treasury.ts:213
 
 **Required proof:** actor-scoped reads, role-appropriate protected-balance visibility, atomic approval/reservation/audit behavior, and repeated-decision handling.
 
-### P0 — Manual transaction review is a broken user journey
+### Manual transaction review lifecycle is implemented but not fully certified
 
-`createManualFinanceTransaction` creates `dataSource: "manual"` and `reviewStatus: "needs_review"`. However, `reviewFinancialTransaction` rejects every source except CSV and Plaid at `artifacts/api-server/src/services/household-finance.ts:955`.
+`createManualFinanceTransaction` creates `dataSource: "manual"` and `reviewStatus: "needs_review"`. `reviewFinancialTransaction` now accepts manual rows, and `getTransactionReviewQueue` includes manual rows alongside CSV/Plaid rows.
 
-The direct Budget-entry form therefore creates records that the visible review workflow cannot approve. Those transactions cannot reliably enter Budget, Cash Flow, or Safe-to-Deploy.
+The focused HTTP regression in `artifacts/api-server/src/integration/p0-http.test.ts` covers manual create → queue visibility → approval → cash-flow recalculation → budget recalculation. The source and type/contract checks pass, but the database-backed HTTP fixture was not executed in this environment because the raw Node runner cannot resolve the repository’s extensionless route imports and the expected TypeScript runner is unavailable as an executable.
 
-**Required fix:** support manual records in the review state machine or give manual entries a clearly separate approval path, then certify create → review → approve/reject → recalculation.
+**Required proof:** execute the focused isolated HTTP certification, including approval/rejection and a fresh read after recalculation. Until then, this remains an evidence gap rather than the former source-level dead end.
 
-### P0 — False financial state remains visible in the frontend
+### P0 — False financial state has been reduced; local-only actions remain
 
-The dashboard still falls back to hardcoded values and transactions:
+The empty-household dashboard demo values were removed in commit `58a2856`. Current dashboard copy and state handling distinguish server-returned data, loading, unavailable, and empty states:
 
-- `artifacts/capital-os/src/App.tsx:681-705,711-744`
-- `artifacts/capital-os/src/App.tsx:2157-2186`
+- `artifacts/capital-os/src/App.tsx:373`
+- `artifacts/capital-os/src/App.tsx:698-801`
 
-The fallback includes static balances, goal values, charts, and “Weekly allocation” rows. Empty, loading, and unavailable states are not consistently distinguished. A new or disconnected household can therefore see demo-like financial state.
+This does not close the broader persistence-truth issue. Export view, some goal/transfer/strategy/property quick actions, settings save feedback, and demonstrative portfolio sync behavior remain local-only or prepared-only and must not be interpreted as authoritative financial state.
 
-**Required fix:** render explicit loading, empty, and unavailable states; never display seeded financial rows as current household state.
+**Required proof:** certify the affected browser states and either persist each critical action or label it explicitly as local-only/prepared/blocked.
 
 ## High-priority security and integrity findings
 
@@ -205,7 +208,9 @@ The durable operations-job schema and lifecycle helpers exist, but there is no p
 
 ### Positive evidence
 
-The current release evidence records API/frontend typechecks and builds, OpenAPI/React Query/Zod generation, route/method parity, isolated PostgreSQL HTTP fixtures, and targeted browser/concurrency certification. The banking fixture covers provider outage, rate limiting, expired credentials, cursor replay, webhook signature failures, duplicate events, out-of-order events, tenant isolation, reauthorization, and deletion.
+The committed release evidence records API/frontend typechecks and builds, OpenAPI/React Query/Zod generation, route/method parity, isolated PostgreSQL HTTP fixtures, and targeted browser/concurrency certification. The banking fixture covers provider outage, rate limiting, expired credentials, cursor replay, webhook signature failures, duplicate events, out-of-order events, tenant isolation, reauthorization, and deletion. The current working-tree verification additionally passes API typecheck, API contract parity for 129 routes, an API health request, and a clean API workflow restart.
+
+The newly added manual-finance HTTP regression has not been executed against PostgreSQL in this environment; its source coverage must not be treated as runtime certification.
 
 ### Evidence conflicts requiring correction
 
@@ -218,26 +223,26 @@ Until evidence references are reconciled, the stricter result governs: **current
 | Module | Current status |
 |---|---|
 | Authentication / Clerk | Amber — implementation present; browser reverification and selected-household policy remain open |
-| Manual household finance | Amber — broad CRUD and calculations; manual review lifecycle is incomplete |
+| Manual household finance | Amber — manual review lifecycle is implemented and regression-covered; isolated HTTP/browser execution remains open |
 | Budget / cash flow | Amber — depends on approved transaction state and clean tenant context |
 | Read-only banking lifecycle | Amber — boundary and recovery certified with fixtures |
 | Production bank provider | Red — Plaid disabled; no registered live provider implementation |
 | Accounting | Red-Amber — API-backed but materially incomplete |
 | Treasury | Red — seed context, role redaction, decision atomicity, and audit gaps |
 | Property / financing | Amber-Red — planning features exist; tenant and accounting integration gaps |
-| Business | Amber-Red — workflows exist; seed context and audit completeness remain open |
+| Business | Amber-Red — authenticated reads and writes are actor-scoped; audit completeness and broader adversarial certification remain open |
 | Strategy Lab | Amber for research only |
-| Micro-Live | Green for rehearsal safety; Red for live execution; tenant gaps remain |
+| Micro-Live | Green for rehearsal safety; Red for live execution; broader adversarial tenant certification remains open |
 | Operations | Amber — durable records exist; no proven worker or scheduler |
 | Reports / Documents | Red — mostly presentation or local-only workflows |
 | Settings | Amber-Red — mixed persisted and local-only behavior |
 
 ## Required next actions
 
-1. Remove seeded household selection from all authenticated services and repeat a complete two-household route/role/identifier certification.
+1. Complete the two-household route/role/identifier certification for the remaining Treasury, Strategy Lab, Operations, and optional fallback paths.
 2. Correct Treasury actor propagation, protected-balance response policy, reservation/debit atomicity, idempotency, and decision audit events.
-3. Complete the manual transaction review lifecycle and certify recalculation after approval/rejection.
-4. Remove hardcoded financial fallbacks and convert local-only safety/product actions into explicit non-authoritative states or real persisted flows.
+3. Execute the manual transaction review certification and verify fresh-read recalculation after approval/rejection.
+4. Convert remaining local-only safety/product actions into explicit non-authoritative states or real persisted flows.
 5. Put banking webhooks behind an appropriately protected provider ingress and certify bounded/replay-safe recovery.
 6. Register and certify an actual approved provider before enabling bank synchronization for real households.
 7. Replace accounting placeholders with real calculations or explicit unavailable/review-required values.
@@ -250,4 +255,4 @@ Until evidence references are reconciled, the stricter result governs: **current
 
 It is not ready for public release, unrestricted multi-household use, real bank-provider enablement, money movement, live trading, ACH, external investor capital, or autonomous execution.
 
-This report update changes documentation only. No application code, schema, workflow, deployment configuration, database data, or integration configuration was modified.
+This audit update changes documentation only. It records the current working-tree implementation and verification state; it does not change application code, schema, workflow, deployment configuration, database data, or integration configuration.

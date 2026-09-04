@@ -8,6 +8,7 @@
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "check:generated-finance-artifacts": "node scripts/check-generated-finance-artifacts.mjs",
+    "test:generated-finance-artifacts": "node scripts/test-generated-finance-artifacts.mjs",
     "certify:production-candidate": "node scripts/certify-production-candidate.mjs",
     "certify:micro-live": "node scripts/certify-micro-live.mjs",
     "certify:migrations": "node scripts/certify-migrations.mjs",

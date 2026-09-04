@@ -11,7 +11,7 @@ import {
 import { db } from "@workspace/db";
 import { assertPermission, GovernanceError } from "../domain/governance";
 import { evaluateGraduation, simulateStrategyExperiment, type ExecutionModel, type StrategyLabMode } from "../domain/strategy-lab";
-import { ensureSeedData, type SeedContext } from "./seed";
+import { ensureTenantCore, type SeedContext } from "./seed";
 import type { Actor } from "./capital-os";
 
 type StrategyTemplate = {
@@ -357,8 +357,8 @@ function experimentView(experiment: StrategyExperiment, strategyName: string) {
   };
 }
 
-export async function getStrategyLabSnapshot() {
-  const ids = await ensureSeedData();
+export async function getStrategyLabSnapshot(actor: Actor) {
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   await ensureStrategyLabSeed(ids);
   const [strategyRows, versionRows, experimentRows, journalRows] = await Promise.all([
     db.select().from(strategies).where(eq(strategies.householdId, ids.householdId)).orderBy(strategies.name),
@@ -448,7 +448,7 @@ export async function createResearchStrategy(actor: Actor, input: {
 }) {
   assertPermission(actor.role, "contribute");
   if (!input.hypothesis.trim()) throw new GovernanceError("INVALID_STATE", "A written economic hypothesis is required before research can begin");
-  const ids = await ensureSeedData();
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   const [strategy] = await db.insert(strategies).values({
     householdId: ids.householdId,
     name: input.name,
@@ -490,7 +490,7 @@ export async function createResearchStrategy(actor: Actor, input: {
 
 export async function createStrategyVersion(actor: Actor, strategyId: string, input: { version: string; reason: string; logicChanges: string; parameters?: Record<string, unknown> }) {
   assertPermission(actor.role, "contribute");
-  const ids = await ensureSeedData();
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   const [strategy] = await db.select().from(strategies).where(and(eq(strategies.id, strategyId), eq(strategies.householdId, ids.householdId))).limit(1);
   if (!strategy) throw new GovernanceError("INVALID_STATE", "Strategy was not found");
   if (!input.reason.trim() || !input.logicChanges.trim()) throw new GovernanceError("INVALID_STATE", "Version reason and logic changes are required");
@@ -524,7 +524,7 @@ export async function runStrategyExperiment(actor: Actor, input: {
   riskLimits?: Record<string, unknown>;
 }) {
   assertPermission(actor.role, "contribute");
-  const ids = await ensureSeedData();
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   const [strategy] = await db.select().from(strategies).where(and(eq(strategies.id, input.strategyId), eq(strategies.householdId, ids.householdId))).limit(1);
   const [version] = await db.select().from(strategyVersions).where(and(eq(strategyVersions.id, input.strategyVersionId), eq(strategyVersions.strategyId, input.strategyId))).limit(1);
   if (!strategy || !version) throw new GovernanceError("INVALID_STATE", "Strategy version was not found");
@@ -564,7 +564,7 @@ export async function runStrategyExperiment(actor: Actor, input: {
 
 export async function evaluateStrategyGraduation(actor: Actor, strategyId: string) {
   assertPermission(actor.role, "approve");
-  const ids = await ensureSeedData();
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   const [strategy] = await db.select().from(strategies).where(and(eq(strategies.id, strategyId), eq(strategies.householdId, ids.householdId))).limit(1);
   if (!strategy) throw new GovernanceError("INVALID_STATE", "Strategy was not found");
   const versions = await db.select().from(strategyVersions).where(eq(strategyVersions.strategyId, strategyId)).orderBy(desc(strategyVersions.createdAt));
@@ -589,7 +589,7 @@ export async function evaluateStrategyGraduation(actor: Actor, strategyId: strin
 
 export async function createResearchJournalEntry(actor: Actor, input: { strategyId: string; entryType: string; title: string; body: string }) {
   assertPermission(actor.role, "contribute");
-  const ids = await ensureSeedData();
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   const [strategy] = await db.select({ id: strategies.id }).from(strategies).where(and(eq(strategies.id, input.strategyId), eq(strategies.householdId, ids.householdId))).limit(1);
   if (!strategy) throw new GovernanceError("INVALID_STATE", "Strategy was not found");
   const [entry] = await db.insert(researchJournalEntries).values({ householdId: ids.householdId, ...input, createdBy: actor.userId }).returning();

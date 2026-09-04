@@ -1,8 +1,8 @@
 # Capital OS production-readiness audit
 
 **Current review date:** 2026-09-04
-**Reviewed HEAD:** `af579ae`
-**Reviewed working-tree implementation:** actor-scoped household reads, manual transaction review lifecycle, and focused regression coverage
+**Reviewed HEAD:** `9d2d68d`
+**Reviewed working-tree implementation:** actor-scoped household reads, manual transaction review lifecycle, full PostgreSQL certification, and the repository TypeScript test runner
 **Reviewed banking merges:** `8ec4cba`, `23e4c81`, `32abb01`
 **Audit mode:** Current source, schema, routes, generated contracts, frontend flows, committed certification evidence, deployment/reliability documentation, and test inventory
 **Decision:** **CONTROLLED INTERNAL USE ONLY — NOT READY FOR PUBLIC OR MULTI-HOUSEHOLD FINANCIAL OPERATIONS**
@@ -35,7 +35,7 @@ The current build contains the following meaningful controls:
 - Integer-cent decision logic with PostgreSQL `numeric(18,2)` storage.
 - Household-scoped manual accounts, CSV imports, transaction review records, audit events, and Safe-to-Deploy calculations.
 - Manual transaction creation now reaches the shared review queue; approval/rejection updates review state, budget inclusion, audit attribution, and downstream cash-flow/budget inputs.
-- Capital, Business, Property, Micro-Live, and Intelligence authenticated paths now initialize and resolve tenant core records from the request actor rather than the shared demo household.
+- Capital, Business, Property, Treasury, Strategy Lab, Operations, Financing, Micro-Live, and Intelligence authenticated paths now initialize and resolve tenant core records from the request actor rather than the shared demo household.
 - Append-only audit archive schema and database-owned archive triggers.
 - Read-only bank consent, opaque credential references, account linking, cursor sync, reconciliation states, revocation, export, deletion, webhook verification, replay handling, and recovery categories.
 - OpenAPI/React Query/Zod generation and route/method parity evidence.
@@ -46,16 +46,15 @@ The current build contains the following meaningful controls:
 
 ### P0 — Authenticated household isolation is incomplete
 
-The latest implementation removed the previously identified seeded-context lookup from the authenticated Capital, Business, Property, Micro-Live, and Intelligence paths. They now initialize tenant core records from `actor.householdId` and `actor.userId`, and the affected GET routes pass the actor through.
+The latest implementation removed the previously identified seeded-context lookup from the authenticated Capital, Business, Property, Treasury, Strategy Lab, Operations, Financing, Micro-Live, and Intelligence paths. They now initialize tenant core records from `actor.householdId` and `actor.userId`, and the affected routes pass the actor through.
 
 Remaining seed-dependent or incompletely certified paths include:
 
-- `artifacts/api-server/src/services/treasury.ts:106-116,159-160,219-220`
-- `artifacts/api-server/src/services/strategy-lab.ts:361-592`
-- `artifacts/api-server/src/services/operations.ts:293-591`
-- Any remaining optional development/test fallback that calls `ensureSeedData()` without an authenticated actor.
+- `artifacts/api-server/src/middleware/request-context.ts:276` and `artifacts/api-server/src/services/household-finance.ts:130` retain explicit development/test fallback behavior.
+- `artifacts/api-server/src/services/micro-live.ts:60` retains its no-actor development/test seed branch; authenticated callers use actor-scoped initialization.
+- The actor-scoped Treasury, Strategy Lab, Operations, and Financing paths still require the complete two-household adversarial identifier matrix before this gate can close.
 
-Treasury still selects seeded context for reads and writes, and the remaining modules require a complete caller-controlled identifier matrix. A route can authenticate the caller correctly while an incompletely scoped service still selects the wrong household internally.
+Production authentication must never reach those fallback branches. A route can authenticate the caller correctly while an incompletely scoped service or caller-controlled identifier still selects the wrong household internally.
 
 **Required proof:** every authenticated getter and mutation must derive household ownership from the request actor, and a two-household fixture must exercise every caller-controlled identifier across every affected module.
 
@@ -71,9 +70,9 @@ Treasury request decisions at `artifacts/api-server/src/services/treasury.ts:213
 
 `createManualFinanceTransaction` creates `dataSource: "manual"` and `reviewStatus: "needs_review"`. `reviewFinancialTransaction` now accepts manual rows, and `getTransactionReviewQueue` includes manual rows alongside CSV/Plaid rows.
 
-The focused HTTP regression in `artifacts/api-server/src/integration/p0-http.test.ts` covers manual create → queue visibility → approval → cash-flow recalculation → budget recalculation. The source and type/contract checks pass, but the database-backed HTTP fixture was not executed in this environment because the raw Node runner cannot resolve the repository’s extensionless route imports and the expected TypeScript runner is unavailable as an executable.
+The focused HTTP regression in `artifacts/api-server/src/integration/p0-http.test.ts` covers manual create → queue visibility → approval → cash-flow recalculation → budget recalculation. The repository test entry point now uses the workspace TypeScript runner and resolves the existing extensionless imports. The isolated PostgreSQL suite completed with **96 passed, 0 failed, 0 skipped**, including manual approval/rejection, fresh reads, budget, cash-flow, and Safe-to-Deploy recalculation.
 
-**Required proof:** execute the focused isolated HTTP certification, including approval/rejection and a fresh read after recalculation. Until then, this remains an evidence gap rather than the former source-level dead end.
+**Remaining proof:** execute the authenticated browser certification and preserve the runtime result as release evidence. The HTTP/runtime portion of this gate is now closed.
 
 ### P0 — False financial state has been reduced; local-only actions remain
 
@@ -208,9 +207,9 @@ The durable operations-job schema and lifecycle helpers exist, but there is no p
 
 ### Positive evidence
 
-The committed release evidence records API/frontend typechecks and builds, OpenAPI/React Query/Zod generation, route/method parity, isolated PostgreSQL HTTP fixtures, and targeted browser/concurrency certification. The banking fixture covers provider outage, rate limiting, expired credentials, cursor replay, webhook signature failures, duplicate events, out-of-order events, tenant isolation, reauthorization, and deletion. The current working-tree verification additionally passes API typecheck, API contract parity for 129 routes, an API health request, and a clean API workflow restart.
+The committed release evidence records API/frontend typechecks and builds, OpenAPI/React Query/Zod generation, route/method parity, isolated PostgreSQL HTTP fixtures, and targeted browser/concurrency certification. The banking fixture covers provider outage, rate limiting, expired credentials, cursor replay, webhook signature failures, duplicate events, out-of-order events, tenant isolation, reauthorization, and deletion. The current working-tree verification additionally passes the full workspace typecheck, API contract parity for 129 routes, the PostgreSQL-backed API suite at 96/96, an API health request, and a clean API workflow restart.
 
-The newly added manual-finance HTTP regression has not been executed against PostgreSQL in this environment; its source coverage must not be treated as runtime certification.
+The manual-finance HTTP regression has now been executed against PostgreSQL through the workspace TypeScript runner; its 96/96 result is runtime evidence for the HTTP portion of the flow, not a substitute for the still-open authenticated browser certification.
 
 ### Evidence conflicts requiring correction
 
@@ -223,7 +222,7 @@ Until evidence references are reconciled, the stricter result governs: **current
 | Module | Current status |
 |---|---|
 | Authentication / Clerk | Amber — implementation present; browser reverification and selected-household policy remain open |
-| Manual household finance | Amber — manual review lifecycle is implemented and regression-covered; isolated HTTP/browser execution remains open |
+| Manual household finance | Amber — isolated PostgreSQL HTTP certification passed; authenticated browser certification remains open |
 | Budget / cash flow | Amber — depends on approved transaction state and clean tenant context |
 | Read-only banking lifecycle | Amber — boundary and recovery certified with fixtures |
 | Production bank provider | Red — Plaid disabled; no registered live provider implementation |

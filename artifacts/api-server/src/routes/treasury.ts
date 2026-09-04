@@ -18,7 +18,7 @@ import {
 const router: IRouter = Router();
 
 router.get("/treasury", asyncRoute(async (_req, res) => {
-  res.json(GetTreasuryResponse.parse(await getTreasury()));
+  res.json(GetTreasuryResponse.parse(await getTreasury(actorFrom(res))));
 }));
 
 router.post("/treasury/requests", asyncRoute(async (req, res) => {

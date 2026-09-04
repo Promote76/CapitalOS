@@ -16,7 +16,7 @@ import { calculateTreasuryMetrics, allocationDecision } from "../domain/treasury
 import { GovernanceError } from "../domain/governance";
 import { parseMoneyToCents } from "../domain/finance";
 import { getCashFlow, getSafeToDeploy } from "./household-finance";
-import { ensureSeedData } from "./seed";
+import { ensureTenantCore } from "./seed";
 import type { Actor } from "./capital-os";
 import { assertPermission } from "../domain/governance";
 
@@ -103,15 +103,15 @@ async function lockIdempotency(
   await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`${operation}:${householdId}:${idempotencyKey}`}, 0))`);
 }
 
-export async function getTreasury() {
-  const ids = await ensureSeedData();
+export async function getTreasury(actor: Actor) {
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   const [buckets, policy, requests, reservations, safeToDeploy, cashFlow, allocation] = await Promise.all([
     db.select().from(treasuryBuckets).where(eq(treasuryBuckets.householdId, ids.householdId)).orderBy(treasuryBuckets.priority),
     db.select().from(treasuryPolicies).where(eq(treasuryPolicies.householdId, ids.householdId)).limit(1),
     db.select().from(capitalRequests).where(eq(capitalRequests.householdId, ids.householdId)).orderBy(desc(capitalRequests.createdAt)).limit(10),
     db.select().from(capitalReservations).where(and(eq(capitalReservations.householdId, ids.householdId), eq(capitalReservations.status, "active"))),
-    getSafeToDeploy(),
-    getCashFlow(),
+    getSafeToDeploy(actor),
+    getCashFlow(actor),
     db.select().from(allocationRules).where(and(eq(allocationRules.householdId, ids.householdId), eq(allocationRules.active, true))).limit(1),
   ]);
   const currentPolicy = policy[0];
@@ -157,7 +157,7 @@ export async function createCapitalRequest(actor: Actor, input: {
   evidence?: string[];
 }, idempotencyKey: string) {
   assertPermission(actor.role, "contribute");
-  const ids = await ensureSeedData();
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   if (parseMoneyToCents(input.requestedAmount) <= 0) {
     throw new GovernanceError("INVALID_STATE", "Capital requests must be greater than zero");
   }
@@ -216,12 +216,12 @@ export async function decideCapitalRequest(actor: Actor, requestId: string, inpu
   reason: string;
 }) {
   assertPermission(actor.role, "approve");
-  const ids = await ensureSeedData();
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   const [request] = await db.select().from(capitalRequests).where(and(eq(capitalRequests.id, requestId), eq(capitalRequests.householdId, ids.householdId))).limit(1);
   if (!request) throw new GovernanceError("INVALID_STATE", "Capital request was not found");
   const [policy] = await db.select().from(treasuryPolicies).where(eq(treasuryPolicies.householdId, ids.householdId)).limit(1);
   const buckets = await db.select().from(treasuryBuckets).where(eq(treasuryBuckets.householdId, ids.householdId));
-  const safeToDeploy = await getSafeToDeploy();
+  const safeToDeploy = await getSafeToDeploy(actor);
   const totalLiquidCents = buckets.filter((bucket) => bucket.liquid).reduce((sum, bucket) => sum + parseMoneyToCents(bucket.currentBalance), 0);
   const strategyCents = buckets.filter((bucket) => bucket.bucketType === "STRATEGY").reduce((sum, bucket) => sum + parseMoneyToCents(bucket.currentBalance), 0);
   const [riskState] = await db.select({ protectedCapitalLocked: riskStates.protectedCapitalLocked })

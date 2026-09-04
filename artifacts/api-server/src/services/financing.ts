@@ -16,7 +16,7 @@ import {
   idempotencyKeys,
 } from "@workspace/db/schema";
 import type { Actor } from "./capital-os";
-import { ensureSeedData } from "./seed";
+import { ensureTenantCore } from "./seed";
 import { assertPermission, GovernanceError } from "../domain/governance";
 import { centsToMoney, parseMoneyToCents } from "../domain/finance";
 import {
@@ -89,7 +89,7 @@ function scenarioResponse(row: typeof financingScenarios.$inferSelect) {
 }
 
 async function ensureFinancingDefaults(actor: Actor) {
-  await ensureSeedData();
+  await ensureTenantCore(actor.householdId, actor.userId);
   await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`financing-seed:${actor.householdId}`}))`);
     const [profile] = await tx.select().from(financingCreditProfiles).where(eq(financingCreditProfiles.householdId, actor.householdId)).limit(1);

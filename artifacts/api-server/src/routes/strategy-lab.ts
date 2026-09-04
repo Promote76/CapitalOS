@@ -27,7 +27,7 @@ import {
 const router: IRouter = Router();
 
 router.get("/strategy-lab", asyncRoute(async (_req, res) => {
-  res.json(GetStrategyLabResponse.parse(await getStrategyLabSnapshot()));
+  res.json(GetStrategyLabResponse.parse(await getStrategyLabSnapshot(actorFrom(res))));
 }));
 
 router.post("/strategy-lab/strategies", asyncRoute(async (req, res) => {

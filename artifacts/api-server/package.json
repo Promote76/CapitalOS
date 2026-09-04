@@ -9,7 +9,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check-contract": "node ../../scripts/check-api-contract.mjs",
-    "test": "node --experimental-strip-types --experimental-specifier-resolution=node --test src/domain/*.test.ts src/middleware/*.test.ts src/integration/*.test.ts"
+    "test": "../../scripts/node_modules/.bin/tsx --test src/domain/*.test.ts src/middleware/*.test.ts src/integration/*.test.ts"
   },
   "dependencies": {
     "@clerk/express": "^2.1.64",

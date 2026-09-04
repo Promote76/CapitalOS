@@ -12,7 +12,7 @@ import {
   operationsTasks,
 } from "@workspace/db/schema";
 import type { Actor } from "./capital-os";
-import { ensureSeedData } from "./seed";
+import { ensureTenantCore } from "./seed";
 import { assertPermission, GovernanceError } from "../domain/governance";
 import { assertSafeAutomationAction, calculateOperationsHealth } from "../domain/operations";
 
@@ -290,7 +290,7 @@ async function ensureOperationsSeed(householdId: string, ownerId: string): Promi
 }
 
 async function loadOperations(actor: Actor) {
-  const ids = await ensureSeedData();
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   await ensureOperationsSeed(ids.householdId, ids.ownerId);
   const [tasks, approvals, alerts, automations, preferences, bills, jobs] = await Promise.all([
     db.select().from(operationsTasks).where(eq(operationsTasks.householdId, ids.householdId)).orderBy(asc(operationsTasks.dueDate), asc(operationsTasks.priority)),
@@ -441,7 +441,7 @@ export async function createOperationsTask(actor: Actor, input: {
   requiresApproval?: boolean;
 }) {
   assertPermission(actor.role, "contribute");
-  const ids = await ensureSeedData();
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   const [task] = await db.insert(operationsTasks).values({
     householdId: ids.householdId,
     title: input.title,
@@ -459,7 +459,7 @@ export async function createOperationsTask(actor: Actor, input: {
 
 export async function updateOperationsTask(actor: Actor, taskId: string, input: { status?: string; assignedTo?: string }) {
   assertPermission(actor.role, "contribute");
-  const ids = await ensureSeedData();
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   const [existing] = await db.select().from(operationsTasks).where(and(eq(operationsTasks.id, taskId), eq(operationsTasks.householdId, ids.householdId))).limit(1);
   if (!existing) throw new GovernanceError("INVALID_STATE", "Operations task was not found");
   const [task] = await db.update(operationsTasks).set({
@@ -480,7 +480,7 @@ export async function listOperationsApprovals(actor: Actor) {
 
 export async function decideOperationsApproval(actor: Actor, approvalId: string, input: { decision: string; reason: string }) {
   assertPermission(actor.role, "approve");
-  const ids = await ensureSeedData();
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   const [existing] = await db.select().from(operationsApprovals).where(and(eq(operationsApprovals.id, approvalId), eq(operationsApprovals.householdId, ids.householdId))).limit(1);
   if (!existing) throw new GovernanceError("INVALID_STATE", "Approval request was not found");
   if (existing.status !== "PENDING") throw new GovernanceError("INVALID_STATE", "Only pending approvals can be decided");
@@ -501,7 +501,7 @@ export async function listOperationsAlerts(actor: Actor) {
 
 export async function updateOperationsAlert(actor: Actor, alertId: string, status: string) {
   assertPermission(actor.role, "contribute");
-  const ids = await ensureSeedData();
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   const [existing] = await db.select().from(operationsAlerts).where(and(eq(operationsAlerts.id, alertId), eq(operationsAlerts.householdId, ids.householdId))).limit(1);
   if (!existing) throw new GovernanceError("INVALID_STATE", "Operations alert was not found");
   const [alert] = await db.update(operationsAlerts).set({
@@ -521,7 +521,7 @@ export async function listOperationsAutomations(actor: Actor) {
 
 export async function runOperationsAutomation(actor: Actor, automationId: string) {
   assertPermission(actor.role, "contribute");
-  const ids = await ensureSeedData();
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   const [automation] = await db.select().from(operationsAutomations).where(and(eq(operationsAutomations.id, automationId), eq(operationsAutomations.householdId, ids.householdId))).limit(1);
   if (!automation) throw new GovernanceError("INVALID_STATE", "Automation rule was not found");
   if (!automation.enabled) throw new GovernanceError("INVALID_STATE", "Automation rule is disabled");
@@ -588,7 +588,7 @@ export async function updateOperationsNotificationPreferences(actor: Actor, inpu
   quietHoursEnd: string | null;
 }>) {
   assertPermission(actor.role, "contribute");
-  const ids = await ensureSeedData();
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
   const [existing] = await db.select().from(operationsNotificationPreferences).where(and(eq(operationsNotificationPreferences.householdId, ids.householdId), eq(operationsNotificationPreferences.userId, ids.ownerId))).limit(1);
   if (!existing) throw new GovernanceError("INVALID_STATE", "Notification preferences are missing");
   const [updated] = await db.update(operationsNotificationPreferences).set({ ...input, updatedAt: new Date() }).where(and(

@@ -375,6 +375,7 @@ test("P0-05 contribution journey keeps the exact $250 movement after fresh reads
         WHERE household_id IN (${householdIdList})
       )`);
     await db.execute(sql`DELETE FROM ledger_transactions WHERE household_id IN (${householdIdList})`);
+    await db.delete(database.auditEvents).where(inArray(database.auditEvents.householdId, householdIds));
     await db.delete(households).where(inArray(households.id, householdIds));
     await db.delete(users).where(inArray(users.id, [
       fixture.userA,
@@ -758,6 +759,7 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
         WHERE household_id IN (${householdIdList})
       )`);
     await db.execute(sql`DELETE FROM ledger_transactions WHERE household_id IN (${householdIdList})`);
+    await db.delete(database.auditEvents).where(inArray(database.auditEvents.householdId, [fixture.householdA, fixture.householdB]));
     await db.delete(households).where(inArray(households.id, [fixture.householdA, fixture.householdB]));
      await db.delete(users).where(inArray(users.id, [
        fixture.userA,
@@ -921,7 +923,7 @@ function replaceRouteParams(route: RouteProbe, values: Record<string, string>, f
   return route.path.replace(/:([A-Za-z0-9_]+)/g, (_match, name: string) => values[name] ?? fallback);
 }
 
-test("P0-01 preflight inventories all 110 routes and rejects unsafe generic probes", { skip: !enabled }, async () => {
+test("P0-01 preflight inventories all 129 routes and rejects unsafe generic probes", { skip: !enabled }, async () => {
   process.env.NODE_ENV = "test";
   process.env.CAPITAL_OS_TEST_CONTEXT = "1";
   process.env.CAPITAL_OS_ALLOWED_ORIGIN = "http://capitalos.test";
@@ -951,7 +953,7 @@ test("P0-01 preflight inventories all 110 routes and rejects unsafe generic prob
 
   try {
     const routes = discoverRouteProbes();
-    assert.equal(routes.length, 110, "The route inventory changed; update the certification matrix before running it.");
+    assert.equal(routes.length, 129, "The route inventory changed; update the certification matrix before running it.");
     const { idsA, idsB } = await warmRouteMatrixResources(request, fixture);
     const allAIds = Object.values(idsA);
     const allBIds = Object.values(idsB);
@@ -1088,6 +1090,7 @@ test("P0-01 preflight inventories all 110 routes and rejects unsafe generic prob
         SELECT id FROM capital_accounts WHERE household_id IN (${householdIdList})
       )`);
     await database.db.execute(sql`DELETE FROM ledger_transactions WHERE household_id IN (${householdIdList})`);
+    await database.db.delete(database.auditEvents).where(inArray(database.auditEvents.householdId, householdIds));
     await database.db.delete(database.households).where(inArray(database.households.id, householdIds));
     await database.db.delete(database.users).where(inArray(database.users.id, [
       fixture.userA, fixture.partnerA, fixture.advisorA, fixture.viewerA,
@@ -1318,6 +1321,7 @@ test("P0-06 and P0-08 preflight role, effective-permission, selection, tampering
         SELECT id FROM capital_accounts WHERE household_id IN (${householdIdList})
       )`);
     await database.db.execute(sql`DELETE FROM ledger_transactions WHERE household_id IN (${householdIdList})`);
+    await database.db.delete(database.auditEvents).where(inArray(database.auditEvents.householdId, householdIds));
     await database.db.delete(database.households).where(inArray(database.households.id, householdIds));
     await database.db.delete(database.users).where(inArray(database.users.id, [
       fixture.userA, fixture.partnerA, fixture.advisorA, fixture.viewerA,
@@ -1433,6 +1437,7 @@ test("Financing Engine isolates households, permissions, actors, and idempotent 
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     const householdIds = [fixture.householdA, fixture.householdB];
+    await database.db.delete(database.auditEvents).where(inArray(database.auditEvents.householdId, householdIds));
     await database.db.delete(database.households).where(inArray(database.households.id, householdIds));
     await database.db.delete(database.users).where(inArray(database.users.id, [
       fixture.userA, fixture.partnerA, fixture.advisorA, fixture.viewerA,
@@ -1534,12 +1539,14 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
       reviewedBy: string;
       reviewedAt: string | null;
       reviewNote: string | null;
+      businessTag: string;
+      pending: boolean;
     };
     assert.deepEqual({ ...manualApprovalBody, reviewedAt: undefined }, {
       id: manualRow.id,
       accountId: accountA.id,
       accountName: "Primary checking",
-      transactionDate: "2026-09-03",
+      transactionDate: "2026-09-03T00:00:00.000Z",
       description: "Manual household dinner",
       merchant: "Local restaurant",
       amount: "-12.50",
@@ -1552,6 +1559,8 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
       reviewedBy: fixture.userA,
       reviewedAt: undefined,
       reviewNote: "Reviewed manual entry.",
+      businessTag: "household",
+      pending: false,
     });
     assert.ok(manualApprovalBody.reviewedAt);
     const manualCashFlow = await request("/cash-flow", fixture.userA, fixture.householdA);
@@ -1599,7 +1608,10 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     const importedRows = await database.db
       .select({ id: database.financeTransactions.id, householdId: database.financeTransactions.householdId, dataSource: database.financeTransactions.dataSource, reviewStatus: database.financeTransactions.reviewStatus })
       .from(database.financeTransactions)
-      .where(eq(database.financeTransactions.accountId, accountA.id));
+      .where(and(
+        eq(database.financeTransactions.accountId, accountA.id),
+        eq(database.financeTransactions.dataSource, "csv_import"),
+      ));
     assert.deepEqual(importedRows.map(({ householdId, dataSource, reviewStatus }) => ({ householdId, dataSource, reviewStatus })), [{ householdId: fixture.householdA, dataSource: "csv_import", reviewStatus: "needs_review" }]);
 
     const reviewQueue = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
@@ -1640,7 +1652,7 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     assert.equal(categorizedBody.reviewedBy, fixture.userA);
     const heldBudget = await request("/budget", fixture.userA, fixture.householdA);
     assert.equal(heldBudget.status, 200);
-    assert.equal((await heldBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "0.00");
+    assert.equal((await heldBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "12.50");
 
     const repeatedCategorize = await request(`/financial-transactions/${importedRows[0].id}/review`, fixture.userA, fixture.householdA, {
       method: "POST",
@@ -1751,12 +1763,12 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     });
     assert.equal(categorizeManual.status, 200);
     const heldManualBudget = await request("/budget", fixture.userA, fixture.householdA);
-    assert.equal((await heldManualBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "4.25");
+    assert.equal((await heldManualBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "16.75");
 
     const safeBeforeManualApproval = await request("/safe-to-deploy", fixture.userA, fixture.householdA);
     assert.equal(safeBeforeManualApproval.status, 200);
     const safeBeforeManualApprovalBody = await safeBeforeManualApproval.json() as { safeToDeploy: string };
-    assert.equal(safeBeforeManualApprovalBody.safeToDeploy, "62.50");
+    assert.equal(safeBeforeManualApprovalBody.safeToDeploy, "59.37");
     const approveManual = await request(`/financial-transactions/${manualTransaction.id}/review`, fixture.userA, fixture.householdA, {
       method: "POST",
       body: JSON.stringify({ status: "approved", categoryId: categoryA.id, note: "Manual entry approved for planning." }),
@@ -1765,12 +1777,12 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     const manualQueueAfterApproval = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
     assert.equal((await manualQueueAfterApproval.json() as { transactions: Array<{ id: string }> }).transactions.some((row) => row.id === manualTransaction.id), false);
     const appliedManualBudget = await request("/budget", fixture.userA, fixture.householdA);
-    assert.equal((await appliedManualBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "44.25");
+    assert.equal((await appliedManualBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "56.75");
     const appliedManualCashFlow = await request("/cash-flow", fixture.userA, fixture.householdA);
-    assert.equal((await appliedManualCashFlow.json() as { metrics: { discretionaryOutflow: string } }).metrics.discretionaryOutflow, "44.25");
+    assert.equal((await appliedManualCashFlow.json() as { metrics: { discretionaryOutflow: string } }).metrics.discretionaryOutflow, "56.75");
     const safeAfterManualApproval = await request("/safe-to-deploy", fixture.userA, fixture.householdA);
     assert.equal(safeAfterManualApproval.status, 200);
-    assert.equal((await safeAfterManualApproval.json() as { safeToDeploy: string }).safeToDeploy, "52.50");
+    assert.equal((await safeAfterManualApproval.json() as { safeToDeploy: string }).safeToDeploy, "49.37");
 
     const rejectedManualResponse = await request(`/financial-accounts/${accountA.id}/transactions`, fixture.userA, fixture.householdA, {
       method: "POST",
@@ -1789,9 +1801,9 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     });
     assert.equal(rejectManual.status, 200);
     const rejectedManualBudget = await request("/budget", fixture.userA, fixture.householdA);
-    assert.equal((await rejectedManualBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "44.25");
+    assert.equal((await rejectedManualBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "56.75");
     const safeAfterManualRejection = await request("/safe-to-deploy", fixture.userA, fixture.householdA);
-    assert.equal((await safeAfterManualRejection.json() as { safeToDeploy: string }).safeToDeploy, "52.50");
+    assert.equal((await safeAfterManualRejection.json() as { safeToDeploy: string }).safeToDeploy, "49.37");
 
     const [pendingManual] = await database.db.insert(database.financeTransactions).values({
       householdId: fixture.householdA,
@@ -1808,9 +1820,9 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     }).returning({ id: database.financeTransactions.id });
     assert.ok(pendingManual?.id);
     const pendingManualBudget = await request("/budget", fixture.userA, fixture.householdA);
-    assert.equal((await pendingManualBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "44.25");
+    assert.equal((await pendingManualBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "56.75");
     const safeAfterPendingManual = await request("/safe-to-deploy", fixture.userA, fixture.householdA);
-    assert.equal((await safeAfterPendingManual.json() as { safeToDeploy: string }).safeToDeploy, "52.50");
+    assert.equal((await safeAfterPendingManual.json() as { safeToDeploy: string }).safeToDeploy, "49.37");
 
     const financeAudit = await database.db
       .select({ actor: database.auditEvents.actor, eventType: database.auditEvents.eventType })

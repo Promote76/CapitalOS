@@ -15,6 +15,10 @@ const generatedPaths = [
 ];
 const apiCodegenCommand =
   "Regenerate API artifacts with `pnpm --filter @workspace/api-spec run codegen`.";
+const databaseDeclarationCommand =
+  "Rebuild database declarations with `pnpm exec tsc --build --force`.";
+const databaseMigrationCommand =
+  "Regenerate database migrations with `pnpm --filter @workspace/db run generate`.";
 const snapshotDir = fs.mkdtempSync(
   path.join(os.tmpdir(), "capital-os-generated-"),
 );
@@ -123,9 +127,7 @@ function printStaleArtifacts() {
   }
 
   if ((staleArtifacts.get("lib/db/migrations") ?? []).length > 0) {
-    console.error(
-      "\nRegenerate database migrations with `pnpm --filter @workspace/db run generate`.",
-    );
+    console.error(`\n${databaseMigrationCommand}`);
   }
   if (
     (staleArtifacts.get("lib/api-client-react/src/generated") ?? []).length >
@@ -164,6 +166,15 @@ try {
       "run",
       "codegen",
     ]);
+  if (!declarationsGenerated) {
+    console.error(
+      `\nDatabase declaration generation failed. ${databaseDeclarationCommand}`,
+    );
+  } else if (!migrationsGenerated) {
+    console.error(
+      `\nDatabase migration generation failed. ${databaseMigrationCommand}`,
+    );
+  }
   if (migrationsGenerated && !apiArtifactsGenerated) {
     console.error(`\nAPI artifact generation failed. ${apiCodegenCommand}`);
   }

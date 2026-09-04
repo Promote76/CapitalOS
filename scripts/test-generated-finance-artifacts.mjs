@@ -96,7 +96,7 @@ function runChecker(extraEnv = {}) {
   };
 }
 
-function createApiCodegenFailureFixture() {
+function createGenerationFailureFixture() {
   const pnpmPathResult = spawnSync("which", ["pnpm"], { encoding: "utf8" });
   assert.equal(
     pnpmPathResult.status,
@@ -112,7 +112,16 @@ function createApiCodegenFailureFixture() {
   fs.writeFileSync(
     fixturePnpmPath,
     `#!/bin/sh
-if [ "$1" = "--filter" ] && [ "$2" = "@workspace/api-spec" ] && [ "$3" = "run" ] && [ "$4" = "codegen" ]; then
+if [ "$GENERATED_ARTIFACT_FAILURE_STAGE" = "declarations" ] && [ "$1" = "exec" ] && [ "$2" = "tsc" ] && [ "$3" = "--build" ] && [ "$4" = "--force" ]; then
+  printf '%s\\n' 'declaration failure fixture' > lib/api-client-react/src/generated/declarations.ts
+  printf '%s\\n' 'declaration failure fixture' > lib/api-zod/src/generated/declarations.ts
+  exit 71
+fi
+if [ "$GENERATED_ARTIFACT_FAILURE_STAGE" = "migrations" ] && [ "$1" = "--filter" ] && [ "$2" = "@workspace/db" ] && [ "$3" = "run" ] && [ "$4" = "generate" ]; then
+  printf '%s\\n' 'migration failure fixture' > lib/db/migrations/failure-fixture.sql
+  exit 72
+fi
+if [ "$GENERATED_ARTIFACT_FAILURE_STAGE" = "api" ] && [ "$1" = "--filter" ] && [ "$2" = "@workspace/api-spec" ] && [ "$3" = "run" ] && [ "$4" = "codegen" ]; then
   printf '%s\\n' 'api codegen failure fixture' > lib/api-client-react/src/generated/api.ts
   printf '%s\\n' 'api codegen failure fixture' > lib/api-zod/src/generated/api.ts
   exit 73
@@ -172,8 +181,54 @@ try {
     "mismatch migration output",
   );
 
-  apiCodegenFailureFixture = createApiCodegenFailureFixture();
-  const apiCodegenFailureResult = runChecker(apiCodegenFailureFixture.env);
+  apiCodegenFailureFixture = createGenerationFailureFixture();
+  const declarationFailureResult = runChecker({
+    ...apiCodegenFailureFixture.env,
+    GENERATED_ARTIFACT_FAILURE_STAGE: "declarations",
+  });
+  assert.notEqual(
+    declarationFailureResult.status,
+    0,
+    "database declaration generation failure unexpectedly passed",
+  );
+  assert.match(
+    declarationFailureResult.output,
+    /Rebuild database declarations with `pnpm exec tsc --build --force`\./,
+  );
+  assertDirectoryRestored(
+    apiClientSnapshot,
+    apiClientGeneratedPath,
+    "failed declaration client output",
+  );
+  assertDirectoryRestored(
+    apiZodSnapshot,
+    apiZodGeneratedPath,
+    "failed declaration validator output",
+  );
+
+  const migrationFailureResult = runChecker({
+    ...apiCodegenFailureFixture.env,
+    GENERATED_ARTIFACT_FAILURE_STAGE: "migrations",
+  });
+  assert.notEqual(
+    migrationFailureResult.status,
+    0,
+    "database migration generation failure unexpectedly passed",
+  );
+  assert.match(
+    migrationFailureResult.output,
+    /Regenerate database migrations with `pnpm --filter @workspace\/db run generate`\./,
+  );
+  assertDirectoryRestored(
+    migrationSnapshot,
+    migrationsPath,
+    "failed migration output",
+  );
+
+  const apiCodegenFailureResult = runChecker({
+    ...apiCodegenFailureFixture.env,
+    GENERATED_ARTIFACT_FAILURE_STAGE: "api",
+  });
   assert.notEqual(
     apiCodegenFailureResult.status,
     0,
@@ -199,6 +254,8 @@ try {
   fs.writeFileSync(schemaIndexPath, originalSchemaIndex);
   fs.rmSync(fixturePath, { force: true });
   restoreDirectory(migrationSnapshot, migrationsPath);
+  restoreDirectory(apiClientSnapshot, apiClientGeneratedPath);
+  restoreDirectory(apiZodSnapshot, apiZodGeneratedPath);
   if (apiCodegenFailureFixture) {
     fs.rmSync(apiCodegenFailureFixture.directory, {
       recursive: true,

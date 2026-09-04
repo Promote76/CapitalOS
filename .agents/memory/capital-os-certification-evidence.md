@@ -45,3 +45,15 @@ and treated absent optional rerun variables as loss of all prior fixture evidenc
 
 **How to apply:** Prefer fresh execution results, fail on a requested rerun failure,
 and otherwise consume only explicit `PASS` evidence for each individual P0 gate.
+
+Certification fixtures that exercise append-only audit tables must retain their
+rows in the disposable target rather than attempting cleanup. Denied transition
+audits must commit before the service raises the expected governance error.
+
+**Why:** The audit archive intentionally rejects deletion, and an audit insert
+inside a transaction that later throws is rolled back, which otherwise leaves
+the retained certification evidence incomplete.
+
+**How to apply:** Use a fresh guarded target for each certification run, retain
+fixture evidence there, and return a post-transaction denial after the audit
+write commits.

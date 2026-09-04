@@ -49,6 +49,8 @@ introduced during this certification.
   state machine, records successful and denied transition attempts, reconciles
   the legacy emergency-stop path, and blocks OMS order-intent creation unless
   the control state, Guardian, and risk governor all permit execution.
+- The execution-control plane passed EC-01 through EC-17 against a dedicated
+  disposable PostgreSQL target, including a fresh API process restart probe.
 - Risk and Micro-Live pages now read the authoritative server state; the browser
   Emergency Stop sends a confirmed, idempotent server command rather than
   changing local React state only.
@@ -62,10 +64,10 @@ introduced during this certification.
 | Workspace/API typechecks | PASS | `pnpm run typecheck`, API typecheck |
 | OpenAPI route/method parity | PASS | `scripts/check-api-contract.mjs`; 134 route/method combinations |
 | PostgreSQL-backed API suite | PASS | 99 passed, 0 failed, 0 skipped with `CAPITAL_OS_RUN_INTEGRATION=1` |
-| Execution-control focused fixture | PASS in the development database; isolated release target not configured | `artifacts/api-server/src/integration/execution-control.test.ts`; 3 passed |
-| Execution-control certification command | FAIL-CLOSED | `pnpm run certify:execution-control`; dedicated `CAPITAL_OS_CERTIFICATION_DB_URL` is unavailable |
+| Execution-control focused fixture | PASS against the dedicated isolated certification target; 3 passed, 0 failed, 0 skipped | `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/integration/execution-control.test.ts` |
+| Execution-control certification command | PASS — EC-01 through EC-17 collected | `pnpm run certify:execution-control`; `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md` |
 | Historical P0 evidence | PASS for the documented internal scope | `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md` |
-| Current production-candidate command | FAIL-CLOSED | P0 mapping is green, but published-origin and dedicated certification DB configuration are unavailable in this environment |
+| Current production-candidate command | FAIL-CLOSED | P0 mapping is green, but published-origin and broader production-candidate evidence remain unavailable; execution-control was certified separately against a dedicated target |
 | Internal reliability command | FAIL-CLOSED | Implementation checks pass; authenticated browser contribution and provider reverification evidence remain open |
 | Micro-Live command | BLOCKED | Internal safety core passes; provider, restart, credential, automation, and browser gates remain blocked |
 | Future restore verifier | BLOCKED | Refusal-first scaffold; no provider-managed restore was executed |
@@ -85,7 +87,7 @@ introduced during this certification.
 | Observability | PARTIAL | Metric names, thresholds, and reliability domain checks exist | No concrete telemetry exporter or named destination receiving a synthetic critical alert | **PARTIAL** | `artifacts/api-server/src/domain/reliability.ts`; `docs/CAPITAL_OS_INTERNAL_RELIABILITY.md` |
 | Accounting | PARTIAL | Exact-cents and cross-view separation controls exist | Hardcoded/incomplete liabilities, real estate, investment, withdrawal, fee, tax, and return-on-capital values remain | **PARTIAL** | `artifacts/api-server/src/services/accounting.ts` |
 | Safe-to-Deploy | PARTIAL | Conservative calculation and manual-review exclusions exist | Domain and finance tests pass, but the complete cross-domain exclusion invariant suite is not certified | **PARTIAL** | `artifacts/api-server/src/services/household-finance.ts`; `artifacts/api-server/src/domain/household-finance.test.ts` |
-| Server Emergency Stop | BLOCKED | PostgreSQL-backed household control state, deterministic STOP transition, audit/idempotency records, legacy risk reconciliation, and OMS enforcement are implemented | Development database fixture passed persistence, household isolation, invalid transition denial, concurrent STOP serialization, audit attribution, and recovery; isolated release-target/restart evidence is not available | **BLOCKED** | `artifacts/api-server/src/services/execution-control.ts`; `artifacts/api-server/src/integration/execution-control.test.ts`; `scripts/certify-execution-control.mjs` |
+| Server Emergency Stop | BLOCKED | PostgreSQL-backed household control state, deterministic STOP transition, audit/idempotency records, legacy risk reconciliation, and OMS enforcement are implemented | Dedicated isolated target passed EC-01 through EC-17; STOP remained household-scoped and persisted through a fresh API process restart; audit attribution, replay, denied transition, and OMS pre-intent evidence retained | **PASS** | `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/services/execution-control.ts`; `scripts/certify-execution-control.mjs` |
 | Guardian | PASS | Missing/stale health defaults to STOP and disagreement locks the boundary | Domain and Micro-Live certification tests pass | **PASS** | `artifacts/api-server/src/domain/execution-*.test.ts`; `scripts/certify-micro-live.mjs` |
 | OMS | PASS | Durable order-intent/event relationships and fail-closed state transitions exist | Domain and Micro-Live certification tests pass; no real venue order was sent | **PASS** | `artifacts/api-server/src/domain/execution-oms.test.ts`; `scripts/certify-micro-live.mjs` |
 | Reconciliation | PASS | Rehearsal reconciliation persists failures and stops exposure | Domain and Micro-Live certification tests pass; production worker restart evidence remains separate | **PASS** | `artifacts/api-server/src/domain/execution-*.test.ts`; `scripts/certify-micro-live.mjs` |
@@ -96,9 +98,9 @@ introduced during this certification.
 
 There are **17 critical gates** in the matrix:
 
-- **PASS:** 5
+- **PASS:** 6
 - **PARTIAL:** 6
-- **BLOCKED:** 5
+- **BLOCKED:** 4
 - **FAIL:** 1
 
 Any PARTIAL, BLOCKED, or FAIL critical gate keeps the production candidate
@@ -128,7 +130,6 @@ fail-closed database-backed safety checks. The following are not certified:
 - Named alert delivery
 - Full telemetry export and queue-lag visibility
 - Provider-backed banking delivery
-- Dedicated release-target execution-control persistence and restart evidence
 
 ## Banking and execution status
 
@@ -148,7 +149,6 @@ fail-closed database-backed safety checks. The following are not certified:
 Capital OS is approved only for controlled internal evaluation within the
 non-executing family-capital scope. The highest-priority unresolved blockers are:
 
-> Run `pnpm run certify:execution-control` against an isolated
-> `CAPITAL_OS_CERTIFICATION_DB_URL` and complete the infrastructure-backed
-> recovery evidence (managed restore, worker restart recovery, and named
-> critical-alert delivery) before any broader release decision.
+> Complete the infrastructure-backed recovery evidence (managed restore, worker
+> restart recovery, and named critical-alert delivery) before any broader
+> release decision.

@@ -91,7 +91,7 @@ async function transition(
     throw new GovernanceError("INVALID_STATE", "Execution command idempotency key is too long");
   }
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`execution-control:${actor.householdId}`}, 0))`);
     const [current] = await tx.select().from(executionControls)
       .where(eq(executionControls.householdId, actor.householdId))
@@ -151,7 +151,7 @@ async function transition(
           idempotencyKey,
         },
       });
-      throw new GovernanceError("INVALID_STATE", `Execution control cannot transition from ${from} to ${target}`);
+      return { denied: true as const, from };
     }
 
     const now = new Date();
@@ -212,6 +212,10 @@ async function transition(
     }
     return serializeControl(updated);
   });
+  if ("denied" in result) {
+    throw new GovernanceError("INVALID_STATE", `Execution control cannot transition from ${result.from} to ${target}`);
+  }
+  return result;
 }
 
 export async function requestExecutionStop(actor: Actor, input: CommandInput) {

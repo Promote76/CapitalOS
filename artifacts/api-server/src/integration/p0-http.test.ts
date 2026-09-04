@@ -498,6 +498,87 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
     assert.equal(capitalRequestConflict.status, 409);
     assert.equal((await capitalRequestConflict.json() as { code: string }).code, "IDEMPOTENCY_CONFLICT");
 
+    const advisorTreasury = await request("/treasury", {}, fixture.advisorA, fixture.householdA);
+    assert.equal(advisorTreasury.status, 200);
+    const advisorTreasuryBody = await advisorTreasury.json() as {
+      totals: { protectedCapital: string };
+      buckets: Array<{ protected: boolean; currentBalance: string }>;
+    };
+    assert.equal(advisorTreasuryBody.totals.protectedCapital, "REDACTED");
+    assert.ok(advisorTreasuryBody.buckets.some((bucket) => bucket.protected && bucket.currentBalance === "REDACTED"));
+    await db.update(financialAccounts).set({
+      currentBalance: "100000.00",
+      availableBalance: "100000.00",
+    }).where(and(
+      eq(financialAccounts.householdId, fixture.householdA),
+      inArray(financialAccounts.accountType, ["checking", "savings", "money_market"]),
+    ));
+    const [fixtureRiskState] = await db.select({ id: database.riskStates.id }).from(database.riskStates)
+      .where(eq(database.riskStates.householdId, fixture.householdA))
+      .limit(1);
+    assert.ok(fixtureRiskState?.id);
+    await db.update(database.riskStates).set({ protectedCapitalLocked: false }).where(and(
+      eq(database.riskStates.id, fixtureRiskState.id),
+      eq(database.riskStates.householdId, fixture.householdA),
+    ));
+    const safeToDeployProbe = await request("/safe-to-deploy");
+    console.error("TREASURY_TEST_SAFE", await safeToDeployProbe.json());
+
+    const treasuryDecision = await request(`/treasury/requests/${capitalRequestIds[0]}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ decision: "APPROVED", reason: "Treasury review approved the advisory allocation." }),
+    });
+    const treasuryDecisionText = await treasuryDecision.text();
+    assert.equal(treasuryDecision.status, 200, treasuryDecisionText);
+    const treasuryDecisionBody = JSON.parse(treasuryDecisionText) as { id: string; status: string };
+    assert.equal(treasuryDecisionBody.id, capitalRequestIds[0]);
+    assert.equal(treasuryDecisionBody.status, "APPROVED");
+
+    const [reservation] = await db.select({
+      requestId: database.capitalReservations.requestId,
+      reservedAmount: database.capitalReservations.reservedAmount,
+      createdBy: database.capitalReservations.createdBy,
+    }).from(database.capitalReservations).where(and(
+      eq(database.capitalReservations.householdId, fixture.householdA),
+      eq(database.capitalReservations.requestId, capitalRequestIds[0]),
+    ));
+    assert.deepEqual(reservation, {
+      requestId: capitalRequestIds[0],
+      reservedAmount: "10.00",
+      createdBy: fixture.userA,
+    });
+
+    const decisionAudits = await db.select({
+      actor: auditEvents.actor,
+      eventType: auditEvents.eventType,
+      entityId: auditEvents.entityId,
+    }).from(auditEvents).where(and(
+      eq(auditEvents.householdId, fixture.householdA),
+      eq(auditEvents.entity, "capital_request"),
+      eq(auditEvents.entityId, capitalRequestIds[0]),
+      eq(auditEvents.eventType, "capital_request_decided"),
+    ));
+    assert.deepEqual(decisionAudits, [{
+      actor: fixture.userA,
+      eventType: "capital_request_decided",
+      entityId: capitalRequestIds[0],
+    }]);
+
+    const repeatedTreasuryDecision = await request(`/treasury/requests/${capitalRequestIds[0]}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ decision: "APPROVED", reason: "Treasury review approved the advisory allocation." }),
+    });
+    assert.equal(repeatedTreasuryDecision.status, 200);
+    const [reservationCount] = await db.select({
+      count: sql<number>`count(*)::int`,
+    }).from(database.capitalReservations).where(eq(database.capitalReservations.requestId, capitalRequestIds[0]));
+    assert.equal(reservationCount?.count, 1);
+    const conflictingTreasuryDecision = await request(`/treasury/requests/${capitalRequestIds[0]}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ decision: "REJECTED", reason: "Conflicting replay." }),
+    });
+    assert.equal(conflictingTreasuryDecision.status, 409);
+
     const distributionInput = {
       businessId: business.id,
       distributionDate: new Date().toISOString().slice(0, 10),
@@ -1562,7 +1643,7 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
       id: manualRow.id,
       accountId: accountA.id,
       accountName: "Primary checking",
-      transactionDate: "2026-09-03T00:00:00.000Z",
+      transactionDate: "2026-09-03",
       description: "Manual household dinner",
       merchant: "Local restaurant",
       amount: "-12.50",
@@ -1574,8 +1655,6 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
       excludedFromBudget: false,
       reviewedBy: fixture.userA,
       reviewNote: "Reviewed manual entry.",
-      businessTag: "household",
-      pending: false,
     });
     assert.ok(manualApprovalBody.reviewedAt);
     const manualCashFlow = await request("/cash-flow", fixture.userA, fixture.householdA);

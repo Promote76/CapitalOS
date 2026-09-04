@@ -1,8 +1,8 @@
 # Capital OS production-readiness audit
 
 **Current review date:** 2026-09-04
-**Reviewed HEAD:** `9d2d68d`
-**Reviewed working-tree implementation:** actor-scoped household reads, manual transaction review lifecycle, full PostgreSQL certification, and the repository TypeScript test runner
+**Reviewed HEAD:** `38c6775`
+**Reviewed working-tree implementation:** actor-scoped household reads, manual transaction review lifecycle, PostgreSQL certification, authenticated browser certification, and the repository TypeScript test runner
 **Reviewed banking merges:** `8ec4cba`, `23e4c81`, `32abb01`
 **Audit mode:** Current source, schema, routes, generated contracts, frontend flows, committed certification evidence, deployment/reliability documentation, and test inventory
 **Decision:** **CONTROLLED INTERNAL USE ONLY — NOT READY FOR PUBLIC OR MULTI-HOUSEHOLD FINANCIAL OPERATIONS**
@@ -17,7 +17,7 @@ It is not ready to be treated as a production-grade multi-household financial pl
 
 1. Treasury and several remaining operational paths still use seeded context or lack complete actor/identifier certification.
 2. Treasury responses do not apply actor/role-aware balance redaction.
-3. Manual transaction review is implemented in source and covered by a focused regression test, but the database-backed HTTP certification has not been executed in the current environment.
+3. Treasury role-aware balance redaction and atomic decision handling remain incomplete; the manual transaction review flow itself is now HTTP- and browser-certified.
 4. Several local-only financial and safety actions remain, even though misleading empty-household dashboard demo values were removed.
 5. The banking lifecycle is certified with fixtures, but no real production provider is registered; the Plaid adapter remains disabled.
 6. Webhook processing is mounted outside the global rate-limit, request-context, and browser-origin middleware.
@@ -30,7 +30,7 @@ The safe release boundary is: **authenticated internal evaluation, manual/CSV ho
 The current build contains the following meaningful controls:
 
 - Clerk middleware, internal-user resolution, active-membership checks, production authentication rejection, and request-scoped actor context.
-- Recent-auth/reverification implementation for protected actions, with browser certification still open.
+- Recent-auth/reverification implementation for protected actions; Clerk reverification certification remains open, while manual transaction review browser certification is merged.
 - Exact-origin/write-boundary checks and fail-closed mutation rate limiting backed by PostgreSQL configuration.
 - Integer-cent decision logic with PostgreSQL `numeric(18,2)` storage.
 - Household-scoped manual accounts, CSV imports, transaction review records, audit events, and Safe-to-Deploy calculations.
@@ -60,19 +60,19 @@ Production authentication must never reach those fallback branches. A route can 
 
 ### P0 — Treasury balance disclosure and mutation integrity
 
-`artifacts/api-server/src/routes/treasury.ts:20-22` calls `getTreasury()` without an actor. `artifacts/api-server/src/services/treasury.ts:25-41,106-143` returns bucket balances, reservations, and Safe-to-Deploy-derived values without role-aware redaction.
+`artifacts/api-server/src/routes/treasury.ts:20-22` now passes the request actor into `getTreasury()`. `artifacts/api-server/src/services/treasury.ts:25-41,106-143` still returns bucket balances, reservations, and Safe-to-Deploy-derived values without role-aware redaction.
 
 Treasury request decisions at `artifacts/api-server/src/services/treasury.ts:213-255` update request state but do not visibly create an atomic reservation/debit and decision audit event. Creation idempotency does not make decision handling idempotent.
 
 **Required proof:** actor-scoped reads, role-appropriate protected-balance visibility, atomic approval/reservation/audit behavior, and repeated-decision handling.
 
-### Manual transaction review lifecycle is implemented but not fully certified
+### Manual transaction review lifecycle is implemented and certified
 
 `createManualFinanceTransaction` creates `dataSource: "manual"` and `reviewStatus: "needs_review"`. `reviewFinancialTransaction` now accepts manual rows, and `getTransactionReviewQueue` includes manual rows alongside CSV/Plaid rows.
 
 The focused HTTP regression in `artifacts/api-server/src/integration/p0-http.test.ts` covers manual create → queue visibility → approval → cash-flow recalculation → budget recalculation. The repository test entry point now uses the workspace TypeScript runner and resolves the existing extensionless imports. The isolated PostgreSQL suite completed with **96 passed, 0 failed, 0 skipped**, including manual approval/rejection, fresh reads, budget, cash-flow, and Safe-to-Deploy recalculation.
 
-**Remaining proof:** execute the authenticated browser certification and preserve the runtime result as release evidence. The HTTP/runtime portion of this gate is now closed.
+**Evidence status:** the isolated PostgreSQL HTTP suite completed with 96/96 passing, and the authenticated browser certification was completed in merged task `#81` at HEAD `38c6775`. Broader role, tenant-isolation, and financial-state gates remain separate.
 
 ### P0 — False financial state has been reduced; local-only actions remain
 

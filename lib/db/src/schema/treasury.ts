@@ -140,6 +140,9 @@ export const capitalReservations = pgTable(
     householdId: uuid("household_id")
       .notNull()
       .references(() => households.id, { onDelete: "cascade" }),
+    requestId: uuid("request_id")
+      .unique()
+      .references(() => capitalRequests.id, { onDelete: "cascade" }),
     bucketId: uuid("bucket_id")
       .notNull()
       .references(() => treasuryBuckets.id, { onDelete: "cascade" }),
@@ -154,6 +157,7 @@ export const capitalReservations = pgTable(
   },
   (table) => ({
     householdIdx: index("capital_reservations_household_idx").on(table.householdId),
+    requestIdx: index("capital_reservations_request_idx").on(table.requestId),
     bucketIdx: index("capital_reservations_bucket_idx").on(table.bucketId),
   }),
 );

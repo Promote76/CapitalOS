@@ -2,8 +2,26 @@
 
 - Certification date: 2026-09-04
 - Target: fresh disposable PostgreSQL cluster initialized from committed migrations (connection details intentionally omitted)
-- Command: CAPITAL_OS_RUN_INTEGRATION=1 pnpm run certify:operations-recovery
+- Command: `pnpm run certify:operations-recovery`
 - Result: PASS — 24/24 OR gates, 0 skips
+
+## Repeatable isolated workflow
+
+Run the exact command above from the repository root. The certification wrapper:
+
+1. creates a temporary loopback PostgreSQL cluster with `initdb`;
+2. creates a disposable database and applies every SQL file in `lib/db/migrations/`
+   in lexical migration order;
+3. injects `CAPITAL_OS_CERTIFICATION_DB_URL` and `DATABASE_URL` only into the
+   in-process test environment;
+4. runs the operations recovery unit and database-backed certification suites;
+5. retains redacted per-gate output at
+   `docs/certification/operations-recovery-runs/operations-recovery-<UTC>.log`;
+6. stops and removes the temporary cluster in a `finally` block.
+
+The wrapper never prints or writes the disposable connection string. Setup,
+certification, and teardown failures all produce a non-zero exit status, so a
+partial run cannot be recorded as a passing gate.
 
 ```text
 

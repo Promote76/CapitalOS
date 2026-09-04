@@ -23,7 +23,86 @@ tags:
   - name: operations
   - name: business
   - name: financing
+  - name: observability
 paths:
+  /internal/metrics:
+    get:
+      operationId: getInternalMetrics
+      tags: [observability]
+      summary: Get authenticated low-cardinality OpenMetrics telemetry
+      responses:
+        "200":
+          description: OpenMetrics text exposition
+          content:
+            application/openmetrics-text:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /observability/incidents:
+    get:
+      operationId: listObservabilityIncidents
+      tags: [observability]
+      summary: List actor-scoped observability incidents
+      responses:
+        "200": { description: Persisted incidents }
+  /observability/health:
+    get:
+      operationId: getObservabilityHealth
+      tags: [observability]
+      summary: Get aggregate queue, scheduler, execution, and incident health
+      responses:
+        "200": { description: Live aggregate observability health }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /observability/incidents/{incidentId}/deliveries:
+    get:
+      operationId: listObservabilityIncidentDeliveries
+      tags: [observability]
+      summary: List safe persisted delivery receipts for an actor-scoped incident
+      parameters:
+        - name: incidentId
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+      responses:
+        "200": { description: Persisted delivery attempts and receipts }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /observability/incidents/{incidentId}/reprocess:
+    post:
+      operationId: reprocessObservabilityIncident
+      tags: [observability]
+      summary: Reprocess delivery for an actor-scoped incident
+      parameters:
+        - name: incidentId
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+      responses:
+        "200": { description: Delivery replay result }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /observability/incidents/{incidentId}/resolve:
+    post:
+      operationId: resolveObservabilityIncident
+      tags: [observability]
+      summary: Resolve an observability incident with an actor-attributed note
+      parameters:
+        - name: incidentId
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+      responses:
+        "200": { description: Resolved incident }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /observability/certification/critical:
+    post:
+      operationId: triggerObservabilityCertificationCritical
+      tags: [observability]
+      summary: Trigger a non-production, authorized synthetic critical alert
+      responses:
+        "201": { description: Incident and delivery result }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /healthz:
     get:
       security: []

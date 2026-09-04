@@ -13,6 +13,7 @@
     "certify:micro-live": "node scripts/certify-micro-live.mjs",
     "certify:execution-control": "node scripts/certify-execution-control.mjs",
     "certify:operations-recovery": "node scripts/certify-operations-recovery.mjs",
+    "certify:observability": "node scripts/certify-observability.mjs",
     "certify:migrations": "node scripts/certify-migrations.mjs",
     "certify:internal-reliability": "node scripts/certify-internal-reliability.mjs",
     "verify-future-restore": "node scripts/verify-future-restore.mjs"

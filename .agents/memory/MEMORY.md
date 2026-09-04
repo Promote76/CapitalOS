@@ -20,3 +20,4 @@
 - [Capital OS audit archive](capital-os-audit-archive.md) — ship audit rows synchronously into a restricted append-only archive; never let household deletion cascade into history.
 - [Bank sync release boundary](capital-os-bank-sync-boundary.md) — keep provider sync opt-in and fail closed until a real provider is separately approved and certified.
 - [Execution control authority](capital-os-execution-control.md) — server-persisted execution state gates OMS creation; legacy risk-stop state must reconcile, not become a second authority.
+- [Observability evidence boundary](capital-os-observability-evidence.md) — certify raw persisted delivery states separately from UI-safe projections, with a real connector receipt.

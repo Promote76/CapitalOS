@@ -17,6 +17,7 @@ import { requestContext } from "./middleware/request-context";
 import { errorHandler } from "./middleware/errors";
 import { correlationId, rateLimit, securityHeaders, trustedProxySetting, writeBoundary } from "./middleware/safety";
 import { readReliabilityConfiguration } from "./domain/reliability.ts";
+import { apiMetrics } from "./observability/metrics";
 
 const app: Express = express();
 
@@ -27,6 +28,7 @@ if (process.env.NODE_ENV === "production") {
 app.set("trust proxy", trustedProxySetting());
 app.use(securityHeaders);
 app.use(correlationId);
+app.use(apiMetrics);
 app.use(
   pinoHttp({
     logger,

@@ -57,6 +57,13 @@
       "when": 1788558139543,
       "tag": "0007_charming_multiple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788564914208,
+      "tag": "0008_amazing_korg",
+      "breakpoints": true
     }
   ]
 }

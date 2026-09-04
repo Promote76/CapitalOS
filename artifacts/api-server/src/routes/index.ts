@@ -16,6 +16,8 @@ import operationsRouter from "./operations";
 import businessRouter from "./business";
 import financingRouter from "./financing";
 import executionControlRouter from "./execution-control";
+import metricsRouter from "./metrics";
+import observabilityRouter from "./observability";
 
 const router: IRouter = Router();
 
@@ -36,5 +38,7 @@ router.use(operationsRouter);
 router.use(businessRouter);
 router.use(financingRouter);
 router.use(executionControlRouter);
+router.use(metricsRouter);
+router.use(observabilityRouter);
 
 export default router;

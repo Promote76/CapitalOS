@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { db } from "@workspace/db";
 import { households } from "@workspace/db/schema";
 import { claimNextOperationsJob, completeOperationsJob, failOperationsJob, heartbeatOperationsWorker, startOperationsJob } from "./operations";
+import { dispatchQueuedAlertDelivery } from "./observability-alerts";
 
 /** Internal advisory worker. It never invokes venues or money movement. */
 export function startOperationsWorker() {
@@ -20,7 +21,11 @@ export function startOperationsWorker() {
         try {
           const running = await startOperationsJob(job.id, home.id, workerId);
           if (!running) continue;
-          if (job.kind !== "SAFE_AUTOMATION" && job.kind !== "ADVISORY" && job.kind !== "RECONCILIATION") {
+          if (job.kind === "ALERT_DELIVERY") {
+            const incidentId = typeof job.payload.incidentId === "string" ? job.payload.incidentId : null;
+            if (!incidentId) throw new Error("ALERT_DELIVERY_PAYLOAD_INVALID");
+            await dispatchQueuedAlertDelivery(home.id, incidentId);
+          } else if (job.kind !== "SAFE_AUTOMATION" && job.kind !== "ADVISORY" && job.kind !== "RECONCILIATION") {
             throw new Error(`Unsupported worker job kind: ${job.kind}`);
           }
           // These kinds only persist reports/tasks/alerts. No payload can

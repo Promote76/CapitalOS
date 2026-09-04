@@ -207,6 +207,527 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
+export const getGetInternalMetricsUrl = () => {
+
+
+
+
+  return `/api/internal/metrics`
+}
+
+/**
+ * @summary Get authenticated low-cardinality OpenMetrics telemetry
+ */
+export const getInternalMetrics = async ( options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+  return customFetch<string>(getGetInternalMetricsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetInternalMetricsQueryKey = () => {
+    return [
+    `/api/internal/metrics`
+    ] as const;
+    }
+
+
+export const getGetInternalMetricsQueryOptions = <TData = Awaited<ReturnType<typeof getInternalMetrics>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInternalMetrics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInternalMetricsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInternalMetrics>>> = ({ signal }) => getInternalMetrics({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getInternalMetrics>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetInternalMetricsQueryResult = NonNullable<Awaited<ReturnType<typeof getInternalMetrics>>>
+export type GetInternalMetricsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Get authenticated low-cardinality OpenMetrics telemetry
+ */
+
+export function useGetInternalMetrics<TData = Awaited<ReturnType<typeof getInternalMetrics>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInternalMetrics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetInternalMetricsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListObservabilityIncidentsUrl = () => {
+
+
+
+
+  return `/api/observability/incidents`
+}
+
+/**
+ * @summary List actor-scoped observability incidents
+ */
+export const listObservabilityIncidents = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getListObservabilityIncidentsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListObservabilityIncidentsQueryKey = () => {
+    return [
+    `/api/observability/incidents`
+    ] as const;
+    }
+
+
+export const getListObservabilityIncidentsQueryOptions = <TData = Awaited<ReturnType<typeof listObservabilityIncidents>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listObservabilityIncidents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListObservabilityIncidentsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listObservabilityIncidents>>> = ({ signal }) => listObservabilityIncidents({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listObservabilityIncidents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListObservabilityIncidentsQueryResult = NonNullable<Awaited<ReturnType<typeof listObservabilityIncidents>>>
+export type ListObservabilityIncidentsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List actor-scoped observability incidents
+ */
+
+export function useListObservabilityIncidents<TData = Awaited<ReturnType<typeof listObservabilityIncidents>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listObservabilityIncidents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListObservabilityIncidentsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetObservabilityHealthUrl = () => {
+
+
+
+
+  return `/api/observability/health`
+}
+
+/**
+ * @summary Get aggregate queue, scheduler, execution, and incident health
+ */
+export const getObservabilityHealth = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getGetObservabilityHealthUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetObservabilityHealthQueryKey = () => {
+    return [
+    `/api/observability/health`
+    ] as const;
+    }
+
+
+export const getGetObservabilityHealthQueryOptions = <TData = Awaited<ReturnType<typeof getObservabilityHealth>>, TError = ErrorType<ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getObservabilityHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetObservabilityHealthQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getObservabilityHealth>>> = ({ signal }) => getObservabilityHealth({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getObservabilityHealth>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetObservabilityHealthQueryResult = NonNullable<Awaited<ReturnType<typeof getObservabilityHealth>>>
+export type GetObservabilityHealthQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary Get aggregate queue, scheduler, execution, and incident health
+ */
+
+export function useGetObservabilityHealth<TData = Awaited<ReturnType<typeof getObservabilityHealth>>, TError = ErrorType<ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getObservabilityHealth>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetObservabilityHealthQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListObservabilityIncidentDeliveriesUrl = (incidentId: string,) => {
+
+
+
+
+  return `/api/observability/incidents/${incidentId}/deliveries`
+}
+
+/**
+ * @summary List safe persisted delivery receipts for an actor-scoped incident
+ */
+export const listObservabilityIncidentDeliveries = async (incidentId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getListObservabilityIncidentDeliveriesUrl(incidentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListObservabilityIncidentDeliveriesQueryKey = (incidentId: string,) => {
+    return [
+    `/api/observability/incidents/${incidentId}/deliveries`
+    ] as const;
+    }
+
+
+export const getListObservabilityIncidentDeliveriesQueryOptions = <TData = Awaited<ReturnType<typeof listObservabilityIncidentDeliveries>>, TError = ErrorType<ForbiddenResponse>>(incidentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listObservabilityIncidentDeliveries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListObservabilityIncidentDeliveriesQueryKey(incidentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listObservabilityIncidentDeliveries>>> = ({ signal }) => listObservabilityIncidentDeliveries(incidentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: incidentId !== null && incidentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listObservabilityIncidentDeliveries>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListObservabilityIncidentDeliveriesQueryResult = NonNullable<Awaited<ReturnType<typeof listObservabilityIncidentDeliveries>>>
+export type ListObservabilityIncidentDeliveriesQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary List safe persisted delivery receipts for an actor-scoped incident
+ */
+
+export function useListObservabilityIncidentDeliveries<TData = Awaited<ReturnType<typeof listObservabilityIncidentDeliveries>>, TError = ErrorType<ForbiddenResponse>>(
+ incidentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listObservabilityIncidentDeliveries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListObservabilityIncidentDeliveriesQueryOptions(incidentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReprocessObservabilityIncidentUrl = (incidentId: string,) => {
+
+
+
+
+  return `/api/observability/incidents/${incidentId}/reprocess`
+}
+
+/**
+ * @summary Reprocess delivery for an actor-scoped incident
+ */
+export const reprocessObservabilityIncident = async (incidentId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getReprocessObservabilityIncidentUrl(incidentId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getReprocessObservabilityIncidentMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reprocessObservabilityIncident>>, TError,{incidentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reprocessObservabilityIncident>>, TError,{incidentId: string}, TContext> => {
+
+const mutationKey = ['reprocessObservabilityIncident'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reprocessObservabilityIncident>>, {incidentId: string}> = (props) => {
+          const {incidentId} = props ?? {};
+
+          return  reprocessObservabilityIncident(incidentId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReprocessObservabilityIncidentMutationResult = NonNullable<Awaited<ReturnType<typeof reprocessObservabilityIncident>>>
+
+    export type ReprocessObservabilityIncidentMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Reprocess delivery for an actor-scoped incident
+ */
+export const useReprocessObservabilityIncident = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reprocessObservabilityIncident>>, TError,{incidentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reprocessObservabilityIncident>>,
+        TError,
+        {incidentId: string},
+        TContext
+      > => {
+      return useMutation(getReprocessObservabilityIncidentMutationOptions(options));
+    }
+
+export const getResolveObservabilityIncidentUrl = (incidentId: string,) => {
+
+
+
+
+  return `/api/observability/incidents/${incidentId}/resolve`
+}
+
+/**
+ * @summary Resolve an observability incident with an actor-attributed note
+ */
+export const resolveObservabilityIncident = async (incidentId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getResolveObservabilityIncidentUrl(incidentId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getResolveObservabilityIncidentMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveObservabilityIncident>>, TError,{incidentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveObservabilityIncident>>, TError,{incidentId: string}, TContext> => {
+
+const mutationKey = ['resolveObservabilityIncident'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveObservabilityIncident>>, {incidentId: string}> = (props) => {
+          const {incidentId} = props ?? {};
+
+          return  resolveObservabilityIncident(incidentId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveObservabilityIncidentMutationResult = NonNullable<Awaited<ReturnType<typeof resolveObservabilityIncident>>>
+
+    export type ResolveObservabilityIncidentMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Resolve an observability incident with an actor-attributed note
+ */
+export const useResolveObservabilityIncident = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveObservabilityIncident>>, TError,{incidentId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resolveObservabilityIncident>>,
+        TError,
+        {incidentId: string},
+        TContext
+      > => {
+      return useMutation(getResolveObservabilityIncidentMutationOptions(options));
+    }
+
+export const getTriggerObservabilityCertificationCriticalUrl = () => {
+
+
+
+
+  return `/api/observability/certification/critical`
+}
+
+/**
+ * @summary Trigger a non-production, authorized synthetic critical alert
+ */
+export const triggerObservabilityCertificationCritical = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getTriggerObservabilityCertificationCriticalUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getTriggerObservabilityCertificationCriticalMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerObservabilityCertificationCritical>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof triggerObservabilityCertificationCritical>>, TError,void, TContext> => {
+
+const mutationKey = ['triggerObservabilityCertificationCritical'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof triggerObservabilityCertificationCritical>>, void> = () => {
+
+
+          return  triggerObservabilityCertificationCritical(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TriggerObservabilityCertificationCriticalMutationResult = NonNullable<Awaited<ReturnType<typeof triggerObservabilityCertificationCritical>>>
+
+    export type TriggerObservabilityCertificationCriticalMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Trigger a non-production, authorized synthetic critical alert
+ */
+export const useTriggerObservabilityCertificationCritical = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerObservabilityCertificationCritical>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof triggerObservabilityCertificationCritical>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getTriggerObservabilityCertificationCriticalMutationOptions(options));
+    }
+
 export const getHealthCheckUrl = () => {
 
 

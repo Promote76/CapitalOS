@@ -9,6 +9,69 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Get authenticated low-cardinality OpenMetrics telemetry
+ */
+export const GetInternalMetricsResponse = zod.unknown()
+
+
+/**
+ * @summary List actor-scoped observability incidents
+ */
+export const ListObservabilityIncidentsResponse = zod.unknown()
+
+
+/**
+ * @summary Get aggregate queue, scheduler, execution, and incident health
+ */
+export const GetObservabilityHealthResponse = zod.unknown()
+
+
+/**
+ * @summary List safe persisted delivery receipts for an actor-scoped incident
+ */
+export const listObservabilityIncidentDeliveriesPathIncidentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ListObservabilityIncidentDeliveriesParams = zod.object({
+  "incidentId": zod.coerce.string().regex(listObservabilityIncidentDeliveriesPathIncidentIdRegExp)
+})
+
+export const ListObservabilityIncidentDeliveriesResponse = zod.unknown()
+
+
+/**
+ * @summary Reprocess delivery for an actor-scoped incident
+ */
+export const reprocessObservabilityIncidentPathIncidentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ReprocessObservabilityIncidentParams = zod.object({
+  "incidentId": zod.coerce.string().regex(reprocessObservabilityIncidentPathIncidentIdRegExp)
+})
+
+export const ReprocessObservabilityIncidentResponse = zod.unknown()
+
+
+/**
+ * @summary Resolve an observability incident with an actor-attributed note
+ */
+export const resolveObservabilityIncidentPathIncidentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ResolveObservabilityIncidentParams = zod.object({
+  "incidentId": zod.coerce.string().regex(resolveObservabilityIncidentPathIncidentIdRegExp)
+})
+
+export const ResolveObservabilityIncidentResponse = zod.unknown()
+
+
+/**
+ * @summary Trigger a non-production, authorized synthetic critical alert
+ */
+export const TriggerObservabilityCertificationCriticalResponse = zod.void()
+
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

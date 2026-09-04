@@ -1,8 +1,8 @@
 # Capital OS production-readiness audit
 
 **Current review date:** 2026-09-04
-**Reviewed HEAD:** `38c6775`
-**Reviewed working-tree implementation:** actor-scoped household reads, manual transaction review lifecycle, PostgreSQL certification, authenticated browser certification, and the repository TypeScript test runner
+**Reviewed HEAD:** `d5e7ece`
+**Reviewed working-tree implementation:** actor-scoped household reads, manual transaction review lifecycle, PostgreSQL and authenticated-browser certification, generated-finance freshness enforcement, schema-drift detection, and the published application state
 **Reviewed banking merges:** `8ec4cba`, `23e4c81`, `32abb01`
 **Audit mode:** Current source, schema, routes, generated contracts, frontend flows, committed certification evidence, deployment/reliability documentation, and test inventory
 **Decision:** **CONTROLLED INTERNAL USE ONLY — NOT READY FOR PUBLIC OR MULTI-HOUSEHOLD FINANCIAL OPERATIONS**
@@ -39,6 +39,8 @@ The current build contains the following meaningful controls:
 - Append-only audit archive schema and database-owned archive triggers.
 - Read-only bank consent, opaque credential references, account linking, cursor sync, reconciliation states, revocation, export, deletion, webhook verification, replay handling, and recovery categories.
 - OpenAPI/React Query/Zod generation and route/method parity evidence.
+- A repository-level generated-finance freshness check that compares committed API, client, Zod, database declaration, migration, and migration-metadata artifacts against deterministic regeneration.
+- Production-candidate certification now invokes the generated-finance check and fails closed when generated finance artifacts or database schema declarations are stale.
 - Liveness independent from PostgreSQL and readiness failure when PostgreSQL is unavailable.
 - Micro-Live and AI authority remain disabled/advisory and cannot transmit orders or move household capital.
 
@@ -207,9 +209,15 @@ The durable operations-job schema and lifecycle helpers exist, but there is no p
 
 ### Positive evidence
 
-The committed release evidence records API/frontend typechecks and builds, OpenAPI/React Query/Zod generation, route/method parity, isolated PostgreSQL HTTP fixtures, and targeted browser/concurrency certification. The banking fixture covers provider outage, rate limiting, expired credentials, cursor replay, webhook signature failures, duplicate events, out-of-order events, tenant isolation, reauthorization, and deletion. The current working-tree verification additionally passes the full workspace typecheck, API contract parity for 129 routes, the PostgreSQL-backed API suite at 96/96, an API health request, and a clean API workflow restart.
+The committed release evidence records API/frontend typechecks and builds, OpenAPI/React Query/Zod generation, route/method parity, isolated PostgreSQL HTTP fixtures, and targeted browser/concurrency certification. The banking fixture covers provider outage, rate limiting, expired credentials, cursor replay, webhook signature failures, duplicate events, out-of-order events, tenant isolation, reauthorization, and deletion. The current review additionally recognizes the generated-finance freshness workflow, database declaration/migration drift detection, and the production-candidate fail-closed hook. Previously executed runtime evidence includes the full workspace typecheck, API contract parity for 129 routes, the PostgreSQL-backed API suite at 96/96, an API health request, and a clean API workflow restart.
 
-The manual-finance HTTP regression has now been executed against PostgreSQL through the workspace TypeScript runner; its 96/96 result is runtime evidence for the HTTP portion of the flow, not a substitute for the still-open authenticated browser certification.
+The manual-finance regression has been executed against PostgreSQL through the workspace TypeScript runner, and the authenticated browser certification for manual account/write/reload behavior is merged. Those results certify the exercised flow; they do not close the broader Clerk reverification, role/identifier, accounting, or persistence-truth gates.
+
+### Generated-finance freshness and schema-drift enforcement
+
+The repository now provides `pnpm run check:generated-finance-artifacts` and a configured `generated-finance-artifacts` validation workflow. The check regenerates the finance-related OpenAPI/client/Zod outputs and database schema declarations in a controlled temporary workspace, then fails when committed artifacts differ. Database migration SQL and Drizzle migration metadata are included so a schema edit cannot silently pass while its declarations or migration record remain stale.
+
+`scripts/certify-production-candidate.mjs` invokes this check before production-candidate certification can succeed. This closes the previously unguarded stale-generated-artifact bypass. Compatibility of the drift detector with future generator upgrades remains an active hardening item and must stay fail-closed.
 
 ### Evidence conflicts requiring correction
 
@@ -222,7 +230,7 @@ Until evidence references are reconciled, the stricter result governs: **current
 | Module | Current status |
 |---|---|
 | Authentication / Clerk | Amber — implementation present; browser reverification and selected-household policy remain open |
-| Manual household finance | Amber — isolated PostgreSQL HTTP certification passed; authenticated browser certification remains open |
+| Manual household finance | Green-Amber — isolated PostgreSQL HTTP and authenticated browser certification passed for the exercised manual write/review/reload flow; broader role and accounting gates remain |
 | Budget / cash flow | Amber — depends on approved transaction state and clean tenant context |
 | Read-only banking lifecycle | Amber — boundary and recovery certified with fixtures |
 | Production bank provider | Red — Plaid disabled; no registered live provider implementation |
@@ -240,12 +248,12 @@ Until evidence references are reconciled, the stricter result governs: **current
 
 1. Complete the two-household route/role/identifier certification for the remaining Treasury, Strategy Lab, Operations, and optional fallback paths.
 2. Correct Treasury actor propagation, protected-balance response policy, reservation/debit atomicity, idempotency, and decision audit events.
-3. Execute the manual transaction review certification and verify fresh-read recalculation after approval/rejection.
+3. Keep generated-finance freshness and schema-drift checks mandatory in production-candidate certification, including after generator upgrades.
 4. Convert remaining local-only safety/product actions into explicit non-authoritative states or real persisted flows.
 5. Put banking webhooks behind an appropriately protected provider ingress and certify bounded/replay-safe recovery.
 6. Register and certify an actual approved provider before enabling bank synchronization for real households.
 7. Replace accounting placeholders with real calculations or explicit unavailable/review-required values.
-8. Reconcile the release-gate, migration-certification, executive-summary, and audit documents so they describe the same evidence.
+8. Reconcile the release-gate, migration-certification, executive-summary, and audit documents so they describe the same evidence and generated-artifact enforcement.
 9. Complete migration upgrade/restore drills, Clerk reverification browser certification, scheduler restart recovery, and named alert delivery.
 
 ## Final release decision

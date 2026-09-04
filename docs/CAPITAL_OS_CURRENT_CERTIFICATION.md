@@ -96,7 +96,7 @@ introduced during this certification.
 | Guardian | PASS | Missing/stale health defaults to STOP and disagreement locks the boundary | Domain and Micro-Live certification tests pass | **PASS** | `artifacts/api-server/src/domain/execution-*.test.ts`; `scripts/certify-micro-live.mjs` |
 | OMS | PASS | Durable order-intent/event relationships and fail-closed state transitions exist | Domain and Micro-Live certification tests pass; no real venue order was sent | **PASS** | `artifacts/api-server/src/domain/execution-oms.test.ts`; `scripts/certify-micro-live.mjs` |
 | Reconciliation | PASS | Rehearsal reconciliation persists failures and stops exposure | Domain and Micro-Live certification tests pass; production worker restart evidence remains separate | **PASS** | `artifacts/api-server/src/domain/execution-*.test.ts`; `scripts/certify-micro-live.mjs` |
-| Micro-Live foundation | Not ready | Internal safety core is present and execution is disabled | Overall certification remains blocked by credential, venue, restart, automation, browser, and real-money labeling gates | **FAIL** | `scripts/certify-micro-live.mjs` |
+| Micro-Live foundation | Not ready | Internal safety core is present and execution is disabled | Certification correctly reports the internal core as PASS but keeps Micro-Live BLOCKED because credential, venue, restart, automation, browser, and real-money labeling evidence is absent | **BLOCKED** | `scripts/certify-micro-live.mjs` |
 | Schwab read-only | Not enabled | No approved Schwab provider or credential boundary is registered | No read-only provider security, tenant, audit, or credential certification exists | **BLOCKED** | `artifacts/api-server/src/adapters/banking.ts`; readiness audit |
 
 ## Release status counts
@@ -105,8 +105,8 @@ There are **17 critical gates** in the matrix:
 
 - **PASS:** 7
 - **PARTIAL:** 5
-- **BLOCKED:** 4
-- **FAIL:** 1
+- **BLOCKED:** 5
+- **FAIL:** 0
 
 Any PARTIAL, BLOCKED, or FAIL critical gate keeps the production candidate
 unreleased.

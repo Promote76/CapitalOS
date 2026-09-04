@@ -1,7 +1,7 @@
 # Capital OS current certification
 
 **Certification date:** 2026-09-04  
-**Current HEAD:** `0c46921cf3c9dbfd446a2ea0f9f752394c485c9a`
+**Current HEAD:** `b5bd2ca`
 **Previous certification:** **NOT READY** (`docs/PRODUCTION_CANDIDATE_CERTIFICATION_2026-09-02.md`)  
 **Current decision:** **NOT READY — CONTROLLED INTERNAL EVALUATION ONLY**
 

@@ -21,6 +21,16 @@ import {
   useCreateManualFinancialAccount,
   useCreateManualFinanceTransaction,
   useImportFinancialAccountCsv,
+  useGetBankingStatus,
+  useListReadOnlyBankConnections,
+  useCreateReadOnlyBankConnection,
+  useLinkReadOnlyBankAccount,
+  useSyncReadOnlyBankConnection,
+  useRevokeReadOnlyBankConnection,
+  useExportReadOnlyBankConnection,
+  useDeleteReadOnlyBankConnectionData,
+  getListReadOnlyBankConnectionsQueryKey,
+  getExportReadOnlyBankConnectionQueryKey,
   useListTransactionReviewQueue,
   useReviewFinancialTransaction,
   getListTransactionReviewQueueQueryKey,
@@ -96,6 +106,8 @@ import {
   type MicroLiveIncidentReviewInput,
   type TreasurySnapshot,
   type TransactionReviewInput,
+  type BankConnection,
+  type FinancialAccount,
   useGetTreasury,
 } from '@workspace/api-client-react';
 import {
@@ -153,6 +165,7 @@ import {
   X,
 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { bankConnectionAccess } from '@/bank-connection-access';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
@@ -1388,10 +1401,15 @@ function CashFlowPage() {
 
 function AccountsPage({ onFeedback }: { onFeedback: (message: string) => void }) {
   const query = useListFinancialAccounts();
+  const bankingStatus = useGetBankingStatus();
+  const bankConnections = useListReadOnlyBankConnections();
   const create = useCreateManualFinancialAccount();
   const importCsv = useImportFinancialAccountCsv();
+  const createConnection = useCreateReadOnlyBankConnection();
   const [adding, setAdding] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [form, setForm] = useState({ institution: '', nickname: '', accountType: 'checking', currentBalance: '' });
+  const [connectionForm, setConnectionForm] = useState({ provider: '', institutionName: '', providerConnectionRef: '', consent: false });
   const [importingAccountId, setImportingAccountId] = useState<string | null>(null);
   const [csvText, setCsvText] = useState('');
   const [csvFileName, setCsvFileName] = useState('');
@@ -1430,12 +1448,110 @@ function AccountsPage({ onFeedback }: { onFeedback: (message: string) => void })
       onFeedback(error instanceof Error ? error.message : 'CSV could not be imported.');
     }
   };
+  const productionProviders = (bankingStatus.data?.adapters ?? []).filter((adapter) => adapter.enabled && !['manual', 'csv_import'].includes(adapter.provider));
+  useEffect(() => {
+    if (!connectionForm.provider && productionProviders[0]) {
+      setConnectionForm((current) => ({ ...current, provider: productionProviders[0].provider }));
+    }
+  }, [connectionForm.provider, productionProviders]);
+  const refreshBanking = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getListReadOnlyBankConnectionsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: ['/api/financial-accounts'] }),
+    ]);
+  };
+  const submitConnection = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!connectionForm.consent) {
+      onFeedback('Confirm explicit read-only consent before connecting.');
+      return;
+    }
+    try {
+      await createConnection.mutateAsync({ data: { ...connectionForm, consent: true } });
+      await refreshBanking();
+      setConnectionForm({ provider: productionProviders[0]?.provider ?? '', institutionName: '', providerConnectionRef: '', consent: false });
+      setConnecting(false);
+      onFeedback('Read-only bank consent recorded. Match each provider account before syncing.');
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'The bank connection could not be created.');
+    }
+  };
   return <main className="content">
-    <PageHeading eyebrow="Household finance / accounts" title={<>Know where the money<br /><em>is held.</em></>} description="Manual and imported accounts give the Capital Governor enough context to protect the household—without storing bank credentials or moving money." actions={<button className="btn btn-primary" onClick={() => setAdding(!adding)} data-testid="button-add-financial-account"><Plus size={15} /> Add manual account</button>} />
+    <PageHeading eyebrow="Household finance / accounts" title={<>Know where the money<br /><em>is held.</em></>} description="Manual, imported, and explicitly consented read-only accounts give the Capital Governor context without allowing Capital OS to move money." actions={<button className="btn btn-primary" onClick={() => setAdding(!adding)} data-testid="button-add-financial-account"><Plus size={15} /> Add manual account</button>} />
     {adding && <section className="card card-pad page-section"><CardTitle title="Add a manual account" subtitle="Balances stay read-only after they are entered." /><form className="account-form" onSubmit={submit}><div className="field"><label>Institution</label><input required value={form.institution} onChange={(event) => setForm({ ...form, institution: event.target.value })} /></div><div className="field"><label>Nickname</label><input required value={form.nickname} onChange={(event) => setForm({ ...form, nickname: event.target.value })} /></div><div className="field"><label>Account type</label><select value={form.accountType} onChange={(event) => setForm({ ...form, accountType: event.target.value })}><option value="checking">Checking</option><option value="savings">Savings</option><option value="credit_card">Credit card</option><option value="loan">Loan</option></select></div><div className="field"><label>Current balance</label><input inputMode="decimal" value={form.currentBalance} onChange={(event) => setForm({ ...form, currentBalance: event.target.value })} placeholder="0.00" /></div><div className="modal-actions"><button type="button" className="btn" onClick={() => setAdding(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={create.isPending}><Check size={14} /> Save account</button></div></form></section>}
-    <section className="card card-pad animate-in delay-1"><CardTitle title="Connected financial accounts" subtitle={`${query.data?.totals.accountCount ?? 0} accounts · read-only by design`} /><div className="table-wrap"><table className="table"><thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>Source</th><th>Status</th><th>History</th></tr></thead><tbody>{(query.data?.accounts ?? []).map((account) => <tr key={account.id}><td><strong>{account.nickname}</strong><br /><span className="table-secondary">{account.institution}</span></td><td>{account.accountType.replace('_', ' ')}</td><td className="font-mono">{account.restricted ? 'Restricted' : displayMoney(account.currentBalance ?? undefined, '$0')}</td><td>{account.dataSource.replace('_', ' ')}</td><td><span className="status">{account.protected ? 'Protected' : 'Read only'}</span></td><td><button className="btn btn-small" onClick={() => { setImportingAccountId(account.id); setCsvText(''); setCsvFileName(''); }}><FileText size={13} /> Import CSV</button></td></tr>)}</tbody></table></div>{!query.isLoading && !(query.data?.accounts.length) && <div className="finance-empty-state"><strong>Add an account before importing history</strong><span>Use a manual account for the current balance, then import a CSV ledger. Imported rows stay in review until you approve them for planning.</span></div>}<div className="finance-note"><LockKeyhole size={16} /><span>Capital OS never stores bank credentials. Plaid is disabled; manual entry and CSV import are the active provider-neutral paths.</span></div></section>
+    <section className="card card-pad animate-in delay-1"><CardTitle title="Connected financial accounts" subtitle={`${query.data?.totals.accountCount ?? 0} accounts · read-only by design`} /><div className="table-wrap"><table className="table"><thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>Source</th><th>Status</th><th>History</th></tr></thead><tbody>{(query.data?.accounts ?? []).map((account) => <tr key={account.id}><td><strong>{account.nickname}</strong><br /><span className="table-secondary">{account.institution}</span></td><td>{account.accountType.replace('_', ' ')}</td><td className="font-mono">{account.restricted ? 'Restricted' : displayMoney(account.currentBalance ?? undefined, '$0')}</td><td>{account.dataSource.replace('_', ' ')}</td><td><span className="status">{account.protected ? 'Protected' : 'Read only'}</span></td><td><button className="btn btn-small" onClick={() => { setImportingAccountId(account.id); setCsvText(''); setCsvFileName(''); }}><FileText size={13} /> Import CSV</button></td></tr>)}</tbody></table></div>{!query.isLoading && !(query.data?.accounts.length) && <div className="finance-empty-state"><strong>Add an account before importing history</strong><span>Use a manual account for the current balance, then import a CSV ledger. Imported rows stay in review until you approve them for planning.</span></div>}<div className="finance-note"><LockKeyhole size={16} /><span>Every source is read-only. Capital OS does not expose transfers, bill pay, ACH, trading, or stored bank credentials.</span></div></section>
+    <section className="card card-pad page-section bank-connections" data-testid="section-bank-connections">
+      <CardTitle title="Read-only bank connections" subtitle={productionProviders.length ? 'Consent, match, review, and revoke provider access.' : 'Unavailable until an approved production provider is configured.'} action={<button className="btn" type="button" disabled={!productionProviders.length} onClick={() => setConnecting((value) => !value)} data-testid="button-connect-bank"><Landmark size={14} /> Connect bank</button>} />
+      {bankingStatus.isError && <div className="bank-state-banner critical" role="alert"><ShieldAlert size={17} /><div><strong>Provider status is unavailable</strong><span>New connections, matching, and sync are paused. Existing connections remain available for review, export, consent revocation, and provider-data deletion.</span></div></div>}
+      {!bankingStatus.isLoading && !bankingStatus.isError && !productionProviders.length && <div className="bank-state-banner disabled"><Lock size={17} /><div><strong>Production bank sync is off</strong><span>Manual accounts and CSV import are the active paths. Connecting, syncing, and provider consent stay disabled until an approved read-only adapter is configured.</span></div></div>}
+      {connecting && productionProviders.length > 0 && <form className="account-form bank-consent-form" onSubmit={submitConnection} data-testid="form-bank-consent"><div className="field"><label>Approved provider</label><select value={connectionForm.provider} onChange={(event) => setConnectionForm({ ...connectionForm, provider: event.target.value })}>{productionProviders.map((adapter) => <option key={adapter.provider} value={adapter.provider}>{humanize(adapter.provider)}</option>)}</select></div><div className="field"><label>Institution name</label><input required maxLength={160} value={connectionForm.institutionName} onChange={(event) => setConnectionForm({ ...connectionForm, institutionName: event.target.value })} /></div><div className="field"><label>Provider connection reference</label><input required maxLength={240} value={connectionForm.providerConnectionRef} onChange={(event) => setConnectionForm({ ...connectionForm, providerConnectionRef: event.target.value })} /><span className="table-secondary">Use the opaque reference returned by the approved provider. Never paste bank credentials here.</span></div><label className="bank-consent-check"><input type="checkbox" checked={connectionForm.consent} onChange={(event) => setConnectionForm({ ...connectionForm, consent: event.target.checked })} /><span><strong>I consent to read-only synchronization</strong>Capital OS may retrieve account and transaction data for review. It cannot move money, and I can revoke this consent at any time.</span></label><div className="modal-actions"><button type="button" className="btn" onClick={() => setConnecting(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={!connectionForm.consent || createConnection.isPending}><ShieldCheck size={14} /> {createConnection.isPending ? 'Recording consent…' : 'Consent and connect'}</button></div></form>}
+      {bankConnections.isError && <div className="bank-state-banner critical" role="alert"><AlertTriangle size={17} /><div><strong>Connections could not be loaded</strong><span>Your existing account facts are unchanged. Try again when the household service recovers.</span></div><button className="btn btn-small" onClick={() => { void bankConnections.refetch(); }}>Try again</button></div>}
+      {!bankConnections.isLoading && !bankConnections.isError && !(bankConnections.data?.connections.length) && <div className="finance-empty-state"><strong>No bank access granted</strong><span>Connecting is optional. Manual entry and CSV import remain available without provider consent.</span></div>}
+      <div className="bank-connection-list">{(bankConnections.data?.connections ?? []).map((connection) => <BankConnectionCard key={connection.id} connection={connection} accounts={query.data?.accounts ?? []} providerAvailable={productionProviders.some((adapter) => adapter.provider === connection.provider)} onChanged={refreshBanking} onFeedback={onFeedback} />)}</div>
+    </section>
     {importingAccountId && <section className="card card-pad page-section"><CardTitle title="Import read-only transaction history" subtitle="CSV rows are stored for review and never move money or change a balance automatically." /><form className="account-form" onSubmit={submitCsv}><div className="field"><label htmlFor="finance-csv-file">CSV file</label><input id="finance-csv-file" type="file" accept=".csv,text/csv" onChange={loadCsvFile} /><span className="table-secondary">{csvFileName || 'Expected columns: date, description, amount; merchant and externalId are optional.'}</span></div><div className="field"><label htmlFor="finance-csv-text">Or paste CSV</label><textarea id="finance-csv-text" rows={7} value={csvText} onChange={(event) => setCsvText(event.target.value)} placeholder={'date,description,amount\\n2026-09-01,"Household market",-42.50'} /></div><div className="modal-actions"><button type="button" className="btn" onClick={() => { setImportingAccountId(null); setCsvText(''); setCsvFileName(''); }}>Cancel</button><button type="submit" className="btn btn-primary" disabled={importCsv.isPending}><Database size={14} /> {importCsv.isPending ? 'Importing…' : 'Import for review'}</button></div></form></section>}
   </main>;
+}
+
+function BankConnectionCard({ connection, accounts, providerAvailable, onChanged, onFeedback }: { connection: BankConnection; accounts: FinancialAccount[]; providerAvailable: boolean; onChanged: () => Promise<void>; onFeedback: (message: string) => void }) {
+  const link = useLinkReadOnlyBankAccount();
+  const sync = useSyncReadOnlyBankConnection();
+  const revoke = useRevokeReadOnlyBankConnection();
+  const removeData = useDeleteReadOnlyBankConnectionData();
+  const exportQuery = useExportReadOnlyBankConnection(connection.id, { query: { enabled: false, queryKey: getExportReadOnlyBankConnectionQueryKey(connection.id) } });
+  const [accountId, setAccountId] = useState(accounts[0]?.id ?? '');
+  const [providerAccountRef, setProviderAccountRef] = useState('');
+  const [confirmAction, setConfirmAction] = useState<'revoke' | 'delete' | null>(null);
+  const state = connection.reconciliationStatus;
+  const stateTone = ['outage', 'revoked'].includes(state) ? 'critical' : ['review', 'stale', 'rate_limited', 'not_run'].includes(state) ? 'pending' : '';
+  const stateCopy: Record<string, string> = {
+    not_run: 'Match the provider account to a planning account, then run the first sync.',
+    matched: 'The latest provider snapshot reconciled and was applied.',
+    review: 'A balance difference or unmatched account needs household review; no disputed data was applied.',
+    stale: 'The provider snapshot is too old. No balances or transactions were applied.',
+    outage: 'The provider is unavailable. Existing household facts remain unchanged.',
+    rate_limited: 'The provider delayed this request. Wait before trying again.',
+    revoked: 'Household consent is revoked and synchronization is stopped.',
+  };
+  const run = async (action: () => Promise<unknown>, success: string) => {
+    try {
+      await action();
+      await onChanged();
+      onFeedback(success);
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'The bank connection action could not be completed.');
+    }
+  };
+  const linkAccount = async (event: FormEvent) => {
+    event.preventDefault();
+    await run(() => link.mutateAsync({ connectionId: connection.id, data: { accountId, providerAccountRef } }), 'Provider account matched. Run sync to review the latest snapshot.');
+    setProviderAccountRef('');
+  };
+  const exportData = async () => {
+    const result = await exportQuery.refetch();
+    if (!result.data) {
+      onFeedback(result.error instanceof Error ? result.error.message : 'Bank data could not be exported.');
+      return;
+    }
+    const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `capital-os-${connection.institutionName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-bank-data.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    onFeedback('Read-only provider data exported without credentials.');
+  };
+  const active = connection.consentStatus === 'granted';
+  const access = bankConnectionAccess(providerAvailable, active);
+  return <article className="bank-connection-card" data-testid={`card-bank-connection-${connection.id}`}>
+    <div className="bank-connection-head"><div><span className="mono-label">{humanize(connection.provider)} · read only</span><h3>{connection.institutionName}</h3></div><span className={`status ${stateTone}`}>{humanize(state)}</span></div>
+    <div className={`bank-state-banner ${stateTone}`}><Activity size={16} /><div><strong>{active ? humanize(connection.status) : 'Consent revoked'}</strong><span>{connection.errorMessage || stateCopy[state]}</span></div></div>
+    <div className="bank-connection-meta"><span><strong>Last successful sync</strong>{displayDate(connection.lastSuccessfulSync ?? undefined, 'Never')}</span><span><strong>Provider data as of</strong>{displayDate(connection.providerAsOf ?? undefined, 'Not received')}</span><span><strong>Reconciliation difference</strong>{displayMoney(connection.reconciliationDifference, '$0')}</span><span><strong>Credential boundary</strong>{connection.credentialStored ? 'Server-side reference active' : 'No active credential reference'}</span></div>
+    {active && <form className="bank-match-form" onSubmit={linkAccount}><div className="field"><label>Planning account</label><select required disabled={!access.canMatch} value={accountId} onChange={(event) => setAccountId(event.target.value)}><option value="" disabled>Select an account</option>{accounts.map((account) => <option key={account.id} value={account.id}>{account.nickname} · {account.institution}</option>)}</select></div><div className="field"><label>Provider account reference</label><input required disabled={!access.canMatch} value={providerAccountRef} onChange={(event) => setProviderAccountRef(event.target.value)} placeholder="Opaque provider account ID" /></div><button className="btn" type="submit" disabled={!access.canMatch || !accountId || link.isPending}><ArrowRightLeft size={14} /> {link.isPending ? 'Matching…' : 'Match account'}</button></form>}
+    <div className="bank-connection-actions"><button className="btn" disabled={!access.canSync || sync.isPending} onClick={() => { void run(() => sync.mutateAsync({ connectionId: connection.id }), 'Sync finished. Review the reconciliation status before relying on new data.'); }}><RotateCcw size={14} /> {sync.isPending ? 'Syncing…' : 'Sync now'}</button><button className="btn" disabled={!access.canExport || exportQuery.isFetching} onClick={() => { void exportData(); }}><ArrowDownLeft size={14} /> {exportQuery.isFetching ? 'Exporting…' : 'Export data'}</button>{access.canRevoke && <button className="btn danger" onClick={() => setConfirmAction('revoke')}>Revoke consent</button>}<button className="btn danger" disabled={!access.canDelete} onClick={() => setConfirmAction('delete')}>Delete provider data</button></div>
+    {confirmAction && <div className="bank-confirm" role="alertdialog" aria-label={confirmAction === 'revoke' ? 'Confirm consent revocation' : 'Confirm provider data deletion'}><AlertTriangle size={18} /><div><strong>{confirmAction === 'revoke' ? 'Stop future bank synchronization?' : 'Permanently delete provider-derived data?'}</strong><span>{confirmAction === 'revoke' ? 'Existing imported records remain, but the credential reference is revoked and no future sync can run.' : 'This removes provider transactions, unlinks matched accounts, and deletes the server-side credential reference. This cannot be undone.'}</span></div><div className="modal-actions"><button className="btn" onClick={() => setConfirmAction(null)}>Cancel</button><button className="btn danger" disabled={revoke.isPending || removeData.isPending} onClick={() => { const action = confirmAction; setConfirmAction(null); void run(() => action === 'revoke' ? revoke.mutateAsync({ connectionId: connection.id }) : removeData.mutateAsync({ connectionId: connection.id }), action === 'revoke' ? 'Read-only bank consent revoked.' : 'Provider-derived bank data deleted.'); }}>{confirmAction === 'revoke' ? 'Revoke consent' : 'Delete data'}</button></div></div>}
+  </article>;
 }
 
 function FinanceInsightsPage() {

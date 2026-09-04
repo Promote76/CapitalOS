@@ -1,0 +1,573 @@
+CAPITAL OS — FINAL EXECUTION-FOUNDATION REMEDIATION
+
+Use the current Capital OS production-readiness audit dated
+2026-09-04, reviewed HEAD af579ae, as the authoritative audit.
+
+DO NOT build new product features.
+
+DO NOT activate Schwab trading.
+DO NOT activate Micro-Live.
+DO NOT enable money movement.
+DO NOT lower existing safety controls.
+
+The purpose of this sprint is to CLOSE the remaining execution-
+foundation blockers documented in the current audit.
+
+==================================================
+1. COMPLETE TENANT ISOLATION
+==================================================
+
+Remove remaining seeded/default household context from authenticated:
+
+- Treasury
+- Strategy Lab
+- Operations
+- any development/test fallback reachable from authenticated production paths
+
+Every authenticated getter and mutation must derive:
+
+householdId
+userId
+role
+permissions
+
+from the authenticated request actor.
+
+No authenticated production service may call ensureSeedData()
+as a substitute for actor context.
+
+Build a comprehensive TWO-HOUSEHOLD adversarial fixture.
+
+Test Household A against Household B for every caller-controlled:
+
+householdId
+userId
+requestId
+strategyId
+operationId
+treasuryId
+accountId
+transactionId
+executionSessionId
+orderIntentId
+positionId
+fillId
+
+Cross-household reads and mutations must fail closed.
+
+==================================================
+2. FIX TREASURY COMPLETELY
+==================================================
+
+Make Treasury actor-scoped.
+
+getTreasury(actor)
+
+must replace unauthenticated/seed-context access.
+
+Implement role-aware protected-balance response policy.
+
+Viewer must not automatically receive sensitive protected-capital
+information simply because the route authenticated successfully.
+
+Treasury decisions must be atomic:
+
+BEGIN
+validate actor
+validate permission
+validate request state
+validate available capital
+create reservation/debit where required
+update request
+write immutable audit event
+COMMIT
+
+Failure:
+
+ROLLBACK
+
+Implement economic idempotency.
+
+Repeated approval of the same request must NOT:
+
+double reserve
+double debit
+double allocate
+double audit as separate economic effects
+
+Add concurrency tests.
+
+==================================================
+3. EXECUTE MANUAL FINANCE CERTIFICATION
+==================================================
+
+Do not merely inspect the regression test.
+
+Find/fix the repository execution environment required to run it.
+
+Certify against isolated PostgreSQL:
+
+manual create
+→ review queue
+→ approve
+→ fresh read
+→ budget recalculation
+→ cash-flow recalculation
+→ Safe-to-Deploy recalculation
+
+Also certify:
+
+manual create
+→ reject
+→ fresh read
+→ exclusion from calculations
+
+Runtime evidence is required.
+
+==================================================
+4. BUILD REAL SERVER-SIDE EMERGENCY STOP
+==================================================
+
+Replace the current local React Emergency Stop with authoritative
+server state.
+
+Implement:
+
+DISABLED
+MICRO_LIVE_ELIGIBLE
+MICRO_LIVE_ARMED
+MICRO_LIVE_ACTIVE
+SAFE_MODE
+STOP
+EVACUATE
+LOCKED
+
+Persist state server-side.
+
+Frontend may DISPLAY execution state.
+
+Frontend may REQUEST an allowed transition.
+
+Frontend may NOT independently determine execution state.
+
+STOP must fail closed.
+
+When STOP:
+
+deny new order intents
+deny new submissions
+cancel resting orders when applicable
+preserve audit evidence
+record actor/reason/time
+
+Guardian must respect STOP independently of strategy logic.
+
+==================================================
+5. REMOVE REMAINING FALSE SUCCESS UI
+==================================================
+
+Audit:
+
+Goals
+Transfers
+Strategies
+Properties
+Settings
+Portfolio sync
+Exports
+Quick Actions
+
+Every action must be classified:
+
+AUTHORITATIVE
+PREPARED
+LOCAL_ONLY
+SIMULATED
+BLOCKED
+UNAVAILABLE
+
+A toast must never claim a financial action succeeded unless
+authoritative server state confirms it.
+
+==================================================
+6. ACCOUNTING TRUTH
+==================================================
+
+Remove or replace hardcoded/incomplete:
+
+investment values
+real-estate values
+withdrawals
+realized gains
+fees
+tax values
+essential-month calculations
+return-on-capital
+
+Use authoritative calculations where data exists.
+
+Otherwise return:
+
+UNAVAILABLE
+
+or:
+
+REVIEW_REQUIRED
+
+Never fabricate financial completeness.
+
+==================================================
+7. SAFE-TO-DEPLOY INVARIANTS
+==================================================
+
+Build cross-domain tests proving Safe-to-Deploy excludes:
+
+Duplex Reserve
+Emergency Reserve
+protected capital
+unapproved transactions
+unreviewed bank transactions
+business cash without approved distribution
+paper P&L
+shadow P&L
+simulated P&L
+projected income
+unverified assets
+unrealized hypothetical returns
+
+Execution capital must require an independent explicit allocation.
+
+==================================================
+8. WEBHOOK INGRESS
+==================================================
+
+Harden banking webhook ingress.
+
+Implement or prove equivalent controls for:
+
+provider allowlisting
+provider-specific signature verification
+rate limiting
+bounded synchronous work
+replay protection
+duplicate event handling
+out-of-order events
+provider outage
+retry/recovery
+
+Do not break raw-body signature verification.
+
+==================================================
+9. AUDIT ATTRIBUTION
+==================================================
+
+Complete immutable actor attribution for:
+
+Treasury
+Operations
+Business
+Strategy
+Micro-Live
+future execution transitions
+
+Capture:
+
+actor
+household
+role
+action
+target
+before state
+after state
+timestamp
+correlationId
+reason where appropriate
+
+==================================================
+10. CLERK REVERIFICATION
+==================================================
+
+Execute authenticated browser certification.
+
+Prove:
+
+protected action triggers reverification
+successful reverification
+failed reverification
+retry
+post-reverification authorization
+Viewer remains Viewer
+Owner remains properly authorized
+
+Authentication must never elevate authorization.
+
+==================================================
+11. WORKER / SCHEDULER RELIABILITY
+==================================================
+
+Implement and certify:
+
+worker startup
+scheduler startup
+durable job leasing
+restart recovery
+retry execution
+dead-letter handling
+idempotent processing
+stale lease recovery
+
+Simulate process termination during work.
+
+Restart must reconstruct authoritative state before continuing.
+
+==================================================
+12. OBSERVABILITY
+==================================================
+
+Implement actual metrics rather than documentation-only names.
+
+At minimum:
+
+API errors
+database failures
+queue depth
+queue lag
+worker heartbeat
+scheduler heartbeat
+reconciliation failures
+audit persistence failures
+bank provider failures
+Guardian state
+execution state
+unknown orders
+risk stops
+
+Configure an actual alert delivery path supported by the deployed
+environment.
+
+==================================================
+13. DATABASE / MIGRATION
+==================================================
+
+Reconcile conflicting migration evidence.
+
+Certify:
+
+clean install
+existing-schema upgrade
+data preservation
+migration failure
+forward fix / rollback policy
+managed backup
+restore
+RPO/RTO evidence
+
+Do not mark this PASS based solely on zero-to-current migration.
+
+==================================================
+14. EXECUTION FOUNDATION
+==================================================
+
+Micro-Live remains non-executing during this sprint.
+
+Complete deterministic foundations:
+
+Capital Governor
+Risk Engine
+OMS
+Guardian
+server Emergency Stop
+OrderIntent durability
+client-order idempotency
+UNKNOWN order state
+reconciliation
+restart reconciliation
+capital isolation
+credential isolation
+audit trail
+
+AI EXECUTION AUTHORITY = FALSE
+
+AUTONOMOUS CAPITAL MOVEMENT = FALSE
+
+==================================================
+15. SCHWAB
+==================================================
+
+Prepare a provider-neutral Schwab adapter boundary if needed.
+
+DO NOT request, expose, log, or fabricate credentials.
+
+DO NOT transmit orders.
+
+Trading remains disabled.
+
+Only after all execution-foundation certification passes should
+the operator configure Schwab manually.
+
+The first future Schwab phase will be READ-ONLY.
+
+==================================================
+16. CERTIFICATION
+==================================================
+
+Create/run:
+
+pnpm run certify:execution-foundation
+
+Critical gates:
+
+EF-01 Tenant Isolation
+EF-02 Treasury Isolation
+EF-03 Treasury Atomicity
+EF-04 Treasury Idempotency
+EF-05 Manual Finance Runtime
+EF-06 Financial UI Truth
+EF-07 Accounting Truth
+EF-08 Safe-to-Deploy
+EF-09 Webhook Security
+EF-10 Audit Attribution
+EF-11 Clerk Reverification
+EF-12 Server Emergency Stop
+EF-13 Worker Recovery
+EF-14 Scheduler Recovery
+EF-15 Observability
+EF-16 Migration Upgrade
+EF-17 Backup/Restore
+EF-18 OMS
+EF-19 Guardian
+EF-20 Reconciliation
+EF-21 Restart Recovery
+EF-22 Capital Isolation
+EF-23 Credential Boundary
+EF-24 AI Authority
+
+NO CRITICAL SKIPS.
+
+SKIPPED CRITICAL TEST = FAIL.
+
+==================================================
+17. UPDATE SINGLE COMPLETION DOCUMENT
+==================================================
+
+After all implementation and testing are complete, update ONE
+authoritative completion document.
+
+The document must replace contradictory readiness claims.
+
+Include:
+
+current HEAD
+changes made
+tests executed
+actual runtime evidence
+PASS/FAIL per gate
+remaining P0/P1 findings
+banking status
+Treasury status
+accounting status
+Micro-Live status
+Schwab status
+execution status
+release decision
+
+Do not claim certification from source inspection alone.
+
+==================================================
+FINAL RESPONSE
+==================================================
+
+Return exactly:
+
+CURRENT HEAD:
+<hash>
+
+P0 OPEN AT START:
+<number>
+
+P0 CLOSED:
+<number>
+
+P0 REMAINING:
+<number>
+
+TENANT ISOLATION:
+PASS / FAIL
+
+TREASURY:
+PASS / FAIL
+
+MANUAL FINANCE RUNTIME:
+PASS / FAIL
+
+FINANCIAL UI TRUTH:
+PASS / FAIL
+
+ACCOUNTING:
+PASS / PARTIAL / FAIL
+
+SAFE-TO-DEPLOY:
+PASS / FAIL
+
+WEBHOOK INGRESS:
+PASS / FAIL
+
+AUDIT ATTRIBUTION:
+PASS / FAIL
+
+CLERK REVERIFICATION:
+PASS / FAIL
+
+SERVER EMERGENCY STOP:
+PASS / FAIL
+
+WORKER RECOVERY:
+PASS / FAIL
+
+SCHEDULER:
+PASS / FAIL
+
+OBSERVABILITY:
+PASS / FAIL
+
+MIGRATION UPGRADE:
+PASS / FAIL
+
+BACKUP/RESTORE:
+PASS / FAIL
+
+OMS:
+PASS / FAIL
+
+GUARDIAN:
+PASS / FAIL
+
+RECONCILIATION:
+PASS / FAIL
+
+EXECUTION FOUNDATION:
+PASS / FAIL
+
+SCHWAB READ-ONLY:
+ELIGIBLE / BLOCKED
+
+SCHWAB TRADING:
+DISABLED
+
+MICRO-LIVE:
+DISABLED
+
+LIVE TRADING:
+DISABLED
+
+AI EXECUTION:
+DISABLED
+
+RELEASE STATUS:
+<exact status>
+
+NEXT ACTION:
+<one exact action>
+
+AUTHORITATIVE COMPLETION DOCUMENT:
+<path>

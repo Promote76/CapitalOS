@@ -1507,11 +1507,11 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     assert.equal(manualRow.reviewStatus, "needs_review");
     assert.equal(manualRow.amount, "-12.50");
 
-    const manualQueue = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
-    assert.equal(manualQueue.status, 200);
-    const queuedManual = (await manualQueue.json() as { transactions: Array<{ id: string }> }).transactions
+    const manualReviewQueue = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
+    assert.equal(manualReviewQueue.status, 200);
+    const queuedManualRow = (await manualReviewQueue.json() as { transactions: Array<{ id: string }> }).transactions
       .find((transaction) => transaction.id === manualRow.id);
-    assert.ok(queuedManual, "manual rows must be visible in the review queue");
+    assert.ok(queuedManualRow, "manual rows must be visible in the review queue");
     const manualApproval = await request(`/financial-transactions/${manualRow.id}/review`, fixture.userA, fixture.householdA, {
       method: "POST",
       body: JSON.stringify({ status: "approved", categoryId: categoryA.id, note: "Reviewed manual entry." }),
@@ -1735,15 +1735,15 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     assert.equal(manualTransaction.dataSource, "manual");
     assert.equal(manualTransaction.reviewStatus, "needs_review");
 
-    const manualQueue = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
-    assert.equal(manualQueue.status, 200);
-    const manualQueueBody = await manualQueue.json() as {
+    const manualTransactionQueue = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
+    assert.equal(manualTransactionQueue.status, 200);
+    const manualTransactionQueueBody = await manualTransactionQueue.json() as {
       transactions: Array<{ id: string; accountName: string; dataSource: string; reviewStatus: string }>;
     };
-    const queuedManual = manualQueueBody.transactions.find((row) => row.id === manualTransaction.id);
-    assert.equal(queuedManual?.accountName, "Primary checking");
-    assert.equal(queuedManual?.dataSource, "manual");
-    assert.equal(queuedManual?.reviewStatus, "needs_review");
+    const queuedManualTransaction = manualTransactionQueueBody.transactions.find((row) => row.id === manualTransaction.id);
+    assert.equal(queuedManualTransaction?.accountName, "Primary checking");
+    assert.equal(queuedManualTransaction?.dataSource, "manual");
+    assert.equal(queuedManualTransaction?.reviewStatus, "needs_review");
 
     const categorizeManual = await request(`/financial-transactions/${manualTransaction.id}/review`, fixture.userA, fixture.householdA, {
       method: "POST",

@@ -4344,16 +4344,40 @@ export const ListOperationsJobsResponse = zod.array(ListOperationsJobsResponseIt
  */
 export const getOperationsJobMetricsResponseQueueDepthMin = 0;
 
+export const getOperationsJobMetricsResponseOldestPendingJobAgeMsMin = 0;
+
 export const getOperationsJobMetricsResponseRetryQueueDepthMin = 0;
 
 export const getOperationsJobMetricsResponseDeadLetterCountMin = 0;
+
+export const getOperationsJobMetricsResponseActiveWorkerCountMin = 0;
+
+export const getOperationsJobMetricsResponseStaleWorkerCountMin = 0;
+
+export const getOperationsJobMetricsResponseWorkerHeartbeatAgeMsMin = 0;
+
+export const getOperationsJobMetricsResponseJobExecutionDurationMsMin = 0;
+
+export const getOperationsJobMetricsResponseJobFailureCountMin = 0;
+
+export const getOperationsJobMetricsResponseJobRetryCountMin = 0;
+
+export const getOperationsJobMetricsResponseRecoveredJobCountMin = 0;
 
 
 
 export const GetOperationsJobMetricsResponse = zod.object({
   "queueDepth": zod.number().min(getOperationsJobMetricsResponseQueueDepthMin),
+  "oldestPendingJobAgeMs": zod.number().min(getOperationsJobMetricsResponseOldestPendingJobAgeMsMin),
   "retryQueueDepth": zod.number().min(getOperationsJobMetricsResponseRetryQueueDepthMin),
   "deadLetterCount": zod.number().min(getOperationsJobMetricsResponseDeadLetterCountMin),
+  "activeWorkerCount": zod.number().min(getOperationsJobMetricsResponseActiveWorkerCountMin),
+  "staleWorkerCount": zod.number().min(getOperationsJobMetricsResponseStaleWorkerCountMin),
+  "workerHeartbeatAgeMs": zod.number().min(getOperationsJobMetricsResponseWorkerHeartbeatAgeMsMin),
+  "jobExecutionDurationMs": zod.number().min(getOperationsJobMetricsResponseJobExecutionDurationMsMin),
+  "jobFailureCount": zod.number().min(getOperationsJobMetricsResponseJobFailureCountMin),
+  "jobRetryCount": zod.number().min(getOperationsJobMetricsResponseJobRetryCountMin),
+  "recoveredJobCount": zod.number().min(getOperationsJobMetricsResponseRecoveredJobCountMin),
   "statuses": zod.record(zod.string(), zod.number())
 })
 
@@ -4430,6 +4454,26 @@ export const ListOperationsSchedulersResponseItem = zod.object({
   "updatedAt": zod.coerce.date()
 })
 export const ListOperationsSchedulersResponse = zod.array(ListOperationsSchedulersResponseItem)
+
+
+/**
+ * @summary Get persistent scheduler runtime metrics
+ */
+export const getOperationsSchedulerMetricsResponseSchedulerLagMsMin = 0;
+
+export const getOperationsSchedulerMetricsResponseMissedScheduleCountMin = 0;
+
+export const getOperationsSchedulerMetricsResponseScheduleRecoveryCountMin = 0;
+
+
+
+export const GetOperationsSchedulerMetricsResponse = zod.object({
+  "schedulerHeartbeat": zod.coerce.date().nullable(),
+  "schedulerLeader": zod.boolean(),
+  "schedulerLagMs": zod.number().min(getOperationsSchedulerMetricsResponseSchedulerLagMsMin),
+  "missedScheduleCount": zod.number().min(getOperationsSchedulerMetricsResponseMissedScheduleCountMin),
+  "scheduleRecoveryCount": zod.number().min(getOperationsSchedulerMetricsResponseScheduleRecoveryCountMin)
+})
 
 
 /**

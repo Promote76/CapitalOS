@@ -282,10 +282,14 @@ export async function assertExecutionPermitted(actor: Actor) {
       heartbeat.signatureValid &&
       Date.now() - heartbeat.lastHeartbeatAt.getTime() <= 3000,
     );
+    const guardianAgrees = Boolean(
+      heartbeat &&
+      Number(heartbeat.observedExposure) === Number(heartbeat.reportedExposure),
+    );
     const [risk] = await db.select().from(riskStates)
       .where(eq(riskStates.householdId, actor.householdId))
       .limit(1);
-    if (!heartbeatHealthy || !risk || risk.emergencyStopActive || risk.state !== "normal") {
+    if (!heartbeatHealthy || !guardianAgrees || !risk || risk.emergencyStopActive || risk.state !== "normal") {
       throw new GovernanceError("RISK_BLOCKED", "Guardian, risk, or capital governor does not permit execution");
     }
     return control;

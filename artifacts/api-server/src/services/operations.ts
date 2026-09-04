@@ -12,6 +12,7 @@ import {
   operationsWorkers,
   operationsSchedulers,
   operationsSchedulerLeases,
+  operationsMetrics,
   auditEvents,
   operationsRuns,
   operationsTasks,
@@ -360,7 +361,23 @@ export async function enqueueOperationsJob(input: {
     idempotencyKey: input.idempotencyKey,
     correlationId: input.correlationId,
   }).onConflictDoNothing({ target: [operationsJobs.householdId, operationsJobs.idempotencyKey] }).returning();
-  if (job) return job;
+  if (job) {
+    await db.insert(auditEvents).values({
+      householdId: job.householdId,
+      eventType: "operations_job_created",
+      actor: "system",
+      entity: "operations_job",
+      entityId: job.id,
+      reason: "Durable operations job persisted",
+      metadata: {
+        kind: job.kind,
+        correlationId: job.correlationId,
+        idempotencyKey: job.idempotencyKey,
+        payloadReference: job.payloadReference,
+      },
+    });
+    return job;
+  }
   if (input.idempotencyKey) {
     const [existing] = await db.select().from(operationsJobs).where(and(eq(operationsJobs.householdId, input.householdId), eq(operationsJobs.idempotencyKey, input.idempotencyKey))).limit(1);
     if (existing) return existing;
@@ -412,6 +429,15 @@ export async function startOperationsJob(jobId: string, householdId: string, wor
       eq(operationsJobAttempts.attempt, job.attempts),
       eq(operationsJobAttempts.workerId, workerId),
     ));
+    await db.insert(auditEvents).values({
+      householdId,
+      eventType: "operations_job_started",
+      actor: workerId,
+      entity: "operations_job",
+      entityId: job.id,
+      reason: "Durable worker started job",
+      metadata: { workerId, attempt: job.attempts },
+    });
   }
   return job ?? null;
 }
@@ -438,6 +464,7 @@ export async function completeOperationsJob(jobId: string, householdId: string, 
       eq(operationsJobAttempts.workerId, workerId),
     ));
     await db.insert(auditEvents).values({ householdId, eventType: "operations_job_completed", actor: workerId, entity: "operations_job", entityId: job.id, reason: "Durable worker completed job", metadata: { attempt: job.attempts } });
+    await db.update(operationsWorkers).set({ status: "IDLE", currentJobId: null, updatedAt: now }).where(eq(operationsWorkers.workerId, workerId));
   }
   return job ?? null;
 }
@@ -480,6 +507,7 @@ export async function failOperationsJob(jobId: string, householdId: string, work
       eq(operationsJobAttempts.workerId, workerId),
     ));
     await db.insert(auditEvents).values({ householdId, eventType: terminal ? "operations_job_dead_lettered" : "operations_job_retry_scheduled", actor: workerId, entity: "operations_job", entityId: job.id, reason: message, metadata: { attempt: job.attempts, classification } });
+    await db.update(operationsWorkers).set({ status: "IDLE", currentJobId: null, updatedAt: now }).where(eq(operationsWorkers.workerId, workerId));
   }
   return job ?? null;
 }
@@ -520,21 +548,102 @@ export async function heartbeatOperationsWorker(workerId: string, currentJobId?:
     set: { currentJobId: currentJobId ?? null, status: currentJobId ? "BUSY" : "IDLE", lastHeartbeatAt: now, updatedAt: now },
   }).returning();
   if (currentJobId) {
-    await db.update(operationsJobs).set({ leaseExpiresAt: new Date(Date.now() + 5 * 60_000), updatedAt: now })
-      .where(and(eq(operationsJobs.id, currentJobId), eq(operationsJobs.leaseOwner, workerId), sql`${operationsJobs.status} in ('LEASED', 'RUNNING')`));
+    const [job] = await db.update(operationsJobs).set({ leaseExpiresAt: new Date(Date.now() + 5 * 60_000), updatedAt: now })
+      .where(and(eq(operationsJobs.id, currentJobId), eq(operationsJobs.leaseOwner, workerId), sql`${operationsJobs.status} in ('LEASED', 'RUNNING')`))
+      .returning({ id: operationsJobs.id, householdId: operationsJobs.householdId, attempts: operationsJobs.attempts });
+    if (job) {
+      await db.insert(auditEvents).values({
+        householdId: job.householdId,
+        eventType: "operations_worker_heartbeat",
+        actor: workerId,
+        entity: "operations_job",
+        entityId: job.id,
+        reason: "Worker heartbeat renewed the job lease",
+        metadata: { workerId, attempt: job.attempts },
+      });
+    }
   }
   return worker;
 }
 
 export async function getOperationsMetrics(householdId: string) {
+  const now = new Date();
   const rows = await db.select({ status: operationsJobs.status, count: sql<number>`count(*)::int` })
     .from(operationsJobs).where(eq(operationsJobs.householdId, householdId)).groupBy(operationsJobs.status);
-  return {
-    queueDepth: rows.filter((r) => ["QUEUED", "RETRY_PENDING"].includes(r.status)).reduce((n, r) => n + r.count, 0),
-    retryQueueDepth: rows.find((r) => r.status === "RETRY_PENDING")?.count ?? 0,
-    deadLetterCount: rows.find((r) => ["DEAD_LETTER", "DEAD_LETTERED"].includes(r.status))?.count ?? 0,
-    statuses: Object.fromEntries(rows.map((r) => [r.status, r.count])),
+  const [pending] = await db.select({
+    oldestPendingAt: sql<Date | null>`min(${operationsJobs.createdAt})`,
+  }).from(operationsJobs).where(and(
+    eq(operationsJobs.householdId, householdId),
+    sql`${operationsJobs.status} in ('QUEUED', 'RETRY_PENDING')`,
+  ));
+  const attempts = await db.select({
+    status: operationsJobAttempts.status,
+    startedAt: operationsJobAttempts.startedAt,
+    finishedAt: operationsJobAttempts.finishedAt,
+  }).from(operationsJobAttempts)
+    .innerJoin(operationsJobs, eq(operationsJobAttempts.jobId, operationsJobs.id))
+    .where(eq(operationsJobs.householdId, householdId));
+  const workers = await db.select().from(operationsWorkers);
+  const activeWorkerCount = workers.filter((worker) => worker.status === "BUSY").length;
+  const staleWorkerCount = workers.filter((worker) => now.getTime() - worker.lastHeartbeatAt.getTime() > 30_000).length;
+  const durations = attempts
+    .filter((attempt) => attempt.startedAt && attempt.finishedAt)
+    .map((attempt) => attempt.finishedAt!.getTime() - attempt.startedAt!.getTime());
+  const metrics = {
+    queueDepth: rows.filter((r) => ["QUEUED", "RETRY_PENDING"].includes(r.status)).reduce((n, r) => n + Number(r.count), 0),
+    oldestPendingJobAgeMs: pending?.oldestPendingAt ? Math.max(0, now.getTime() - new Date(pending.oldestPendingAt).getTime()) : 0,
+    retryQueueDepth: Number(rows.find((r) => r.status === "RETRY_PENDING")?.count ?? 0),
+    deadLetterCount: Number(rows.find((r) => ["DEAD_LETTER", "DEAD_LETTERED"].includes(r.status))?.count ?? 0),
+    activeWorkerCount,
+    staleWorkerCount,
+    workerHeartbeatAgeMs: workers.length ? Math.max(...workers.map((worker) => Math.max(0, now.getTime() - worker.lastHeartbeatAt.getTime()))) : 0,
+    jobExecutionDurationMs: durations.length ? Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length) : 0,
+    jobFailureCount: attempts.filter((attempt) => ["DEAD_LETTER", "FAILED"].includes(attempt.status)).length,
+    jobRetryCount: attempts.filter((attempt) => attempt.status === "RETRY_PENDING").length,
+    recoveredJobCount: attempts.filter((attempt) => attempt.status === "RECOVERED").length,
+    statuses: Object.fromEntries(rows.map((r) => [r.status, Number(r.count)])),
   };
+  await db.insert(operationsMetrics).values([
+    { householdId, metric: "queue_depth", value: metrics.queueDepth },
+    { householdId, metric: "retry_queue_depth", value: metrics.retryQueueDepth },
+    { householdId, metric: "dead_letter_count", value: metrics.deadLetterCount },
+    { householdId, metric: "active_worker_count", value: metrics.activeWorkerCount },
+    { householdId, metric: "stale_worker_count", value: metrics.staleWorkerCount },
+    { householdId, metric: "job_failure_count", value: metrics.jobFailureCount },
+    { householdId, metric: "job_retry_count", value: metrics.jobRetryCount },
+    { householdId, metric: "recovered_job_count", value: metrics.recoveredJobCount },
+  ]);
+  return metrics;
+}
+
+export async function getOperationsSchedulerMetrics(householdId: string) {
+  const now = new Date();
+  const [lease] = await db.select().from(operationsSchedulerLeases)
+    .where(eq(operationsSchedulerLeases.singleton, "operations")).limit(1);
+  const schedules = await db.select().from(operationsSchedulers).where(and(
+    eq(operationsSchedulers.householdId, householdId),
+    eq(operationsSchedulers.enabled, true),
+  ));
+  const due = schedules.filter((schedule) => schedule.nextRunAt <= now);
+  const [recovery] = await db.select({ count: sql<number>`count(*)::int` })
+    .from(auditEvents)
+    .where(and(
+      eq(auditEvents.householdId, householdId),
+      eq(auditEvents.eventType, "operations_schedule_missed_recovered"),
+    ));
+  const metrics = {
+    schedulerHeartbeat: lease?.heartbeatAt?.toISOString() ?? null,
+    schedulerLeader: Boolean(lease && lease.leaseExpiresAt > now),
+    schedulerLagMs: due.length ? Math.max(...due.map((schedule) => now.getTime() - schedule.nextRunAt.getTime())) : 0,
+    missedScheduleCount: due.length,
+    scheduleRecoveryCount: Number(recovery?.count ?? 0),
+  };
+  await db.insert(operationsMetrics).values([
+    { householdId, metric: "scheduler_lag_ms", value: metrics.schedulerLagMs },
+    { householdId, metric: "missed_schedule_count", value: metrics.missedScheduleCount },
+    { householdId, metric: "schedule_recovery_count", value: metrics.scheduleRecoveryCount },
+  ]);
+  return metrics;
 }
 
 export async function listOperationsJobs(actor: Actor) {
@@ -570,6 +679,38 @@ export async function reprocessOperationsJob(actor: Actor, jobId: string) {
 export async function listOperationsSchedulers(actor: Actor) {
   assertPermission(actor.role, "read");
   return db.select().from(operationsSchedulers).where(eq(operationsSchedulers.householdId, actor.householdId)).orderBy(asc(operationsSchedulers.nextRunAt));
+}
+
+export async function createOperationsScheduler(actor: Actor, input: {
+  name: string;
+  jobKind: string;
+  cadence: string;
+  payload?: Record<string, unknown>;
+  missedRunPolicy?: "CATCH_UP" | "SKIP";
+  nextRunAt: Date;
+}) {
+  assertPermission(actor.role, "approve");
+  const [schedule] = await db.insert(operationsSchedulers).values({
+    householdId: actor.householdId,
+    name: input.name,
+    jobKind: input.jobKind,
+    cadence: input.cadence,
+    payload: input.payload ?? {},
+    missedRunPolicy: input.missedRunPolicy ?? "SKIP",
+    nextRunAt: input.nextRunAt,
+    createdBy: actor.userId,
+  }).returning();
+  if (!schedule) throw new GovernanceError("INVALID_STATE", "Scheduler definition could not be persisted");
+  await db.insert(auditEvents).values({
+    householdId: actor.householdId,
+    eventType: "operations_scheduler_created",
+    actor: actor.userId,
+    entity: "operations_scheduler",
+    entityId: schedule.id,
+    reason: "Persistent scheduler definition created",
+    metadata: { jobKind: schedule.jobKind, cadence: schedule.cadence, missedRunPolicy: schedule.missedRunPolicy },
+  });
+  return schedule;
 }
 
 export async function acquireOperationsSchedulerLeadership(actor: Actor) {

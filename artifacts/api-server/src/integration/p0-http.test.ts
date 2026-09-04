@@ -1004,7 +1004,7 @@ function replaceRouteParams(route: RouteProbe, values: Record<string, string>, f
   return route.path.replace(/:([A-Za-z0-9_]+)/g, (_match, name: string) => values[name] ?? fallback);
 }
 
-test("P0-01 preflight inventories all 141 routes and rejects unsafe generic probes", { skip: !enabled }, async () => {
+test("P0-01 preflight inventories all 142 routes and rejects unsafe generic probes", { skip: !enabled }, async () => {
   process.env.NODE_ENV = "test";
   process.env.CAPITAL_OS_TEST_CONTEXT = "1";
   process.env.CAPITAL_OS_ALLOWED_ORIGIN = "http://capitalos.test";
@@ -1034,7 +1034,7 @@ test("P0-01 preflight inventories all 141 routes and rejects unsafe generic prob
 
   try {
     const routes = discoverRouteProbes();
-    assert.equal(routes.length, 141, "The route inventory changed; update the certification matrix before running it.");
+    assert.equal(routes.length, 142, "The route inventory changed; update the certification matrix before running it.");
     const { idsA, idsB } = await warmRouteMatrixResources(request, fixture);
     const allAIds = Object.values(idsA);
     const allBIds = Object.values(idsB);

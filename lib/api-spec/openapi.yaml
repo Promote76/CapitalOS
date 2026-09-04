@@ -1907,6 +1907,17 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/OperationsScheduler" }
+  /operations/schedulers/metrics:
+    get:
+      operationId: getOperationsSchedulerMetrics
+      tags: [operations]
+      summary: Get persistent scheduler runtime metrics
+      responses:
+        "200":
+          description: Scheduler metrics
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OperationsSchedulerMetrics" }
   /operations/schedulers/leadership:
     post:
       operationId: acquireOperationsSchedulerLeadership
@@ -5117,12 +5128,29 @@ components:
         completedAt: { type: ["string", "null"], format: date-time }
     OperationsJobMetrics:
       type: object
-      required: [queueDepth, retryQueueDepth, deadLetterCount, statuses]
+      required: [queueDepth, oldestPendingJobAgeMs, retryQueueDepth, deadLetterCount, activeWorkerCount, staleWorkerCount, workerHeartbeatAgeMs, jobExecutionDurationMs, jobFailureCount, jobRetryCount, recoveredJobCount, statuses]
       properties:
         queueDepth: { type: number, minimum: 0 }
+        oldestPendingJobAgeMs: { type: number, minimum: 0 }
         retryQueueDepth: { type: number, minimum: 0 }
         deadLetterCount: { type: number, minimum: 0 }
+        activeWorkerCount: { type: number, minimum: 0 }
+        staleWorkerCount: { type: number, minimum: 0 }
+        workerHeartbeatAgeMs: { type: number, minimum: 0 }
+        jobExecutionDurationMs: { type: number, minimum: 0 }
+        jobFailureCount: { type: number, minimum: 0 }
+        jobRetryCount: { type: number, minimum: 0 }
+        recoveredJobCount: { type: number, minimum: 0 }
         statuses: { type: object, additionalProperties: { type: number } }
+    OperationsSchedulerMetrics:
+      type: object
+      required: [schedulerHeartbeat, schedulerLeader, schedulerLagMs, missedScheduleCount, scheduleRecoveryCount]
+      properties:
+        schedulerHeartbeat: { type: ["string", "null"], format: date-time }
+        schedulerLeader: { type: boolean }
+        schedulerLagMs: { type: number, minimum: 0 }
+        missedScheduleCount: { type: number, minimum: 0 }
+        scheduleRecoveryCount: { type: number, minimum: 0 }
     OperationsWorker:
       type: object
       required: [workerId, status, currentJobId, startedAt, lastHeartbeatAt, version, updatedAt]

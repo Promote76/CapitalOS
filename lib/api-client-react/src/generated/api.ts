@@ -134,6 +134,7 @@ import type {
   OperationsOverview,
   OperationsScheduler,
   OperationsSchedulerLease,
+  OperationsSchedulerMetrics,
   OperationsTask,
   OperationsTaskInput,
   OperationsTaskUpdate,
@@ -9027,6 +9028,83 @@ export function useListOperationsSchedulers<TData = Awaited<ReturnType<typeof li
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListOperationsSchedulersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOperationsSchedulerMetricsUrl = () => {
+
+
+
+
+  return `/api/operations/schedulers/metrics`
+}
+
+/**
+ * @summary Get persistent scheduler runtime metrics
+ */
+export const getOperationsSchedulerMetrics = async ( options?: Parameters<typeof customFetch>[1]): Promise<OperationsSchedulerMetrics> => {
+
+  return customFetch<OperationsSchedulerMetrics>(getGetOperationsSchedulerMetricsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOperationsSchedulerMetricsQueryKey = () => {
+    return [
+    `/api/operations/schedulers/metrics`
+    ] as const;
+    }
+
+
+export const getGetOperationsSchedulerMetricsQueryOptions = <TData = Awaited<ReturnType<typeof getOperationsSchedulerMetrics>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperationsSchedulerMetrics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOperationsSchedulerMetricsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOperationsSchedulerMetrics>>> = ({ signal }) => getOperationsSchedulerMetrics({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOperationsSchedulerMetrics>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOperationsSchedulerMetricsQueryResult = NonNullable<Awaited<ReturnType<typeof getOperationsSchedulerMetrics>>>
+export type GetOperationsSchedulerMetricsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get persistent scheduler runtime metrics
+ */
+
+export function useGetOperationsSchedulerMetrics<TData = Awaited<ReturnType<typeof getOperationsSchedulerMetrics>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOperationsSchedulerMetrics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOperationsSchedulerMetricsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

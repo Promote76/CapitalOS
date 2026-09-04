@@ -36,6 +36,7 @@ import {
   getOperationsMetrics,
   listOperationsJobs, listOperationsWorkerHealth, reprocessOperationsJob,
   listOperationsSchedulers, acquireOperationsSchedulerLeadership, recoverMissedOperationsSchedules,
+  getOperationsSchedulerMetrics,
 } from "../services/operations";
 
 const router: IRouter = Router();
@@ -46,6 +47,9 @@ router.get("/operations", asyncRoute(async (_req, res) => {
 
 router.get("/operations/jobs/metrics", asyncRoute(async (_req, res) => {
   res.json(await getOperationsMetrics(actorFrom(res).householdId));
+}));
+router.get("/operations/schedulers/metrics", asyncRoute(async (_req, res) => {
+  res.json(await getOperationsSchedulerMetrics(actorFrom(res).householdId));
 }));
 router.get("/operations/jobs", asyncRoute(async (_req, res) => res.json(await listOperationsJobs(actorFrom(res)))));
 router.get("/operations/workers", asyncRoute(async (_req, res) => res.json(await listOperationsWorkerHealth(actorFrom(res)))));

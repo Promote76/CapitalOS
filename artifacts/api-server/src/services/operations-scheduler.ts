@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { db } from "@workspace/db";
-import { operationsSchedulerLeases, operationsSchedulers } from "@workspace/db/schema";
+import { auditEvents, operationsSchedulerLeases, operationsSchedulers } from "@workspace/db/schema";
 import { and, eq, lte, sql } from "drizzle-orm";
 import { enqueueOperationsJob } from "./operations";
 
@@ -38,6 +38,15 @@ export async function runOperationsSchedulerTick(ownerId: string) {
         nextRunAt: nextRunAt(schedule.nextRunAt, schedule.cadence),
         updatedAt: now,
       }).where(eq(operationsSchedulers.id, schedule.id));
+      await db.insert(auditEvents).values({
+        householdId: schedule.householdId,
+        eventType: "operations_schedule_missed_skipped",
+        actor: ownerId,
+        entity: "operations_scheduler",
+        entityId: schedule.id,
+        reason: `Unsupported scheduled job kind ${schedule.jobKind}`,
+        metadata: { ownerId, nextRunAt: schedule.nextRunAt.toISOString(), policy: schedule.missedRunPolicy },
+      });
       continue;
     }
     if (schedule.missedRunPolicy === "CATCH_UP" || schedule.nextRunAt >= new Date(now.getTime() - 86_400_000)) {
@@ -50,6 +59,15 @@ export async function runOperationsSchedulerTick(ownerId: string) {
         correlationId: `schedule:${schedule.id}`,
       });
       enqueued += 1;
+      await db.insert(auditEvents).values({
+        householdId: schedule.householdId,
+        eventType: "operations_schedule_missed_recovered",
+        actor: ownerId,
+        entity: "operations_scheduler",
+        entityId: schedule.id,
+        reason: "Persistent scheduler recovered a due run",
+        metadata: { ownerId, nextRunAt: schedule.nextRunAt.toISOString(), policy: schedule.missedRunPolicy },
+      });
     }
     await db.update(operationsSchedulers).set({
       lastRunAt: schedule.nextRunAt,

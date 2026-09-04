@@ -229,6 +229,7 @@ export * from './operationsOverviewHealth';
 export * from './operationsOverviewToday';
 export * from './operationsScheduler';
 export * from './operationsSchedulerLease';
+export * from './operationsSchedulerMetrics';
 export * from './operationsSchedulerMissedRunPolicy';
 export * from './operationsSchedulerPayload';
 export * from './operationsTask';

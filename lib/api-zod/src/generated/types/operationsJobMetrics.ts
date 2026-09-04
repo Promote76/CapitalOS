@@ -11,8 +11,24 @@ export interface OperationsJobMetrics {
   /** @minimum 0 */
   queueDepth: number;
   /** @minimum 0 */
+  oldestPendingJobAgeMs: number;
+  /** @minimum 0 */
   retryQueueDepth: number;
   /** @minimum 0 */
   deadLetterCount: number;
+  /** @minimum 0 */
+  activeWorkerCount: number;
+  /** @minimum 0 */
+  staleWorkerCount: number;
+  /** @minimum 0 */
+  workerHeartbeatAgeMs: number;
+  /** @minimum 0 */
+  jobExecutionDurationMs: number;
+  /** @minimum 0 */
+  jobFailureCount: number;
+  /** @minimum 0 */
+  jobRetryCount: number;
+  /** @minimum 0 */
+  recoveredJobCount: number;
   statuses: OperationsJobMetricsStatuses;
 }

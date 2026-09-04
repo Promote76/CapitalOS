@@ -55,8 +55,9 @@ introduced during this certification.
   Emergency Stop sends a confirmed, idempotent server command rather than
   changing local React state only.
 - Durable operations now persist leases, attempts, workers, schedules, leadership,
-  retries, dead letters, and safe response projections; the Operations page exposes
-  queue state and authorized reprocessing without exposing raw payloads.
+  retries, dead letters, audit lifecycle events, runtime queue/scheduler metrics,
+  and safe response projections; the Operations page exposes queue state and
+  authorized reprocessing without exposing raw payloads.
 
 ## Evidence summary
 
@@ -65,8 +66,8 @@ introduced during this certification.
 | Generated finance artifacts | PASS | `pnpm run check:generated-finance-artifacts` |
 | Generated-artifact failure/recovery regression | PASS | `pnpm run test:generated-finance-artifacts` |
 | Workspace/API typechecks | PASS | `pnpm run typecheck`, API typecheck |
-| OpenAPI route/method parity | PASS | `scripts/check-api-contract.mjs`; 141 route/method combinations |
-| PostgreSQL-backed API suite | PASS | 106 passed, 0 failed, 0 skipped with `CAPITAL_OS_RUN_INTEGRATION=1` |
+| OpenAPI route/method parity | PASS | `scripts/check-api-contract.mjs`; 142 route/method combinations |
+| PostgreSQL-backed API suite | PASS | 123 passed, 0 failed, 0 skipped with `CAPITAL_OS_RUN_INTEGRATION=1` |
 | Execution-control focused fixture | PASS against the dedicated isolated certification target; 3 passed, 0 failed, 0 skipped | `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/integration/execution-control.test.ts` |
 | Execution-control certification command | PASS — EC-01 through EC-17 collected | `pnpm run certify:execution-control`; `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md` |
 | Historical P0 evidence | PASS for the documented internal scope | `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md` |
@@ -74,20 +75,20 @@ introduced during this certification.
 | Internal reliability command | FAIL-CLOSED | Implementation checks pass; authenticated browser contribution and provider reverification evidence remain open |
 | Micro-Live command | BLOCKED | Internal safety core passes; provider, restart, credential, automation, and browser gates remain blocked |
 | Future restore verifier | BLOCKED | Refusal-first scaffold; no provider-managed restore was executed |
-| Durable operations focused fixture | PASS for five scenarios | Isolated PostgreSQL-backed contention, idempotency, lease expiry, scheduler leadership/missed run, and authorized dead-letter reprocessing; full OR matrix remains blocked |
+| Durable operations focused fixture | PASS for 17 scenarios / OR-01 through OR-24 | Runtime suite covers child-process graceful shutdown, hard crash recovery, retry/backoff, dead letters, reprocessing, execution-control/Guardian fail-closed behavior, reconciliation/UNKNOWN recovery, scheduler leadership/missed runs, household isolation, audit attribution, and queue/scheduler metrics; isolated certification command is blocked because `CAPITAL_OS_CERTIFICATION_DB_URL` is not configured |
 
 ## Current gate matrix
 
 | Gate | Previous result | Current implementation | Runtime test/evidence | Current result | Evidence |
 |---|---|---|---|---|---|
-| Tenant / IDOR | PARTIAL PASS | Actor-scoped initialization is present across the reviewed modules; complete current 141-route adversarial coverage is not certified against a dedicated release target | Current development fixture passed the expanded route inventory; isolated production-candidate target remains unavailable | **PARTIAL** | `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`; `artifacts/api-server/src/integration/p0-http.test.ts` |
+| Tenant / IDOR | PARTIAL PASS | Actor-scoped initialization is present across the reviewed modules; complete current 142-route adversarial coverage is not certified against a dedicated release target | Current development fixture passed the expanded route inventory; isolated production-candidate target remains unavailable | **PARTIAL** | `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`; `artifacts/api-server/src/integration/p0-http.test.ts` |
 | Treasury | Not closed | Actor-scoped reads, advisor redaction, locked decisions, linked planning reservations, replay handling, and decision audit are present | PostgreSQL suite passed advisor redaction, owner approval, one reservation, audit attribution, exact replay, and conflicting replay rejection | **PARTIAL** | `artifacts/api-server/src/services/treasury.ts`; `artifacts/api-server/src/integration/p0-http.test.ts` |
 | Manual finance | Not closed | Manual review lifecycle and downstream recalculation are implemented | PostgreSQL suite passed create → review → approve/reject → fresh read → budget/cash-flow/Safe-to-Deploy recalculation | **PASS** | `artifacts/api-server/src/integration/p0-http.test.ts`; current 99/99 run |
 | Authenticated browser E2E | BLOCKED | Clerk onboarding, saved-write reload, sign-out, repeat sign-in, and second-household isolation are evidenced | Historical authenticated browser run passed the documented P0-05 journey; broader role and recent-auth journey is not complete | **BLOCKED** | `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md` |
 | Clerk reverification | BLOCKED | Provider-supported reverification implementation exists | No current provider UI, successful retry, and post-reverification authorization evidence | **BLOCKED** | `docs/PRODUCTION_RELEASE_GATE.md`; internal reliability output |
 | Migration upgrade | BLOCKED | Historical schema artifact and additive upgrade path are committed | Disposable branch upgrade preserved representative data, constraints, ownership, balances, and audit actor; current rerun is blocked because no disposable certification DB URL is configured | **PASS** | `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`; `scripts/certify-migrations.mjs` |
 | Backup / restore | BLOCKED | Refusal-first verifier only | No approved managed backup, isolated restore, RPO/RTO observation, or restored invariant query | **BLOCKED** | `scripts/verify-future-restore.mjs`; `docs/CAPITAL_OS_INTERNAL_RELIABILITY.md` |
-| Worker / scheduler | BLOCKED | Durable job schema, lease-owner fencing, retry/dead-letter lifecycle, scheduler leadership, and opt-in runtime loops exist | Five isolated PostgreSQL scenarios pass; graceful shutdown, hard-crash recovery, full retry/backoff, STOP/Guardian/reconciliation integration, audit attribution, and queue/scheduler metric certification remain open | **PARTIAL** | `artifacts/api-server/src/services/operations.ts`; `artifacts/api-server/src/services/operations-scheduler.ts`; `artifacts/api-server/src/integration/operations-recovery.test.ts`; `scripts/certify-operations-recovery.mjs` |
+| Worker / scheduler | BLOCKED | Durable job schema, lease-owner fencing, retry/dead-letter lifecycle, scheduler leadership, opt-in runtime loops, lifecycle audit events, and runtime metrics exist | All OR-01 through OR-24 scenarios pass on the available development PostgreSQL target; the fail-closed certification command cannot run until an isolated disposable PostgreSQL target is configured | **PARTIAL** | `artifacts/api-server/src/services/operations.ts`; `artifacts/api-server/src/services/operations-scheduler.ts`; `artifacts/api-server/src/integration/operations-recovery-certification.test.ts`; `scripts/certify-operations-recovery.mjs` |
 | Observability | PARTIAL | Metric names, thresholds, and reliability domain checks exist | No concrete telemetry exporter or named destination receiving a synthetic critical alert | **PARTIAL** | `artifacts/api-server/src/domain/reliability.ts`; `docs/CAPITAL_OS_INTERNAL_RELIABILITY.md` |
 | Accounting | PARTIAL | Exact-cents and cross-view separation controls exist | Hardcoded/incomplete liabilities, real estate, investment, withdrawal, fee, tax, and return-on-capital values remain | **PARTIAL** | `artifacts/api-server/src/services/accounting.ts` |
 | Safe-to-Deploy | PARTIAL | Conservative calculation and manual-review exclusions exist | Domain and finance tests pass, but the complete cross-domain exclusion invariant suite is not certified | **PARTIAL** | `artifacts/api-server/src/services/household-finance.ts`; `artifacts/api-server/src/domain/household-finance.test.ts` |
@@ -130,7 +131,7 @@ The API has liveness/readiness separation, structured logs, correlation IDs, and
 fail-closed database-backed safety checks. The following are not certified:
 
 - Managed backup and restore
-- Durable worker/scheduler execution and restart recovery
+- Isolated certification of durable worker/scheduler execution and restart recovery
 - Named alert delivery
 - Full telemetry export and queue-lag visibility
 - Provider-backed banking delivery
@@ -153,6 +154,7 @@ fail-closed database-backed safety checks. The following are not certified:
 Capital OS is approved only for controlled internal evaluation within the
 non-executing family-capital scope. The highest-priority unresolved blockers are:
 
-> Complete the infrastructure-backed recovery evidence (managed restore, worker
-> restart recovery, and named critical-alert delivery) before any broader
-> release decision.
+> Configure an isolated disposable PostgreSQL certification target and execute the
+> now-complete OR-01 through OR-24 recovery suite; managed restore and named
+> critical-alert delivery remain separate blockers before any broader release
+> decision.

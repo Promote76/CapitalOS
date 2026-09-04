@@ -9,6 +9,12 @@ Release gates must close only from observed execution against isolated certifica
 
 **How to apply:** Keep the release decision NOT READY while any required gate is unexecuted. Certification wrappers should report a successful guarded migration as closed and list only the genuinely remaining external gates.
 
+The Operations Recovery suite can prove all OR-01 through OR-24 behaviors on a development database, but Worker/Scheduler remains PARTIAL until the same suite runs against a separately configured disposable PostgreSQL target.
+
+**Why:** The fail-closed operations runner intentionally refuses to treat an ambient development `DATABASE_URL` as isolated certification infrastructure.
+
+**How to apply:** Configure `CAPITAL_OS_CERTIFICATION_DB_URL` for a fresh target, run `pnpm run certify:operations-recovery`, retain the per-gate output, and only then close the Worker/Scheduler gate.
+
 Before using a historical SQL artifact for certification, compare it byte-for-byte with the output generated from the approved historical source; table counts alone can miss omitted constraints.
 
 **Why:** A manually assembled snapshot initially omitted one foreign-key statement even though its table and index counts looked plausible.

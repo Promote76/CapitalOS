@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { randomUUID } from "node:crypto";
 import { db } from "@workspace/db";
-import { auditEvents, households, operationsJobs, operationsSchedulers } from "@workspace/db/schema";
+import { households, operationsJobs, operationsSchedulers } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
 import { enqueueOperationsJob, claimNextOperationsJob, recoverStaleOperationsJobs, heartbeatOperationsWorker, failOperationsJob, reprocessOperationsJob } from "../services/operations.ts";
 import { runOperationsSchedulerTick } from "../services/operations-scheduler.ts";
@@ -12,8 +12,9 @@ const enabled = process.env.CAPITAL_OS_RUN_INTEGRATION === "1" && Boolean(proces
 const suite = enabled ? describe : describe.skip;
 
 async function cleanupHousehold(householdId: string) {
-  await db.delete(auditEvents).where(eq(auditEvents.householdId, householdId));
-  await db.delete(households).where(eq(households.id, householdId));
+  // Certification targets are disposable. Audit history is intentionally
+  // append-only and retains the lifecycle evidence, so fixture rows remain
+  // until the isolated database itself is discarded.
 }
 
 suite("durable operations recovery (isolated PostgreSQL)", () => {

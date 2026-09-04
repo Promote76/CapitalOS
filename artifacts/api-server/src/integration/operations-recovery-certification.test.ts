@@ -89,8 +89,9 @@ async function fixture(label: string): Promise<Fixture> {
 }
 
 async function cleanup(home: Fixture) {
-  await db.delete(auditEvents).where(sql`${auditEvents.householdId} in (${home.householdId}, ${home.otherActor.householdId})`);
-  await db.delete(households).where(sql`${households.id} in (${home.householdId}, ${home.otherActor.householdId})`);
+  // Certification targets are disposable. Audit history is intentionally
+  // append-only and retains the lifecycle evidence, so fixture rows remain
+  // until the isolated database itself is discarded.
 }
 
 async function claimAndStart(householdId: string, workerId: string, jobId?: string) {

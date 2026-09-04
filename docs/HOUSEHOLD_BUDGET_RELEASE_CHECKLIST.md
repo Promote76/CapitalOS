@@ -43,17 +43,20 @@ This release activates household budgeting as a private, read-only planning surf
 - [ ] The production frontend build passes with the artifact environment.
 - [ ] Both affected workflows restart cleanly and the authenticated preview route renders without browser errors.
 
-## Separate future gate: read-only bank synchronization
+## Separate opt-in gate: read-only bank synchronization
 
-Do not enable this feature as part of the current release. It requires a separate review and release decision covering:
+The synchronization boundary is implemented, but remains disabled for production until a provider is approved and the release evidence below is accepted. The current default release still uses manual balances and CSV history.
 
-- an approved provider connection and server-side token handling;
-- explicit household consent, revocation, and reauthorization behavior;
-- provider webhook or polling freshness, outage, and rate-limit handling;
-- account matching and duplicate-safe transaction reconciliation;
-- review queues for pending, transferred, business, and ambiguous transactions;
-- deletion/export behavior for provider-derived data;
-- tenant-isolation, audit-attribution, and recovery certification using provider failure fixtures.
+- [x] Provider adapter contract is explicitly read-only; no bill pay, transfers, ACH, automatic payments, trading, or lender actions are exposed.
+- [x] Consent is explicit, household-scoped, revocable, and attributed to the authenticated actor.
+- [x] Credentials never enter client request/response payloads; only an opaque server-side credential reference is retained.
+- [x] Account linking requires an explicit household match; unmatched accounts and balance discrepancies stop the sync before applying data.
+- [x] Provider transactions are tenant-scoped, duplicate-safe, cursor-based, and kept in the existing review queue when pending or ambiguous.
+- [x] Provider outage, rate limit, stale snapshot, revocation, export, and provider-data deletion states are persisted and recoverable.
+- [x] Provider-derived rows cannot mutate the internal capital ledger; audit events record consent, linking, sync, revocation, and deletion.
+- [x] Isolated provider failure fixture passes with server typecheck and API contract parity.
+- [ ] Approve and bind a production provider connection with server-side token handling; do not substitute a fixture for this evidence.
+- [ ] Run the approved provider's webhook/polling recovery, tenant-isolation, clean migration, and authenticated browser certification before enabling the feature.
 
 ## Separate future gate: action features
 

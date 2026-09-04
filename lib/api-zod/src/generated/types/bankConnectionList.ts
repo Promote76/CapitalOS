@@ -6,12 +6,8 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { BankConnection } from './bankConnection';
-import type { FinancialAccount } from './financialAccount';
-import type { FinancialAccountsSummaryTotals } from './financialAccountsSummaryTotals';
 
-export interface FinancialAccountsSummary {
+export interface BankConnectionList {
   readOnly: boolean;
-  accounts: FinancialAccount[];
   connections: BankConnection[];
-  totals: FinancialAccountsSummaryTotals;
 }

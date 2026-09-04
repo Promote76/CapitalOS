@@ -6,11 +6,11 @@
  * OpenAPI spec version: 0.3.0
  */
 
-export type FinancialAccountsSummaryConnectionsItem = {
+export type BankConnectionExportAccountsItem = {
   id: string;
-  provider: string;
-  status: string;
-  institutionName: string;
+  institution: string;
+  nickname: string;
+  accountType: string;
   /** @nullable */
-  lastSuccessfulSync?: Date | null;
+  providerAccountRef: string | null;
 };

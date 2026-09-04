@@ -29,6 +29,12 @@ import type {
   ArmMicroLive200,
   AuditEventSummary,
   BadRequestResponse,
+  BankAccountLinkInput,
+  BankConnection,
+  BankConnectionDeleteResult,
+  BankConnectionExport,
+  BankConnectionList,
+  BankSyncResult,
   BankingStatus,
   Bill,
   BillInput,
@@ -133,6 +139,7 @@ import type {
   PropertyNoteInput,
   PropertySummary,
   PropertyUnderwriting,
+  ReadOnlyBankConnectionInput,
   RecommendationDecisionInput,
   RecommendationFeedback,
   RecommendationSummary,
@@ -6821,6 +6828,516 @@ export function useGetBankingStatus<TData = Awaited<ReturnType<typeof getBanking
 
 
 
+
+export const getListReadOnlyBankConnectionsUrl = () => {
+
+
+
+
+  return `/api/banking/connections`
+}
+
+/**
+ * @summary List household bank connections without exposing credentials
+ */
+export const listReadOnlyBankConnections = async ( options?: Parameters<typeof customFetch>[1]): Promise<BankConnectionList> => {
+
+  return customFetch<BankConnectionList>(getListReadOnlyBankConnectionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListReadOnlyBankConnectionsQueryKey = () => {
+    return [
+    `/api/banking/connections`
+    ] as const;
+    }
+
+
+export const getListReadOnlyBankConnectionsQueryOptions = <TData = Awaited<ReturnType<typeof listReadOnlyBankConnections>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReadOnlyBankConnections>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListReadOnlyBankConnectionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listReadOnlyBankConnections>>> = ({ signal }) => listReadOnlyBankConnections({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listReadOnlyBankConnections>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListReadOnlyBankConnectionsQueryResult = NonNullable<Awaited<ReturnType<typeof listReadOnlyBankConnections>>>
+export type ListReadOnlyBankConnectionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List household bank connections without exposing credentials
+ */
+
+export function useListReadOnlyBankConnections<TData = Awaited<ReturnType<typeof listReadOnlyBankConnections>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReadOnlyBankConnections>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListReadOnlyBankConnectionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateReadOnlyBankConnectionUrl = () => {
+
+
+
+
+  return `/api/banking/connections`
+}
+
+/**
+ * @summary Create a consented read-only bank connection
+ */
+export const createReadOnlyBankConnection = async (readOnlyBankConnectionInput: ReadOnlyBankConnectionInput, options?: Parameters<typeof customFetch>[1]): Promise<BankConnection> => {
+
+  return customFetch<BankConnection>(getCreateReadOnlyBankConnectionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(readOnlyBankConnectionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateReadOnlyBankConnectionMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createReadOnlyBankConnection>>, TError,{data: BodyType<ReadOnlyBankConnectionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createReadOnlyBankConnection>>, TError,{data: BodyType<ReadOnlyBankConnectionInput>}, TContext> => {
+
+const mutationKey = ['createReadOnlyBankConnection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createReadOnlyBankConnection>>, {data: BodyType<ReadOnlyBankConnectionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createReadOnlyBankConnection(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateReadOnlyBankConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof createReadOnlyBankConnection>>>
+    export type CreateReadOnlyBankConnectionMutationBody = BodyType<ReadOnlyBankConnectionInput>
+    export type CreateReadOnlyBankConnectionMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Create a consented read-only bank connection
+ */
+export const useCreateReadOnlyBankConnection = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createReadOnlyBankConnection>>, TError,{data: BodyType<ReadOnlyBankConnectionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createReadOnlyBankConnection>>,
+        TError,
+        {data: BodyType<ReadOnlyBankConnectionInput>},
+        TContext
+      > => {
+      return useMutation(getCreateReadOnlyBankConnectionMutationOptions(options));
+    }
+
+export const getLinkReadOnlyBankAccountUrl = (connectionId: string,) => {
+
+
+
+
+  return `/api/banking/connections/${connectionId}/link-account`
+}
+
+/**
+ * @summary Explicitly match a provider account to an existing planning account
+ */
+export const linkReadOnlyBankAccount = async (connectionId: string,
+    bankAccountLinkInput: BankAccountLinkInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancialAccount> => {
+
+  return customFetch<FinancialAccount>(getLinkReadOnlyBankAccountUrl(connectionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(bankAccountLinkInput)
+  }
+);}
+
+
+
+
+
+export const getLinkReadOnlyBankAccountMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkReadOnlyBankAccount>>, TError,{connectionId: string;data: BodyType<BankAccountLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkReadOnlyBankAccount>>, TError,{connectionId: string;data: BodyType<BankAccountLinkInput>}, TContext> => {
+
+const mutationKey = ['linkReadOnlyBankAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkReadOnlyBankAccount>>, {connectionId: string;data: BodyType<BankAccountLinkInput>}> = (props) => {
+          const {connectionId,data} = props ?? {};
+
+          return  linkReadOnlyBankAccount(connectionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LinkReadOnlyBankAccountMutationResult = NonNullable<Awaited<ReturnType<typeof linkReadOnlyBankAccount>>>
+    export type LinkReadOnlyBankAccountMutationBody = BodyType<BankAccountLinkInput>
+    export type LinkReadOnlyBankAccountMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Explicitly match a provider account to an existing planning account
+ */
+export const useLinkReadOnlyBankAccount = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkReadOnlyBankAccount>>, TError,{connectionId: string;data: BodyType<BankAccountLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof linkReadOnlyBankAccount>>,
+        TError,
+        {connectionId: string;data: BodyType<BankAccountLinkInput>},
+        TContext
+      > => {
+      return useMutation(getLinkReadOnlyBankAccountMutationOptions(options));
+    }
+
+export const getSyncReadOnlyBankConnectionUrl = (connectionId: string,) => {
+
+
+
+
+  return `/api/banking/connections/${connectionId}/sync`
+}
+
+/**
+ * @summary Poll a consented bank connection through its read-only provider
+ */
+export const syncReadOnlyBankConnection = async (connectionId: string, options?: Parameters<typeof customFetch>[1]): Promise<BankSyncResult> => {
+
+  return customFetch<BankSyncResult>(getSyncReadOnlyBankConnectionUrl(connectionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSyncReadOnlyBankConnectionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncReadOnlyBankConnection>>, TError,{connectionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncReadOnlyBankConnection>>, TError,{connectionId: string}, TContext> => {
+
+const mutationKey = ['syncReadOnlyBankConnection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncReadOnlyBankConnection>>, {connectionId: string}> = (props) => {
+          const {connectionId} = props ?? {};
+
+          return  syncReadOnlyBankConnection(connectionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncReadOnlyBankConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof syncReadOnlyBankConnection>>>
+
+    export type SyncReadOnlyBankConnectionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Poll a consented bank connection through its read-only provider
+ */
+export const useSyncReadOnlyBankConnection = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncReadOnlyBankConnection>>, TError,{connectionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncReadOnlyBankConnection>>,
+        TError,
+        {connectionId: string},
+        TContext
+      > => {
+      return useMutation(getSyncReadOnlyBankConnectionMutationOptions(options));
+    }
+
+export const getRevokeReadOnlyBankConnectionUrl = (connectionId: string,) => {
+
+
+
+
+  return `/api/banking/connections/${connectionId}/revoke`
+}
+
+/**
+ * @summary Revoke household consent for a read-only bank connection
+ */
+export const revokeReadOnlyBankConnection = async (connectionId: string, options?: Parameters<typeof customFetch>[1]): Promise<BankConnection> => {
+
+  return customFetch<BankConnection>(getRevokeReadOnlyBankConnectionUrl(connectionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRevokeReadOnlyBankConnectionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeReadOnlyBankConnection>>, TError,{connectionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeReadOnlyBankConnection>>, TError,{connectionId: string}, TContext> => {
+
+const mutationKey = ['revokeReadOnlyBankConnection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeReadOnlyBankConnection>>, {connectionId: string}> = (props) => {
+          const {connectionId} = props ?? {};
+
+          return  revokeReadOnlyBankConnection(connectionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeReadOnlyBankConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof revokeReadOnlyBankConnection>>>
+
+    export type RevokeReadOnlyBankConnectionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Revoke household consent for a read-only bank connection
+ */
+export const useRevokeReadOnlyBankConnection = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeReadOnlyBankConnection>>, TError,{connectionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokeReadOnlyBankConnection>>,
+        TError,
+        {connectionId: string},
+        TContext
+      > => {
+      return useMutation(getRevokeReadOnlyBankConnectionMutationOptions(options));
+    }
+
+export const getExportReadOnlyBankConnectionUrl = (connectionId: string,) => {
+
+
+
+
+  return `/api/banking/connections/${connectionId}/export`
+}
+
+/**
+ * @summary Export provider-derived bank data without credentials
+ */
+export const exportReadOnlyBankConnection = async (connectionId: string, options?: Parameters<typeof customFetch>[1]): Promise<BankConnectionExport> => {
+
+  return customFetch<BankConnectionExport>(getExportReadOnlyBankConnectionUrl(connectionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportReadOnlyBankConnectionQueryKey = (connectionId: string,) => {
+    return [
+    `/api/banking/connections/${connectionId}/export`
+    ] as const;
+    }
+
+
+export const getExportReadOnlyBankConnectionQueryOptions = <TData = Awaited<ReturnType<typeof exportReadOnlyBankConnection>>, TError = ErrorType<unknown>>(connectionId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportReadOnlyBankConnection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportReadOnlyBankConnectionQueryKey(connectionId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportReadOnlyBankConnection>>> = ({ signal }) => exportReadOnlyBankConnection(connectionId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: connectionId !== null && connectionId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportReadOnlyBankConnection>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportReadOnlyBankConnectionQueryResult = NonNullable<Awaited<ReturnType<typeof exportReadOnlyBankConnection>>>
+export type ExportReadOnlyBankConnectionQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Export provider-derived bank data without credentials
+ */
+
+export function useExportReadOnlyBankConnection<TData = Awaited<ReturnType<typeof exportReadOnlyBankConnection>>, TError = ErrorType<unknown>>(
+ connectionId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportReadOnlyBankConnection>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportReadOnlyBankConnectionQueryOptions(connectionId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeleteReadOnlyBankConnectionDataUrl = (connectionId: string,) => {
+
+
+
+
+  return `/api/banking/connections/${connectionId}/data`
+}
+
+/**
+ * @summary Delete provider-derived data and credentials for a bank connection
+ */
+export const deleteReadOnlyBankConnectionData = async (connectionId: string, options?: Parameters<typeof customFetch>[1]): Promise<BankConnectionDeleteResult> => {
+
+  return customFetch<BankConnectionDeleteResult>(getDeleteReadOnlyBankConnectionDataUrl(connectionId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteReadOnlyBankConnectionDataMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteReadOnlyBankConnectionData>>, TError,{connectionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteReadOnlyBankConnectionData>>, TError,{connectionId: string}, TContext> => {
+
+const mutationKey = ['deleteReadOnlyBankConnectionData'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteReadOnlyBankConnectionData>>, {connectionId: string}> = (props) => {
+          const {connectionId} = props ?? {};
+
+          return  deleteReadOnlyBankConnectionData(connectionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteReadOnlyBankConnectionDataMutationResult = NonNullable<Awaited<ReturnType<typeof deleteReadOnlyBankConnectionData>>>
+
+    export type DeleteReadOnlyBankConnectionDataMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete provider-derived data and credentials for a bank connection
+ */
+export const useDeleteReadOnlyBankConnectionData = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteReadOnlyBankConnectionData>>, TError,{connectionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteReadOnlyBankConnectionData>>,
+        TError,
+        {connectionId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteReadOnlyBankConnectionDataMutationOptions(options));
+    }
 
 export const getGetTreasuryUrl = () => {
 

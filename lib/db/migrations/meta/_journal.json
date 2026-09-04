@@ -22,6 +22,13 @@
       "when": 1788431446492,
       "tag": "0002_micro_live_oms",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788435950286,
+      "tag": "0003_amusing_madame_hydra",
+      "breakpoints": true
     }
   ]
 }

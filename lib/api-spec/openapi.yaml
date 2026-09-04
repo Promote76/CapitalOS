@@ -1413,6 +1413,103 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/BankingStatus" }
+  /banking/connections:
+    get:
+      operationId: listReadOnlyBankConnections
+      tags: [household-finance]
+      summary: List household bank connections without exposing credentials
+      responses:
+        "200":
+          description: Household-scoped read-only bank connections
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BankConnectionList" }
+    post:
+      operationId: createReadOnlyBankConnection
+      tags: [household-finance]
+      summary: Create a consented read-only bank connection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReadOnlyBankConnectionInput" }
+      responses:
+        "201":
+          description: Consented bank connection
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BankConnection" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /banking/connections/{connectionId}/link-account:
+    post:
+      operationId: linkReadOnlyBankAccount
+      tags: [household-finance]
+      summary: Explicitly match a provider account to an existing planning account
+      parameters:
+        - $ref: "#/components/parameters/BankingConnectionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BankAccountLinkInput" }
+      responses:
+        "200":
+          description: Linked financial account
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FinancialAccount" }
+  /banking/connections/{connectionId}/sync:
+    post:
+      operationId: syncReadOnlyBankConnection
+      tags: [household-finance]
+      summary: Poll a consented bank connection through its read-only provider
+      parameters:
+        - $ref: "#/components/parameters/BankingConnectionId"
+      responses:
+        "200":
+          description: Sync result and reconciliation gate
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BankSyncResult" }
+  /banking/connections/{connectionId}/revoke:
+    post:
+      operationId: revokeReadOnlyBankConnection
+      tags: [household-finance]
+      summary: Revoke household consent for a read-only bank connection
+      parameters:
+        - $ref: "#/components/parameters/BankingConnectionId"
+      responses:
+        "200":
+          description: Revoked bank connection
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BankConnection" }
+  /banking/connections/{connectionId}/export:
+    get:
+      operationId: exportReadOnlyBankConnection
+      tags: [household-finance]
+      summary: Export provider-derived bank data without credentials
+      parameters:
+        - $ref: "#/components/parameters/BankingConnectionId"
+      responses:
+        "200":
+          description: Provider-derived data export
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BankConnectionExport" }
+  /banking/connections/{connectionId}/data:
+    delete:
+      operationId: deleteReadOnlyBankConnectionData
+      tags: [household-finance]
+      summary: Delete provider-derived data and credentials for a bank connection
+      parameters:
+        - $ref: "#/components/parameters/BankingConnectionId"
+      responses:
+        "200":
+          description: Provider-derived data deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BankConnectionDeleteResult" }
   /treasury:
     get:
       operationId: getTreasury
@@ -2005,6 +2102,13 @@ components:
         pattern: "^[0-9a-fA-F-]{36}$"
     FinancialTransactionId:
       name: transactionId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[0-9a-fA-F-]{36}$"
+    BankingConnectionId:
+      name: connectionId
       in: path
       required: true
       schema:
@@ -3498,15 +3602,7 @@ components:
           items: { $ref: "#/components/schemas/FinancialAccount" }
         connections:
           type: array
-          items:
-            type: object
-            required: [id, provider, status, institutionName]
-            properties:
-              id: { type: string }
-              provider: { type: string }
-              status: { type: string }
-              institutionName: { type: string }
-              lastSuccessfulSync: { type: ["string", "null"], format: date-time }
+          items: { $ref: "#/components/schemas/BankConnection" }
         totals:
           type: object
           required: [visibleBalance, accountCount]
@@ -3752,6 +3848,100 @@ components:
               provider: { type: string }
               enabled: { type: boolean }
               readOnly: { type: boolean }
+    BankConnection:
+      type: object
+      required: [id, provider, status, consentStatus, institutionName, credentialStored, reconciliationStatus, reconciliationDifference]
+      properties:
+        id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        provider: { type: string }
+        status: { type: string }
+        consentStatus: { type: string, enum: [pending, granted, revoked] }
+        institutionName: { type: string }
+        credentialStored: { type: boolean }
+        lastSuccessfulSync: { type: ["string", "null"], format: date-time }
+        lastSyncAttempt: { type: ["string", "null"], format: date-time }
+        providerAsOf: { type: ["string", "null"], format: date-time }
+        reconciliationStatus: { type: string, enum: [not_run, matched, review, stale, outage, rate_limited, revoked] }
+        reconciliationDifference: { type: string }
+        errorMessage: { type: ["string", "null"] }
+    BankConnectionList:
+      type: object
+      required: [readOnly, connections]
+      properties:
+        readOnly: { type: boolean }
+        connections:
+          type: array
+          items: { $ref: "#/components/schemas/BankConnection" }
+    ReadOnlyBankConnectionInput:
+      type: object
+      required: [provider, institutionName, providerConnectionRef, consent]
+      properties:
+        provider: { type: string, minLength: 1, maxLength: 80 }
+        institutionName: { type: string, minLength: 1, maxLength: 160 }
+        providerConnectionRef: { type: string, minLength: 1, maxLength: 240 }
+        consent: { type: boolean, enum: [true] }
+    BankAccountLinkInput:
+      type: object
+      required: [accountId, providerAccountRef]
+      properties:
+        accountId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        providerAccountRef: { type: string, minLength: 1, maxLength: 240 }
+    BankSyncResult:
+      type: object
+      required: [connectionId, readOnly, status, applied, inserted, updated, duplicates, reviewCount, removed, reconciliationDifference]
+      properties:
+        connectionId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        readOnly: { type: boolean }
+        status: { type: string, enum: [matched, review, stale, outage, rate_limited, revoked] }
+        applied: { type: boolean }
+        inserted: { type: number }
+        updated: { type: number }
+        duplicates: { type: number }
+        reviewCount: { type: number }
+        removed: { type: number }
+        providerAsOf: { type: ["string", "null"], format: date-time }
+        reconciliationDifference: { type: string }
+        errorMessage: { type: ["string", "null"] }
+    BankConnectionExport:
+      type: object
+      required: [readOnly, connection, accounts, transactions]
+      properties:
+        readOnly: { type: boolean }
+        connection: { $ref: "#/components/schemas/BankConnection" }
+        accounts:
+          type: array
+          items:
+            type: object
+            required: [id, institution, nickname, accountType, providerAccountRef]
+            properties:
+              id: { type: string }
+              institution: { type: string }
+              nickname: { type: string }
+              accountType: { type: string }
+              providerAccountRef: { type: ["string", "null"] }
+        transactions:
+          type: array
+          items:
+            type: object
+            required: [id, accountId, externalId, transactionDate, description, merchant, amount, pending, reviewStatus]
+            properties:
+              id: { type: string }
+              accountId: { type: string }
+              externalId: { type: ["string", "null"] }
+              transactionDate: { type: string, format: date }
+              description: { type: string }
+              merchant: { type: ["string", "null"] }
+              amount: { type: string }
+              pending: { type: boolean }
+              reviewStatus: { type: string }
+    BankConnectionDeleteResult:
+      type: object
+      required: [deleted, readOnly, connectionId, unlinkedAccounts]
+      properties:
+        deleted: { type: boolean }
+        readOnly: { type: boolean }
+        connectionId: { type: string }
+        unlinkedAccounts: { type: number }
     FinanceSnapshot:
       type: object
       required: [id, householdId, snapshotDate, grossInflow, essentialOutflow, discretionaryOutflow, debtService, savingsContributions, investmentContributions, netCashFlow, freeCashFlow, safeToDeploy, safeToDeployConfidence, financialHealthScore, budgetPerformance, createdAt]

@@ -153,6 +153,22 @@ export const bankConnectionStatusEnum = pgEnum("bank_connection_status", [
   "error",
 ]);
 
+export const bankConsentStatusEnum = pgEnum("bank_consent_status", [
+  "pending",
+  "granted",
+  "revoked",
+]);
+
+export const bankReconciliationStatusEnum = pgEnum("bank_reconciliation_status", [
+  "not_run",
+  "matched",
+  "review",
+  "stale",
+  "outage",
+  "rate_limited",
+  "revoked",
+]);
+
 export const financeDataSourceEnum = pgEnum("finance_data_source", [
   "plaid",
   "manual",

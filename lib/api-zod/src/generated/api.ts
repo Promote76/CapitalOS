@@ -2282,6 +2282,9 @@ export const GetCashFlowResponse = zod.object({
 /**
  * @summary List read-only household financial accounts
  */
+export const listFinancialAccountsResponseConnectionsItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
 export const ListFinancialAccountsResponse = zod.object({
   "readOnly": zod.boolean(),
   "accounts": zod.array(zod.object({
@@ -2300,11 +2303,18 @@ export const ListFinancialAccountsResponse = zod.object({
   "restricted": zod.boolean()
 })),
   "connections": zod.array(zod.object({
-  "id": zod.string(),
+  "id": zod.string().regex(listFinancialAccountsResponseConnectionsItemIdRegExp),
   "provider": zod.string(),
   "status": zod.string(),
+  "consentStatus": zod.enum(['pending', 'granted', 'revoked']),
   "institutionName": zod.string(),
-  "lastSuccessfulSync": zod.coerce.date().nullish()
+  "credentialStored": zod.boolean(),
+  "lastSuccessfulSync": zod.coerce.date().nullish(),
+  "lastSyncAttempt": zod.coerce.date().nullish(),
+  "providerAsOf": zod.coerce.date().nullish(),
+  "reconciliationStatus": zod.enum(['not_run', 'matched', 'review', 'stale', 'outage', 'rate_limited', 'revoked']),
+  "reconciliationDifference": zod.string(),
+  "errorMessage": zod.string().nullish()
 })),
   "totals": zod.object({
   "visibleBalance": zod.string(),
@@ -3002,6 +3012,231 @@ export const GetBankingStatusResponse = zod.object({
   "enabled": zod.boolean(),
   "readOnly": zod.boolean()
 }))
+})
+
+
+/**
+ * @summary List household bank connections without exposing credentials
+ */
+export const listReadOnlyBankConnectionsResponseConnectionsItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ListReadOnlyBankConnectionsResponse = zod.object({
+  "readOnly": zod.boolean(),
+  "connections": zod.array(zod.object({
+  "id": zod.string().regex(listReadOnlyBankConnectionsResponseConnectionsItemIdRegExp),
+  "provider": zod.string(),
+  "status": zod.string(),
+  "consentStatus": zod.enum(['pending', 'granted', 'revoked']),
+  "institutionName": zod.string(),
+  "credentialStored": zod.boolean(),
+  "lastSuccessfulSync": zod.coerce.date().nullish(),
+  "lastSyncAttempt": zod.coerce.date().nullish(),
+  "providerAsOf": zod.coerce.date().nullish(),
+  "reconciliationStatus": zod.enum(['not_run', 'matched', 'review', 'stale', 'outage', 'rate_limited', 'revoked']),
+  "reconciliationDifference": zod.string(),
+  "errorMessage": zod.string().nullish()
+}))
+})
+
+
+/**
+ * @summary Create a consented read-only bank connection
+ */
+export const createReadOnlyBankConnectionBodyProviderMax = 80;
+
+export const createReadOnlyBankConnectionBodyInstitutionNameMax = 160;
+
+export const createReadOnlyBankConnectionBodyProviderConnectionRefMax = 240;
+
+
+
+export const CreateReadOnlyBankConnectionBody = zod.object({
+  "provider": zod.string().min(1).max(createReadOnlyBankConnectionBodyProviderMax),
+  "institutionName": zod.string().min(1).max(createReadOnlyBankConnectionBodyInstitutionNameMax),
+  "providerConnectionRef": zod.string().min(1).max(createReadOnlyBankConnectionBodyProviderConnectionRefMax),
+  "consent": zod.literal(true)
+})
+
+export const createReadOnlyBankConnectionResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const CreateReadOnlyBankConnectionResponse = zod.object({
+  "id": zod.string().regex(createReadOnlyBankConnectionResponseIdRegExp),
+  "provider": zod.string(),
+  "status": zod.string(),
+  "consentStatus": zod.enum(['pending', 'granted', 'revoked']),
+  "institutionName": zod.string(),
+  "credentialStored": zod.boolean(),
+  "lastSuccessfulSync": zod.coerce.date().nullish(),
+  "lastSyncAttempt": zod.coerce.date().nullish(),
+  "providerAsOf": zod.coerce.date().nullish(),
+  "reconciliationStatus": zod.enum(['not_run', 'matched', 'review', 'stale', 'outage', 'rate_limited', 'revoked']),
+  "reconciliationDifference": zod.string(),
+  "errorMessage": zod.string().nullish()
+})
+
+
+/**
+ * @summary Explicitly match a provider account to an existing planning account
+ */
+export const linkReadOnlyBankAccountPathConnectionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const LinkReadOnlyBankAccountParams = zod.object({
+  "connectionId": zod.coerce.string().regex(linkReadOnlyBankAccountPathConnectionIdRegExp)
+})
+
+export const linkReadOnlyBankAccountBodyAccountIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const linkReadOnlyBankAccountBodyProviderAccountRefMax = 240;
+
+
+
+export const LinkReadOnlyBankAccountBody = zod.object({
+  "accountId": zod.string().regex(linkReadOnlyBankAccountBodyAccountIdRegExp),
+  "providerAccountRef": zod.string().min(1).max(linkReadOnlyBankAccountBodyProviderAccountRefMax)
+})
+
+export const LinkReadOnlyBankAccountResponse = zod.object({
+  "id": zod.string(),
+  "institution": zod.string(),
+  "nickname": zod.string(),
+  "accountType": zod.string(),
+  "currentBalance": zod.string().nullish(),
+  "availableBalance": zod.string().nullish(),
+  "connectionStatus": zod.string(),
+  "dataSource": zod.string(),
+  "lastSync": zod.coerce.date().nullish(),
+  "includedInNetWorth": zod.boolean(),
+  "includedInBudget": zod.boolean(),
+  "protected": zod.boolean(),
+  "restricted": zod.boolean()
+})
+
+
+/**
+ * @summary Poll a consented bank connection through its read-only provider
+ */
+export const syncReadOnlyBankConnectionPathConnectionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const SyncReadOnlyBankConnectionParams = zod.object({
+  "connectionId": zod.coerce.string().regex(syncReadOnlyBankConnectionPathConnectionIdRegExp)
+})
+
+export const syncReadOnlyBankConnectionResponseConnectionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const SyncReadOnlyBankConnectionResponse = zod.object({
+  "connectionId": zod.string().regex(syncReadOnlyBankConnectionResponseConnectionIdRegExp),
+  "readOnly": zod.boolean(),
+  "status": zod.enum(['matched', 'review', 'stale', 'outage', 'rate_limited', 'revoked']),
+  "applied": zod.boolean(),
+  "inserted": zod.number(),
+  "updated": zod.number(),
+  "duplicates": zod.number(),
+  "reviewCount": zod.number(),
+  "removed": zod.number(),
+  "providerAsOf": zod.coerce.date().nullish(),
+  "reconciliationDifference": zod.string(),
+  "errorMessage": zod.string().nullish()
+})
+
+
+/**
+ * @summary Revoke household consent for a read-only bank connection
+ */
+export const revokeReadOnlyBankConnectionPathConnectionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const RevokeReadOnlyBankConnectionParams = zod.object({
+  "connectionId": zod.coerce.string().regex(revokeReadOnlyBankConnectionPathConnectionIdRegExp)
+})
+
+export const revokeReadOnlyBankConnectionResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const RevokeReadOnlyBankConnectionResponse = zod.object({
+  "id": zod.string().regex(revokeReadOnlyBankConnectionResponseIdRegExp),
+  "provider": zod.string(),
+  "status": zod.string(),
+  "consentStatus": zod.enum(['pending', 'granted', 'revoked']),
+  "institutionName": zod.string(),
+  "credentialStored": zod.boolean(),
+  "lastSuccessfulSync": zod.coerce.date().nullish(),
+  "lastSyncAttempt": zod.coerce.date().nullish(),
+  "providerAsOf": zod.coerce.date().nullish(),
+  "reconciliationStatus": zod.enum(['not_run', 'matched', 'review', 'stale', 'outage', 'rate_limited', 'revoked']),
+  "reconciliationDifference": zod.string(),
+  "errorMessage": zod.string().nullish()
+})
+
+
+/**
+ * @summary Export provider-derived bank data without credentials
+ */
+export const exportReadOnlyBankConnectionPathConnectionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ExportReadOnlyBankConnectionParams = zod.object({
+  "connectionId": zod.coerce.string().regex(exportReadOnlyBankConnectionPathConnectionIdRegExp)
+})
+
+export const exportReadOnlyBankConnectionResponseConnectionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ExportReadOnlyBankConnectionResponse = zod.object({
+  "readOnly": zod.boolean(),
+  "connection": zod.object({
+  "id": zod.string().regex(exportReadOnlyBankConnectionResponseConnectionIdRegExp),
+  "provider": zod.string(),
+  "status": zod.string(),
+  "consentStatus": zod.enum(['pending', 'granted', 'revoked']),
+  "institutionName": zod.string(),
+  "credentialStored": zod.boolean(),
+  "lastSuccessfulSync": zod.coerce.date().nullish(),
+  "lastSyncAttempt": zod.coerce.date().nullish(),
+  "providerAsOf": zod.coerce.date().nullish(),
+  "reconciliationStatus": zod.enum(['not_run', 'matched', 'review', 'stale', 'outage', 'rate_limited', 'revoked']),
+  "reconciliationDifference": zod.string(),
+  "errorMessage": zod.string().nullish()
+}),
+  "accounts": zod.array(zod.object({
+  "id": zod.string(),
+  "institution": zod.string(),
+  "nickname": zod.string(),
+  "accountType": zod.string(),
+  "providerAccountRef": zod.string().nullable()
+})),
+  "transactions": zod.array(zod.object({
+  "id": zod.string(),
+  "accountId": zod.string(),
+  "externalId": zod.string().nullable(),
+  "transactionDate": zod.coerce.date(),
+  "description": zod.string(),
+  "merchant": zod.string().nullable(),
+  "amount": zod.string(),
+  "pending": zod.boolean(),
+  "reviewStatus": zod.string()
+}))
+})
+
+
+/**
+ * @summary Delete provider-derived data and credentials for a bank connection
+ */
+export const deleteReadOnlyBankConnectionDataPathConnectionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const DeleteReadOnlyBankConnectionDataParams = zod.object({
+  "connectionId": zod.coerce.string().regex(deleteReadOnlyBankConnectionDataPathConnectionIdRegExp)
+})
+
+export const DeleteReadOnlyBankConnectionDataResponse = zod.object({
+  "deleted": zod.boolean(),
+  "readOnly": zod.boolean(),
+  "connectionId": zod.string(),
+  "unlinkedAccounts": zod.number()
 })
 
 

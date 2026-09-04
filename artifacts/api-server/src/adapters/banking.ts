@@ -8,6 +8,54 @@ export type ImportedBankTransaction = {
   merchant?: string;
 };
 
+export type ProviderAccountSnapshot = {
+  providerAccountId: string;
+  name: string;
+  accountType: string;
+  currentBalance: string;
+  availableBalance?: string;
+};
+
+export type ProviderTransactionSnapshot = {
+  providerTransactionId: string;
+  providerAccountId: string;
+  transactionDate: string;
+  description: string;
+  amount: string;
+  merchant?: string;
+  pending?: boolean;
+  reviewHint?: "needs_review" | "possible_duplicate" | "possible_transfer" | "possible_business" | "possible_property";
+};
+
+export type BankSyncSnapshot = {
+  providerAsOf: string;
+  cursor?: string;
+  accounts: ProviderAccountSnapshot[];
+  transactions: ProviderTransactionSnapshot[];
+  removedTransactionIds?: string[];
+};
+
+export type BankingProviderErrorCode = "OUTAGE" | "RATE_LIMITED" | "UNAUTHENTICATED" | "INVALID_RESPONSE";
+
+export class BankingProviderError extends Error {
+  public readonly code: BankingProviderErrorCode;
+
+  constructor(
+    code: BankingProviderErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.code = code;
+    this.name = "BankingProviderError";
+  }
+}
+
+export interface ReadOnlyBankingProvider {
+  readonly provider: string;
+  readonly readOnly: true;
+  sync(input: { credentialRef: string; cursor?: string }): Promise<BankSyncSnapshot>;
+}
+
 export interface BankingAdapter {
   readonly provider: BankingProvider;
   readonly readOnly: true;
@@ -81,6 +129,21 @@ export const plaidBankingAdapter: BankingAdapter = {
   },
 };
 
+const readOnlyProviders = new Map<string, ReadOnlyBankingProvider>();
+
+export function registerReadOnlyBankingProvider(provider: ReadOnlyBankingProvider) {
+  if (!provider.readOnly) throw new Error("Banking providers must be read-only");
+  readOnlyProviders.set(provider.provider, provider);
+}
+
+export function unregisterReadOnlyBankingProvider(provider: string) {
+  readOnlyProviders.delete(provider);
+}
+
+export function getReadOnlyBankingProvider(provider: string) {
+  return readOnlyProviders.get(provider);
+}
+
 export const bankingAdapters = {
   manual: manualBankingAdapter,
   csv_import: csvImportBankingAdapter,
@@ -98,6 +161,6 @@ export function getBankingStatus() {
       enabled: adapter.enabled,
       readOnly: adapter.readOnly,
     })),
-    message: "Capital OS can read, import, and organize household finance data. It never moves money or stores bank credentials.",
+    message: "Capital OS can read, import, and organize household finance data. Provider credentials are server-side only, and no bank action or money movement is available.",
   };
 }

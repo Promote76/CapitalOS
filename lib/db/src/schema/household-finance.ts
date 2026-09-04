@@ -13,6 +13,8 @@ import {
 } from "drizzle-orm/pg-core";
 import {
   bankConnectionStatusEnum,
+  bankConsentStatusEnum,
+  bankReconciliationStatusEnum,
   billStatusEnum,
   budgetCategoryTypeEnum,
   businessTagEnum,
@@ -36,8 +38,17 @@ export const bankConnections = pgTable(
     householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
     provider: text("provider").notNull(),
     status: bankConnectionStatusEnum("status").notNull().default("manual"),
+    consentStatus: bankConsentStatusEnum("consent_status").notNull().default("pending"),
+    consentGrantedAt: timestamp("consent_granted_at", { withTimezone: true }),
+    consentRevokedAt: timestamp("consent_revoked_at", { withTimezone: true }),
+    consentActor: text("consent_actor"),
     institutionName: text("institution_name").notNull(),
     providerConnectionRef: text("provider_connection_ref"),
+    syncCursor: text("sync_cursor"),
+    providerAsOf: timestamp("provider_as_of", { withTimezone: true }),
+    reconciliationStatus: bankReconciliationStatusEnum("reconciliation_status").notNull().default("not_run"),
+    reconciliationDifference: numeric("reconciliation_difference", { precision: 18, scale: 2 }).notNull().default("0"),
+    lastSyncAttempt: timestamp("last_sync_attempt", { withTimezone: true }),
     lastSuccessfulSync: timestamp("last_successful_sync", { withTimezone: true }),
     lastBalanceRefresh: timestamp("last_balance_refresh", { withTimezone: true }),
     lastTransactionSync: timestamp("last_transaction_sync", { withTimezone: true }),
@@ -50,6 +61,50 @@ export const bankConnections = pgTable(
   }),
 );
 
+export const bankConnectionCredentials = pgTable(
+  "bank_connection_credentials",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    connectionId: uuid("connection_id").notNull().references(() => bankConnections.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    credentialRef: text("credential_ref").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (table) => ({
+    householdIdx: index("bank_connection_credentials_household_idx").on(table.householdId),
+    connectionUnique: uniqueIndex("bank_connection_credentials_connection_unique").on(table.connectionId),
+    credentialUnique: uniqueIndex("bank_connection_credentials_ref_unique").on(table.credentialRef),
+  }),
+);
+
+export const bankSyncRuns = pgTable(
+  "bank_sync_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    connectionId: uuid("connection_id").notNull().references(() => bankConnections.id, { onDelete: "cascade" }),
+    status: text("status").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    providerAsOf: timestamp("provider_as_of", { withTimezone: true }),
+    insertedCount: integer("inserted_count").notNull().default(0),
+    updatedCount: integer("updated_count").notNull().default(0),
+    duplicateCount: integer("duplicate_count").notNull().default(0),
+    reviewCount: integer("review_count").notNull().default(0),
+    removedCount: integer("removed_count").notNull().default(0),
+    reconciliationDifference: numeric("reconciliation_difference", { precision: 18, scale: 2 }).notNull().default("0"),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("bank_sync_runs_household_idx").on(table.householdId, table.startedAt),
+    connectionIdx: index("bank_sync_runs_connection_idx").on(table.connectionId, table.startedAt),
+  }),
+);
+
 export const financialAccounts = pgTable(
   "household_financial_accounts",
   {
@@ -58,6 +113,7 @@ export const financialAccounts = pgTable(
     bankConnectionId: uuid("bank_connection_id").references(() => bankConnections.id, { onDelete: "set null" }),
     institution: text("institution").notNull(),
     nickname: text("nickname").notNull(),
+    providerAccountRef: text("provider_account_ref"),
     accountType: financialAccountTypeEnum("account_type").notNull(),
     currentBalance: money("current_balance"),
     availableBalance: numeric("available_balance", { precision: 18, scale: 2 }),

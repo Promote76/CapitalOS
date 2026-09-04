@@ -1531,24 +1531,57 @@ export interface FinancialAccount {
   restricted: boolean;
 }
 
-export type FinancialAccountsSummaryConnectionsItem = {
-  id: string;
-  provider: string;
-  status: string;
-  institutionName: string;
-  /** @nullable */
-  lastSuccessfulSync?: string | null;
-};
-
 export type FinancialAccountsSummaryTotals = {
   visibleBalance: string;
   accountCount: number;
 };
 
+export type BankConnectionConsentStatus = typeof BankConnectionConsentStatus[keyof typeof BankConnectionConsentStatus];
+
+
+export const BankConnectionConsentStatus = {
+  pending: 'pending',
+  granted: 'granted',
+  revoked: 'revoked',
+} as const;
+
+export type BankConnectionReconciliationStatus = typeof BankConnectionReconciliationStatus[keyof typeof BankConnectionReconciliationStatus];
+
+
+export const BankConnectionReconciliationStatus = {
+  not_run: 'not_run',
+  matched: 'matched',
+  review: 'review',
+  stale: 'stale',
+  outage: 'outage',
+  rate_limited: 'rate_limited',
+  revoked: 'revoked',
+} as const;
+
+export interface BankConnection {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  provider: string;
+  status: string;
+  consentStatus: BankConnectionConsentStatus;
+  institutionName: string;
+  credentialStored: boolean;
+  /** @nullable */
+  lastSuccessfulSync?: string | null;
+  /** @nullable */
+  lastSyncAttempt?: string | null;
+  /** @nullable */
+  providerAsOf?: string | null;
+  reconciliationStatus: BankConnectionReconciliationStatus;
+  reconciliationDifference: string;
+  /** @nullable */
+  errorMessage?: string | null;
+}
+
 export interface FinancialAccountsSummary {
   readOnly: boolean;
   accounts: FinancialAccount[];
-  connections: FinancialAccountsSummaryConnectionsItem[];
+  connections: BankConnection[];
   totals: FinancialAccountsSummaryTotals;
 }
 
@@ -1974,6 +2007,107 @@ export interface BankingStatus {
   billPayEnabled: boolean;
   message: string;
   adapters: BankingStatusAdaptersItem[];
+}
+
+export interface BankConnectionList {
+  readOnly: boolean;
+  connections: BankConnection[];
+}
+
+export interface ReadOnlyBankConnectionInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  provider: string;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  institutionName: string;
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  providerConnectionRef: string;
+  consent: true;
+}
+
+export interface BankAccountLinkInput {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  accountId: string;
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  providerAccountRef: string;
+}
+
+export type BankSyncResultStatus = typeof BankSyncResultStatus[keyof typeof BankSyncResultStatus];
+
+
+export const BankSyncResultStatus = {
+  matched: 'matched',
+  review: 'review',
+  stale: 'stale',
+  outage: 'outage',
+  rate_limited: 'rate_limited',
+  revoked: 'revoked',
+} as const;
+
+export interface BankSyncResult {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  connectionId: string;
+  readOnly: boolean;
+  status: BankSyncResultStatus;
+  applied: boolean;
+  inserted: number;
+  updated: number;
+  duplicates: number;
+  reviewCount: number;
+  removed: number;
+  /** @nullable */
+  providerAsOf?: string | null;
+  reconciliationDifference: string;
+  /** @nullable */
+  errorMessage?: string | null;
+}
+
+export type BankConnectionExportAccountsItem = {
+  id: string;
+  institution: string;
+  nickname: string;
+  accountType: string;
+  /** @nullable */
+  providerAccountRef: string | null;
+};
+
+export type BankConnectionExportTransactionsItem = {
+  id: string;
+  accountId: string;
+  /** @nullable */
+  externalId: string | null;
+  transactionDate: string;
+  description: string;
+  /** @nullable */
+  merchant: string | null;
+  amount: string;
+  pending: boolean;
+  reviewStatus: string;
+};
+
+export interface BankConnectionExport {
+  readOnly: boolean;
+  connection: BankConnection;
+  accounts: BankConnectionExportAccountsItem[];
+  transactions: BankConnectionExportTransactionsItem[];
+}
+
+export interface BankConnectionDeleteResult {
+  deleted: boolean;
+  readOnly: boolean;
+  connectionId: string;
+  unlinkedAccounts: number;
 }
 
 export type FinanceSnapshotBudgetPerformance = {

@@ -36,6 +36,15 @@ import {
   ReviewFinancialTransactionBody,
   ListTransactionReviewQueueResponse,
   ReviewFinancialTransactionResponse,
+  ListReadOnlyBankConnectionsResponse,
+  CreateReadOnlyBankConnectionBody,
+  CreateReadOnlyBankConnectionResponse,
+  LinkReadOnlyBankAccountBody,
+  LinkReadOnlyBankAccountResponse,
+  SyncReadOnlyBankConnectionResponse,
+  RevokeReadOnlyBankConnectionResponse,
+  ExportReadOnlyBankConnectionResponse,
+  DeleteReadOnlyBankConnectionDataResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
@@ -68,6 +77,13 @@ import {
   deleteIncomeSource,
   getTransactionReviewQueue,
   reviewFinancialTransaction,
+  listReadOnlyBankConnections,
+  createReadOnlyBankConnection,
+  linkReadOnlyBankAccount,
+  syncReadOnlyBankConnection,
+  revokeReadOnlyBankConnection,
+  exportReadOnlyBankConnection,
+  deleteReadOnlyBankConnectionData,
 } from "../services/household-finance";
 
 const router: IRouter = Router();
@@ -243,6 +259,46 @@ router.get("/finance-snapshots", asyncRoute(async (_req, res) => {
 
 router.get("/banking/status", asyncRoute(async (_req, res) => {
   res.json(GetBankingStatusResponse.parse(getBankingStatus()));
+}));
+
+router.get("/banking/connections", asyncRoute(async (_req, res) => {
+  res.json(ListReadOnlyBankConnectionsResponse.parse(await listReadOnlyBankConnections(actorFrom(res))));
+}));
+
+router.post("/banking/connections", asyncRoute(async (req, res) => {
+  const body = CreateReadOnlyBankConnectionBody.parse(req.body);
+  res.status(201).json(CreateReadOnlyBankConnectionResponse.parse(await createReadOnlyBankConnection(actorFrom(res), body)));
+}));
+
+router.post("/banking/connections/:connectionId/link-account", asyncRoute(async (req, res) => {
+  const connectionId = Array.isArray(req.params.connectionId) ? req.params.connectionId[0] : req.params.connectionId;
+  const body = LinkReadOnlyBankAccountBody.parse(req.body);
+  res.json(LinkReadOnlyBankAccountResponse.parse(await linkReadOnlyBankAccount(
+    actorFrom(res),
+    connectionId,
+    body.accountId,
+    body.providerAccountRef,
+  )));
+}));
+
+router.post("/banking/connections/:connectionId/sync", asyncRoute(async (req, res) => {
+  const connectionId = Array.isArray(req.params.connectionId) ? req.params.connectionId[0] : req.params.connectionId;
+  res.json(SyncReadOnlyBankConnectionResponse.parse(await syncReadOnlyBankConnection(actorFrom(res), connectionId)));
+}));
+
+router.post("/banking/connections/:connectionId/revoke", asyncRoute(async (req, res) => {
+  const connectionId = Array.isArray(req.params.connectionId) ? req.params.connectionId[0] : req.params.connectionId;
+  res.json(RevokeReadOnlyBankConnectionResponse.parse(await revokeReadOnlyBankConnection(actorFrom(res), connectionId)));
+}));
+
+router.get("/banking/connections/:connectionId/export", asyncRoute(async (req, res) => {
+  const connectionId = Array.isArray(req.params.connectionId) ? req.params.connectionId[0] : req.params.connectionId;
+  res.json(ExportReadOnlyBankConnectionResponse.parse(await exportReadOnlyBankConnection(actorFrom(res), connectionId)));
+}));
+
+router.delete("/banking/connections/:connectionId/data", asyncRoute(async (req, res) => {
+  const connectionId = Array.isArray(req.params.connectionId) ? req.params.connectionId[0] : req.params.connectionId;
+  res.json(DeleteReadOnlyBankConnectionDataResponse.parse(await deleteReadOnlyBankConnectionData(actorFrom(res), connectionId)));
 }));
 
 export default router;

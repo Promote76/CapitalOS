@@ -1,9 +1,12 @@
-import { and, eq, ne, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   auditEvents,
   accounts,
   bankConnections,
+  bankConnectionCredentials,
+  bankSyncRuns,
   emergencyReserves,
   financeBills,
   financeCategories,
@@ -25,8 +28,14 @@ import {
   canViewFinancialBalance,
   deduplicateImportedTransactions,
 } from "../domain/household-finance";
-import { getBankingStatus } from "../adapters/banking";
-import { csvImportBankingAdapter } from "../adapters/banking";
+import {
+  BankingProviderError,
+  csvImportBankingAdapter,
+  getBankingStatus,
+  getReadOnlyBankingProvider,
+  type BankSyncSnapshot,
+  type ProviderTransactionSnapshot,
+} from "../adapters/banking";
 import { ensureSeedData } from "./seed";
 import type { Actor } from "./capital-os";
 import { assertPermission, GovernanceError } from "../domain/governance";
@@ -177,12 +186,77 @@ async function auditFinanceMutation(actor: Actor, eventType: string, entity: str
   });
 }
 
+function publicBankConnection(connection: typeof bankConnections.$inferSelect, credentialStored = false) {
+  return {
+    id: connection.id,
+    provider: connection.provider,
+    status: connection.status,
+    consentStatus: connection.consentStatus,
+    institutionName: connection.institutionName,
+    credentialStored,
+    lastSuccessfulSync: connection.lastSuccessfulSync,
+    lastSyncAttempt: connection.lastSyncAttempt,
+    providerAsOf: connection.providerAsOf,
+    reconciliationStatus: connection.reconciliationStatus,
+    reconciliationDifference: connection.reconciliationDifference,
+    errorMessage: connection.errorMessage,
+  };
+}
+
+function providerReviewStatus(transaction: ProviderTransactionSnapshot) {
+  if (transaction.reviewHint === "possible_duplicate") return "possible_duplicate" as const;
+  if (transaction.reviewHint === "possible_transfer") return "possible_transfer" as const;
+  if (transaction.reviewHint === "possible_business") return "possible_business" as const;
+  if (transaction.reviewHint === "possible_property") return "possible_property" as const;
+  return "needs_review" as const;
+}
+
+function parseProviderTimestamp(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new GovernanceError("INVALID_STATE", "The provider returned an invalid freshness timestamp");
+  }
+  return date;
+}
+
+function decimalCents(value: string) {
+  const normalized = value.trim();
+  if (!moneyPattern.test(normalized)) {
+    throw new GovernanceError("INVALID_STATE", "The provider returned an invalid monetary value");
+  }
+  const negative = normalized.startsWith("-");
+  const unsigned = negative ? normalized.slice(1) : normalized;
+  const [whole, fraction = ""] = unsigned.split(".");
+  const centsValue = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
+  return negative ? -centsValue : centsValue;
+}
+
+function centsToDecimal(value: bigint) {
+  const sign = value < 0n ? "-" : "";
+  const absolute = value < 0n ? -value : value;
+  return `${sign}${absolute / 100n}.${String(absolute % 100n).padStart(2, "0")}`;
+}
+
+function syncErrorDetails(error: unknown) {
+  if (error instanceof BankingProviderError) {
+    return { code: error.code, message: error.message };
+  }
+  if (error instanceof GovernanceError) {
+    return { code: "INVALID_RESPONSE", message: error.message };
+  }
+  return { code: "OUTAGE", message: "The bank provider could not be reached" };
+}
+
 export async function getFinancialAccounts(actor: Actor) {
   const id = await householdId(actor);
-  const [rows, connections] = await Promise.all([
+  const [rows, connections, credentials] = await Promise.all([
     db.select().from(financialAccounts).where(eq(financialAccounts.householdId, id)),
     db.select().from(bankConnections).where(eq(bankConnections.householdId, id)),
+    db.select({ connectionId: bankConnectionCredentials.connectionId })
+      .from(bankConnectionCredentials)
+      .where(and(eq(bankConnectionCredentials.householdId, id), sql`${bankConnectionCredentials.revokedAt} is null`)),
   ]);
+  const credentialConnectionIds = new Set(credentials.map((credential) => credential.connectionId));
   return {
     readOnly: true,
     accounts: rows.map((account) => accountVisibility(actor, account)),
@@ -190,8 +264,15 @@ export async function getFinancialAccounts(actor: Actor) {
       id: connection.id,
       provider: connection.provider,
       status: connection.status,
+      consentStatus: connection.consentStatus,
       institutionName: connection.institutionName,
+      credentialStored: credentialConnectionIds.has(connection.id),
       lastSuccessfulSync: connection.lastSuccessfulSync,
+      lastSyncAttempt: connection.lastSyncAttempt,
+      providerAsOf: connection.providerAsOf,
+      reconciliationStatus: connection.reconciliationStatus,
+      reconciliationDifference: connection.reconciliationDifference,
+      errorMessage: connection.errorMessage,
     })),
     totals: {
       visibleBalance: rows.reduce((sum, account) => sum + (actor.role === "advisor" && account.protected ? 0 : numeric(account.currentBalance)), 0).toFixed(2),
@@ -870,8 +951,8 @@ export async function reviewFinancialTransaction(actor: Actor, transactionId: st
       eq(financeTransactions.householdId, id),
     )).limit(1);
     if (!transaction) return planningNotFound("Imported transaction");
-    if (transaction.dataSource !== "csv_import") {
-      throw new GovernanceError("INVALID_STATE", "Only CSV-imported transactions can be reviewed here");
+    if (transaction.dataSource !== "csv_import" && transaction.dataSource !== "plaid") {
+      throw new GovernanceError("INVALID_STATE", "Only imported transactions can be reviewed here");
     }
 
     const categoryId = input.categoryId !== undefined ? input.categoryId : transaction.categoryId;
@@ -969,7 +1050,7 @@ export async function getTransactionReviewQueue(actor?: Actor) {
   const [transactions, accounts, categories] = await Promise.all([
     db.select().from(financeTransactions).where(and(
       eq(financeTransactions.householdId, id),
-      eq(financeTransactions.dataSource, "csv_import"),
+      inArray(financeTransactions.dataSource, ["csv_import", "plaid"]),
       ne(financeTransactions.reviewStatus, "approved"),
     )),
     db.select({ id: financialAccounts.id, nickname: financialAccounts.nickname })
@@ -1020,4 +1101,573 @@ function reviewedTransaction(
     reviewedBy,
     reviewedAt,
   };
+}
+
+export type ReadOnlyBankConnectionInput = {
+  provider: string;
+  institutionName: string;
+  providerConnectionRef: string;
+  consent: boolean;
+};
+
+export async function createReadOnlyBankConnection(actor: Actor, input: ReadOnlyBankConnectionInput) {
+  assertPermission(actor.role, "contribute");
+  if (!input.consent) {
+    throw new GovernanceError("FORBIDDEN", "A household must explicitly consent before a bank connection is created");
+  }
+  const provider = input.provider.trim().toLowerCase();
+  const institutionName = input.institutionName.trim();
+  const providerConnectionRef = input.providerConnectionRef.trim();
+  if (!provider || provider.length > 80 || !institutionName || institutionName.length > 160 || !providerConnectionRef || providerConnectionRef.length > 240) {
+    throw new GovernanceError("INVALID_STATE", "Provider, institution, and provider connection reference are required");
+  }
+  if (!getReadOnlyBankingProvider(provider)) {
+    throw new GovernanceError("INVALID_STATE", "This banking provider is not configured for read-only synchronization");
+  }
+  const id = await householdId(actor);
+  const credentialRef = `bank-vault:${randomUUID()}`;
+  const grantedAt = new Date();
+  return db.transaction(async (tx) => {
+    const [connection] = await tx.insert(bankConnections).values({
+      householdId: id,
+      provider,
+      status: "connected",
+      consentStatus: "granted",
+      consentGrantedAt: grantedAt,
+      consentActor: actor.userId,
+      institutionName,
+      providerConnectionRef,
+      reconciliationStatus: "not_run",
+      lastSyncAttempt: null,
+    }).returning();
+    await tx.insert(bankConnectionCredentials).values({
+      householdId: id,
+      connectionId: connection.id,
+      provider,
+      credentialRef,
+    });
+    await tx.insert(auditEvents).values({
+      householdId: id,
+      eventType: "bank_connection_consented",
+      actor: actor.userId,
+      entity: "bank_connection",
+      entityId: connection.id,
+      afterState: {
+        provider,
+        institutionName,
+        consentStatus: "granted",
+        credentialStoredServerSide: true,
+        readOnly: true,
+      },
+      reason: "Household explicitly consented to read-only bank synchronization",
+      metadata: { source: "household-bank-sync", credentialRefStored: true, credentialValueStored: false },
+    });
+    return publicBankConnection(connection, true);
+  });
+}
+
+export async function listReadOnlyBankConnections(actor: Actor) {
+  const id = await householdId(actor);
+  const [connections, credentials] = await Promise.all([
+    db.select().from(bankConnections).where(eq(bankConnections.householdId, id)),
+    db.select({ connectionId: bankConnectionCredentials.connectionId })
+      .from(bankConnectionCredentials)
+      .where(and(eq(bankConnectionCredentials.householdId, id), sql`${bankConnectionCredentials.revokedAt} is null`)),
+  ]);
+  const credentialConnectionIds = new Set(credentials.map((credential) => credential.connectionId));
+  return {
+    readOnly: true,
+    connections: connections.map((connection) => publicBankConnection(connection, credentialConnectionIds.has(connection.id))),
+  };
+}
+
+export async function linkReadOnlyBankAccount(
+  actor: Actor,
+  connectionId: string,
+  accountId: string,
+  providerAccountRef: string,
+) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId(actor);
+  const providerRef = providerAccountRef.trim();
+  if (!providerRef || providerRef.length > 240) throw new GovernanceError("INVALID_STATE", "Provider account reference is required");
+  return db.transaction(async (tx) => {
+    const [connection] = await tx.select().from(bankConnections).where(and(
+      eq(bankConnections.id, connectionId),
+      eq(bankConnections.householdId, id),
+      eq(bankConnections.consentStatus, "granted"),
+    )).limit(1);
+    if (!connection) throw new GovernanceError("INVALID_STATE", "Consented bank connection was not found");
+    const [account] = await tx.select().from(financialAccounts).where(and(
+      eq(financialAccounts.id, accountId),
+      eq(financialAccounts.householdId, id),
+    )).limit(1);
+    if (!account) throw new GovernanceError("INVALID_STATE", "Financial account was not found");
+    if (account.bankConnectionId && account.bankConnectionId !== connection.id) {
+      const [existingConnection] = await tx.select({ provider: bankConnections.provider }).from(bankConnections).where(and(
+        eq(bankConnections.id, account.bankConnectionId),
+        eq(bankConnections.householdId, id),
+      )).limit(1);
+      if (existingConnection?.provider !== "manual") {
+        throw new GovernanceError("INVALID_STATE", "Financial account is already linked to another bank connection");
+      }
+    }
+    const [duplicateProviderAccount] = await tx.select({ id: financialAccounts.id }).from(financialAccounts).where(and(
+      eq(financialAccounts.householdId, id),
+      eq(financialAccounts.bankConnectionId, connection.id),
+      eq(financialAccounts.providerAccountRef, providerRef),
+      ne(financialAccounts.id, account.id),
+    )).limit(1);
+    if (duplicateProviderAccount) throw new GovernanceError("INVALID_STATE", "Provider account is already linked in this household");
+    const [updated] = await tx.update(financialAccounts).set({
+      bankConnectionId: connection.id,
+      providerAccountRef: providerRef,
+      connectionStatus: "connected",
+      dataSource: "plaid",
+      updatedAt: new Date(),
+    }).where(and(eq(financialAccounts.id, account.id), eq(financialAccounts.householdId, id))).returning();
+    await tx.insert(auditEvents).values({
+      householdId: id,
+      eventType: "bank_account_linked",
+      actor: actor.userId,
+      entity: "financial_account",
+      entityId: account.id,
+      beforeState: { bankConnectionId: account.bankConnectionId, providerAccountRef: account.providerAccountRef },
+      afterState: { bankConnectionId: connection.id, providerAccountRef: providerRef, readOnly: true },
+      reason: "Household explicitly matched a provider account to a planning account",
+      metadata: { source: "household-bank-sync" },
+    });
+    return accountVisibility(actor, updated);
+  });
+}
+
+export async function revokeReadOnlyBankConnection(actor: Actor, connectionId: string) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId(actor);
+  return db.transaction(async (tx) => {
+    const [connection] = await tx.select().from(bankConnections).where(and(
+      eq(bankConnections.id, connectionId),
+      eq(bankConnections.householdId, id),
+    )).limit(1);
+    if (!connection) throw new GovernanceError("INVALID_STATE", "Bank connection was not found");
+    const revokedAt = new Date();
+    const [updated] = await tx.update(bankConnections).set({
+      consentStatus: "revoked",
+      consentRevokedAt: revokedAt,
+      consentActor: actor.userId,
+      status: "disconnected",
+      reconciliationStatus: "revoked",
+      errorMessage: "Household consent was revoked",
+      updatedAt: revokedAt,
+    }).where(and(eq(bankConnections.id, connection.id), eq(bankConnections.householdId, id))).returning();
+    await tx.update(bankConnectionCredentials).set({ revokedAt }).where(and(
+      eq(bankConnectionCredentials.connectionId, connection.id),
+      eq(bankConnectionCredentials.householdId, id),
+    ));
+    await tx.update(financialAccounts).set({
+      connectionStatus: "disconnected",
+      updatedAt: revokedAt,
+    }).where(and(
+      eq(financialAccounts.bankConnectionId, connection.id),
+      eq(financialAccounts.householdId, id),
+    ));
+    await tx.insert(auditEvents).values({
+      householdId: id,
+      eventType: "bank_connection_revoked",
+      actor: actor.userId,
+      entity: "bank_connection",
+      entityId: connection.id,
+      beforeState: { consentStatus: connection.consentStatus, status: connection.status },
+      afterState: { consentStatus: "revoked", status: "disconnected", credentialsRevoked: true },
+      reason: "Household revoked read-only bank synchronization consent",
+      metadata: { source: "household-bank-sync" },
+    });
+    return publicBankConnection(updated, false);
+  });
+}
+
+export async function exportReadOnlyBankConnection(actor: Actor, connectionId: string) {
+  const id = await householdId(actor);
+  const [connection] = await db.select().from(bankConnections).where(and(
+    eq(bankConnections.id, connectionId),
+    eq(bankConnections.householdId, id),
+  )).limit(1);
+  if (!connection) throw new GovernanceError("INVALID_STATE", "Bank connection was not found");
+  const accounts = await db.select().from(financialAccounts).where(and(
+    eq(financialAccounts.bankConnectionId, connection.id),
+    eq(financialAccounts.householdId, id),
+  ));
+  const accountIds = accounts.map((account) => account.id);
+  const transactions = accountIds.length
+    ? await db.select().from(financeTransactions).where(and(
+      eq(financeTransactions.householdId, id),
+      inArray(financeTransactions.accountId, accountIds),
+      eq(financeTransactions.dataSource, "plaid"),
+    ))
+    : [];
+  return {
+    readOnly: true,
+    connection: publicBankConnection(connection, false),
+    accounts: accounts.map((account) => ({
+      id: account.id,
+      institution: account.institution,
+      nickname: account.nickname,
+      accountType: account.accountType,
+      providerAccountRef: account.providerAccountRef,
+    })),
+    transactions: transactions.map((transaction) => ({
+      id: transaction.id,
+      accountId: transaction.accountId,
+      externalId: transaction.externalId,
+      transactionDate: transaction.transactionDate,
+      description: transaction.description,
+      merchant: transaction.merchant,
+      amount: transaction.amount,
+      pending: transaction.pending,
+      reviewStatus: transaction.reviewStatus,
+    })),
+  };
+}
+
+export async function deleteReadOnlyBankConnectionData(actor: Actor, connectionId: string) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId(actor);
+  return db.transaction(async (tx) => {
+    const [connection] = await tx.select().from(bankConnections).where(and(
+      eq(bankConnections.id, connectionId),
+      eq(bankConnections.householdId, id),
+    )).limit(1);
+    if (!connection) throw new GovernanceError("INVALID_STATE", "Bank connection was not found");
+    const providerAccounts = await tx.select({ id: financialAccounts.id }).from(financialAccounts).where(and(
+      eq(financialAccounts.bankConnectionId, connection.id),
+      eq(financialAccounts.householdId, id),
+      eq(financialAccounts.dataSource, "plaid"),
+    ));
+    const accountIds = providerAccounts.map((account) => account.id);
+    if (accountIds.length) {
+      await tx.delete(financeTransactions).where(and(
+        eq(financeTransactions.householdId, id),
+        inArray(financeTransactions.accountId, accountIds),
+        eq(financeTransactions.dataSource, "plaid"),
+      ));
+      await tx.update(financialAccounts).set({
+        bankConnectionId: null,
+        providerAccountRef: null,
+        connectionStatus: "manual",
+        dataSource: "manual",
+        updatedAt: new Date(),
+      }).where(and(
+        eq(financialAccounts.householdId, id),
+        inArray(financialAccounts.id, accountIds),
+      ));
+    }
+    await tx.insert(auditEvents).values({
+      householdId: id,
+      eventType: "bank_connection_data_deleted",
+      actor: actor.userId,
+      entity: "bank_connection",
+      entityId: connection.id,
+      beforeState: { provider: connection.provider, linkedAccountCount: accountIds.length },
+      afterState: { providerDataDeleted: true, credentialsDeleted: true, accountLinksRemoved: accountIds.length },
+      reason: "Household requested deletion of provider-derived bank data",
+      metadata: { source: "household-bank-sync", rawCredentialsPersisted: false },
+    });
+    await tx.delete(bankConnectionCredentials).where(and(
+      eq(bankConnectionCredentials.connectionId, connection.id),
+      eq(bankConnectionCredentials.householdId, id),
+    ));
+    await tx.delete(bankConnections).where(and(eq(bankConnections.id, connection.id), eq(bankConnections.householdId, id)));
+    return { deleted: true, readOnly: true, connectionId: connection.id, unlinkedAccounts: accountIds.length };
+  });
+}
+
+async function completeBankSyncRun(
+  runId: string,
+  input: {
+    status: string;
+    connectionStatus: "connected" | "delayed" | "error" | "needs_reauthentication" | "disconnected";
+    reconciliationStatus: "matched" | "review" | "stale" | "outage" | "rate_limited" | "revoked";
+    errorCode?: string | null;
+    errorMessage?: string | null;
+    reconciliationDifference?: string;
+    providerAsOf?: Date | null;
+    syncCursor?: string | null;
+    counts?: Partial<Record<"insertedCount" | "updatedCount" | "duplicateCount" | "reviewCount" | "removedCount", number>>;
+  },
+) {
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    const [run] = await tx.select({ connectionId: bankSyncRuns.connectionId })
+      .from(bankSyncRuns)
+      .where(eq(bankSyncRuns.id, runId))
+      .limit(1);
+    if (!run) return;
+    await tx.update(bankSyncRuns).set({
+      status: input.status,
+      completedAt: now,
+      providerAsOf: input.providerAsOf ?? null,
+      errorCode: input.errorCode ?? null,
+      errorMessage: input.errorMessage ?? null,
+      reconciliationDifference: input.reconciliationDifference ?? "0.00",
+      ...(input.counts ?? {}),
+    }).where(eq(bankSyncRuns.id, runId));
+    const connectionUpdates = {
+      status: input.connectionStatus,
+      reconciliationStatus: input.reconciliationStatus,
+      reconciliationDifference: input.reconciliationDifference ?? "0.00",
+      providerAsOf: input.providerAsOf ?? null,
+      errorMessage: input.errorMessage ?? null,
+      ...(input.syncCursor === undefined ? {} : { syncCursor: input.syncCursor }),
+      updatedAt: now,
+    };
+    await tx.update(bankConnections).set(connectionUpdates).where(eq(bankConnections.id, run.connectionId));
+  });
+}
+
+export async function syncReadOnlyBankConnection(actor: Actor, connectionId: string) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId(actor);
+  const [connection] = await db.select().from(bankConnections).where(and(
+    eq(bankConnections.id, connectionId),
+    eq(bankConnections.householdId, id),
+  )).limit(1);
+  if (!connection) throw new GovernanceError("INVALID_STATE", "Bank connection was not found");
+  const [credential] = await db.select().from(bankConnectionCredentials).where(and(
+    eq(bankConnectionCredentials.connectionId, connection.id),
+    eq(bankConnectionCredentials.householdId, id),
+    sql`${bankConnectionCredentials.revokedAt} is null`,
+  )).limit(1);
+  const run = await db.insert(bankSyncRuns).values({
+    householdId: id,
+    connectionId: connection.id,
+    status: "running",
+  }).returning({ id: bankSyncRuns.id });
+  const runId = run[0].id;
+  const baseResult = {
+    connectionId: connection.id,
+    readOnly: true,
+    inserted: 0,
+    updated: 0,
+    duplicates: 0,
+    reviewCount: 0,
+    removed: 0,
+    reconciliationDifference: "0.00",
+  };
+  if (connection.consentStatus !== "granted" || !credential) {
+    await completeBankSyncRun(runId, {
+      status: "revoked",
+      connectionStatus: "disconnected",
+      reconciliationStatus: "revoked",
+      errorCode: "CONSENT_REQUIRED",
+      errorMessage: "Read-only bank synchronization requires active household consent",
+    });
+    return { ...baseResult, status: "revoked" as const, applied: false, errorMessage: "Read-only bank synchronization requires active household consent" };
+  }
+  const provider = getReadOnlyBankingProvider(connection.provider);
+  if (!provider || provider.readOnly !== true) {
+    const errorMessage = "The approved read-only provider is not configured";
+    await completeBankSyncRun(runId, {
+      status: "outage",
+      connectionStatus: "error",
+      reconciliationStatus: "outage",
+      errorCode: "OUTAGE",
+      errorMessage,
+    });
+    return { ...baseResult, status: "outage" as const, applied: false, errorMessage };
+  }
+  await db.update(bankConnections).set({ status: "syncing", lastSyncAttempt: new Date(), updatedAt: new Date() })
+    .where(and(eq(bankConnections.id, connection.id), eq(bankConnections.householdId, id)));
+  let snapshot: BankSyncSnapshot;
+  try {
+    snapshot = await provider.sync({ credentialRef: credential.credentialRef, cursor: connection.syncCursor ?? undefined });
+  } catch (error) {
+    const details = syncErrorDetails(error);
+    const status = details.code === "RATE_LIMITED" ? "rate_limited" : details.code === "UNAUTHENTICATED" ? "revoked" : "outage";
+    await completeBankSyncRun(runId, {
+      status,
+      connectionStatus: details.code === "UNAUTHENTICATED" ? "needs_reauthentication" : details.code === "RATE_LIMITED" ? "delayed" : "error",
+      reconciliationStatus: details.code === "RATE_LIMITED" ? "rate_limited" : details.code === "UNAUTHENTICATED" ? "revoked" : "outage",
+      errorCode: details.code,
+      errorMessage: details.message,
+    });
+    return { ...baseResult, status: status as "rate_limited" | "revoked" | "outage", applied: false, errorMessage: details.message };
+  }
+  let providerAsOf: Date;
+  try {
+    providerAsOf = parseProviderTimestamp(snapshot.providerAsOf);
+  } catch (error) {
+    const details = syncErrorDetails(error);
+    await completeBankSyncRun(runId, {
+      status: "outage",
+      connectionStatus: "error",
+      reconciliationStatus: "outage",
+      errorCode: details.code,
+      errorMessage: details.message,
+    });
+    return { ...baseResult, status: "outage" as const, applied: false, errorMessage: details.message };
+  }
+  if (Date.now() - providerAsOf.getTime() > 36 * 60 * 60 * 1000) {
+    const errorMessage = "Provider data is stale; no balances or transactions were applied";
+    await completeBankSyncRun(runId, {
+      status: "stale",
+      connectionStatus: "delayed",
+      reconciliationStatus: "stale",
+      errorCode: "STALE_DATA",
+      errorMessage,
+      providerAsOf,
+    });
+    return { ...baseResult, status: "stale" as const, applied: false, errorMessage };
+  }
+  const localAccounts = await db.select().from(financialAccounts).where(and(
+    eq(financialAccounts.householdId, id),
+    eq(financialAccounts.bankConnectionId, connection.id),
+  ));
+  const localByProviderRef = new Map(localAccounts.filter((account) => account.providerAccountRef).map((account) => [account.providerAccountRef!, account]));
+  const unmatched = snapshot.accounts.filter((account) => !localByProviderRef.has(account.providerAccountId));
+  let providerTotal = 0n;
+  let localTotal = 0n;
+  for (const account of snapshot.accounts) providerTotal += decimalCents(account.currentBalance);
+  for (const account of snapshot.accounts) localTotal += decimalCents(localByProviderRef.get(account.providerAccountId)?.currentBalance ?? "0");
+  const difference = providerTotal - localTotal;
+  if (unmatched.length || difference !== 0n || !snapshot.accounts.length) {
+    const errorMessage = unmatched.length
+      ? "Provider accounts require explicit household matching before synchronization"
+      : "Provider balances do not reconcile with tracked account balances";
+    const differenceText = centsToDecimal(difference);
+    await completeBankSyncRun(runId, {
+      status: "review",
+      connectionStatus: "delayed",
+      reconciliationStatus: "review",
+      errorCode: unmatched.length ? "ACCOUNT_MATCH_REQUIRED" : "BALANCE_MISMATCH",
+      errorMessage,
+      reconciliationDifference: differenceText,
+      providerAsOf,
+    });
+    return { ...baseResult, status: "review" as const, applied: false, reconciliationDifference: differenceText, errorMessage };
+  }
+  const result = { ...baseResult, status: "matched" as const, applied: true, providerAsOf };
+  try {
+    await db.transaction(async (tx) => {
+      const now = new Date();
+      for (const providerAccount of snapshot.accounts) {
+        const account = localByProviderRef.get(providerAccount.providerAccountId)!;
+        await tx.update(financialAccounts).set({
+          currentBalance: providerAccount.currentBalance,
+          availableBalance: providerAccount.availableBalance ?? providerAccount.currentBalance,
+          lastSync: now,
+          lastSuccessfulSync: now,
+          connectionStatus: "connected",
+          updatedAt: now,
+        }).where(and(eq(financialAccounts.id, account.id), eq(financialAccounts.householdId, id)));
+      }
+      for (const transaction of snapshot.transactions) {
+        const account = localByProviderRef.get(transaction.providerAccountId);
+        if (!account) throw new GovernanceError("INVALID_STATE", "Provider transaction references an unmatched account");
+        assertDate(transaction.transactionDate, "Provider transaction date");
+        decimalCents(transaction.amount);
+        const reviewStatus = providerReviewStatus(transaction);
+        const pending = transaction.pending ?? false;
+        const existing = await tx.select().from(financeTransactions).where(and(
+          eq(financeTransactions.householdId, id),
+          eq(financeTransactions.accountId, account.id),
+          eq(financeTransactions.externalId, transaction.providerTransactionId),
+        )).limit(1);
+        if (existing[0] && existing[0].dataSource !== "plaid") {
+          result.duplicates += 1;
+          result.reviewCount += 1;
+          continue;
+        }
+        if (existing[0]) {
+          await tx.update(financeTransactions).set({
+            transactionDate: transaction.transactionDate,
+            description: transaction.description,
+            merchant: transaction.merchant ?? null,
+            originalAmount: transaction.amount,
+            amount: transaction.amount,
+            pending,
+            ...(existing[0].reviewStatus === "approved" ? {} : { reviewStatus }),
+            metadata: { ...existing[0].metadata, bankSync: { provider: connection.provider, providerTransactionId: transaction.providerTransactionId, lastSeenAt: now.toISOString() } },
+            updatedAt: now,
+          }).where(and(eq(financeTransactions.id, existing[0].id), eq(financeTransactions.householdId, id)));
+          result.updated += 1;
+          if (existing[0].reviewStatus !== "approved") result.reviewCount += 1;
+          continue;
+        }
+        await tx.insert(financeTransactions).values({
+          householdId: id,
+          accountId: account.id,
+          externalId: transaction.providerTransactionId,
+          transactionDate: transaction.transactionDate,
+          description: transaction.description,
+          merchant: transaction.merchant ?? null,
+          originalAmount: transaction.amount,
+          amount: transaction.amount,
+          dataSource: "plaid",
+          reviewStatus,
+          pending,
+          metadata: { bankSync: { provider: connection.provider, providerTransactionId: transaction.providerTransactionId, lastSeenAt: now.toISOString() } },
+        });
+        result.inserted += 1;
+        result.reviewCount += 1;
+      }
+      if (snapshot.removedTransactionIds?.length) {
+        const providerAccountIds = localAccounts.map((account) => account.id);
+        const removed = await tx.delete(financeTransactions).where(and(
+          eq(financeTransactions.householdId, id),
+          eq(financeTransactions.dataSource, "plaid"),
+          inArray(financeTransactions.accountId, providerAccountIds),
+          inArray(financeTransactions.externalId, snapshot.removedTransactionIds),
+        )).returning({ id: financeTransactions.id });
+        result.removed += removed.length;
+      }
+      await tx.update(bankConnections).set({
+        status: "connected",
+        lastSuccessfulSync: now,
+        lastBalanceRefresh: now,
+        lastTransactionSync: now,
+        providerAsOf,
+        syncCursor: snapshot.cursor ?? connection.syncCursor ?? null,
+        reconciliationStatus: "matched",
+        reconciliationDifference: "0.00",
+        errorMessage: null,
+        updatedAt: now,
+      }).where(and(eq(bankConnections.id, connection.id), eq(bankConnections.householdId, id)));
+      await tx.insert(auditEvents).values({
+        householdId: id,
+        eventType: "bank_connection_synced",
+        actor: actor.userId,
+        entity: "bank_connection",
+        entityId: connection.id,
+        afterState: { readOnly: true, inserted: result.inserted, updated: result.updated, duplicates: result.duplicates, reviewCount: result.reviewCount, removed: result.removed, reconciliationStatus: "matched" },
+        reason: "Read-only provider snapshot passed freshness, account matching, and balance reconciliation gates",
+        metadata: { source: "household-bank-sync", provider: connection.provider },
+      });
+    });
+  } catch (error) {
+    const details = syncErrorDetails(error);
+    await completeBankSyncRun(runId, {
+      status: "outage",
+      connectionStatus: "error",
+      reconciliationStatus: "outage",
+      errorCode: details.code,
+      errorMessage: details.message,
+      providerAsOf,
+    });
+    return { ...baseResult, status: "outage" as const, applied: false, providerAsOf, errorMessage: details.message };
+  }
+  await completeBankSyncRun(runId, {
+    status: "matched",
+    connectionStatus: "connected",
+    reconciliationStatus: "matched",
+    providerAsOf,
+    syncCursor: snapshot.cursor ?? connection.syncCursor ?? null,
+    counts: {
+      insertedCount: result.inserted,
+      updatedCount: result.updated,
+      duplicateCount: result.duplicates,
+      reviewCount: result.reviewCount,
+      removedCount: result.removed,
+    },
+  });
+  return result;
 }

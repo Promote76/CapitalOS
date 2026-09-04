@@ -8,6 +8,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const generatedPaths = [
   "lib/api-client-react/src/generated",
   "lib/api-zod/src/generated",
+  "lib/db/migrations",
 ];
 const snapshotDir = fs.mkdtempSync(path.join(os.tmpdir(), "capital-os-generated-"));
 
@@ -83,22 +84,35 @@ function changedFiles(relativePath) {
 }
 
 function printStaleArtifacts() {
-  const staleArtifacts = generatedPaths.flatMap((relativePath) => {
-    const files = changedFiles(relativePath);
-    return files.map((file) => `${relativePath}/${file}`);
-  });
+  const staleArtifacts = new Map(
+    generatedPaths.map((relativePath) => [relativePath, changedFiles(relativePath)]),
+  );
+  const hasStaleArtifacts = [...staleArtifacts.values()].some((files) => files.length > 0);
 
-  if (staleArtifacts.length === 0) {
+  if (!hasStaleArtifacts) {
     console.log("\nGenerated finance artifacts are fresh.");
     return true;
   }
 
   console.error("\nGenerated finance artifacts are stale:");
-  for (const artifact of staleArtifacts) console.error(`  - ${artifact}`);
-  console.error(
-    "\nRegenerate them with `pnpm --filter @workspace/api-spec run codegen`, " +
-      "then commit the generated files and rerun this check.",
-  );
+  for (const [relativePath, files] of staleArtifacts) {
+    for (const file of files) console.error(`  - ${relativePath}/${file}`);
+  }
+
+  if ((staleArtifacts.get("lib/db/migrations") ?? []).length > 0) {
+    console.error(
+      "\nRegenerate database migrations with `pnpm --filter @workspace/db run generate`.",
+    );
+  }
+  if (
+    (staleArtifacts.get("lib/api-client-react/src/generated") ?? []).length > 0 ||
+    (staleArtifacts.get("lib/api-zod/src/generated") ?? []).length > 0
+  ) {
+    console.error(
+      "\nRegenerate API artifacts with `pnpm --filter @workspace/api-spec run codegen`.",
+    );
+  }
+  console.error("Commit the generated files, then rerun this check.");
   return false;
 }
 
@@ -112,8 +126,16 @@ try {
     "--build",
     "--force",
   ]);
-  const apiArtifactsGenerated =
+  const migrationsGenerated =
     declarationsGenerated &&
+    run("Database migration generation", "pnpm", [
+      "--filter",
+      "@workspace/db",
+      "run",
+      "generate",
+    ]);
+  const apiArtifactsGenerated =
+    migrationsGenerated &&
     run("OpenAPI client and validator generation", "pnpm", [
       "--filter",
       "@workspace/api-spec",

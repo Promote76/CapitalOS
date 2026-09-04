@@ -6,6 +6,7 @@ import { publishableKeyFromHost } from "@clerk/shared/keys";
 import router from "./routes/index.ts";
 import authRouter from "./routes/auth";
 import healthRouter from "./routes/health";
+import bankingWebhookRouter from "./routes/banking-webhooks";
 import { logger } from "./lib/logger";
 import {
   CLERK_PROXY_PATH,
@@ -45,6 +46,9 @@ app.use(
     },
   }),
 );
+// Provider webhooks authenticate with provider signatures, not browser
+// sessions or origin headers, and require the untouched request bytes.
+app.use("/api", bankingWebhookRouter);
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 app.use(cors({
   origin: process.env.CAPITAL_OS_ALLOWED_ORIGIN ?? false,

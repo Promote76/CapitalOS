@@ -35,6 +35,11 @@ export type BankSyncSnapshot = {
   removedTransactionIds?: string[];
 };
 
+export type BankWebhookNotification = {
+  eventId: string;
+  providerConnectionRef: string;
+};
+
 export type BankingProviderErrorCode = "OUTAGE" | "RATE_LIMITED" | "UNAUTHENTICATED" | "INVALID_RESPONSE";
 
 export class BankingProviderError extends Error {
@@ -53,7 +58,18 @@ export class BankingProviderError extends Error {
 export interface ReadOnlyBankingProvider {
   readonly provider: string;
   readonly readOnly: true;
+  readonly delivery: "polling" | "webhook" | "polling_and_webhook";
+  /**
+   * Cursors are committed by the service only after the complete snapshot is
+   * applied atomically. Providers must therefore tolerate the same cursor being
+   * supplied again after an interruption or credential reauthorization.
+   */
   sync(input: { credentialRef: string; cursor?: string }): Promise<BankSyncSnapshot>;
+  reauthorize?(input: { credentialRef: string; replacementCredentialRef: string }): Promise<void>;
+  verifyWebhook?(input: {
+    headers: Record<string, string | string[] | undefined>;
+    body: Buffer;
+  }): Promise<BankWebhookNotification>;
 }
 
 export interface BankingAdapter {
@@ -133,6 +149,9 @@ const readOnlyProviders = new Map<string, ReadOnlyBankingProvider>();
 
 export function registerReadOnlyBankingProvider(provider: ReadOnlyBankingProvider) {
   if (!provider.readOnly) throw new Error("Banking providers must be read-only");
+  if (provider.delivery !== "polling" && provider.delivery !== "webhook" && provider.delivery !== "polling_and_webhook") {
+    throw new Error("Banking providers must declare polling or webhook delivery");
+  }
   readOnlyProviders.set(provider.provider, provider);
 }
 

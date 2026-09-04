@@ -50,7 +50,7 @@ export type Actor = {
   userId: string;
   householdId: string;
   permissions?: string[];
-  source: "development-seed" | "test-seed" | "test-database" | "clerk-session";
+  source: "development-seed" | "test-seed" | "test-database" | "clerk-session" | "provider-webhook";
 };
 
 function weeksBetween(targetDate: string): number {

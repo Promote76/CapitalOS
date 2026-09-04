@@ -139,7 +139,9 @@ import type {
   PropertyNoteInput,
   PropertySummary,
   PropertyUnderwriting,
+  ProviderWebhookPayload,
   ReadOnlyBankConnectionInput,
+  ReceiveReadOnlyBankWebhook202,
   RecommendationDecisionInput,
   RecommendationFeedback,
   RecommendationSummary,
@@ -6828,6 +6830,78 @@ export function useGetBankingStatus<TData = Awaited<ReturnType<typeof getBanking
 
 
 
+
+export const getReceiveReadOnlyBankWebhookUrl = (provider: string,) => {
+
+
+
+
+  return `/api/banking/webhooks/${provider}`
+}
+
+/**
+ * @summary Receive an authenticated read-only provider webhook
+ */
+export const receiveReadOnlyBankWebhook = async (provider: string,
+    providerWebhookPayload: ProviderWebhookPayload, options?: Parameters<typeof customFetch>[1]): Promise<ReceiveReadOnlyBankWebhook202> => {
+
+  return customFetch<ReceiveReadOnlyBankWebhook202>(getReceiveReadOnlyBankWebhookUrl(provider),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(providerWebhookPayload)
+  }
+);}
+
+
+
+
+
+export const getReceiveReadOnlyBankWebhookMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveReadOnlyBankWebhook>>, TError,{provider: string;data: BodyType<ProviderWebhookPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiveReadOnlyBankWebhook>>, TError,{provider: string;data: BodyType<ProviderWebhookPayload>}, TContext> => {
+
+const mutationKey = ['receiveReadOnlyBankWebhook'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiveReadOnlyBankWebhook>>, {provider: string;data: BodyType<ProviderWebhookPayload>}> = (props) => {
+          const {provider,data} = props ?? {};
+
+          return  receiveReadOnlyBankWebhook(provider,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReceiveReadOnlyBankWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof receiveReadOnlyBankWebhook>>>
+    export type ReceiveReadOnlyBankWebhookMutationBody = BodyType<ProviderWebhookPayload>
+    export type ReceiveReadOnlyBankWebhookMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Receive an authenticated read-only provider webhook
+ */
+export const useReceiveReadOnlyBankWebhook = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveReadOnlyBankWebhook>>, TError,{provider: string;data: BodyType<ProviderWebhookPayload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof receiveReadOnlyBankWebhook>>,
+        TError,
+        {provider: string;data: BodyType<ProviderWebhookPayload>},
+        TContext
+      > => {
+      return useMutation(getReceiveReadOnlyBankWebhookMutationOptions(options));
+    }
 
 export const getListReadOnlyBankConnectionsUrl = () => {
 

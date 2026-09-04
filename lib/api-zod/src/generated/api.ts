@@ -3016,6 +3016,26 @@ export const GetBankingStatusResponse = zod.object({
 
 
 /**
+ * @summary Receive an authenticated read-only provider webhook
+ */
+export const receiveReadOnlyBankWebhookPathProviderMax = 80;
+
+
+
+export const ReceiveReadOnlyBankWebhookParams = zod.object({
+  "provider": zod.coerce.string().min(1).max(receiveReadOnlyBankWebhookPathProviderMax)
+})
+
+export const ReceiveReadOnlyBankWebhookBody = zod.record(zod.string(), zod.unknown())
+
+export const ReceiveReadOnlyBankWebhookResponse = zod.object({
+  "accepted": zod.boolean(),
+  "duplicate": zod.boolean(),
+  "eventId": zod.string()
+})
+
+
+/**
  * @summary List household bank connections without exposing credentials
  */
 export const listReadOnlyBankConnectionsResponseConnectionsItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');

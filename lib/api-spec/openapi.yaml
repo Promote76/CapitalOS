@@ -1413,6 +1413,36 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/BankingStatus" }
+  /banking/webhooks/{provider}:
+    post:
+      operationId: receiveReadOnlyBankWebhook
+      tags: [household-finance]
+      summary: Receive an authenticated read-only provider webhook
+      security: []
+      parameters:
+        - in: path
+          name: provider
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 80 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProviderWebhookPayload" }
+      responses:
+        "202":
+          description: Verified provider event accepted or deduplicated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted, duplicate, eventId]
+                properties:
+                  accepted: { type: boolean }
+                  duplicate: { type: boolean }
+                  eventId: { type: string }
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /banking/connections:
     get:
       operationId: listReadOnlyBankConnections
@@ -3830,6 +3860,9 @@ components:
               annualCost: { type: string }
               essentialStatus: { type: string }
         anomalyCount: { type: number }
+    ProviderWebhookPayload:
+      type: object
+      additionalProperties: true
     BankingStatus:
       type: object
       required: [readOnly, credentialsStored, transfersEnabled, billPayEnabled, adapters, message]

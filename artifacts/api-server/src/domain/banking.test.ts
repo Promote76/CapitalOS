@@ -11,6 +11,7 @@ test("provider registration only accepts an explicitly read-only provider", asyn
   const provider = {
     provider: "fixture-bank",
     readOnly: true as const,
+    delivery: "polling" as const,
     async sync() {
       return {
         providerAsOf: "2026-09-03T12:00:00.000Z",

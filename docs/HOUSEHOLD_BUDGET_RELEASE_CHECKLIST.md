@@ -55,6 +55,7 @@ The synchronization boundary is implemented, but remains disabled for production
 - [x] Provider outage, rate limit, stale snapshot, revocation, export, and provider-data deletion states are persisted and recoverable.
 - [x] Provider-derived rows cannot mutate the internal capital ledger; audit events record consent, linking, sync, revocation, and deletion.
 - [x] Isolated provider failure fixture passes with server typecheck and API contract parity.
+- [x] Disposable polling and signed-webhook certification proves cursor continuity, duplicate/out-of-order delivery, atomic replay after interruption, opaque credential replacement, and cross-household isolation.
 - [x] Accounts UI keeps provider controls disabled until a production adapter is configured, then requires explicit consent and account matching before sync.
 - [x] Accounts UI identifies review, stale, outage, rate-limit, and revoked states and offers credential-free export, consent revocation, and provider-data deletion.
 - [ ] Approve and bind a production provider connection with server-side token handling; do not substitute a fixture for this evidence.

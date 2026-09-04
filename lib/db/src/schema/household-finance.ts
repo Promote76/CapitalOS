@@ -105,6 +105,25 @@ export const bankSyncRuns = pgTable(
   }),
 );
 
+export const bankWebhookEvents = pgTable(
+  "bank_webhook_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    provider: text("provider").notNull(),
+    providerEventId: text("provider_event_id").notNull(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    connectionId: uuid("connection_id").notNull().references(() => bankConnections.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("received"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => ({
+    providerEventUnique: uniqueIndex("bank_webhook_events_provider_event_unique").on(table.provider, table.providerEventId),
+    householdIdx: index("bank_webhook_events_household_idx").on(table.householdId, table.createdAt),
+  }),
+);
+
 export const financialAccounts = pgTable(
   "household_financial_accounts",
   {

@@ -1994,6 +1994,8 @@ export interface FinanceInsights {
   anomalyCount: number;
 }
 
+export interface ProviderWebhookPayload { [key: string]: unknown }
+
 export type BankingStatusAdaptersItem = {
   provider: string;
   enabled: boolean;
@@ -3385,5 +3387,11 @@ export type ImportFinancialAccountCsv200 = {
   imported: number;
   skippedDuplicates: number;
   readOnly: boolean;
+};
+
+export type ReceiveReadOnlyBankWebhook202 = {
+  accepted: boolean;
+  duplicate: boolean;
+  eventId: string;
 };
 

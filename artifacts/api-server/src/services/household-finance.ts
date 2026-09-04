@@ -7,6 +7,7 @@ import {
   bankConnections,
   bankConnectionCredentials,
   bankSyncRuns,
+  bankWebhookEvents,
   emergencyReserves,
   financeBills,
   financeCategories,
@@ -1179,6 +1180,125 @@ export async function listReadOnlyBankConnections(actor: Actor) {
     readOnly: true,
     connections: connections.map((connection) => publicBankConnection(connection, credentialConnectionIds.has(connection.id))),
   };
+}
+
+export async function reauthorizeReadOnlyBankConnection(actor: Actor, connectionId: string) {
+  assertPermission(actor.role, "contribute");
+  const id = await householdId(actor);
+  const replacementCredentialRef = `bank-vault:${randomUUID()}`;
+  return db.transaction(async (tx) => {
+    const [connection] = await tx.select().from(bankConnections).where(and(
+      eq(bankConnections.id, connectionId),
+      eq(bankConnections.householdId, id),
+      eq(bankConnections.consentStatus, "granted"),
+    )).limit(1);
+    if (!connection) throw new GovernanceError("INVALID_STATE", "Consented bank connection was not found");
+    const [credential] = await tx.select().from(bankConnectionCredentials).where(and(
+      eq(bankConnectionCredentials.connectionId, connection.id),
+      eq(bankConnectionCredentials.householdId, id),
+      sql`${bankConnectionCredentials.revokedAt} is null`,
+    )).limit(1);
+    const provider = getReadOnlyBankingProvider(connection.provider);
+    if (!credential || !provider?.reauthorize) {
+      throw new GovernanceError("INVALID_STATE", "This provider does not support credential reauthorization");
+    }
+    await provider.reauthorize({ credentialRef: credential.credentialRef, replacementCredentialRef });
+    await tx.update(bankConnectionCredentials).set({ credentialRef: replacementCredentialRef }).where(and(
+      eq(bankConnectionCredentials.id, credential.id),
+      eq(bankConnectionCredentials.householdId, id),
+    ));
+    const [updated] = await tx.update(bankConnections).set({
+      status: "connected",
+      errorMessage: null,
+      updatedAt: new Date(),
+    }).where(and(eq(bankConnections.id, connection.id), eq(bankConnections.householdId, id))).returning();
+    await tx.insert(auditEvents).values({
+      householdId: id,
+      eventType: "bank_connection_reauthorized",
+      actor: actor.userId,
+      entity: "bank_connection",
+      entityId: connection.id,
+      afterState: { credentialReferenceReplaced: true, consentStatus: "granted", readOnly: true },
+      reason: "Household reauthorized the read-only provider connection",
+      metadata: { source: "household-bank-sync", credentialValueStored: false },
+    });
+    return publicBankConnection(updated, true);
+  });
+}
+
+export async function processReadOnlyBankWebhook(
+  providerName: string,
+  headers: Record<string, string | string[] | undefined>,
+  body: Buffer,
+) {
+  const provider = getReadOnlyBankingProvider(providerName);
+  if (!provider || (provider.delivery !== "webhook" && provider.delivery !== "polling_and_webhook") || !provider.verifyWebhook) {
+    throw new GovernanceError("INVALID_STATE", "The approved webhook provider is not configured");
+  }
+  const notification = await provider.verifyWebhook({ headers, body });
+  if (!notification.eventId || !notification.providerConnectionRef) {
+    throw new GovernanceError("INVALID_STATE", "Verified provider webhook is missing its event or connection reference");
+  }
+  const connections = await db.select().from(bankConnections).where(and(
+    eq(bankConnections.provider, providerName),
+    eq(bankConnections.providerConnectionRef, notification.providerConnectionRef),
+    eq(bankConnections.consentStatus, "granted"),
+  )).limit(2);
+  if (connections.length !== 1) {
+    throw new GovernanceError("INVALID_STATE", "Webhook connection reference did not resolve to exactly one consented household");
+  }
+  const connection = connections[0];
+  const [existing] = await db.select().from(bankWebhookEvents).where(and(
+    eq(bankWebhookEvents.provider, providerName),
+    eq(bankWebhookEvents.providerEventId, notification.eventId),
+  )).limit(1);
+  if (existing?.status === "completed" || existing?.status === "processing") {
+    return { accepted: true, duplicate: true, eventId: notification.eventId };
+  }
+  if (existing) {
+    await db.update(bankWebhookEvents).set({ status: "processing", errorMessage: null })
+      .where(eq(bankWebhookEvents.id, existing.id));
+  } else {
+    const inserted = await db.insert(bankWebhookEvents).values({
+      provider: providerName,
+      providerEventId: notification.eventId,
+      householdId: connection.householdId,
+      connectionId: connection.id,
+      status: "processing",
+    }).onConflictDoNothing().returning({ id: bankWebhookEvents.id });
+    if (!inserted.length) {
+      return { accepted: true, duplicate: true, eventId: notification.eventId };
+    }
+  }
+  try {
+    const result = await syncReadOnlyBankConnection({
+      userId: `bank-webhook:${providerName}`,
+      householdId: connection.householdId,
+      role: "owner",
+      source: "provider-webhook",
+    }, connection.id);
+    if (!result.applied) {
+      throw new Error(("errorMessage" in result ? result.errorMessage : null) ?? `Webhook sync ended in ${result.status}`);
+    }
+    await db.update(bankWebhookEvents).set({
+      status: "completed",
+      completedAt: new Date(),
+      errorMessage: null,
+    }).where(and(
+      eq(bankWebhookEvents.provider, providerName),
+      eq(bankWebhookEvents.providerEventId, notification.eventId),
+      eq(bankWebhookEvents.householdId, connection.householdId),
+    ));
+    return { accepted: true, duplicate: false, eventId: notification.eventId };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Webhook synchronization failed";
+    await db.update(bankWebhookEvents).set({ status: "failed", errorMessage: message }).where(and(
+      eq(bankWebhookEvents.provider, providerName),
+      eq(bankWebhookEvents.providerEventId, notification.eventId),
+      eq(bankWebhookEvents.householdId, connection.householdId),
+    ));
+    throw error;
+  }
 }
 
 export async function linkReadOnlyBankAccount(

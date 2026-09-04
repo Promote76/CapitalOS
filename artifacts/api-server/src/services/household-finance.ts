@@ -317,7 +317,9 @@ function currentPeriodTransactions(data: Awaited<ReturnType<typeof loadFinanceDa
   return data.transactions.filter((transaction) =>
     transaction.transactionDate >= period.start &&
     transaction.transactionDate < period.end &&
-    transaction.reviewStatus === "approved"
+    transaction.reviewStatus === "approved" &&
+    !transaction.pending &&
+    !transaction.excludedFromBudget
   );
 }
 
@@ -442,7 +444,12 @@ export async function getSafeToDeploy(actor?: Actor) {
   const data = await loadFinanceData(actor);
   const asOf = calendarToday();
   const incomeDate = nextIncomeDate(data.income, asOf);
-  const liquid = data.capitalAccounts.filter((account) => ["checking", "savings", "money_market"].includes(account.accountType)).reduce((sum, account) => sum + cents(account.availableBalance ?? account.currentBalance), 0);
+  const approvedManualActivity = currentPeriodTransactions(data, asOf)
+    .filter((transaction) => transaction.dataSource === "manual")
+    .reduce((sum, transaction) => sum + cents(transaction.amount), 0);
+  const liquid = data.capitalAccounts
+    .filter((account) => ["checking", "savings", "money_market"].includes(account.accountType))
+    .reduce((sum, account) => sum + cents(account.availableBalance ?? account.currentBalance), 0) + approvedManualActivity;
   const bills = data.bills
     .filter((bill) => bill.active && (!incomeDate || bill.dueDate < incomeDate))
     .reduce((sum, bill) => sum + cents(bill.expectedAmount), 0);
@@ -873,7 +880,7 @@ export async function createManualFinanceTransaction(actor: Actor, accountId: st
   }
   const signedAmount = (input.direction === "outflow" ? -cents(input.amount) : cents(input.amount)) / 100;
   const amount = signedAmount.toFixed(2);
-  const originalAmount = cents(input.amount).toFixed(2);
+  const originalAmount = (cents(input.amount) / 100).toFixed(2);
   const merchant = input.merchant?.trim() || null;
 
   return db.transaction(async (tx) => {
@@ -952,6 +959,9 @@ export async function reviewFinancialTransaction(actor: Actor, transactionId: st
       eq(financeTransactions.householdId, id),
     )).limit(1);
     if (!transaction) return planningNotFound("Financial transaction");
+    if (transaction.dataSource !== "csv_import" && transaction.dataSource !== "plaid" && transaction.dataSource !== "manual") {
+      throw new GovernanceError("INVALID_STATE", "This transaction source cannot be reviewed here");
+    }
 
     const categoryId = input.categoryId !== undefined ? input.categoryId : transaction.categoryId;
     if (categoryId) {
@@ -1008,7 +1018,7 @@ export async function reviewFinancialTransaction(actor: Actor, transactionId: st
       eq(financeTransactions.id, transactionId),
       eq(financeTransactions.householdId, id),
     )).returning();
-    if (!updated) return planningNotFound("Imported transaction");
+    if (!updated) return planningNotFound("Financial transaction");
     await tx.insert(auditEvents).values({
       householdId: id,
       eventType: "finance_transaction_reviewed",
@@ -1043,6 +1053,7 @@ export async function reviewFinancialTransaction(actor: Actor, transactionId: st
   });
 }
 
+// hint: Structural change (rename/retype). Check callers of this entity.
 export async function getTransactionReviewQueue(actor?: Actor) {
   const id = await householdId(actor);
   const [transactions, accounts, categories] = await Promise.all([

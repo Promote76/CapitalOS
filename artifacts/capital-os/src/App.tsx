@@ -1734,8 +1734,9 @@ function normalizeReviewRow(value: ReviewQueueRecord) {
     account: firstString(value, ['accountName', 'account', 'financialAccountName'], 'Account not supplied'),
     categoryId: firstString(value, ['categoryId', 'suggestedCategoryId']),
     categoryName: firstString(value, ['categoryName', 'category', 'suggestedCategory']),
+    source: firstString(value, ['dataSource', 'source'], 'unknown'),
     status: firstString(value, ['reviewStatus', 'status'], 'needs_review'),
-    reason: firstString(value, ['reviewReason', 'reason', 'queueReason'], 'Imported rows stay outside planning until reviewed.'),
+    reason: firstString(value, ['reviewReason', 'reason', 'queueReason'], 'Rows stay outside planning until reviewed.'),
     note: firstString(value, ['note', 'reviewNote']),
   };
 }
@@ -1754,6 +1755,13 @@ function formatReviewAmount(value: string | number) {
 
 function reviewStatusLabel(status: string) {
   return status.replaceAll('_', ' ');
+}
+
+function reviewSourceLabel(source: string) {
+  if (source === 'manual') return 'Manual entry';
+  if (source === 'csv_import') return 'CSV import';
+  if (source === 'plaid') return 'Plaid';
+  return humanize(source, 'Unknown source');
 }
 
 function TransactionReviewPage({ onFeedback }: { onFeedback: (message: string) => void }) {
@@ -1876,16 +1884,16 @@ function TransactionReviewPage({ onFeedback }: { onFeedback: (message: string) =
     `}</style>
     <PageHeading
       eyebrow="Household finance / review queue"
-      title={<>Give imported rows<br /><em>a clear place.</em></>}
-      description="Imported transactions stay outside the plan until a household member reviews them. Approve a row with its category, or leave it here for a later pass."
+      title={<>Give every row<br /><em>a clear place.</em></>}
+      description="Manual and imported transactions stay outside the plan until a household member reviews them. Approve a row with its category, or leave it here for a later pass."
       actions={<button className="btn" onClick={() => { void queue.refetch(); }} disabled={queue.isLoading} data-testid="button-refresh-transaction-review"><RotateCcw size={14} /> {queue.isLoading ? 'Refreshing…' : 'Refresh queue'}</button>}
     />
     <section className="review-governance animate-in delay-1" data-testid="banner-transaction-review-governance">
       <ShieldCheck size={17} />
-      <div><strong>Planning stays conservative while this queue is open.</strong><span>CSV source records are read-only. Reviewing a row records a household decision; it does not move money or change the original imported details.</span></div>
+       <div><strong>Planning stays conservative while this queue is open.</strong><span>Source records are read-only. Reviewing a row records a household decision; it does not move money or change the original transaction details.</span></div>
     </section>
     <section className="card review-summary page-section animate-in delay-1" data-testid="summary-transaction-review">
-      <div className="review-summary-cell"><div className="mono-label">Awaiting review</div><div className="review-summary-value" data-testid="stat-transactions-awaiting-review">{rows.length}</div><div className="review-summary-detail">imported rows held outside planning</div></div>
+       <div className="review-summary-cell"><div className="mono-label">Awaiting review</div><div className="review-summary-value" data-testid="stat-transactions-awaiting-review">{rows.length}</div><div className="review-summary-detail">rows held outside planning</div></div>
       <div className="review-summary-cell"><div className="mono-label">Needs a category</div><div className="review-summary-value" data-testid="stat-transactions-needing-category">{needsCategory}</div><div className="review-summary-detail">rows without a household category</div></div>
       <div className="review-summary-cell"><div className="mono-label">Value held</div><div className="review-summary-value" data-testid="stat-transactions-value-held">{formatReviewAmount(heldAmount).replace('+', '')}</div><div className="review-summary-detail">absolute value of queued rows</div></div>
     </section>
@@ -1899,7 +1907,7 @@ function TransactionReviewPage({ onFeedback }: { onFeedback: (message: string) =
       </div>
       {queue.isLoading && <div className="review-list" aria-label="Loading transaction review queue" data-testid="loading-transaction-review"><div className="review-item" style={{ minHeight: 155, opacity: .55 }} /><div className="review-item" style={{ minHeight: 155, opacity: .35 }} /></div>}
       {queue.isError && <div className="review-empty review-error" role="alert" data-testid="error-transaction-review"><ShieldAlert size={19} /><div><strong>Review queue unavailable</strong><p>{queue.error instanceof Error ? queue.error.message : 'The household review service could not be reached.'}</p><button className="btn btn-primary" style={{ marginTop: 15 }} onClick={() => { void queue.refetch(); }} data-testid="button-retry-transaction-review"><RotateCcw size={14} /> Try again</button></div></div>}
-      {!queue.isLoading && !queue.isError && visibleRows.length === 0 && <div className="review-empty" data-testid="empty-transaction-review"><ClipboardCheck size={22} /><h3>{rows.length === 0 ? 'The ledger is caught up.' : 'No rows match this view.'}</h3><p>{rows.length === 0 ? 'New imported transactions will appear here before they can influence household planning.' : 'Clear the search or choose All rows to see the rest of the queue.'}</p>{rows.length > 0 && <button className="btn" style={{ marginTop: 17 }} onClick={() => { setSearch(''); setFilter('all'); }} data-testid="button-clear-transaction-review-filters">Show all rows</button>}</div>}
+       {!queue.isLoading && !queue.isError && visibleRows.length === 0 && <div className="review-empty" data-testid="empty-transaction-review"><ClipboardCheck size={22} /><h3>{rows.length === 0 ? 'The ledger is caught up.' : 'No rows match this view.'}</h3><p>{rows.length === 0 ? 'New manual or imported transactions will appear here before they can influence household planning.' : 'Clear the search or choose All rows to see the rest of the queue.'}</p>{rows.length > 0 && <button className="btn" style={{ marginTop: 17 }} onClick={() => { setSearch(''); setFilter('all'); }} data-testid="button-clear-transaction-review-filters">Show all rows</button>}</div>}
       {!queue.isLoading && !queue.isError && visibleRows.length > 0 && <div className="review-list" data-testid="list-transaction-review">
         {visibleRows.map((row) => {
           const draft = draftFor(row);
@@ -1913,7 +1921,7 @@ function TransactionReviewPage({ onFeedback }: { onFeedback: (message: string) =
               <div className="review-item-meta">
                 <div><span>Date</span><strong>{formatReviewDate(row.date)}</strong></div>
                 <div><span>Account</span><strong>{row.account}</strong></div>
-                <div><span>Source</span><strong>CSV import</strong></div>
+                <div><span>Source</span><strong>{reviewSourceLabel(row.source)}</strong></div>
                 <div><span>Status</span><strong><span className="status pending">{reviewStatusLabel(row.status)}</span></strong></div>
               </div>
               <div className="review-item-reason"><strong>Why it is here</strong> · {row.reason}</div>

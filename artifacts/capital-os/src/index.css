@@ -1184,6 +1184,20 @@ body { background: var(--surface-page); }
 .dashboard-treasury-metrics span { color:var(--text-muted); font-size:10px; }
 .dashboard-treasury-metrics strong { color:var(--text-primary); font:600 13px var(--app-font-mono); }
 .dashboard-treasury-action { display:flex; align-items:flex-start; gap:8px; padding:12px 13px; border:1px solid #d9eee0; border-radius:9px; background:#f2fbf4; color:#2c7049; font-size:11px; line-height:1.4; }
+.dashboard-data-state { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px; min-height:320px; margin-top:4px; text-align:center; }
+.dashboard-data-state > svg { color:var(--color-opportunity); }
+.dashboard-data-state.unavailable > svg { color:var(--color-warning); }
+.dashboard-data-state h2 { margin:0; color:var(--text-primary); font:400 24px/1.2 var(--app-font-serif); }
+.dashboard-data-state p { max-width:470px; margin:0; color:var(--text-secondary); font-size:12px; line-height:1.55; }
+.dashboard-state-note { color:var(--text-muted); font-size:11px; }
+.dashboard-state-actions { display:flex; gap:9px; flex-wrap:wrap; justify-content:center; margin-top:7px; }
+.dashboard-state-spinner { width:24px; height:24px; border:3px solid var(--border-default); border-top-color:var(--color-primary); border-radius:50%; animation:dashboard-spin .8s linear infinite; }
+.dashboard-inline-state { display:flex; align-items:center; min-height:102px; color:var(--text-secondary); font-size:12px; line-height:1.5; }
+.dashboard-placeholder { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; min-height:178px; color:var(--text-secondary); text-align:center; }
+.dashboard-placeholder svg { color:var(--color-opportunity); }
+.dashboard-placeholder strong { color:var(--text-primary); font-size:12px; }
+.dashboard-placeholder span { max-width:310px; font-size:11px; line-height:1.5; }
+@keyframes dashboard-spin { to { transform:rotate(360deg); } }
 .treasury-metric-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:18px; }
 .treasury-metric .metric-value { font-size:24px; }
 .treasury-metric .metric-detail { max-width:190px; }

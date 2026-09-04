@@ -110,6 +110,7 @@ import {
   type FinancialAccount,
   useGetTreasury,
 } from '@workspace/api-client-react';
+import { dashboardDataState } from './dashboard-state';
 import {
   ArrowDownLeft,
   ArrowRightLeft,
@@ -678,28 +679,59 @@ function DashboardTreasury() {
   </section>;
 }
 
-function Dashboard({ onAction, onFeedback, transactions, dashboard, backendIssue }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void; transactions: Transaction[]; dashboard?: DashboardSnapshot; backendIssue?: boolean }) {
+function DashboardState({ state, onRetry, onAction }: { state: 'loading' | 'unavailable' | 'empty'; onRetry: () => void; onAction: (kind: Exclude<ModalKind, null>) => void }) {
+  const copy = {
+    loading: {
+      title: 'Loading your household plan',
+      message: 'Reading the latest household data. No balances or activity are shown until the server responds.',
+    },
+    unavailable: {
+      title: 'Household data unavailable',
+      message: 'The household service could not be reached. No balances, goals, allocations, or activity are being shown.',
+    },
+    empty: {
+      title: 'Your household plan is ready to begin',
+      message: 'No balances or planning activity have been recorded yet. Add verified household data to build this view.',
+    },
+  }[state];
+  return <main className="content">
+    <PageHeading eyebrow="Household overview" title={<>Your plan starts<br /><em>with real facts.</em></>} description="Capital OS only shows financial guidance after household data has been returned by the server." />
+    <section className={`dashboard-data-state card card-pad ${state}`} data-testid={`dashboard-state-${state}`} role={state === 'unavailable' ? 'alert' : 'status'}>
+      {state === 'loading' ? <div className="dashboard-state-spinner" aria-hidden="true" /> : state === 'unavailable' ? <ShieldAlert size={25} /> : <CircleDollarSign size={25} />}
+      <h2>{copy.title}</h2>
+      <p>{copy.message}</p>
+      {state === 'loading' && <span className="dashboard-state-note">This page will update when the request finishes.</span>}
+      {state === 'unavailable' && <button className="btn btn-primary" onClick={onRetry} data-testid="button-retry-dashboard"><RotateCcw size={14} /> Try again</button>}
+      {state === 'empty' && <div className="dashboard-state-actions"><Link className="btn btn-secondary" href="/accounts">Open accounts</Link><button className="btn btn-primary" onClick={() => onAction('contribution')} data-testid="button-empty-dashboard-contribution"><Plus size={14} /> Record contribution</button></div>}
+    </section>
+  </main>;
+}
+
+function Dashboard({ onAction, onFeedback, transactions, dashboard, dashboardState, contributionsLoading, contributionsUnavailable, onRetry }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void; transactions: Transaction[]; dashboard?: DashboardSnapshot; dashboardState: 'loading' | 'unavailable' | 'empty' | 'ready'; contributionsLoading: boolean; contributionsUnavailable: boolean; onRetry: () => void }) {
   const monthTotal = transactions.reduce((sum, item) => sum + item.amount, 0);
   const goal = dashboard?.goal;
   const allocation = dashboard?.allocation;
   const portfolio = dashboard?.portfolio;
-  const confidence = dashboard?.strategies[0]?.confidenceScore ?? 78;
+  const confidence = dashboard?.strategies[0]?.confidenceScore;
+  if (dashboardState !== 'ready') {
+    return <DashboardState state={dashboardState} onRetry={onRetry} onAction={onAction} />;
+  }
+  const movementState = contributionsLoading ? 'loading' : contributionsUnavailable ? 'unavailable' : transactions.length ? 'ready' : 'empty';
   return <main className="content">
-    {backendIssue && <div className="card card-pad" role="status" style={{ marginBottom: 22, borderColor: 'var(--color-warning)', background: 'var(--color-warning-soft)' }}><strong>Showing the last saved view.</strong><p style={{ margin: '5px 0 0', color: 'var(--ink-soft)', fontSize: 12 }}>The household service is temporarily unavailable. Your local plan view is safe to review, and it will refresh automatically.</p></div>}
-    <PageHeading eyebrow="Monday, 14 October 2024" title={<>Make room for the<br /><em>long view.</em></>} description="A clear week starts here. Your duplex plan is healthy, and the next small move is already in view." actions={<><button className="btn" data-testid="button-dashboard-export" onClick={() => onFeedback('Local-only preview: no server report was created.')}><ArrowDownLeft size={15} /> Export view</button><button className="btn btn-primary" data-testid="button-dashboard-contribution" onClick={() => onAction('contribution')}><Plus size={15} /> Record contribution</button></>} />
+    <PageHeading eyebrow="Household overview" title={<>Make room for the<br /><em>long view.</em></>} description="Review the household data and decisions that have been recorded." actions={<><button className="btn" data-testid="button-dashboard-export" onClick={() => onFeedback('Local-only preview: no server report was created.')}><ArrowDownLeft size={15} /> Export view</button><button className="btn btn-primary" data-testid="button-dashboard-contribution" onClick={() => onAction('contribution')}><Plus size={15} /> Record contribution</button></>} />
     <div className="dashboard-grid">
       <section className="hero-card card animate-in delay-1">
         <div className="eyebrow" style={{ color: '#58766a' }}>Primary goal / 01</div>
-        <h2>A first duplex<br />of your own.</h2>
-        <p>Steady capital, thoughtful leverage, and a home with room for the people you love.</p>
-        <div className="hero-stat"><div className="hero-stat-value" data-testid="text-goal-total">{displayMoney(goal?.currentAmount, '$48,260')}</div><div className="hero-stat-label">of {displayMoney(goal?.targetAmount, '$120,000')} reserve</div></div>
-        <div className="hero-progress"><div className="hero-progress-meta"><span>{goal?.progressPercent.toFixed(1) ?? '40.2'}% funded</span><span>Target: {displayDate(goal?.targetDate, 'Jun 2027')}</span></div><Progress value={goal?.progressPercent ?? 40.2} /></div>
+        <h2>{goal?.name ?? 'Primary household goal'}</h2>
+        <p>Current progress is shown from the household plan returned by the server.</p>
+        <div className="hero-stat"><div className="hero-stat-value" data-testid="text-goal-total">{displayMoney(goal?.currentAmount, '—')}</div><div className="hero-stat-label">of {displayMoney(goal?.targetAmount, '—')} target</div></div>
+        <div className="hero-progress"><div className="hero-progress-meta"><span>{goal ? `${goal.progressPercent.toFixed(1)}% funded` : 'Funding not available'}</span><span>Target: {displayDate(goal?.targetDate, 'Not set')}</span></div><Progress value={goal?.progressPercent ?? 0} /></div>
       </section>
       <section className="card card-pad weekly-card animate-in delay-1">
-        <CardTitle title="This week’s allocation" subtitle="Automatic on Friday, 18 October" action={<button className="icon-btn" data-testid="button-allocation-menu" onClick={() => onFeedback('Allocation is already set for Friday.')}><MoreHorizontal size={16} /></button>} />
-        <div className="weekly-amount" data-testid="text-weekly-total">{displayMoney(allocation?.totalWeekly, '$250')} <span>/ week</span></div>
+        <CardTitle title="This week’s allocation" subtitle="Server-defined household rule" action={<button className="icon-btn" data-testid="button-allocation-menu" onClick={() => onFeedback('The current household allocation is server-defined.')}><MoreHorizontal size={16} /></button>} />
+        <div className="weekly-amount" data-testid="text-weekly-total">{displayMoney(allocation?.totalWeekly, '—')} <span>/ week</span></div>
         <div className="allocation-list">
-        {[['Duplex Reserve', displayMoney(allocation?.duplexReserve, '$200'), 'var(--color-protected)'], ['Capital OS', displayMoney(allocation?.capitalOs, '$25'), 'var(--color-primary)'], ['Opportunity Reserve', displayMoney(allocation?.opportunityReserve, '$25'), 'var(--color-opportunity)']].map(([name, value, color]) => <div className="allocation-row" key={name}><i className="allocation-dot" style={{ background: color }} /><span className="allocation-name">{name}</span><span className="allocation-value">{value}</span></div>)}
+        {allocation && [['Duplex Reserve', displayMoney(allocation.duplexReserve, '—'), 'var(--color-protected)'], ['Capital OS', displayMoney(allocation.capitalOs, '—'), 'var(--color-primary)'], ['Opportunity Reserve', displayMoney(allocation.opportunityReserve, '—'), 'var(--color-opportunity)']].map(([name, value, color]) => <div className="allocation-row" key={name}><i className="allocation-dot" style={{ background: color }} /><span className="allocation-name">{name}</span><span className="allocation-value">{value}</span></div>)}
         </div>
         <button className="btn" style={{ width: '100%', marginTop: 22 }} data-testid="button-edit-allocation" onClick={() => onAction('contribution')}><Pencil size={14} /> Edit allocation</button>
       </section>
@@ -712,35 +744,38 @@ function Dashboard({ onAction, onFeedback, transactions, dashboard, backendIssue
       <section className="capital-state-card protected" data-testid="card-protected-capital">
         <div className="state-icon"><ShieldCheck size={17} /></div>
         <div className="state-label">Protected Capital <span className="status" style={{ marginLeft: 6 }}>Locked</span></div>
-        <div className="state-value" data-testid="text-protected-capital">{displayMoney(portfolio?.protectedCapital, '$48,260')}</div>
+        <div className="state-value" data-testid="text-protected-capital">{displayMoney(portfolio?.protectedCapital, '—')}</div>
         <div className="state-caption">Protected capital is ring-fenced and unavailable to experimental strategies.</div>
       </section>
       <section className="capital-state-card active" data-testid="card-active-capital">
         <div className="state-icon"><CircleDollarSign size={17} /></div>
         <div className="state-label">Active Capital <span className="status" style={{ marginLeft: 6, background: 'var(--color-primary-soft)', color: 'var(--color-primary)' }}>Working</span></div>
-        <div className="state-value" data-testid="text-active-capital">{displayMoney(portfolio?.activeCapital, '$1,180')}</div>
+        <div className="state-value" data-testid="text-active-capital">{displayMoney(portfolio?.activeCapital, '—')}</div>
         <div className="state-caption">Authorized for productive deployment while the duplex reserve stays protected.</div>
       </section>
       <section className="capital-state-card confidence" data-testid="card-confidence-score">
         <div className="state-icon"><Gauge size={17} /></div>
         <div className="state-label">Capital Confidence <span className="info-note" title="Confidence reflects historical evidence, execution quality, system health, and risk controls. It is not a guarantee of future returns.">i</span></div>
-        <div className="confidence-score"><strong>{confidence.toFixed(0)} / 100</strong><span>Limited Capital</span></div>
+        <div className="confidence-score"><strong>{confidence === undefined ? '—' : `${confidence.toFixed(0)} / 100`}</strong><span>{confidence === undefined ? 'Not available' : 'Server-derived confidence'}</span></div>
         <div className="state-caption">Confidence reflects evidence, execution quality, system health, and risk controls. Not a guarantee of future returns.</div>
       </section>
     </div>
     <div className="section-grid">
       <section className="card card-pad animate-in delay-3">
-        <CardTitle title="Capital trajectory" subtitle="Total capital across your reserves" action={<div className="legend"><span><i style={{ background: 'var(--color-primary)' }} />Actual</span><span><i style={{ background: 'var(--color-protected)' }} />Plan</span></div>} />
-        <div className="chart-area" data-testid="chart-capital-trajectory"><div className="chart-grid-lines"><span /><span /><span /><span /><span /></div><svg className="chart-svg" viewBox="0 0 600 145" preserveAspectRatio="none" aria-label="Capital trajectory chart"><path d="M0 132 C55 128 73 117 105 121 S170 110 205 101 S268 108 302 86 S370 81 401 72 S470 45 510 50 S560 23 600 12" fill="none" stroke="#23463e" strokeWidth="3" strokeLinecap="round" /><path d="M0 132 C55 128 73 124 105 119 S170 111 205 101 S268 92 302 80 S370 70 401 61 S470 47 510 35 S560 21 600 10 L600 145 L0 145Z" fill="#d9e7df" opacity=".46" /><path d="M0 138 C60 130 108 128 150 116 S224 105 278 94 S354 80 405 65 S486 55 540 37 S574 29 600 19" fill="none" stroke="#e2bd67" strokeWidth="2" strokeDasharray="5 6" /></svg><div className="chart-labels"><span>Jan ’24</span><span>Apr</span><span>Jul</span><span>Oct ’24</span><span>Jan ’25</span><span>Apr ’25</span></div></div>
+        <CardTitle title="Capital trajectory" subtitle="Historical capital movement from the household ledger" />
+        <div className="dashboard-placeholder" data-testid="empty-capital-trajectory"><BarChart3 size={22} /><strong>Capital history is not available yet</strong><span>The dashboard will show a trajectory after historical ledger data is returned.</span></div>
       </section>
       <section className="card card-pad animate-in delay-3">
-        <CardTitle title="Recent movement" subtitle={`${monthTotal.toLocaleString()} moved this month`} action={<Link href="/transactions" className="mono-label" data-testid="link-view-transactions">View all <ArrowUpRight size={12} style={{ verticalAlign: 'middle' }} /></Link>} />
-        <div className="activity-list">{transactions.slice(0, 3).map((item) => <div className="activity-item" key={item.id}><div className="activity-icon"><ArrowDownLeft /></div><div className="activity-copy"><strong>{item.name}</strong><span>{item.date} · {item.category}</span></div><div className="activity-amount">+${item.amount}</div></div>)}</div>
+        <CardTitle title="Recent movement" subtitle={movementState === 'ready' ? `${monthTotal.toLocaleString()} moved in loaded contributions` : movementState === 'loading' ? 'Loading contribution history' : movementState === 'unavailable' ? 'Contribution history unavailable' : 'No recorded contributions'} action={<Link href="/transactions" className="mono-label" data-testid="link-view-transactions">View all <ArrowUpRight size={12} style={{ verticalAlign: 'middle' }} /></Link>} />
+        {movementState === 'ready' && <div className="activity-list">{transactions.slice(0, 3).map((item) => <div className="activity-item" key={item.id}><div className="activity-icon"><ArrowDownLeft /></div><div className="activity-copy"><strong>{item.name}</strong><span>{item.date} · {item.category}</span></div><div className="activity-amount">+${item.amount}</div></div>)}</div>}
+        {movementState === 'loading' && <div className="dashboard-inline-state">Loading contribution history…</div>}
+        {movementState === 'unavailable' && <div className="dashboard-inline-state" role="alert">No contribution rows are shown because the household history could not be loaded.</div>}
+        {movementState === 'empty' && <div className="dashboard-inline-state">No contributions have been recorded for this household.</div>}
       </section>
     </div>
     <section className="card card-pad page-section">
-      <CardTitle title="Funding checkpoints" subtitle="Three accounts, one patient plan." action={<Link href="/goals" className="btn" data-testid="link-view-goals">Open goals <ChevronRight size={14} /></Link>} />
-      <div>{[['Duplex Reserve', '$48,260 of $120,000', 40.2], ['Opportunity Reserve', '$6,840 of $15,000', 45.6], ['Capital OS', '$1,180 of $2,400', 49.2]].map(([name, amount, pct], index) => <div className="goal-row" key={name}><div><div className="goal-label"><i style={{ background: index === 0 ? 'var(--color-protected)' : index === 1 ? 'var(--color-opportunity)' : 'var(--color-primary)' }} />{name}</div><div className="goal-meta">{amount}</div></div><div className="goal-progress"><b style={{ width: `${pct}%`, background: index === 0 ? 'var(--color-protected)' : index === 1 ? 'var(--color-opportunity)' : 'var(--color-primary)' }} /></div><div className="goal-pct">{pct}%</div></div>)}</div>
+      <CardTitle title="Capital balances" subtitle="Balances recorded for this household." action={<Link href="/goals" className="btn" data-testid="link-view-goals">Open goals <ChevronRight size={14} /></Link>} />
+      <div>{(portfolio?.composition ?? []).map((item, index) => <div className="goal-row" key={item.label}><div><div className="goal-label"><i style={{ background: index === 0 ? 'var(--color-protected)' : index === 1 ? 'var(--color-opportunity)' : 'var(--color-primary)' }} />{item.label}</div><div className="goal-meta">{displayMoney(item.amount, '—')} current balance</div></div><div className="goal-progress"><b style={{ width: `${item.percent}%`, background: index === 0 ? 'var(--color-protected)' : index === 1 ? 'var(--color-opportunity)' : 'var(--color-primary)' }} /></div><div className="goal-pct">{item.percent.toFixed(1)}%</div></div>)}</div>
     </section>
   </main>;
 }
@@ -2115,9 +2150,9 @@ function ActionModal({ kind, close, onComplete }: { kind: Exclude<ModalKind, nul
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !submitting) close(); }}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div className="modal-header"><div><div className="eyebrow">Capital OS / quick action</div><h2 id="modal-title">{copy.title}</h2><p>{copy.desc}</p></div><button className="icon-btn" aria-label="Close dialog" data-testid="button-close-modal" onClick={close} disabled={submitting}><X size={17} /></button></div><form className="modal-form" onSubmit={(event) => { void submit(event); }}>{(kind === 'contribution' || kind === 'transfer') && <div className="field"><label>Amount</label><input autoFocus required inputMode="decimal" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} data-testid="input-action-amount" placeholder="250" /></div>}{kind === 'contribution' && <div className="field"><label>Allocation rule</label><div className="field-help">The active household allocation rule applies server-side; this contribution is not manually routed to a sleeve.</div></div>}{(kind === 'strategy' || kind === 'property') && <div className="field"><label>{kind === 'property' ? 'Note title' : 'Strategy title'}</label><input autoFocus required value={name} onChange={(event) => setName(event.target.value)} data-testid="input-action-name" /></div>}<div className="field"><label>Note <span style={{ textTransform:'none', letterSpacing:0 }}>(optional)</span></label><textarea value={note} onChange={(event) => setNote(event.target.value)} data-testid="textarea-action-note" placeholder="A little context for later..." /></div><div className="modal-actions"><button type="button" className="btn" data-testid="button-cancel-modal" onClick={close} disabled={submitting}>Cancel</button><button type="submit" className="btn btn-primary" data-testid="button-submit-modal" disabled={submitting}><Check size={14} /> {submitting ? 'Saving…' : copy.submit}</button></div></form></div></div>;
 }
 
-function AppRouter({ onAction, onFeedback, transactions, dashboard, backendIssue }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void; transactions: Transaction[]; dashboard?: DashboardSnapshot; backendIssue?: boolean }) {
+function AppRouter({ onAction, onFeedback, transactions, dashboard, dashboardState, contributionsLoading, contributionsUnavailable, onRetry }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void; transactions: Transaction[]; dashboard?: DashboardSnapshot; dashboardState: 'loading' | 'unavailable' | 'empty' | 'ready'; contributionsLoading: boolean; contributionsUnavailable: boolean; onRetry: () => void }) {
   return <Switch>
-    <Route path="/" component={() => <Dashboard onAction={onAction} onFeedback={onFeedback} transactions={transactions} dashboard={dashboard} backendIssue={backendIssue} />} />
+    <Route path="/" component={() => <Dashboard onAction={onAction} onFeedback={onFeedback} transactions={transactions} dashboard={dashboard} dashboardState={dashboardState} contributionsLoading={contributionsLoading} contributionsUnavailable={contributionsUnavailable} onRetry={onRetry} />} />
     <Route path="/budget" component={BudgetPage} />
     <Route path="/cash-flow" component={CashFlowPage} />
     <Route path="/bills" component={() => <BillsPage onFeedback={onFeedback} />} />
@@ -2156,15 +2191,8 @@ function AppContent() {
   const [toast, setToast] = useState('');
   const dashboardQuery = useGetDashboard();
   const contributionsQuery = useListContributions();
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    { id: 1, date: '11 Oct', name: 'Weekly allocation', category: 'Duplex Reserve', amount: 200, status: 'Posted' },
-    { id: 2, date: '11 Oct', name: 'Weekly allocation', category: 'Capital OS', amount: 25, status: 'Posted' },
-    { id: 3, date: '11 Oct', name: 'Weekly allocation', category: 'Opportunity Reserve', amount: 25, status: 'Posted' },
-    { id: 4, date: '04 Oct', name: 'Weekly allocation', category: 'Duplex Reserve', amount: 200, status: 'Posted' },
-  ]);
   const apiTransactions = useMemo(() => {
-    if (!contributionsQuery.data?.length) return transactions;
-    return contributionsQuery.data.flatMap((item, index) => {
+    return (contributionsQuery.data ?? []).flatMap((item, index) => {
       const split = item.metadata?.split as Record<string, number | string> | undefined;
       const destinations: Array<[string, number | string | undefined]> = [
         ['Duplex Reserve', split?.duplex] as [string, number | string | undefined],
@@ -2183,7 +2211,7 @@ function AppContent() {
         status: item.status === 'completed' ? 'Posted' : item.status,
       }));
     });
-  }, [contributionsQuery.data, transactions]);
+  }, [contributionsQuery.data]);
   useEffect(() => { if (!toast) return; const timeout = window.setTimeout(() => setToast(''), 3200); return () => window.clearTimeout(timeout); }, [toast]);
   const notify = (message: string) => setToast(message);
   const complete = async (kind: Exclude<ModalKind, null>, values: { amount?: number; name?: string; note?: string; idempotencyKey?: string }) => {
@@ -2207,7 +2235,8 @@ function AppContent() {
     }
     setModal(null); setToast(`${labels[kind]} · your plan is up to date.`);
   };
-  return <TooltipProvider><RoutedErrorBoundary><AppShell onAction={setModal} onFeedback={notify} menuOpen={menuOpen} setMenuOpen={setMenuOpen}><AppRouter onAction={setModal} onFeedback={notify} transactions={apiTransactions} dashboard={dashboardQuery.data} backendIssue={dashboardQuery.isError} /></AppShell></RoutedErrorBoundary>{modal && <ActionModal kind={modal} close={() => setModal(null)} onComplete={complete} />}{toast && <div className="toast-note" role="status" data-testid="status-action-feedback">{toast}</div>}</TooltipProvider>;
+  const state = dashboardDataState(dashboardQuery.data, dashboardQuery.isLoading, dashboardQuery.isError);
+  return <TooltipProvider><RoutedErrorBoundary><AppShell onAction={setModal} onFeedback={notify} menuOpen={menuOpen} setMenuOpen={setMenuOpen}><AppRouter onAction={setModal} onFeedback={notify} transactions={apiTransactions} dashboard={dashboardQuery.data} dashboardState={state} contributionsLoading={contributionsQuery.isLoading} contributionsUnavailable={contributionsQuery.isError} onRetry={() => { void dashboardQuery.refetch(); }} /></AppShell></RoutedErrorBoundary>{modal && <ActionModal kind={modal} close={() => setModal(null)} onComplete={complete} />}{toast && <div className="toast-note" role="status" data-testid="status-action-feedback">{toast}</div>}</TooltipProvider>;
 }
 
 function App() {

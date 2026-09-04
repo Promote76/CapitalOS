@@ -19,6 +19,7 @@
 | Reports, documents, insights empty-state actions | READ-ONLY / LOCAL-ONLY | Route/navigation feedback is not a persisted artifact. |
 | Treasury stress test | SIMULATED | Scenario output is advisory and does not change balances. |
 | Micro-Live rehearsal | PERSISTED / DISABLED | Rehearsal records may persist; real order transmission remains false. |
+| Dashboard financial overview | SERVER-READ / EMPTY-SAFE | Balances, goals, allocations, and movement rows render only from successful household reads; loading, unavailable, and empty states never use demo values. |
 
 ## Certification status
 

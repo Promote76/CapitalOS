@@ -16,6 +16,7 @@
     "certify:observability": "node scripts/certify-observability.mjs",
     "certify:household-privacy": "node scripts/certify-household-privacy.mjs",
     "certify:financial-integrity": "node scripts/certify-financial-integrity.mjs",
+    "certify:browser-auth": "node scripts/certify-browser-auth.mjs",
     "certify:migrations": "node scripts/certify-migrations.mjs",
     "certify:internal-reliability": "node scripts/certify-internal-reliability.mjs"
   },

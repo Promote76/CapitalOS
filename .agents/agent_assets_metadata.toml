@@ -64,3 +64,17 @@ mtime_ms = 1788611587122
 storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:a275880a-7e86-4ab1-a13b-802e51c9d9ab/574b03a1-716b-445a-8577-3bf0eb6a2668/b4db4edc-be1a-4e6b-b76e-cc963d7c6de8"
 storage_version_token = "1788611602309322"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "NzBkTvSGKKTZx0y22EC3B"
+uri = "file://docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md"
+type = "text"
+title = "Authenticated browser certification"
+description = "Published-origin Clerk preflight evidence with the exact remaining user actions for BA and RV certification."
+logical_id = "31e7b0bf-dac2-42ba-b367-9ddcdfa03594"
+content_hash = "sha256:19bed287e58bf174692cf2c57166cf98f3f8dfdaed02c271fd40f9c90865f50c"
+size = 3496
+mtime_ms = 1788615078301
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:a275880a-7e86-4ab1-a13b-802e51c9d9ab/31e7b0bf-dac2-42ba-b367-9ddcdfa03594/962caee3-53e8-472d-97d1-0c607841bf1c"
+storage_version_token = "1788615113948983"
+content_type = "text/markdown"

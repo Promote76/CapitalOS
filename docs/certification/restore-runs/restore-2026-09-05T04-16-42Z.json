@@ -1,0 +1,116 @@
+{
+  "provider": "Replit managed PostgreSQL",
+  "recoveryMethod": "PITR",
+  "restoreTarget": "new-isolated-certification-target",
+  "productionOverwritten": false,
+  "gates": {
+    "RC-01": {
+      "status": "FAIL",
+      "reason": "The restore target must be a provider-managed remote target, not localhost."
+    },
+    "RC-02": {
+      "status": "PASS",
+      "reason": "Provider recovery reference and source snapshot are present."
+    },
+    "RC-03": {
+      "status": "PASS",
+      "reason": "Source, recovery-point, target, and restore timestamps are present."
+    },
+    "RC-04": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-05": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-06": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-07": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-08": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-09": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-10": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-11": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-12": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-13": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-14": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-15": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-16": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-17": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-18": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-19": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-20": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-21": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-22": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-23": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-24": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-25": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    },
+    "RC-26": {
+      "status": "BLOCKED",
+      "reason": "Not executed"
+    }
+  },
+  "comparisons": {},
+  "failures": [
+    "RC-01: The restore target must be a provider-managed remote target, not localhost."
+  ]
+}

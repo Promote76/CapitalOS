@@ -138,8 +138,6 @@ The API has liveness/readiness separation, structured logs, correlation IDs, and
 fail-closed database-backed safety checks. The following are not certified:
 
 - Managed backup and restore
-- Named alert delivery
-- Full telemetry export and queue-lag visibility
 - Provider-backed banking delivery
 
 ## Banking and execution status
@@ -160,5 +158,4 @@ fail-closed database-backed safety checks. The following are not certified:
 Capital OS is approved only for controlled internal evaluation within the
 non-executing family-capital scope. The highest-priority unresolved blockers are:
 
-> Managed restore and named critical-alert delivery remain separate blockers before
-> any broader release decision.
+> Managed restore remains a separate blocker before any broader release decision.

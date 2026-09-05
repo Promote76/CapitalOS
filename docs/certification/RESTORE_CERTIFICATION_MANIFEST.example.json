@@ -1,0 +1,80 @@
+{
+  "provider": "Replit managed PostgreSQL",
+  "recoveryMethod": "PITR",
+  "sourceEnvironment": "production",
+  "sourceDatabaseId": "provider-source-identifier",
+  "recoveryPointReference": "provider-recovery-point-reference",
+  "recoveryPointTimestamp": "2026-09-04T00:00:00Z",
+  "sourceLatestAuthoritativeTimestamp": "2026-09-04T00:05:00Z",
+  "sourceSnapshotCapturedAt": "2026-09-04T00:06:00Z",
+  "restoreTargetId": "new-isolated-certification-target",
+  "restoreTargetEnvironment": "certification",
+  "restoreStartedAt": "2026-09-04T00:10:00Z",
+  "restoreCompletedAt": "2026-09-04T00:12:00Z",
+  "applicationReadyAt": "2026-09-04T00:13:00Z",
+  "integrityVerifiedAt": "2026-09-04T00:20:00Z",
+  "productionOverwritten": false,
+  "sourceSnapshot": {
+    "counts": {
+      "users": 0,
+      "households": 0,
+      "memberships": 0,
+      "accounts": 0,
+      "goals": 0,
+      "contributions": 0,
+      "transactions": 0,
+      "ledgerTransactions": 0,
+      "ledgerEntries": 0,
+      "treasuryRecords": 0,
+      "businesses": 0,
+      "properties": 0,
+      "strategies": 0,
+      "auditEvents": 0,
+      "idempotencyRecords": 0,
+      "executionControls": 0,
+      "operationsJobs": 0,
+      "operationsSchedules": 0
+    },
+    "financial": {
+      "totalDebits": "0.00",
+      "totalCredits": "0.00",
+      "protectedBalances": "0.00",
+      "eligibleHouseholdCash": "0.00",
+      "businessCash": "0.00",
+      "safeToDeploy": "0.00",
+      "treasuryTotals": "0.00"
+    },
+    "identityDigests": {
+      "users": "00000000000000000000000000000000",
+      "memberships": "00000000000000000000000000000000",
+      "households": "00000000000000000000000000000000",
+      "audit": "00000000000000000000000000000000",
+      "idempotency": "00000000000000000000000000000000",
+      "accounts": "00000000000000000000000000000000"
+    },
+    "statuses": {
+      "businesses": {},
+      "properties": {},
+      "strategies": {},
+      "treasury": {
+        "requests": {},
+        "reservations": {}
+      },
+      "executionControls": []
+    }
+  },
+  "tenantHttpProbe": {
+    "executed": false,
+    "passed": false,
+    "description": "Run real restored-record allow/deny HTTP probes with two restored households."
+  },
+  "safetyEvidence": {
+    "guardianOmsReconciliation": false
+  },
+  "operationsEvidence": {
+    "passed": false
+  },
+  "observabilityEvidence": {
+    "passed": false
+  }
+}

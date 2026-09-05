@@ -168,6 +168,15 @@ export async function updatePrivacySettings(actor: Actor, input: { financeDataPr
     settings: { ...(settings?.settings ?? {}), ...input, credentialsStored: false, bankActionsEnabled: false },
     updatedAt: new Date(),
   }).where(eq(householdSettings.householdId, ids.householdId));
+  await db.insert(auditEvents).values({
+    householdId: ids.householdId,
+    eventType: "household_privacy_updated",
+    actor: actor.userId,
+    entity: "household_settings",
+    entityId: ids.householdId,
+    afterState: input,
+    reason: "Household privacy settings updated",
+  });
   return getHousehold(actor);
 }
 
@@ -488,7 +497,7 @@ export async function updateAllocation(actor: Actor, input: {
   await db.insert(auditEvents).values({
     householdId: ids.householdId,
     eventType: "allocation_rule_updated",
-    actor: ids.ownerId,
+    actor: actor.userId,
     entity: "allocation_rule",
     entityId: updated.id,
     afterState: impact.proposed,

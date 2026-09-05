@@ -82,11 +82,11 @@ async function createFixture(): Promise<Fixture> {
   const [householdA] = await db.insert(households).values({ name: `P0 A ${randomUUID()}`, timezone: "America/Chicago" }).returning({ id: households.id });
   const [householdB] = await db.insert(households).values({ name: `P0 B ${randomUUID()}`, timezone: "America/Chicago" }).returning({ id: households.id });
   await db.insert(householdMembers).values([
-    { householdId: householdA.id, userId: userA.id, role: "owner", permissions: ["read", "contribute", "transfer", "allocate", "approve", "manage_risk"], active: true },
+    { householdId: householdA.id, userId: userA.id, role: "owner", permissions: ["read", "contribute", "transfer", "allocate", "approve", "manage_risk", "execute_micro_live_order", "review_venue_security", "review_venue_jurisdiction"], active: true },
     { householdId: householdA.id, userId: partnerA.id, role: "partner", permissions: ["read", "contribute", "transfer", "allocate"], active: true },
     { householdId: householdA.id, userId: advisorA.id, role: "advisor", permissions: ["read", "recommend", "review_venue_security", "review_venue_jurisdiction"], active: true },
     { householdId: householdA.id, userId: viewerA.id, role: "viewer", permissions: ["read"], active: true },
-    { householdId: householdB.id, userId: userB.id, role: "owner", permissions: ["read", "contribute", "transfer", "allocate", "approve", "manage_risk"], active: true },
+    { householdId: householdB.id, userId: userB.id, role: "owner", permissions: ["read", "contribute", "transfer", "allocate", "approve", "manage_risk", "execute_micro_live_order", "review_venue_security", "review_venue_jurisdiction"], active: true },
     { householdId: householdB.id, userId: partnerB.id, role: "partner", permissions: ["read", "contribute", "transfer", "allocate"], active: true },
     { householdId: householdB.id, userId: advisorB.id, role: "advisor", permissions: ["read", "recommend", "review_venue_security", "review_venue_jurisdiction"], active: true },
     { householdId: householdB.id, userId: viewerB.id, role: "viewer", permissions: ["read"], active: true },
@@ -1372,6 +1372,396 @@ test("P0-06 and P0-08 preflight role, effective-permission, selection, tampering
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     // See the certification-target reset note in the first fixture.
+  }
+});
+
+test("P0-06 role action matrix exercises valid HTTP routes and actor attribution", { skip: !enabled }, async () => {
+  process.env.NODE_ENV = "test";
+  process.env.CAPITAL_OS_TEST_CONTEXT = "1";
+  process.env.CAPITAL_OS_ALLOWED_ORIGIN = "http://capitalos.test";
+  const fixture = await createFixture();
+  database ??= await import("@workspace/db");
+  const { default: app } = await import("../app.ts");
+  const server = app.listen(0);
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+  const baseUrl = `http://127.0.0.1:${address.port}/api`;
+  const memberIds = {
+    owner: fixture.userA,
+    partner: fixture.partnerA,
+    advisor: fixture.advisorA,
+    viewer: fixture.viewerA,
+  } as const;
+  const request = (
+    route: string,
+    init: RequestInit = {},
+    role: keyof typeof memberIds = "owner",
+    stepUp = true,
+  ) => fetch(`${baseUrl}${route}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Test-User-Id": memberIds[role],
+      "X-Test-Household-Id": fixture.householdA,
+      // The database-backed context intentionally ignores this header. The
+      // stored membership is the authorization source for every probe.
+      "X-Household-Role": "owner",
+      ...(stepUp ? { "X-Test-Step-Up": "verified" } : {}),
+      ...(init.headers ?? {}),
+    },
+  });
+  const call = async (
+    route: string,
+    init: RequestInit = {},
+    role: keyof typeof memberIds = "owner",
+    stepUp = true,
+  ) => {
+    resetRateLimitForTests();
+    return request(route, init, role, stepUp);
+  };
+  const json = (value: unknown) => JSON.stringify(value);
+  const postBody = (value: unknown, key?: string): RequestInit => ({
+    method: "POST",
+    ...(key ? { headers: { "Idempotency-Key": key } } : {}),
+    body: json(value),
+  });
+  const auditFor = async (entity: string, entityId: string, eventType: string, actor: string) => {
+    const rows = await database!.db.select({
+      actor: database!.auditEvents.actor,
+      eventType: database!.auditEvents.eventType,
+      entity: database!.auditEvents.entity,
+      entityId: database!.auditEvents.entityId,
+    }).from(database!.auditEvents).where(and(
+      eq(database!.auditEvents.householdId, fixture.householdA),
+      eq(database!.auditEvents.entity, entity),
+      eq(database!.auditEvents.entityId, entityId),
+      eq(database!.auditEvents.eventType, eventType),
+      eq(database!.auditEvents.actor, actor),
+    ));
+    assert.deepEqual(rows, [{ actor, eventType, entity, entityId }]);
+  };
+  try {
+    const goalsResponse = await call("/goals");
+    assert.equal(goalsResponse.status, 200);
+    const goal = (await goalsResponse.json() as Array<{ id: string }>)[0];
+    assert.ok(goal?.id);
+
+    const accountsResponse = await call("/accounts");
+    assert.equal(accountsResponse.status, 200);
+    const accountRows = await accountsResponse.json() as Array<{ id: string; accountType: string }>;
+    const source = accountRows.find((account) => account.accountType === "active_capital");
+    const destination = accountRows.find((account) => account.accountType === "strategy_capital");
+    assert.ok(source?.id && destination?.id);
+    await database!.db.update(database!.accounts).set({ balance: "1000.00" }).where(eq(database!.accounts.id, source.id));
+
+    for (const route of ["/properties", "/strategies", "/micro-live"]) {
+      const response = await call(route);
+      assert.equal(response.status, 200, `Warm role action fixture resource ${route}`);
+    }
+    const propertyGoalId = await firstHouseholdRecordId("property_goals", fixture.householdA);
+    const strategyId = await firstHouseholdRecordId("strategies", fixture.householdA);
+    const venueId = await firstHouseholdRecordId("venue_registry", fixture.householdA);
+    assert.ok(propertyGoalId && strategyId && venueId);
+
+    const routeEvidence: Array<{ action: string; method: string; path: string; roles: Record<string, number> }> = [];
+    const recordStatuses = (action: string, method: string, path: string, statuses: Record<string, number>) => {
+      routeEvidence.push({ action, method, path, roles: statuses });
+    };
+
+    const financeStatuses: Record<string, number> = {};
+    for (const role of Object.keys(memberIds) as Array<keyof typeof memberIds>) {
+      const response = await call("/budget", {}, role);
+      financeStatuses[role] = response.status;
+      assert.equal(response.status, 200, `View household finance ${role}`);
+      const body = await responseBody(response);
+      assert.ok(body && typeof body === "object", `View household finance ${role} returned a body`);
+    }
+    recordStatuses("View household finance", "GET", "/budget", financeStatuses);
+
+    const allocationBody = {
+      totalWeekly: "250.00",
+      duplexReserve: "150.00",
+      capitalOs: "75.00",
+      opportunityReserve: "25.00",
+    };
+    const allocationStatuses: Record<string, number> = {};
+    for (const role of ["owner", "partner"] as const) {
+      const response = await call("/allocations", { method: "PUT", body: json(allocationBody) }, role);
+      allocationStatuses[role] = response.status;
+      assert.equal(response.status, 200, `Edit budget ${role}`);
+      const body = await responseBody(response) as { totalWeekly?: string };
+      assert.equal(body.totalWeekly, "250.00");
+      const [audit] = await database!.db.select({
+        id: database!.auditEvents.entityId,
+        actor: database!.auditEvents.actor,
+      }).from(database!.auditEvents).where(and(
+        eq(database!.auditEvents.householdId, fixture.householdA),
+        eq(database!.auditEvents.entity, "allocation_rule"),
+        eq(database!.auditEvents.eventType, "allocation_rule_updated"),
+        eq(database!.auditEvents.actor, memberIds[role]),
+      )).orderBy(desc(database!.auditEvents.timestamp)).limit(1);
+      assert.equal(audit?.actor, memberIds[role], `Edit budget ${role} audit actor`);
+    }
+    for (const role of ["advisor", "viewer"] as const) {
+      const response = await call("/allocations", { method: "PUT", body: json(allocationBody) }, role);
+      allocationStatuses[role] = response.status;
+      assert.equal(response.status, 403, `Edit budget ${role}`);
+    }
+    recordStatuses("Edit budget", "PUT", "/allocations", allocationStatuses);
+
+    const transferStatuses: Record<string, number> = {};
+    for (const role of ["owner", "partner"] as const) {
+      const response = await call("/transfers", postBody({
+        sourceAccountId: source.id,
+        destinationAccountId: destination.id,
+        amount: "0.01",
+        note: `Task 98 ${role} transfer`,
+      }, `task98-transfer-${role}-${randomUUID()}`), role);
+      transferStatuses[role] = response.status;
+      assert.equal(response.status, 201, `Create transfer ${role}`);
+      const body = await responseBody(response) as { id: string };
+      await auditFor("ledger_transaction", body.id, "transfer_completed", memberIds[role]);
+    }
+    for (const role of ["advisor", "viewer"] as const) {
+      const response = await call("/transfers", postBody({
+        sourceAccountId: source.id,
+        destinationAccountId: destination.id,
+        amount: "0.01",
+      }, `task98-transfer-denied-${role}-${randomUUID()}`), role);
+      transferStatuses[role] = response.status;
+      assert.equal(response.status, 403, `Create transfer ${role}`);
+    }
+    recordStatuses("Create transfer", "POST", "/transfers", transferStatuses);
+
+    const capitalRequestInput = {
+      requestingModule: "Task 98 role matrix",
+      requestedAmount: "10.00",
+      purpose: "Route-level authorization certification",
+      expectedDuration: "30 days",
+      riskClass: "conservative",
+      expectedReturnAssumption: "No autonomous execution",
+      liquidityRequirement: "Immediate",
+    };
+    const [treasuryBusiness] = await database!.db.insert(database!.businessEntities).values({
+      householdId: fixture.householdA,
+      legalName: `Task 98 Treasury ${randomUUID()}`,
+      displayName: `Task 98 Treasury ${randomUUID()}`,
+      createdBy: fixture.userA,
+    }).returning({ id: database!.businessEntities.id });
+    await database!.db.insert(database!.financialAccounts).values([
+      {
+        householdId: fixture.householdA,
+        institution: "Task 98 Treasury Bank",
+        nickname: "Task 98 Business Cash",
+        accountType: "business_checking",
+        currentBalance: "1000.00",
+        availableBalance: "1000.00",
+        businessEntityId: treasuryBusiness.id,
+        connectionStatus: "manual",
+        dataSource: "manual",
+      },
+      {
+        householdId: fixture.householdA,
+        institution: "Task 98 Household Bank",
+        nickname: "Task 98 Household Liquidity",
+        accountType: "checking",
+        currentBalance: "100000.00",
+        availableBalance: "100000.00",
+        connectionStatus: "manual",
+        dataSource: "manual",
+      },
+    ]);
+    const requestStatuses: Record<string, number> = {};
+    let ownerRequestId = "";
+    for (const role of ["owner", "partner"] as const) {
+      const response = await call("/treasury/requests", postBody(
+        capitalRequestInput,
+        `task98-capital-${role}-${randomUUID()}`,
+      ), role);
+      requestStatuses[role] = response.status;
+      assert.equal(response.status, 201, `Submit capital request ${role}`);
+      const body = await responseBody(response) as { id: string };
+      assert.ok(body.id);
+      if (role === "owner") ownerRequestId = body.id;
+      await auditFor("capital_request", body.id, "capital_request_submitted", memberIds[role]);
+    }
+    for (const role of ["advisor", "viewer"] as const) {
+      const response = await call("/treasury/requests", postBody(
+        capitalRequestInput,
+        `task98-capital-denied-${role}-${randomUUID()}`,
+      ), role);
+      requestStatuses[role] = response.status;
+      assert.equal(response.status, 403, `Submit capital request ${role}`);
+    }
+    recordStatuses("Submit capital request", "POST", "/treasury/requests", requestStatuses);
+
+    await database!.db.update(database!.riskStates)
+      .set({ protectedCapitalLocked: false })
+      .where(eq(database!.riskStates.householdId, fixture.householdA));
+    const decisionStatuses: Record<string, number> = {};
+    for (const role of ["partner", "advisor", "viewer"] as const) {
+      const response = await call(`/treasury/requests/${ownerRequestId}/decision`, postBody({
+        decision: "APPROVED",
+        approvedAmount: "10.00",
+        reason: `Denied role decision probe: ${role}`,
+      }), role);
+      decisionStatuses[role] = response.status;
+      assert.equal(response.status, 403, `Approve capital request ${role}`);
+    }
+    const ownerDecision = await call(`/treasury/requests/${ownerRequestId}/decision`, postBody({
+      decision: "APPROVED",
+      approvedAmount: "10.00",
+      reason: "Owner role decision certification",
+    }), "owner");
+    decisionStatuses.owner = ownerDecision.status;
+    const ownerDecisionBody = await responseBody(ownerDecision);
+    assert.equal(ownerDecision.status, 200, `Approve capital request owner: ${JSON.stringify(ownerDecisionBody)}`);
+    await auditFor("capital_request", ownerRequestId, "capital_request_decided", fixture.userA);
+    recordStatuses("Approve capital request", "POST", `/treasury/requests/:requestId/decision`, decisionStatuses);
+
+    const privacyBody = { financeDataPrivate: false, shareHealthSummary: true };
+    const privacyStatuses: Record<string, number> = {};
+    const privacyOwner = await call("/household/privacy", { method: "PATCH", body: json(privacyBody) }, "owner");
+    privacyStatuses.owner = privacyOwner.status;
+    assert.equal(privacyOwner.status, 200, "Change Treasury/privacy policy owner");
+    await auditFor("household_settings", fixture.householdA, "household_privacy_updated", fixture.userA);
+    for (const role of ["partner", "advisor", "viewer"] as const) {
+      const response = await call("/household/privacy", { method: "PATCH", body: json(privacyBody) }, role);
+      privacyStatuses[role] = response.status;
+      assert.equal(response.status, 403, `Change Treasury/privacy policy ${role}`);
+    }
+    recordStatuses("Change Treasury/privacy policy", "PATCH", "/household/privacy", privacyStatuses);
+
+    const businessStatuses: Record<string, number> = {};
+    for (const role of ["owner", "partner"] as const) {
+      const response = await call("/business/companies", postBody({
+        legalName: `Task 98 ${role} Holdings`,
+        displayName: `Task 98 ${role} Holdings`,
+        entityType: "llc",
+        ownershipPercentage: "100",
+      }), role);
+      businessStatuses[role] = response.status;
+      assert.equal(response.status, 201, `Manage business ${role}`);
+      const body = await responseBody(response) as { id: string };
+      await auditFor("business_entity", body.id, "business_entity_created", memberIds[role]);
+    }
+    for (const role of ["advisor", "viewer"] as const) {
+      const response = await call("/business/companies", postBody({
+        legalName: `Task 98 denied ${role}`,
+        displayName: `Task 98 denied ${role}`,
+        entityType: "llc",
+        ownershipPercentage: "100",
+      }), role);
+      businessStatuses[role] = response.status;
+      assert.equal(response.status, 403, `Manage business ${role}`);
+    }
+    recordStatuses("Manage business", "POST", "/business/companies", businessStatuses);
+
+    const propertyStatuses: Record<string, number> = {};
+    for (const role of ["owner", "partner"] as const) {
+      const response = await call("/properties", postBody({
+        propertyGoalId,
+        body: `Task 98 ${role} property research note`,
+      }), role);
+      propertyStatuses[role] = response.status;
+      assert.equal(response.status, 201, `Edit property ${role}`);
+      const body = await responseBody(response) as { id: string };
+      await auditFor("property_note", body.id, "property_note_created", memberIds[role]);
+    }
+    for (const role of ["advisor", "viewer"] as const) {
+      const response = await call("/properties", postBody({
+        propertyGoalId,
+        body: `Task 98 denied ${role}`,
+      }), role);
+      propertyStatuses[role] = response.status;
+      assert.equal(response.status, 403, `Edit property ${role}`);
+    }
+    recordStatuses("Edit property", "POST", "/properties", propertyStatuses);
+
+    const strategyPromotionStatuses: Record<string, number> = {};
+    const promotion = await call(`/strategies/${strategyId}/promote`, {
+      method: "POST",
+      body: json({
+        toStage: "backtest",
+        authorizedOverride: true,
+        evidence: { minimumObservations: true, reconciliationAccurate: true, noCriticalErrors: true },
+      }),
+    }, "owner");
+    strategyPromotionStatuses.owner = promotion.status;
+    assert.equal(promotion.status, 200, "Promote strategy owner");
+    await auditFor("strategy", strategyId, "strategy_stage_override", fixture.userA);
+    for (const role of ["partner", "advisor", "viewer"] as const) {
+      const response = await call(`/strategies/${strategyId}/promote`, {
+        method: "POST",
+        body: json({
+          toStage: "paper",
+          authorizedOverride: true,
+          evidence: { minimumObservations: true, reconciliationAccurate: true, noCriticalErrors: true },
+        }),
+      }, role);
+      strategyPromotionStatuses[role] = response.status;
+      assert.equal(response.status, 403, `Promote strategy ${role}`);
+    }
+    recordStatuses("Promote strategy", "POST", "/strategies/:strategyId/promote", strategyPromotionStatuses);
+
+    const strategyReviewStatuses: Record<string, number> = {};
+    for (const role of ["owner", "advisor"] as const) {
+      const response = await call(`/strategy-lab/strategies/${strategyId}/graduation`, { method: "POST" }, role);
+      strategyReviewStatuses[role] = response.status;
+      assert.equal(response.status, 200, `Review strategy ${role}`);
+      await auditFor(
+        "strategy",
+        strategyId,
+        "strategy_graduation_evaluated",
+        memberIds[role],
+      ).catch(async () => auditFor("strategy", strategyId, "strategy_graduation_denied", memberIds[role]));
+    }
+    for (const role of ["partner", "viewer"] as const) {
+      const response = await call(`/strategy-lab/strategies/${strategyId}/graduation`, { method: "POST" }, role);
+      strategyReviewStatuses[role] = response.status;
+      assert.equal(response.status, 403, `Review strategy ${role}`);
+    }
+    recordStatuses("Review strategy", "POST", "/strategy-lab/strategies/:strategyId/graduation", strategyReviewStatuses);
+
+    const accountingStatuses: Record<string, number> = {};
+    for (const role of Object.keys(memberIds) as Array<keyof typeof memberIds>) {
+      const response = await call("/accounting", {}, role);
+      accountingStatuses[role] = response.status;
+      assert.equal(response.status, 200, `View accounting ${role}`);
+      const body = await responseBody(response);
+      assert.ok(body && typeof body === "object");
+    }
+    recordStatuses("View accounting", "GET", "/accounting", accountingStatuses);
+
+    const microLiveStatuses: Record<string, number> = {};
+    for (const role of ["owner", "advisor"] as const) {
+      const response = await call(`/micro-live/venues/${venueId}/reviews/security`, postBody({
+        reviewReference: `review://capital-os/security/task98-${role}-${randomUUID().replaceAll("-", "").slice(0, 24)}`,
+      }), role);
+      microLiveStatuses[role] = response.status;
+      assert.equal(response.status, 201, `Review Micro-Live venue ${role}`);
+      await auditFor("venue_registry", venueId, "micro_live_venue_security_reviewed", memberIds[role]);
+    }
+    for (const role of ["partner", "viewer"] as const) {
+      const response = await call(`/micro-live/venues/${venueId}/reviews/security`, postBody({
+        reviewReference: `review://capital-os/security/task98-denied-${role}`,
+      }), role);
+      microLiveStatuses[role] = response.status;
+      assert.equal(response.status, 403, `Review Micro-Live venue ${role}`);
+    }
+    recordStatuses("Review Micro-Live venue", "POST", "/micro-live/venues/:venueId/reviews/security", microLiveStatuses);
+
+    const summary = {
+      gate: "P0-06/P0-08-ROLE-ACTION-HTTP",
+      fixture: "isolated PostgreSQL target",
+      actions: routeEvidence,
+      grantRevokeAndMembershipTransitions: "covered by adjacent P0-06 fixture",
+      unsupportedExportRoute: "no durable export route implemented",
+      microLiveArm: "not attempted; real arm remains gate-blocked by design",
+    };
+    console.log(JSON.stringify(summary));
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
   }
 });
 

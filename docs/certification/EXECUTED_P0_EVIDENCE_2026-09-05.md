@@ -37,12 +37,14 @@ and no unexpected 500 responses occurred.
 Result: **PASS — 0 fixture failures**.
 
 The same isolated execution exercised Owner, Partner, Advisor, and Viewer
-actions; all 18 documented role-permission allow decisions and all 22
-role-permission deny decisions; effective permission grant and revoke;
-inactive and active membership transitions; two explicit household selections
-for a multi-household member; role-header and body tampering; three denied
+actions through the real HTTP routes; all 18 documented role-permission allow
+decisions and all 22 role-permission deny decisions; the complete
+route-level action matrix; effective permission grant and revoke; inactive and
+active membership transitions; two explicit household selections for a
+multi-household member; role-header and body tampering; three denied
 representative actions; and five unsupported administration routes returning
-`404`.
+`404`. The per-action route/status/audit summary is captured in
+[`ROLE_ACTION_HTTP_EVIDENCE_2026-09-05.md`](ROLE_ACTION_HTTP_EVIDENCE_2026-09-05.md).
 
 ## P0-08 — actor attribution certification
 

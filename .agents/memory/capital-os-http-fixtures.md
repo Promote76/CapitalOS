@@ -14,3 +14,9 @@ Finance lifecycle assertions should scope transaction queries by their source an
 **Why:** The manual-review scenario runs before CSV and later manual scenarios, so unscoped rows and copied totals can make a valid lifecycle fail or hide a regression.
 
 **How to apply:** Normalize API date serialization at the assertion boundary, select the intended `dataSource`, and keep budget, cash-flow, and Safe-to-Deploy expectations cumulative.
+
+Role-action HTTP certification must warm any lazily seeded tenant resource through its real read route before querying fixture IDs, and stored membership permissions must include every documented permission because a non-empty stored list overrides role defaults.
+
+**Why:** The route-level matrix initially failed before exercising actions when it queried property, strategy, and venue rows before their seed routes ran, and the Owner’s stored fixture list correctly denied venue review until it matched the documented role.
+
+**How to apply:** Warm `/properties`, `/strategies`, and `/micro-live` before selecting their IDs, and treat the database membership permission list—not `X-Household-Role` or the centralized fallback—as the authorization fixture.

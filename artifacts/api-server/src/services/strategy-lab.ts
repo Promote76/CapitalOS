@@ -563,7 +563,7 @@ export async function runStrategyExperiment(actor: Actor, input: {
 }
 
 export async function evaluateStrategyGraduation(actor: Actor, strategyId: string) {
-  assertPermission(actor.role, "approve");
+  assertPermission(actor.role, actor.role === "advisor" ? "recommend" : "approve");
   const ids = await ensureTenantCore(actor.householdId, actor.userId);
   const [strategy] = await db.select().from(strategies).where(and(eq(strategies.id, strategyId), eq(strategies.householdId, ids.householdId))).limit(1);
   if (!strategy) throw new GovernanceError("INVALID_STATE", "Strategy was not found");

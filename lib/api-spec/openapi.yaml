@@ -4425,7 +4425,7 @@ components:
         essentialMonths: { type: number }
         protectedLiquidity: { type: string }
         unrestrictedLiquidity: { type: string }
-        returnOnCapital: { type: number }
+        returnOnCapital: { type: number, nullable: true }
     AccountingReconciliation:
       type: object
       required: [ledgerBalanced, accountsIncluded, uncategorizedTransactions, staleAccounts, status, crossView]

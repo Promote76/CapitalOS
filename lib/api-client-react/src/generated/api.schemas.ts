@@ -2296,7 +2296,7 @@ export interface AccountingMetrics {
   essentialMonths: number;
   protectedLiquidity: string;
   unrestrictedLiquidity: string;
-  returnOnCapital: number;
+  returnOnCapital: number | null;
 }
 
 export type AccountingReconciliationCrossViewSeparateScopesItem = {

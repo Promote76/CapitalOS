@@ -3792,7 +3792,7 @@ export const GetAccountingOverviewResponse = zod.object({
   "essentialMonths": zod.number(),
   "protectedLiquidity": zod.string(),
   "unrestrictedLiquidity": zod.string(),
-  "returnOnCapital": zod.number()
+  "returnOnCapital": zod.number().nullable()
 }),
   "reconciliation": zod.object({
   "ledgerBalanced": zod.boolean(),

@@ -10,6 +10,7 @@ const cents = (value: string | number | null | undefined) => {
 };
 
 const money = (value: number) => (value / 100).toFixed(2);
+const NOT_AVAILABLE = "NOT_AVAILABLE";
 const dateOnly = (value: Date | string | null | undefined) => value instanceof Date ? value.toISOString().slice(0, 10) : value ?? null;
 
 const liabilityTypes = new Set(["credit_card", "loan", "mortgage"]);
@@ -125,7 +126,7 @@ export async function getAccountingOverview(actor: Actor) {
   const ytdSnapshots = snapshots.filter((row) => row.snapshotDate.slice(0, 4) === period.slice(0, 4));
   const snapshotNetChange = snapshot ? cents(snapshot.netCashFlow) : netCashFlow;
   const monthChange = snapshotNetChange || netCashFlow;
-  const investmentGrowth = 0;
+   const investmentGrowth = 0;
   const attribution = calculateNetWorthAttribution({
     netWorthChangeCents: monthChange,
     capitalContributedCents: contributions,
@@ -145,7 +146,7 @@ export async function getAccountingOverview(actor: Actor) {
       liquidNetWorth: money(liquidAssets - totalLiabilities),
       protectedCapital: money(protectedCapital),
       investedCapital: money(investedCapital),
-      realEstateEquity: "0.00",
+       realEstateEquity: NOT_AVAILABLE,
       businessEquity: money(businessEquity),
       cashTreasury: money(liquidAssets),
     },
@@ -153,7 +154,7 @@ export async function getAccountingOverview(actor: Actor) {
       month: money(monthChange),
       yearToDate: money(ytdSnapshots.reduce((sum, row) => sum + cents(row.netCashFlow), 0) || netCashFlow),
       capitalContributed: money(contributions),
-      investmentGrowth: money(investmentGrowth),
+       investmentGrowth: NOT_AVAILABLE,
       debtReduction: money(debtReduction),
       other: money(attribution.otherCents),
       reconciles: attribution.reconciles,
@@ -169,11 +170,11 @@ export async function getAccountingOverview(actor: Actor) {
     capitalStatement: {
       beginningCapital: money(Math.max(0, totalAssets - monthChange)),
       householdContributions: money(contributions),
-      withdrawals: "0.00",
-      realizedGainsLosses: "0.00",
-      unrealizedGainsLosses: money(investmentGrowth),
+       withdrawals: NOT_AVAILABLE,
+       realizedGainsLosses: NOT_AVAILABLE,
+       unrealizedGainsLosses: NOT_AVAILABLE,
       income: money(income),
-      fees: "0.00",
+       fees: NOT_AVAILABLE,
       endingCapital: money(totalAssets),
     },
     incomeStatement: {
@@ -199,7 +200,7 @@ export async function getAccountingOverview(actor: Actor) {
       essentialMonths: 0,
       protectedLiquidity: money(protectedCapital),
       unrestrictedLiquidity: money(Math.max(0, liquidAssets - protectedCapital)),
-      returnOnCapital: 0,
+       returnOnCapital: null,
     },
     reconciliation: {
       ledgerBalanced,
@@ -230,7 +231,7 @@ export async function getAccountingOverview(actor: Actor) {
       year: Number(period.slice(0, 4)),
       documentsCollected: 0,
       missingDocuments: ["Broker statement", "Mortgage interest statement", "Bank interest statement"],
-      realizedGainsLosses: "0.00",
+       realizedGainsLosses: NOT_AVAILABLE,
       reviewStatus: "SUPPORT_ONLY",
       disclaimer: "Internal planning estimate only. Tax treatment may vary. Review with a qualified tax professional.",
     },

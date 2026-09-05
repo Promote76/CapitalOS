@@ -26,6 +26,7 @@ import { Link } from "wouter";
 
 function money(value: string | null | undefined, fallback = "$0") {
   if (value === null || value === undefined || value === "") return fallback;
+  if (value === "NOT_AVAILABLE" || value === "UNKNOWN") return "Not available";
   const amount = Number(value);
   return Number.isFinite(amount)
     ? `$${amount.toLocaleString("en-US", { maximumFractionDigits: 0 })}`
@@ -34,12 +35,13 @@ function money(value: string | null | undefined, fallback = "$0") {
 
 function signedMoney(value: string | null | undefined) {
   if (value === null || value === undefined || value === "") return "$0";
+  if (value === "NOT_AVAILABLE" || value === "UNKNOWN") return "Not available";
   const amount = Number(value);
   if (!Number.isFinite(amount)) return "$0";
   return `${amount >= 0 ? "+" : "−"}${money(Math.abs(amount).toString())}`;
 }
 
-function percent(value: number | undefined, digits = 1) {
+function percent(value: number | null | undefined, digits = 1) {
   return Number.isFinite(value) ? `${Number(value).toFixed(digits)}%` : "—";
 }
 

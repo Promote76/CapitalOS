@@ -2,7 +2,7 @@
 
 **Scope:** in-house, household-scoped, advisory, non-public, and non-executing only.
 
-This document records the operational controls added for the internal reliability sprint. It is not a public production certification and it does not certify managed backup/restore.
+This document records the operational controls added for the internal reliability sprint. It is not a public production certification.
 
 ## Safe durable operations
 
@@ -94,7 +94,3 @@ unset it trusts no forwarded address, and production startup refuses to run.
 Forwarded headers are therefore usable for rate-limit network identity only
 when they came through the configured ingress topology. The limiter remains
 independent from household financial state.
-
-## Future restore verifier scaffold
-
-`scripts/verify-future-restore.mjs` is intentionally a refusal-first scaffold. It checks that a future operator supplies a disposable target, approved restore evidence, and an explicit verification manifest; it never restores data and it never claims that a managed PITR or scheduled backup exists. Managed backup/restore selection and restore certification remain outside the in-house P0 release gate.

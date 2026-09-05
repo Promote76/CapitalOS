@@ -50,3 +50,17 @@ mtime_ms = 1788365550607
 storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:a275880a-7e86-4ab1-a13b-802e51c9d9ab/03df0752-8636-4e7c-9062-2b4cb5299f77/202784b1-ad83-4237-9e6e-87e6bd87d1f9"
 storage_version_token = "1788365627654952"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "07mTOl4rlGRlYhzTZ9ajq"
+uri = "file://attached_assets/CAPITAL_OS_CURRENT_CERTIFICATION_(5)_1788611507678.md"
+type = "text"
+title = "Updated Capital OS Current Certification"
+description = "Updated to remove backup/restore from the release requirements and recalculate the matrix as 16 gates with 4 blocked gates."
+logical_id = "574b03a1-716b-445a-8577-3bf0eb6a2668"
+content_hash = "sha256:58ca037904ff80329c4ab4ed9a34089cc790332e2d41b813618acbbfc02dd454"
+size = 26885
+mtime_ms = 1788611587122
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:a275880a-7e86-4ab1-a13b-802e51c9d9ab/574b03a1-716b-445a-8577-3bf0eb6a2668/b4db4edc-be1a-4e6b-b76e-cc963d7c6de8"
+storage_version_token = "1788611602309322"
+content_type = "text/markdown"

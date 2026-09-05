@@ -3,6 +3,10 @@
 **Execution date:** 2026-09-02  
 **Decision:** **IN-HOUSE ONLY — READY FOR CONTROLLED INTERNAL USE** after every in-scope P0 row is `PASS`
 
+> Historical record. Superseded for current tenant, role, and actor-attribution
+> certification by `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-05.md`,
+> which captures the current 149-route isolated execution.
+
 This record contains only evidence executed during the current certification run. It
 does not convert source review or an available runbook into certification.
 

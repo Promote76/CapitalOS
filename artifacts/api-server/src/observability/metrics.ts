@@ -382,6 +382,7 @@ function routeForMetric(req: Request) {
   return (
     req.baseUrl +
     route
+      .replace(/:([A-Za-z0-9_]+)/g, ":id")
       .replace(/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, ":id")
       .replace(/\/\d+(?=\/|$)/g, "/:id")
   );

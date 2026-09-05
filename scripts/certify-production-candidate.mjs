@@ -134,9 +134,9 @@ const p0Gates = [
     status: fixtureFailed ? "FAIL" : httpFixturePassed || certifiedEvidence["P0-01"] ? "PASS" : "BLOCKED",
     implementation: "IMPLEMENTED",
     execution: httpFixtureExecuted
-      ? "EXECUTED (110-route inventory, household reads, foreign/malformed identifiers, and mass-assignment probes)"
+      ? "EXECUTED (149-route inventory, household reads, foreign/malformed identifiers, and mass-assignment probes)"
       : certifiedEvidence["P0-01"]
-        ? "EXECUTED (documented isolated 110-route inventory and tenant-boundary probes)"
+        ? "EXECUTED (documented isolated 149-route inventory and tenant-boundary probes)"
         : "NOT EXECUTED",
     certification: httpFixturePassed || certifiedEvidence["P0-01"] ? "CERTIFIED" : "NOT CERTIFIED",
     reason: fixtureFailed

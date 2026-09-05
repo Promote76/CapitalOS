@@ -7,6 +7,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const databaseUrl = process.env.CAPITAL_OS_CERTIFICATION_DB_URL;
 const targetId = process.env.CAPITAL_OS_CERTIFICATION_TARGET_ID;
 const migrationPath = path.join(rootDir, "lib/db/migrations/0000_previous_kang.sql");
+const migrationDir = path.join(rootDir, "lib/db/migrations");
 const historicalSchemaPath = path.join(rootDir, "docs/certification/HISTORICAL_SCHEMA_2026-09-01.sql");
 
 function canonicalTarget(rawUrl) {
@@ -48,13 +49,47 @@ if (process.env.CAPITAL_OS_CERTIFICATION_ALLOW_RESET !== "1") {
 
 function psql(args, label) {
   console.log(`=== ${label} ===`);
-  const result = spawnSync("psql", ["--no-psqlrc", "--dbname", databaseUrl, "--set", "ON_ERROR_STOP=1", ...args], {
+  const result = spawnSync("psql", [
+    "--no-psqlrc",
+    "--dbname",
+    databaseUrl,
+    "--set",
+    "ON_ERROR_STOP=1",
+    "--command",
+    "SET search_path TO public",
+    ...args,
+  ], {
     cwd: rootDir,
     stdio: "inherit",
     env: process.env,
   });
   if (result.status !== 0) {
     console.error(`${label} failed.`);
+    process.exit(result.status ?? 1);
+  }
+}
+
+function migrationFiles() {
+  return fs.readdirSync(migrationDir)
+    .filter((file) => file.endsWith(".sql"))
+    .sort()
+    .map((file) => path.join(migrationDir, file));
+}
+
+function synchronizeCurrentSchema() {
+  console.log("=== Synchronize current database declaration ===");
+  const result = spawnSync("pnpm", [
+    "--filter",
+    "@workspace/db",
+    "run",
+    "push-force",
+  ], {
+    cwd: rootDir,
+    stdio: "inherit",
+    env: { ...process.env, DATABASE_URL: databaseUrl },
+  });
+  if (result.status !== 0) {
+    console.error("Current database declaration synchronization failed.");
     process.exit(result.status ?? 1);
   }
 }
@@ -105,10 +140,14 @@ psql([
   END
   $guard$;`,
 ], "Reset isolated certification schema");
-psql(["--file", migrationPath], "Apply generated baseline migration");
+for (const migration of migrationFiles()) {
+  psql(["--file", migration], `Apply committed migration ${path.basename(migration)}`);
+}
+synchronizeCurrentSchema();
 psql([
   "--command",
   "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('capital_users', 'households', 'household_members', 'capital_accounts', 'ledger_transactions', 'ledger_entries') ORDER BY table_name;",
 ], "Verify certification baseline tables");
 console.log(`Historical schema artifact is available at ${path.relative(rootDir, historicalSchemaPath)}.`);
-console.log("Clean migration baseline passed. Existing-schema upgrade and rollback/forward-fix execution remain separate gates.");
+console.log(`Generated baseline migration is available at ${path.relative(rootDir, migrationPath)}.`);
+console.log("Clean isolated current-schema certification passed. Existing-schema upgrade and rollback/forward-fix execution remain separate gates.");

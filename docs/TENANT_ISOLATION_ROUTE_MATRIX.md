@@ -1,14 +1,14 @@
 # Capital OS tenant-isolation route matrix
 
-**Inventory date:** 2026-09-02  
+**Inventory date:** 2026-09-05
 **Source:** `scripts/check-api-contract.mjs`, `artifacts/api-server/src/routes`, and `artifacts/api-server/src/integration/p0-http.test.ts`
-**Inventory result:** 108 Express route/method pairs match the OpenAPI contract.
+**Inventory result:** 149 Express route/method pairs match the executable route inventory.
 
 This is an evidence index, not a source-review substitute. `PASS` means the isolated
 database-backed fixture exercised the applicable route and identifier/body boundary.
-The 2026-09-02 disposable Neon run passed the full 108-route preflight with zero
-failures; public health and auth routes are explicitly handled as public/identity
-boundaries rather than household-scoped object routes.
+The 2026-09-05 disposable loopback PostgreSQL run passed the full 149-route
+preflight with zero failures; public health and auth routes are explicitly handled
+as public/identity boundaries rather than household-scoped object routes.
 
 | Method / route family | Caller-controlled IDs | Household scope method | A→A test | A→B test | Role test | Status |
 |---|---|---|---|---|---|---|
@@ -35,6 +35,6 @@ boundaries rather than household-scoped object routes.
 - The two-household fixture proves a foreign goal ID is rejected before a contribution is created.
 - The same fixture provisions Owner, Partner, Advisor, and Viewer memberships in both households and passes the role-header regression, partner contribution allow, advisor/viewer contribution denial, and contribution mass-assignment assertions on isolated Neon PostgreSQL.
 - The same fixture passes recent-auth denial, parallel transfer overdraft prevention, 100-request contention, transfer replay, persisted household/actor attribution, and ledger debit/credit reconciliation on isolated Neon PostgreSQL.
-- The route preflight discovers and asserts exactly 108 route/method pairs, compares household-scoped collection reads, sends same-household, foreign, and malformed path identifiers, injects mass-assignment fields into applicable generic write probes, and fails on unexpected server errors.
+- The route preflight discovers and asserts exactly 149 route/method pairs, compares household-scoped collection reads, sends same-household, foreign, and malformed path identifiers, injects mass-assignment fields into applicable generic write probes, and fails on unexpected server errors.
 - Parameterized routes require non-error same-household behavior, reject foreign identifiers without a successful write/read response, and reject malformed identifiers with a 4xx response. Parameterless writes must not return another household's identifiers after body tampering.
-- The preflight executed on the disposable Neon branch on 2026-09-02 with zero failures. The runner refuses the configured shared target and requires an approved disposable-target sentinel before any reset.
+- The preflight executed on the disposable target on 2026-09-05 with zero failures: 326 total probes, 55 scoped collection-read comparisons, 44 foreign-identifier denials, and 44 malformed-identifier rejections. The guarded runner refuses the configured shared target and requires an approved disposable-target sentinel before any reset.

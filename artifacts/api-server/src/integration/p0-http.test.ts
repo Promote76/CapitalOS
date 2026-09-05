@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { assertPermission } from "../domain/governance.ts";
 import { resetRateLimitForTests } from "../middleware/safety.ts";
 
 const enabled = process.env.CAPITAL_OS_RUN_INTEGRATION === "1";
@@ -366,27 +367,9 @@ test("P0-05 contribution journey keeps the exact $250 movement after fresh reads
     }));
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    const { db, households, users } = database;
-    const householdIds = [fixture.householdA, fixture.householdB];
-    const householdIdList = sql.join(householdIds.map((id) => sql`${id}::uuid`), sql`, `);
-    await db.execute(sql`DELETE FROM ledger_entries
-      WHERE account_id IN (
-        SELECT id FROM capital_accounts
-        WHERE household_id IN (${householdIdList})
-      )`);
-    await db.execute(sql`DELETE FROM ledger_transactions WHERE household_id IN (${householdIdList})`);
-    await db.delete(database.auditEvents).where(inArray(database.auditEvents.householdId, householdIds));
-    await db.delete(households).where(inArray(households.id, householdIds));
-    await db.delete(users).where(inArray(users.id, [
-      fixture.userA,
-      fixture.partnerA,
-      fixture.advisorA,
-      fixture.viewerA,
-      fixture.userB,
-      fixture.partnerB,
-      fixture.advisorB,
-      fixture.viewerB,
-    ]));
+    // The certification target is reset by the guarded runner between runs.
+    // Keep rows in place so persisted permitted and denied-action audit evidence
+    // remains queryable for the complete isolated execution.
   }
 });
 
@@ -831,27 +814,7 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
     assert.equal(ledgerTotals?.credits, "1000.00");
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    const { db, households, users } = database;
-    const householdIds = [fixture.householdA, fixture.householdB];
-    const householdIdList = sql.join(householdIds.map((id) => sql`${id}::uuid`), sql`, `);
-    await db.execute(sql`DELETE FROM ledger_entries
-      WHERE account_id IN (
-        SELECT id FROM capital_accounts
-        WHERE household_id IN (${householdIdList})
-      )`);
-    await db.execute(sql`DELETE FROM ledger_transactions WHERE household_id IN (${householdIdList})`);
-    await db.delete(database.auditEvents).where(inArray(database.auditEvents.householdId, [fixture.householdA, fixture.householdB]));
-    await db.delete(households).where(inArray(households.id, [fixture.householdA, fixture.householdB]));
-     await db.delete(users).where(inArray(users.id, [
-       fixture.userA,
-       fixture.partnerA,
-       fixture.advisorA,
-       fixture.viewerA,
-       fixture.userB,
-       fixture.partnerB,
-       fixture.advisorB,
-       fixture.viewerB,
-     ]));
+    // See the certification-target reset note in the first fixture.
   }
 });
 
@@ -1004,7 +967,7 @@ function replaceRouteParams(route: RouteProbe, values: Record<string, string>, f
   return route.path.replace(/:([A-Za-z0-9_]+)/g, (_match, name: string) => values[name] ?? fallback);
 }
 
-test("P0-01 preflight inventories all 142 routes and rejects unsafe generic probes", { skip: !enabled }, async () => {
+test("P0-01 preflight inventories all 149 routes and rejects unsafe generic probes", { skip: !enabled }, async () => {
   process.env.NODE_ENV = "test";
   process.env.CAPITAL_OS_TEST_CONTEXT = "1";
   process.env.CAPITAL_OS_ALLOWED_ORIGIN = "http://capitalos.test";
@@ -1034,7 +997,7 @@ test("P0-01 preflight inventories all 142 routes and rejects unsafe generic prob
 
   try {
     const routes = discoverRouteProbes();
-    assert.equal(routes.length, 142, "The route inventory changed; update the certification matrix before running it.");
+    assert.equal(routes.length, 149, "The route inventory changed; update the certification matrix before running it.");
     const { idsA, idsB } = await warmRouteMatrixResources(request, fixture);
     const allAIds = Object.values(idsA);
     const allBIds = Object.values(idsB);
@@ -1164,19 +1127,7 @@ test("P0-01 preflight inventories all 142 routes and rejects unsafe generic prob
     }));
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    const householdIds = [fixture.householdA, fixture.householdB];
-    const householdIdList = sql.join(householdIds.map((id) => sql`${id}::uuid`), sql`, `);
-    await database.db.execute(sql`DELETE FROM ledger_entries
-      WHERE account_id IN (
-        SELECT id FROM capital_accounts WHERE household_id IN (${householdIdList})
-      )`);
-    await database.db.execute(sql`DELETE FROM ledger_transactions WHERE household_id IN (${householdIdList})`);
-    await database.db.delete(database.auditEvents).where(inArray(database.auditEvents.householdId, householdIds));
-    await database.db.delete(database.households).where(inArray(database.households.id, householdIds));
-    await database.db.delete(database.users).where(inArray(database.users.id, [
-      fixture.userA, fixture.partnerA, fixture.advisorA, fixture.viewerA,
-      fixture.userB, fixture.partnerB, fixture.advisorB, fixture.viewerB,
-    ]));
+    // See the certification-target reset note in the first fixture.
   }
 });
 
@@ -1230,6 +1181,29 @@ test("P0-06 and P0-08 preflight role, effective-permission, selection, tampering
       advisor: fixture.advisorA,
       viewer: fixture.viewerA,
     } as const;
+    const documentedRolePermissions = {
+      owner: ["read", "contribute", "transfer", "allocate", "approve", "manage_risk", "execute_micro_live_order", "review_venue_security", "review_venue_jurisdiction"],
+      partner: ["read", "contribute", "transfer", "allocate"],
+      advisor: ["read", "recommend", "review_venue_security", "review_venue_jurisdiction"],
+      viewer: ["read"],
+    } as const;
+    const allDocumentedPermissions = [...new Set(Object.values(documentedRolePermissions).flat())];
+    let documentedAllowedActions = 0;
+    let documentedDeniedActions = 0;
+    for (const [role, allowedPermissions] of Object.entries(documentedRolePermissions)) {
+      for (const permission of allDocumentedPermissions) {
+        if (allowedPermissions.includes(permission as never)) {
+          assert.doesNotThrow(() => assertPermission(role as keyof typeof documentedRolePermissions, permission));
+          documentedAllowedActions += 1;
+        } else {
+          assert.throws(
+            () => assertPermission(role as keyof typeof documentedRolePermissions, permission),
+            (error: unknown) => error instanceof Error && "code" in error && error.code === "FORBIDDEN",
+          );
+          documentedDeniedActions += 1;
+        }
+      }
+    }
     const allowed = new Set(["owner", "partner"]);
     const auditActors = new Set<string>();
 
@@ -1384,6 +1358,8 @@ test("P0-06 and P0-08 preflight role, effective-permission, selection, tampering
     console.log(JSON.stringify({
       gates: ["P0-06-PREFLIGHT", "P0-08-PREFLIGHT"],
       roles: Object.keys(memberIds),
+      documentedAllowedActions,
+      documentedDeniedActions,
       permittedRepresentativeActions: 4,
       deniedRepresentativeActions: 3,
       effectivePermissionTransitions: ["grant", "revoke"],
@@ -1395,19 +1371,7 @@ test("P0-06 and P0-08 preflight role, effective-permission, selection, tampering
     }));
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    const householdIds = [fixture.householdA, fixture.householdB];
-    const householdIdList = sql.join(householdIds.map((id) => sql`${id}::uuid`), sql`, `);
-    await database.db.execute(sql`DELETE FROM ledger_entries
-      WHERE account_id IN (
-        SELECT id FROM capital_accounts WHERE household_id IN (${householdIdList})
-      )`);
-    await database.db.execute(sql`DELETE FROM ledger_transactions WHERE household_id IN (${householdIdList})`);
-    await database.db.delete(database.auditEvents).where(inArray(database.auditEvents.householdId, householdIds));
-    await database.db.delete(database.households).where(inArray(database.households.id, householdIds));
-    await database.db.delete(database.users).where(inArray(database.users.id, [
-      fixture.userA, fixture.partnerA, fixture.advisorA, fixture.viewerA,
-      fixture.userB, fixture.partnerB, fixture.advisorB, fixture.viewerB,
-    ]));
+    // See the certification-target reset note in the first fixture.
   }
 });
 
@@ -1517,13 +1481,7 @@ test("Financing Engine isolates households, permissions, actors, and idempotent 
     assert.deepEqual(audit, [{ actor: fixture.userA }]);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    const householdIds = [fixture.householdA, fixture.householdB];
-    await database.db.delete(database.auditEvents).where(inArray(database.auditEvents.householdId, householdIds));
-    await database.db.delete(database.households).where(inArray(database.households.id, householdIds));
-    await database.db.delete(database.users).where(inArray(database.users.id, [
-      fixture.userA, fixture.partnerA, fixture.advisorA, fixture.viewerA,
-      fixture.userB, fixture.partnerB, fixture.advisorB, fixture.viewerB,
-    ]));
+    // See the certification-target reset note in the first fixture.
   }
 });
 
@@ -1925,12 +1883,6 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     assert.ok(financeAudit.some((event) => event.actor === fixture.userA && event.eventType === "finance_csv_imported"));
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
-    const householdIds = [fixture.householdA, fixture.householdB];
-    await database.db.delete(database.auditEvents).where(inArray(database.auditEvents.householdId, householdIds));
-    await database.db.delete(database.households).where(inArray(database.households.id, householdIds));
-    await database.db.delete(database.users).where(inArray(database.users.id, [
-      fixture.userA, fixture.partnerA, fixture.advisorA, fixture.viewerA,
-      fixture.userB, fixture.partnerB, fixture.advisorB, fixture.viewerB,
-    ]));
+    // See the certification-target reset note in the first fixture.
   }
 });

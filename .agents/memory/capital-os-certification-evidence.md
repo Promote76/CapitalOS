@@ -63,3 +63,15 @@ the retained certification evidence incomplete.
 **How to apply:** Use a fresh guarded target for each certification run, retain
 fixture evidence there, and return a post-transaction denial after the audit
 write commits.
+
+Disposable certification targets must carry an explicit
+`capital_os_certification.target_guard` sentinel, and guarded migration setup
+must force `search_path=public` before applying the application schema.
+
+**Why:** PostgreSQL's default `$user, public` search path can resolve a
+sentinel schema named after the certification role before the real `public`
+schema, making a clean target appear to have missing application tables.
+
+**How to apply:** Refuse resets without the sentinel, then apply migrations and
+schema synchronization against `public`; never infer isolation from an
+ambient `DATABASE_URL` alone.

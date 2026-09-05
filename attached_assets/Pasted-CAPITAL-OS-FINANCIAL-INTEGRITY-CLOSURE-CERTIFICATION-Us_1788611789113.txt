@@ -1,0 +1,1131 @@
+CAPITAL OS — FINANCIAL INTEGRITY CLOSURE CERTIFICATION
+
+Use:
+
+docs/CAPITAL_OS_CURRENT_CERTIFICATION.md
+
+as the authoritative current certification.
+
+CURRENT STATUS:
+
+PASS = 8
+PARTIAL = 4
+BLOCKED = 4
+FAIL = 0
+
+The four PARTIAL gates are:
+
+1. Tenant / IDOR
+2. Treasury
+3. Accounting
+4. Safe-to-Deploy
+
+THIS SPRINT HAS ONE OBJECTIVE:
+
+ATTEMPT TO MOVE ALL FOUR PARTIAL FINANCIAL-INTEGRITY GATES
+TO PASS THROUGH IMPLEMENTATION COMPLETION + RUNTIME CERTIFICATION.
+
+Do not add unrelated product features.
+
+DO NOT:
+
+- enable Micro-Live
+- connect live brokerage trading
+- transmit orders
+- enable ACH
+- move money
+- enable autonomous AI execution
+- weaken protected-capital rules
+- weaken household isolation
+
+==================================================
+0. CERTIFICATION DOCUMENT RECONCILIATION
+==================================================
+
+Before changing application code, inspect the current certification
+history regarding Backup / Restore.
+
+The previous certification listed:
+
+Backup / Restore = BLOCKED
+
+The current certification no longer contains that critical gate.
+
+Determine WHY.
+
+Do not assume PASS.
+
+Return one of:
+
+BACKUP_RESTORE_STATUS = PASS
+with actual managed restore evidence
+
+BACKUP_RESTORE_STATUS = BLOCKED
+and restore the gate to the matrix
+
+BACKUP_RESTORE_STATUS = OUT_OF_SCOPE
+with explicit documented rationale
+
+A critical gate must never disappear merely because it remains
+unresolved.
+
+Do not count Backup / Restore as PASS without runtime evidence.
+
+==================================================
+1. CREATE FINANCIAL INTEGRITY CERTIFICATION
+==================================================
+
+Create:
+
+pnpm run certify:financial-integrity
+
+Use:
+
+fresh disposable PostgreSQL certification database
+
+Required domains:
+
+Tenant / IDOR
+Treasury
+Accounting
+Safe-to-Deploy
+
+No real provider.
+
+No real money.
+
+No real brokerage.
+
+No live execution.
+
+==================================================
+PART A — COMPLETE TENANT / IDOR CERTIFICATION
+==================================================
+
+2. CURRENT API INVENTORY
+==================================================
+
+Generate the authoritative current route/method inventory.
+
+Current documentation references:
+
+149 route/method combinations
+
+Do not hardcode 149 if the current inventory has changed.
+
+Generate:
+
+TOTAL_ROUTES = <actual>
+
+Classify every route:
+
+PUBLIC
+AUTHENTICATED_GLOBAL
+HOUSEHOLD_SCOPED
+RESOURCE_SCOPED
+OWNER_ONLY
+ADVISOR_ALLOWED
+OPERATOR_ONLY
+SYSTEM_ONLY
+
+Every route must have an explicit classification.
+
+==================================================
+3. ADVERSARIAL TWO-HOUSEHOLD FIXTURE
+==================================================
+
+Create:
+
+Household A
+Owner A
+Advisor A
+Viewer A
+
+Household B
+Owner B
+Advisor B
+Viewer B
+
+Create representative resources in both households.
+
+Test every applicable identifier-bearing endpoint against:
+
+correct household
+foreign household
+foreign resource
+nonexistent resource
+malformed resource
+role downgrade
+missing auth
+
+==================================================
+4. IDOR DOMAINS
+==================================================
+
+Cover identifiers belonging to:
+
+Accounts
+Transactions
+Goals
+Contributions
+Budget
+Cash Flow
+Treasury
+Capital Requests
+Reservations
+Businesses
+Business Accounts
+Properties
+Property Notes
+Strategies
+Strategy Versions
+Operations Jobs
+Dead Letters
+Schedules
+Execution Control
+OMS
+Reconciliation
+Alerts
+Documents
+Reports
+Intelligence
+Financing
+
+and every other current identifier-bearing API domain.
+
+==================================================
+5. REQUEST HOUSEHOLD IDENTITY
+==================================================
+
+Do not trust:
+
+body.householdId
+query.householdId
+frontend household state
+
+as authoritative authorization.
+
+Resolve authorization through authenticated actor membership and
+authoritative resource ownership.
+
+Attempted mismatch must:
+
+DENY
+AUDIT where appropriate
+
+==================================================
+6. RESOURCE OWNERSHIP
+==================================================
+
+For endpoints such as:
+
+/resource/:id
+
+load resource
+→ derive authoritative household
+→ verify actor membership/permission
+→ then operate
+
+Never:
+
+trust actor-provided household
+→ fetch arbitrary ID
+→ mutate
+
+==================================================
+7. ROLE MATRIX
+==================================================
+
+Certify:
+
+OWNER
+ADVISOR
+VIEWER
+OPERATOR
+SYSTEM
+
+against every sensitive route class.
+
+Explicitly test:
+
+Viewer cannot mutate
+Advisor cannot see protected balances where redaction applies
+Advisor cannot approve owner-only Treasury action
+Operator cannot acquire financial ownership authority
+AI/system principals cannot obtain human owner authority
+
+==================================================
+8. IDOR CERTIFICATION
+==================================================
+
+Required gates:
+
+TI-01 Route Inventory Complete
+TI-02 Public Classification
+TI-03 Authentication Enforcement
+TI-04 Household Isolation
+TI-05 Resource Ownership
+TI-06 Foreign Identifier Rejection
+TI-07 Role Matrix
+TI-08 Advisor Redaction
+TI-09 Owner-Only Enforcement
+TI-10 Operations Isolation
+TI-11 Execution Isolation
+TI-12 Alert Isolation
+TI-13 Document Isolation
+TI-14 Mutation Isolation
+TI-15 Audit Attribution
+
+No applicable route may remain unclassified.
+
+==================================================
+PART B — TREASURY CLOSURE
+==================================================
+
+9. TREASURY SOURCE OF TRUTH
+==================================================
+
+Treasury must remain a planning/control domain.
+
+Treasury approval must NOT equal money movement.
+
+Preserve:
+
+REQUESTED
+REVIEWED
+APPROVED
+RESERVED
+REJECTED
+CANCELLED
+
+or current equivalent states.
+
+No Treasury state may imply ACH/brokerage transfer unless a
+separate future provider-confirmed money-movement domain exists.
+
+==================================================
+10. TREASURY CONCURRENCY
+==================================================
+
+Execute concurrent approval attempts against the same capital.
+
+Example:
+
+Eligible capital = $100
+
+Request A = $80
+Request B = $80
+
+Concurrent approvals must NOT produce:
+
+$160 reserved
+
+Expected:
+
+one succeeds
+one fails/recalculates
+
+or deterministic equivalent.
+
+==================================================
+11. DOUBLE-RESERVATION PREVENTION
+==================================================
+
+Verify capital cannot simultaneously be reserved by:
+
+Strategy
+Property
+Treasury
+Business distribution
+Opportunity allocation
+
+if the same underlying eligible dollars would be counted twice.
+
+==================================================
+12. TREASURY REPLAY
+==================================================
+
+Same idempotency key + same request:
+
+same authoritative result
+
+Same key + conflicting request:
+
+DENY
+
+No second reservation.
+
+==================================================
+13. TREASURY ROLE AUTHORITY
+==================================================
+
+Certify:
+
+Owner approval
+Advisor redaction
+Advisor unauthorized approval
+Viewer unauthorized mutation
+Foreign-household request
+Operator unauthorized approval
+
+==================================================
+14. TREASURY AUDIT
+==================================================
+
+Every decision must retain:
+
+actor
+household
+request
+previous state
+new state
+amount
+reason
+timestamp
+correlation ID
+idempotency evidence
+
+No secret data.
+
+==================================================
+15. TREASURY CERTIFICATION
+==================================================
+
+Required:
+
+TR-01 Actor Boundary
+TR-02 Advisor Redaction
+TR-03 Owner Approval
+TR-04 Unauthorized Approval Denial
+TR-05 Reservation
+TR-06 Concurrency
+TR-07 Double Reservation Prevention
+TR-08 Replay
+TR-09 Conflicting Replay
+TR-10 Audit
+TR-11 Cross-Household Isolation
+TR-12 No Money Movement
+
+==================================================
+PART C — ACCOUNTING COMPLETION
+==================================================
+
+16. REMOVE HARDCODED FINANCIAL VALUES
+==================================================
+
+Inspect:
+
+artifacts/api-server/src/services/accounting.ts
+
+The current certification identifies incomplete/hardcoded:
+
+liabilities
+real estate
+investments
+withdrawals
+fees
+taxes
+return-on-capital
+
+Remove financial constants that masquerade as authoritative data.
+
+If authoritative data does not exist:
+
+return:
+
+UNKNOWN
+NOT_AVAILABLE
+0 only where mathematically correct
+
+Never invent a financial value.
+
+==================================================
+17. AUTHORITATIVE ACCOUNTING SOURCES
+==================================================
+
+Define the source of truth for every accounting metric.
+
+Create a mapping:
+
+METRIC
+SOURCE TABLE/DOMAIN
+INCLUSION RULE
+EXCLUSION RULE
+FRESHNESS
+CONFIDENCE
+
+Examples:
+
+Cash
+Manual approved transactions + eligible linked read-only accounts
+
+Business cash
+Business domain only
+
+Protected reserve
+Approved household protected accounts/goals
+
+Property equity
+Only authoritative owned-property data
+
+Strategy realized P&L
+Only completed/reconciled realized results
+
+Unrealized P&L
+Separate informational field
+
+Taxes
+Only authoritative recorded tax liability/payment
+
+==================================================
+18. UNKNOWN IS BETTER THAN FAKE
+==================================================
+
+If Capital OS does not know:
+
+tax liability
+property value
+investment cost basis
+fee
+withdrawal
+
+it must not manufacture a value.
+
+Display:
+
+Not available
+
+or equivalent.
+
+==================================================
+19. EXACT-CENT ARITHMETIC
+==================================================
+
+Continue using exact-cent / numeric financial arithmetic.
+
+Test:
+
+0.01
+0.10
+0.29
+large totals
+negative adjustments
+refunds
+reversals
+
+No binary floating-point financial drift.
+
+==================================================
+20. DOUBLE-ENTRY INVARIANT
+==================================================
+
+Where ledger accounting applies:
+
+SUM(DEBITS) = SUM(CREDITS)
+
+Certify:
+
+normal posting
+reversal
+correction
+duplicate replay
+concurrent posting
+
+==================================================
+21. CROSS-VIEW CONSISTENCY
+==================================================
+
+The same authoritative economic event must reconcile across:
+
+Dashboard
+Budget
+Cash Flow
+Treasury
+Portfolio
+Accounting
+Safe-to-Deploy
+
+according to each view's inclusion policy.
+
+Do not require every view to show the same number.
+
+Require mathematically explainable differences.
+
+==================================================
+22. BUSINESS SEPARATION
+==================================================
+
+Business revenue/cash must not automatically become:
+
+household income
+household cash
+Safe-to-Deploy
+
+A completed authorized distribution may cross the boundary only
+through an explicit authoritative event.
+
+==================================================
+23. PROPERTY ACCOUNTING
+==================================================
+
+Property Candidate:
+
+equity = $0 authoritative household net worth
+
+unless actually owned.
+
+Owned property may contribute only if:
+
+ownership authoritative
+valuation source known
+debt known or explicitly unavailable
+
+Do not invent equity.
+
+==================================================
+24. STRATEGY ACCOUNTING
+==================================================
+
+Separate:
+
+Allocated capital
+Reserved capital
+Deployed capital
+Realized P&L
+Unrealized P&L
+Paper P&L
+
+Paper P&L must NEVER become household wealth.
+
+Unrealized P&L must NEVER become Safe-to-Deploy cash.
+
+==================================================
+25. ACCOUNTING CERTIFICATION
+==================================================
+
+Required:
+
+AC-01 No Hardcoded Authoritative Values
+AC-02 Source Mapping
+AC-03 Exact Cents
+AC-04 Ledger Balance
+AC-05 Replay Safety
+AC-06 Cross-View Consistency
+AC-07 Business Separation
+AC-08 Property Classification
+AC-09 Strategy Classification
+AC-10 Tax Unknown Handling
+AC-11 Fee Handling
+AC-12 Withdrawal Handling
+AC-13 Return-on-Capital Calculation
+AC-14 Audit Attribution
+
+==================================================
+PART D — SAFE-TO-DEPLOY CLOSURE
+==================================================
+
+26. DEFINE ONE AUTHORITATIVE FORMULA
+==================================================
+
+Safe-to-Deploy must have ONE authoritative server-side
+calculation.
+
+Document the formula.
+
+Conceptually:
+
+Eligible Liquid Household Capital
+
+MINUS
+
+Protected Reserves
+Committed Obligations
+Treasury Reservations
+Strategy Reservations
+Property Reservations
+Required Household Buffer
+Other Locked Capital
+
+=
+
+Safe-to-Deploy
+
+Never calculate authoritative Safe-to-Deploy in the browser.
+
+==================================================
+27. EXCLUSION MATRIX
+==================================================
+
+Explicitly certify exclusion of:
+
+Duplex Reserve
+Emergency Reserve
+Protected Goals
+Business Cash
+Business Reserves
+Planning Balances
+Projected Income
+Unapproved Manual Finance
+Paper P&L
+Unrealized P&L
+Property Candidate Value
+Unconfirmed Bank Transactions
+Pending Provider Events
+Treasury Reservations
+Strategy Reservations
+Property Reservations
+Unknown Funds
+Stale Financial Data where policy requires exclusion
+
+==================================================
+28. DUPLEX FUND HARD INVARIANT
+==================================================
+
+This is a critical Capital OS rule.
+
+Create explicit invariant:
+
+DUPLEX RESERVE CONTRIBUTION
+→ increases protected capital
+
+It must NOT increase:
+
+Safe-to-Deploy
+
+Trading strategy cannot reserve it.
+
+Treasury cannot allocate it to strategy capital.
+
+AI cannot recommend it as deployable.
+
+==================================================
+29. $250 WEEKLY PLAN TEST
+==================================================
+
+Use the application's core planning example:
+
+Weekly contribution = $250
+
+Default:
+
+$200 Duplex Reserve
+$25 Capital OS
+$25 Opportunity Reserve
+
+Verify classification.
+
+The $200 protected Duplex contribution must not become
+executable strategy capital.
+
+The remaining amounts must still pass their own eligibility rules.
+
+==================================================
+30. BUSINESS CASH TEST
+==================================================
+
+Business receives:
+
+$5,000
+
+Expected:
+
+Business cash +$5,000
+
+Safe-to-Deploy household increase:
+
+$0
+
+until an authoritative completed distribution occurs.
+
+==================================================
+31. PAPER PROFIT TEST
+==================================================
+
+Paper strategy reports:
+
++$10,000
+
+Expected Safe-to-Deploy increase:
+
+$0
+
+==================================================
+32. UNREALIZED PROFIT TEST
+==================================================
+
+Future simulated live position:
+
++$5,000 unrealized
+
+Expected cash Safe-to-Deploy increase:
+
+$0
+
+unless explicitly converted to authoritative settled cash through
+future provider reconciliation.
+
+==================================================
+33. PROPERTY CANDIDATE TEST
+==================================================
+
+Add duplex candidate valued at:
+
+$250,000
+
+Expected household deployable capital increase:
+
+$0
+
+==================================================
+34. TREASURY RESERVATION TEST
+==================================================
+
+Safe-to-Deploy before:
+
+$500
+
+Approved planning reservation:
+
+$100
+
+Expected Safe-to-Deploy:
+
+$400
+
+No actual money moved.
+
+==================================================
+35. CONCURRENT RESERVATION TEST
+==================================================
+
+Safe-to-Deploy:
+
+$100
+
+Two simultaneous requests:
+
+$80
+$80
+
+Maximum aggregate successful reservation:
+
+$100 or less
+
+Never $160.
+
+==================================================
+36. STALE DATA
+==================================================
+
+If financial data exceeds freshness policy:
+
+either:
+
+exclude affected capital
+
+or:
+
+mark Safe-to-Deploy unavailable
+
+according to policy.
+
+Never optimistically include stale unknown funds.
+
+==================================================
+37. NEGATIVE SAFE-TO-DEPLOY
+==================================================
+
+Authoritative user-facing Safe-to-Deploy should not imply
+negative spendable cash.
+
+Internally preserve deficit/shortfall information.
+
+Expose:
+
+Safe-to-Deploy = $0
+Shortfall = $X
+
+where appropriate.
+
+==================================================
+38. SAFE-TO-DEPLOY CERTIFICATION
+==================================================
+
+Required:
+
+SD-01 Server Authority
+SD-02 Formula
+SD-03 Protected Reserve Exclusion
+SD-04 Duplex Reserve
+SD-05 Emergency Reserve
+SD-06 Business Cash
+SD-07 Planning Balance
+SD-08 Projected Income
+SD-09 Manual Review
+SD-10 Paper P&L
+SD-11 Unrealized P&L
+SD-12 Property Candidate
+SD-13 Treasury Reservation
+SD-14 Strategy Reservation
+SD-15 Property Reservation
+SD-16 Concurrent Reservation
+SD-17 Stale Data
+SD-18 Unknown Funds
+SD-19 Exact Cents
+SD-20 Cross-View Consistency
+
+==================================================
+PART E — COMBINED ADVERSARIAL SCENARIOS
+==================================================
+
+39. RUN CROSS-DOMAIN ATTACK TESTS
+==================================================
+
+Scenario A:
+
+Household B attempts to reserve Household A capital.
+
+Expected:
+DENY
+
+Scenario B:
+
+Advisor attempts to allocate protected Duplex Reserve.
+
+Expected:
+DENY
+
+Scenario C:
+
+Strategy reports large paper profit and requests allocation based
+on that profit.
+
+Expected:
+DENY
+
+Scenario D:
+
+Business reports revenue and strategy attempts to treat it as
+household cash.
+
+Expected:
+DENY
+
+Scenario E:
+
+Two concurrent property/strategy requests attempt to reserve the
+same capital.
+
+Expected:
+NO OVER-RESERVATION
+
+Scenario F:
+
+AI recommendation attempts to classify protected capital as
+deployable.
+
+Expected:
+RECOMMENDATION MAY BE RECORDED AS INVALID
+CAPITAL GOVERNOR DENIES DEPLOYMENT
+
+==================================================
+40. AI AUTHORITY
+==================================================
+
+Explicitly certify:
+
+AI may:
+
+analyze
+recommend
+rank
+explain
+challenge
+
+AI may NOT:
+
+change financial classification
+unlock reserve
+approve Treasury request
+increase Safe-to-Deploy
+move money
+activate Micro-Live
+submit order
+
+==================================================
+41. CERTIFICATION OUTPUT
+==================================================
+
+pnpm run certify:financial-integrity
+
+must report:
+
+TENANT / IDOR
+TI-01 through TI-15
+
+TREASURY
+TR-01 through TR-12
+
+ACCOUNTING
+AC-01 through AC-14
+
+SAFE-TO-DEPLOY
+SD-01 through SD-20
+
+No critical skips.
+
+==================================================
+42. REGRESSION
+==================================================
+
+Run:
+
+pnpm run typecheck
+generated finance artifact check
+PostgreSQL API integration suite
+pnpm run certify:execution-control
+pnpm run certify:operations-recovery
+pnpm run certify:observability
+pnpm run certify:micro-live
+production-candidate certification
+
+Do not regress existing PASS gates.
+
+==================================================
+43. UPDATE CURRENT CERTIFICATION
+==================================================
+
+Update:
+
+docs/CAPITAL_OS_CURRENT_CERTIFICATION.md
+
+Change each gate independently.
+
+Tenant / IDOR = PASS
+ONLY if TI suite passes.
+
+Treasury = PASS
+ONLY if TR suite passes.
+
+Accounting = PASS
+ONLY if AC suite passes.
+
+Safe-to-Deploy = PASS
+ONLY if SD suite passes.
+
+Do not batch-mark PASS because the overall command exits 0.
+
+==================================================
+44. CREATE CERTIFICATION ARTIFACT
+==================================================
+
+Create:
+
+docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md
+
+Include:
+
+HEAD
+database target classification
+TI results
+TR results
+AC results
+SD results
+combined adversarial results
+regressions
+remaining blockers
+
+No secrets.
+
+==================================================
+FINAL RESPONSE
+==================================================
+
+Return exactly:
+
+CURRENT HEAD:
+<hash>
+
+FINANCIAL INTEGRITY:
+PASS / PARTIAL / FAIL
+
+TENANT / IDOR:
+PASS / PARTIAL / FAIL
+
+TI GATES:
+<n>/15
+
+TREASURY:
+PASS / PARTIAL / FAIL
+
+TR GATES:
+<n>/12
+
+ACCOUNTING:
+PASS / PARTIAL / FAIL
+
+AC GATES:
+<n>/14
+
+SAFE-TO-DEPLOY:
+PASS / PARTIAL / FAIL
+
+SD GATES:
+<n>/20
+
+CROSS-DOMAIN ADVERSARIAL:
+PASS / FAIL
+
+DUPLEX RESERVE INVARIANT:
+PASS / FAIL
+
+$250 WEEKLY PLAN:
+PASS / FAIL
+
+BUSINESS CASH EXCLUSION:
+PASS / FAIL
+
+PAPER P&L EXCLUSION:
+PASS / FAIL
+
+UNREALIZED P&L EXCLUSION:
+PASS / FAIL
+
+CONCURRENT RESERVATIONS:
+PASS / FAIL
+
+AI FINANCIAL AUTHORITY:
+ADVISORY ONLY
+
+BACKUP_RESTORE_STATUS:
+PASS / BLOCKED / OUT_OF_SCOPE
+
+REAL MONEY MOVED:
+$0
+
+REAL ORDERS SENT:
+0
+
+MICRO-LIVE:
+DISABLED
+
+SCHWAB TRADING:
+DISABLED
+
+CURRENT CRITICAL GATE COUNTS:
+PASS <n>
+PARTIAL <n>
+BLOCKED <n>
+FAIL <n>
+
+PRODUCTION CANDIDATE:
+<actual status>
+
+NEXT HIGHEST-PRIORITY BLOCKER:
+<one exact blocker>
+
+UPDATED CERTIFICATION:
+docs/CAPITAL_OS_CURRENT_CERTIFICATION.md
+
+CERTIFICATION ARTIFACT:
+docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md

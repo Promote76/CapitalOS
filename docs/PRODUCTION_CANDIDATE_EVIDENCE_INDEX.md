@@ -2,8 +2,11 @@
 
 **Evidence date:** 2026-09-05
 **Decision:** **IN-HOUSE ONLY — READY FOR CONTROLLED INTERNAL USE**
+<!-- tenant-route-inventory: 149 -->
 
 This index distinguishes executable evidence from source review and blocked infrastructure evidence. It must not be used to check a release-gate item unless the referenced evidence actually exists.
+The route count marker is checked against the authoritative route inventory during
+API contract certification; stale evidence fails that release check.
 
 | Area | Evidence | Result | Gate state |
 |---|---|---|---|

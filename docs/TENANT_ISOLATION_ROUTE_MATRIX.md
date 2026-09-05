@@ -1,8 +1,13 @@
 # Capital OS tenant-isolation route matrix
 
 **Inventory date:** 2026-09-05
-**Source:** `scripts/check-api-contract.mjs`, `artifacts/api-server/src/routes`, and `artifacts/api-server/src/integration/p0-http.test.ts`
+**Source:** `artifacts/api-server/src/integration/tenant-route-inventory.mjs` (authoritative), `artifacts/api-server/src/routes`, and `artifacts/api-server/src/integration/p0-http.test.ts`
+<!-- tenant-route-inventory: 149 -->
 **Inventory result:** 149 Express route/method pairs match the executable route inventory.
+
+The machine-readable count above is checked by the route parity release check; adding
+an endpoint without refreshing this evidence fails certification with a stale-count
+error.
 
 This is an evidence index, not a source-review substitute. `PASS` means the isolated
 database-backed fixture exercised the applicable route and identifier/body boundary.

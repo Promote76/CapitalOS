@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import fs from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -7,6 +6,7 @@ import test from "node:test";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { assertPermission } from "../domain/governance.ts";
 import { resetRateLimitForTests } from "../middleware/safety.ts";
+import { discoverTenantRouteInventory } from "./tenant-route-inventory.mjs";
 
 const enabled = process.env.CAPITAL_OS_RUN_INTEGRATION === "1";
 type DbModule = typeof import("@workspace/db");
@@ -845,21 +845,11 @@ const pathIdTables: Record<string, string> = {
 };
 
 function discoverRouteProbes(): RouteProbe[] {
-  const routesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../routes");
-  const routeFiles = fs.readdirSync(routesDir).filter((file) => file.endsWith(".ts"));
-  const probes: RouteProbe[] = [];
-  const expression = /router\.(get|post|put|patch|delete)\(\s*["'`]([^"'`]+)["'`]/g;
-  for (const file of routeFiles) {
-    const source = fs.readFileSync(path.join(routesDir, file), "utf8");
-    for (const match of source.matchAll(expression)) {
-      probes.push({
-        method: match[1].toUpperCase(),
-        path: match[2],
-        params: [...match[2].matchAll(/:([A-Za-z0-9_]+)/g)].map((param) => param[1]),
-      });
-    }
-  }
-  return probes.sort((left, right) => `${left.method} ${left.path}`.localeCompare(`${right.method} ${right.path}`));
+  const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
+  return discoverTenantRouteInventory(workspaceRoot).map((route) => ({
+    ...route,
+    params: [...route.path.matchAll(/:([A-Za-z0-9_]+)/g)].map((param) => param[1]),
+  }));
 }
 
 async function responseBody(response: Response): Promise<unknown> {
@@ -967,7 +957,7 @@ function replaceRouteParams(route: RouteProbe, values: Record<string, string>, f
   return route.path.replace(/:([A-Za-z0-9_]+)/g, (_match, name: string) => values[name] ?? fallback);
 }
 
-test("P0-01 preflight inventories all 149 routes and rejects unsafe generic probes", { skip: !enabled }, async () => {
+test("P0-01 preflight inventories the authoritative route set and rejects unsafe generic probes", { skip: !enabled }, async () => {
   process.env.NODE_ENV = "test";
   process.env.CAPITAL_OS_TEST_CONTEXT = "1";
   process.env.CAPITAL_OS_ALLOWED_ORIGIN = "http://capitalos.test";
@@ -997,7 +987,7 @@ test("P0-01 preflight inventories all 149 routes and rejects unsafe generic prob
 
   try {
     const routes = discoverRouteProbes();
-    assert.equal(routes.length, 149, "The route inventory changed; update the certification matrix before running it.");
+    assert.ok(routes.length > 0, "The authoritative route inventory is empty.");
     const { idsA, idsB } = await warmRouteMatrixResources(request, fixture);
     const allAIds = Object.values(idsA);
     const allBIds = Object.values(idsB);

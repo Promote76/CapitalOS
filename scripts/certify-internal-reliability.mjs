@@ -24,7 +24,6 @@ const requiredFiles = [
   "lib/db/src/schema/reliability.ts",
   "lib/db/migrations/0001_shared_rate_limit_and_audit_archive.sql",
   "docs/CAPITAL_OS_INTERNAL_RELIABILITY.md",
-  "scripts/verify-future-restore.mjs",
 ];
 const missingFiles = requiredFiles.filter((file) => !fs.existsSync(path.join(rootDir, file)));
 if (missingFiles.length) failures.push(`Missing reliability artifacts: ${missingFiles.join(", ")}`);

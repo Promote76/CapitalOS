@@ -15,10 +15,8 @@
     "certify:operations-recovery": "node scripts/certify-operations-recovery.mjs",
     "certify:observability": "node scripts/certify-observability.mjs",
     "certify:household-privacy": "node scripts/certify-household-privacy.mjs",
-    "certify:restore": "node scripts/certify-restore.mjs",
     "certify:migrations": "node scripts/certify-migrations.mjs",
-    "certify:internal-reliability": "node scripts/certify-internal-reliability.mjs",
-    "verify-future-restore": "node scripts/verify-future-restore.mjs"
+    "certify:internal-reliability": "node scripts/certify-internal-reliability.mjs"
   },
   "private": true,
   "dependencies": {

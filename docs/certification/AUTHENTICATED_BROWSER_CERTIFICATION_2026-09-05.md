@@ -1,7 +1,7 @@
 # Capital OS authenticated browser and Clerk reverification certification
 
 **Date:** 2026-09-05
-**Current HEAD:** `9e464135d193090557998af499b76d2f5b366dd9`
+**Current HEAD:** `4a95752a681d1d2bb7c27262671e1e07575e470a`
 **Published origin:** https://capital-os-fund.replit.app
 **Test environment:** Replit-managed Clerk production deployment; no credentials or session tokens recorded
 
@@ -11,7 +11,7 @@
 - **PUBLISHED_ORIGIN:** https://capital-os-fund.replit.app
 - **TEST USERS AVAILABLE:** Not exposed to the agent; dedicated certification identities must be supplied through the Clerk sign-in UI
 - **REVERIFICATION_IMPLEMENTED:** YES
-- **REVERIFICATION_PROVIDER_UI_AVAILABLE:** YES in the Clerk-backed client path; no live challenge was completed in this run
+- **REVERIFICATION_PROVIDER_UI_AVAILABLE:** YES in the Clerk-backed client path; redacted production challenge evidence is retained
 
 ## Automated preflight
 
@@ -19,7 +19,7 @@
 - ClerkProvider and SignIn wiring: PASS
 - Sign-out wiring: PASS
 - useReverification wiring: PASS
-- Operations approval challenge/retry wiring: PASS
+- Operations protected-action challenge/retry wiring: PASS
 - Server strict reverification response: PASS
 - Reverification middleware unit tests: PASS
 - Safe sign-in screenshot: docs/certification/auth-sign-in-published-origin.png
@@ -36,11 +36,20 @@ Safe-to-Deploy display test.
 
 ## Clerk reverification gates
 
-**RV GATES:** 0/12 certified
+**RV GATES:** 2/12 certified
 
-RV-01 through RV-12 remain BLOCKED pending a real provider challenge, failed/cancelled
-challenge cases, bounded recent-auth expiry, current role/household rechecks, and
-safe audit/telemetry evidence from an authenticated browser session.
+- RV-01 Successful strict provider reverification retries the original action: PASS
+  - A protected Operations task mutation returned HTTP 403 before reverification and HTTP 200 after the provider flow.
+  - The completed task persisted a server timestamp and an authenticated completer.
+  - The matching audit row records the same authenticated actor and the exact pre-completion and completed states.
+- RV-02 Cancelled provider reverification creates no partial mutation: PASS
+  - The published Clerk prompt was cancelled without retrying the protected task mutation.
+  - The selected production task remained OPEN with no completion timestamp or completer.
+  - The selected task had no Operations task audit rows after cancellation.
+
+RV-03 through RV-12 remain BLOCKED pending bounded recent-auth expiry, current
+role/household rechecks, and the remaining safe browser audit/telemetry evidence.
+Redacted evidence: docs/certification/CLERK_REVERIFICATION_PRODUCTION_EVIDENCE_2026-09-05.json
 
 ## Human browser attempt
 

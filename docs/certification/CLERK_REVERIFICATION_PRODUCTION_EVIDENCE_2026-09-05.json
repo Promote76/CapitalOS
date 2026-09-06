@@ -1,0 +1,27 @@
+{
+  "publishedOrigin": "https://capital-os-fund.replit.app",
+  "environment": "production",
+  "observedAt": "2026-09-05T20:35:00-05:00",
+  "containsCredentials": false,
+  "gates": {
+    "RV-01": {
+      "status": "PASS",
+      "title": "Successful strict provider reverification retries the original action",
+      "evidence": [
+        "A protected Operations task mutation returned HTTP 403 before reverification and HTTP 200 after the provider flow.",
+        "The completed task persisted a server timestamp and an authenticated completer.",
+        "The matching audit row records the same authenticated actor and the exact pre-completion and completed states."
+      ]
+    },
+    "RV-02": {
+      "status": "PASS",
+      "title": "Cancelled provider reverification creates no partial mutation",
+      "evidence": [
+        "The published Clerk prompt was cancelled without retrying the protected task mutation.",
+        "The selected production task remained OPEN with no completion timestamp or completer.",
+        "The selected task had no Operations task audit rows after cancellation."
+      ]
+    }
+  },
+  "redaction": "No passwords, OTPs, session tokens, JWTs, Clerk secrets, user identifiers, household identifiers, or task identifiers are retained."
+}

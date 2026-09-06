@@ -7,6 +7,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const publishedOrigin = (process.env.CAPITAL_OS_PUBLISHED_ORIGIN ?? "").replace(/\/$/, "");
 const artifactPath = path.join(rootDir, "docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md");
 const screenshotPath = "docs/certification/auth-sign-in-published-origin.png";
+const productionEvidencePath = path.join(rootDir, "docs/certification/CLERK_REVERIFICATION_PRODUCTION_EVIDENCE_2026-09-05.json");
 
 function redact(value) {
   return String(value)
@@ -70,8 +71,41 @@ function runAuthTests() {
   };
 }
 
-function writeArtifact({ origin, originCheck, source, authTests }) {
+function loadProductionEvidence(origin) {
+  if (!fs.existsSync(productionEvidencePath)) return { passedGates: [], error: null };
+  try {
+    const evidence = JSON.parse(fs.readFileSync(productionEvidencePath, "utf8"));
+    if (evidence.publishedOrigin !== origin) {
+      return { passedGates: [], error: "Production evidence origin does not match the configured published origin." };
+    }
+    if (evidence.containsCredentials !== false) {
+      return { passedGates: [], error: "Production evidence did not explicitly confirm credential-safe redaction." };
+    }
+    const allowedGates = new Set(["RV-01", "RV-02"]);
+    const passedGates = Object.entries(evidence.gates ?? {})
+      .filter(([id, gate]) =>
+        allowedGates.has(id) &&
+        gate?.status === "PASS" &&
+        typeof gate?.title === "string" &&
+        Array.isArray(gate?.evidence) &&
+        gate.evidence.length > 0)
+      .map(([id, gate]) => ({ id, title: gate.title, evidence: gate.evidence }));
+    return { passedGates, error: null };
+  } catch (error) {
+    return {
+      passedGates: [],
+      error: error instanceof Error ? error.message : "Production evidence could not be parsed.",
+    };
+  }
+}
+
+function writeArtifact({ origin, originCheck, source, authTests, productionEvidence }) {
   const ba = originCheck.passed ? 1 : 0;
+  const rv = productionEvidence.passedGates.length;
+  const rvEvidenceLines = productionEvidence.passedGates.flatMap((gate) => [
+    `- ${gate.id} ${gate.title}: PASS`,
+    ...gate.evidence.map((item) => `  - ${item}`),
+  ]);
   const lines = [
     "# Capital OS authenticated browser and Clerk reverification certification",
     "",
@@ -86,7 +120,7 @@ function writeArtifact({ origin, originCheck, source, authTests }) {
     `- **PUBLISHED_ORIGIN:** ${origin || "NOT CONFIGURED"}`,
     "- **TEST USERS AVAILABLE:** Not exposed to the agent; dedicated certification identities must be supplied through the Clerk sign-in UI",
     "- **REVERIFICATION_IMPLEMENTED:** YES",
-    "- **REVERIFICATION_PROVIDER_UI_AVAILABLE:** YES in the Clerk-backed client path; no live challenge was completed in this run",
+    `- **REVERIFICATION_PROVIDER_UI_AVAILABLE:** YES in the Clerk-backed client path; ${rv > 0 ? "redacted production challenge evidence is retained" : "no live challenge was completed in this run"}`,
     "",
     "## Automated preflight",
     "",
@@ -94,7 +128,7 @@ function writeArtifact({ origin, originCheck, source, authTests }) {
     `- ClerkProvider and SignIn wiring: ${source.checks.clerkProvider && source.checks.signIn ? "PASS" : "FAIL"}`,
     `- Sign-out wiring: ${source.checks.signOut ? "PASS" : "FAIL"}`,
     `- useReverification wiring: ${source.checks.providerReverification ? "PASS" : "FAIL"}`,
-    `- Operations approval challenge/retry wiring: ${source.checks.operationsApprovalReverification ? "PASS" : "FAIL"}`,
+    `- Operations protected-action challenge/retry wiring: ${source.checks.operationsApprovalReverification ? "PASS" : "FAIL"}`,
     `- Server strict reverification response: ${source.checks.serverRecentAuth && source.checks.failClosedProviderCheck ? "PASS" : "FAIL"}`,
     `- Reverification middleware unit tests: ${authTests.passed ? "PASS" : "FAIL"}`,
     `- Safe sign-in screenshot: ${screenshotPath}`,
@@ -111,11 +145,22 @@ function writeArtifact({ origin, originCheck, source, authTests }) {
     "",
     "## Clerk reverification gates",
     "",
-    "**RV GATES:** 0/12 certified",
+    `**RV GATES:** ${rv}/12 certified`,
     "",
-    "RV-01 through RV-12 remain BLOCKED pending a real provider challenge, failed/cancelled",
-    "challenge cases, bounded recent-auth expiry, current role/household rechecks, and",
-    "safe audit/telemetry evidence from an authenticated browser session.",
+    ...(rvEvidenceLines.length > 0
+      ? [
+          ...rvEvidenceLines,
+          "",
+          "RV-03 through RV-12 remain BLOCKED pending bounded recent-auth expiry, current",
+          "role/household rechecks, and the remaining safe browser audit/telemetry evidence.",
+          `Redacted evidence: ${path.relative(rootDir, productionEvidencePath)}`,
+        ]
+      : [
+          "RV-01 through RV-12 remain BLOCKED pending a real provider challenge, failed/cancelled",
+          "challenge cases, bounded recent-auth expiry, current role/household rechecks, and",
+          "safe audit/telemetry evidence from an authenticated browser session.",
+          ...(productionEvidence.error ? [`Evidence error: ${productionEvidence.error}`] : []),
+        ]),
     "",
     "## Human browser attempt",
     "",
@@ -192,10 +237,11 @@ function writeArtifact({ origin, originCheck, source, authTests }) {
 const originCheck = await publishedOriginPreflight();
 const source = sourcePreflight();
 const authTests = runAuthTests();
-writeArtifact({ origin: publishedOrigin, originCheck, source, authTests });
+const productionEvidence = loadProductionEvidence(publishedOrigin);
+writeArtifact({ origin: publishedOrigin, originCheck, source, authTests, productionEvidence });
 console.log(`Published origin: ${publishedOrigin || "NOT CONFIGURED"}`);
 console.log(`BA GATES: ${originCheck.passed ? "1/20" : "0/20"}`);
-console.log("RV GATES: 0/12");
+console.log(`RV GATES: ${productionEvidence.passedGates.length}/12`);
 console.log("AUTHENTICATED BROWSER E2E: BLOCKED");
 console.log("CLERK REVERIFICATION: BLOCKED");
 console.log(`Evidence: ${path.relative(rootDir, artifactPath)}`);

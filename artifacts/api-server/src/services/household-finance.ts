@@ -26,6 +26,7 @@ import {
   calculateEmergencyReserve,
   calculateFinancialHealthScore,
   calculateSafeToDeploy,
+  canonicalManualTransactionAmount,
   canViewFinancialBalance,
   deduplicateImportedTransactions,
 } from "../domain/household-finance";
@@ -34,6 +35,7 @@ import {
   csvImportBankingAdapter,
   getBankingStatus,
   getReadOnlyBankingProvider,
+  normalizeImportedAmount,
   type BankSyncSnapshot,
   type ProviderTransactionSnapshot,
 } from "../adapters/banking";
@@ -922,8 +924,7 @@ export async function createManualFinanceTransaction(actor: Actor, accountId: st
   if (cents(input.amount) === 0) {
     throw new GovernanceError("INVALID_STATE", "Transaction amount must be greater than zero");
   }
-  const signedAmount = (input.direction === "outflow" ? -cents(input.amount) : cents(input.amount)) / 100;
-  const amount = signedAmount.toFixed(2);
+  const amount = canonicalManualTransactionAmount(input.amount, input.direction);
   const originalAmount = (cents(input.amount) / 100).toFixed(2);
   const merchant = input.merchant?.trim() || null;
 
@@ -1738,6 +1739,7 @@ export async function syncReadOnlyBankConnection(actor: Actor, connectionId: str
         if (!account) throw new GovernanceError("INVALID_STATE", "Provider transaction references an unmatched account");
         assertDate(transaction.transactionDate, "Provider transaction date");
         decimalCents(transaction.amount);
+        const amount = normalizeImportedAmount(transaction.amount, provider.transactionAmountConvention);
         const reviewStatus = providerReviewStatus(transaction);
         const pending = transaction.pending ?? false;
         const existing = await tx.select().from(financeTransactions).where(and(
@@ -1751,15 +1753,26 @@ export async function syncReadOnlyBankConnection(actor: Actor, connectionId: str
           continue;
         }
         if (existing[0]) {
+          const existingMetadata = existing[0].metadata as {
+            bankSync?: { canonicalSignContract?: string };
+          } | null;
+          const signContractApplied = existingMetadata?.bankSync?.canonicalSignContract === "positive_inflow_v1";
           await tx.update(financeTransactions).set({
             transactionDate: transaction.transactionDate,
             description: transaction.description,
             merchant: transaction.merchant ?? null,
-            originalAmount: transaction.amount,
-            amount: transaction.amount,
+            ...(signContractApplied ? { originalAmount: transaction.amount, amount } : {}),
             pending,
             ...(existing[0].reviewStatus === "approved" ? {} : { reviewStatus }),
-            metadata: { ...existing[0].metadata, bankSync: { provider: connection.provider, providerTransactionId: transaction.providerTransactionId, lastSeenAt: now.toISOString() } },
+            metadata: {
+              ...existing[0].metadata,
+              bankSync: {
+                ...existingMetadata?.bankSync,
+                provider: connection.provider,
+                providerTransactionId: transaction.providerTransactionId,
+                lastSeenAt: now.toISOString(),
+              },
+            },
             updatedAt: now,
           }).where(and(eq(financeTransactions.id, existing[0].id), eq(financeTransactions.householdId, id)));
           result.updated += 1;
@@ -1774,11 +1787,18 @@ export async function syncReadOnlyBankConnection(actor: Actor, connectionId: str
           description: transaction.description,
           merchant: transaction.merchant ?? null,
           originalAmount: transaction.amount,
-          amount: transaction.amount,
+          amount,
           dataSource: "plaid",
           reviewStatus,
           pending,
-          metadata: { bankSync: { provider: connection.provider, providerTransactionId: transaction.providerTransactionId, lastSeenAt: now.toISOString() } },
+          metadata: {
+            bankSync: {
+              provider: connection.provider,
+              providerTransactionId: transaction.providerTransactionId,
+              lastSeenAt: now.toISOString(),
+              canonicalSignContract: "positive_inflow_v1",
+            },
+          },
         });
         result.inserted += 1;
         result.reviewCount += 1;

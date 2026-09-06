@@ -70,6 +70,7 @@ test("read-only bank sync certifies cursor replay, reauthorization, tenant isola
     provider: "fixture-bank",
     readOnly: true as const,
     delivery: "polling_and_webhook" as const,
+    transactionAmountConvention: "positive_inflow" as const,
     async reauthorize(input: { credentialRef: string; replacementCredentialRef: string }) {
       reauthorizations.push(input);
     },

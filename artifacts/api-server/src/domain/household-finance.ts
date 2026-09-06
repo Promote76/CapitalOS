@@ -64,6 +64,14 @@ export type SafeToDeployResult = {
 const cents = (value: string | number | null | undefined) =>
   typeof value === "number" ? value : parseMoneyToCents(value ?? "0");
 
+export function canonicalManualTransactionAmount(
+  amount: string,
+  direction: "inflow" | "outflow",
+) {
+  const magnitude = Math.abs(parseMoneyToCents(amount));
+  return centsToMoney(direction === "outflow" ? -magnitude : magnitude);
+}
+
 export function calculateBudgetPerformance(
   categories: BudgetCategoryInput[],
   transactions: HouseholdTransactionInput[],

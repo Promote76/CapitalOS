@@ -1,4 +1,5 @@
 export type BankingProvider = "manual" | "csv_import" | "plaid";
+export type TransactionAmountConvention = "positive_inflow" | "positive_outflow";
 
 export type ImportedBankTransaction = {
   externalId?: string;
@@ -59,6 +60,7 @@ export interface ReadOnlyBankingProvider {
   readonly provider: string;
   readonly readOnly: true;
   readonly delivery: "polling" | "webhook" | "polling_and_webhook";
+  readonly transactionAmountConvention: TransactionAmountConvention;
   /**
    * Cursors are committed by the service only after the complete snapshot is
    * applied atomically. Providers must therefore tolerate the same cursor being
@@ -76,7 +78,26 @@ export interface BankingAdapter {
   readonly provider: BankingProvider;
   readonly readOnly: true;
   readonly enabled: boolean;
+  readonly transactionAmountConvention: TransactionAmountConvention;
   importTransactions(input: string | ImportedBankTransaction[]): ImportedBankTransaction[];
+}
+
+export function normalizeImportedAmount(amount: string, convention: TransactionAmountConvention) {
+  const trimmed = amount.trim();
+  if (convention === "positive_inflow") return trimmed;
+  if (trimmed.startsWith("-")) return trimmed.slice(1);
+  if (trimmed.startsWith("+")) return `-${trimmed.slice(1)}`;
+  return `-${trimmed}`;
+}
+
+function normalizeImportedTransactions(
+  transactions: ImportedBankTransaction[],
+  convention: TransactionAmountConvention,
+) {
+  return transactions.map((transaction) => ({
+    ...transaction,
+    amount: normalizeImportedAmount(transaction.amount, convention),
+  }));
 }
 
 function parseCsv(input: string): ImportedBankTransaction[] {
@@ -126,20 +147,29 @@ export const manualBankingAdapter: BankingAdapter = {
   provider: "manual",
   readOnly: true,
   enabled: true,
-  importTransactions: (input) => Array.isArray(input) ? input : parseCsv(input),
+  transactionAmountConvention: "positive_inflow",
+  importTransactions: (input) => normalizeImportedTransactions(
+    Array.isArray(input) ? input : parseCsv(input),
+    "positive_inflow",
+  ),
 };
 
 export const csvImportBankingAdapter: BankingAdapter = {
   provider: "csv_import",
   readOnly: true,
   enabled: true,
-  importTransactions: (input) => Array.isArray(input) ? input : parseCsv(input),
+  transactionAmountConvention: "positive_inflow",
+  importTransactions: (input) => normalizeImportedTransactions(
+    Array.isArray(input) ? input : parseCsv(input),
+    "positive_inflow",
+  ),
 };
 
 export const plaidBankingAdapter: BankingAdapter = {
   provider: "plaid",
   readOnly: true,
   enabled: false,
+  transactionAmountConvention: "positive_outflow",
   importTransactions: () => {
     throw new Error("Plaid banking adapter is disabled until an approved provider connection is configured.");
   },
@@ -151,6 +181,9 @@ export function registerReadOnlyBankingProvider(provider: ReadOnlyBankingProvide
   if (!provider.readOnly) throw new Error("Banking providers must be read-only");
   if (provider.delivery !== "polling" && provider.delivery !== "webhook" && provider.delivery !== "polling_and_webhook") {
     throw new Error("Banking providers must declare polling or webhook delivery");
+  }
+  if (provider.transactionAmountConvention !== "positive_inflow" && provider.transactionAmountConvention !== "positive_outflow") {
+    throw new Error("Banking providers must declare their transaction amount sign convention");
   }
   readOnlyProviders.set(provider.provider, provider);
 }

@@ -6,11 +6,45 @@ import {
   calculateEmergencyReserve,
   calculateFinancialHealthScore,
   calculateSafeToDeploy,
+  canonicalManualTransactionAmount,
   canViewFinancialBalance,
   deduplicateImportedTransactions,
   detectRecurringTransactions,
 } from "./household-finance.ts";
-import { csvImportBankingAdapter } from "../adapters/banking.ts";
+import { csvImportBankingAdapter, normalizeImportedAmount } from "../adapters/banking.ts";
+
+test("manual entries canonicalize inflows and outflows regardless of entered sign", () => {
+  assert.equal(canonicalManualTransactionAmount("125.50", "inflow"), "125.50");
+  assert.equal(canonicalManualTransactionAmount("-125.50", "inflow"), "125.50");
+  assert.equal(canonicalManualTransactionAmount("42.25", "outflow"), "-42.25");
+  assert.equal(canonicalManualTransactionAmount("-42.25", "outflow"), "-42.25");
+});
+
+test("CSV keeps canonical income, expense, and refund signs", () => {
+  const imported = csvImportBankingAdapter.importTransactions(
+    "date,description,amount\n2026-09-01,Pay,2500.00\n2026-09-02,Groceries,-125.00\n2026-09-03,Refund,20.00",
+  );
+  assert.deepEqual(imported.map((row) => row.amount), ["2500.00", "-125.00", "20.00"]);
+});
+
+test("Plaid positive-outflow amounts normalize to the canonical contract", () => {
+  assert.equal(normalizeImportedAmount("-2500.00", "positive_outflow"), "2500.00");
+  assert.equal(normalizeImportedAmount("125.00", "positive_outflow"), "-125.00");
+  assert.equal(normalizeImportedAmount("-20.00", "positive_outflow"), "20.00");
+});
+
+test("normalized mixed transactions net consistently across providers", () => {
+  const canonical = [
+    canonicalManualTransactionAmount("1000.00", "inflow"),
+    ...csvImportBankingAdapter.importTransactions([
+      { transactionDate: "2026-09-01", description: "Expense", amount: "-250.00" },
+      { transactionDate: "2026-09-02", description: "Refund", amount: "25.00" },
+    ]).map((row) => row.amount),
+    normalizeImportedAmount("-500.00", "positive_outflow"),
+    normalizeImportedAmount("100.00", "positive_outflow"),
+  ];
+  assert.equal(canonical.reduce((sum, amount) => sum + Number(amount), 0), 1175);
+});
 
 test("budget totals use signed transaction amounts and exclude transfers", () => {
   const [housing] = calculateBudgetPerformance(

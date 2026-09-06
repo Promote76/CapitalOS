@@ -2161,6 +2161,67 @@ test("budget planning bootstrap, audit, copy, and stale edits are tenant-safe", 
   assert.equal(period.version, first.version);
 });
 
+test("weekly budget guidance is advisory, exact, and owner-accepted only", { skip: !enabled }, async () => {
+  database ??= await import("@workspace/db");
+  const fixture = await createFixture();
+  const { db, auditEvents, budgetPlanningCategorySnapshots, financeCategories, financeTransactions, financialAccounts } = database;
+  const service = await import("../services/household-finance.ts");
+  const owner = { role: "owner" as const, userId: fixture.userA, householdId: fixture.householdA, source: "test-database" as const };
+  const partner = { role: "partner" as const, userId: fixture.partnerA, householdId: fixture.householdA, source: "test-database" as const };
+  const advisor = { role: "advisor" as const, userId: fixture.advisorA, householdId: fixture.householdA, source: "test-database" as const };
+  const viewer = { role: "viewer" as const, userId: fixture.viewerA, householdId: fixture.householdA, source: "test-database" as const };
+  await service.getBudget(owner); // seeds the approved taxonomy without relying on expected income sources
+  const month = new Date().toISOString().slice(0, 7);
+  const period = await service.getBudgetPlanningPeriod(owner, month);
+  const categories = await db.select().from(financeCategories).where(eq(financeCategories.householdId, fixture.householdA));
+  const categoryByName = new Map(categories.map((category) => [category.name, category]));
+  const income = categoryByName.get("Household income");
+  const housing = categoryByName.get("Housing");
+  const food = categoryByName.get("Food");
+  assert.ok(income && housing && food);
+  const [account] = await db.insert(financialAccounts).values({ householdId: fixture.householdA, institution: "Guidance Bank", nickname: "Guidance checking", accountType: "checking", currentBalance: "10000.00", availableBalance: "10000.00", connectionStatus: "manual", dataSource: "manual" }).returning();
+  const today = new Date().toISOString().slice(0, 10);
+  await db.insert(financeTransactions).values([
+    { householdId: fixture.householdA, accountId: account.id, transactionDate: today, description: "Verified pay", amount: "10000.00", categoryId: income.id, reviewStatus: "approved", businessTag: "household" },
+    { householdId: fixture.householdA, accountId: account.id, transactionDate: today, description: "Rent", amount: "-500.00", categoryId: housing.id, reviewStatus: "approved", businessTag: "household" },
+    { householdId: fixture.householdA, accountId: account.id, transactionDate: today, description: "Ignored pending", amount: "-99.00", categoryId: food.id, reviewStatus: "approved", businessTag: "household", pending: true },
+  ]);
+  const guidance = await service.getWeeklyBudgetGuidance(owner, period.id);
+  const housingGuidance = guidance.categories.find((category) => category.categoryId === period.categories.find((category) => category.name === "Housing")?.id);
+  assert.deepEqual(housingGuidance && { allocationBasisPoints: housingGuidance.allocationBasisPoints, recommendedMonthly: housingGuidance.recommendedMonthly, eligibleActualSpending: housingGuidance.eligibleActualSpending, remainingRecommendedAmount: housingGuidance.remainingRecommendedAmount }, { allocationBasisPoints: 3000, recommendedMonthly: "3000.00", eligibleActualSpending: "500.00", remainingRecommendedAmount: "2500.00" });
+  assert.equal(guidance.verifiedIncome, "10000.00");
+  assert.equal(guidance.exclusions.pending, 1);
+  assert.equal(guidance.categories.filter((category) => category.recommendedMonthly !== null).reduce((sum, category) => sum + Number(category.recommendedMonthly), 0), 10000);
+  const housingSnapshot = period.categories.find((category) => category.name === "Housing");
+  const foodSnapshot = period.categories.find((category) => category.name === "Food");
+  assert.ok(housingSnapshot && foodSnapshot);
+  const acceptInput = { version: period.version, categoryIds: [housingSnapshot.id, foodSnapshot.id], recommendationFingerprint: guidance.fingerprint };
+  for (const actor of [partner, advisor, viewer]) await assert.rejects(() => service.acceptWeeklyBudgetGuidance(actor, period.id, acceptInput, `denied-${randomUUID()}`), (error: unknown) => error instanceof Error && "code" in error && error.code === "FORBIDDEN");
+  const transactionCountBefore = await db.select({ count: sql<number>`count(*)::int` }).from(financeTransactions).where(eq(financeTransactions.householdId, fixture.householdA));
+  const categoryTargetsBefore = await db.select({ id: financeCategories.id, monthlyTarget: financeCategories.monthlyTarget }).from(financeCategories).where(eq(financeCategories.householdId, fixture.householdA));
+  const key = `weekly-guidance-${randomUUID()}`;
+  const accepted = await service.acceptWeeklyBudgetGuidance(owner, period.id, acceptInput, key);
+  assert.equal(accepted.version, period.version + 1);
+  assert.deepEqual(accepted.acceptedCategoryIds, [...acceptInput.categoryIds].sort());
+  assert.deepEqual(await service.acceptWeeklyBudgetGuidance(owner, period.id, acceptInput, key), accepted);
+  await assert.rejects(() => service.acceptWeeklyBudgetGuidance(owner, period.id, { ...acceptInput, categoryIds: [housingSnapshot.id] }, key), (error: unknown) => error instanceof Error && "code" in error && error.code === "IDEMPOTENCY_CONFLICT");
+  await assert.rejects(() => service.acceptWeeklyBudgetGuidance(owner, period.id, acceptInput, `stale-${randomUUID()}`), (error: unknown) => error instanceof Error && "code" in error && error.code === "CONFLICT");
+  const [acceptedHousing] = await db.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.id, housingSnapshot.id));
+  assert.equal(acceptedHousing.monthlyTarget, "3000.00");
+  assert.deepEqual(await db.select({ id: financeCategories.id, monthlyTarget: financeCategories.monthlyTarget }).from(financeCategories).where(eq(financeCategories.householdId, fixture.householdA)), categoryTargetsBefore);
+  const transactionCountAfter = await db.select({ count: sql<number>`count(*)::int` }).from(financeTransactions).where(eq(financeTransactions.householdId, fixture.householdA));
+  assert.deepEqual(transactionCountAfter, transactionCountBefore);
+  const audits = await db.select().from(auditEvents).where(and(eq(auditEvents.entityId, period.id), eq(auditEvents.eventType, "budget_weekly_guidance_accepted")));
+  assert.equal(audits.length, 1);
+  assert.equal(audits[0]?.actor, fixture.userA);
+  const approval = await service.approveBudgetPlanningPeriod(owner, period.id, accepted.version, `approve-${randomUUID()}`) as { version: number };
+  const approvedGuidance = await service.getWeeklyBudgetGuidance(owner, period.id);
+  await assert.rejects(() => service.acceptWeeklyBudgetGuidance(owner, period.id, { version: accepted.version + 1, categoryIds: [housingSnapshot.id], recommendationFingerprint: approvedGuidance.fingerprint }, `approved-${randomUUID()}`), (error: unknown) => error instanceof Error && "code" in error && error.code === "CONFLICT");
+  const closed = await service.closeBudgetPlanningPeriod(owner, period.id, approval.version, `close-${randomUUID()}`);
+  const closedGuidance = await service.getWeeklyBudgetGuidance(owner, period.id);
+  await assert.rejects(() => service.acceptWeeklyBudgetGuidance(owner, period.id, { version: closed.version, categoryIds: [housingSnapshot.id], recommendationFingerprint: closedGuidance.fingerprint }, `closed-${randomUUID()}`), (error: unknown) => error instanceof Error && "code" in error && error.code === "CONFLICT");
+});
+
 test("household finance stays tenant-scoped and CSV imports are reviewable and duplicate-safe", { skip: !enabled }, async () => {
   process.env.NODE_ENV = "test";
   process.env.CAPITAL_OS_TEST_CONTEXT = "1";

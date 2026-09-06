@@ -3278,6 +3278,52 @@ export const GetBudgetPlanningPeriodResponse = zod.object({
 
 
 /**
+ * @summary Get advisory weekly guidance for a planning period
+ */
+export const GetWeeklyBudgetGuidanceParams = zod.object({
+  "periodId": zod.coerce.string()
+})
+
+export const getWeeklyBudgetGuidanceResponseVerifiedIncomeRegExp = new RegExp('^[0-9]+\\.[0-9]{2}$');
+export const getWeeklyBudgetGuidanceResponseIncludedIncomeCountMin = 0;
+
+export const getWeeklyBudgetGuidanceResponseIncludedOutflowCountMin = 0;
+
+export const getWeeklyBudgetGuidanceResponseCategoriesItemAllocationBasisPointsMin = 0;
+export const getWeeklyBudgetGuidanceResponseCategoriesItemAllocationBasisPointsMax = 10000;
+
+export const getWeeklyBudgetGuidanceResponseCategoriesItemRecommendedMonthlyRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
+export const getWeeklyBudgetGuidanceResponseCategoriesItemRecommendedWeeklyRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
+export const getWeeklyBudgetGuidanceResponseCategoriesItemEligibleActualSpendingRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
+export const getWeeklyBudgetGuidanceResponseCategoriesItemRemainingRecommendedAmountRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
+
+
+export const GetWeeklyBudgetGuidanceResponse = zod.object({
+  "periodId": zod.string(),
+  "month": zod.string(),
+  "calculationDate": zod.coerce.date(),
+  "basis": zod.string(),
+  "verifiedIncome": zod.string().regex(getWeeklyBudgetGuidanceResponseVerifiedIncomeRegExp),
+  "includedIncomeCount": zod.number().min(getWeeklyBudgetGuidanceResponseIncludedIncomeCountMin),
+  "includedOutflowCount": zod.number().min(getWeeklyBudgetGuidanceResponseIncludedOutflowCountMin),
+  "exclusions": zod.record(zod.string(), zod.number()),
+  "fingerprint": zod.string(),
+  "affectsOfficialTotals": zod.literal(false),
+  "categories": zod.array(zod.object({
+  "categoryId": zod.string(),
+  "allocationBasisPoints": zod.number().min(getWeeklyBudgetGuidanceResponseCategoriesItemAllocationBasisPointsMin).max(getWeeklyBudgetGuidanceResponseCategoriesItemAllocationBasisPointsMax),
+  "recommendedMonthly": zod.string().regex(getWeeklyBudgetGuidanceResponseCategoriesItemRecommendedMonthlyRegExp).nullable(),
+  "recommendedWeekly": zod.string().regex(getWeeklyBudgetGuidanceResponseCategoriesItemRecommendedWeeklyRegExp).nullable(),
+  "eligibleActualSpending": zod.string().regex(getWeeklyBudgetGuidanceResponseCategoriesItemEligibleActualSpendingRegExp),
+  "remainingRecommendedAmount": zod.string().regex(getWeeklyBudgetGuidanceResponseCategoriesItemRemainingRecommendedAmountRegExp).nullable(),
+  "status": zod.enum(['green', 'red', 'neutral']),
+  "reason": zod.string(),
+  "eligible": zod.boolean()
+}))
+})
+
+
+/**
  * @summary Add a category snapshot to a draft planning period
  */
 export const CreateBudgetPlanningCategoryParams = zod.object({
@@ -3315,6 +3361,45 @@ export const CreateBudgetPlanningCategoryResponse = zod.object({
 }).and(zod.object({
   "version": zod.number()
 }))
+
+
+/**
+ * @summary Owner-accept selected advisory weekly guidance targets into a draft only
+ */
+export const AcceptWeeklyBudgetGuidanceParams = zod.object({
+  "periodId": zod.coerce.string()
+})
+
+export const acceptWeeklyBudgetGuidanceHeaderIdempotencyKeyMin = 8;
+export const acceptWeeklyBudgetGuidanceHeaderIdempotencyKeyMax = 128;
+
+
+
+export const AcceptWeeklyBudgetGuidanceHeader = zod.object({
+  "Idempotency-Key": zod.string().min(acceptWeeklyBudgetGuidanceHeaderIdempotencyKeyMin).max(acceptWeeklyBudgetGuidanceHeaderIdempotencyKeyMax)
+})
+
+
+
+
+
+
+export const AcceptWeeklyBudgetGuidanceBody = zod.object({
+  "version": zod.number().min(1),
+  "categoryIds": zod.array(zod.string()).min(1),
+  "recommendationFingerprint": zod.string().min(1)
+})
+
+export const acceptWeeklyBudgetGuidanceResponseTargetsRegExpOne = new RegExp('^[0-9]+\\.[0-9]{2}$');
+
+
+export const AcceptWeeklyBudgetGuidanceResponse = zod.object({
+  "periodId": zod.string(),
+  "version": zod.number(),
+  "acceptedCategoryIds": zod.array(zod.string()),
+  "targets": zod.record(zod.string(), zod.string().regex(acceptWeeklyBudgetGuidanceResponseTargetsRegExpOne)),
+  "affectsOfficialTotals": zod.literal(false)
+})
 
 
 /**

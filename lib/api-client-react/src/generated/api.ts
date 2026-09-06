@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AcceptWeeklyBudgetGuidanceInput,
+  AcceptWeeklyBudgetGuidanceResult,
   AccountSummary,
   AccountingOverview,
   AllocationImpact,
@@ -189,7 +191,8 @@ import type {
   UpcomingExpense,
   UpcomingExpenseInput,
   UpcomingExpenseUpdateInput,
-  UpdateBuyBoxInput
+  UpdateBuyBoxInput,
+  WeeklyBudgetGuidance
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -7734,6 +7737,83 @@ export function useGetBudgetPlanningPeriod<TData = Awaited<ReturnType<typeof get
 
 
 
+export const getGetWeeklyBudgetGuidanceUrl = (periodId: string,) => {
+
+
+
+
+  return `/api/budget-planning-periods/${periodId}/weekly-guidance`
+}
+
+/**
+ * @summary Get advisory weekly guidance for a planning period
+ */
+export const getWeeklyBudgetGuidance = async (periodId: string, options?: Parameters<typeof customFetch>[1]): Promise<WeeklyBudgetGuidance> => {
+
+  return customFetch<WeeklyBudgetGuidance>(getGetWeeklyBudgetGuidanceUrl(periodId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetWeeklyBudgetGuidanceQueryKey = (periodId: string,) => {
+    return [
+    `/api/budget-planning-periods/${periodId}/weekly-guidance`
+    ] as const;
+    }
+
+
+export const getGetWeeklyBudgetGuidanceQueryOptions = <TData = Awaited<ReturnType<typeof getWeeklyBudgetGuidance>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(periodId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWeeklyBudgetGuidance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetWeeklyBudgetGuidanceQueryKey(periodId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getWeeklyBudgetGuidance>>> = ({ signal }) => getWeeklyBudgetGuidance(periodId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: periodId !== null && periodId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getWeeklyBudgetGuidance>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetWeeklyBudgetGuidanceQueryResult = NonNullable<Awaited<ReturnType<typeof getWeeklyBudgetGuidance>>>
+export type GetWeeklyBudgetGuidanceQueryError = ErrorType<ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Get advisory weekly guidance for a planning period
+ */
+
+export function useGetWeeklyBudgetGuidance<TData = Awaited<ReturnType<typeof getWeeklyBudgetGuidance>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(
+ periodId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getWeeklyBudgetGuidance>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetWeeklyBudgetGuidanceQueryOptions(periodId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getCreateBudgetPlanningCategoryUrl = (periodId: string,) => {
 
 
@@ -7804,6 +7884,78 @@ export const useCreateBudgetPlanningCategory = <TError = ErrorType<ForbiddenResp
         TContext
       > => {
       return useMutation(getCreateBudgetPlanningCategoryMutationOptions(options));
+    }
+
+export const getAcceptWeeklyBudgetGuidanceUrl = (periodId: string,) => {
+
+
+
+
+  return `/api/budget-planning-periods/${periodId}/weekly-guidance/accept`
+}
+
+/**
+ * @summary Owner-accept selected advisory weekly guidance targets into a draft only
+ */
+export const acceptWeeklyBudgetGuidance = async (periodId: string,
+    acceptWeeklyBudgetGuidanceInput: AcceptWeeklyBudgetGuidanceInput, options?: Parameters<typeof customFetch>[1]): Promise<AcceptWeeklyBudgetGuidanceResult> => {
+
+  return customFetch<AcceptWeeklyBudgetGuidanceResult>(getAcceptWeeklyBudgetGuidanceUrl(periodId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(acceptWeeklyBudgetGuidanceInput)
+  }
+);}
+
+
+
+
+
+export const getAcceptWeeklyBudgetGuidanceMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptWeeklyBudgetGuidance>>, TError,{periodId: string;data: BodyType<AcceptWeeklyBudgetGuidanceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof acceptWeeklyBudgetGuidance>>, TError,{periodId: string;data: BodyType<AcceptWeeklyBudgetGuidanceInput>}, TContext> => {
+
+const mutationKey = ['acceptWeeklyBudgetGuidance'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof acceptWeeklyBudgetGuidance>>, {periodId: string;data: BodyType<AcceptWeeklyBudgetGuidanceInput>}> = (props) => {
+          const {periodId,data} = props ?? {};
+
+          return  acceptWeeklyBudgetGuidance(periodId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AcceptWeeklyBudgetGuidanceMutationResult = NonNullable<Awaited<ReturnType<typeof acceptWeeklyBudgetGuidance>>>
+    export type AcceptWeeklyBudgetGuidanceMutationBody = BodyType<AcceptWeeklyBudgetGuidanceInput>
+    export type AcceptWeeklyBudgetGuidanceMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Owner-accept selected advisory weekly guidance targets into a draft only
+ */
+export const useAcceptWeeklyBudgetGuidance = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof acceptWeeklyBudgetGuidance>>, TError,{periodId: string;data: BodyType<AcceptWeeklyBudgetGuidanceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof acceptWeeklyBudgetGuidance>>,
+        TError,
+        {periodId: string;data: BodyType<AcceptWeeklyBudgetGuidanceInput>},
+        TContext
+      > => {
+      return useMutation(getAcceptWeeklyBudgetGuidanceMutationOptions(options));
     }
 
 export const getUpdateBudgetPlanningCategoryUrl = (periodId: string,

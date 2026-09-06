@@ -61,6 +61,9 @@ import {
   CopyBudgetPlanningPeriodResponse,
   ReorderBudgetPlanningCategoriesResponse,
   GetBudgetPlanningChangeHistoryResponse,
+  GetWeeklyBudgetGuidanceResponse,
+  AcceptWeeklyBudgetGuidanceBody,
+  AcceptWeeklyBudgetGuidanceResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
@@ -111,6 +114,8 @@ import {
   getBudgetPlanningComparison,
   getBudgetPlanningCategoryContributionDetail,
   getBudgetPlanningChangeHistory,
+  getWeeklyBudgetGuidance,
+  acceptWeeklyBudgetGuidance,
 } from "../services/household-finance";
 
 const router: IRouter = Router();
@@ -122,6 +127,17 @@ router.get("/budget", asyncRoute(async (_req, res) => {
 router.get("/budget-planning-periods/:month", asyncRoute(async (req, res) => {
   const month = Array.isArray(req.params.month) ? req.params.month[0] : req.params.month;
   res.json(GetBudgetPlanningPeriodResponse.parse(await getBudgetPlanningPeriod(actorFrom(res), month)));
+}));
+
+router.get("/budget-planning-periods/:periodId/weekly-guidance", asyncRoute(async (req, res) => {
+  const periodId = Array.isArray(req.params.periodId) ? req.params.periodId[0] : req.params.periodId;
+  res.json(GetWeeklyBudgetGuidanceResponse.parse(await getWeeklyBudgetGuidance(actorFrom(res), periodId)));
+}));
+
+router.post("/budget-planning-periods/:periodId/weekly-guidance/accept", asyncRoute(async (req, res) => {
+  const periodId = Array.isArray(req.params.periodId) ? req.params.periodId[0] : req.params.periodId;
+  const body = AcceptWeeklyBudgetGuidanceBody.parse(req.body);
+  res.json(AcceptWeeklyBudgetGuidanceResponse.parse(await acceptWeeklyBudgetGuidance(actorFrom(res), periodId, body, req.header("Idempotency-Key") ?? "")));
 }));
 
 router.post("/budget-planning-periods/:periodId/categories", asyncRoute(async (req, res) => {

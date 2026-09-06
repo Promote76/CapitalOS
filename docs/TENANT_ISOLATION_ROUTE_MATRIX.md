@@ -2,8 +2,8 @@
 
 **Inventory date:** 2026-09-06
 **Source:** `artifacts/api-server/src/integration/tenant-route-inventory.mjs` (authoritative), `artifacts/api-server/src/routes`, and `artifacts/api-server/src/integration/p0-http.test.ts`
-<!-- tenant-route-inventory: 160 -->
-**Inventory result:** 160 Express route/method pairs match the executable route inventory.
+<!-- tenant-route-inventory: 162 -->
+**Inventory result:** 162 Express route/method pairs match the executable route inventory.
 
 The machine-readable count above is checked by the route parity release check; adding
 an endpoint without refreshing this evidence fails certification with a stale-count
@@ -11,7 +11,7 @@ error.
 
 This is an evidence index, not a source-review substitute. `PASS` means the isolated
 database-backed fixture exercised the applicable route and identifier/body boundary.
-The current full 160-route preflight inventory includes 11 new Budget planning
+The current full 162-route preflight inventory includes 13 new Budget planning
 pairs awaiting the next disposable-target replay. The 2026-09-05 run passed the
 then-current 149-route inventory with zero failures; public health and auth routes
 are explicitly handled as public/identity boundaries rather than household-scoped
@@ -26,7 +26,7 @@ object routes.
 | GET /accounts; /goals; /contributions; POST /contributions; POST /transfers; POST /allocations/impact; PUT /allocations; GET /portfolio | goalId, sourceAccountId, destinationAccountId, allocation IDs | Household-scoped service lookups and atomic writes | PASS | PASS | PASS | PASS |
 | GET /dashboard | Query identifiers where applicable | Request-scoped dashboard aggregation | PASS | PASS | PASS | PASS |
 | GET/POST /budget; /cash-flow; /financial-accounts; /bills; /upcoming-expenses; /income; related PATCH/DELETE routes; GET /safe-to-deploy; /finance-insights; /finance-snapshots; /banking/status | accountId, billId, expenseId, incomeId, category and parent IDs | Household predicates on finance records | PASS | PASS | PASS | PASS |
-| GET/POST /budget-planning-periods; category create/update/archive/reorder; approve/close; history/comparison/contribution detail | periodId, categoryId, month, snapshot IDs | Actor household predicates, snapshot ownership checks, optimistic versions, and recent-auth lifecycle gates | SOURCE REVIEW | SOURCE REVIEW | SOURCE REVIEW | DISPOSABLE REPLAY OPEN |
+| GET/POST /budget-planning-periods; weekly guidance/read acceptance; category create/update/archive/reorder; approve/close; history/comparison/contribution detail | periodId, categoryId, month, snapshot IDs | Actor household predicates, snapshot ownership checks, optimistic versions, idempotency, and recent-auth lifecycle gates | SOURCE REVIEW | SOURCE REVIEW | SOURCE REVIEW | DISPOSABLE REPLAY OPEN |
 | GET /risk; POST /risk/emergency-stop; GET /recommendations; POST /recommendations/:recommendationId/decision; GET /audit | recommendationId, decision IDs | Household-scoped governance and audit services | PASS | PASS | PASS | PASS |
 | GET /health/live; GET /healthz; GET /health/ready | None; public health | Explicitly public; readiness checks PostgreSQL | N/A | N/A | N/A | PASS |
 | GET /household; PATCH /household/privacy | No caller-owned household authority | Request context selects an active persisted membership | PASS | PASS | PASS | PASS |
@@ -43,6 +43,6 @@ object routes.
 - The two-household fixture proves a foreign goal ID is rejected before a contribution is created.
 - The same fixture provisions Owner, Partner, Advisor, and Viewer memberships in both households and passes the role-header regression, partner contribution allow, advisor/viewer contribution denial, and contribution mass-assignment assertions on isolated Neon PostgreSQL.
 - The same fixture passes recent-auth denial, parallel transfer overdraft prevention, 100-request contention, transfer replay, persisted household/actor attribution, and ledger debit/credit reconciliation on isolated Neon PostgreSQL.
-- The route preflight discovers and asserts exactly 160 route/method pairs, compares household-scoped collection reads, sends same-household, foreign, and malformed path identifiers, injects mass-assignment fields into applicable generic write probes, and fails on unexpected server errors.
+- The route preflight discovers and asserts exactly 162 route/method pairs, compares household-scoped collection reads, sends same-household, foreign, and malformed path identifiers, injects mass-assignment fields into applicable generic write probes, and fails on unexpected server errors.
 - Parameterized routes require non-error same-household behavior, reject foreign identifiers without a successful write/read response, and reject malformed identifiers with a 4xx response. Parameterless writes must not return another household's identifiers after body tampering.
 - The preflight executed on the disposable target on 2026-09-05 with zero failures: 326 total probes, 55 scoped collection-read comparisons, 44 foreign-identifier denials, and 44 malformed-identifier rejections. The guarded runner refuses the configured shared target and requires an approved disposable-target sentinel before any reset.

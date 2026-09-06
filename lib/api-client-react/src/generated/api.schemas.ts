@@ -160,6 +160,82 @@ export type BudgetPlanningCategoryMutation = BudgetPlanningCategory & {
   version: number;
 };
 
+export type WeeklyBudgetGuidanceCategoryStatus = typeof WeeklyBudgetGuidanceCategoryStatus[keyof typeof WeeklyBudgetGuidanceCategoryStatus];
+
+
+export const WeeklyBudgetGuidanceCategoryStatus = {
+  green: 'green',
+  red: 'red',
+  neutral: 'neutral',
+} as const;
+
+export interface WeeklyBudgetGuidanceCategory {
+  categoryId: string;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     */
+  allocationBasisPoints: number;
+  /**
+     * @nullable
+     * @pattern ^-?[0-9]+\.[0-9]{2}$
+     */
+  recommendedMonthly: string | null;
+  /**
+     * @nullable
+     * @pattern ^-?[0-9]+\.[0-9]{2}$
+     */
+  recommendedWeekly: string | null;
+  /** @pattern ^-?[0-9]+\.[0-9]{2}$ */
+  eligibleActualSpending: string;
+  /**
+     * @nullable
+     * @pattern ^-?[0-9]+\.[0-9]{2}$
+     */
+  remainingRecommendedAmount: string | null;
+  status: WeeklyBudgetGuidanceCategoryStatus;
+  reason: string;
+  eligible: boolean;
+}
+
+export type WeeklyBudgetGuidanceExclusions = {[key: string]: number};
+
+export interface WeeklyBudgetGuidance {
+  periodId: string;
+  month: string;
+  calculationDate: string;
+  basis: string;
+  /** @pattern ^[0-9]+\.[0-9]{2}$ */
+  verifiedIncome: string;
+  /** @minimum 0 */
+  includedIncomeCount: number;
+  /** @minimum 0 */
+  includedOutflowCount: number;
+  exclusions: WeeklyBudgetGuidanceExclusions;
+  fingerprint: string;
+  affectsOfficialTotals: false;
+  categories: WeeklyBudgetGuidanceCategory[];
+}
+
+export interface AcceptWeeklyBudgetGuidanceInput {
+  /** @minimum 1 */
+  version: number;
+  /** @minItems 1 */
+  categoryIds: string[];
+  /** @minLength 1 */
+  recommendationFingerprint: string;
+}
+
+export type AcceptWeeklyBudgetGuidanceResultTargets = {[key: string]: string};
+
+export interface AcceptWeeklyBudgetGuidanceResult {
+  periodId: string;
+  version: number;
+  acceptedCategoryIds: string[];
+  targets: AcceptWeeklyBudgetGuidanceResultTargets;
+  affectsOfficialTotals: false;
+}
+
 export type BudgetPlanningApprovalStatus = typeof BudgetPlanningApprovalStatus[keyof typeof BudgetPlanningApprovalStatus];
 
 

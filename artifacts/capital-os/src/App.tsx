@@ -44,6 +44,9 @@ import {
   useGetBudgetPlanningComparison,
   useGetBudgetPlanningCategoryContributionDetail,
   useGetBudgetPlanningChangeHistory,
+  useGetWeeklyBudgetGuidance,
+  useAcceptWeeklyBudgetGuidance,
+  getGetWeeklyBudgetGuidanceQueryKey,
   getGetBudgetPlanningChangeHistoryQueryKey,
   getGetBudgetPlanningPeriodQueryKey,
   getListBudgetPlanningHistoryQueryKey,
@@ -175,6 +178,8 @@ import {
   Lock,
   AlertTriangle,
   CheckCircle2,
+  MinusCircle,
+  AlertCircle,
   Database,
   ScrollText,
   Scale,
@@ -1311,17 +1316,23 @@ function BudgetPlanningControlCenter() {
   const idempotencyKeys = useRef({
     approve: crypto.randomUUID(),
     close: crypto.randomUUID(),
+    guidance: crypto.randomUUID(),
   });
 
   const reorderCategories = useReorderBudgetPlanningCategories();
   const approvePeriod = useApproveBudgetPlanningPeriod({ request: { headers: { 'Idempotency-Key': idempotencyKeys.current.approve } } });
   const closePeriod = useCloseBudgetPlanningPeriod({ request: { headers: { 'Idempotency-Key': idempotencyKeys.current.close } } });
+  const acceptGuidance = useAcceptWeeklyBudgetGuidance({ request: { headers: { 'Idempotency-Key': idempotencyKeys.current.guidance } } });
   const [showArchived, setShowArchived] = useState(false);
   const activeCategories = periodQuery.data ? periodQuery.data.categories.filter(c => !c.archived).sort((a, b) => a.sortOrder - b.sortOrder) : [];
   const archivedCategories = periodQuery.data ? periodQuery.data.categories.filter(c => c.archived).sort((a, b) => a.sortOrder - b.sortOrder) : [];
 
   const changeHistoryQuery = useGetBudgetPlanningChangeHistory(periodQuery.data?.id ?? '', {
     query: { enabled: !!periodQuery.data?.id, queryKey: periodQuery.data?.id ? getGetBudgetPlanningChangeHistoryQueryKey(periodQuery.data.id) : ['/api/budget-planning-change-history'] }
+  });
+
+  const guidanceQuery = useGetWeeklyBudgetGuidance(periodQuery.data?.id ?? '', {
+    query: { enabled: !!periodQuery.data?.id, queryKey: periodQuery.data?.id ? getGetWeeklyBudgetGuidanceQueryKey(periodQuery.data.id) : ['/api/guidance-placeholder'], retry: false }
   });
 
   const submitApprove = useProviderProtectedAction(async (periodId: string, version: number) => {
@@ -1412,6 +1423,22 @@ function BudgetPlanningControlCenter() {
     }
   };
 
+  const handleAcceptGuidance = async (periodId: string, version: number, categoryIds: string[], fingerprint: string) => {
+    try {
+      await acceptGuidance.mutateAsync({
+        periodId,
+        data: { version, categoryIds, recommendationFingerprint: fingerprint }
+      });
+      idempotencyKeys.current.guidance = crypto.randomUUID();
+      queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningPeriodQueryKey(selectedMonth) });
+      queryClient.invalidateQueries({ queryKey: getGetWeeklyBudgetGuidanceQueryKey(periodId) });
+      queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningChangeHistoryQueryKey(periodId) });
+      toast({ title: 'Guidance accepted' });
+    } catch (err: unknown) {
+      handleMutationError(err, 'Accept Guidance');
+    }
+  };
+
   const [editingCategory, setEditingCategory] = useState<BudgetPlanningCategory | 'new' | null>(null);
   const [detailCategory, setDetailCategory] = useState<BudgetPlanningCategory | null>(null);
 
@@ -1499,32 +1526,149 @@ function BudgetPlanningControlCenter() {
              </div>
            )}
 
-           <div className="planning-categories">
-              {activeCategories.map((cat, i, arr) => (
-                 <div key={cat.id} className="planning-row">
-                    <div className="planning-row-info">
-                       <strong>{cat.name}</strong>
-                       <span>{cat.categoryType.replace(/_/g, ' ')} • {cat.essentialStatus}</span>
-                    </div>
-                    <div className="planning-row-target">
-                       {displayMoney(cat.monthlyTarget, '$0')}
-                       {Number(cat.warningThreshold) > 0 && <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)' }}>Warn: {Number(cat.warningThreshold) * 100}%</span>}
-                    </div>
-                    <div className="planning-row-notes text-secondary" style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                       {cat.notes}
-                    </div>
-                    <div className="planning-row-actions">
-                       <button className="btn btn-secondary btn-sm" onClick={() => setDetailCategory(cat)} aria-label={`View Contributions for ${cat.name}`} title="View Contributions"><BarChart3 size={14} /></button>
-                       {periodQuery.data.status === 'draft' && (
-                         <>
-                           <button className="btn btn-secondary btn-sm" onClick={() => setEditingCategory(cat)} aria-label={`Edit ${cat.name}`} title="Edit Category"><Pencil size={14} /></button>
-                           <button className="btn btn-secondary btn-sm" onClick={() => handleMove(i, 'up')} disabled={i === 0 || reorderCategories.isPending} aria-label={`Move ${cat.name} Up`} title="Move Up">↑</button>
-                           <button className="btn btn-secondary btn-sm" onClick={() => handleMove(i, 'down')} disabled={i === arr.length - 1 || reorderCategories.isPending} aria-label={`Move ${cat.name} Down`} title="Move Down">↓</button>
-                         </>
-                       )}
-                    </div>
+           <div className="guidance-panel card-pad" style={{ background: 'var(--surface-subtle)', borderRadius: '10px', marginBottom: '24px', border: '1px solid var(--border-default)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                 <Sparkles size={18} className="text-primary" />
+                 <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600 }}>Weekly Budget Guidance</h3>
+              </div>
+
+              {guidanceQuery.isLoading ? (
+                 <div className="skeleton" style={{ height: '80px', borderRadius: '8px' }} />
+              ) : guidanceQuery.isError ? (
+                 <div className="finance-empty-state review" style={{ padding: '16px', background: 'var(--surface-default)' }}>
+                    <AlertCircle size={16} className="text-critical" />
+                    <strong>Guidance Unavailable</strong>
+                    <span>Unable to calculate guidance. This usually means verified income is missing for this period or the calculation failed.</span>
+                    <button className="btn btn-secondary btn-sm" onClick={() => void guidanceQuery.refetch()}>Retry Calculation</button>
                  </div>
-              ))}
+              ) : guidanceQuery.data ? (
+                 <div className="guidance-summary" style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <p style={{ margin: 0 }}>Guidance is <strong>advisory</strong> until accepted, and the drafted plan must be separately approved. Calculated on {new Date(guidanceQuery.data.calculationDate).toLocaleString()} using <strong>{guidanceQuery.data.basis.replace(/_/g, ' ')}</strong> basis.</p>
+
+                    <div className="finance-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                       <div className="metric-card green" style={{ padding: '12px' }}>
+                          <span className="metric-detail">Verified Income ({guidanceQuery.data.includedIncomeCount} rows)</span>
+                          <div className="metric-value">{displayMoney(guidanceQuery.data.verifiedIncome, '$0')}</div>
+                       </div>
+                       <div className="metric-card amber" style={{ padding: '12px' }}>
+                          <span className="metric-detail">Included Outflow</span>
+                          <div className="metric-value">{guidanceQuery.data.includedOutflowCount} rows</div>
+                       </div>
+                       <div className="metric-card default" style={{ padding: '12px' }}>
+                          <span className="metric-detail">Exclusions</span>
+                          <div className="metric-value">{Object.values(guidanceQuery.data.exclusions).reduce((a, b) => a + b, 0)} items</div>
+                       </div>
+                    </div>
+
+                    {Object.values(guidanceQuery.data.exclusions).reduce((a, b) => a + b, 0) > 0 && (
+                       <div style={{ background: 'var(--surface-default)', padding: '10px 12px', borderRadius: '6px', fontSize: '11px' }}>
+                          <strong>Partial/Excluded Data:</strong> {Object.entries(guidanceQuery.data.exclusions).filter(([_,v]) => v > 0).map(([k, v]) => `${v} ${k}`).join(', ')}. These are excluded from recommendation math.
+                       </div>
+                    )}
+
+                    {periodQuery.data.status === 'draft' && (
+                      <div style={{ marginTop: '4px' }}>
+                         <button
+                           className="btn btn-primary"
+                           disabled={acceptGuidance.isPending || !guidanceQuery.data.categories.some(c => c.eligible && c.recommendedMonthly !== null)}
+                           onClick={() => {
+                              if (!periodQuery.data) return;
+                               const eligibleIds = guidanceQuery.data.categories
+                                 .filter(c => c.eligible && c.recommendedMonthly !== null)
+                                 .map(c => c.categoryId);
+                              if (eligibleIds.length > 0) {
+                                 handleAcceptGuidance(periodQuery.data.id, periodQuery.data.version, eligibleIds, guidanceQuery.data.fingerprint);
+                              }
+                           }}
+                        >
+                           <Sparkles size={14} /> Accept All Eligible Recommendations
+                        </button>
+                      </div>
+                    )}
+                 </div>
+              ) : null}
+           </div>
+
+           <div className="planning-categories">
+              {activeCategories.map((cat, i, arr) => {
+                 const gCat = guidanceQuery.data?.categories.find(c => c.categoryId === cat.id);
+                 return (
+                  <div key={cat.id} className="planning-category-card">
+                     <div className="planning-category-header">
+                        <div className="planning-row-info">
+                           <strong>{cat.name} {gCat && <span style={{ display: 'inline-block', marginLeft: '6px', padding: '2px 6px', background: 'var(--surface-subtle)', borderRadius: '4px', fontSize: '10px', fontWeight: 600, color: 'var(--text-secondary)' }}>{(gCat.allocationBasisPoints / 100).toFixed(2)}%</span>}</strong>
+                           <span>{cat.categoryType.replace(/_/g, ' ')} • {cat.essentialStatus}</span>
+                           {cat.notes && <span style={{ marginTop: '4px', display: 'block', fontSize: '11px' }}>{cat.notes}</span>}
+                        </div>
+                        <div className="planning-row-target">
+                           {displayMoney(cat.monthlyTarget, '$0')}
+                           {Number(cat.warningThreshold) > 0 && <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)' }}>Warn: {Number(cat.warningThreshold) * 100}%</span>}
+                        </div>
+                        <div className="planning-row-actions">
+                           <button className="btn btn-secondary btn-sm" onClick={() => setDetailCategory(cat)} aria-label={`View Contributions`} title="View Contributions"><BarChart3 size={14} /></button>
+                           {periodQuery.data && periodQuery.data.status === 'draft' && (
+                             <>
+                               <button className="btn btn-secondary btn-sm" onClick={() => setEditingCategory(cat)} aria-label={`Edit`} title="Edit Category"><Pencil size={14} /></button>
+                               <button className="btn btn-secondary btn-sm" onClick={() => handleMove(i, 'up')} disabled={i === 0 || reorderCategories.isPending} aria-label={`Move Up`} title="Move Up">↑</button>
+                               <button className="btn btn-secondary btn-sm" onClick={() => handleMove(i, 'down')} disabled={i === arr.length - 1 || reorderCategories.isPending} aria-label={`Move Down`} title="Move Down">↓</button>
+                             </>
+                           )}
+                        </div>
+                     </div>
+                     {gCat && (
+                        <>
+                          <div className="planning-row-expanded-metrics">
+                             <div className="planning-guidance-metric">
+                               <span className="label">Recommended (Mo)</span>
+                               <span className="value">{gCat.recommendedMonthly ? displayMoney(gCat.recommendedMonthly, '$0') : '—'}</span>
+                             </div>
+                             <div className="planning-guidance-metric">
+                               <span className="label">Recommended (Wk)</span>
+                               <span className="value">{gCat.recommendedWeekly ? displayMoney(gCat.recommendedWeekly, '$0') : '—'}</span>
+                             </div>
+                             <div className="planning-guidance-metric">
+                               <span className="label">Eligible Actuals</span>
+                               <span className="value">{displayMoney(gCat.eligibleActualSpending, '$0')}</span>
+                             </div>
+                             <div className="planning-guidance-metric">
+                               <span className="label">Remaining</span>
+                               <span className="value">{gCat.remainingRecommendedAmount ? displayMoney(gCat.remainingRecommendedAmount, '$0') : '—'}</span>
+                             </div>
+
+                             <div className="planning-guidance-metric" style={{ justifyContent: 'center' }}>
+                                <div className={`planning-guidance-status ${gCat.status}`}>
+                                   {gCat.status === 'green' && <CheckCircle2 size={14} />}
+                                   {gCat.status === 'red' && <AlertTriangle size={14} />}
+                                   {gCat.status === 'neutral' && <MinusCircle size={14} />}
+                                   <span style={{ textTransform: 'capitalize' }}>{gCat.status}</span>
+                                </div>
+                             </div>
+
+                              {periodQuery.data && periodQuery.data.status === 'draft' && gCat.eligible && gCat.recommendedMonthly !== null && (
+                               <div className="planning-guidance-metric" style={{ justifyContent: 'center', alignItems: 'flex-end' }}>
+                                  <button
+                                    className="btn btn-secondary btn-sm"
+                                     onClick={() => {
+                                       const period = periodQuery.data;
+                                       const guidance = guidanceQuery.data;
+                                       if (!period || !guidance) return;
+                                       void handleAcceptGuidance(period.id, period.version, [gCat.categoryId], guidance.fingerprint);
+                                     }}
+                                    disabled={acceptGuidance.isPending}
+                                 >
+                                   Accept
+                                 </button>
+                               </div>
+                             )}
+                          </div>
+                          <div className={`planning-guidance-reason ${gCat.status}`}>
+                             {gCat.reason}
+                          </div>
+                        </>
+                     )}
+                  </div>
+                 );
+              })}
               {activeCategories.length === 0 && (
                 <div className="finance-empty-state">
                    <strong>No categories yet</strong>
@@ -1546,22 +1690,22 @@ function BudgetPlanningControlCenter() {
                 {showArchived && (
                   <div className="planning-categories" style={{ marginTop: '12px' }}>
                     {archivedCategories.map((cat) => (
-                       <div key={cat.id} className="planning-row archived">
-                          <div className="planning-row-info">
-                             <strong>{cat.name}</strong>
-                             <span>{cat.categoryType.replace(/_/g, ' ')} • {cat.essentialStatus}</span>
-                          </div>
-                          <div className="planning-row-target">
-                             {displayMoney(cat.monthlyTarget, '$0')}
-                          </div>
-                          <div className="planning-row-notes text-secondary" style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                             {cat.notes}
-                          </div>
-                          <div className="planning-row-actions">
-                             <button className="btn btn-secondary btn-sm" onClick={() => setDetailCategory(cat)} aria-label={`View Contributions for ${cat.name}`} title="View Contributions"><BarChart3 size={14} /></button>
-                             {periodQuery.data.status === 'draft' && (
-                               <button className="btn btn-secondary btn-sm" onClick={() => setEditingCategory(cat)} aria-label={`Edit ${cat.name}`} title="Edit Category"><Pencil size={14} /></button>
-                             )}
+                       <div key={cat.id} className="planning-category-card archived">
+                          <div className="planning-category-header">
+                            <div className="planning-row-info">
+                               <strong>{cat.name}</strong>
+                               <span>{cat.categoryType.replace(/_/g, ' ')} • {cat.essentialStatus}</span>
+                               {cat.notes && <span style={{ marginTop: '4px', display: 'block', fontSize: '11px' }}>{cat.notes}</span>}
+                            </div>
+                            <div className="planning-row-target">
+                               {displayMoney(cat.monthlyTarget, '$0')}
+                            </div>
+                            <div className="planning-row-actions">
+                               <button className="btn btn-secondary btn-sm" onClick={() => setDetailCategory(cat)} aria-label={`View Contributions for ${cat.name}`} title="View Contributions"><BarChart3 size={14} /></button>
+                               {periodQuery.data.status === 'draft' && (
+                                 <button className="btn btn-secondary btn-sm" onClick={() => setEditingCategory(cat)} aria-label={`Edit ${cat.name}`} title="Edit Category"><Pencil size={14} /></button>
+                               )}
+                            </div>
                           </div>
                        </div>
                     ))}

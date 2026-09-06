@@ -1586,6 +1586,17 @@ paths:
         "200":
           description: Planning period and immutable category snapshots
           content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningPeriod" } } }
+  /budget-planning-periods/{periodId}/weekly-guidance:
+    get:
+      operationId: getWeeklyBudgetGuidance
+      tags: [household-finance]
+      summary: Get advisory weekly guidance for a planning period
+      parameters:
+        - { name: periodId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Advisory guidance that does not affect official totals, content: { application/json: { schema: { $ref: "#/components/schemas/WeeklyBudgetGuidance" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /budget-planning-periods/{periodId}/categories:
     post:
       operationId: createBudgetPlanningCategory
@@ -1599,6 +1610,23 @@ paths:
       responses:
         "201": { description: Category snapshot created, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningCategoryMutation" } } } }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /budget-planning-periods/{periodId}/weekly-guidance/accept:
+    post:
+      operationId: acceptWeeklyBudgetGuidance
+      tags: [household-finance]
+      summary: Owner-accept selected advisory weekly guidance targets into a draft only
+      parameters:
+        - { name: periodId, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AcceptWeeklyBudgetGuidanceInput" } } }
+      responses:
+        "200": { description: Draft targets updated from current recommendations, content: { application/json: { schema: { $ref: "#/components/schemas/AcceptWeeklyBudgetGuidanceResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
   /budget-planning-periods/{periodId}/categories/{categoryId}:
     patch:
@@ -2682,6 +2710,50 @@ components:
             affectsOfficialTotals: { type: boolean }
     BudgetPlanningCategoryMutation:
       allOf: [{ $ref: "#/components/schemas/BudgetPlanningCategory" }, { type: object, required: [version], properties: { version: { type: number } } }]
+    WeeklyBudgetGuidanceCategory:
+      type: object
+      required: [categoryId, allocationBasisPoints, recommendedMonthly, recommendedWeekly, eligibleActualSpending, remainingRecommendedAmount, status, reason, eligible]
+      properties:
+        categoryId: { type: string }
+        allocationBasisPoints: { type: number, minimum: 0, maximum: 10000 }
+        recommendedMonthly: { type: [string, "null"], pattern: "^-?[0-9]+\\.[0-9]{2}$" }
+        recommendedWeekly: { type: [string, "null"], pattern: "^-?[0-9]+\\.[0-9]{2}$" }
+        eligibleActualSpending: { type: string, pattern: "^-?[0-9]+\\.[0-9]{2}$" }
+        remainingRecommendedAmount: { type: [string, "null"], pattern: "^-?[0-9]+\\.[0-9]{2}$" }
+        status: { type: string, enum: [green, red, neutral] }
+        reason: { type: string }
+        eligible: { type: boolean }
+    WeeklyBudgetGuidance:
+      type: object
+      required: [periodId, month, calculationDate, basis, verifiedIncome, includedIncomeCount, includedOutflowCount, exclusions, fingerprint, affectsOfficialTotals, categories]
+      properties:
+        periodId: { type: string }
+        month: { type: string }
+        calculationDate: { type: string, format: date }
+        basis: { type: string }
+        verifiedIncome: { type: string, pattern: "^[0-9]+\\.[0-9]{2}$" }
+        includedIncomeCount: { type: number, minimum: 0 }
+        includedOutflowCount: { type: number, minimum: 0 }
+        exclusions: { type: object, additionalProperties: { type: number } }
+        fingerprint: { type: string }
+        affectsOfficialTotals: { type: boolean, enum: [false] }
+        categories: { type: array, items: { $ref: "#/components/schemas/WeeklyBudgetGuidanceCategory" } }
+    AcceptWeeklyBudgetGuidanceInput:
+      type: object
+      required: [version, categoryIds, recommendationFingerprint]
+      properties:
+        version: { type: number, minimum: 1 }
+        categoryIds: { type: array, minItems: 1, items: { type: string } }
+        recommendationFingerprint: { type: string, minLength: 1 }
+    AcceptWeeklyBudgetGuidanceResult:
+      type: object
+      required: [periodId, version, acceptedCategoryIds, targets, affectsOfficialTotals]
+      properties:
+        periodId: { type: string }
+        version: { type: number }
+        acceptedCategoryIds: { type: array, items: { type: string } }
+        targets: { type: object, additionalProperties: { type: string, pattern: "^[0-9]+\\.[0-9]{2}$" } }
+        affectsOfficialTotals: { type: boolean, enum: [false] }
     BudgetPlanningApproval:
       type: object
       required: [id, month, status, version, approvedAt]

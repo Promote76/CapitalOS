@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.3.0
  */
 
+export * from './acceptWeeklyBudgetGuidanceInput';
+export * from './acceptWeeklyBudgetGuidanceResult';
+export * from './acceptWeeklyBudgetGuidanceResultTargets';
 export * from './accountingAccount';
 export * from './accountingAsset';
 export * from './accountingBalanceSheet';
@@ -349,4 +352,8 @@ export * from './upcomingExpensePriority';
 export * from './upcomingExpenseUpdateInput';
 export * from './upcomingExpenseUpdateInputPriority';
 export * from './updateBuyBoxInput';
+export * from './weeklyBudgetGuidance';
+export * from './weeklyBudgetGuidanceCategory';
+export * from './weeklyBudgetGuidanceCategoryStatus';
+export * from './weeklyBudgetGuidanceExclusions';
 export * from './weeklyIntelligenceReport';

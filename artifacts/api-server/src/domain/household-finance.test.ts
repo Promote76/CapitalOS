@@ -13,7 +13,7 @@ import {
   isExcludedFromHouseholdSpending,
   reviewedTransactionBudgetExclusion,
 } from "./household-finance.ts";
-import { latestFinalizedPlanningPeriod } from "../services/household-finance.ts";
+import { allocateWeeklyGuidanceCents, latestFinalizedPlanningPeriod, remainingWeeklyGuidanceCents, weeklyGuidanceCents } from "../services/household-finance.ts";
 import { csvImportBankingAdapter, normalizeImportedAmount } from "../adapters/banking.ts";
 
 test("manual entries canonicalize inflows and outflows regardless of entered sign", () => {
@@ -219,6 +219,26 @@ test("copy-forward selects the latest finalized plan, including a newer closed p
     { month: "2026-03-01", status: "draft", id: "draft" },
   ], "2026-04-01");
   assert.equal(source?.id, "closed-newer");
+});
+
+test("weekly guidance template balances exact cents across the approved catalog", () => {
+  const names = ["Housing", "Food", "Transportation", "Utilities", "Insurance", "Healthcare", "Childcare", "Debt payment", "Personal", "Entertainment", "Savings", "Investments", "Other"];
+  const result = allocateWeeklyGuidanceCents(123_457, names.map((name, index) => ({ id: String(index), name, categoryType: "fixed_expense", archived: false })));
+  assert.equal(result.isCompleteTemplate, true);
+  assert.equal([...result.allocations.values()].reduce((total, amount) => total + amount, 0), 123_457);
+  assert.equal(weeklyGuidanceCents(10_000), 2_308);
+});
+
+test("weekly guidance fails closed for custom or incomplete allocation templates", () => {
+  const result = allocateWeeklyGuidanceCents(100_000, [{ id: "custom", name: "Pets", categoryType: "variable_essential", archived: false }]);
+  assert.equal(result.isCompleteTemplate, false);
+  assert.equal(result.allocations.size, 0);
+});
+
+test("weekly guidance adjusts remaining weekly amount for spending and never goes negative", () => {
+  assert.equal(remainingWeeklyGuidanceCents(30_000, 10_000, 4), 5_000);
+  assert.equal(remainingWeeklyGuidanceCents(30_000, 40_000, 4), 0);
+  assert.equal(remainingWeeklyGuidanceCents(30_000, 0, 0), 0);
 });
 
 test("CSV imports preserve quoted descriptions and reject malformed rows", () => {

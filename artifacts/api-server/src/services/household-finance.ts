@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
@@ -407,6 +407,158 @@ function planningSnapshot(row: typeof budgetPlanningCategorySnapshots.$inferSele
     essentialStatus: row.essentialStatus, monthlyTarget: row.monthlyTarget ?? "0.00", warningThreshold: row.warningThreshold,
     notes: row.notes, sortOrder: row.sortOrder, archived: row.archived,
   };
+}
+
+/** The approved household allocation taxonomy, expressed in basis points. */
+export const WEEKLY_GUIDANCE_DEFAULT_ALLOCATION_BPS: Readonly<Record<string, number>> = Object.freeze({
+  Housing: 3000, Food: 1200, Transportation: 1000, Utilities: 800, Insurance: 600,
+  Healthcare: 500, Childcare: 500, "Debt payment": 800, Personal: 400,
+  Entertainment: 300, Savings: 500, Investments: 300, Other: 100,
+});
+
+export function formatCents(value: number) {
+  const sign = value < 0 ? "-" : "";
+  const absolute = Math.abs(value);
+  return `${sign}${Math.floor(absolute / 100)}.${String(absolute % 100).padStart(2, "0")}`;
+}
+
+/** Allocates cents with deterministic largest-remainder balancing in catalog-name order. */
+export function allocateWeeklyGuidanceCents(incomeCents: number, categories: ReadonlyArray<{ id: string; name: string; categoryType: string; archived: boolean }>) {
+  const eligible = categories.filter((category) => !category.archived && !["income", "transfer"].includes(category.categoryType));
+  const known = eligible.filter((category) => WEEKLY_GUIDANCE_DEFAULT_ALLOCATION_BPS[category.name] !== undefined);
+  const templateTotal = known.reduce((total, category) => total + WEEKLY_GUIDANCE_DEFAULT_ALLOCATION_BPS[category.name], 0);
+  const isCompleteTemplate = templateTotal === 10000 && known.length === eligible.length;
+  const allocations = new Map<string, number>();
+  if (!isCompleteTemplate || incomeCents <= 0) return { allocations, isCompleteTemplate, templateTotal };
+  const rows = known.map((category) => {
+    const numerator = incomeCents * WEEKLY_GUIDANCE_DEFAULT_ALLOCATION_BPS[category.name];
+    return { id: category.id, base: Math.floor(numerator / 10000), remainder: numerator % 10000 };
+  });
+  let remaining = incomeCents - rows.reduce((total, row) => total + row.base, 0);
+  rows.sort((left, right) => right.remainder - left.remainder || left.id.localeCompare(right.id));
+  for (const row of rows) allocations.set(row.id, row.base + (remaining-- > 0 ? 1 : 0));
+  return { allocations, isCompleteTemplate, templateTotal };
+}
+
+export function weeklyGuidanceCents(monthlyCents: number) {
+  return Math.round((monthlyCents * 12) / 52);
+}
+
+/** Divides unspent monthly guidance over the remaining calendar weeks, never below zero. */
+export function remainingWeeklyGuidanceCents(monthlyCents: number, actualCents: number, remainingCalendarWeeks: number) {
+  if (remainingCalendarWeeks <= 0) return 0;
+  return Math.round(Math.max(0, monthlyCents - actualCents) / remainingCalendarWeeks);
+}
+
+type WeeklyGuidanceRow = typeof financeTransactions.$inferSelect;
+type WeeklyGuidanceCategory = typeof budgetPlanningCategorySnapshots.$inferSelect;
+
+function weeklyGuidanceForRows(period: typeof budgetPlanningPeriods.$inferSelect, categories: WeeklyGuidanceCategory[], transactions: WeeklyGuidanceRow[]) {
+  const calculationDate = calendarToday();
+  const selectedMonth = period.month.slice(0, 7);
+  const currentMonth = nowMonth();
+  const daysInMonth = new Date(Date.UTC(Number(selectedMonth.slice(0, 4)), Number(selectedMonth.slice(5, 7)), 0)).getUTCDate();
+  const elapsedDays = selectedMonth === currentMonth ? Math.min(daysInMonth, Math.max(1, Number(calculationDate.slice(8, 10)))) : selectedMonth < currentMonth ? daysInMonth : 0;
+  const snapshotBySource = new Map(categories.filter((category) => !category.archived && category.sourceCategoryId).map((category) => [category.sourceCategoryId!, category]));
+  const exclusionCounts: Record<string, number> = { pending: 0, unreviewed: 0, nonHousehold: 0, excluded: 0, transfer: 0, uncategorized: 0, nonIncome: 0 };
+  let incomeCents = 0;
+  let includedIncomeCount = 0;
+  const actualCents = new Map<string, number>();
+  let includedOutflowCount = 0;
+  for (const transaction of transactions) {
+    const category = transaction.categoryId ? snapshotBySource.get(transaction.categoryId) : undefined;
+    if (!transaction.categoryId || !category) { exclusionCounts.uncategorized++; continue; }
+    if (transaction.pending) { exclusionCounts.pending++; continue; }
+    if (transaction.reviewStatus === "excluded" || transaction.excludedFromBudget) { exclusionCounts.excluded++; continue; }
+    if (transaction.reviewStatus !== "approved") { exclusionCounts.unreviewed++; continue; }
+    if (transaction.businessTag !== "household") { exclusionCounts.nonHousehold++; continue; }
+    if (transaction.transferGroupId || category.categoryType === "transfer") { exclusionCounts.transfer++; continue; }
+    const amount = cents(transaction.amount);
+    if (category.categoryType === "income") {
+      if (amount > 0) { incomeCents += amount; includedIncomeCount++; } else exclusionCounts.nonIncome++;
+      continue;
+    }
+    if (amount !== 0) {
+      actualCents.set(category.id, (actualCents.get(category.id) ?? 0) - amount);
+      includedOutflowCount++;
+    }
+  }
+  const allocation = allocateWeeklyGuidanceCents(incomeCents, categories);
+  const available = incomeCents > 0 && allocation.isCompleteTemplate;
+  const remainingCalendarWeeks = selectedMonth === currentMonth
+    ? Math.ceil((daysInMonth - Number(calculationDate.slice(8, 10)) + 1) / 7)
+    : selectedMonth > currentMonth ? Math.ceil(daysInMonth / 7) : 0;
+  const categoryResponses = categories.filter((category) => !category.archived).map((category) => {
+    const eligible = !["income", "transfer"].includes(category.categoryType) && WEEKLY_GUIDANCE_DEFAULT_ALLOCATION_BPS[category.name] !== undefined;
+    const actual = Math.max(0, actualCents.get(category.id) ?? 0);
+    const monthly = available && eligible ? allocation.allocations.get(category.id)! : null;
+    const prorated = monthly === null ? null : Math.round((monthly * elapsedDays) / daysInMonth);
+    const reason = !eligible ? "INELIGIBLE_CATEGORY" : incomeCents <= 0 ? "VERIFIED_INCOME_UNAVAILABLE" : !allocation.isCompleteTemplate ? "TEMPLATE_INCOMPLETE_OR_CUSTOM_CATEGORY" : actual > prorated! ? "OVER_PRORATED_RECOMMENDATION" : "WITHIN_PRORATED_RECOMMENDATION";
+    return {
+      categoryId: category.id, allocationBasisPoints: eligible ? WEEKLY_GUIDANCE_DEFAULT_ALLOCATION_BPS[category.name] : 0,
+      recommendedMonthly: monthly === null ? null : formatCents(monthly),
+      recommendedWeekly: monthly === null ? null : formatCents(remainingWeeklyGuidanceCents(monthly, actual, remainingCalendarWeeks)),
+      eligibleActualSpending: formatCents(actual), remainingRecommendedAmount: monthly === null ? null : formatCents(monthly - actual),
+      status: !eligible ? "neutral" : !available || actual > prorated! ? "red" : "green", reason, eligible,
+    };
+  });
+  const fingerprint = createHash("sha256").update(JSON.stringify({ period: period.id, version: period.version, calculationDate, incomeCents, elapsedDays, categories: categoryResponses, exclusions: exclusionCounts })).digest("hex");
+  return { periodId: period.id, month: selectedMonth, calculationDate, basis: selectedMonth === currentMonth ? "current_month_as_of_calculation_date" : selectedMonth < currentMonth ? "historical_month" : "future_month", verifiedIncome: formatCents(incomeCents), includedIncomeCount, includedOutflowCount, exclusions: exclusionCounts, fingerprint, affectsOfficialTotals: false as const, categories: categoryResponses };
+}
+
+export async function getWeeklyBudgetGuidance(actor: Actor, periodId: string) {
+  assertPermission(actor.role, "read");
+  const [period] = await db.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId)));
+  if (!period) return planningNotFound("Budget planning period");
+  const categories = await db.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, periodId)).orderBy(budgetPlanningCategorySnapshots.sortOrder);
+  const transactions = await db.select().from(financeTransactions).where(and(eq(financeTransactions.householdId, actor.householdId), sql`${financeTransactions.transactionDate} >= ${period.month} and ${financeTransactions.transactionDate} < (${period.month}::date + interval '1 month')::date`));
+  return weeklyGuidanceForRows(period, categories, transactions);
+}
+
+export async function acceptWeeklyBudgetGuidance(actor: Actor, periodId: string, input: { version: number; categoryIds: string[]; recommendationFingerprint: string }, idempotencyKey: string) {
+  assertPermission(actor.role, "approve");
+  if (!idempotencyKey?.trim()) throw new GovernanceError("INVALID_STATE", "Idempotency-Key is required");
+  const normalizedIds = [...new Set(input.categoryIds)].sort();
+  if (normalizedIds.length !== input.categoryIds.length) throw new GovernanceError("INVALID_STATE", "Category IDs must not contain duplicates");
+  const idempotencyInput = { periodId, version: input.version, categoryIds: normalizedIds, recommendationFingerprint: input.recommendationFingerprint };
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`budget-weekly-guidance:${actor.householdId}:${periodId}`}, 0))`);
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`budget-weekly-guidance-idempotency:${actor.householdId}:${idempotencyKey}`}, 0))`);
+    const [existing] = await tx.select().from(idempotencyKeys).where(and(eq(idempotencyKeys.householdId, actor.householdId), eq(idempotencyKeys.key, idempotencyKey)));
+    if (existing) {
+      const stored = existing.responseBody;
+      if (existing.operation !== "budget_weekly_guidance_accept" || !stored || stored.fingerprint !== JSON.stringify(idempotencyInput)) {
+        throw new GovernanceError("IDEMPOTENCY_CONFLICT", "Idempotency-Key was used with different weekly guidance input");
+      }
+      return stored.response as { periodId: string; version: number; acceptedCategoryIds: string[]; targets: Record<string, string>; affectsOfficialTotals: false };
+    }
+    const [period] = await tx.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId)));
+    if (!period) return planningNotFound("Budget planning period");
+    if (period.status !== "draft") throw new GovernanceError("CONFLICT", "Closed or approved planning periods are immutable");
+    if (period.version !== input.version) throw new GovernanceError("CONFLICT", "Planning period version is stale; refresh and retry");
+    const categories = await tx.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, periodId)).orderBy(budgetPlanningCategorySnapshots.sortOrder);
+    const transactions = await tx.select().from(financeTransactions).where(and(eq(financeTransactions.householdId, actor.householdId), sql`${financeTransactions.transactionDate} >= ${period.month} and ${financeTransactions.transactionDate} < (${period.month}::date + interval '1 month')::date`));
+    const guidance = weeklyGuidanceForRows(period, categories, transactions);
+    if (guidance.fingerprint !== input.recommendationFingerprint) throw new GovernanceError("CONFLICT", "Weekly guidance is stale; refresh and retry");
+    if (guidance.verifiedIncome === "0.00") throw new GovernanceError("CONFLICT", "Weekly guidance cannot be accepted without verified income");
+    const selected = guidance.categories.filter((category) => normalizedIds.includes(category.categoryId));
+    if (selected.length !== normalizedIds.length || selected.some((category) => !category.eligible || category.recommendedMonthly === null)) {
+      throw new GovernanceError("INVALID_STATE", "Only currently eligible recommended categories can be accepted");
+    }
+    const targets: Record<string, string> = {};
+    for (const recommendation of selected) {
+      const snapshot = categories.find((category) => category.id === recommendation.categoryId);
+      if (!snapshot || recommendation.recommendedMonthly === null) throw new GovernanceError("INVALID_STATE", "Weekly guidance category is unavailable");
+      targets[recommendation.categoryId] = recommendation.recommendedMonthly;
+      await tx.update(budgetPlanningCategorySnapshots).set({ monthlyTarget: recommendation.recommendedMonthly, updatedAt: new Date(), updatedBy: actor.userId }).where(eq(budgetPlanningCategorySnapshots.id, snapshot.id));
+    }
+    const [updatedPeriod] = await tx.update(budgetPlanningPeriods).set({ version: period.version + 1, updatedAt: new Date() }).where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.version, period.version), eq(budgetPlanningPeriods.status, "draft"))).returning();
+    if (!updatedPeriod) throw new GovernanceError("CONFLICT", "Planning period is stale or no longer a draft");
+    const response = { periodId, version: updatedPeriod.version, acceptedCategoryIds: normalizedIds, targets, affectsOfficialTotals: false as const };
+    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "budget_weekly_guidance_accepted", actor: actor.userId, entity: "budget_planning_period", entityId: periodId, beforeState: Object.fromEntries(categories.filter((category) => normalizedIds.includes(category.id)).map((category) => [category.id, category.monthlyTarget])), afterState: { ...response, basis: guidance.basis, calculationDate: guidance.calculationDate, verifiedIncome: guidance.verifiedIncome, includedIncomeCount: guidance.includedIncomeCount, includedOutflowCount: guidance.includedOutflowCount, exclusions: guidance.exclusions, recommendationFingerprint: guidance.fingerprint }, reason: "Owner accepted advisory weekly guidance into draft targets" });
+    await tx.insert(idempotencyKeys).values({ householdId: actor.householdId, key: idempotencyKey, operation: "budget_weekly_guidance_accept", responseStatus: 200, responseBody: { fingerprint: JSON.stringify(idempotencyInput), response } });
+    return response;
+  });
 }
 
 /** Pure selection rule shared by planning bootstraps and regression tests. */

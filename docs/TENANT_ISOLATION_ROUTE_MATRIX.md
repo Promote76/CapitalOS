@@ -11,11 +11,11 @@ error.
 
 This is an evidence index, not a source-review substitute. `PASS` means the isolated
 database-backed fixture exercised the applicable route and identifier/body boundary.
-The current full 163-route preflight inventory includes 14 new Budget planning
-pairs awaiting the next disposable-target replay. The 2026-09-05 run passed the
-then-current 149-route inventory with zero failures; public health and auth routes
-are explicitly handled as public/identity boundaries rather than household-scoped
-object routes.
+The current full 163-route preflight replay passed on 2026-09-06: 379 executed
+probes, 56 scoped collection reads, 57 cross-household rejections, and 57 malformed
+rejections (11 tests passed, 0 failed/skipped). This supersedes the historical
+2026-09-05 149-route result. Public health and auth routes are explicitly handled
+as public/identity boundaries rather than household-scoped object routes.
 
 | Method / route family | Caller-controlled IDs | Household scope method | A→A test | A→B test | Role test | Status |
 |---|---|---|---|---|---|---|
@@ -26,7 +26,7 @@ object routes.
 | GET /accounts; /goals; /contributions; POST /contributions; POST /transfers; POST /allocations/impact; PUT /allocations; GET /portfolio | goalId, sourceAccountId, destinationAccountId, allocation IDs | Household-scoped service lookups and atomic writes | PASS | PASS | PASS | PASS |
 | GET /dashboard | Query identifiers where applicable | Request-scoped dashboard aggregation | PASS | PASS | PASS | PASS |
 | GET/POST /budget; /cash-flow; /financial-accounts; /bills; /upcoming-expenses; /income; related PATCH/DELETE routes; GET /safe-to-deploy; /finance-insights; /finance-snapshots; /banking/status | accountId, billId, expenseId, incomeId, category and parent IDs | Household predicates on finance records | PASS | PASS | PASS | PASS |
-| GET/POST /budget-planning-periods; weekly guidance/read acceptance; category create/update/archive/reorder; approve/close; history/comparison/contribution detail | periodId, categoryId, month, snapshot IDs | Actor household predicates, snapshot ownership checks, optimistic versions, idempotency, and recent-auth lifecycle gates | SOURCE REVIEW | SOURCE REVIEW | SOURCE REVIEW | DISPOSABLE REPLAY OPEN |
+| GET/POST /budget-planning-periods; weekly guidance/read acceptance; category create/update/archive/reorder; approve/close; history/comparison/contribution detail | periodId, categoryId, month, snapshot IDs | Actor household predicates, snapshot ownership checks, optimistic versions, idempotency, and recent-auth lifecycle gates | PASS | PASS | PASS | PASS |
 | GET /risk; POST /risk/emergency-stop; GET /recommendations; POST /recommendations/:recommendationId/decision; GET /audit | recommendationId, decision IDs | Household-scoped governance and audit services | PASS | PASS | PASS | PASS |
 | GET /health/live; GET /healthz; GET /health/ready | None; public health | Explicitly public; readiness checks PostgreSQL | N/A | N/A | N/A | PASS |
 | GET /household; PATCH /household/privacy | No caller-owned household authority | Request context selects an active persisted membership | PASS | PASS | PASS | PASS |
@@ -45,4 +45,4 @@ object routes.
 - The same fixture passes recent-auth denial, parallel transfer overdraft prevention, 100-request contention, transfer replay, persisted household/actor attribution, and ledger debit/credit reconciliation on isolated Neon PostgreSQL.
 - The route preflight discovers and asserts exactly 163 route/method pairs, compares household-scoped collection reads, sends same-household, foreign, and malformed path identifiers, injects mass-assignment fields into applicable generic write probes, and fails on unexpected server errors.
 - Parameterized routes require non-error same-household behavior, reject foreign identifiers without a successful write/read response, and reject malformed identifiers with a 4xx response. Parameterless writes must not return another household's identifiers after body tampering.
-- The preflight executed on the disposable target on 2026-09-05 with zero failures: 326 total probes, 55 scoped collection-read comparisons, 44 foreign-identifier denials, and 44 malformed-identifier rejections. The guarded runner refuses the configured shared target and requires an approved disposable-target sentinel before any reset.
+- The preflight executed on the disposable target on 2026-09-06 with zero failures: 379 total probes, 56 scoped collection-read comparisons, 57 cross-household rejections, and 57 malformed-identifier rejections. The guarded runner refuses the configured shared target and requires an approved disposable-target sentinel before any reset.

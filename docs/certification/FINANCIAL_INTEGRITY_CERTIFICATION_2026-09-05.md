@@ -1,7 +1,7 @@
 # Capital OS financial integrity certification
 
 **Date:** 2026-09-05
-**Current HEAD:** `2f98c4414f9ae825a7719b5311490da5014c9ba3`
+**Current HEAD:** `cb10e32673536da9b5c488fdfad1bc05b5771ab3`
 **Database target:** disposable local PostgreSQL cluster; no shared or production database was used
 **Target sentinel:** `financial-integrity-local-certification-20260905`
 
@@ -21,7 +21,7 @@ restores the existing production database in place rather than an isolated targe
 
 ## Route inventory
 
-**TOTAL_ROUTES:** 149
+**TOTAL_ROUTES:** 163
 
 The count was discovered from the executable route registrations and checked
 against the current tenant-isolation evidence.

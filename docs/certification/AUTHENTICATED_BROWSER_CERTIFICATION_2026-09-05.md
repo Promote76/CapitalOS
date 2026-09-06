@@ -1,21 +1,21 @@
 # Capital OS authenticated browser and Clerk reverification certification
 
-**Date:** 2026-09-05
-**Current HEAD:** `eada73538f517d4b033dcfd74266eb107fdd7c94`
-**Published origin:** https://capital-os-fund.replit.app
+**Date:** 2026-09-05 (reconciled 2026-09-06)
+**Current HEAD:** `cb10e32673536da9b5c488fdfad1bc05b5771ab3`
+**Published origin:** NOT CONFIGURED
 **Test environment:** Replit-managed Clerk production deployment; no credentials or session tokens recorded
 
 ## Auth implementation discovery
 
 - **AUTH_PROVIDER:** Clerk
-- **PUBLISHED_ORIGIN:** https://capital-os-fund.replit.app
+- **PUBLISHED_ORIGIN:** NOT CONFIGURED
 - **TEST USERS AVAILABLE:** Not exposed to the agent; dedicated certification identities must be supplied through the Clerk sign-in UI
 - **REVERIFICATION_IMPLEMENTED:** YES
-- **REVERIFICATION_PROVIDER_UI_AVAILABLE:** YES in the Clerk-backed client path; redacted production challenge evidence is retained
+- **REVERIFICATION_PROVIDER_UI_AVAILABLE:** YES in the Clerk-backed client path; no live challenge was completed in this run
 
 ## Automated preflight
 
-- BA-01 Published Origin: PASS — GET /api=200; GET /sign-in=200; published Clerk sign-in route=reachable
+- BA-01 Published Origin: BLOCKED — CAPITAL_OS_PUBLISHED_ORIGIN was not supplied.
 - ClerkProvider and SignIn wiring: PASS
 - Sign-out wiring: PASS
 - useReverification wiring: PASS
@@ -26,9 +26,9 @@
 
 ## Authenticated browser gates
 
-**BA GATES:** 1/20 certified
+**BA GATES:** 0/20 certified
 
-- BA-01 Published Origin: PASS
+- BA-01 Published Origin: BLOCKED
 - BA-02 Real Clerk Authentication: BLOCKED
 - BA-03 Owner Clean Sign-In: BLOCKED
 - BA-04 Onboarding Persistence: BLOCKED
@@ -57,10 +57,10 @@ Safe-to-Deploy display test.
 
 ## Clerk reverification gates
 
-**RV GATES:** 2/12 certified
+**RV GATES:** 2/12 retained historical provider evidence; current runnable command remains BLOCKED
 
-- RV-01 Successful provider reverification and protected-action retry: PASS
-- RV-02 Cancelled reverification creates no mutation or success audit: PASS
+- RV-01 Successful provider reverification and protected-action retry: PASS (historical redacted production evidence)
+- RV-02 Cancelled reverification creates no mutation or success audit: PASS (historical redacted production evidence)
 - RV-03 Provider Challenge UI: BLOCKED
 - RV-04 Successful Reverification: BLOCKED
 - RV-05 Exact Protected Retry: BLOCKED
@@ -72,18 +72,11 @@ Safe-to-Deploy display test.
 - RV-11 Current Household Recheck: BLOCKED
 - RV-12 Audit / Telemetry Safety: BLOCKED
 
-- RV-01 Successful strict provider reverification retries the original action: PASS
-  - A protected Operations task mutation returned HTTP 403 before reverification and HTTP 200 after the provider flow.
-  - The completed task persisted a server timestamp and an authenticated completer.
-  - The matching audit row records the same authenticated actor and the exact pre-completion and completed states.
-- RV-02 Cancelled provider reverification creates no partial mutation: PASS
-  - The published Clerk prompt was cancelled without retrying the protected task mutation.
-  - The selected production task remained OPEN with no completion timestamp or completer.
-  - The selected task had no Operations task audit rows after cancellation.
-
-RV-03 through RV-12 remain BLOCKED pending bounded recent-auth expiry, current
-role/household rechecks, and the remaining safe browser audit/telemetry evidence.
-Redacted evidence: docs/certification/CLERK_REVERIFICATION_PRODUCTION_EVIDENCE_2026-09-05.json
+The current command has no published origin and therefore reports BA 0/20 and RV
+0/12. RV-01 and RV-02 remain supported only by retained redacted production
+evidence (2/12); RV-03 through RV-12 remain BLOCKED. Provider evidence is not
+fabricated or inferred from source tests.
+Evidence error: Production evidence origin does not match the configured published origin.
 
 ## Human browser attempt
 
@@ -96,7 +89,7 @@ An earlier published-origin attempt was inconclusive because:
 
 
 Subsequent production evidence closes RV-01 and RV-02. The production identity
-inventory currently contains 2 Owner, 0 Advisor, and 0 Viewer memberships across 2 households.
+inventory currently contains unknown Owner, unknown Advisor, and unknown Viewer memberships across unknown households.
 Advisor and Viewer browser gates cannot be certified until dedicated real Clerk
 identities hold those roles through an approved application/admin boundary.
 
@@ -116,7 +109,7 @@ published-origin Clerk evidence.
 ## User action required — Clerk certification
 
 **PUBLISHED URL:**
-https://capital-os-fund.replit.app
+The published origin is not configured.
 
 **CERTIFICATION USERS:**
 Use dedicated Owner A, Advisor A, Viewer A, and Owner B accounts. Do not paste
@@ -141,6 +134,18 @@ published origin after adding a safe, redacted browser evidence bundle to the
 certification workflow. Do not mark BA or RV gates PASS from source tests alone.
 
 ## Safety and remaining release state
+
+## 2026-09-06 contribution-browser reconciliation
+
+An authenticated Owner session succeeded. The canonical `$250` contribution browser
+certification is **BLOCKED**, not failed: the visible dialog accepts only an amount
+and says the active household rule applies server-side, while no visible UI can
+configure or verify the required active 80/10/10 Duplex/Capital OS/Opportunity
+sleeve. Budget was visible, its allocation template showed expense categories only,
+and Safe-to-Deploy visibly showed `$0`. No contribution was submitted; no real money
+moved. Consequently, the post-contribution Safe-to-Deploy browser comparison is
+also **BLOCKED**. This does not change the server/database fixture PASS for `$200`
+Duplex protection.
 
 - REAL MONEY MOVED: $0
 - REAL ORDERS SENT: 0

@@ -105,6 +105,44 @@ async function createFixture(): Promise<Fixture> {
   };
 }
 
+async function approveCurrentBudgetForCapitalFixture(fixture: Pick<Fixture, "householdA" | "userA">) {
+  const finance = await import("../services/household-finance.ts");
+  const owner = {
+    role: "owner" as const,
+    userId: fixture.userA,
+    householdId: fixture.householdA,
+    source: "test-database" as const,
+  };
+  // A capital approval must use a reviewed allocation plan. This deliberately
+  // approves the default complete taxonomy rather than bypassing Safe-to-Deploy
+  // for the fixture's independently verified liquid account.
+  await finance.getBudget(owner);
+  let plan = await finance.getBudgetPlanningPeriod(owner);
+  if (plan.status === "draft") {
+    const allocatingCategories = plan.categories.filter((category) =>
+      !category.archived && !["income", "transfer"].includes(category.categoryType)
+    );
+    const configuredTotal = allocatingCategories.reduce(
+      (total, category) => total + (category.allocationBasisPoints ?? 0),
+      0,
+    );
+    assert.equal(configuredTotal, 10000, "default fixture allocations must preserve an exact 100.00% total");
+    if (allocatingCategories.some((category) => category.allocationBasisPoints === null)) {
+      const updated = await finance.updateWeeklyBudgetAllocations(owner, plan.id, {
+        version: plan.version,
+        allocations: allocatingCategories.map((category) => ({
+          categoryId: category.id,
+          basisPoints: category.allocationBasisPoints ?? 0,
+        })),
+      });
+      plan = { ...plan, version: updated.version };
+    }
+    await finance.approveBudgetPlanningPeriod(owner, plan.id, plan.version, `capital-fixture-plan-${randomUUID()}`);
+  }
+  const deployability = await finance.getSafeToDeploy(owner);
+  assert.ok(Number(deployability.safeToDeploy) >= 10, "fixture must establish at least the requested $10.00 as Safe-to-Deploy");
+}
+
 test("P0-05 contribution journey keeps the exact $250 movement after fresh reads and replay", { skip: !enabled }, async () => {
   process.env.NODE_ENV = "test";
   process.env.CAPITAL_OS_TEST_CONTEXT = "1";
@@ -445,6 +483,7 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
       connectionStatus: "manual",
       dataSource: "manual",
     });
+    await approveCurrentBudgetForCapitalFixture(fixture);
 
     const capitalRequestInput = {
       requestingModule: "P0 Test Module",
@@ -1813,6 +1852,7 @@ test("P0-06 role action matrix exercises valid HTTP routes and actor attribution
         dataSource: "manual",
       },
     ]);
+    await approveCurrentBudgetForCapitalFixture(fixture);
     const requestStatuses: Record<string, number> = {};
     let ownerRequestId = "";
     for (const role of ["owner", "partner"] as const) {
@@ -2284,6 +2324,7 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
       essentialStatus: "discretionary",
       monthlyTarget: "200.00",
     }).returning({ id: database.financeCategories.id });
+    await approveCurrentBudgetForCapitalFixture(fixture);
     const manualEntry = await request(`/financial-accounts/${accountA.id}/transactions`, fixture.userA, fixture.householdA, {
       method: "POST",
       body: JSON.stringify({

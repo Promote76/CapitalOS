@@ -75,3 +75,15 @@ schema, making a clean target appear to have missing application tables.
 **How to apply:** Refuse resets without the sentinel, then apply migrations and
 schema synchronization against `public`; never infer isolation from an
 ambient `DATABASE_URL` alone.
+
+Capital-approval certification fixtures must establish genuine reviewed
+deployable room, including a complete exact-100% planning template, rather
+than relying on a liquid account balance or bypassing policy checks.
+
+**Why:** Once Safe-to-Deploy correctly failed closed without an approved plan,
+older approval fixtures became risk-blocked even though their raw cash balance
+looked sufficient.
+
+**How to apply:** Seed the intended finance taxonomy, complete and approve the
+current plan through normal service boundaries, assert the required deployable
+room exists, and only then exercise the capital approval.

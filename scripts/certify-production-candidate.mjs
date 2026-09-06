@@ -2,10 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { discoverTenantRouteInventory } from "../artifacts/api-server/src/integration/tenant-route-inventory.mjs";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const failures = [];
 const checks = new Map();
+const currentRouteCount = discoverTenantRouteInventory(rootDir).length;
 
 function run(label, command, args, extraEnv = {}) {
   console.log(`\n=== ${label} ===`);
@@ -134,9 +136,9 @@ const p0Gates = [
     status: fixtureFailed ? "FAIL" : httpFixturePassed || certifiedEvidence["P0-01"] ? "PASS" : "BLOCKED",
     implementation: "IMPLEMENTED",
     execution: httpFixtureExecuted
-      ? "EXECUTED (149-route inventory, household reads, foreign/malformed identifiers, and mass-assignment probes)"
+      ? `EXECUTED (${currentRouteCount}-route current-surface inventory, household reads, foreign/malformed identifiers, and mass-assignment probes)`
       : certifiedEvidence["P0-01"]
-        ? "EXECUTED (documented isolated 149-route inventory and tenant-boundary probes)"
+        ? `EXECUTED (documented isolated ${currentRouteCount}-route current-surface inventory and tenant-boundary probes)`
         : "NOT EXECUTED",
     certification: httpFixturePassed || certifiedEvidence["P0-01"] ? "CERTIFIED" : "NOT CERTIFIED",
     reason: fixtureFailed
@@ -193,7 +195,7 @@ const p0Gates = [
     status: certifiedEvidence["P0-05"] ? "PASS" : "BLOCKED",
     implementation: certifiedEvidence["P0-05"] ? "IMPLEMENTED" : "PARTIAL",
     execution: certifiedEvidence["P0-05"]
-      ? "EXECUTED (authenticated Clerk journey with onboarding, persistence, sign-out, sign-in, and isolation assertions)"
+      ? "EXECUTED (authenticated Clerk journey with onboarding, persistence, sign-out, sign-in, and isolation assertions; not contribution-specific browser coverage)"
       : "NOT EXECUTED",
     certification: certifiedEvidence["P0-05"] ? "CERTIFIED" : "NOT CERTIFIED",
     reason: certifiedEvidence["P0-05"]

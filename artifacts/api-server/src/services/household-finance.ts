@@ -894,8 +894,15 @@ export async function getBudget(actor?: Actor) {
   const period = currentPeriod();
   const approvedPlan = await currentApprovedPlanningCategories(data.id);
   // Drafts never enter this path: Budget is an official view and only frozen
-  // reviewed snapshots may establish its targets.
-  const categories = approvedPlan?.categories ?? [];
+  // reviewed snapshots may establish its targets.  The additive finance
+  // taxonomy is still rendered before the first approval, with zeroed
+  // targets, so a newly created or evolved household never receives an empty
+  // Budget response or has unreviewed category targets treated as official.
+  const categories = approvedPlan?.categories ?? data.categories.map((category) => ({
+    ...category,
+    sourceCategoryId: category.id,
+    monthlyTarget: "0.00",
+  }));
   const performance = calculateBudgetPerformance(
     categories.map((category) => ({
       id: category.sourceCategoryId ?? category.id,

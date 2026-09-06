@@ -1,7 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db, financeCategories, financeSnapshots, financeTransactions, financialAccounts, ledgerEntries, ledgerTransactions } from "@workspace/db";
 import { canViewFinancialBalance } from "../domain/household-finance";
-import { calculateNetWorth, calculateNetWorthAttribution, ledgerDebitsEqualCredits, reconcileCrossViewTotals, summarizeCashFlow } from "../domain/accounting";
+import { calculateNetWorth, calculateNetWorthAttribution, ledgerDebitsEqualCredits, reconcileCrossViewTotals, summarizeReviewedCashFlow } from "../domain/accounting";
 import type { Actor } from "./capital-os";
 
 const cents = (value: string | number | null | undefined) => {
@@ -81,8 +81,9 @@ export async function getAccountingOverview(actor: Actor) {
   const periodPrefix = period.slice(0, 7);
   const periodTransactions = transactions.filter((transaction) => transaction.transactionDate.startsWith(periodPrefix));
   const byCategory = new Map(categories.map((category) => [category.id, category]));
-  const cashFlowSummary = summarizeCashFlow(periodTransactions.map((transaction) => {
-    const categoryType = byCategory.get(transaction.categoryId ?? "")?.categoryType;
+  const cashFlowSummary = summarizeReviewedCashFlow(periodTransactions.map((transaction) => {
+    const category = byCategory.get(transaction.categoryId ?? "");
+    const categoryType = category?.categoryType;
     const kind = categoryType === "income"
       ? "income"
       : categoryType === "transfer" || transaction.transferGroupId
@@ -92,7 +93,14 @@ export async function getAccountingOverview(actor: Actor) {
           : categoryType === "debt_payment"
             ? "debt_payment"
             : "expense";
-    return { amountCents: cents(transaction.amount), kind };
+    return {
+      amountCents: cents(transaction.amount),
+      kind,
+      reviewStatus: transaction.reviewStatus,
+      pending: transaction.pending,
+      excludedFromBudget: transaction.excludedFromBudget,
+      categorized: Boolean(category),
+    };
   }));
   const income = cashFlowSummary.incomeCents;
   const expenses = cashFlowSummary.expensesCents;

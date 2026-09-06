@@ -3,6 +3,13 @@ export type CashFlowLine = {
   kind: "income" | "expense" | "transfer" | "contribution" | "debt_payment";
 };
 
+export type AccountingCashFlowLine = CashFlowLine & {
+  reviewStatus: string;
+  pending: boolean;
+  excludedFromBudget: boolean;
+  categorized: boolean;
+};
+
 export type LedgerLine = {
   debitCents: number;
   creditCents: number;
@@ -56,6 +63,15 @@ export function summarizeCashFlow(lines: CashFlowLine[]) {
     },
     { incomeCents: 0, expensesCents: 0, contributionsCents: 0, debtReductionCents: 0, netCashFlowCents: 0 },
   );
+}
+
+export function summarizeReviewedCashFlow(lines: AccountingCashFlowLine[]) {
+  return summarizeCashFlow(lines.filter((line) =>
+    line.reviewStatus === "approved" &&
+    !line.pending &&
+    !line.excludedFromBudget &&
+    line.categorized
+  ));
 }
 
 export function calculateNetWorthAttribution(input: {

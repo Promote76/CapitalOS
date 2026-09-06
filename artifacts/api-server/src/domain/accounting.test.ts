@@ -5,6 +5,7 @@ import {
   calculateNetWorthAttribution,
   ledgerDebitsEqualCredits,
   reconcileCrossViewTotals,
+  summarizeReviewedCashFlow,
   summarizeCashFlow,
 } from "./accounting.ts";
 
@@ -54,6 +55,75 @@ test("transfers do not create income", () => {
   ]);
   assert.equal(summary.incomeCents, 2_000 * 100);
   assert.equal(summary.netCashFlowCents, 1_500 * 100);
+});
+
+test("accounting totals include only reviewed eligible transactions with live categories", () => {
+  const summary = summarizeReviewedCashFlow([
+    {
+      amountCents: 5_000 * 100,
+      kind: "income",
+      reviewStatus: "approved",
+      pending: false,
+      excludedFromBudget: false,
+      categorized: true,
+    },
+    {
+      amountCents: -1_200 * 100,
+      kind: "expense",
+      reviewStatus: "approved",
+      pending: false,
+      excludedFromBudget: false,
+      categorized: true,
+    },
+    {
+      amountCents: -300 * 100,
+      kind: "transfer",
+      reviewStatus: "approved",
+      pending: false,
+      excludedFromBudget: false,
+      categorized: true,
+    },
+    {
+      amountCents: -700 * 100,
+      kind: "expense",
+      reviewStatus: "approved",
+      pending: true,
+      excludedFromBudget: false,
+      categorized: true,
+    },
+    {
+      amountCents: -800 * 100,
+      kind: "expense",
+      reviewStatus: "rejected",
+      pending: false,
+      excludedFromBudget: false,
+      categorized: true,
+    },
+    {
+      amountCents: -900 * 100,
+      kind: "expense",
+      reviewStatus: "approved",
+      pending: false,
+      excludedFromBudget: true,
+      categorized: true,
+    },
+    {
+      amountCents: -1_000 * 100,
+      kind: "expense",
+      reviewStatus: "approved",
+      pending: false,
+      excludedFromBudget: false,
+      categorized: false,
+    },
+  ]);
+
+  assert.deepEqual(summary, {
+    incomeCents: 5_000 * 100,
+    expensesCents: 1_200 * 100,
+    contributionsCents: 0,
+    debtReductionCents: 0,
+    netCashFlowCents: 3_500 * 100,
+  });
 });
 
 test("ledger debits equal credits", () => {

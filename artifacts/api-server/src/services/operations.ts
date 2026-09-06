@@ -843,17 +843,42 @@ export async function listOperationsApprovals(actor: Actor) {
 export async function decideOperationsApproval(actor: Actor, approvalId: string, input: { decision: string; reason: string }) {
   assertPermission(actor.role, "approve");
   const ids = await ensureTenantCore(actor.householdId, actor.userId);
-  const [existing] = await db.select().from(operationsApprovals).where(and(eq(operationsApprovals.id, approvalId), eq(operationsApprovals.householdId, ids.householdId))).limit(1);
-  if (!existing) throw new GovernanceError("INVALID_STATE", "Approval request was not found");
-  if (existing.status !== "PENDING") throw new GovernanceError("INVALID_STATE", "Only pending approvals can be decided");
-  const [approval] = await db.update(operationsApprovals).set({
-    status: input.decision,
-    decidedAt: new Date(),
-  }).where(and(
-    eq(operationsApprovals.id, approvalId),
-    eq(operationsApprovals.householdId, ids.householdId),
-  )).returning();
-  return approvalResponse(approval);
+  return db.transaction(async (tx) => {
+    const [approval] = await tx.update(operationsApprovals).set({
+      status: input.decision,
+      decidedAt: new Date(),
+    }).where(and(
+      eq(operationsApprovals.id, approvalId),
+      eq(operationsApprovals.householdId, ids.householdId),
+      eq(operationsApprovals.status, "PENDING"),
+    )).returning();
+    if (!approval) {
+      const [existing] = await tx
+        .select({ status: operationsApprovals.status })
+        .from(operationsApprovals)
+        .where(and(
+          eq(operationsApprovals.id, approvalId),
+          eq(operationsApprovals.householdId, ids.householdId),
+        ))
+        .limit(1);
+      if (!existing) throw new GovernanceError("INVALID_STATE", "Approval request was not found");
+      throw new GovernanceError("INVALID_STATE", "Only pending approvals can be decided");
+    }
+    await tx.insert(auditEvents).values({
+      householdId: ids.householdId,
+      eventType: "operations_approval_decided",
+      actor: actor.userId,
+      entity: "operations_approval",
+      entityId: approval.id,
+      reason: input.reason,
+      metadata: {
+        decision: input.decision,
+        requestedBy: approval.requestedBy,
+        requiredAuthority: approval.requiredAuthority,
+      },
+    });
+    return approvalResponse(approval);
+  });
 }
 
 export async function listOperationsAlerts(actor: Actor) {

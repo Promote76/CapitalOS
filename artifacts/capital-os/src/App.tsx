@@ -7,7 +7,6 @@ import {
   Show,
   useAuth,
   useClerk,
-  useReverification,
   useUser,
 } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
@@ -170,6 +169,7 @@ import {
 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { bankConnectionAccess } from '@/bank-connection-access';
+import { useProviderProtectedAction } from '@/lib/reverification';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
@@ -294,31 +294,6 @@ function ClerkQueryClientCacheInvalidator() {
     previousUserId.current = currentUserId;
   }, [isLoaded, userId]);
   return null;
-}
-
-function isClerkReverificationHint(value: unknown): boolean {
-  if (!value || typeof value !== 'object') return false;
-  const error = value as { clerk_error?: { type?: unknown; reason?: unknown } };
-  return error.clerk_error?.type === 'forbidden' && error.clerk_error.reason === 'reverification-error';
-}
-
-function useProviderProtectedAction<Args extends unknown[], Result>(
-  action: (...args: Args) => Promise<Result>,
-) {
-  return useReverification(async (...args: Args) => {
-    try {
-      return await action(...args);
-    } catch (error) {
-      // The generated API client wraps non-2xx JSON in ApiError.data. Return
-      // Clerk's standardized hint so useReverification can open its provider
-      // UI and retry the exact original action after verification.
-      const data = error && typeof error === 'object' && 'data' in error
-        ? (error as { data?: unknown }).data
-        : error;
-      if (isClerkReverificationHint(data)) return data as Result;
-      throw error;
-    }
-  });
 }
 
 function SessionControls() {

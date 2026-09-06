@@ -40,13 +40,17 @@ async function publishedOriginPreflight() {
 
 function sourcePreflight() {
   const app = fs.readFileSync(path.join(rootDir, "artifacts/capital-os/src/App.tsx"), "utf8");
+  const operationsPage = fs.readFileSync(path.join(rootDir, "artifacts/capital-os/src/pages/operations.tsx"), "utf8");
+  const clientReverification = fs.readFileSync(path.join(rootDir, "artifacts/capital-os/src/lib/reverification.ts"), "utf8");
   const requestContext = fs.readFileSync(path.join(rootDir, "artifacts/api-server/src/middleware/request-context.ts"), "utf8");
   const reverification = fs.readFileSync(path.join(rootDir, "artifacts/api-server/src/middleware/reverification.ts"), "utf8");
   const checks = {
     clerkProvider: app.includes("ClerkProvider"),
     signIn: app.includes("<SignIn"),
     signOut: app.includes("signOut("),
-    providerReverification: app.includes("useReverification("),
+    providerReverification: clientReverification.includes("useReverification("),
+    operationsApprovalReverification:
+      operationsPage.includes("decideApprovalWithReverification"),
     serverRecentAuth: requestContext.includes('reverificationError("strict")'),
     failClosedProviderCheck: reverification.includes('getAuth(req).has({ reverification: "strict" })'),
   };
@@ -90,6 +94,7 @@ function writeArtifact({ origin, originCheck, source, authTests }) {
     `- ClerkProvider and SignIn wiring: ${source.checks.clerkProvider && source.checks.signIn ? "PASS" : "FAIL"}`,
     `- Sign-out wiring: ${source.checks.signOut ? "PASS" : "FAIL"}`,
     `- useReverification wiring: ${source.checks.providerReverification ? "PASS" : "FAIL"}`,
+    `- Operations approval challenge/retry wiring: ${source.checks.operationsApprovalReverification ? "PASS" : "FAIL"}`,
     `- Server strict reverification response: ${source.checks.serverRecentAuth && source.checks.failClosedProviderCheck ? "PASS" : "FAIL"}`,
     `- Reverification middleware unit tests: ${authTests.passed ? "PASS" : "FAIL"}`,
     `- Safe sign-in screenshot: ${screenshotPath}`,
@@ -111,6 +116,34 @@ function writeArtifact({ origin, originCheck, source, authTests }) {
     "RV-01 through RV-12 remain BLOCKED pending a real provider challenge, failed/cancelled",
     "challenge cases, bounded recent-auth expiry, current role/household rechecks, and",
     "safe audit/telemetry evidence from an authenticated browser session.",
+    "",
+    "## Human browser attempt",
+    "",
+    "The user attempted the published-origin checklist but could not complete or",
+    "confidently evaluate it because:",
+    "",
+    "- dedicated Owner, Advisor, Viewer, and second-household identities were not available;",
+    "- several requested approval actions could not be found or had no approvable items;",
+    "- the Clerk reverification challenge did not appear;",
+    "- session-expiry, multi-tab, and repeat-sign-in cases could not be controlled; and",
+    "- some attempted steps did not expose enough evidence to determine PASS or FAIL.",
+    "",
+    "This attempt is **INCONCLUSIVE — MISSING CERTIFICATION PREREQUISITES**. It does",
+    "not count as a failed product control, but it also supplies no BA or RV PASS",
+    "evidence. No gate totals or release status changed.",
+    "",
+    "## Remediation after the human attempt",
+    "",
+    "- Operations approval decisions now pass Clerk's standardized strict",
+    "  reverification hint through the shared client wrapper, allowing the provider",
+    "  challenge to open and retry the exact original decision.",
+    "- The approval card now explains that a decision reason is required before",
+    "  Approve, Defer, or Reject becomes available.",
+    "- Approval decisions now update only a still-pending, household-scoped record",
+    "  and write the actor and decision reason to the audit trail atomically.",
+    "",
+    "These changes improve the next attempt but are not substituted for real",
+    "published-origin Clerk evidence.",
     "",
     "## User action required — Clerk certification",
     "",

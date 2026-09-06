@@ -7727,6 +7727,22 @@ body {
 .operations-approval-actions {
   justify-content: flex-start;
 }
+
+.operations-decision-instruction {
+  display: grid;
+  gap: 3px;
+  margin-top: 16px;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.operations-decision-instruction strong {
+  color: var(--ink);
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
 .btn-quiet-danger {
   color: #9e5d47;
 }

@@ -1,7 +1,7 @@
 # Capital OS authenticated browser and Clerk reverification certification
 
 **Date:** 2026-09-05
-**Current HEAD:** `96fc7386e790ac47a415d858edaf6cbea6975602`
+**Current HEAD:** `9e464135d193090557998af499b76d2f5b366dd9`
 **Published origin:** https://capital-os-fund.replit.app
 **Test environment:** Replit-managed Clerk production deployment; no credentials or session tokens recorded
 
@@ -19,6 +19,7 @@
 - ClerkProvider and SignIn wiring: PASS
 - Sign-out wiring: PASS
 - useReverification wiring: PASS
+- Operations approval challenge/retry wiring: PASS
 - Server strict reverification response: PASS
 - Reverification middleware unit tests: PASS
 - Safe sign-in screenshot: docs/certification/auth-sign-in-published-origin.png
@@ -55,6 +56,19 @@ confidently evaluate it because:
 This attempt is **INCONCLUSIVE — MISSING CERTIFICATION PREREQUISITES**. It does
 not count as a failed product control, but it also supplies no BA or RV PASS
 evidence. No gate totals or release status changed.
+
+## Remediation after the human attempt
+
+- Operations approval decisions now pass Clerk's standardized strict
+  reverification hint through the shared client wrapper, allowing the provider
+  challenge to open and retry the exact original decision.
+- The approval card now explains that a decision reason is required before
+  Approve, Defer, or Reject becomes available.
+- Approval decisions now update only a still-pending, household-scoped record
+  and write the actor and decision reason to the audit trail atomically.
+
+These changes improve the next attempt but are not substituted for real
+published-origin Clerk evidence.
 
 ## User action required — Clerk certification
 

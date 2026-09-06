@@ -72,6 +72,7 @@ import {
   type OperationsTask,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useProviderProtectedAction } from "@/lib/reverification";
 
 // Observability Types (Local, Safe Views)
 type ObservabilityHealthView = {
@@ -491,6 +492,14 @@ function ApprovalCard({
       )}
       {isPending && (
         <>
+          <div className="operations-decision-instruction">
+            <strong>Decision record required</strong>
+            <span>
+              Add a short reason below to enable Approve, Defer, or Reject.
+              Capital-changing decisions may also ask you to verify your Clerk
+              session.
+            </span>
+          </div>
           <textarea
             className="operations-reason-input"
             value={reason}
@@ -1236,6 +1245,10 @@ export default function OperationsPage({
   const createTask = useCreateOperationsTask();
   const updateTask = useUpdateOperationsTask();
   const decideApproval = useDecideOperationsApproval();
+  const decideApprovalWithReverification = useProviderProtectedAction(
+    (input: Parameters<typeof decideApproval.mutateAsync>[0]) =>
+      decideApproval.mutateAsync(input),
+  );
   const updateAlert = useUpdateOperationsAlert();
   const runAutomation = useRunOperationsAutomation();
   const updatePreferences = useUpdateOperationsNotificationPreferences();
@@ -1352,7 +1365,7 @@ export default function OperationsPage({
   ) => {
     setMutationId(approval.id);
     try {
-      await decideApproval.mutateAsync({
+      await decideApprovalWithReverification({
         approvalId: approval.id,
         data: { decision, reason },
       });

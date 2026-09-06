@@ -475,19 +475,16 @@ function weeklyGuidanceForRows(period: typeof budgetPlanningPeriods.$inferSelect
   let includedOutflowCount = 0;
   for (const transaction of transactions) {
     const category = transaction.categoryId ? snapshotBySource.get(transaction.categoryId) : undefined;
-    if (!transaction.categoryId || !category) { exclusionCounts.uncategorized++; continue; }
-    if (transaction.pending) { exclusionCounts.pending++; continue; }
-    if (transaction.reviewStatus === "excluded" || transaction.excludedFromBudget) { exclusionCounts.excluded++; continue; }
-    if (transaction.reviewStatus !== "approved") { exclusionCounts.unreviewed++; continue; }
-    if (transaction.businessTag !== "household") { exclusionCounts.nonHousehold++; continue; }
-    if (transaction.transferGroupId || category.categoryType === "transfer") { exclusionCounts.transfer++; continue; }
+    const exclusionReason = weeklyGuidanceExclusionDecision(transaction, category).reason;
+    if (exclusionReason) { exclusionCounts[exclusionReason]++; continue; }
     const amount = cents(transaction.amount);
-    if (category.categoryType === "income") {
-      if (amount > 0) { incomeCents += amount; includedIncomeCount++; } else exclusionCounts.nonIncome++;
+    if (category!.categoryType === "income") {
+      incomeCents += amount;
+      includedIncomeCount++;
       continue;
     }
     if (amount !== 0) {
-      actualCents.set(category.id, (actualCents.get(category.id) ?? 0) - amount);
+      actualCents.set(category!.id, (actualCents.get(category!.id) ?? 0) - amount);
       includedOutflowCount++;
     }
   }
@@ -1634,31 +1631,95 @@ export async function reviewFinancialTransaction(actor: Actor, transactionId: st
 }
 
 // hint: Structural change (rename/retype). Check callers of this entity.
-export async function getTransactionReviewQueue(actor?: Actor) {
+type WeeklyGuidanceExclusionReason = "uncategorized" | "pending" | "excluded" | "unreviewed" | "nonHousehold" | "transfer" | "nonIncome";
+
+export function weeklyGuidanceExclusionDecision(
+  transaction: Pick<typeof financeTransactions.$inferSelect, "categoryId" | "pending" | "reviewStatus" | "excludedFromBudget" | "businessTag" | "transferGroupId" | "amount">,
+  category: Pick<WeeklyGuidanceCategory, "categoryType"> | undefined,
+  liveCategoryType?: string,
+): { reason: WeeklyGuidanceExclusionReason | null; actionable: boolean } {
+  let reason: WeeklyGuidanceExclusionReason | null = null;
+  if (!transaction.categoryId || !category) reason = "uncategorized";
+  else if (transaction.pending) reason = "pending";
+  else if (transaction.reviewStatus === "excluded" || transaction.excludedFromBudget) reason = "excluded";
+  else if (transaction.reviewStatus !== "approved") reason = "unreviewed";
+  else if (transaction.businessTag !== "household") reason = "nonHousehold";
+  else if (transaction.transferGroupId || category.categoryType === "transfer") reason = "transfer";
+  else if (category.categoryType === "income" && cents(transaction.amount) <= 0) reason = "nonIncome";
+  const transferIdentity = Boolean(transaction.transferGroupId) || (category?.categoryType ?? liveCategoryType) === "transfer";
+  const actionable = (reason === "uncategorized" || reason === "unreviewed")
+    && !transaction.pending
+    && transaction.reviewStatus !== "excluded"
+    && !transaction.excludedFromBudget
+    && transaction.businessTag === "household"
+    && !transferIdentity;
+  return { reason, actionable };
+}
+
+function weeklyGuidanceExclusionExplanation(reason: WeeklyGuidanceExclusionReason) {
+  return {
+    uncategorized: "This row has no category in this monthly plan, so weekly guidance cannot assign it safely.",
+    pending: "This row is still pending at its source and remains outside weekly guidance until it settles.",
+    excluded: "This row was explicitly excluded from household budget calculations.",
+    unreviewed: "This row has not been approved by the household and remains outside weekly guidance.",
+    nonHousehold: "This row is business or property activity, not household activity.",
+    transfer: "This row is a transfer and is excluded to avoid counting money moving between accounts as income or spending.",
+    nonIncome: "This income-category row is not a positive inflow, so it cannot support weekly guidance.",
+  }[reason];
+}
+
+export async function getTransactionReviewQueue(actor?: Actor, periodId?: string) {
   const id = await householdId(actor);
   await ensureDefaultFinanceCategories(id);
-  const [transactions, accounts, categories] = await Promise.all([
-    db.select().from(financeTransactions).where(and(
+  const [period] = periodId
+    ? await db.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, id)))
+    : [];
+  if (periodId && !period) return planningNotFound("Budget planning period");
+  const snapshots = period
+    ? await db.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, period.id))
+    : [];
+  const snapshotsBySource = new Map(snapshots.filter((category) => !category.archived && category.sourceCategoryId).map((category) => [category.sourceCategoryId!, category]));
+  const transactionWhere = period
+    ? and(
+      eq(financeTransactions.householdId, id),
+      sql`${financeTransactions.transactionDate} >= ${period.month} and ${financeTransactions.transactionDate} < (${period.month}::date + interval '1 month')::date`,
+    )
+    : and(
       eq(financeTransactions.householdId, id),
       inArray(financeTransactions.dataSource, ["manual", "csv_import", "plaid"]),
       ne(financeTransactions.reviewStatus, "approved"),
-    )),
+    );
+  const [allTransactions, accounts, categories] = await Promise.all([
+    db.select().from(financeTransactions).where(transactionWhere),
     db.select({ id: financialAccounts.id, nickname: financialAccounts.nickname })
       .from(financialAccounts)
       .where(eq(financialAccounts.householdId, id)),
-    db.select({ id: financeCategories.id, name: financeCategories.name })
+    db.select({ id: financeCategories.id, name: financeCategories.name, categoryType: financeCategories.categoryType })
       .from(financeCategories)
       .where(and(eq(financeCategories.householdId, id), eq(financeCategories.active, true))),
   ]);
   const accountsById = new Map(accounts.map((account) => [account.id, account.nickname]));
   const categoriesById = new Map(categories.map((category) => [category.id, category.name]));
+  const categoryTypesById = new Map(categories.map((category) => [category.id, category.categoryType]));
+  const transactions = period
+    ? allTransactions.flatMap((transaction) => {
+      const decision = weeklyGuidanceExclusionDecision(
+        transaction,
+        transaction.categoryId ? snapshotsBySource.get(transaction.categoryId) : undefined,
+        transaction.categoryId ? categoryTypesById.get(transaction.categoryId) : undefined,
+      );
+      return decision.reason ? [{ transaction, ...decision }] : [];
+    })
+    : allTransactions.map((transaction) => ({ transaction, reason: null, actionable: true }));
   return {
-    transactions: transactions.map((transaction) => reviewedTransaction(
+    transactions: transactions.map(({ transaction, reason, actionable }) => reviewedTransaction(
       transaction,
       accountsById.get(transaction.accountId) ?? "Unknown account",
       transaction.categoryId ? categoriesById.get(transaction.categoryId) ?? null : null,
+      reason,
+      actionable,
     )),
-    categories,
+    categories: categories.map(({ id: categoryId, name }) => ({ id: categoryId, name })),
   };
 }
 
@@ -1666,6 +1727,8 @@ function reviewedTransaction(
   transaction: typeof financeTransactions.$inferSelect,
   accountName: string,
   categoryName: string | null,
+  weeklyGuidanceExclusionReason: WeeklyGuidanceExclusionReason | null = null,
+  weeklyGuidanceActionable = true,
 ) {
   const review = reviewMetadata(transaction.metadata);
   const reviewedAt = typeof review.reviewedAt === "string" ? review.reviewedAt : null;
@@ -1687,6 +1750,11 @@ function reviewedTransaction(
     businessTag: transaction.businessTag,
     excludedFromBudget: transaction.excludedFromBudget,
     pending: transaction.pending,
+    weeklyGuidanceExclusionReason,
+    weeklyGuidanceActionable,
+    reviewReason: weeklyGuidanceExclusionReason
+      ? weeklyGuidanceExclusionExplanation(weeklyGuidanceExclusionReason)
+      : "This row stays outside planning until the household reviews and approves it.",
     reviewNote,
     reviewedBy,
     reviewedAt,

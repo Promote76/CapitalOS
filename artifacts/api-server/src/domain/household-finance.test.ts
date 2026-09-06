@@ -13,7 +13,7 @@ import {
   isExcludedFromHouseholdSpending,
   reviewedTransactionBudgetExclusion,
 } from "./household-finance.ts";
-import { allocateWeeklyGuidanceCents, latestFinalizedPlanningPeriod, remainingWeeklyGuidanceCents, weeklyGuidanceCents } from "../services/household-finance.ts";
+import { allocateWeeklyGuidanceCents, latestFinalizedPlanningPeriod, remainingWeeklyGuidanceCents, weeklyGuidanceCents, weeklyGuidanceExclusionDecision } from "../services/household-finance.ts";
 import { csvImportBankingAdapter, normalizeImportedAmount } from "../adapters/banking.ts";
 
 test("manual entries canonicalize inflows and outflows regardless of entered sign", () => {
@@ -91,6 +91,42 @@ test("credit-card payments are excluded explicitly by category or transfer group
     30,
   );
   assert.equal(debt.actual, "0.00");
+});
+
+test("weekly guidance review actions stay disabled for rows with transfer identity", () => {
+  const decision = weeklyGuidanceExclusionDecision({
+    categoryId: "food",
+    pending: false,
+    reviewStatus: "possible_transfer",
+    excludedFromBudget: false,
+    businessTag: "household" as const,
+    transferGroupId: "transfer-group",
+    amount: "-50.00",
+  }, { categoryType: "variable_essential" });
+  assert.deepEqual(decision, { reason: "unreviewed", actionable: false });
+});
+
+test("weekly guidance review actions allow only recoverable household rows", () => {
+  const base = {
+    pending: false,
+    reviewStatus: "needs_review" as const,
+    excludedFromBudget: false,
+    businessTag: "household" as const,
+    transferGroupId: null,
+    amount: "-50.00",
+  };
+  assert.deepEqual(
+    weeklyGuidanceExclusionDecision({ ...base, categoryId: "food" }, { categoryType: "variable_essential" }),
+    { reason: "unreviewed", actionable: true },
+  );
+  assert.deepEqual(
+    weeklyGuidanceExclusionDecision({ ...base, categoryId: null }, undefined),
+    { reason: "uncategorized", actionable: true },
+  );
+  assert.deepEqual(
+    weeklyGuidanceExclusionDecision({ ...base, categoryId: null, businessTag: "business" }, undefined),
+    { reason: "uncategorized", actionable: false },
+  );
 });
 
 test("review transitions cannot include transfers after approval", () => {

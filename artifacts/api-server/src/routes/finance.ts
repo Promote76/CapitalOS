@@ -225,8 +225,9 @@ router.post("/financial-accounts/:accountId/import-csv", asyncRoute(async (req, 
   res.json(ImportFinancialAccountCsvResponse.parse(await importFinanceCsv(actorFrom(res), accountId, body.csv)));
 }));
 
-router.get("/financial-transactions/review-queue", asyncRoute(async (_req, res) => {
-  res.json(ListTransactionReviewQueueResponse.parse(await getTransactionReviewQueue(actorFrom(res))));
+router.get("/financial-transactions/review-queue", asyncRoute(async (req, res) => {
+  const periodId = typeof req.query.periodId === "string" ? req.query.periodId : undefined;
+  res.json(ListTransactionReviewQueueResponse.parse(await getTransactionReviewQueue(actorFrom(res), periodId)));
 }));
 
 router.post("/financial-transactions/:transactionId/review", asyncRoute(async (req, res) => {

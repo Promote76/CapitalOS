@@ -2616,6 +2616,13 @@ export const ImportFinancialAccountCsvResponse = zod.object({
 /**
  * @summary List imported transactions awaiting household review
  */
+export const listTransactionReviewQueueQueryPeriodIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ListTransactionReviewQueueQueryParams = zod.object({
+  "periodId": zod.coerce.string().regex(listTransactionReviewQueueQueryPeriodIdRegExp).optional().describe('When supplied, return every transaction excluded from that planning period\'s weekly guidance.')
+})
+
 export const listTransactionReviewQueueResponseTransactionsItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const listTransactionReviewQueueResponseTransactionsItemAccountIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const listTransactionReviewQueueResponseTransactionsItemCategoryIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
@@ -2639,6 +2646,9 @@ export const ListTransactionReviewQueueResponse = zod.object({
   "businessTag": zod.string(),
   "excludedFromBudget": zod.boolean(),
   "pending": zod.boolean(),
+  "weeklyGuidanceExclusionReason": zod.union([zod.literal('uncategorized'),zod.literal('pending'),zod.literal('excluded'),zod.literal('unreviewed'),zod.literal('nonHousehold'),zod.literal('transfer'),zod.literal('nonIncome'),zod.literal(null)]).nullable(),
+  "weeklyGuidanceActionable": zod.boolean().describe('True only when categorizing or approving the row can make it eligible for weekly guidance without removing a fail-closed classification.'),
+  "reviewReason": zod.string(),
   "reviewNote": zod.string().nullable(),
   "reviewedBy": zod.string().nullable(),
   "reviewedAt": zod.coerce.date().nullable()
@@ -2692,6 +2702,9 @@ export const ReviewFinancialTransactionResponse = zod.object({
   "businessTag": zod.string(),
   "excludedFromBudget": zod.boolean(),
   "pending": zod.boolean(),
+  "weeklyGuidanceExclusionReason": zod.union([zod.literal('uncategorized'),zod.literal('pending'),zod.literal('excluded'),zod.literal('unreviewed'),zod.literal('nonHousehold'),zod.literal('transfer'),zod.literal('nonIncome'),zod.literal(null)]).nullable(),
+  "weeklyGuidanceActionable": zod.boolean().describe('True only when categorizing or approving the row can make it eligible for weekly guidance without removing a fail-closed classification.'),
+  "reviewReason": zod.string(),
   "reviewNote": zod.string().nullable(),
   "reviewedBy": zod.string().nullable(),
   "reviewedAt": zod.coerce.date().nullable()

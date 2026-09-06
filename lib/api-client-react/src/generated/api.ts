@@ -114,6 +114,7 @@ import type {
   IntelligenceFeedbackInput,
   IntelligenceScenarioInput,
   IntelligenceSnapshot,
+  ListTransactionReviewQueueParams,
   ManualFinanceTransactionInput,
   ManualFinancialAccountInput,
   MicroLiveArmRequest,
@@ -5911,20 +5912,27 @@ export const useImportFinancialAccountCsv = <TError = ErrorType<unknown>,
       return useMutation(getImportFinancialAccountCsvMutationOptions(options));
     }
 
-export const getListTransactionReviewQueueUrl = () => {
+export const getListTransactionReviewQueueUrl = (params?: ListTransactionReviewQueueParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/financial-transactions/review-queue`
+  return stringifiedParams.length > 0 ? `/api/financial-transactions/review-queue?${stringifiedParams}` : `/api/financial-transactions/review-queue`
 }
 
 /**
  * @summary List imported transactions awaiting household review
  */
-export const listTransactionReviewQueue = async ( options?: Parameters<typeof customFetch>[1]): Promise<TransactionReviewQueue> => {
+export const listTransactionReviewQueue = async (params?: ListTransactionReviewQueueParams, options?: Parameters<typeof customFetch>[1]): Promise<TransactionReviewQueue> => {
 
-  return customFetch<TransactionReviewQueue>(getListTransactionReviewQueueUrl(),
+  return customFetch<TransactionReviewQueue>(getListTransactionReviewQueueUrl(params),
   {
     ...options,
     method: 'GET'
@@ -5937,23 +5945,23 @@ export const listTransactionReviewQueue = async ( options?: Parameters<typeof cu
 
 
 
-export const getListTransactionReviewQueueQueryKey = () => {
+export const getListTransactionReviewQueueQueryKey = (params?: ListTransactionReviewQueueParams,) => {
     return [
-    `/api/financial-transactions/review-queue`
+    `/api/financial-transactions/review-queue`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListTransactionReviewQueueQueryOptions = <TData = Awaited<ReturnType<typeof listTransactionReviewQueue>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransactionReviewQueue>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListTransactionReviewQueueQueryOptions = <TData = Awaited<ReturnType<typeof listTransactionReviewQueue>>, TError = ErrorType<unknown>>(params?: ListTransactionReviewQueueParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransactionReviewQueue>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListTransactionReviewQueueQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListTransactionReviewQueueQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTransactionReviewQueue>>> = ({ signal }) => listTransactionReviewQueue({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTransactionReviewQueue>>> = ({ signal }) => listTransactionReviewQueue(params, { signal, ...requestOptions });
 
 
 
@@ -5971,11 +5979,11 @@ export type ListTransactionReviewQueueQueryError = ErrorType<unknown>
  */
 
 export function useListTransactionReviewQueue<TData = Awaited<ReturnType<typeof listTransactionReviewQueue>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransactionReviewQueue>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListTransactionReviewQueueParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransactionReviewQueue>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListTransactionReviewQueueQueryOptions(options)
+  const queryOptions = getListTransactionReviewQueueQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

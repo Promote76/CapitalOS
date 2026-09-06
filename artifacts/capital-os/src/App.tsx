@@ -1289,6 +1289,8 @@ function BudgetPlanningControlCenter() {
   const { toast } = useToast();
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
+    const requestedMonth = new URLSearchParams(window.location.search).get('month');
+    if (requestedMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth)) return requestedMonth;
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
@@ -1337,7 +1339,7 @@ function BudgetPlanningControlCenter() {
   });
 
   const guidanceQuery = useGetWeeklyBudgetGuidance(periodQuery.data?.id ?? '', {
-    query: { enabled: !!periodQuery.data?.id, queryKey: periodQuery.data?.id ? getGetWeeklyBudgetGuidanceQueryKey(periodQuery.data.id) : ['/api/guidance-placeholder'], retry: false }
+    query: { enabled: !!periodQuery.data?.id, queryKey: periodQuery.data?.id ? getGetWeeklyBudgetGuidanceQueryKey(periodQuery.data.id) : ['/api/guidance-placeholder'], retry: false, refetchOnMount: 'always' }
   });
   useEffect(() => {
     if (!periodQuery.data) return;
@@ -1601,7 +1603,7 @@ function BudgetPlanningControlCenter() {
                  </div>
               ) : guidanceQuery.data ? (
                  <div className="guidance-summary" style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <p style={{ margin: 0 }}>Guidance is <strong>advisory</strong> until accepted, and the drafted plan must be separately approved. Calculated on {new Date(guidanceQuery.data.calculationDate).toLocaleString()} using <strong>{guidanceQuery.data.basis.replace(/_/g, ' ')}</strong> basis.</p>
+                     <p style={{ margin: 0 }}>Guidance is <strong>advisory</strong> until accepted, and the drafted plan must be separately approved. Calculated on {new Date(guidanceQuery.data.calculationDate).toLocaleString()} using <strong>{guidanceQuery.data.basis.replace(/_/g, ' ')}</strong> basis. Evidence <code data-testid="text-weekly-guidance-fingerprint">{guidanceQuery.data.fingerprint.slice(0, 12)}</code>.</p>
 
                     <div className="finance-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
                        <div className="metric-card green" style={{ padding: '12px' }}>
@@ -1620,7 +1622,20 @@ function BudgetPlanningControlCenter() {
 
                     {Object.values(guidanceQuery.data.exclusions).reduce((a, b) => a + b, 0) > 0 && (
                        <div style={{ background: 'var(--surface-default)', padding: '10px 12px', borderRadius: '6px', fontSize: '11px' }}>
-                          <strong>Partial/Excluded Data:</strong> {Object.entries(guidanceQuery.data.exclusions).filter(([_,v]) => v > 0).map(([k, v]) => `${v} ${k}`).join(', ')}. These are excluded from recommendation math.
+                           <strong>Transactions blocking weekly guidance</strong>
+                           <div style={{ marginTop: '4px' }}>Every row below remains excluded from recommendation math. Open a focused review to see the exact reason and fix only eligible household rows.</div>
+                           <div className="filter-bar" style={{ margin: '9px 0 0' }}>
+                             {Object.entries(guidanceQuery.data.exclusions).filter(([, count]) => count > 0).map(([reason, count]) => (
+                               <Link
+                                 key={reason}
+                                 className="filter-chip"
+                                 href={`/transactions?periodId=${encodeURIComponent(periodQuery.data.id)}&reason=${encodeURIComponent(reason)}&month=${encodeURIComponent(selectedMonth)}`}
+                                 data-testid={`link-weekly-guidance-exclusion-${reason}`}
+                               >
+                                 {humanize(reason, reason)} <span>({count})</span>
+                               </Link>
+                             ))}
+                           </div>
                        </div>
                     )}
 
@@ -2565,6 +2580,8 @@ function normalizeReviewRow(value: ReviewQueueRecord) {
     categoryName: firstString(value, ['categoryName', 'category', 'suggestedCategory']),
     source: firstString(value, ['dataSource', 'source'], 'unknown'),
     status: firstString(value, ['reviewStatus', 'status'], 'needs_review'),
+    weeklyGuidanceExclusionReason: firstString(value, ['weeklyGuidanceExclusionReason']),
+    weeklyGuidanceActionable: value.weeklyGuidanceActionable === true,
     reason: firstString(value, ['reviewReason', 'reason', 'queueReason'], 'Rows stay outside planning until reviewed.'),
     note: firstString(value, ['note', 'reviewNote']),
   };
@@ -2595,9 +2612,20 @@ function reviewSourceLabel(source: string) {
 
 function TransactionReviewPage({ onFeedback }: { onFeedback: (message: string) => void }) {
   const queryClient = useQueryClient();
-  const queue = useListTransactionReviewQueue({
+  const [location] = useLocation();
+  const reviewContext = useMemo(() => {
+    const query = location.includes('?') ? location.slice(location.indexOf('?') + 1) : window.location.search.slice(1);
+    const params = new URLSearchParams(query);
+    return {
+      periodId: params.get('periodId') ?? '',
+      reason: params.get('reason') ?? '',
+      month: params.get('month') ?? '',
+    };
+  }, [location]);
+  const queueParams = reviewContext.periodId ? { periodId: reviewContext.periodId } : undefined;
+  const queue = useListTransactionReviewQueue(queueParams, {
     query: {
-      queryKey: getListTransactionReviewQueueQueryKey(),
+      queryKey: getListTransactionReviewQueueQueryKey(queueParams),
       staleTime: 30 * 1000,
     },
   });
@@ -2607,7 +2635,7 @@ function TransactionReviewPage({ onFeedback }: { onFeedback: (message: string) =
       review.mutateAsync(input),
   );
   const budget = useGetBudget();
-  const [filter, setFilter] = useState<'all' | 'needs_category'>('all');
+  const [filter, setFilter] = useState<'all' | 'needs_category' | 'guidance_reason'>(() => reviewContext.reason ? 'guidance_reason' : 'all');
   const [search, setSearch] = useState('');
   const [drafts, setDrafts] = useState<Record<string, ReviewDraft>>({});
 
@@ -2627,10 +2655,11 @@ function TransactionReviewPage({ onFeedback }: { onFeedback: (message: string) =
     return rows.filter((row) => {
       const needsCategory = !row.categoryId && !row.categoryName;
       if (filter === 'needs_category' && !needsCategory) return false;
+      if (filter === 'guidance_reason' && row.weeklyGuidanceExclusionReason !== reviewContext.reason) return false;
       if (!query) return true;
       return [row.merchant, row.description, row.account, row.categoryName].some((value) => value.toLowerCase().includes(query));
     });
-  }, [filter, rows, search]);
+  }, [filter, reviewContext.reason, rows, search]);
   const heldAmount = useMemo(() => rows.reduce((sum, row) => {
     const amount = Number(row.amount);
     return Number.isFinite(amount) ? sum + Math.abs(amount) : sum;
@@ -2655,7 +2684,12 @@ function TransactionReviewPage({ onFeedback }: { onFeedback: (message: string) =
         delete next[row.id];
         return next;
       });
-      await queryClient.invalidateQueries();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListTransactionReviewQueueQueryKey(queueParams) }),
+        reviewContext.periodId
+          ? queryClient.invalidateQueries({ queryKey: getGetWeeklyBudgetGuidanceQueryKey(reviewContext.periodId) })
+          : Promise.resolve(),
+      ]);
       await queue.refetch();
       onFeedback(`${row.merchant} was ${status === 'approved' ? 'approved and added to the household record' : status === 'needs_review' ? 'categorized and kept outside planning' : status === 'excluded' ? 'rejected and excluded from planning' : status === 'possible_transfer' ? 'marked as a transfer and kept outside planning' : 'marked as a business item and kept outside planning'}.`);
     } catch (error) {
@@ -2717,9 +2751,9 @@ function TransactionReviewPage({ onFeedback }: { onFeedback: (message: string) =
     `}</style>
     <PageHeading
       eyebrow="Household finance / review queue"
-      title={<>Give every row<br /><em>a clear place.</em></>}
-      description="Manual and imported transactions stay outside the plan until a household member reviews them. Approve a row with its category, or leave it here for a later pass."
-      actions={<button className="btn" onClick={() => { void queue.refetch(); }} disabled={queue.isLoading} data-testid="button-refresh-transaction-review"><RotateCcw size={14} /> {queue.isLoading ? 'Refreshing…' : 'Refresh queue'}</button>}
+      title={reviewContext.periodId ? <>Restore a verified<br /><em>guidance basis.</em></> : <>Give every row<br /><em>a clear place.</em></>}
+      description={reviewContext.periodId ? `These ${reviewContext.month || 'monthly'} transactions are excluded from weekly guidance. The reason on each row comes from the same calculation used on Budget.` : 'Manual and imported transactions stay outside the plan until a household member reviews them. Approve a row with its category, or leave it here for a later pass.'}
+      actions={<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{reviewContext.periodId && <Link className="btn btn-primary" href={`/budget${reviewContext.month ? `?month=${encodeURIComponent(reviewContext.month)}` : ''}`} data-testid="link-return-to-budget">Return to Budget</Link>}<button className="btn" onClick={() => { void queue.refetch(); }} disabled={queue.isLoading} data-testid="button-refresh-transaction-review"><RotateCcw size={14} /> {queue.isLoading ? 'Refreshing…' : 'Refresh queue'}</button></div>}
     />
     <section className="review-governance animate-in delay-1" data-testid="banner-transaction-review-governance">
       <ShieldCheck size={17} />
@@ -2736,6 +2770,7 @@ function TransactionReviewPage({ onFeedback }: { onFeedback: (message: string) =
         <div className="filter-bar" style={{ marginBottom: 0 }}>
           <button className={`filter-chip ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')} data-testid="button-filter-transaction-review-all">All rows</button>
           <button className={`filter-chip ${filter === 'needs_category' ? 'active' : ''}`} onClick={() => setFilter('needs_category')} data-testid="button-filter-transaction-review-needs-category">Needs category <span>({needsCategory})</span></button>
+           {reviewContext.reason && <button className={`filter-chip ${filter === 'guidance_reason' ? 'active' : ''}`} onClick={() => setFilter('guidance_reason')} data-testid="button-filter-transaction-review-guidance-reason">{humanize(reviewContext.reason, reviewContext.reason)} <span>({rows.filter((row) => row.weeklyGuidanceExclusionReason === reviewContext.reason).length})</span></button>}
         </div>
       </div>
       {queue.isLoading && <div className="review-list" aria-label="Loading transaction review queue" data-testid="loading-transaction-review"><div className="review-item" style={{ minHeight: 155, opacity: .55 }} /><div className="review-item" style={{ minHeight: 155, opacity: .35 }} /></div>}
@@ -2745,6 +2780,7 @@ function TransactionReviewPage({ onFeedback }: { onFeedback: (message: string) =
         {visibleRows.map((row) => {
           const draft = draftFor(row);
           const amount = Number(row.amount);
+          const eligibleForHouseholdReview = !reviewContext.periodId || row.weeklyGuidanceActionable;
           return <article className="review-item" key={row.id} data-testid={`card-transaction-review-${row.id}`}>
             <div>
               <div className="review-item-head">
@@ -2757,23 +2793,23 @@ function TransactionReviewPage({ onFeedback }: { onFeedback: (message: string) =
                 <div><span>Source</span><strong>{reviewSourceLabel(row.source)}</strong></div>
                 <div><span>Status</span><strong><span className="status pending">{reviewStatusLabel(row.status)}</span></strong></div>
               </div>
-              <div className="review-item-reason"><strong>Why it is here</strong> · {row.reason}</div>
+              <div className="review-item-reason"><strong>{reviewContext.periodId ? 'Why weekly guidance excludes it' : 'Why it is here'}</strong> · {row.reason}</div>
             </div>
             <div className="review-item-form">
-              <div className="review-form-field"><label className="review-form-label" htmlFor={`transaction-category-${row.id}`}>Household category</label><select id={`transaction-category-${row.id}`} value={draft.categoryId} onChange={(event) => updateDraft(row.id, { categoryId: event.target.value })} data-testid={`select-transaction-category-${row.id}`}><option value="">Leave uncategorized</option>{categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>{categoryOptions.length === 0 && <span className="table-secondary">Categories will appear when household budget data is available.</span>}</div>
+              <div className="review-form-field"><label className="review-form-label" htmlFor={`transaction-category-${row.id}`}>Household category</label><select id={`transaction-category-${row.id}`} value={draft.categoryId} disabled={!eligibleForHouseholdReview} onChange={(event) => updateDraft(row.id, { categoryId: event.target.value })} data-testid={`select-transaction-category-${row.id}`}><option value="">Leave uncategorized</option>{categoryOptions.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>{categoryOptions.length === 0 && <span className="table-secondary">Categories will appear when household budget data is available.</span>}</div>
               <div className="review-form-field"><label className="review-form-label" htmlFor={`transaction-note-${row.id}`}>Review note <span>(optional)</span></label><textarea id={`transaction-note-${row.id}`} value={draft.note} onChange={(event) => updateDraft(row.id, { note: event.target.value })} maxLength={500} placeholder="What should the household remember?" data-testid={`textarea-transaction-note-${row.id}`} /></div>
               <div className="review-form-foot">
-                <span>Only approved rows can inform planning.</span>
+                <span>{eligibleForHouseholdReview ? 'Only approved rows can inform planning.' : 'This classification is read-only here and remains outside guidance.'}</span>
                 <div className="review-action-group">
-                  <button className="btn" onClick={() => { void submitReview(row, 'needs_review'); }} disabled={review.isPending} data-testid={`button-categorize-transaction-${row.id}`}><ClipboardCheck size={14} /> Save category</button>
-                  <button className="btn btn-primary" onClick={() => { void submitReview(row, 'approved'); }} disabled={review.isPending || !draft.categoryId} data-testid={`button-approve-transaction-${row.id}`}><Check size={14} /> {review.isPending ? 'Saving…' : 'Approve & include'}</button>
+                  <button className="btn" onClick={() => { void submitReview(row, 'needs_review'); }} disabled={review.isPending || !eligibleForHouseholdReview} data-testid={`button-categorize-transaction-${row.id}`}><ClipboardCheck size={14} /> Save category</button>
+                  <button className="btn btn-primary" onClick={() => { void submitReview(row, 'approved'); }} disabled={review.isPending || !draft.categoryId || !eligibleForHouseholdReview} data-testid={`button-approve-transaction-${row.id}`}><Check size={14} /> {review.isPending ? 'Saving…' : 'Approve & include'}</button>
                 </div>
               </div>
-              <div className="review-action-secondary">
+              {!reviewContext.periodId && <div className="review-action-secondary">
                 <button className="text-link danger" onClick={() => { void submitReview(row, 'excluded'); }} disabled={review.isPending} data-testid={`button-reject-transaction-${row.id}`}>Reject</button>
                 <button className="text-link" onClick={() => { void submitReview(row, 'possible_transfer'); }} disabled={review.isPending} data-testid={`button-transfer-transaction-${row.id}`}>Mark transfer</button>
                 <button className="text-link" onClick={() => { void submitReview(row, 'possible_business'); }} disabled={review.isPending} data-testid={`button-business-transaction-${row.id}`}>Mark business</button>
-              </div>
+              </div>}
             </div>
           </article>;
         })}

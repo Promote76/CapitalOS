@@ -2129,6 +2129,22 @@ export interface TransactionReviewInput {
   note?: string | null;
 }
 
+/**
+ * @nullable
+ */
+export type ReviewedFinancialTransactionWeeklyGuidanceExclusionReason = typeof ReviewedFinancialTransactionWeeklyGuidanceExclusionReason[keyof typeof ReviewedFinancialTransactionWeeklyGuidanceExclusionReason] | null;
+
+
+export const ReviewedFinancialTransactionWeeklyGuidanceExclusionReason = {
+  uncategorized: 'uncategorized',
+  pending: 'pending',
+  excluded: 'excluded',
+  unreviewed: 'unreviewed',
+  nonHousehold: 'nonHousehold',
+  transfer: 'transfer',
+  nonIncome: 'nonIncome',
+} as const;
+
 export interface ReviewedFinancialTransaction {
   /** @pattern ^[0-9a-fA-F-]{36}$ */
   id: string;
@@ -2154,6 +2170,11 @@ export interface ReviewedFinancialTransaction {
   businessTag: string;
   excludedFromBudget: boolean;
   pending: boolean;
+  /** @nullable */
+  weeklyGuidanceExclusionReason: ReviewedFinancialTransactionWeeklyGuidanceExclusionReason;
+  /** True only when categorizing or approving the row can make it eligible for weekly guidance without removing a fail-closed classification. */
+  weeklyGuidanceActionable: boolean;
+  reviewReason: string;
   /** @nullable */
   reviewNote: string | null;
   /** @nullable */
@@ -3977,6 +3998,14 @@ export type ImportFinancialAccountCsv200 = {
   imported: number;
   skippedDuplicates: number;
   readOnly: boolean;
+};
+
+export type ListTransactionReviewQueueParams = {
+/**
+ * When supplied, return every transaction excluded from that planning period's weekly guidance.
+ * @pattern ^[0-9a-fA-F-]{36}$
+ */
+periodId?: string;
 };
 
 export type ReceiveReadOnlyBankWebhook202 = {

@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { ReviewedFinancialTransactionWeeklyGuidanceExclusionReason } from './reviewedFinancialTransactionWeeklyGuidanceExclusionReason';
 
 export interface ReviewedFinancialTransaction {
   /** @pattern ^[0-9a-fA-F-]{36}$ */
@@ -31,6 +32,11 @@ export interface ReviewedFinancialTransaction {
   businessTag: string;
   excludedFromBudget: boolean;
   pending: boolean;
+  /** @nullable */
+  weeklyGuidanceExclusionReason: ReviewedFinancialTransactionWeeklyGuidanceExclusionReason;
+  /** True only when categorizing or approving the row can make it eligible for weekly guidance without removing a fail-closed classification. */
+  weeklyGuidanceActionable: boolean;
+  reviewReason: string;
   /** @nullable */
   reviewNote: string | null;
   /** @nullable */

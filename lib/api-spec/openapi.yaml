@@ -1243,6 +1243,12 @@ paths:
       operationId: listTransactionReviewQueue
       tags: [household-finance]
       summary: List imported transactions awaiting household review
+      parameters:
+        - name: periodId
+          in: query
+          required: false
+          description: When supplied, return every transaction excluded from that planning period's weekly guidance.
+          schema: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
       responses:
         "200":
           description: Household-scoped transaction review queue
@@ -4393,7 +4399,7 @@ components:
         note: { type: ["string", "null"], maxLength: 500 }
     ReviewedFinancialTransaction:
       type: object
-      required: [id, accountId, accountName, transactionDate, description, amount, dataSource, reviewStatus, businessTag, excludedFromBudget, pending, categoryId, categoryName, reviewNote, reviewedBy, reviewedAt]
+      required: [id, accountId, accountName, transactionDate, description, amount, dataSource, reviewStatus, businessTag, excludedFromBudget, pending, categoryId, categoryName, weeklyGuidanceExclusionReason, weeklyGuidanceActionable, reviewReason, reviewNote, reviewedBy, reviewedAt]
       properties:
         id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
         accountId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
@@ -4410,6 +4416,13 @@ components:
         businessTag: { type: string }
         excludedFromBudget: { type: boolean }
         pending: { type: boolean }
+        weeklyGuidanceExclusionReason:
+          type: ["string", "null"]
+          enum: [uncategorized, pending, excluded, unreviewed, nonHousehold, transfer, nonIncome, null]
+        weeklyGuidanceActionable:
+          type: boolean
+          description: True only when categorizing or approving the row can make it eligible for weekly guidance without removing a fail-closed classification.
+        reviewReason: { type: string }
         reviewNote: { type: ["string", "null"] }
         reviewedBy: { type: ["string", "null"] }
         reviewedAt: { type: ["string", "null"], format: date-time }

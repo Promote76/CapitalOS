@@ -71,13 +71,12 @@ export function calculateBudgetPerformance(
   daysInMonth: number,
 ): BudgetPerformance[] {
   return categories
-    .filter((category) => category.categoryType !== "income")
     .map((category) => {
       const budgeted = cents(category.monthlyTarget);
       const netSpend = transactions
         .filter((transaction) => transaction.categoryId === category.id && !transaction.excludedFromBudget)
         .reduce((sum, transaction) => sum + cents(transaction.amount), 0);
-      const actual = Math.max(0, -netSpend);
+      const actual = Math.max(0, category.categoryType === "income" ? netSpend : -netSpend);
       const variance = budgeted - actual;
       const percentageUsed = budgeted === 0 ? 0 : Number(((actual / budgeted) * 100).toFixed(1));
       const projectedCents = daysElapsed > 0 ? Math.round((actual / daysElapsed) * daysInMonth) : 0;

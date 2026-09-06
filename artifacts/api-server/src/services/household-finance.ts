@@ -416,6 +416,7 @@ export async function getBudget(actor?: Actor) {
     period.daysInMonth,
   );
   const totals = performance.reduce((result, category) => {
+    if (category.categoryType === "income") return result;
     result.budgeted += numeric(category.budgeted);
     result.actual += numeric(category.actual);
     return result;
@@ -431,7 +432,7 @@ export async function getBudget(actor?: Actor) {
     },
     notes: [
       `Current period: ${period.start} through ${calendarToday()}.`,
-      "Only approved user-entered or CSV-imported transactions affect budget totals; transfers and credit-card payments are excluded to avoid double counting.",
+      "Approved income appears by category; expense summary totals exclude income, transfers, and credit-card payments to avoid double counting.",
       "Imported rows remain reviewable until a household member approves them.",
     ],
   };

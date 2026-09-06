@@ -39,6 +39,20 @@ test("refunds reduce the original category spend", () => {
   assert.equal(food.actual, "75.00");
 });
 
+test("approved income appears as a positive Budget Performance actual", () => {
+  const [income] = calculateBudgetPerformance(
+    [{ id: "income", name: "Household income", categoryType: "income", essentialStatus: "essential", monthlyTarget: "5000.00", warningThreshold: "1.05" }],
+    [
+      { id: "pay", amount: "235.00", categoryId: "income", excludedFromBudget: false },
+      { id: "excluded", amount: "100.00", categoryId: "income", excludedFromBudget: true },
+    ],
+    6,
+    30,
+  );
+  assert.equal(income.actual, "235.00");
+  assert.equal(income.budgeted, "5000.00");
+});
+
 test("safe to deploy is never negative and reserve shortfall reduces it", () => {
   const result = calculateSafeToDeploy({
     liquidAvailableCash: 10_000 * 100,

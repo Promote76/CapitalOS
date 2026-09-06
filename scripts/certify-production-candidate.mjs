@@ -8,6 +8,72 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const failures = [];
 const checks = new Map();
 const currentRouteCount = discoverTenantRouteInventory(rootDir).length;
+const currentCertificationPath = path.join(rootDir, "docs/CAPITAL_OS_CURRENT_CERTIFICATION.md");
+
+function validateCurrentGateMatrix() {
+  const certification = fs.readFileSync(currentCertificationPath, "utf8");
+  const matrixStart = certification.indexOf("## Current gate matrix");
+  const countsStart = certification.indexOf("## Release status counts", matrixStart);
+  const nextSection = certification.indexOf("\n## ", countsStart + 1);
+  if (matrixStart < 0 || countsStart < 0 || nextSection < 0) {
+    throw new Error("Current certification gate matrix or release-count section is missing.");
+  }
+
+  const statuses = certification
+    .slice(matrixStart, countsStart)
+    .split("\n")
+    .filter((line) => line.startsWith("|") && !/^\|\s*-/.test(line))
+    .slice(1)
+    .map((line) => line.split("|")[5]?.replaceAll("*", "").trim())
+    .filter(Boolean);
+  const allowed = ["PASS", "PARTIAL", "BLOCKED", "FAIL"];
+  if (statuses.length === 0 || statuses.some((status) => !allowed.includes(status))) {
+    throw new Error(`Current certification matrix contains an invalid result: ${statuses.join(", ")}`);
+  }
+
+  const derived = Object.fromEntries(
+    allowed.map((status) => [status, statuses.filter((value) => value === status).length]),
+  );
+  const total = Object.values(derived).reduce((sum, count) => sum + count, 0);
+  if (total !== statuses.length) {
+    throw new Error(`Gate-count invariant failed: ${statuses.length} rows != ${total} classified rows.`);
+  }
+
+  const countSection = certification.slice(countsStart, nextSection);
+  const documentedTotal = Number(countSection.match(/There are \*\*(\d+) critical gates/)?.[1]);
+  const documented = Object.fromEntries(
+    allowed.map((status) => [
+      status,
+      Number(
+        countSection
+          .split("\n")
+          .find((line) => line.startsWith(`- **${status}:** `))
+          ?.slice(`- **${status}:** `.length),
+      ),
+    ]),
+  );
+  if (
+    documentedTotal !== statuses.length ||
+    allowed.some((status) => documented[status] !== derived[status])
+  ) {
+    throw new Error(
+      `Gate-count summary is stale: matrix=${JSON.stringify(derived)}; documented=${JSON.stringify(documented)}`,
+    );
+  }
+
+  console.log(
+    `Current gate matrix invariant passed: ${statuses.length} rows = ` +
+      allowed.map((status) => `${status} ${derived[status]}`).join(" + "),
+  );
+  return derived;
+}
+
+try {
+  validateCurrentGateMatrix();
+} catch (error) {
+  console.error(`CERTIFICATION FAILED: ${error instanceof Error ? error.message : String(error)}`);
+  process.exit(1);
+}
 
 function run(label, command, args, extraEnv = {}) {
   console.log(`\n=== ${label} ===`);

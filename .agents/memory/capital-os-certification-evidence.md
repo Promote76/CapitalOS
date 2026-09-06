@@ -87,3 +87,14 @@ looked sufficient.
 **How to apply:** Seed the intended finance taxonomy, complete and approve the
 current plan through normal service boundaries, assert the required deployable
 room exists, and only then exercise the capital approval.
+
+The canonical certification command must derive release counts from the current
+gate matrix and reject a stale or arithmetically inconsistent summary.
+
+**Why:** Manually preserved PASS/PARTIAL totals drifted from the matrix even
+though the individual gate results were already correct.
+
+**How to apply:** Parse only the canonical Current Result column, allow only
+PASS, PARTIAL, BLOCKED, and FAIL, require every row to classify exactly once,
+and compare the derived totals with the documented release summary before
+running the remaining candidate checks.

@@ -1,7 +1,7 @@
 # Capital OS current certification
 
 **Certification date:** 2026-09-06
-**Certification source HEAD:** `cb10e32673536da9b5c488fdfad1bc05b5771ab3`
+**Certification source HEAD:** `1650f776a21970028617ecc898a958ecd3ec40a8`
 **Previous certification:** **NOT READY** (`docs/PRODUCTION_CANDIDATE_CERTIFICATION_2026-09-02.md`)  
 **Current decision:** **READY FOR CONTROLLED INTERNAL USE ONLY — PUBLIC PRODUCTION NOT CERTIFIED**
 
@@ -108,13 +108,13 @@ introduced during this certification.
 | Execution-control focused fixture              | PASS against the dedicated isolated certification target; 3 passed, 0 failed, 0 skipped                                                                 | `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/integration/execution-control.test.ts`                                          |
 | Execution-control certification command        | PASS — EC-01 through EC-17 collected                                                                                                                    | `pnpm run certify:execution-control`; `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md`                                                                      |
 | Historical P0 evidence                         | PASS for the documented internal scope                                                                                                                  | `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`                                                                                                                       |
-| Current production-candidate command           | FAIL-CLOSED                                                                                                                                             | P0 mapping is green, but published-origin and broader production-candidate evidence remain unavailable; execution-control was certified separately against a dedicated target |
+| Current production-candidate command           | PASS for the restricted in-house candidate                                                                                                              | The 17-row gate-count invariant passed at 13 PASS / 0 PARTIAL / 4 BLOCKED / 0 FAIL, and all seven retained P0 mappings are green; public production remains blocked by the four current gates below |
 | Internal reliability command                   | FAIL-CLOSED                                                                                                                                             | Implementation checks pass; RV-01 and RV-02 have production evidence, while the broader authenticated-browser and reverification matrices remain open                           |
 | Micro-Live command                             | BLOCKED                                                                                                                                                 | Internal safety core passes; provider, restart, credential, automation, and browser gates remain blocked                                                                      |
 | Durable operations recovery certification      | PASS — 29 tests passed, 0 failed, 0 skipped; OR-01 through OR-24 all passed against a fresh disposable PostgreSQL target                                | `docs/certification/OPERATIONS_RECOVERY_CERTIFICATION_2026-09-04.md`; `pnpm run certify:operations-recovery`                                                                  |
 | Observability certification                    | PASS — 26 assertions passed, 0 failed, 0 skipped; OB-01 through OB-25 all passed against a fresh disposable PostgreSQL target with a real Slack receipt | `docs/certification/OBSERVABILITY_CERTIFICATION_2026-09-04.md`; `pnpm run certify:observability`                                                                              |
 | Financial-integrity certification              | PASS — TI 15/15, TR 12/12, AC 14/14, SD 20/20 on a fresh disposable PostgreSQL target | `docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md`; `pnpm run certify:financial-integrity`                                                                  |
-| Clerk reverification certification             | PARTIAL — RV 2/12; successful retry and cancelled/no-side-effect paths passed in production                                                           | `docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md`; `docs/certification/CLERK_REVERIFICATION_PRODUCTION_EVIDENCE_2026-09-05.json`; `pnpm run certify:browser-auth` |
+| Clerk reverification certification             | BLOCKED — RV 2/12; successful retry and cancelled/no-side-effect paths passed in production, but the current gate requires RV 12/12                  | `docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md`; `docs/certification/CLERK_REVERIFICATION_PRODUCTION_EVIDENCE_2026-09-05.json`; `pnpm run certify:browser-auth` |
 
 ## Current gate matrix
 
@@ -142,8 +142,8 @@ introduced during this certification.
 
 There are **17 critical gates** in the matrix:
 
-- **PASS:** 11
-- **PARTIAL:** 2
+- **PASS:** 13
+- **PARTIAL:** 0
 - **BLOCKED:** 4
 - **FAIL:** 0
 
@@ -199,3 +199,10 @@ remains outside the current internal scope.
 Capital OS is approved only for controlled internal evaluation within the
 non-executing family-capital scope. The unresolved blockers are listed in the
 gate matrix above.
+
+The exact four current critical blockers are:
+
+1. Authenticated Browser E2E
+2. Clerk Reverification
+3. Micro-Live Foundation
+4. Schwab Read-Only

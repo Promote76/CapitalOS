@@ -8,8 +8,9 @@
 **Public Production Candidate status:** **NOT CERTIFIED**
 
 > **Historical report reconciled on 2026-09-06:** This report records earlier
-> evidence and is superseded for current-surface assertions by
-> `docs/certification/CURRENT_SURFACE_CERTIFICATION_2026-09-06.md`. The current
+> evidence. The authoritative current certification is
+> `docs/CAPITAL_OS_CURRENT_CERTIFICATION.md`; supporting current-surface route
+> evidence is in `docs/certification/CURRENT_SURFACE_CERTIFICATION_2026-09-06.md`. The current
 > source-derived inventory is 163 route/method pairs (not 149); all 163 passed the
 > current disposable tenant replay. P0-01, P0-06, and P0-08 are PASS. Contribution
 > browser evidence and post-contribution Safe-to-Deploy browser comparison remain

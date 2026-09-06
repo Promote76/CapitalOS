@@ -1244,6 +1244,10 @@ export default function OperationsPage({
   const schedulersQuery = useListOperationsSchedulers();
   const createTask = useCreateOperationsTask();
   const updateTask = useUpdateOperationsTask();
+  const updateTaskWithReverification = useProviderProtectedAction(
+    (input: Parameters<typeof updateTask.mutateAsync>[0]) =>
+      updateTask.mutateAsync(input),
+  );
   const decideApproval = useDecideOperationsApproval();
   const decideApprovalWithReverification = useProviderProtectedAction(
     (input: Parameters<typeof decideApproval.mutateAsync>[0]) =>
@@ -1340,7 +1344,7 @@ export default function OperationsPage({
   const updateTaskStatus = async (id: string, status: TaskStatus) => {
     setMutationId(id);
     try {
-      await updateTask.mutateAsync({ taskId: id, data: { status } });
+      await updateTaskWithReverification({ taskId: id, data: { status } });
       await invalidateOperations(
         getListOperationsTasksQueryKey(),
         getGetOperationsOverviewQueryKey(),

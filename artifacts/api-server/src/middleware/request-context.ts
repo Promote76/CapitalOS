@@ -27,6 +27,7 @@ function requiresRecentAuthentication(req: Request) {
     path === "/transfers" ||
     path === "/risk/emergency-stop" ||
     path.startsWith("/recommendations/") ||
+    path.startsWith("/operations/tasks/") ||
     path.startsWith("/operations/approvals/") ||
     path.includes("/treasury/requests/") ||
     path.startsWith("/business/distributions") ||

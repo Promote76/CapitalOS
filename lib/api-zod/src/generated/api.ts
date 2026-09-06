@@ -4306,7 +4306,8 @@ export const GetOperationsOverviewResponse = zod.object({
   "relatedEntityId": zod.string().nullish(),
   "requiresApproval": zod.boolean(),
   "createdAt": zod.coerce.date(),
-  "completedAt": zod.coerce.date().nullable()
+  "completedAt": zod.coerce.date().nullable(),
+  "completedBy": zod.string().nullable()
 })),
   "approvals": zod.array(zod.object({
   "id": zod.string(),
@@ -4579,7 +4580,8 @@ export const ListOperationsTasksResponseItem = zod.object({
   "relatedEntityId": zod.string().nullish(),
   "requiresApproval": zod.boolean(),
   "createdAt": zod.coerce.date(),
-  "completedAt": zod.coerce.date().nullable()
+  "completedAt": zod.coerce.date().nullable(),
+  "completedBy": zod.string().nullable()
 })
 export const ListOperationsTasksResponse = zod.array(ListOperationsTasksResponseItem)
 
@@ -4619,7 +4621,8 @@ export const CreateOperationsTaskResponse = zod.object({
   "relatedEntityId": zod.string().nullish(),
   "requiresApproval": zod.boolean(),
   "createdAt": zod.coerce.date(),
-  "completedAt": zod.coerce.date().nullable()
+  "completedAt": zod.coerce.date().nullable(),
+  "completedBy": zod.string().nullable()
 })
 
 
@@ -4649,7 +4652,8 @@ export const UpdateOperationsTaskResponse = zod.object({
   "relatedEntityId": zod.string().nullish(),
   "requiresApproval": zod.boolean(),
   "createdAt": zod.coerce.date(),
-  "completedAt": zod.coerce.date().nullable()
+  "completedAt": zod.coerce.date().nullable(),
+  "completedBy": zod.string().nullable()
 })
 
 

@@ -41,6 +41,7 @@ function taskResponse(task: typeof operationsTasks.$inferSelect) {
     requiresApproval: task.requiresApproval,
     createdAt: task.createdAt,
     completedAt: task.completedAt,
+    completedBy: task.completedBy,
   };
 }
 
@@ -822,17 +823,64 @@ export async function createOperationsTask(actor: Actor, input: {
 export async function updateOperationsTask(actor: Actor, taskId: string, input: { status?: string; assignedTo?: string }) {
   assertPermission(actor.role, "contribute");
   const ids = await ensureTenantCore(actor.householdId, actor.userId);
-  const [existing] = await db.select().from(operationsTasks).where(and(eq(operationsTasks.id, taskId), eq(operationsTasks.householdId, ids.householdId))).limit(1);
-  if (!existing) throw new GovernanceError("INVALID_STATE", "Operations task was not found");
-  const [task] = await db.update(operationsTasks).set({
-    status: input.status ?? existing.status,
-    assignedTo: input.assignedTo ?? existing.assignedTo,
-    completedAt: input.status === "COMPLETED" ? new Date() : existing.completedAt,
-  }).where(and(
-    eq(operationsTasks.id, taskId),
-    eq(operationsTasks.householdId, ids.householdId),
-  )).returning();
-  return taskResponse(task);
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`operations-task:${taskId}`}, 0))`);
+    const [existing] = await tx.select().from(operationsTasks).where(and(
+      eq(operationsTasks.id, taskId),
+      eq(operationsTasks.householdId, ids.householdId),
+    )).limit(1);
+    if (!existing) throw new GovernanceError("INVALID_STATE", "Operations task was not found");
+
+    const nextStatus = input.status ?? existing.status;
+    const completing = input.status === "COMPLETED" && existing.status !== "COMPLETED";
+    const leavingCompleted = input.status !== undefined && input.status !== "COMPLETED";
+    const completedAt = completing
+      ? new Date()
+      : leavingCompleted
+        ? null
+        : existing.completedAt;
+    const completedBy = completing
+      ? actor.userId
+      : leavingCompleted
+        ? null
+        : existing.completedBy;
+    const [task] = await tx.update(operationsTasks).set({
+      status: nextStatus,
+      assignedTo: input.assignedTo ?? existing.assignedTo,
+      completedAt,
+      completedBy,
+    }).where(and(
+      eq(operationsTasks.id, taskId),
+      eq(operationsTasks.householdId, ids.householdId),
+    )).returning();
+
+    await tx.insert(auditEvents).values({
+      householdId: ids.householdId,
+      eventType: "operations_task_updated",
+      actor: actor.userId,
+      entity: "operations_task",
+      entityId: task.id,
+      beforeState: {
+        status: existing.status,
+        assignedTo: existing.assignedTo,
+        completedAt: existing.completedAt?.toISOString() ?? null,
+        completedBy: existing.completedBy,
+      },
+      afterState: {
+        status: task.status,
+        assignedTo: task.assignedTo,
+        completedAt: task.completedAt?.toISOString() ?? null,
+        completedBy: task.completedBy,
+      },
+      reason: completing
+        ? "Authenticated household actor completed the Operations task."
+        : "Authenticated household actor updated the Operations task.",
+      metadata: {
+        requiresRecentAuthentication: true,
+      },
+    });
+    return taskResponse(task);
+  });
 }
 
 export async function listOperationsApprovals(actor: Actor) {

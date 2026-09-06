@@ -3117,6 +3117,8 @@ export interface OperationsTask {
   createdAt: string;
   /** @nullable */
   completedAt: string | null;
+  /** @nullable */
+  completedBy: string | null;
 }
 
 export type OperationsTaskInputPriority = typeof OperationsTaskInputPriority[keyof typeof OperationsTaskInputPriority];

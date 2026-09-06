@@ -31,6 +31,7 @@ export const operationsTasks = pgTable(
     requiresApproval: boolean("requires_approval").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
+    completedBy: uuid("completed_by").references(() => users.id, { onDelete: "set null" }),
   },
   (table) => ({
     householdStatusIdx: index("operations_tasks_household_status_idx").on(table.householdId, table.status),

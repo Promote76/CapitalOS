@@ -918,6 +918,76 @@ test("operations approval decisions serialize and preserve exactly one winning a
     assert.equal(auditRows[0]?.actor, winner.actor);
     assert.equal(auditRows[0]?.reason, winner.reason);
     assert.equal((auditRows[0]?.metadata as { decision?: string } | null)?.decision, winner.decision);
+
+    const [task] = await database.db.insert(database.operationsTasks).values({
+      householdId: fixture.householdA,
+      title: "Certify actor-attributed task completion",
+      description: "Disposable fixture for completion evidence.",
+      domain: "OPERATIONS",
+      priority: "HIGH",
+      dueDate: "2026-09-06",
+      createdBy: fixture.userA,
+      source: "CERTIFICATION",
+    }).returning({ id: database.operationsTasks.id });
+    assert.ok(task?.id);
+
+    const missingStepUp = await fetch(`${baseUrl}/operations/tasks/${task.id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Test-User-Id": fixture.userA,
+        "X-Test-Household-Id": fixture.householdA,
+      },
+      body: JSON.stringify({ status: "COMPLETED" }),
+    });
+    assert.equal(missingStepUp.status, 403);
+
+    const completed = await fetch(`${baseUrl}/operations/tasks/${task.id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Test-User-Id": fixture.userA,
+        "X-Test-Household-Id": fixture.householdA,
+        "X-Test-Step-Up": "verified",
+      },
+      body: JSON.stringify({ status: "COMPLETED" }),
+    });
+    assert.equal(completed.status, 200);
+    const completedBody = await completed.json() as {
+      status: string;
+      completedAt: string | null;
+      completedBy: string | null;
+    };
+    assert.equal(completedBody.status, "COMPLETED");
+    assert.ok(completedBody.completedAt);
+    assert.equal(completedBody.completedBy, fixture.userA);
+
+    const [persistedTask] = await database.db.select({
+      status: database.operationsTasks.status,
+      completedAt: database.operationsTasks.completedAt,
+      completedBy: database.operationsTasks.completedBy,
+    }).from(database.operationsTasks).where(eq(database.operationsTasks.id, task.id)).limit(1);
+    assert.equal(persistedTask?.status, "COMPLETED");
+    assert.ok(persistedTask?.completedAt);
+    assert.equal(persistedTask?.completedBy, fixture.userA);
+
+    const taskAuditRows = await database.db.select({
+      actor: database.auditEvents.actor,
+      beforeState: database.auditEvents.beforeState,
+      afterState: database.auditEvents.afterState,
+      metadata: database.auditEvents.metadata,
+    }).from(database.auditEvents).where(and(
+      eq(database.auditEvents.householdId, fixture.householdA),
+      eq(database.auditEvents.eventType, "operations_task_updated"),
+      eq(database.auditEvents.entity, "operations_task"),
+      eq(database.auditEvents.entityId, task.id),
+    ));
+    assert.equal(taskAuditRows.length, 1);
+    assert.equal(taskAuditRows[0]?.actor, fixture.userA);
+    assert.equal((taskAuditRows[0]?.beforeState as { status?: string } | null)?.status, "OPEN");
+    assert.equal((taskAuditRows[0]?.afterState as { status?: string; completedBy?: string } | null)?.status, "COMPLETED");
+    assert.equal((taskAuditRows[0]?.afterState as { completedBy?: string } | null)?.completedBy, fixture.userA);
+    assert.equal((taskAuditRows[0]?.metadata as { requiresRecentAuthentication?: boolean } | null)?.requiresRecentAuthentication, true);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     // The certification database is disposable and reset between certification runs.

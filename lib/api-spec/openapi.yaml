@@ -5010,7 +5010,7 @@ components:
         capitalGovernor: { type: object, additionalProperties: true }
     OperationsTask:
       type: object
-      required: [id, title, description, domain, priority, status, dueDate, assignedTo, source, requiresApproval, createdAt, completedAt]
+      required: [id, title, description, domain, priority, status, dueDate, assignedTo, source, requiresApproval, createdAt, completedAt, completedBy]
       properties:
         id: { type: string }
         title: { type: string }
@@ -5026,6 +5026,7 @@ components:
         requiresApproval: { type: boolean }
         createdAt: { type: string, format: date-time }
         completedAt: { type: ["string", "null"], format: date-time }
+        completedBy: { type: ["string", "null"] }
     OperationsTaskInput:
       type: object
       required: [title, description, domain, priority, dueDate]

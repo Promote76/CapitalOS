@@ -27,4 +27,6 @@ export interface OperationsTask {
   createdAt: Date;
   /** @nullable */
   completedAt: Date | null;
+  /** @nullable */
+  completedBy: string | null;
 }

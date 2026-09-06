@@ -20,6 +20,12 @@ export type ProviderAccountSnapshot = {
 export type ProviderTransactionSnapshot = {
   providerTransactionId: string;
   providerAccountId: string;
+  /**
+   * Stable provider identity shared by both sides of an account-to-account
+   * transfer. A flagged transfer without this identity is treated as an
+   * incomplete one-row group and remains excluded pending review.
+   */
+  transferGroupId?: string;
   transactionDate: string;
   description: string;
   amount: string;

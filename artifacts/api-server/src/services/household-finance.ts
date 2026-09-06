@@ -1659,6 +1659,34 @@ async function completeBankSyncRun(
   });
 }
 
+function providerTransferGroupId(
+  connectionId: string,
+  transaction: ProviderTransactionSnapshot,
+) {
+  if (transaction.reviewHint !== "possible_transfer" && !transaction.transferGroupId) return null;
+  const providerGroupId = transaction.transferGroupId?.trim() || `unpaired:${transaction.providerTransactionId}`;
+  return `provider-transfer:${connectionId}:${providerGroupId}`;
+}
+
+function transferReconciliation(count: number) {
+  if (count === 2) {
+    return {
+      status: "matched" as const,
+      reason: "Provider transfer group has exactly two counterpart rows",
+    };
+  }
+  if (count < 2) {
+    return {
+      status: "incomplete" as const,
+      reason: "Provider transfer group is missing its counterpart row",
+    };
+  }
+  return {
+    status: "ambiguous" as const,
+    reason: `Provider transfer group has ${count} rows; expected exactly two counterparts`,
+  };
+}
+
 export async function syncReadOnlyBankConnection(actor: Actor, connectionId: string) {
   assertPermission(actor.role, "contribute");
   const id = await householdId(actor);
@@ -1780,7 +1808,18 @@ export async function syncReadOnlyBankConnection(actor: Actor, connectionId: str
     });
     return { ...baseResult, status: "review" as const, applied: false, reconciliationDifference: differenceText, errorMessage };
   }
-  const result = { ...baseResult, status: "matched" as const, applied: true, providerAsOf };
+  const result: typeof baseResult & {
+    status: "matched" | "review";
+    applied: true;
+    providerAsOf: Date;
+    transferReconciliationIssues: number;
+  } = {
+    ...baseResult,
+    status: "matched",
+    applied: true,
+    providerAsOf,
+    transferReconciliationIssues: 0,
+  };
   try {
     await db.transaction(async (tx) => {
       const now = new Date();
@@ -1802,9 +1841,7 @@ export async function syncReadOnlyBankConnection(actor: Actor, connectionId: str
         decimalCents(transaction.amount);
         const amount = normalizeImportedAmount(transaction.amount, provider.transactionAmountConvention);
         const reviewStatus = providerReviewStatus(transaction);
-        const transferGroupId = transaction.reviewHint === "possible_transfer"
-          ? `provider-transfer:${connection.id}:${transaction.providerTransactionId}`
-          : null;
+        const transferGroupId = providerTransferGroupId(connection.id, transaction);
         const pending = transaction.pending ?? false;
         const existing = await tx.select().from(financeTransactions).where(and(
           eq(financeTransactions.householdId, id),
@@ -1821,6 +1858,13 @@ export async function syncReadOnlyBankConnection(actor: Actor, connectionId: str
             bankSync?: { canonicalSignContract?: string };
           } | null;
           const signContractApplied = existingMetadata?.bankSync?.canonicalSignContract === "positive_inflow_v1";
+          const stableProviderTransferGroupSupplied = Boolean(transaction.transferGroupId?.trim());
+          const existingProviderTransferGroup = existing[0].transferGroupId?.startsWith(
+            `provider-transfer:${connection.id}:`,
+          ) ?? false;
+          const nextTransferGroupId = stableProviderTransferGroupSupplied && existingProviderTransferGroup
+            ? transferGroupId
+            : existing[0].transferGroupId ?? transferGroupId;
           await tx.update(financeTransactions).set({
             transactionDate: transaction.transactionDate,
             description: transaction.description,
@@ -1828,8 +1872,8 @@ export async function syncReadOnlyBankConnection(actor: Actor, connectionId: str
             ...(signContractApplied ? { originalAmount: transaction.amount, amount } : {}),
             pending,
             ...(existing[0].reviewStatus === "approved" ? {} : { reviewStatus }),
-            transferGroupId: existing[0].transferGroupId ?? transferGroupId,
-            excludedFromBudget: existing[0].excludedFromBudget || Boolean(existing[0].transferGroupId ?? transferGroupId),
+            transferGroupId: nextTransferGroupId,
+            excludedFromBudget: existing[0].excludedFromBudget || Boolean(nextTransferGroupId),
             metadata: {
               ...existing[0].metadata,
               bankSync: {
@@ -1881,16 +1925,61 @@ export async function syncReadOnlyBankConnection(actor: Actor, connectionId: str
         )).returning({ id: financeTransactions.id });
         result.removed += removed.length;
       }
+      const providerAccountIds = localAccounts.map((account) => account.id);
+      const transferRows = providerAccountIds.length
+        ? await tx.select().from(financeTransactions).where(and(
+            eq(financeTransactions.householdId, id),
+            eq(financeTransactions.dataSource, "plaid"),
+            inArray(financeTransactions.accountId, providerAccountIds),
+            sql`${financeTransactions.transferGroupId} like ${`provider-transfer:${connection.id}:%`}`,
+          ))
+        : [];
+      const rowsByTransferGroup = new Map<string, typeof transferRows>();
+      for (const row of transferRows) {
+        if (!row.transferGroupId) continue;
+        const grouped = rowsByTransferGroup.get(row.transferGroupId) ?? [];
+        grouped.push(row);
+        rowsByTransferGroup.set(row.transferGroupId, grouped);
+      }
+      for (const [transferGroupId, rows] of rowsByTransferGroup) {
+        const reconciliation = transferReconciliation(rows.length);
+        if (reconciliation.status !== "matched") result.transferReconciliationIssues += 1;
+        for (const row of rows) {
+          const metadata = row.metadata as { bankSync?: Record<string, unknown> } | null;
+          await tx.update(financeTransactions).set({
+            excludedFromBudget: true,
+            ...(reconciliation.status === "matched" || row.reviewStatus === "possible_transfer"
+              ? {}
+              : { reviewStatus: "possible_transfer" as const }),
+            metadata: {
+              ...metadata,
+              bankSync: {
+                ...metadata?.bankSync,
+                transferReconciliationStatus: reconciliation.status,
+                transferReconciliationReason: reconciliation.reason,
+                transferGroupId,
+                transferGroupRowCount: rows.length,
+                transferReconciledAt: now.toISOString(),
+              },
+            },
+            updatedAt: now,
+          }).where(and(eq(financeTransactions.id, row.id), eq(financeTransactions.householdId, id)));
+        }
+      }
+      if (result.transferReconciliationIssues > 0) result.status = "review";
+      const transferErrorMessage = result.transferReconciliationIssues > 0
+        ? `${result.transferReconciliationIssues} provider transfer group(s) are missing or have duplicate counterparts; affected rows remain excluded from spending and require review`
+        : null;
       await tx.update(bankConnections).set({
-        status: "connected",
+        status: result.status === "review" ? "delayed" : "connected",
         lastSuccessfulSync: now,
         lastBalanceRefresh: now,
         lastTransactionSync: now,
         providerAsOf,
         syncCursor: snapshot.cursor ?? connection.syncCursor ?? null,
-        reconciliationStatus: "matched",
+        reconciliationStatus: result.status,
         reconciliationDifference: "0.00",
-        errorMessage: null,
+        errorMessage: transferErrorMessage,
         updatedAt: now,
       }).where(and(eq(bankConnections.id, connection.id), eq(bankConnections.householdId, id)));
       await tx.insert(auditEvents).values({
@@ -1899,8 +1988,8 @@ export async function syncReadOnlyBankConnection(actor: Actor, connectionId: str
         actor: actor.userId,
         entity: "bank_connection",
         entityId: connection.id,
-        afterState: { readOnly: true, inserted: result.inserted, updated: result.updated, duplicates: result.duplicates, reviewCount: result.reviewCount, removed: result.removed, reconciliationStatus: "matched" },
-        reason: "Read-only provider snapshot passed freshness, account matching, and balance reconciliation gates",
+        afterState: { readOnly: true, inserted: result.inserted, updated: result.updated, duplicates: result.duplicates, reviewCount: result.reviewCount, removed: result.removed, reconciliationStatus: result.status, transferReconciliationIssues: result.transferReconciliationIssues },
+        reason: transferErrorMessage ?? "Read-only provider snapshot passed freshness, account matching, balance, and transfer-pair reconciliation gates",
         metadata: { source: "household-bank-sync", provider: connection.provider },
       });
     });
@@ -1917,9 +2006,13 @@ export async function syncReadOnlyBankConnection(actor: Actor, connectionId: str
     return { ...baseResult, status: "outage" as const, applied: false, providerAsOf, errorMessage: details.message };
   }
   await completeBankSyncRun(runId, {
-    status: "matched",
-    connectionStatus: "connected",
-    reconciliationStatus: "matched",
+    status: result.status,
+    connectionStatus: result.status === "review" ? "delayed" : "connected",
+    reconciliationStatus: result.status,
+    errorCode: result.status === "review" ? "TRANSFER_PAIR_REVIEW_REQUIRED" : null,
+    errorMessage: result.status === "review"
+      ? `${result.transferReconciliationIssues} provider transfer group(s) are missing or have duplicate counterparts; affected rows remain excluded from spending and require review`
+      : null,
     providerAsOf,
     syncCursor: snapshot.cursor ?? connection.syncCursor ?? null,
     counts: {

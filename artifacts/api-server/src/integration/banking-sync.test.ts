@@ -63,7 +63,7 @@ test("read-only bank sync certifies cursor replay, reauthorization, tenant isola
     role: "owner",
     source: "test-database",
   };
-  let mode: "initial" | "interrupted" | "replay" | "unauthenticated" | "reauthorized" | "outage" | "rate_limited" | "stale" | "tenant" = "initial";
+  let mode: "initial" | "interrupted" | "replay" | "transfer_counterpart" | "transfer_duplicate" | "unauthenticated" | "reauthorized" | "outage" | "rate_limited" | "stale" | "tenant" = "initial";
   const calls: Array<{ credentialRef: string; cursor?: string }> = [];
   const reauthorizations: Array<{ credentialRef: string; replacementCredentialRef: string }> = [];
   const provider = {
@@ -94,16 +94,40 @@ test("read-only bank sync certifies cursor replay, reauthorization, tenant isola
             : input.cursor === "fixture-cursor-3"
               ? "fixture-cursor-3"
               : "fixture-cursor-2";
+      const transferSide = {
+        providerTransactionId: "fixture-transaction-1",
+        providerAccountId: "fixture-account-1",
+        transferGroupId: mode === "initial" || mode === "stale" || mode === "tenant"
+          ? undefined
+          : "fixture-transfer-1",
+        transactionDate: "2026-09-03",
+        description: mode === "tenant" ? "Other household transfer" : "Ambiguous transfer",
+        amount: "-25.00",
+        pending: false,
+        reviewHint: "possible_transfer" as const,
+      };
+      const transferCounterpart = {
+        providerTransactionId: "fixture-transfer-counterpart",
+        providerAccountId: "fixture-account-1",
+        transferGroupId: "fixture-transfer-1",
+        transactionDate: "2026-09-03",
+        description: "Transfer counterpart",
+        amount: "25.00",
+        pending: false,
+        reviewHint: "possible_transfer" as const,
+      };
       const transactions = mode === "initial" || mode === "stale" || mode === "tenant"
         ? [{
-            providerTransactionId: "fixture-transaction-1",
-            providerAccountId: "fixture-account-1",
-            transactionDate: "2026-09-03",
-            description: mode === "tenant" ? "Other household transfer" : "Ambiguous transfer",
-            amount: "-25.00",
-            pending: false,
-            reviewHint: "possible_transfer" as const,
+            ...transferSide,
           }]
+        : mode === "transfer_counterpart"
+          ? [transferSide, transferCounterpart]
+          : mode === "transfer_duplicate"
+            ? [transferSide, transferCounterpart, {
+                ...transferCounterpart,
+                providerTransactionId: "fixture-transfer-duplicate",
+                description: "Duplicate transfer counterpart",
+              }]
         : mode === "reauthorized"
           ? [{
               providerTransactionId: "fixture-transaction-3",
@@ -166,8 +190,10 @@ test("read-only bank sync certifies cursor replay, reauthorization, tenant isola
     await service.linkReadOnlyBankAccount(actor, connection.id, account.id, "fixture-account-1");
 
     const synced = await service.syncReadOnlyBankConnection(actor, connection.id);
-    assert.equal(synced.status, "matched");
+    assert.equal(synced.status, "review");
     assert.equal(synced.applied, true);
+    if (!("transferReconciliationIssues" in synced)) assert.fail("Applied sync must report transfer reconciliation");
+    assert.equal(synced.transferReconciliationIssues, 1);
     assert.equal(synced.reviewCount, 1);
     assert.equal(calls[0].cursor, undefined);
     const queue = await service.getTransactionReviewQueue(actor);
@@ -181,13 +207,58 @@ test("read-only bank sync certifies cursor replay, reauthorization, tenant isola
       eq(financeTransactions.externalId, "fixture-transaction-1"),
     ));
     assert.ok(persistedPossibleTransfer.transferGroupId);
+    const [incompleteTransfer] = await db.select().from(financeTransactions).where(and(
+      eq(financeTransactions.householdId, household.id),
+      eq(financeTransactions.externalId, "fixture-transaction-1"),
+    ));
+    assert.equal(incompleteTransfer.excludedFromBudget, true);
+    assert.equal((incompleteTransfer.metadata.bankSync as Record<string, unknown>).transferReconciliationStatus, "incomplete");
+    assert.equal(
+      (incompleteTransfer.metadata.bankSync as Record<string, unknown>).transferReconciliationReason,
+      "Provider transfer group is missing its counterpart row",
+    );
+
+    mode = "transfer_counterpart";
+    const counterpartDelivered = await service.syncReadOnlyBankConnection(actor, connection.id);
+    assert.equal(counterpartDelivered.status, "matched");
+    assert.equal(counterpartDelivered.transferReconciliationIssues, 0);
+    const reconciledTransferGroupId = `provider-transfer:${connection.id}:fixture-transfer-1`;
+    const pairedRows = await db.select().from(financeTransactions).where(and(
+      eq(financeTransactions.householdId, household.id),
+      eq(financeTransactions.transferGroupId, reconciledTransferGroupId),
+    ));
+    assert.equal(pairedRows.length, 2);
+    assert.notEqual(reconciledTransferGroupId, persistedPossibleTransfer.transferGroupId);
+    assert.equal(pairedRows.every((row) => row.excludedFromBudget), true);
+    assert.equal(pairedRows.every((row) =>
+      (row.metadata.bankSync as Record<string, unknown>).transferReconciliationStatus === "matched"
+    ), true);
+
+    mode = "transfer_duplicate";
+    const duplicateCounterpart = await service.syncReadOnlyBankConnection(actor, connection.id);
+    assert.equal(duplicateCounterpart.status, "review");
+    if (!("transferReconciliationIssues" in duplicateCounterpart)) assert.fail("Applied sync must report transfer reconciliation");
+    assert.equal(duplicateCounterpart.transferReconciliationIssues, 1);
+    const ambiguousRows = await db.select().from(financeTransactions).where(and(
+      eq(financeTransactions.householdId, household.id),
+      eq(financeTransactions.transferGroupId, reconciledTransferGroupId),
+    ));
+    assert.equal(ambiguousRows.length, 3);
+    assert.equal(ambiguousRows.every((row) => row.excludedFromBudget && row.reviewStatus === "possible_transfer"), true);
+    assert.equal(ambiguousRows.every((row) =>
+      (row.metadata.bankSync as Record<string, unknown>).transferReconciliationStatus === "ambiguous"
+    ), true);
+    await db.delete(financeTransactions).where(and(
+      eq(financeTransactions.householdId, household.id),
+      eq(financeTransactions.externalId, "fixture-transfer-duplicate"),
+    ));
     mode = "interrupted";
     const interrupted = await service.syncReadOnlyBankConnection(actor, connection.id);
     assert.equal(interrupted.status, "outage");
     assert.equal(interrupted.applied, false);
-    assert.equal(calls.at(-1)?.cursor, "fixture-cursor-1");
+    assert.equal(calls.at(-1)?.cursor, "fixture-cursor-2");
     const [afterInterruption] = await db.select().from(bankConnections).where(eq(bankConnections.id, connection.id));
-    assert.equal(afterInterruption.syncCursor, "fixture-cursor-1");
+    assert.equal(afterInterruption.syncCursor, "fixture-cursor-2");
     const interruptedRows = await db.select().from(financeTransactions).where(and(
       eq(financeTransactions.householdId, household.id),
       eq(financeTransactions.externalId, "fixture-transaction-2"),
@@ -199,7 +270,7 @@ test("read-only bank sync certifies cursor replay, reauthorization, tenant isola
     assert.equal(replayed.status, "matched");
     assert.equal(replayed.inserted, 1);
     assert.equal(replayed.updated, 1);
-    assert.equal(calls.at(-1)?.cursor, "fixture-cursor-1");
+    assert.equal(calls.at(-1)?.cursor, "fixture-cursor-2");
     const [afterReplay] = await db.select().from(bankConnections).where(eq(bankConnections.id, connection.id));
     assert.equal(afterReplay.syncCursor, "fixture-cursor-2");
 
@@ -248,7 +319,8 @@ test("read-only bank sync certifies cursor replay, reauthorization, tenant isola
     await service.linkReadOnlyBankAccount(otherActor, otherConnection.id, otherAccount.id, "fixture-account-1");
     mode = "tenant";
     const otherSynced = await service.syncReadOnlyBankConnection(otherActor, otherConnection.id);
-    assert.equal(otherSynced.status, "matched");
+    assert.equal(otherSynced.status, "review");
+    assert.equal(otherSynced.applied, true);
     assert.notEqual(calls.at(-1)?.credentialRef, calls[0].credentialRef);
     const sharedProviderIdRows = await db.select({
       householdId: financeTransactions.householdId,
@@ -318,7 +390,7 @@ test("read-only bank sync certifies cursor replay, reauthorization, tenant isola
     assert.equal(stale.applied, false);
 
     const exported = await service.exportReadOnlyBankConnection(actor, connection.id);
-    assert.equal(exported.transactions.length, 3);
+    assert.equal(exported.transactions.length, 4);
     assert.equal(JSON.stringify(exported).includes("bank-vault:"), false);
 
     const revoked = await service.revokeReadOnlyBankConnection(actor, connection.id);

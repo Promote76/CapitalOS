@@ -55,4 +55,4 @@ CAPITAL_OS_RELIABILITY_OWNER = "internal-reliability"
 CAPITAL_OS_TRUSTED_PROXY = "loopback,linklocal,uniquelocal"
 
 [userenv.development]
-CAPITAL_OS_ALLOWED_ORIGIN = "https://a275880a-7e86-4ab1-a13b-802e51c9d9ab-00-10p8dc0vsi6ft-007rz75b.spock.replit.dev"
+CAPITAL_OS_ALLOWED_ORIGIN = "https://a275880a-7e86-4ab1-a13b-802e51c9d9ab-00-10p8dc0vsi6ft.spock.replit.dev"

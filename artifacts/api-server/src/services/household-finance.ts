@@ -42,6 +42,24 @@ import type { Actor } from "./capital-os";
 import { assertPermission, GovernanceError } from "../domain/governance";
 import { activeSecurityContext } from "../middleware/request-scope";
 
+const DEFAULT_FINANCE_CATEGORY_CATALOG = [
+  { name: "Household income", categoryType: "income", essentialStatus: "essential" },
+  { name: "Housing", categoryType: "fixed_expense", essentialStatus: "essential" },
+  { name: "Food", categoryType: "variable_essential", essentialStatus: "essential" },
+  { name: "Transportation", categoryType: "variable_essential", essentialStatus: "essential" },
+  { name: "Utilities", categoryType: "fixed_expense", essentialStatus: "essential" },
+  { name: "Insurance", categoryType: "fixed_expense", essentialStatus: "essential" },
+  { name: "Healthcare", categoryType: "variable_essential", essentialStatus: "essential" },
+  { name: "Childcare", categoryType: "variable_essential", essentialStatus: "essential" },
+  { name: "Debt payment", categoryType: "debt_payment", essentialStatus: "essential" },
+  { name: "Personal", categoryType: "variable_discretionary", essentialStatus: "discretionary" },
+  { name: "Entertainment", categoryType: "variable_discretionary", essentialStatus: "discretionary" },
+  { name: "Savings", categoryType: "savings", essentialStatus: "mixed" },
+  { name: "Investments", categoryType: "investment", essentialStatus: "mixed" },
+  { name: "Transfer", categoryType: "transfer", essentialStatus: "mixed" },
+  { name: "Other", categoryType: "one_time_expense", essentialStatus: "mixed" },
+] as const;
+
 const numeric = (value: string | number | null | undefined) => Number(value ?? 0);
 const cents = (value: string | number | null | undefined) => Math.round(numeric(value) * 100);
 const nowMonth = () => new Date().toISOString().slice(0, 7);
@@ -128,6 +146,30 @@ async function householdId(actor?: Pick<Actor, "householdId">) {
     throw new GovernanceError("FORBIDDEN", "An authenticated household context is required for finance data");
   }
   return (await ensureSeedData()).householdId;
+}
+
+async function ensureDefaultFinanceCategories(id: string) {
+  const defaultNames = DEFAULT_FINANCE_CATEGORY_CATALOG.map(({ name }) => name);
+  const existing = await db.select({ name: financeCategories.name })
+    .from(financeCategories)
+    .where(and(
+      eq(financeCategories.householdId, id),
+      inArray(financeCategories.name, defaultNames),
+    ));
+  if (existing.length === DEFAULT_FINANCE_CATEGORY_CATALOG.length) return;
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`finance-category-catalog:${id}`}, 0))`);
+    await tx.insert(financeCategories).values(
+      DEFAULT_FINANCE_CATEGORY_CATALOG.map((category) => ({
+        householdId: id,
+        ...category,
+        monthlyTarget: "0.00",
+        warningThreshold: "1.00",
+      })),
+    ).onConflictDoNothing({
+      target: [financeCategories.householdId, financeCategories.name],
+    });
+  });
 }
 
 function accountVisibility(actor: Actor, account: typeof financialAccounts.$inferSelect) {
@@ -284,6 +326,7 @@ export async function getFinancialAccounts(actor: Actor) {
 
 async function loadFinanceData(actor?: Pick<Actor, "householdId">) {
   const id = await householdId(actor);
+  await ensureDefaultFinanceCategories(id);
   const [categories, transactions, bills, recurring, expenses, income, reserve, capitalAccounts, goalsRows, risks] = await Promise.all([
     db.select().from(financeCategories).where(eq(financeCategories.householdId, id)),
     db.select().from(financeTransactions).where(eq(financeTransactions.householdId, id)),
@@ -330,7 +373,7 @@ function financeDataConfidence(data: Awaited<ReturnType<typeof loadFinanceData>>
   }).length;
   let score = 100;
   if (!data.capitalAccounts.length) score -= 45;
-  if (!data.categories.length) score -= 25;
+  if (!data.categories.some((category) => numeric(category.monthlyTarget) > 0)) score -= 25;
   if (!data.income.length) score -= 15;
   score -= staleAccounts * 10;
   return Math.max(0, Math.min(100, score));
@@ -1056,6 +1099,7 @@ export async function reviewFinancialTransaction(actor: Actor, transactionId: st
 // hint: Structural change (rename/retype). Check callers of this entity.
 export async function getTransactionReviewQueue(actor?: Actor) {
   const id = await householdId(actor);
+  await ensureDefaultFinanceCategories(id);
   const [transactions, accounts, categories] = await Promise.all([
     db.select().from(financeTransactions).where(and(
       eq(financeTransactions.householdId, id),

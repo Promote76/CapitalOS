@@ -1126,7 +1126,7 @@ function BudgetPage() {
     }
   };
   const data = query.data;
-  const hasBudgetData = (data?.categories.length ?? 0) > 0;
+  const hasBudgetData = Number(data?.totals.budgeted ?? 0) > 0;
   return <main className="content">
     <PageHeading eyebrow="Household finance / budget" title={<>Give every dollar<br /><em>a clear job.</em></>} description="A calm view of what came in, what went out, and what remains available for the plan." actions={<Link className="btn btn-primary" href="/cash-flow"><TrendingUp size={15} /> View cash flow</Link>} />
     {query.isError && <div className="card card-pad" role="alert">Budget data is temporarily unavailable.</div>}
@@ -1154,7 +1154,7 @@ function BudgetPage() {
     </div>
     <section className="card card-pad page-section animate-in delay-2">
       <CardTitle title="Budget performance" subtitle="Projected pace helps surface pressure before it becomes a surprise." />
-       {!hasBudgetData && <div className="finance-empty-state"><strong>No budget categories yet</strong><span>Your authenticated household starts empty. Add facts from Accounts, Income, or a CSV import before relying on calculated planning outputs.</span><Link className="btn btn-secondary" href="/accounts">Open accounts</Link></div>}
+       {!hasBudgetData && <div className="finance-empty-state"><strong>No monthly budget targets yet</strong><span>Transaction categories are available for review, but planning estimates remain incomplete until real household targets are configured.</span><Link className="btn btn-secondary" href="/accounts">Open accounts</Link></div>}
        <div className="finance-table">
         {(data?.categories ?? []).map((category) => <div className="finance-row" key={category.id}>
           <div><strong>{category.name}</strong><span>{category.essentialStatus === 'essential' ? 'Essential' : category.essentialStatus === 'discretionary' ? 'Flexible' : 'Mixed'}</span></div>
@@ -1774,6 +1774,10 @@ function TransactionReviewPage({ onFeedback }: { onFeedback: (message: string) =
     },
   });
   const review = useReviewFinancialTransaction();
+  const reviewWithReverification = useProviderProtectedAction(
+    (input: Parameters<typeof review.mutateAsync>[0]) =>
+      review.mutateAsync(input),
+  );
   const budget = useGetBudget();
   const [filter, setFilter] = useState<'all' | 'needs_category'>('all');
   const [search, setSearch] = useState('');
@@ -1817,7 +1821,7 @@ function TransactionReviewPage({ onFeedback }: { onFeedback: (message: string) =
       const payload: TransactionReviewInput = { status };
       if (draft.categoryId) payload.categoryId = draft.categoryId;
       if (draft.note.trim()) payload.note = draft.note.trim();
-      await review.mutateAsync({ transactionId: row.id, data: payload });
+      await reviewWithReverification({ transactionId: row.id, data: payload });
       setDrafts((current) => {
         const next = { ...current };
         delete next[row.id];

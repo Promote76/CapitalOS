@@ -1998,8 +1998,20 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
   try {
     const emptyBudget = await request("/budget", fixture.userA, fixture.householdA);
     assert.equal(emptyBudget.status, 200);
-    const emptyBudgetBody = await emptyBudget.json() as { categories: unknown[]; month: string };
-    assert.deepEqual(emptyBudgetBody.categories, []);
+    const emptyBudgetBody = await emptyBudget.json() as {
+      categories: Array<{ name: string; budgeted: string; actual: string }>;
+      totals: { budgeted: string; actual: string };
+      month: string;
+    };
+    assert.ok(emptyBudgetBody.categories.length >= 10);
+    assert.ok(emptyBudgetBody.categories.some(({ name }) => name === "Transportation"));
+    assert.ok(emptyBudgetBody.categories.every(({ budgeted, actual }) => budgeted === "0.00" && actual === "0.00"));
+    assert.deepEqual(emptyBudgetBody.totals, {
+      budgeted: "0.00",
+      actual: "0.00",
+      remaining: "0.00",
+      percentageUsed: 0,
+    });
     assert.match(emptyBudgetBody.month, /^[A-Z][a-z]+ 20\d{2}$/);
 
     const accountAResponse = await request("/financial-accounts", fixture.userA, fixture.householdA, {
@@ -2154,17 +2166,22 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
 
     const reviewQueue = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
     assert.equal(reviewQueue.status, 200);
-    const reviewQueueBody = await reviewQueue.json() as { transactions: Array<{ id: string; accountName: string; reviewStatus: string }>; categories: Array<{ id: string }> };
+    const reviewQueueBody = await reviewQueue.json() as { transactions: Array<{ id: string; accountName: string; reviewStatus: string }>; categories: Array<{ id: string; name: string }> };
     assert.deepEqual(reviewQueueBody.transactions.map(({ id, accountName, reviewStatus }) => ({ id, accountName, reviewStatus })), [{
       id: importedRows[0].id,
       accountName: "Primary checking",
       reviewStatus: "needs_review",
     }]);
-    assert.deepEqual(reviewQueueBody.categories.map(({ id }) => id), [categoryA.id]);
+    assert.ok(reviewQueueBody.categories.length >= 10);
+    assert.ok(reviewQueueBody.categories.some(({ id }) => id === categoryA.id));
+    assert.ok(reviewQueueBody.categories.some(({ name }) => name === "Household income"));
+    assert.ok(reviewQueueBody.categories.some(({ name }) => name === "Transportation"));
 
     const householdBQueue = await request("/financial-transactions/review-queue", fixture.userB, fixture.householdB);
     assert.equal(householdBQueue.status, 200);
-    assert.deepEqual((await householdBQueue.json() as { transactions: unknown[] }).transactions, []);
+    const householdBQueueBody = await householdBQueue.json() as { transactions: unknown[]; categories: Array<{ name: string }> };
+    assert.deepEqual(householdBQueueBody.transactions, []);
+    assert.ok(householdBQueueBody.categories.length >= 10);
 
     const crossHouseholdReview = await request(`/financial-transactions/${importedRows[0].id}/review`, fixture.userB, fixture.householdB, {
       method: "POST",
@@ -2190,7 +2207,8 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     assert.equal(categorizedBody.reviewedBy, fixture.userA);
     const heldBudget = await request("/budget", fixture.userA, fixture.householdA);
     assert.equal(heldBudget.status, 200);
-    assert.equal((await heldBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "12.50");
+    const heldBudgetBody = await heldBudget.json() as { categories: Array<{ name: string; actual: string }> };
+    assert.equal(heldBudgetBody.categories.find(({ name }) => name === "Household dining")?.actual, "12.50");
 
     const repeatedCategorize = await request(`/financial-transactions/${importedRows[0].id}/review`, fixture.userA, fixture.householdA, {
       method: "POST",
@@ -2216,7 +2234,8 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     const clearedQueue = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
     assert.deepEqual((await clearedQueue.json() as { transactions: unknown[] }).transactions, []);
     const appliedBudget = await request("/budget", fixture.userA, fixture.householdA);
-    assert.equal((await appliedBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "16.75");
+    const appliedBudgetBody = await appliedBudget.json() as { categories: Array<{ name: string; actual: string }> };
+    assert.equal(appliedBudgetBody.categories.find(({ name }) => name === "Household dining")?.actual, "16.75");
     const persistedReview = await database.db
       .select({ reviewStatus: database.financeTransactions.reviewStatus, categoryId: database.financeTransactions.categoryId, excludedFromBudget: database.financeTransactions.excludedFromBudget, metadata: database.financeTransactions.metadata })
       .from(database.financeTransactions)
@@ -2301,7 +2320,8 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     });
     assert.equal(categorizeManual.status, 200);
     const heldManualBudget = await request("/budget", fixture.userA, fixture.householdA);
-    assert.equal((await heldManualBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "16.75");
+    const heldManualBudgetBody = await heldManualBudget.json() as { categories: Array<{ name: string; actual: string }> };
+    assert.equal(heldManualBudgetBody.categories.find(({ name }) => name === "Household dining")?.actual, "16.75");
 
     const safeBeforeManualApproval = await request("/safe-to-deploy", fixture.userA, fixture.householdA);
     assert.equal(safeBeforeManualApproval.status, 200);
@@ -2315,7 +2335,8 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     const manualQueueAfterApproval = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
     assert.equal((await manualQueueAfterApproval.json() as { transactions: Array<{ id: string }> }).transactions.some((row) => row.id === manualTransaction.id), false);
     const appliedManualBudget = await request("/budget", fixture.userA, fixture.householdA);
-    assert.equal((await appliedManualBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "56.75");
+    const appliedManualBudgetBody = await appliedManualBudget.json() as { categories: Array<{ name: string; actual: string }> };
+    assert.equal(appliedManualBudgetBody.categories.find(({ name }) => name === "Household dining")?.actual, "56.75");
     const appliedManualCashFlow = await request("/cash-flow", fixture.userA, fixture.householdA);
     assert.equal((await appliedManualCashFlow.json() as { metrics: { discretionaryOutflow: string } }).metrics.discretionaryOutflow, "56.75");
     const safeAfterManualApproval = await request("/safe-to-deploy", fixture.userA, fixture.householdA);
@@ -2339,7 +2360,8 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     });
     assert.equal(rejectManual.status, 200);
     const rejectedManualBudget = await request("/budget", fixture.userA, fixture.householdA);
-    assert.equal((await rejectedManualBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "56.75");
+    const rejectedManualBudgetBody = await rejectedManualBudget.json() as { categories: Array<{ name: string; actual: string }> };
+    assert.equal(rejectedManualBudgetBody.categories.find(({ name }) => name === "Household dining")?.actual, "56.75");
     const safeAfterManualRejection = await request("/safe-to-deploy", fixture.userA, fixture.householdA);
     assert.equal((await safeAfterManualRejection.json() as { safeToDeploy: string }).safeToDeploy, "49.37");
 
@@ -2358,7 +2380,8 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     }).returning({ id: database.financeTransactions.id });
     assert.ok(pendingManual?.id);
     const pendingManualBudget = await request("/budget", fixture.userA, fixture.householdA);
-    assert.equal((await pendingManualBudget.json() as { categories: Array<{ actual: string }> }).categories[0].actual, "56.75");
+    const pendingManualBudgetBody = await pendingManualBudget.json() as { categories: Array<{ name: string; actual: string }> };
+    assert.equal(pendingManualBudgetBody.categories.find(({ name }) => name === "Household dining")?.actual, "56.75");
     const safeAfterPendingManual = await request("/safe-to-deploy", fixture.userA, fixture.householdA);
     assert.equal((await safeAfterPendingManual.json() as { safeToDeploy: string }).safeToDeploy, "49.37");
 

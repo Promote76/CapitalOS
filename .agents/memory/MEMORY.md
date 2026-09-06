@@ -23,3 +23,4 @@
 - [Observability evidence boundary](capital-os-observability-evidence.md) — certify raw persisted delivery states separately from UI-safe projections, with a real connector receipt.
 - [Imported transaction signs](capital-os-imported-transaction-signs.md) — normalize provider signs before persistence, preserve native amounts, and never silently rewrite legacy signs.
 - [Durable transfer classification](capital-os-transfer-classification.md) — transfer identity must survive category changes; spending reports cannot rely only on a mutable category or exclusion flag.
+- [Financial UI loading states](capital-os-financial-ui-states.md) — never render loading or failed financial queries as real zero balances; fail closed with explicit retry states.

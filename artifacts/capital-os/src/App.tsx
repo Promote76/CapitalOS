@@ -1059,8 +1059,8 @@ function SettingsPage({ onFeedback }: { onFeedback: (message: string) => void })
   </main>;
 }
 
-function FinanceMetric({ label, value, detail, tone = '' }: { label: string; value: string; detail: string; tone?: string }) {
-  return <div className={`metric-card ${tone}`}><div className="mono-label">{label}</div><div className="metric-value">{value}</div><div className="metric-detail">{detail}</div></div>;
+function FinanceMetric({ label, value, detail, tone = '', action }: { label: string; value: string; detail: string; tone?: string; action?: ReactNode }) {
+  return <div className={`metric-card ${tone}`}><div className="mono-label">{label}</div><div className="metric-value">{value}</div><div className="metric-detail">{detail}</div>{action && <div className="metric-action">{action}</div>}</div>;
 }
 
 function FinancePulse() {
@@ -1118,6 +1118,7 @@ function BudgetPage() {
         queryClient.invalidateQueries({ queryKey: ['/api/budget'] }),
         queryClient.invalidateQueries({ queryKey: ['/api/cash-flow'] }),
         queryClient.invalidateQueries({ queryKey: ['/api/safe-to-deploy'] }),
+        queryClient.invalidateQueries({ queryKey: getListTransactionReviewQueueQueryKey() }),
       ]);
       setTransaction((current) => ({ ...current, amount: '', description: '', merchant: '' }));
       setTransactionMessage('Transaction saved for review. It will not affect planning totals until approved.');
@@ -1127,13 +1128,15 @@ function BudgetPage() {
   };
   const data = query.data;
   const hasBudgetData = Number(data?.totals.budgeted ?? 0) > 0;
+  const accountsAvailable = Boolean(accounts.data?.accounts.length);
   return <main className="content">
     <PageHeading eyebrow="Household finance / budget" title={<>Give every dollar<br /><em>a clear job.</em></>} description="A calm view of what came in, what went out, and what remains available for the plan." actions={<Link className="btn btn-primary" href="/cash-flow"><TrendingUp size={15} /> View cash flow</Link>} />
-    {query.isError && <div className="card card-pad" role="alert">Budget data is temporarily unavailable.</div>}
-    {!query.isError && <div className="finance-data-banner" role="note"><div className="finance-data-banner-icon"><ShieldCheck size={16} /></div><div><strong>{hasBudgetData ? 'Household planning data' : 'Start with your household facts'}</strong><span>{hasBudgetData ? 'Manual entries and CSV imports are read-only source records. Imported rows stay in review until approved.' : 'Add a manual account, income source, or CSV ledger to build this household view. No demo household data is shared here.'}</span></div></div>}
+    {query.isLoading && <div className="finance-data-banner" role="status"><div className="finance-data-banner-icon"><Activity size={16} /></div><div><strong>Loading household budget</strong><span>Confirming reviewed transactions and planning targets before showing totals.</span></div></div>}
+    {query.isError && <div className="card card-pad finance-route-error" role="alert"><div><strong>Budget data is temporarily unavailable</strong><span>No financial totals are shown until the household budget can be confirmed.</span></div><button className="btn btn-secondary" onClick={() => { void query.refetch(); }} data-testid="button-retry-budget">Try again</button></div>}
+    {query.isSuccess && <div className="finance-data-banner" role="note"><div className="finance-data-banner-icon"><ShieldCheck size={16} /></div><div><strong>{hasBudgetData ? 'Household planning data' : 'Start with your household facts'}</strong><span>{hasBudgetData ? 'Manual entries and CSV imports are read-only source records. Imported rows stay in review until approved.' : 'Add a manual account, income source, or CSV ledger to build this household view. No demo household data is shared here.'}</span></div></div>}
     <section className="card card-pad page-section animate-in">
       <CardTitle title="Record a transaction" subtitle="Enter it once, then review it before it reaches your budget or Safe-to-Deploy." />
-      {!accounts.isLoading && !(accounts.data?.accounts.length) ? <div className="finance-empty-state"><strong>Add an account first</strong><span>Transactions need a household account so balances and history stay attributable.</span><Link className="btn btn-secondary" href="/accounts">Open accounts</Link></div> : <form className="account-form transaction-form" onSubmit={submitTransaction}>
+      {accounts.isLoading ? <div className="finance-empty-state" role="status"><strong>Loading household accounts</strong><span>The transaction form will be ready when account ownership is confirmed.</span></div> : accounts.isError ? <div className="finance-empty-state" role="alert"><strong>Accounts are temporarily unavailable</strong><span>A transaction cannot be attributed safely until accounts load.</span><button className="btn btn-secondary" onClick={() => { void accounts.refetch(); }} data-testid="button-retry-budget-accounts">Try again</button></div> : !accountsAvailable ? <div className="finance-empty-state"><strong>Add an account first</strong><span>Transactions need a household account so balances and history stay attributable.</span><Link className="btn btn-secondary" href="/accounts">Open accounts</Link></div> : <form className="account-form transaction-form" onSubmit={submitTransaction}>
         <div className="field"><label htmlFor="budget-transaction-account">Account</label><select id="budget-transaction-account" required value={transaction.accountId} onChange={(event) => setTransaction({ ...transaction, accountId: event.target.value })}><option value="" disabled>Select an account</option>{(accounts.data?.accounts ?? []).map((account) => <option value={account.id} key={account.id}>{account.nickname} · {account.institution}</option>)}</select></div>
         <div className="field"><label htmlFor="budget-transaction-date">Date</label><input id="budget-transaction-date" required type="date" value={transaction.transactionDate} onChange={(event) => setTransaction({ ...transaction, transactionDate: event.target.value })} /></div>
         <div className="field"><label htmlFor="budget-transaction-direction">Type</label><select id="budget-transaction-direction" value={transaction.direction} onChange={(event) => setTransaction({ ...transaction, direction: event.target.value as 'inflow' | 'outflow' })}><option value="outflow">Money out</option><option value="inflow">Money in</option></select></div>
@@ -1142,29 +1145,32 @@ function BudgetPage() {
         <div className="field"><label htmlFor="budget-transaction-merchant">Merchant <span style={{ textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label><input id="budget-transaction-merchant" maxLength={160} value={transaction.merchant} onChange={(event) => setTransaction({ ...transaction, merchant: event.target.value })} placeholder="e.g. Grocery store" /></div>
         <div className="modal-actions"><button type="submit" className="btn btn-primary" disabled={createTransaction.isPending}><Check size={14} /> {createTransaction.isPending ? 'Saving…' : 'Save for review'}</button></div>
       </form>}
-      {transactionMessage && <div className="form-feedback success" role="status">{transactionMessage}</div>}
+      {transactionMessage && <div className="form-feedback success" role="status">{transactionMessage} <Link className="text-link" href="/transactions">Open the review queue</Link></div>}
       {transactionError && <div className="form-feedback error" role="alert">{transactionError}</div>}
       <div className="finance-note"><ShieldCheck size={16} /><span>Entries are household-scoped, actor-attributed, and excluded from budget calculations until a household member reviews them.</span></div>
     </section>
-    <div className="finance-grid animate-in delay-1">
-      <FinanceMetric label="Month planned" value={displayMoney(data?.totals.budgeted, '$0')} detail="household categories" tone="blue" />
-      <FinanceMetric label="Spent so far" value={displayMoney(data?.totals.actual, '$0')} detail={`${data?.totals.percentageUsed ?? 0}% of planned`} tone="amber" />
-      <FinanceMetric label="Remaining" value={displayMoney(data?.totals.remaining, '$0')} detail="before the month closes" tone="green" />
-      <FinanceMetric label="Safe to deploy" value={displayMoney(safe.data?.safeToDeploy, '$0')} detail="Capital Governor limit" tone="lavender" />
-    </div>
-    <section className="card card-pad page-section animate-in delay-2">
-      <CardTitle title="Budget performance" subtitle="Projected pace helps surface pressure before it becomes a surprise." />
-       {!hasBudgetData && <div className="finance-empty-state"><strong>No monthly budget targets yet</strong><span>Transaction categories are available for review, but planning estimates remain incomplete until real household targets are configured.</span><Link className="btn btn-secondary" href="/accounts">Open accounts</Link></div>}
+    {query.isLoading && <div className="budget-skeleton" aria-hidden="true"><div className="finance-grid"><div className="skeleton" /><div className="skeleton" /><div className="skeleton" /><div className="skeleton" /></div><div className="skeleton budget-skeleton-table" /></div>}
+    {query.isSuccess && data && <>
+      <div className="finance-grid animate-in delay-1">
+        <FinanceMetric label="Month planned" value={displayMoney(data.totals.budgeted, '$0')} detail="household expense targets" tone="blue" action={<Link className="text-link" href="/transactions">Review activity</Link>} />
+        <FinanceMetric label="Spent so far" value={displayMoney(data.totals.actual, '$0')} detail={`${data.totals.percentageUsed}% of planned`} tone="amber" action={<Link className="text-link" href="/transactions">Review transactions</Link>} />
+        <FinanceMetric label="Remaining" value={displayMoney(data.totals.remaining, '$0')} detail="before the month closes" tone="green" action={<Link className="text-link" href="/cash-flow">View cash flow</Link>} />
+        <FinanceMetric label="Safe to deploy" value={safe.isLoading ? 'Calculating…' : safe.isError ? 'Unavailable' : displayMoney(safe.data?.safeToDeploy, '$0')} detail={safe.isError ? 'Capital Governor could not be refreshed' : 'Capital Governor limit'} tone="lavender" action={safe.isError ? <button className="text-link" onClick={() => { void safe.refetch(); }} data-testid="button-retry-budget-safe-to-deploy">Try again</button> : <Link className="text-link" href="/cash-flow">See calculation</Link>} />
+      </div>
+      <section className="card card-pad page-section animate-in delay-2">
+        <CardTitle title="Budget performance" subtitle="Projected pace helps surface pressure before it becomes a surprise." action={<Link className="btn btn-secondary" href="/transactions"><ClipboardCheck size={14} /> Review transactions</Link>} />
+       {!hasBudgetData && <div className="finance-empty-state"><strong>No monthly budget targets yet</strong><span>Current categories have no monthly expense targets. Review transaction categories now; planning targets can be completed when household estimates are available.</span><Link className="btn btn-secondary" href="/transactions">Review categories</Link></div>}
        <div className="finance-table">
-        {(data?.categories ?? []).map((category) => <div className="finance-row" key={category.id}>
+        {data.categories.map((category) => <div className="finance-row" key={category.id}>
           <div><strong>{category.name}</strong><span>{category.essentialStatus === 'essential' ? 'Essential' : category.essentialStatus === 'discretionary' ? 'Flexible' : 'Mixed'}</span></div>
           <div className="finance-bar"><b style={{ width: `${Math.min(category.percentageUsed, 100)}%` }} /></div>
           <div className="finance-amount"><strong>{displayMoney(category.actual, '$0')}</strong><span>of {displayMoney(category.budgeted, '$0')}</span></div>
           <span className={`status ${category.status === 'above_pace' ? 'review' : category.status === 'on_pace' ? 'pending' : ''}`}>{category.status.replace('_', ' ')}</span>
         </div>)}
       </div>
-       <div className="finance-note"><ShieldCheck size={16} /><span>{data?.notes[0]} {data?.notes[2]}</span></div>
-    </section>
+       <div className="finance-note"><ShieldCheck size={16} /><span>{data.notes[0]} {data.notes[2]}</span></div>
+      </section>
+    </>}
   </main>;
 }
 

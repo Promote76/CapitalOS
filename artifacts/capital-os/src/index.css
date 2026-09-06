@@ -3000,6 +3000,13 @@ button {
   font-size: 11px;
   margin-top: 6px;
 }
+.metric-action {
+  margin-top: 12px;
+  font-size: 11px;
+}
+.metric-action .text-link {
+  padding: 0;
+}
 .finance-table {
   display: grid;
   gap: 0;
@@ -3107,6 +3114,32 @@ button {
 .finance-empty-state .btn {
   justify-self: start;
   margin-top: 6px;
+}
+.finance-route-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 18px;
+}
+.finance-route-error div {
+  display: grid;
+  gap: 4px;
+}
+.finance-route-error span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.budget-skeleton {
+  display: grid;
+  gap: 18px;
+  margin-top: 20px;
+}
+.budget-skeleton .finance-grid .skeleton {
+  min-height: 128px;
+}
+.budget-skeleton-table {
+  min-height: 310px;
 }
 .flow-list {
   display: grid;

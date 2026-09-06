@@ -818,6 +818,112 @@ test("authenticated HTTP fixtures enforce household ownership, ignore role heade
   }
 });
 
+test("operations approval decisions serialize and preserve exactly one winning audit record", { skip: !enabled }, async () => {
+  process.env.NODE_ENV = "test";
+  process.env.CAPITAL_OS_TEST_CONTEXT = "1";
+  process.env.CAPITAL_OS_ALLOWED_ORIGIN = "http://capitalos.test";
+  const fixture = await createFixture();
+  database ??= await import("@workspace/db");
+  const { default: app } = await import("../app.ts");
+  const server = app.listen(0);
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+  const baseUrl = `http://127.0.0.1:${address.port}/api`;
+
+  const request = (userId: string, householdId: string, approvalId: string, decision: string, reason: string) =>
+    fetch(`${baseUrl}/operations/approvals/${approvalId}/decision`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Test-User-Id": userId,
+        "X-Test-Household-Id": householdId,
+        "X-Test-Step-Up": "verified",
+      },
+      body: JSON.stringify({ decision, reason }),
+    });
+
+  try {
+    const [approval] = await database.db.insert(database.operationsApprovals).values({
+      householdId: fixture.householdA,
+      requestType: "CONCURRENCY_CERTIFICATION",
+      requestedBy: fixture.userA,
+      relatedEntity: `approval-race-${randomUUID()}`,
+      currentState: "PENDING_REVIEW",
+      proposedState: "AUTHORIZED",
+      financialImpact: "No funds move in this certification fixture",
+      riskImpact: "Proves a single atomic approval winner",
+      duplexImpact: "No duplex impact",
+      reason: "Disposable approval race fixture",
+      evidence: ["database-backed concurrent HTTP decisions"],
+      requiredAuthority: "owner",
+    }).returning({ id: database.operationsApprovals.id });
+    assert.ok(approval?.id);
+
+    const crossHousehold = await request(
+      fixture.userB,
+      fixture.householdB,
+      approval.id,
+      "APPROVED",
+      "Cross-household attempt must be denied",
+    );
+    assert.equal(crossHousehold.status, 400);
+
+    const nonOwner = await request(
+      fixture.advisorA,
+      fixture.householdA,
+      approval.id,
+      "APPROVED",
+      "Non-owner attempt must be denied",
+    );
+    assert.equal(nonOwner.status, 403);
+
+    await database.db.update(database.householdMembers).set({
+      role: "owner",
+      permissions: ["read", "approve"],
+    }).where(and(
+      eq(database.householdMembers.householdId, fixture.householdA),
+      eq(database.householdMembers.userId, fixture.partnerA),
+    ));
+
+    const contenders = [
+      { actor: fixture.userA, decision: "APPROVED", reason: `Concurrent approval ${randomUUID()}` },
+      { actor: fixture.partnerA, decision: "REJECTED", reason: `Concurrent rejection ${randomUUID()}` },
+    ];
+    const responses = await Promise.all(contenders.map(({ actor, decision, reason }) =>
+      request(actor, fixture.householdA, approval.id, decision, reason)));
+    const results = await Promise.all(responses.map(async (response) => ({
+      status: response.status,
+      body: await response.text(),
+    })));
+
+    assert.deepEqual(results.map(({ status }) => status).sort((a, b) => a - b), [200, 400], JSON.stringify(results));
+    const winnerIndex = results.findIndex(({ status }) => status === 200);
+    assert.notEqual(winnerIndex, -1);
+    const winner = contenders[winnerIndex];
+    const winnerBody = JSON.parse(results[winnerIndex].body) as { id: string; status: string };
+    assert.equal(winnerBody.id, approval.id);
+    assert.equal(winnerBody.status, winner.decision);
+
+    const auditRows = await database.db.select({
+      actor: database.auditEvents.actor,
+      reason: database.auditEvents.reason,
+      metadata: database.auditEvents.metadata,
+    }).from(database.auditEvents).where(and(
+      eq(database.auditEvents.householdId, fixture.householdA),
+      eq(database.auditEvents.eventType, "operations_approval_decided"),
+      eq(database.auditEvents.entity, "operations_approval"),
+      eq(database.auditEvents.entityId, approval.id),
+    ));
+    assert.equal(auditRows.length, 1);
+    assert.equal(auditRows[0]?.actor, winner.actor);
+    assert.equal(auditRows[0]?.reason, winner.reason);
+    assert.equal((auditRows[0]?.metadata as { decision?: string } | null)?.decision, winner.decision);
+  } finally {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    // The certification database is disposable and reset between certification runs.
+  }
+});
+
 type RouteProbe = {
   method: string;
   path: string;

@@ -1,7 +1,7 @@
 # Capital OS authenticated browser and Clerk reverification certification
 
 **Date:** 2026-09-05
-**Current HEAD:** `70c267b90228579967f4491406a7af928de4c9be`
+**Current HEAD:** `eada73538f517d4b033dcfd74266eb107fdd7c94`
 **Published origin:** https://capital-os-fund.replit.app
 **Test environment:** Replit-managed Clerk production deployment; no credentials or session tokens recorded
 

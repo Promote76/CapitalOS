@@ -1572,6 +1572,145 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/FinanceSnapshot" }
+  /budget-planning-periods/{month}:
+    get:
+      operationId: getBudgetPlanningPeriod
+      tags: [household-finance]
+      summary: Get or lazily bootstrap a household monthly budget planning period
+      parameters:
+        - name: month
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+      responses:
+        "200":
+          description: Planning period and immutable category snapshots
+          content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningPeriod" } } }
+  /budget-planning-periods/{periodId}/categories:
+    post:
+      operationId: createBudgetPlanningCategory
+      tags: [household-finance]
+      summary: Add a category snapshot to a draft planning period
+      parameters:
+        - { name: periodId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningCategoryInput" } } }
+      responses:
+        "201": { description: Category snapshot created, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningCategoryMutation" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /budget-planning-periods/{periodId}/categories/{categoryId}:
+    patch:
+      operationId: updateBudgetPlanningCategory
+      tags: [household-finance]
+      summary: Update or archive a category snapshot in a draft planning period
+      parameters:
+        - { name: periodId, in: path, required: true, schema: { type: string } }
+        - { name: categoryId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningCategoryUpdateInput" } } }
+      responses:
+        "200": { description: Category snapshot updated, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningCategoryMutation" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /budget-planning-periods/{periodId}/approve:
+    post:
+      operationId: approveBudgetPlanningPeriod
+      tags: [household-finance]
+      summary: Owner-approve and freeze a monthly budget plan
+      parameters:
+        - { name: periodId, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningVersionInput" } } }
+      responses:
+        "200": { description: Approved immutable period, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningApproval" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /budget-planning-periods/{month}/copy-forward:
+    post:
+      operationId: copyBudgetPlanningPeriod
+      tags: [household-finance]
+      summary: Idempotently copy the latest approved plan into a draft month
+      parameters:
+        - { name: month, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200": { description: Draft period, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningPeriod" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /budget-planning-periods/{periodId}/reorder:
+    post:
+      operationId: reorderBudgetPlanningCategories
+      tags: [household-finance]
+      summary: Atomically reorder all draft category snapshots
+      parameters: [{ name: periodId, in: path, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningReorderInput" } } } }
+      responses:
+        "200": { description: Reordered, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningReorderResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /budget-planning-periods/{periodId}/close:
+    post:
+      operationId: closeBudgetPlanningPeriod
+      tags: [household-finance]
+      summary: Owner-close an approved immutable plan
+      parameters:
+        - { name: periodId, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningVersionInput" } } } }
+      responses:
+        "200": { description: Closed plan, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningCloseResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /budget-planning-periods:
+    get:
+      operationId: listBudgetPlanningHistory
+      tags: [household-finance]
+      summary: List household planning-period history
+      responses:
+        "200": { description: History, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningHistoryList" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /budget-planning-periods/{periodId}/change-history:
+    get:
+      operationId: getBudgetPlanningChangeHistory
+      tags: [household-finance]
+      summary: List actor-attributed audit events for a planning period and its category snapshots
+      parameters: [{ name: periodId, in: path, required: true, schema: { type: string, pattern: "^[0-9a-fA-F-]{36}$" } }]
+      responses:
+        "200": { description: Budget plan audit history, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/AuditEventSummary" } } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /budget-planning-comparison/{month}:
+    get:
+      operationId: getBudgetPlanningComparison
+      tags: [household-finance]
+      summary: Compare approved plan targets across month quarter and year
+      parameters: [{ name: month, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Approved-plan comparison, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningComparison" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /budget-planning-periods/{periodId}/categories/{categoryId}/contributions:
+    get:
+      operationId: getBudgetPlanningCategoryContributionDetail
+      tags: [household-finance]
+      summary: Separate included reviewed household activity from excluded and unreviewed rows
+      parameters:
+        - { name: periodId, in: path, required: true, schema: { type: string } }
+        - { name: categoryId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Category contribution detail, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningContributionDetail" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
   /banking/status:
     get:
       operationId: getBankingStatus
@@ -2476,6 +2615,164 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
   schemas:
+    BudgetPlanningVersionInput:
+      type: object
+      required: [version]
+      properties: { version: { type: number, minimum: 1 } }
+    BudgetPlanningCategoryInput:
+      type: object
+      required: [version, name, categoryType, essentialStatus, monthlyTarget]
+      properties:
+        version: { type: number, minimum: 1 }
+        name: { type: string, minLength: 1, maxLength: 160 }
+        categoryType: { type: string, enum: [fixed_expense, variable_essential, variable_discretionary, savings, investment, debt_payment, transfer, income, one_time_expense] }
+        essentialStatus: { type: string, enum: [essential, discretionary, mixed] }
+        monthlyTarget: { type: string }
+        warningThreshold: { type: string }
+        notes: { type: [string, "null"], maxLength: 2000 }
+    BudgetPlanningCategoryUpdateInput:
+      type: object
+      required: [version]
+      properties:
+        version: { type: number, minimum: 1 }
+        name: { type: string, minLength: 1, maxLength: 160 }
+        categoryType: { type: string, enum: [fixed_expense, variable_essential, variable_discretionary, savings, investment, debt_payment, transfer, income, one_time_expense] }
+        essentialStatus: { type: string, enum: [essential, discretionary, mixed] }
+        monthlyTarget: { type: string }
+        warningThreshold: { type: string }
+        notes: { type: [string, "null"], maxLength: 2000 }
+        archived: { type: boolean }
+    BudgetPlanningCategory:
+      type: object
+      required: [id, name, categoryType, essentialStatus, monthlyTarget, warningThreshold, sortOrder, archived]
+      properties:
+        id: { type: string }
+        sourceCategoryId: { type: [string, "null"] }
+        name: { type: string }
+        categoryType: { type: string }
+        essentialStatus: { type: string }
+        monthlyTarget: { type: string }
+        warningThreshold: { type: string }
+        notes: { type: [string, "null"] }
+        sortOrder: { type: number }
+        archived: { type: boolean }
+    BudgetPlanningPeriod:
+      type: object
+      required: [id, month, status, version, createdBy, createdAt, updatedAt, categories]
+      properties:
+        id: { type: string }
+        month: { type: string }
+        status: { type: string, enum: [draft, approved, closed] }
+        version: { type: number }
+        copiedFromPeriodId: { type: [string, "null"] }
+        createdBy: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        approvedAt: { type: [string, "null"], format: date-time }
+        approvedBy: { type: [string, "null"], pattern: "^[0-9a-fA-F-]{36}$" }
+        closedAt: { type: [string, "null"], format: date-time }
+        closedBy: { type: [string, "null"], pattern: "^[0-9a-fA-F-]{36}$" }
+        categories: { type: array, items: { $ref: "#/components/schemas/BudgetPlanningCategory" } }
+        advisory:
+          type: object
+          required: [projectedExpenseTarget, reviewedHouseholdNetActivity, affectsOfficialTotals]
+          properties:
+            projectedExpenseTarget: { type: string }
+            reviewedHouseholdNetActivity: { type: string }
+            affectsOfficialTotals: { type: boolean }
+    BudgetPlanningCategoryMutation:
+      allOf: [{ $ref: "#/components/schemas/BudgetPlanningCategory" }, { type: object, required: [version], properties: { version: { type: number } } }]
+    BudgetPlanningApproval:
+      type: object
+      required: [id, month, status, version, approvedAt]
+      properties:
+        id: { type: string }
+        month: { type: string }
+        status: { type: string, enum: [approved] }
+        version: { type: number }
+        approvedAt: { type: string, format: date-time }
+    BudgetPlanningReorderInput:
+      type: object
+      required: [version, categoryIds]
+      properties:
+        version: { type: number, minimum: 1 }
+        categoryIds: { type: array, minItems: 1, items: { type: string } }
+    BudgetPlanningReorderResult:
+      type: object
+      required: [version, categoryIds]
+      properties:
+        version: { type: number }
+        categoryIds: { type: array, items: { type: string } }
+    BudgetPlanningCloseResult:
+      type: object
+      required: [id, month, status, version, closedAt]
+      properties:
+        id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        month: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+        status: { type: string, enum: [closed] }
+        version: { type: number, minimum: 1 }
+        closedAt: { type: string, format: date-time }
+    BudgetPlanningHistoryItem:
+      type: object
+      required: [id, month, status, version, createdBy, createdAt, updatedAt]
+      properties:
+        id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        month: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+        status: { type: string, enum: [draft, approved, closed] }
+        version: { type: number, minimum: 1 }
+        copiedFromPeriodId: { type: [string, "null"] }
+        createdBy: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        approvedAt: { type: [string, "null"], format: date-time }
+        approvedBy: { type: [string, "null"], pattern: "^[0-9a-fA-F-]{36}$" }
+        closedAt: { type: [string, "null"], format: date-time }
+        closedBy: { type: [string, "null"], pattern: "^[0-9a-fA-F-]{36}$" }
+    BudgetPlanningHistoryList:
+      type: array
+      items: { $ref: "#/components/schemas/BudgetPlanningHistoryItem" }
+    BudgetPlanningComparison:
+      type: object
+      required: [month, monthBudgeted, quarterBudgeted, yearBudgeted, approvedPeriodCount]
+      properties:
+        month: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+        monthBudgeted: { type: string, pattern: "^-?[0-9]+\\.[0-9]{2}$" }
+        quarterBudgeted: { type: string, pattern: "^-?[0-9]+\\.[0-9]{2}$" }
+        yearBudgeted: { type: string, pattern: "^-?[0-9]+\\.[0-9]{2}$" }
+        approvedPeriodCount: { type: number, minimum: 0 }
+    BudgetPlanningContributionTransaction:
+      type: object
+      required: [id, transactionDate, description, amount, reviewStatus, businessTag, excludedFromBudget, pending]
+      properties:
+        id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        transactionDate: { type: string, format: date }
+        description: { type: string }
+        merchant: { type: [string, "null"] }
+        amount: { type: string, pattern: "^-?[0-9]+\\.[0-9]{2}$" }
+        reviewStatus: { type: string }
+        businessTag: { type: string }
+        excludedFromBudget: { type: boolean }
+        pending: { type: boolean }
+        categoryId: { type: [string, "null"] }
+        transferGroupId: { type: [string, "null"] }
+    BudgetPlanningContributionExclusions:
+      type: object
+      required: [uncategorized, excluded, business, transfers, unreviewed, rows]
+      properties:
+        uncategorized: { type: number, minimum: 0 }
+        excluded: { type: number, minimum: 0 }
+        business: { type: number, minimum: 0 }
+        transfers: { type: number, minimum: 0 }
+        unreviewed: { type: number, minimum: 0 }
+        rows: { type: array, items: { $ref: "#/components/schemas/BudgetPlanningContributionTransaction" } }
+    BudgetPlanningContributionDetail:
+      type: object
+      required: [category, includedReviewedHouseholdTransactions, includedActual, exclusions]
+      properties:
+        category: { $ref: "#/components/schemas/BudgetPlanningCategory" }
+        includedReviewedHouseholdTransactions: { type: array, items: { $ref: "#/components/schemas/BudgetPlanningContributionTransaction" } }
+        includedActual: { type: string, pattern: "^-?[0-9]+\\.[0-9]{2}$" }
+        exclusions: { $ref: "#/components/schemas/BudgetPlanningContributionExclusions" }
     HealthStatus:
       type: object
       required: [status]

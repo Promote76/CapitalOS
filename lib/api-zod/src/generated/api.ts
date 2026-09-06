@@ -3230,6 +3230,430 @@ export const ListFinanceSnapshotsResponse = zod.array(ListFinanceSnapshotsRespon
 
 
 /**
+ * @summary Get or lazily bootstrap a household monthly budget planning period
+ */
+export const getBudgetPlanningPeriodPathMonthRegExp = new RegExp('^[0-9]{4}-(0[1-9]|1[0-2])$');
+
+
+export const GetBudgetPlanningPeriodParams = zod.object({
+  "month": zod.coerce.string().regex(getBudgetPlanningPeriodPathMonthRegExp)
+})
+
+export const getBudgetPlanningPeriodResponseCreatedByRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const getBudgetPlanningPeriodResponseApprovedByRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const getBudgetPlanningPeriodResponseClosedByRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const GetBudgetPlanningPeriodResponse = zod.object({
+  "id": zod.string(),
+  "month": zod.string(),
+  "status": zod.enum(['draft', 'approved', 'closed']),
+  "version": zod.number(),
+  "copiedFromPeriodId": zod.string().nullish(),
+  "createdBy": zod.string().regex(getBudgetPlanningPeriodResponseCreatedByRegExp),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "approvedBy": zod.string().regex(getBudgetPlanningPeriodResponseApprovedByRegExp).nullish(),
+  "closedAt": zod.coerce.date().nullish(),
+  "closedBy": zod.string().regex(getBudgetPlanningPeriodResponseClosedByRegExp).nullish(),
+  "categories": zod.array(zod.object({
+  "id": zod.string(),
+  "sourceCategoryId": zod.string().nullish(),
+  "name": zod.string(),
+  "categoryType": zod.string(),
+  "essentialStatus": zod.string(),
+  "monthlyTarget": zod.string(),
+  "warningThreshold": zod.string(),
+  "notes": zod.string().nullish(),
+  "sortOrder": zod.number(),
+  "archived": zod.boolean()
+})),
+  "advisory": zod.object({
+  "projectedExpenseTarget": zod.string(),
+  "reviewedHouseholdNetActivity": zod.string(),
+  "affectsOfficialTotals": zod.boolean()
+}).optional()
+})
+
+
+/**
+ * @summary Add a category snapshot to a draft planning period
+ */
+export const CreateBudgetPlanningCategoryParams = zod.object({
+  "periodId": zod.coerce.string()
+})
+
+
+export const createBudgetPlanningCategoryBodyNameMax = 160;
+
+export const createBudgetPlanningCategoryBodyNotesMax = 2000;
+
+
+
+export const CreateBudgetPlanningCategoryBody = zod.object({
+  "version": zod.number().min(1),
+  "name": zod.string().min(1).max(createBudgetPlanningCategoryBodyNameMax),
+  "categoryType": zod.enum(['fixed_expense', 'variable_essential', 'variable_discretionary', 'savings', 'investment', 'debt_payment', 'transfer', 'income', 'one_time_expense']),
+  "essentialStatus": zod.enum(['essential', 'discretionary', 'mixed']),
+  "monthlyTarget": zod.string(),
+  "warningThreshold": zod.string().optional(),
+  "notes": zod.string().max(createBudgetPlanningCategoryBodyNotesMax).nullish()
+})
+
+export const CreateBudgetPlanningCategoryResponse = zod.object({
+  "id": zod.string(),
+  "sourceCategoryId": zod.string().nullish(),
+  "name": zod.string(),
+  "categoryType": zod.string(),
+  "essentialStatus": zod.string(),
+  "monthlyTarget": zod.string(),
+  "warningThreshold": zod.string(),
+  "notes": zod.string().nullish(),
+  "sortOrder": zod.number(),
+  "archived": zod.boolean()
+}).and(zod.object({
+  "version": zod.number()
+}))
+
+
+/**
+ * @summary Update or archive a category snapshot in a draft planning period
+ */
+export const UpdateBudgetPlanningCategoryParams = zod.object({
+  "periodId": zod.coerce.string(),
+  "categoryId": zod.coerce.string()
+})
+
+
+export const updateBudgetPlanningCategoryBodyNameMax = 160;
+
+export const updateBudgetPlanningCategoryBodyNotesMax = 2000;
+
+
+
+export const UpdateBudgetPlanningCategoryBody = zod.object({
+  "version": zod.number().min(1),
+  "name": zod.string().min(1).max(updateBudgetPlanningCategoryBodyNameMax).optional(),
+  "categoryType": zod.enum(['fixed_expense', 'variable_essential', 'variable_discretionary', 'savings', 'investment', 'debt_payment', 'transfer', 'income', 'one_time_expense']).optional(),
+  "essentialStatus": zod.enum(['essential', 'discretionary', 'mixed']).optional(),
+  "monthlyTarget": zod.string().optional(),
+  "warningThreshold": zod.string().optional(),
+  "notes": zod.string().max(updateBudgetPlanningCategoryBodyNotesMax).nullish(),
+  "archived": zod.boolean().optional()
+})
+
+export const UpdateBudgetPlanningCategoryResponse = zod.object({
+  "id": zod.string(),
+  "sourceCategoryId": zod.string().nullish(),
+  "name": zod.string(),
+  "categoryType": zod.string(),
+  "essentialStatus": zod.string(),
+  "monthlyTarget": zod.string(),
+  "warningThreshold": zod.string(),
+  "notes": zod.string().nullish(),
+  "sortOrder": zod.number(),
+  "archived": zod.boolean()
+}).and(zod.object({
+  "version": zod.number()
+}))
+
+
+/**
+ * @summary Owner-approve and freeze a monthly budget plan
+ */
+export const ApproveBudgetPlanningPeriodParams = zod.object({
+  "periodId": zod.coerce.string()
+})
+
+export const approveBudgetPlanningPeriodHeaderIdempotencyKeyMin = 8;
+export const approveBudgetPlanningPeriodHeaderIdempotencyKeyMax = 128;
+
+
+
+export const ApproveBudgetPlanningPeriodHeader = zod.object({
+  "Idempotency-Key": zod.string().min(approveBudgetPlanningPeriodHeaderIdempotencyKeyMin).max(approveBudgetPlanningPeriodHeaderIdempotencyKeyMax)
+})
+
+
+
+
+export const ApproveBudgetPlanningPeriodBody = zod.object({
+  "version": zod.number().min(1)
+})
+
+export const ApproveBudgetPlanningPeriodResponse = zod.object({
+  "id": zod.string(),
+  "month": zod.string(),
+  "status": zod.enum(['approved']),
+  "version": zod.number(),
+  "approvedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Idempotently copy the latest approved plan into a draft month
+ */
+export const CopyBudgetPlanningPeriodParams = zod.object({
+  "month": zod.coerce.string()
+})
+
+export const copyBudgetPlanningPeriodHeaderIdempotencyKeyMin = 8;
+export const copyBudgetPlanningPeriodHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CopyBudgetPlanningPeriodHeader = zod.object({
+  "Idempotency-Key": zod.string().min(copyBudgetPlanningPeriodHeaderIdempotencyKeyMin).max(copyBudgetPlanningPeriodHeaderIdempotencyKeyMax)
+})
+
+export const copyBudgetPlanningPeriodResponseCreatedByRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const copyBudgetPlanningPeriodResponseApprovedByRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const copyBudgetPlanningPeriodResponseClosedByRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const CopyBudgetPlanningPeriodResponse = zod.object({
+  "id": zod.string(),
+  "month": zod.string(),
+  "status": zod.enum(['draft', 'approved', 'closed']),
+  "version": zod.number(),
+  "copiedFromPeriodId": zod.string().nullish(),
+  "createdBy": zod.string().regex(copyBudgetPlanningPeriodResponseCreatedByRegExp),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "approvedBy": zod.string().regex(copyBudgetPlanningPeriodResponseApprovedByRegExp).nullish(),
+  "closedAt": zod.coerce.date().nullish(),
+  "closedBy": zod.string().regex(copyBudgetPlanningPeriodResponseClosedByRegExp).nullish(),
+  "categories": zod.array(zod.object({
+  "id": zod.string(),
+  "sourceCategoryId": zod.string().nullish(),
+  "name": zod.string(),
+  "categoryType": zod.string(),
+  "essentialStatus": zod.string(),
+  "monthlyTarget": zod.string(),
+  "warningThreshold": zod.string(),
+  "notes": zod.string().nullish(),
+  "sortOrder": zod.number(),
+  "archived": zod.boolean()
+})),
+  "advisory": zod.object({
+  "projectedExpenseTarget": zod.string(),
+  "reviewedHouseholdNetActivity": zod.string(),
+  "affectsOfficialTotals": zod.boolean()
+}).optional()
+})
+
+
+/**
+ * @summary Atomically reorder all draft category snapshots
+ */
+export const ReorderBudgetPlanningCategoriesParams = zod.object({
+  "periodId": zod.coerce.string()
+})
+
+
+
+
+
+export const ReorderBudgetPlanningCategoriesBody = zod.object({
+  "version": zod.number().min(1),
+  "categoryIds": zod.array(zod.string()).min(1)
+})
+
+export const ReorderBudgetPlanningCategoriesResponse = zod.object({
+  "version": zod.number(),
+  "categoryIds": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Owner-close an approved immutable plan
+ */
+export const CloseBudgetPlanningPeriodParams = zod.object({
+  "periodId": zod.coerce.string()
+})
+
+export const closeBudgetPlanningPeriodHeaderIdempotencyKeyMin = 8;
+export const closeBudgetPlanningPeriodHeaderIdempotencyKeyMax = 128;
+
+
+
+export const CloseBudgetPlanningPeriodHeader = zod.object({
+  "Idempotency-Key": zod.string().min(closeBudgetPlanningPeriodHeaderIdempotencyKeyMin).max(closeBudgetPlanningPeriodHeaderIdempotencyKeyMax)
+})
+
+
+
+
+export const CloseBudgetPlanningPeriodBody = zod.object({
+  "version": zod.number().min(1)
+})
+
+export const closeBudgetPlanningPeriodResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const closeBudgetPlanningPeriodResponseMonthRegExp = new RegExp('^[0-9]{4}-(0[1-9]|1[0-2])$');
+
+
+
+export const CloseBudgetPlanningPeriodResponse = zod.object({
+  "id": zod.string().regex(closeBudgetPlanningPeriodResponseIdRegExp),
+  "month": zod.string().regex(closeBudgetPlanningPeriodResponseMonthRegExp),
+  "status": zod.enum(['closed']),
+  "version": zod.number().min(1),
+  "closedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List household planning-period history
+ */
+export const listBudgetPlanningHistoryResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listBudgetPlanningHistoryResponseMonthRegExp = new RegExp('^[0-9]{4}-(0[1-9]|1[0-2])$');
+
+export const listBudgetPlanningHistoryResponseCreatedByRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listBudgetPlanningHistoryResponseApprovedByRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listBudgetPlanningHistoryResponseClosedByRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ListBudgetPlanningHistoryResponseItem = zod.object({
+  "id": zod.string().regex(listBudgetPlanningHistoryResponseIdRegExp),
+  "month": zod.string().regex(listBudgetPlanningHistoryResponseMonthRegExp),
+  "status": zod.enum(['draft', 'approved', 'closed']),
+  "version": zod.number().min(1),
+  "copiedFromPeriodId": zod.string().nullish(),
+  "createdBy": zod.string().regex(listBudgetPlanningHistoryResponseCreatedByRegExp),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "approvedBy": zod.string().regex(listBudgetPlanningHistoryResponseApprovedByRegExp).nullish(),
+  "closedAt": zod.coerce.date().nullish(),
+  "closedBy": zod.string().regex(listBudgetPlanningHistoryResponseClosedByRegExp).nullish()
+})
+export const ListBudgetPlanningHistoryResponse = zod.array(ListBudgetPlanningHistoryResponseItem)
+
+
+/**
+ * @summary List actor-attributed audit events for a planning period and its category snapshots
+ */
+export const getBudgetPlanningChangeHistoryPathPeriodIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const GetBudgetPlanningChangeHistoryParams = zod.object({
+  "periodId": zod.coerce.string().regex(getBudgetPlanningChangeHistoryPathPeriodIdRegExp)
+})
+
+export const GetBudgetPlanningChangeHistoryResponseItem = zod.object({
+  "id": zod.string(),
+  "eventType": zod.string(),
+  "actor": zod.string(),
+  "entity": zod.string(),
+  "entityId": zod.string(),
+  "timestamp": zod.coerce.date(),
+  "reason": zod.string().nullish()
+})
+export const GetBudgetPlanningChangeHistoryResponse = zod.array(GetBudgetPlanningChangeHistoryResponseItem)
+
+
+/**
+ * @summary Compare approved plan targets across month quarter and year
+ */
+export const GetBudgetPlanningComparisonParams = zod.object({
+  "month": zod.coerce.string()
+})
+
+export const getBudgetPlanningComparisonResponseMonthRegExp = new RegExp('^[0-9]{4}-(0[1-9]|1[0-2])$');
+export const getBudgetPlanningComparisonResponseMonthBudgetedRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
+export const getBudgetPlanningComparisonResponseQuarterBudgetedRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
+export const getBudgetPlanningComparisonResponseYearBudgetedRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
+export const getBudgetPlanningComparisonResponseApprovedPeriodCountMin = 0;
+
+
+
+export const GetBudgetPlanningComparisonResponse = zod.object({
+  "month": zod.string().regex(getBudgetPlanningComparisonResponseMonthRegExp),
+  "monthBudgeted": zod.string().regex(getBudgetPlanningComparisonResponseMonthBudgetedRegExp),
+  "quarterBudgeted": zod.string().regex(getBudgetPlanningComparisonResponseQuarterBudgetedRegExp),
+  "yearBudgeted": zod.string().regex(getBudgetPlanningComparisonResponseYearBudgetedRegExp),
+  "approvedPeriodCount": zod.number().min(getBudgetPlanningComparisonResponseApprovedPeriodCountMin)
+})
+
+
+/**
+ * @summary Separate included reviewed household activity from excluded and unreviewed rows
+ */
+export const GetBudgetPlanningCategoryContributionDetailParams = zod.object({
+  "periodId": zod.coerce.string(),
+  "categoryId": zod.coerce.string()
+})
+
+export const getBudgetPlanningCategoryContributionDetailResponseIncludedReviewedHouseholdTransactionsItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const getBudgetPlanningCategoryContributionDetailResponseIncludedReviewedHouseholdTransactionsItemAmountRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
+export const getBudgetPlanningCategoryContributionDetailResponseIncludedActualRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
+export const getBudgetPlanningCategoryContributionDetailResponseExclusionsUncategorizedMin = 0;
+
+export const getBudgetPlanningCategoryContributionDetailResponseExclusionsExcludedMin = 0;
+
+export const getBudgetPlanningCategoryContributionDetailResponseExclusionsBusinessMin = 0;
+
+export const getBudgetPlanningCategoryContributionDetailResponseExclusionsTransfersMin = 0;
+
+export const getBudgetPlanningCategoryContributionDetailResponseExclusionsUnreviewedMin = 0;
+
+export const getBudgetPlanningCategoryContributionDetailResponseExclusionsRowsItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const getBudgetPlanningCategoryContributionDetailResponseExclusionsRowsItemAmountRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
+
+
+export const GetBudgetPlanningCategoryContributionDetailResponse = zod.object({
+  "category": zod.object({
+  "id": zod.string(),
+  "sourceCategoryId": zod.string().nullish(),
+  "name": zod.string(),
+  "categoryType": zod.string(),
+  "essentialStatus": zod.string(),
+  "monthlyTarget": zod.string(),
+  "warningThreshold": zod.string(),
+  "notes": zod.string().nullish(),
+  "sortOrder": zod.number(),
+  "archived": zod.boolean()
+}),
+  "includedReviewedHouseholdTransactions": zod.array(zod.object({
+  "id": zod.string().regex(getBudgetPlanningCategoryContributionDetailResponseIncludedReviewedHouseholdTransactionsItemIdRegExp),
+  "transactionDate": zod.coerce.date(),
+  "description": zod.string(),
+  "merchant": zod.string().nullish(),
+  "amount": zod.string().regex(getBudgetPlanningCategoryContributionDetailResponseIncludedReviewedHouseholdTransactionsItemAmountRegExp),
+  "reviewStatus": zod.string(),
+  "businessTag": zod.string(),
+  "excludedFromBudget": zod.boolean(),
+  "pending": zod.boolean(),
+  "categoryId": zod.string().nullish(),
+  "transferGroupId": zod.string().nullish()
+})),
+  "includedActual": zod.string().regex(getBudgetPlanningCategoryContributionDetailResponseIncludedActualRegExp),
+  "exclusions": zod.object({
+  "uncategorized": zod.number().min(getBudgetPlanningCategoryContributionDetailResponseExclusionsUncategorizedMin),
+  "excluded": zod.number().min(getBudgetPlanningCategoryContributionDetailResponseExclusionsExcludedMin),
+  "business": zod.number().min(getBudgetPlanningCategoryContributionDetailResponseExclusionsBusinessMin),
+  "transfers": zod.number().min(getBudgetPlanningCategoryContributionDetailResponseExclusionsTransfersMin),
+  "unreviewed": zod.number().min(getBudgetPlanningCategoryContributionDetailResponseExclusionsUnreviewedMin),
+  "rows": zod.array(zod.object({
+  "id": zod.string().regex(getBudgetPlanningCategoryContributionDetailResponseExclusionsRowsItemIdRegExp),
+  "transactionDate": zod.coerce.date(),
+  "description": zod.string(),
+  "merchant": zod.string().nullish(),
+  "amount": zod.string().regex(getBudgetPlanningCategoryContributionDetailResponseExclusionsRowsItemAmountRegExp),
+  "reviewStatus": zod.string(),
+  "businessTag": zod.string(),
+  "excludedFromBudget": zod.boolean(),
+  "pending": zod.boolean(),
+  "categoryId": zod.string().nullish(),
+  "transferGroupId": zod.string().nullish()
+}))
+})
+})
+
+
+/**
  * @summary Get provider-neutral read-only banking adapter status
  */
 export const GetBankingStatusResponse = zod.object({

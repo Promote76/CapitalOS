@@ -24,10 +24,10 @@ export function assertPermission(role: HouseholdRole, permission: string): void 
 }
 
 export class GovernanceError extends Error {
-  public readonly code: "FORBIDDEN" | "RISK_BLOCKED" | "INVALID_STATE" | "IDEMPOTENCY_CONFLICT";
+  public readonly code: "FORBIDDEN" | "RISK_BLOCKED" | "INVALID_STATE" | "CONFLICT" | "IDEMPOTENCY_CONFLICT";
 
   constructor(
-    code: "FORBIDDEN" | "RISK_BLOCKED" | "INVALID_STATE" | "IDEMPOTENCY_CONFLICT",
+    code: "FORBIDDEN" | "RISK_BLOCKED" | "INVALID_STATE" | "CONFLICT" | "IDEMPOTENCY_CONFLICT",
     message: string,
   ) {
     super(message);

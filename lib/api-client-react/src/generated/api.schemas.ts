@@ -5,6 +5,301 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+export interface BudgetPlanningVersionInput {
+  /** @minimum 1 */
+  version: number;
+}
+
+export type BudgetPlanningCategoryInputCategoryType = typeof BudgetPlanningCategoryInputCategoryType[keyof typeof BudgetPlanningCategoryInputCategoryType];
+
+
+export const BudgetPlanningCategoryInputCategoryType = {
+  fixed_expense: 'fixed_expense',
+  variable_essential: 'variable_essential',
+  variable_discretionary: 'variable_discretionary',
+  savings: 'savings',
+  investment: 'investment',
+  debt_payment: 'debt_payment',
+  transfer: 'transfer',
+  income: 'income',
+  one_time_expense: 'one_time_expense',
+} as const;
+
+export type BudgetPlanningCategoryInputEssentialStatus = typeof BudgetPlanningCategoryInputEssentialStatus[keyof typeof BudgetPlanningCategoryInputEssentialStatus];
+
+
+export const BudgetPlanningCategoryInputEssentialStatus = {
+  essential: 'essential',
+  discretionary: 'discretionary',
+  mixed: 'mixed',
+} as const;
+
+export interface BudgetPlanningCategoryInput {
+  /** @minimum 1 */
+  version: number;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  name: string;
+  categoryType: BudgetPlanningCategoryInputCategoryType;
+  essentialStatus: BudgetPlanningCategoryInputEssentialStatus;
+  monthlyTarget: string;
+  warningThreshold?: string;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
+}
+
+export type BudgetPlanningCategoryUpdateInputCategoryType = typeof BudgetPlanningCategoryUpdateInputCategoryType[keyof typeof BudgetPlanningCategoryUpdateInputCategoryType];
+
+
+export const BudgetPlanningCategoryUpdateInputCategoryType = {
+  fixed_expense: 'fixed_expense',
+  variable_essential: 'variable_essential',
+  variable_discretionary: 'variable_discretionary',
+  savings: 'savings',
+  investment: 'investment',
+  debt_payment: 'debt_payment',
+  transfer: 'transfer',
+  income: 'income',
+  one_time_expense: 'one_time_expense',
+} as const;
+
+export type BudgetPlanningCategoryUpdateInputEssentialStatus = typeof BudgetPlanningCategoryUpdateInputEssentialStatus[keyof typeof BudgetPlanningCategoryUpdateInputEssentialStatus];
+
+
+export const BudgetPlanningCategoryUpdateInputEssentialStatus = {
+  essential: 'essential',
+  discretionary: 'discretionary',
+  mixed: 'mixed',
+} as const;
+
+export interface BudgetPlanningCategoryUpdateInput {
+  /** @minimum 1 */
+  version: number;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  name?: string;
+  categoryType?: BudgetPlanningCategoryUpdateInputCategoryType;
+  essentialStatus?: BudgetPlanningCategoryUpdateInputEssentialStatus;
+  monthlyTarget?: string;
+  warningThreshold?: string;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  notes?: string | null;
+  archived?: boolean;
+}
+
+export interface BudgetPlanningCategory {
+  id: string;
+  /** @nullable */
+  sourceCategoryId?: string | null;
+  name: string;
+  categoryType: string;
+  essentialStatus: string;
+  monthlyTarget: string;
+  warningThreshold: string;
+  /** @nullable */
+  notes?: string | null;
+  sortOrder: number;
+  archived: boolean;
+}
+
+export type BudgetPlanningPeriodStatus = typeof BudgetPlanningPeriodStatus[keyof typeof BudgetPlanningPeriodStatus];
+
+
+export const BudgetPlanningPeriodStatus = {
+  draft: 'draft',
+  approved: 'approved',
+  closed: 'closed',
+} as const;
+
+export type BudgetPlanningPeriodAdvisory = {
+  projectedExpenseTarget: string;
+  reviewedHouseholdNetActivity: string;
+  affectsOfficialTotals: boolean;
+};
+
+export interface BudgetPlanningPeriod {
+  id: string;
+  month: string;
+  status: BudgetPlanningPeriodStatus;
+  version: number;
+  /** @nullable */
+  copiedFromPeriodId?: string | null;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  /** @nullable */
+  approvedAt?: string | null;
+  /**
+     * @nullable
+     * @pattern ^[0-9a-fA-F-]{36}$
+     */
+  approvedBy?: string | null;
+  /** @nullable */
+  closedAt?: string | null;
+  /**
+     * @nullable
+     * @pattern ^[0-9a-fA-F-]{36}$
+     */
+  closedBy?: string | null;
+  categories: BudgetPlanningCategory[];
+  advisory?: BudgetPlanningPeriodAdvisory;
+}
+
+export type BudgetPlanningCategoryMutation = BudgetPlanningCategory & {
+  version: number;
+};
+
+export type BudgetPlanningApprovalStatus = typeof BudgetPlanningApprovalStatus[keyof typeof BudgetPlanningApprovalStatus];
+
+
+export const BudgetPlanningApprovalStatus = {
+  approved: 'approved',
+} as const;
+
+export interface BudgetPlanningApproval {
+  id: string;
+  month: string;
+  status: BudgetPlanningApprovalStatus;
+  version: number;
+  approvedAt: string;
+}
+
+export interface BudgetPlanningReorderInput {
+  /** @minimum 1 */
+  version: number;
+  /** @minItems 1 */
+  categoryIds: string[];
+}
+
+export interface BudgetPlanningReorderResult {
+  version: number;
+  categoryIds: string[];
+}
+
+export type BudgetPlanningCloseResultStatus = typeof BudgetPlanningCloseResultStatus[keyof typeof BudgetPlanningCloseResultStatus];
+
+
+export const BudgetPlanningCloseResultStatus = {
+  closed: 'closed',
+} as const;
+
+export interface BudgetPlanningCloseResult {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  /** @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$ */
+  month: string;
+  status: BudgetPlanningCloseResultStatus;
+  /** @minimum 1 */
+  version: number;
+  closedAt: string;
+}
+
+export type BudgetPlanningHistoryItemStatus = typeof BudgetPlanningHistoryItemStatus[keyof typeof BudgetPlanningHistoryItemStatus];
+
+
+export const BudgetPlanningHistoryItemStatus = {
+  draft: 'draft',
+  approved: 'approved',
+  closed: 'closed',
+} as const;
+
+export interface BudgetPlanningHistoryItem {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  /** @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$ */
+  month: string;
+  status: BudgetPlanningHistoryItemStatus;
+  /** @minimum 1 */
+  version: number;
+  /** @nullable */
+  copiedFromPeriodId?: string | null;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  /** @nullable */
+  approvedAt?: string | null;
+  /**
+     * @nullable
+     * @pattern ^[0-9a-fA-F-]{36}$
+     */
+  approvedBy?: string | null;
+  /** @nullable */
+  closedAt?: string | null;
+  /**
+     * @nullable
+     * @pattern ^[0-9a-fA-F-]{36}$
+     */
+  closedBy?: string | null;
+}
+
+export type BudgetPlanningHistoryList = BudgetPlanningHistoryItem[];
+
+export interface BudgetPlanningComparison {
+  /** @pattern ^[0-9]{4}-(0[1-9]|1[0-2])$ */
+  month: string;
+  /** @pattern ^-?[0-9]+\.[0-9]{2}$ */
+  monthBudgeted: string;
+  /** @pattern ^-?[0-9]+\.[0-9]{2}$ */
+  quarterBudgeted: string;
+  /** @pattern ^-?[0-9]+\.[0-9]{2}$ */
+  yearBudgeted: string;
+  /** @minimum 0 */
+  approvedPeriodCount: number;
+}
+
+export interface BudgetPlanningContributionTransaction {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  transactionDate: string;
+  description: string;
+  /** @nullable */
+  merchant?: string | null;
+  /** @pattern ^-?[0-9]+\.[0-9]{2}$ */
+  amount: string;
+  reviewStatus: string;
+  businessTag: string;
+  excludedFromBudget: boolean;
+  pending: boolean;
+  /** @nullable */
+  categoryId?: string | null;
+  /** @nullable */
+  transferGroupId?: string | null;
+}
+
+export interface BudgetPlanningContributionExclusions {
+  /** @minimum 0 */
+  uncategorized: number;
+  /** @minimum 0 */
+  excluded: number;
+  /** @minimum 0 */
+  business: number;
+  /** @minimum 0 */
+  transfers: number;
+  /** @minimum 0 */
+  unreviewed: number;
+  rows: BudgetPlanningContributionTransaction[];
+}
+
+export interface BudgetPlanningContributionDetail {
+  category: BudgetPlanningCategory;
+  includedReviewedHouseholdTransactions: BudgetPlanningContributionTransaction[];
+  /** @pattern ^-?[0-9]+\.[0-9]{2}$ */
+  includedActual: string;
+  exclusions: BudgetPlanningContributionExclusions;
+}
+
 export interface HealthStatus {
   status: string;
 }

@@ -54,7 +54,7 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
     if (error.code === "RISK_BLOCKED") {
       recordMetric("protected_capital_denial_total");
     }
-    const status = error.code === "FORBIDDEN" ? 403 : error.code === "IDEMPOTENCY_CONFLICT" ? 409 : 400;
+    const status = error.code === "FORBIDDEN" ? 403 : error.code === "IDEMPOTENCY_CONFLICT" || error.code === "CONFLICT" ? 409 : 400;
     res.status(status).json({ code: error.code, message: error.message, correlationId });
     return;
   }

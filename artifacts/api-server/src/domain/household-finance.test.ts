@@ -13,6 +13,7 @@ import {
   isExcludedFromHouseholdSpending,
   reviewedTransactionBudgetExclusion,
 } from "./household-finance.ts";
+import { latestFinalizedPlanningPeriod } from "../services/household-finance.ts";
 import { csvImportBankingAdapter, normalizeImportedAmount } from "../adapters/banking.ts";
 
 test("manual entries canonicalize inflows and outflows regardless of entered sign", () => {
@@ -209,6 +210,15 @@ test("advisors cannot see protected account balances", () => {
   assert.equal(canViewFinancialBalance("advisor", true), false);
   assert.equal(canViewFinancialBalance("advisor", false), true);
   assert.equal(canViewFinancialBalance("owner", true), true);
+});
+
+test("copy-forward selects the latest finalized plan, including a newer closed period", () => {
+  const source = latestFinalizedPlanningPeriod([
+    { month: "2026-01-01", status: "approved", id: "older" },
+    { month: "2026-02-01", status: "closed", id: "closed-newer" },
+    { month: "2026-03-01", status: "draft", id: "draft" },
+  ], "2026-04-01");
+  assert.equal(source?.id, "closed-newer");
 });
 
 test("CSV imports preserve quoted descriptions and reject malformed rows", () => {

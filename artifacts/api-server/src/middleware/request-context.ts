@@ -34,6 +34,7 @@ function requiresRecentAuthentication(req: Request) {
     path.startsWith("/micro-live/") ||
     path.startsWith("/execution-control/") ||
     path.startsWith("/financial-transactions/") ||
+    /^\/budget-planning-periods\/[0-9a-fA-F-]{36}\/(approve|close)$/.test(path) ||
     path.startsWith("/financing");
 }
 

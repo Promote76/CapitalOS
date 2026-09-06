@@ -34,6 +34,29 @@ import {
   useReviewFinancialTransaction,
   getListTransactionReviewQueueQueryKey,
   useGetBudget,
+  useGetBudgetPlanningPeriod,
+  useCreateBudgetPlanningCategory,
+  useUpdateBudgetPlanningCategory,
+  useApproveBudgetPlanningPeriod,
+  useReorderBudgetPlanningCategories,
+  useCloseBudgetPlanningPeriod,
+  useListBudgetPlanningHistory,
+  useGetBudgetPlanningComparison,
+  useGetBudgetPlanningCategoryContributionDetail,
+  useGetBudgetPlanningChangeHistory,
+  getGetBudgetPlanningChangeHistoryQueryKey,
+  getGetBudgetPlanningPeriodQueryKey,
+  getListBudgetPlanningHistoryQueryKey,
+  getGetBudgetPlanningComparisonQueryKey,
+  getGetBudgetPlanningCategoryContributionDetailQueryKey,
+  type BudgetPlanningCategory,
+  type BudgetPlanningPeriod,
+  type BudgetPlanningComparison,
+  type BudgetPlanningContributionDetail,
+  type BudgetPlanningHistoryItem,
+  type AuditEventSummary,
+  type BudgetPlanningCategoryInputCategoryType,
+  type BudgetPlanningCategoryInputEssentialStatus,
   useGetHousehold,
   useGetPropertyUnderwriting,
   useUpdateBuyBox,
@@ -171,6 +194,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { bankConnectionAccess } from '@/bank-connection-access';
 import { useProviderProtectedAction } from '@/lib/reverification';
 import { Toaster } from '@/components/ui/toaster';
+import { useToast } from '@/hooks/use-toast';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import TreasuryPage from '@/pages/treasury';
@@ -1075,6 +1099,556 @@ function FinancePulse() {
   </section>;
 }
 
+function CategoryForm({ period, category, onClose, onSuccess, onError }: {
+  period: BudgetPlanningPeriod,
+  category?: BudgetPlanningCategory,
+  onClose: () => void,
+  onSuccess: () => void,
+  onError: (err: unknown) => void
+}) {
+  const createMutation = useCreateBudgetPlanningCategory();
+  const updateMutation = useUpdateBudgetPlanningCategory();
+  const [form, setForm] = useState({
+    name: category?.name || '',
+    categoryType: (category?.categoryType as BudgetPlanningCategoryInputCategoryType) || 'variable_essential',
+    essentialStatus: (category?.essentialStatus as BudgetPlanningCategoryInputEssentialStatus) || 'mixed',
+    monthlyTarget: category?.monthlyTarget || '',
+    warningThreshold: category?.warningThreshold ? String(Number(category.warningThreshold) * 100) : '',
+    notes: category?.notes || '',
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const parsedWarning = form.warningThreshold ? String(Number(form.warningThreshold) / 100) : undefined;
+
+    try {
+      if (category) {
+        await updateMutation.mutateAsync({
+          periodId: period.id,
+          categoryId: category.id,
+          data: {
+            version: period.version,
+            ...form,
+            warningThreshold: parsedWarning
+          }
+        });
+      } else {
+        await createMutation.mutateAsync({
+          periodId: period.id,
+          data: {
+            version: period.version,
+            ...form,
+            warningThreshold: parsedWarning
+          }
+        });
+      }
+      onSuccess();
+    } catch (err) {
+      onError(err);
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!category || !confirm('Archive this category?')) return;
+    setIsSubmitting(true);
+    try {
+      await updateMutation.mutateAsync({
+        periodId: period.id,
+        categoryId: category.id,
+        data: { version: period.version, archived: true }
+      });
+      onSuccess();
+    } catch (err) {
+      onError(err);
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="account-form card-pad">
+      <div className="field">
+        <label htmlFor="category-name">Name</label>
+        <input id="category-name" required maxLength={160} value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+      </div>
+      <div className="field">
+        <label htmlFor="category-type">Type</label>
+        <select id="category-type" required value={form.categoryType} onChange={e => setForm({...form, categoryType: e.target.value as BudgetPlanningCategoryInputCategoryType})}>
+           <option value="fixed_expense">Fixed Expense</option>
+           <option value="variable_essential">Variable Essential</option>
+           <option value="variable_discretionary">Variable Discretionary</option>
+           <option value="savings">Savings</option>
+           <option value="investment">Investment</option>
+           <option value="debt_payment">Debt Payment</option>
+           <option value="transfer">Transfer</option>
+           <option value="income">Income</option>
+           <option value="one_time_expense">One Time Expense</option>
+        </select>
+      </div>
+      <div className="field">
+        <label htmlFor="category-essential">Essential Status</label>
+        <select id="category-essential" required value={form.essentialStatus} onChange={e => setForm({...form, essentialStatus: e.target.value as BudgetPlanningCategoryInputEssentialStatus})}>
+           <option value="essential">Essential</option>
+           <option value="discretionary">Discretionary</option>
+           <option value="mixed">Mixed</option>
+        </select>
+      </div>
+      <div className="field">
+        <label htmlFor="category-monthly-target">Monthly Target</label>
+        <input id="category-monthly-target" required type="number" inputMode="decimal" step="0.01" min="0" value={form.monthlyTarget} onChange={e => setForm({...form, monthlyTarget: e.target.value})} />
+      </div>
+      <div className="field">
+        <label htmlFor="category-warning">Warning Threshold % <span style={{ textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
+        <input id="category-warning" type="number" inputMode="decimal" step="1" min="1" value={form.warningThreshold} onChange={e => setForm({...form, warningThreshold: e.target.value})} placeholder="e.g. 105" />
+      </div>
+      <div className="field" style={{ gridColumn: '1 / -1' }}>
+        <label htmlFor="category-notes">Notes <span style={{ textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label>
+        <textarea id="category-notes" maxLength={2000} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} style={{ minHeight: '60px', resize: 'vertical' }} />
+      </div>
+      <div className="modal-actions" style={{ gridColumn: '1 / -1', justifyContent: 'space-between', display: 'flex' }}>
+        {category ? (
+           <button type="button" className="btn btn-secondary text-critical" onClick={handleArchive} disabled={isSubmitting}>Archive</button>
+        ) : <div />}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>Cancel</button>
+          <button type="submit" className="btn btn-primary" disabled={isSubmitting}>Save</button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+function ContributionDetailView({ periodId, categoryId, onClose }: { periodId: string; categoryId: string; onClose: () => void }) {
+  const query = useGetBudgetPlanningCategoryContributionDetail(periodId, categoryId, {
+    query: { enabled: true, queryKey: getGetBudgetPlanningCategoryContributionDetailQueryKey(periodId, categoryId) }
+  });
+
+  if (query.isLoading) return <div className="card-pad"><div className="skeleton budget-skeleton-table" /></div>;
+  if (query.isError) return <div className="card-pad"><div className="form-feedback error">Could not load details.</div></div>;
+  if (!query.data) return null;
+
+  const { includedActual, includedReviewedHouseholdTransactions, exclusions } = query.data;
+
+  return (
+    <div className="card-pad">
+       <div className="finance-grid planning-contributions-grid">
+          <div className="metric-card blue">
+             <span className="metric-detail">Included Actuals ({includedReviewedHouseholdTransactions.length} rows)</span>
+             <div className="metric-value">{displayMoney(includedActual, '$0')}</div>
+          </div>
+          <div className="metric-card amber">
+             <span className="metric-detail">Excluded Items</span>
+             <div className="metric-value">{exclusions.uncategorized + exclusions.excluded + exclusions.business + exclusions.transfers + exclusions.unreviewed}</div>
+          </div>
+       </div>
+
+       <div className="planning-contributions-exclusions">
+          <span>Uncategorized: {exclusions.uncategorized}</span>
+          <span>Excluded: {exclusions.excluded}</span>
+          <span>Business: {exclusions.business}</span>
+          <span>Transfers: {exclusions.transfers}</span>
+          <span>Unreviewed: {exclusions.unreviewed}</span>
+       </div>
+
+       <div className="finance-table planning-contributions-table">
+          {includedReviewedHouseholdTransactions.length === 0 ? (
+             <div className="finance-empty-state">No reviewed transactions included.</div>
+          ) : includedReviewedHouseholdTransactions.map(tx => (
+             <div key={tx.id} className="finance-row">
+                <div>
+                   <strong>{tx.merchant || tx.description}</strong>
+                   <span>{tx.transactionDate.slice(0, 10)}</span>
+                </div>
+                <div className="finance-bar planning-contributions-bar" />
+                <div className="finance-amount">
+                   <strong>{displayMoney(tx.amount, '$0')}</strong>
+                </div>
+                <div />
+             </div>
+          ))}
+       </div>
+
+       <div className="modal-actions planning-contributions-actions">
+          <button className="btn btn-secondary" onClick={onClose}>Close Details</button>
+       </div>
+    </div>
+  );
+}
+
+function BudgetPlanningControlCenter() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  const historyQuery = useListBudgetPlanningHistory();
+  const periodQuery = useGetBudgetPlanningPeriod(selectedMonth, {
+    query: { retry: false, queryKey: getGetBudgetPlanningPeriodQueryKey(selectedMonth) }
+  });
+  const comparisonQuery = useGetBudgetPlanningComparison(selectedMonth, {
+    query: { retry: false, queryKey: getGetBudgetPlanningComparisonQueryKey(selectedMonth) }
+  });
+
+  const monthOptions = useMemo(() => {
+    const options = new Set<string>();
+    const d = new Date();
+    for (let i = -12; i <= 12; i++) {
+      const temp = new Date(d.getFullYear(), d.getMonth() + i, 1);
+      options.add(`${temp.getFullYear()}-${String(temp.getMonth() + 1).padStart(2, '0')}`);
+    }
+    if (historyQuery.data) {
+      historyQuery.data.forEach(h => options.add(h.month));
+    }
+    return Array.from(options).sort().reverse();
+  }, [historyQuery.data]);
+
+  const idempotencyKeys = useRef({
+    approve: crypto.randomUUID(),
+    close: crypto.randomUUID(),
+  });
+
+  const reorderCategories = useReorderBudgetPlanningCategories();
+  const approvePeriod = useApproveBudgetPlanningPeriod({ request: { headers: { 'Idempotency-Key': idempotencyKeys.current.approve } } });
+  const closePeriod = useCloseBudgetPlanningPeriod({ request: { headers: { 'Idempotency-Key': idempotencyKeys.current.close } } });
+  const [showArchived, setShowArchived] = useState(false);
+  const activeCategories = periodQuery.data ? periodQuery.data.categories.filter(c => !c.archived).sort((a, b) => a.sortOrder - b.sortOrder) : [];
+  const archivedCategories = periodQuery.data ? periodQuery.data.categories.filter(c => c.archived).sort((a, b) => a.sortOrder - b.sortOrder) : [];
+
+  const changeHistoryQuery = useGetBudgetPlanningChangeHistory(periodQuery.data?.id ?? '', {
+    query: { enabled: !!periodQuery.data?.id, queryKey: periodQuery.data?.id ? getGetBudgetPlanningChangeHistoryQueryKey(periodQuery.data.id) : ['/api/budget-planning-change-history'] }
+  });
+
+  const submitApprove = useProviderProtectedAction(async (periodId: string, version: number) => {
+    return approvePeriod.mutateAsync({ periodId, data: { version } });
+  });
+  const submitClose = useProviderProtectedAction(async (periodId: string, version: number) => {
+    return closePeriod.mutateAsync({ periodId, data: { version } });
+  });
+
+  const handleMutationError = (error: unknown, action: string) => {
+    const errObj = error as Record<string, unknown>;
+    const isConflict = errObj?.status === 409 || JSON.stringify(error).includes('409');
+    if (isConflict) {
+      toast({
+        variant: 'destructive',
+        title: 'Version Conflict',
+        description: 'This plan was modified elsewhere. Refreshing...',
+      });
+      queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningPeriodQueryKey(selectedMonth) });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: `${action} failed`,
+        description: error instanceof Error ? error.message : 'Unexpected error',
+      });
+    }
+  };
+
+  const handleApprove = async (period: BudgetPlanningPeriod) => {
+    if (!confirm('Approve this plan? It will become immutable.')) return;
+    try {
+      await submitApprove(period.id, period.version);
+      idempotencyKeys.current.approve = crypto.randomUUID();
+      queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningPeriodQueryKey(selectedMonth) });
+      queryClient.invalidateQueries({ queryKey: getListBudgetPlanningHistoryQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningComparisonQueryKey(selectedMonth) });
+      queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningChangeHistoryQueryKey(period.id) });
+      queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/safe-to-deploy'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/cash-flow'] });
+      toast({ title: 'Plan approved' });
+    } catch (err: unknown) {
+      handleMutationError(err, 'Approval');
+    }
+  };
+
+  const handleClose = async (period: BudgetPlanningPeriod) => {
+    if (!confirm('Close this plan?')) return;
+    try {
+      await submitClose(period.id, period.version);
+      idempotencyKeys.current.close = crypto.randomUUID();
+      queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningPeriodQueryKey(selectedMonth) });
+      queryClient.invalidateQueries({ queryKey: getListBudgetPlanningHistoryQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningComparisonQueryKey(selectedMonth) });
+      queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningChangeHistoryQueryKey(period.id) });
+      toast({ title: 'Plan closed' });
+    } catch (err: unknown) {
+      handleMutationError(err, 'Close');
+    }
+  };
+
+  const handleMove = async (index: number, direction: 'up' | 'down') => {
+    if (!periodQuery.data) return;
+    const period = periodQuery.data;
+    const categories = [...activeCategories];
+
+    if (direction === 'up' && index > 0) {
+      const temp = categories[index];
+      categories[index] = categories[index - 1];
+      categories[index - 1] = temp;
+    } else if (direction === 'down' && index < categories.length - 1) {
+      const temp = categories[index];
+      categories[index] = categories[index + 1];
+      categories[index + 1] = temp;
+    } else return;
+
+    // Request must include EVERY category ID exactly once (active first, then archived appended).
+    const categoryIds = [...categories.map(c => c.id), ...archivedCategories.map(c => c.id)];
+
+    try {
+      await reorderCategories.mutateAsync({ periodId: period.id, data: { version: period.version, categoryIds } });
+      queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningPeriodQueryKey(selectedMonth) });
+      if (period.id) {
+         queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningChangeHistoryQueryKey(period.id) });
+      }
+    } catch (err: unknown) {
+      handleMutationError(err, 'Reorder');
+    }
+  };
+
+  const [editingCategory, setEditingCategory] = useState<BudgetPlanningCategory | 'new' | null>(null);
+  const [detailCategory, setDetailCategory] = useState<BudgetPlanningCategory | null>(null);
+
+  const format = (v: string) => displayMoney(v, '$0');
+
+  const formatMonth = (monthString: string) => {
+    const [year, month] = monthString.split('-');
+    const date = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  return (
+    <section className="card card-pad page-section animate-in delay-2" style={{ marginTop: '24px' }}>
+      <div className="planning-header">
+        <div>
+          <CardTitle title="Planning Control Center" subtitle="Draft, approve, and compare monthly periods." />
+        </div>
+        <div className="planning-month-selector">
+          <CalendarDays size={16} className="text-secondary" />
+          <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} aria-label="Select planning month">
+            {monthOptions.map(m => (
+              <option key={m} value={m}>{formatMonth(m)}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {comparisonQuery.isSuccess && comparisonQuery.data && (
+        <div className="finance-grid planning-comparison-grid">
+          <div className="metric-card blue">
+            <span className="metric-detail">Month Budgeted</span>
+            <div className="metric-value">{displayMoney(comparisonQuery.data.monthBudgeted, '$0')}</div>
+          </div>
+          <div className="metric-card lavender">
+            <span className="metric-detail">Quarter Budgeted</span>
+            <div className="metric-value">{displayMoney(comparisonQuery.data.quarterBudgeted, '$0')}</div>
+          </div>
+          <div className="metric-card green">
+            <span className="metric-detail">Year Budgeted</span>
+            <div className="metric-value">{displayMoney(comparisonQuery.data.yearBudgeted, '$0')}</div>
+          </div>
+          <div className="metric-card amber">
+            <span className="metric-detail">Approved Periods</span>
+            <div className="metric-value">{comparisonQuery.data.approvedPeriodCount}</div>
+          </div>
+        </div>
+      )}
+
+      {periodQuery.isLoading ? (
+        <div className="budget-skeleton" aria-hidden="true"><div className="skeleton budget-skeleton-table" /></div>
+      ) : periodQuery.isError ? (
+        <div className="finance-empty-state" role="alert">
+           <strong>No plan found for {selectedMonth}</strong>
+           <span>Select a different month or ensure the service is available.</span>
+           <button className="btn btn-secondary" onClick={() => void periodQuery.refetch()}>Try again</button>
+        </div>
+      ) : periodQuery.data && (
+        <div className="planning-period-content">
+           <div className="planning-actions-bar">
+             <div className="planning-status-badge">
+                <span className={`status ${periodQuery.data.status === 'draft' ? 'review' : periodQuery.data.status === 'approved' ? 'pending' : 'success'}`}>
+                  {periodQuery.data.status.toUpperCase()} PLAN
+                </span>
+             </div>
+             <div className="planning-actions">
+                {periodQuery.data.status === 'draft' && (
+                  <>
+                    <button onClick={() => setEditingCategory('new')} className="btn btn-secondary btn-sm"><Plus size={14} /> Category</button>
+                    <button onClick={() => handleApprove(periodQuery.data)} disabled={approvePeriod.isPending} className="btn btn-primary btn-sm"><Check size={14} /> Approve</button>
+                  </>
+                )}
+                {periodQuery.data.status === 'approved' && (
+                  <button onClick={() => handleClose(periodQuery.data)} disabled={closePeriod.isPending} className="btn btn-secondary btn-sm"><Lock size={14} /> Close Period</button>
+                )}
+             </div>
+           </div>
+
+           {periodQuery.data.status === 'draft' && periodQuery.data.advisory && (
+             <div className="finance-data-banner review planning-advisory-banner">
+               <div className="finance-data-banner-icon planning-advisory-icon"><AlertTriangle size={16} /></div>
+               <div>
+                 <strong>Advisory Draft</strong>
+                 <span>Changes here do not affect official totals until approved. Projected expense target: {displayMoney(periodQuery.data.advisory.projectedExpenseTarget, '$0')}. Net activity: {displayMoney(periodQuery.data.advisory.reviewedHouseholdNetActivity, '$0')}. {periodQuery.data.copiedFromPeriodId ? 'Initialized from the latest finalized plan.' : 'Initialized from the live category taxonomy.'}</span>
+               </div>
+             </div>
+           )}
+
+           <div className="planning-categories">
+              {activeCategories.map((cat, i, arr) => (
+                 <div key={cat.id} className="planning-row">
+                    <div className="planning-row-info">
+                       <strong>{cat.name}</strong>
+                       <span>{cat.categoryType.replace(/_/g, ' ')} • {cat.essentialStatus}</span>
+                    </div>
+                    <div className="planning-row-target">
+                       {displayMoney(cat.monthlyTarget, '$0')}
+                       {Number(cat.warningThreshold) > 0 && <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-secondary)' }}>Warn: {Number(cat.warningThreshold) * 100}%</span>}
+                    </div>
+                    <div className="planning-row-notes text-secondary" style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                       {cat.notes}
+                    </div>
+                    <div className="planning-row-actions">
+                       <button className="btn btn-secondary btn-sm" onClick={() => setDetailCategory(cat)} aria-label={`View Contributions for ${cat.name}`} title="View Contributions"><BarChart3 size={14} /></button>
+                       {periodQuery.data.status === 'draft' && (
+                         <>
+                           <button className="btn btn-secondary btn-sm" onClick={() => setEditingCategory(cat)} aria-label={`Edit ${cat.name}`} title="Edit Category"><Pencil size={14} /></button>
+                           <button className="btn btn-secondary btn-sm" onClick={() => handleMove(i, 'up')} disabled={i === 0 || reorderCategories.isPending} aria-label={`Move ${cat.name} Up`} title="Move Up">↑</button>
+                           <button className="btn btn-secondary btn-sm" onClick={() => handleMove(i, 'down')} disabled={i === arr.length - 1 || reorderCategories.isPending} aria-label={`Move ${cat.name} Down`} title="Move Down">↓</button>
+                         </>
+                       )}
+                    </div>
+                 </div>
+              ))}
+              {activeCategories.length === 0 && (
+                <div className="finance-empty-state">
+                   <strong>No categories yet</strong>
+                   <span>Create a category to start planning.</span>
+                </div>
+              )}
+           </div>
+
+           {archivedCategories.length > 0 && (
+             <div className="planning-archived-section">
+                <button
+                  className="planning-archived-toggle"
+                  onClick={() => setShowArchived(!showArchived)}
+                  aria-expanded={showArchived}
+                >
+                  <span>Archived Categories ({archivedCategories.length})</span>
+                  {showArchived ? <ChevronRight size={14} style={{ transform: 'rotate(90deg)' }} /> : <ChevronRight size={14} />}
+                </button>
+                {showArchived && (
+                  <div className="planning-categories" style={{ marginTop: '12px' }}>
+                    {archivedCategories.map((cat) => (
+                       <div key={cat.id} className="planning-row archived">
+                          <div className="planning-row-info">
+                             <strong>{cat.name}</strong>
+                             <span>{cat.categoryType.replace(/_/g, ' ')} • {cat.essentialStatus}</span>
+                          </div>
+                          <div className="planning-row-target">
+                             {displayMoney(cat.monthlyTarget, '$0')}
+                          </div>
+                          <div className="planning-row-notes text-secondary" style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                             {cat.notes}
+                          </div>
+                          <div className="planning-row-actions">
+                             <button className="btn btn-secondary btn-sm" onClick={() => setDetailCategory(cat)} aria-label={`View Contributions for ${cat.name}`} title="View Contributions"><BarChart3 size={14} /></button>
+                             {periodQuery.data.status === 'draft' && (
+                               <button className="btn btn-secondary btn-sm" onClick={() => setEditingCategory(cat)} aria-label={`Edit ${cat.name}`} title="Edit Category"><Pencil size={14} /></button>
+                             )}
+                          </div>
+                       </div>
+                    ))}
+                  </div>
+                )}
+             </div>
+           )}
+
+           <div className="planning-history-grid">
+             <div className="planning-change-history" style={{ marginTop: 0, borderTop: 0, paddingTop: 0 }}>
+               <strong>Recent Change Events</strong>
+               {changeHistoryQuery.isLoading && <div className="budget-skeleton"><div className="skeleton" style={{ minHeight: '60px' }} /></div>}
+               {changeHistoryQuery.isError && <div className="finance-empty-state" role="alert"><span>Could not load change history.</span><button className="btn btn-secondary" onClick={() => void changeHistoryQuery.refetch()}>Retry</button></div>}
+               {changeHistoryQuery.isSuccess && changeHistoryQuery.data.length === 0 && <div className="finance-empty-state"><span>No changes recorded for this period.</span></div>}
+               {changeHistoryQuery.isSuccess && changeHistoryQuery.data.length > 0 && (
+                 <div className="planning-history-list">
+                   {changeHistoryQuery.data.slice(0, 6).map((item) => (
+                     <div key={item.id} className="planning-history-item">
+                       <div>
+                         <strong>{item.actor}</strong> {item.eventType.replace(/_/g, ' ')} {item.entity.toLowerCase()}
+                         {item.reason && <div className="planning-history-item-meta" style={{ marginTop: '4px' }}>{item.reason}</div>}
+                       </div>
+                       <div className="planning-history-item-meta">{item.timestamp.slice(0, 10)} {item.timestamp.slice(11, 16)}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
+             </div>
+
+             <div className="planning-change-history" style={{ marginTop: 0, borderTop: 0, paddingTop: 0 }}>
+               <strong>Period History</strong>
+               {historyQuery.isLoading && <div className="budget-skeleton"><div className="skeleton" style={{ minHeight: '60px' }} /></div>}
+               {historyQuery.isError && <div className="finance-empty-state" role="alert"><span>Could not load period history.</span><button className="btn btn-secondary" onClick={() => void historyQuery.refetch()}>Retry</button></div>}
+               {historyQuery.isSuccess && historyQuery.data.length === 0 && <div className="finance-empty-state"><span>No historical periods found.</span></div>}
+               {historyQuery.isSuccess && historyQuery.data.length > 0 && (
+                 <div className="planning-history-list">
+                   {historyQuery.data.slice(0, 6).map((item) => (
+                     <div key={item.id} className="planning-history-item">
+                       <div>
+                         <strong>{formatMonth(item.month)}</strong>
+                         <div className="planning-history-item-meta" style={{ marginTop: '4px' }}>
+                           v{item.version} {item.copiedFromPeriodId ? '• Copied' : ''} {item.approvedAt ? `• Approved ${item.approvedAt.slice(0, 10)}` : ''}
+                         </div>
+                       </div>
+                       <div className={`planning-history-item-status status ${item.status === 'draft' ? 'review' : item.status === 'approved' ? 'pending' : 'success'}`}>
+                         {item.status}
+                       </div>
+                     </div>
+                   ))}
+                 </div>
+               )}
+             </div>
+           </div>
+        </div>
+      )}
+
+      {editingCategory && periodQuery.data && (
+        <div className="planning-modal-overlay" role="dialog" aria-labelledby="category-modal-title" aria-modal="true">
+          <div className="planning-modal-content">
+            <div className="card-pad" style={{ borderBottom: '1px solid var(--border-default)' }} id="category-modal-title"><CardTitle title={editingCategory === 'new' ? 'New Category' : 'Edit Category'} /></div>
+            <CategoryForm
+              period={periodQuery.data}
+              category={editingCategory === 'new' ? undefined : editingCategory}
+              onClose={() => setEditingCategory(null)}
+              onSuccess={() => {
+                 setEditingCategory(null);
+                 queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningPeriodQueryKey(selectedMonth) });
+                 queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningChangeHistoryQueryKey(periodQuery.data.id) });
+              }}
+              onError={(err) => handleMutationError(err, 'Save Category')}
+            />
+          </div>
+        </div>
+      )}
+
+      {detailCategory && periodQuery.data && (
+        <div className="planning-modal-overlay" role="dialog" aria-labelledby="contribution-modal-title" aria-modal="true">
+          <div className="planning-modal-content">
+            <div className="card-pad" style={{ borderBottom: '1px solid var(--border-default)' }} id="contribution-modal-title"><CardTitle title={`Contributions: ${detailCategory.name}`} subtitle="Provenance of actuals for this category" /></div>
+            <ContributionDetailView periodId={periodQuery.data.id} categoryId={detailCategory.id} onClose={() => setDetailCategory(null)} />
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function BudgetPage() {
   const query = useGetBudget();
   const safe = useGetSafeToDeploy();
@@ -1157,7 +1731,10 @@ function BudgetPage() {
         <FinanceMetric label="Remaining" value={displayMoney(data.totals.remaining, '$0')} detail="before the month closes" tone="green" action={<Link className="text-link" href="/cash-flow">View cash flow</Link>} />
         <FinanceMetric label="Safe to deploy" value={safe.isLoading ? 'Calculating…' : safe.isError ? 'Unavailable' : displayMoney(safe.data?.safeToDeploy, '$0')} detail={safe.isError ? 'Capital Governor could not be refreshed' : 'Capital Governor limit'} tone="lavender" action={safe.isError ? <button className="text-link" onClick={() => { void safe.refetch(); }} data-testid="button-retry-budget-safe-to-deploy">Try again</button> : <Link className="text-link" href="/cash-flow">See calculation</Link>} />
       </div>
-      <section className="card card-pad page-section animate-in delay-2">
+
+      <BudgetPlanningControlCenter />
+
+      <section className="card card-pad page-section animate-in delay-2" style={{ marginTop: '24px' }}>
         <CardTitle title="Budget performance" subtitle="Projected pace helps surface pressure before it becomes a surprise." action={<Link className="btn btn-secondary" href="/transactions"><ClipboardCheck size={14} /> Review transactions</Link>} />
        {!hasBudgetData && <div className="finance-empty-state"><strong>No monthly budget targets yet</strong><span>Current categories have no monthly expense targets. Review transaction categories now; planning targets can be completed when household estimates are available.</span><Link className="btn btn-secondary" href="/transactions">Review categories</Link></div>}
        <div className="finance-table">

@@ -45,6 +45,22 @@ import {
   RevokeReadOnlyBankConnectionResponse,
   ExportReadOnlyBankConnectionResponse,
   DeleteReadOnlyBankConnectionDataResponse,
+  GetBudgetPlanningPeriodResponse,
+  CreateBudgetPlanningCategoryBody,
+  CreateBudgetPlanningCategoryResponse,
+  UpdateBudgetPlanningCategoryBody,
+  UpdateBudgetPlanningCategoryResponse,
+  ApproveBudgetPlanningPeriodBody,
+  ApproveBudgetPlanningPeriodResponse,
+  ReorderBudgetPlanningCategoriesBody,
+  CloseBudgetPlanningPeriodBody,
+  CloseBudgetPlanningPeriodResponse,
+  ListBudgetPlanningHistoryResponse,
+  GetBudgetPlanningComparisonResponse,
+  GetBudgetPlanningCategoryContributionDetailResponse,
+  CopyBudgetPlanningPeriodResponse,
+  ReorderBudgetPlanningCategoriesResponse,
+  GetBudgetPlanningChangeHistoryResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
@@ -84,12 +100,85 @@ import {
   revokeReadOnlyBankConnection,
   exportReadOnlyBankConnection,
   deleteReadOnlyBankConnectionData,
+  getBudgetPlanningPeriod,
+  createBudgetPlanningCategory,
+  updateBudgetPlanningCategory,
+  approveBudgetPlanningPeriod,
+  copyBudgetPlanningPeriod,
+  reorderBudgetPlanningCategories,
+  closeBudgetPlanningPeriod,
+  getBudgetPlanningHistory,
+  getBudgetPlanningComparison,
+  getBudgetPlanningCategoryContributionDetail,
+  getBudgetPlanningChangeHistory,
 } from "../services/household-finance";
 
 const router: IRouter = Router();
 
 router.get("/budget", asyncRoute(async (_req, res) => {
   res.json(GetBudgetResponse.parse(await getBudget(actorFrom(res))));
+}));
+
+router.get("/budget-planning-periods/:month", asyncRoute(async (req, res) => {
+  const month = Array.isArray(req.params.month) ? req.params.month[0] : req.params.month;
+  res.json(GetBudgetPlanningPeriodResponse.parse(await getBudgetPlanningPeriod(actorFrom(res), month)));
+}));
+
+router.post("/budget-planning-periods/:periodId/categories", asyncRoute(async (req, res) => {
+  const periodId = Array.isArray(req.params.periodId) ? req.params.periodId[0] : req.params.periodId;
+  const body = CreateBudgetPlanningCategoryBody.parse(req.body);
+  res.status(201).json(CreateBudgetPlanningCategoryResponse.parse(await createBudgetPlanningCategory(actorFrom(res), periodId, body.version, body)));
+}));
+
+router.patch("/budget-planning-periods/:periodId/categories/:categoryId", asyncRoute(async (req, res) => {
+  const periodId = Array.isArray(req.params.periodId) ? req.params.periodId[0] : req.params.periodId;
+  const categoryId = Array.isArray(req.params.categoryId) ? req.params.categoryId[0] : req.params.categoryId;
+  const body = UpdateBudgetPlanningCategoryBody.parse(req.body);
+  res.json(UpdateBudgetPlanningCategoryResponse.parse(await updateBudgetPlanningCategory(actorFrom(res), periodId, categoryId, body.version, body)));
+}));
+
+router.post("/budget-planning-periods/:periodId/approve", asyncRoute(async (req, res) => {
+  const periodId = Array.isArray(req.params.periodId) ? req.params.periodId[0] : req.params.periodId;
+  const body = ApproveBudgetPlanningPeriodBody.parse(req.body);
+  const key = req.header("Idempotency-Key");
+  res.json(ApproveBudgetPlanningPeriodResponse.parse(await approveBudgetPlanningPeriod(actorFrom(res), periodId, body.version, key ?? "")));
+}));
+
+router.post("/budget-planning-periods/:month/copy-forward", asyncRoute(async (req, res) => {
+  const month = Array.isArray(req.params.month) ? req.params.month[0] : req.params.month;
+  res.json(CopyBudgetPlanningPeriodResponse.parse(await copyBudgetPlanningPeriod(actorFrom(res), month, req.header("Idempotency-Key") ?? "")));
+}));
+
+router.post("/budget-planning-periods/:periodId/reorder", asyncRoute(async (req, res) => {
+  const periodId = Array.isArray(req.params.periodId) ? req.params.periodId[0] : req.params.periodId;
+  const body = ReorderBudgetPlanningCategoriesBody.parse(req.body);
+  res.json(ReorderBudgetPlanningCategoriesResponse.parse(await reorderBudgetPlanningCategories(actorFrom(res), periodId, body.version, body.categoryIds)));
+}));
+
+router.post("/budget-planning-periods/:periodId/close", asyncRoute(async (req, res) => {
+  const periodId = Array.isArray(req.params.periodId) ? req.params.periodId[0] : req.params.periodId;
+  const body = CloseBudgetPlanningPeriodBody.parse(req.body);
+  res.json(CloseBudgetPlanningPeriodResponse.parse(await closeBudgetPlanningPeriod(actorFrom(res), periodId, body.version, req.header("Idempotency-Key") ?? "")));
+}));
+
+router.get("/budget-planning-periods", asyncRoute(async (_req, res) => {
+  res.json(ListBudgetPlanningHistoryResponse.parse(await getBudgetPlanningHistory(actorFrom(res))));
+}));
+
+router.get("/budget-planning-periods/:periodId/change-history", asyncRoute(async (req, res) => {
+  const periodId = Array.isArray(req.params.periodId) ? req.params.periodId[0] : req.params.periodId;
+  res.json(GetBudgetPlanningChangeHistoryResponse.parse(await getBudgetPlanningChangeHistory(actorFrom(res), periodId)));
+}));
+
+router.get("/budget-planning-comparison/:month", asyncRoute(async (req, res) => {
+  const month = Array.isArray(req.params.month) ? req.params.month[0] : req.params.month;
+  res.json(GetBudgetPlanningComparisonResponse.parse(await getBudgetPlanningComparison(actorFrom(res), month)));
+}));
+
+router.get("/budget-planning-periods/:periodId/categories/:categoryId/contributions", asyncRoute(async (req, res) => {
+  const periodId = Array.isArray(req.params.periodId) ? req.params.periodId[0] : req.params.periodId;
+  const categoryId = Array.isArray(req.params.categoryId) ? req.params.categoryId[0] : req.params.categoryId;
+  res.json(GetBudgetPlanningCategoryContributionDetailResponse.parse(await getBudgetPlanningCategoryContributionDetail(actorFrom(res), periodId, categoryId)));
 }));
 
 router.get("/cash-flow", asyncRoute(async (_req, res) => {

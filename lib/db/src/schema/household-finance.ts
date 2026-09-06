@@ -1,5 +1,6 @@
 import {
   boolean,
+  type AnyPgColumn,
   date,
   index,
   integer,
@@ -15,6 +16,7 @@ import {
   bankConnectionStatusEnum,
   bankConsentStatusEnum,
   bankReconciliationStatusEnum,
+  budgetPlanningPeriodStatusEnum,
   billStatusEnum,
   budgetCategoryTypeEnum,
   businessTagEnum,
@@ -168,6 +170,60 @@ export const financeCategories = pgTable(
   },
   (table) => ({
     householdNameUnique: uniqueIndex("finance_categories_household_name_unique").on(table.householdId, table.name),
+  }),
+);
+
+/**
+ * Planning records deliberately do not replace financeCategories: that table remains
+ * the transaction taxonomy, while these records preserve the plan that was reviewed.
+ */
+export const budgetPlanningPeriods = pgTable(
+  "budget_planning_periods",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    month: date("month", { mode: "string" }).notNull(),
+    status: budgetPlanningPeriodStatusEnum("status").notNull().default("draft"),
+    version: integer("version").notNull().default(1),
+    copiedFromPeriodId: uuid("copied_from_period_id").references((): AnyPgColumn => budgetPlanningPeriods.id, { onDelete: "set null" }),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    approvedBy: uuid("approved_by").references(() => users.id, { onDelete: "set null" }),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    closedBy: uuid("closed_by").references(() => users.id, { onDelete: "set null" }),
+    createdBy: uuid("created_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdMonthUnique: uniqueIndex("budget_planning_periods_household_month_unique").on(table.householdId, table.month),
+    householdStatusIdx: index("budget_planning_periods_household_status_idx").on(table.householdId, table.status, table.month),
+  }),
+);
+
+export const budgetPlanningCategorySnapshots = pgTable(
+  "budget_planning_category_snapshots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    periodId: uuid("period_id").notNull().references(() => budgetPlanningPeriods.id, { onDelete: "cascade" }),
+    sourceCategoryId: uuid("source_category_id").references(() => financeCategories.id, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    categoryType: budgetCategoryTypeEnum("category_type").notNull(),
+    essentialStatus: essentialStatusEnum("essential_status").notNull(),
+    monthlyTarget: money("monthly_target"),
+    warningThreshold: numeric("warning_threshold", { precision: 6, scale: 4 }).notNull().default("1.00"),
+    notes: text("notes"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    archived: boolean("archived").notNull().default(false),
+    createdBy: uuid("created_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+    updatedBy: uuid("updated_by").notNull().references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    periodSortUnique: uniqueIndex("budget_planning_category_snapshots_period_sort_unique").on(table.periodId, table.sortOrder),
+    periodSourceUnique: uniqueIndex("budget_planning_category_snapshots_period_source_unique").on(table.periodId, table.sourceCategoryId),
+    householdPeriodIdx: index("budget_planning_category_snapshots_household_period_idx").on(table.householdId, table.periodId),
   }),
 );
 
@@ -329,6 +385,8 @@ export const financeSnapshots = pgTable(
 export type BankConnection = typeof bankConnections.$inferSelect;
 export type FinancialAccount = typeof financialAccounts.$inferSelect;
 export type FinanceCategory = typeof financeCategories.$inferSelect;
+export type BudgetPlanningPeriod = typeof budgetPlanningPeriods.$inferSelect;
+export type BudgetPlanningCategorySnapshot = typeof budgetPlanningCategorySnapshots.$inferSelect;
 export type FinanceTransaction = typeof financeTransactions.$inferSelect;
 export type RecurringTransaction = typeof recurringTransactions.$inferSelect;
 export type FinanceBill = typeof financeBills.$inferSelect;

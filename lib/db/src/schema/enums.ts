@@ -190,6 +190,13 @@ export const budgetCategoryTypeEnum = pgEnum("budget_category_type", [
   "one_time_expense",
 ]);
 
+/** Lifecycle of a household-owned monthly budget plan. */
+export const budgetPlanningPeriodStatusEnum = pgEnum("budget_planning_period_status", [
+  "draft",
+  "approved",
+  "closed",
+]);
+
 export const essentialStatusEnum = pgEnum("essential_status", [
   "essential",
   "discretionary",

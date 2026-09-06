@@ -40,6 +40,18 @@ import type {
   BillInput,
   BillUpdateInput,
   BlockchainStatus,
+  BudgetPlanningApproval,
+  BudgetPlanningCategoryInput,
+  BudgetPlanningCategoryMutation,
+  BudgetPlanningCategoryUpdateInput,
+  BudgetPlanningCloseResult,
+  BudgetPlanningComparison,
+  BudgetPlanningContributionDetail,
+  BudgetPlanningHistoryList,
+  BudgetPlanningPeriod,
+  BudgetPlanningReorderInput,
+  BudgetPlanningReorderResult,
+  BudgetPlanningVersionInput,
   BudgetSummary,
   BusinessDistribution,
   BusinessDistributionInput,
@@ -7633,6 +7645,829 @@ export function useListFinanceSnapshots<TData = Awaited<ReturnType<typeof listFi
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListFinanceSnapshotsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetBudgetPlanningPeriodUrl = (month: string,) => {
+
+
+
+
+  return `/api/budget-planning-periods/${month}`
+}
+
+/**
+ * @summary Get or lazily bootstrap a household monthly budget planning period
+ */
+export const getBudgetPlanningPeriod = async (month: string, options?: Parameters<typeof customFetch>[1]): Promise<BudgetPlanningPeriod> => {
+
+  return customFetch<BudgetPlanningPeriod>(getGetBudgetPlanningPeriodUrl(month),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBudgetPlanningPeriodQueryKey = (month: string,) => {
+    return [
+    `/api/budget-planning-periods/${month}`
+    ] as const;
+    }
+
+
+export const getGetBudgetPlanningPeriodQueryOptions = <TData = Awaited<ReturnType<typeof getBudgetPlanningPeriod>>, TError = ErrorType<unknown>>(month: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBudgetPlanningPeriod>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBudgetPlanningPeriodQueryKey(month);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBudgetPlanningPeriod>>> = ({ signal }) => getBudgetPlanningPeriod(month, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: month !== null && month !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBudgetPlanningPeriod>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBudgetPlanningPeriodQueryResult = NonNullable<Awaited<ReturnType<typeof getBudgetPlanningPeriod>>>
+export type GetBudgetPlanningPeriodQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get or lazily bootstrap a household monthly budget planning period
+ */
+
+export function useGetBudgetPlanningPeriod<TData = Awaited<ReturnType<typeof getBudgetPlanningPeriod>>, TError = ErrorType<unknown>>(
+ month: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBudgetPlanningPeriod>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBudgetPlanningPeriodQueryOptions(month,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateBudgetPlanningCategoryUrl = (periodId: string,) => {
+
+
+
+
+  return `/api/budget-planning-periods/${periodId}/categories`
+}
+
+/**
+ * @summary Add a category snapshot to a draft planning period
+ */
+export const createBudgetPlanningCategory = async (periodId: string,
+    budgetPlanningCategoryInput: BudgetPlanningCategoryInput, options?: Parameters<typeof customFetch>[1]): Promise<BudgetPlanningCategoryMutation> => {
+
+  return customFetch<BudgetPlanningCategoryMutation>(getCreateBudgetPlanningCategoryUrl(periodId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(budgetPlanningCategoryInput)
+  }
+);}
+
+
+
+
+
+export const getCreateBudgetPlanningCategoryMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBudgetPlanningCategory>>, TError,{periodId: string;data: BodyType<BudgetPlanningCategoryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBudgetPlanningCategory>>, TError,{periodId: string;data: BodyType<BudgetPlanningCategoryInput>}, TContext> => {
+
+const mutationKey = ['createBudgetPlanningCategory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBudgetPlanningCategory>>, {periodId: string;data: BodyType<BudgetPlanningCategoryInput>}> = (props) => {
+          const {periodId,data} = props ?? {};
+
+          return  createBudgetPlanningCategory(periodId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBudgetPlanningCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof createBudgetPlanningCategory>>>
+    export type CreateBudgetPlanningCategoryMutationBody = BodyType<BudgetPlanningCategoryInput>
+    export type CreateBudgetPlanningCategoryMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Add a category snapshot to a draft planning period
+ */
+export const useCreateBudgetPlanningCategory = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBudgetPlanningCategory>>, TError,{periodId: string;data: BodyType<BudgetPlanningCategoryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBudgetPlanningCategory>>,
+        TError,
+        {periodId: string;data: BodyType<BudgetPlanningCategoryInput>},
+        TContext
+      > => {
+      return useMutation(getCreateBudgetPlanningCategoryMutationOptions(options));
+    }
+
+export const getUpdateBudgetPlanningCategoryUrl = (periodId: string,
+    categoryId: string,) => {
+
+
+
+
+  return `/api/budget-planning-periods/${periodId}/categories/${categoryId}`
+}
+
+/**
+ * @summary Update or archive a category snapshot in a draft planning period
+ */
+export const updateBudgetPlanningCategory = async (periodId: string,
+    categoryId: string,
+    budgetPlanningCategoryUpdateInput: BudgetPlanningCategoryUpdateInput, options?: Parameters<typeof customFetch>[1]): Promise<BudgetPlanningCategoryMutation> => {
+
+  return customFetch<BudgetPlanningCategoryMutation>(getUpdateBudgetPlanningCategoryUrl(periodId,categoryId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(budgetPlanningCategoryUpdateInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateBudgetPlanningCategoryMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBudgetPlanningCategory>>, TError,{periodId: string;categoryId: string;data: BodyType<BudgetPlanningCategoryUpdateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBudgetPlanningCategory>>, TError,{periodId: string;categoryId: string;data: BodyType<BudgetPlanningCategoryUpdateInput>}, TContext> => {
+
+const mutationKey = ['updateBudgetPlanningCategory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBudgetPlanningCategory>>, {periodId: string;categoryId: string;data: BodyType<BudgetPlanningCategoryUpdateInput>}> = (props) => {
+          const {periodId,categoryId,data} = props ?? {};
+
+          return  updateBudgetPlanningCategory(periodId,categoryId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateBudgetPlanningCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof updateBudgetPlanningCategory>>>
+    export type UpdateBudgetPlanningCategoryMutationBody = BodyType<BudgetPlanningCategoryUpdateInput>
+    export type UpdateBudgetPlanningCategoryMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Update or archive a category snapshot in a draft planning period
+ */
+export const useUpdateBudgetPlanningCategory = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBudgetPlanningCategory>>, TError,{periodId: string;categoryId: string;data: BodyType<BudgetPlanningCategoryUpdateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateBudgetPlanningCategory>>,
+        TError,
+        {periodId: string;categoryId: string;data: BodyType<BudgetPlanningCategoryUpdateInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateBudgetPlanningCategoryMutationOptions(options));
+    }
+
+export const getApproveBudgetPlanningPeriodUrl = (periodId: string,) => {
+
+
+
+
+  return `/api/budget-planning-periods/${periodId}/approve`
+}
+
+/**
+ * @summary Owner-approve and freeze a monthly budget plan
+ */
+export const approveBudgetPlanningPeriod = async (periodId: string,
+    budgetPlanningVersionInput: BudgetPlanningVersionInput, options?: Parameters<typeof customFetch>[1]): Promise<BudgetPlanningApproval> => {
+
+  return customFetch<BudgetPlanningApproval>(getApproveBudgetPlanningPeriodUrl(periodId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(budgetPlanningVersionInput)
+  }
+);}
+
+
+
+
+
+export const getApproveBudgetPlanningPeriodMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveBudgetPlanningPeriod>>, TError,{periodId: string;data: BodyType<BudgetPlanningVersionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveBudgetPlanningPeriod>>, TError,{periodId: string;data: BodyType<BudgetPlanningVersionInput>}, TContext> => {
+
+const mutationKey = ['approveBudgetPlanningPeriod'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveBudgetPlanningPeriod>>, {periodId: string;data: BodyType<BudgetPlanningVersionInput>}> = (props) => {
+          const {periodId,data} = props ?? {};
+
+          return  approveBudgetPlanningPeriod(periodId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveBudgetPlanningPeriodMutationResult = NonNullable<Awaited<ReturnType<typeof approveBudgetPlanningPeriod>>>
+    export type ApproveBudgetPlanningPeriodMutationBody = BodyType<BudgetPlanningVersionInput>
+    export type ApproveBudgetPlanningPeriodMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Owner-approve and freeze a monthly budget plan
+ */
+export const useApproveBudgetPlanningPeriod = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveBudgetPlanningPeriod>>, TError,{periodId: string;data: BodyType<BudgetPlanningVersionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveBudgetPlanningPeriod>>,
+        TError,
+        {periodId: string;data: BodyType<BudgetPlanningVersionInput>},
+        TContext
+      > => {
+      return useMutation(getApproveBudgetPlanningPeriodMutationOptions(options));
+    }
+
+export const getCopyBudgetPlanningPeriodUrl = (month: string,) => {
+
+
+
+
+  return `/api/budget-planning-periods/${month}/copy-forward`
+}
+
+/**
+ * @summary Idempotently copy the latest approved plan into a draft month
+ */
+export const copyBudgetPlanningPeriod = async (month: string, options?: Parameters<typeof customFetch>[1]): Promise<BudgetPlanningPeriod> => {
+
+  return customFetch<BudgetPlanningPeriod>(getCopyBudgetPlanningPeriodUrl(month),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCopyBudgetPlanningPeriodMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof copyBudgetPlanningPeriod>>, TError,{month: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof copyBudgetPlanningPeriod>>, TError,{month: string}, TContext> => {
+
+const mutationKey = ['copyBudgetPlanningPeriod'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof copyBudgetPlanningPeriod>>, {month: string}> = (props) => {
+          const {month} = props ?? {};
+
+          return  copyBudgetPlanningPeriod(month,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CopyBudgetPlanningPeriodMutationResult = NonNullable<Awaited<ReturnType<typeof copyBudgetPlanningPeriod>>>
+
+    export type CopyBudgetPlanningPeriodMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Idempotently copy the latest approved plan into a draft month
+ */
+export const useCopyBudgetPlanningPeriod = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof copyBudgetPlanningPeriod>>, TError,{month: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof copyBudgetPlanningPeriod>>,
+        TError,
+        {month: string},
+        TContext
+      > => {
+      return useMutation(getCopyBudgetPlanningPeriodMutationOptions(options));
+    }
+
+export const getReorderBudgetPlanningCategoriesUrl = (periodId: string,) => {
+
+
+
+
+  return `/api/budget-planning-periods/${periodId}/reorder`
+}
+
+/**
+ * @summary Atomically reorder all draft category snapshots
+ */
+export const reorderBudgetPlanningCategories = async (periodId: string,
+    budgetPlanningReorderInput: BudgetPlanningReorderInput, options?: Parameters<typeof customFetch>[1]): Promise<BudgetPlanningReorderResult> => {
+
+  return customFetch<BudgetPlanningReorderResult>(getReorderBudgetPlanningCategoriesUrl(periodId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(budgetPlanningReorderInput)
+  }
+);}
+
+
+
+
+
+export const getReorderBudgetPlanningCategoriesMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderBudgetPlanningCategories>>, TError,{periodId: string;data: BodyType<BudgetPlanningReorderInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reorderBudgetPlanningCategories>>, TError,{periodId: string;data: BodyType<BudgetPlanningReorderInput>}, TContext> => {
+
+const mutationKey = ['reorderBudgetPlanningCategories'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reorderBudgetPlanningCategories>>, {periodId: string;data: BodyType<BudgetPlanningReorderInput>}> = (props) => {
+          const {periodId,data} = props ?? {};
+
+          return  reorderBudgetPlanningCategories(periodId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReorderBudgetPlanningCategoriesMutationResult = NonNullable<Awaited<ReturnType<typeof reorderBudgetPlanningCategories>>>
+    export type ReorderBudgetPlanningCategoriesMutationBody = BodyType<BudgetPlanningReorderInput>
+    export type ReorderBudgetPlanningCategoriesMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Atomically reorder all draft category snapshots
+ */
+export const useReorderBudgetPlanningCategories = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reorderBudgetPlanningCategories>>, TError,{periodId: string;data: BodyType<BudgetPlanningReorderInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reorderBudgetPlanningCategories>>,
+        TError,
+        {periodId: string;data: BodyType<BudgetPlanningReorderInput>},
+        TContext
+      > => {
+      return useMutation(getReorderBudgetPlanningCategoriesMutationOptions(options));
+    }
+
+export const getCloseBudgetPlanningPeriodUrl = (periodId: string,) => {
+
+
+
+
+  return `/api/budget-planning-periods/${periodId}/close`
+}
+
+/**
+ * @summary Owner-close an approved immutable plan
+ */
+export const closeBudgetPlanningPeriod = async (periodId: string,
+    budgetPlanningVersionInput: BudgetPlanningVersionInput, options?: Parameters<typeof customFetch>[1]): Promise<BudgetPlanningCloseResult> => {
+
+  return customFetch<BudgetPlanningCloseResult>(getCloseBudgetPlanningPeriodUrl(periodId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(budgetPlanningVersionInput)
+  }
+);}
+
+
+
+
+
+export const getCloseBudgetPlanningPeriodMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeBudgetPlanningPeriod>>, TError,{periodId: string;data: BodyType<BudgetPlanningVersionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof closeBudgetPlanningPeriod>>, TError,{periodId: string;data: BodyType<BudgetPlanningVersionInput>}, TContext> => {
+
+const mutationKey = ['closeBudgetPlanningPeriod'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof closeBudgetPlanningPeriod>>, {periodId: string;data: BodyType<BudgetPlanningVersionInput>}> = (props) => {
+          const {periodId,data} = props ?? {};
+
+          return  closeBudgetPlanningPeriod(periodId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CloseBudgetPlanningPeriodMutationResult = NonNullable<Awaited<ReturnType<typeof closeBudgetPlanningPeriod>>>
+    export type CloseBudgetPlanningPeriodMutationBody = BodyType<BudgetPlanningVersionInput>
+    export type CloseBudgetPlanningPeriodMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Owner-close an approved immutable plan
+ */
+export const useCloseBudgetPlanningPeriod = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeBudgetPlanningPeriod>>, TError,{periodId: string;data: BodyType<BudgetPlanningVersionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof closeBudgetPlanningPeriod>>,
+        TError,
+        {periodId: string;data: BodyType<BudgetPlanningVersionInput>},
+        TContext
+      > => {
+      return useMutation(getCloseBudgetPlanningPeriodMutationOptions(options));
+    }
+
+export const getListBudgetPlanningHistoryUrl = () => {
+
+
+
+
+  return `/api/budget-planning-periods`
+}
+
+/**
+ * @summary List household planning-period history
+ */
+export const listBudgetPlanningHistory = async ( options?: Parameters<typeof customFetch>[1]): Promise<BudgetPlanningHistoryList> => {
+
+  return customFetch<BudgetPlanningHistoryList>(getListBudgetPlanningHistoryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListBudgetPlanningHistoryQueryKey = () => {
+    return [
+    `/api/budget-planning-periods`
+    ] as const;
+    }
+
+
+export const getListBudgetPlanningHistoryQueryOptions = <TData = Awaited<ReturnType<typeof listBudgetPlanningHistory>>, TError = ErrorType<ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBudgetPlanningHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListBudgetPlanningHistoryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listBudgetPlanningHistory>>> = ({ signal }) => listBudgetPlanningHistory({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listBudgetPlanningHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListBudgetPlanningHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof listBudgetPlanningHistory>>>
+export type ListBudgetPlanningHistoryQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary List household planning-period history
+ */
+
+export function useListBudgetPlanningHistory<TData = Awaited<ReturnType<typeof listBudgetPlanningHistory>>, TError = ErrorType<ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listBudgetPlanningHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListBudgetPlanningHistoryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetBudgetPlanningChangeHistoryUrl = (periodId: string,) => {
+
+
+
+
+  return `/api/budget-planning-periods/${periodId}/change-history`
+}
+
+/**
+ * @summary List actor-attributed audit events for a planning period and its category snapshots
+ */
+export const getBudgetPlanningChangeHistory = async (periodId: string, options?: Parameters<typeof customFetch>[1]): Promise<AuditEventSummary[]> => {
+
+  return customFetch<AuditEventSummary[]>(getGetBudgetPlanningChangeHistoryUrl(periodId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBudgetPlanningChangeHistoryQueryKey = (periodId: string,) => {
+    return [
+    `/api/budget-planning-periods/${periodId}/change-history`
+    ] as const;
+    }
+
+
+export const getGetBudgetPlanningChangeHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getBudgetPlanningChangeHistory>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(periodId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBudgetPlanningChangeHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBudgetPlanningChangeHistoryQueryKey(periodId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBudgetPlanningChangeHistory>>> = ({ signal }) => getBudgetPlanningChangeHistory(periodId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: periodId !== null && periodId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBudgetPlanningChangeHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBudgetPlanningChangeHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getBudgetPlanningChangeHistory>>>
+export type GetBudgetPlanningChangeHistoryQueryError = ErrorType<ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary List actor-attributed audit events for a planning period and its category snapshots
+ */
+
+export function useGetBudgetPlanningChangeHistory<TData = Awaited<ReturnType<typeof getBudgetPlanningChangeHistory>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(
+ periodId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBudgetPlanningChangeHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBudgetPlanningChangeHistoryQueryOptions(periodId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetBudgetPlanningComparisonUrl = (month: string,) => {
+
+
+
+
+  return `/api/budget-planning-comparison/${month}`
+}
+
+/**
+ * @summary Compare approved plan targets across month quarter and year
+ */
+export const getBudgetPlanningComparison = async (month: string, options?: Parameters<typeof customFetch>[1]): Promise<BudgetPlanningComparison> => {
+
+  return customFetch<BudgetPlanningComparison>(getGetBudgetPlanningComparisonUrl(month),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBudgetPlanningComparisonQueryKey = (month: string,) => {
+    return [
+    `/api/budget-planning-comparison/${month}`
+    ] as const;
+    }
+
+
+export const getGetBudgetPlanningComparisonQueryOptions = <TData = Awaited<ReturnType<typeof getBudgetPlanningComparison>>, TError = ErrorType<BadRequestResponse | ForbiddenResponse>>(month: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBudgetPlanningComparison>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBudgetPlanningComparisonQueryKey(month);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBudgetPlanningComparison>>> = ({ signal }) => getBudgetPlanningComparison(month, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: month !== null && month !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBudgetPlanningComparison>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBudgetPlanningComparisonQueryResult = NonNullable<Awaited<ReturnType<typeof getBudgetPlanningComparison>>>
+export type GetBudgetPlanningComparisonQueryError = ErrorType<BadRequestResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Compare approved plan targets across month quarter and year
+ */
+
+export function useGetBudgetPlanningComparison<TData = Awaited<ReturnType<typeof getBudgetPlanningComparison>>, TError = ErrorType<BadRequestResponse | ForbiddenResponse>>(
+ month: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBudgetPlanningComparison>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBudgetPlanningComparisonQueryOptions(month,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetBudgetPlanningCategoryContributionDetailUrl = (periodId: string,
+    categoryId: string,) => {
+
+
+
+
+  return `/api/budget-planning-periods/${periodId}/categories/${categoryId}/contributions`
+}
+
+/**
+ * @summary Separate included reviewed household activity from excluded and unreviewed rows
+ */
+export const getBudgetPlanningCategoryContributionDetail = async (periodId: string,
+    categoryId: string, options?: Parameters<typeof customFetch>[1]): Promise<BudgetPlanningContributionDetail> => {
+
+  return customFetch<BudgetPlanningContributionDetail>(getGetBudgetPlanningCategoryContributionDetailUrl(periodId,categoryId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBudgetPlanningCategoryContributionDetailQueryKey = (periodId: string,
+    categoryId: string,) => {
+    return [
+    `/api/budget-planning-periods/${periodId}/categories/${categoryId}/contributions`
+    ] as const;
+    }
+
+
+export const getGetBudgetPlanningCategoryContributionDetailQueryOptions = <TData = Awaited<ReturnType<typeof getBudgetPlanningCategoryContributionDetail>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(periodId: string,
+    categoryId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBudgetPlanningCategoryContributionDetail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBudgetPlanningCategoryContributionDetailQueryKey(periodId,categoryId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBudgetPlanningCategoryContributionDetail>>> = ({ signal }) => getBudgetPlanningCategoryContributionDetail(periodId,categoryId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: periodId !== null && periodId !== undefined && categoryId !== null && categoryId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBudgetPlanningCategoryContributionDetail>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBudgetPlanningCategoryContributionDetailQueryResult = NonNullable<Awaited<ReturnType<typeof getBudgetPlanningCategoryContributionDetail>>>
+export type GetBudgetPlanningCategoryContributionDetailQueryError = ErrorType<ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Separate included reviewed household activity from excluded and unreviewed rows
+ */
+
+export function useGetBudgetPlanningCategoryContributionDetail<TData = Awaited<ReturnType<typeof getBudgetPlanningCategoryContributionDetail>>, TError = ErrorType<ForbiddenResponse | NotFoundResponse>>(
+ periodId: string,
+    categoryId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBudgetPlanningCategoryContributionDetail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBudgetPlanningCategoryContributionDetailQueryOptions(periodId,categoryId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

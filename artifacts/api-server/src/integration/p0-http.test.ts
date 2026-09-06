@@ -2117,6 +2117,50 @@ test("Financing Engine isolates households, permissions, actors, and idempotent 
   }
 });
 
+test("budget planning bootstrap, audit, copy, and stale edits are tenant-safe", { skip: !enabled }, async () => {
+  database ??= await import("@workspace/db");
+  const fixture = await createFixture();
+  const { db, auditEvents, budgetPlanningCategorySnapshots, budgetPlanningPeriods, financeCategories } = database;
+  const service = await import("../services/household-finance.ts");
+  const actor = { role: "owner" as const, userId: fixture.userA, householdId: fixture.householdA, source: "test-database" as const };
+  const viewer = { role: "viewer" as const, userId: fixture.viewerA, householdId: fixture.householdA, source: "test-database" as const };
+  const advisor = { role: "advisor" as const, userId: fixture.advisorA, householdId: fixture.householdA, source: "test-database" as const };
+  await db.insert(financeCategories).values({ householdId: fixture.householdA, name: `Planning ${randomUUID()}`, categoryType: "fixed_expense", essentialStatus: "essential", monthlyTarget: "100.00" });
+  const month = "2030-01";
+  const deniedMonth = "2029-12";
+  const auditBeforeDenied = await db.select().from(auditEvents).where(eq(auditEvents.householdId, fixture.householdA));
+  await assert.rejects(() => service.getBudgetPlanningPeriod(viewer, deniedMonth), (error: unknown) => error instanceof Error && "code" in error && error.code === "FORBIDDEN");
+  await assert.rejects(() => service.getBudgetPlanningPeriod(advisor, deniedMonth), (error: unknown) => error instanceof Error && "code" in error && error.code === "FORBIDDEN");
+  await assert.rejects(() => service.copyBudgetPlanningPeriod(viewer, deniedMonth, `copy-${randomUUID()}`), (error: unknown) => error instanceof Error && "code" in error && error.code === "FORBIDDEN");
+  await assert.rejects(() => service.copyBudgetPlanningPeriod(advisor, deniedMonth, `copy-${randomUUID()}`), (error: unknown) => error instanceof Error && "code" in error && error.code === "FORBIDDEN");
+  const deniedPeriods = await db.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.householdId, fixture.householdA), eq(budgetPlanningPeriods.month, `${deniedMonth}-01`)));
+  assert.equal(deniedPeriods.length, 0);
+  const deniedSnapshots = await db.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.householdId, fixture.householdA));
+  assert.equal(deniedSnapshots.length, 0);
+  const auditAfterDenied = await db.select().from(auditEvents).where(eq(auditEvents.householdId, fixture.householdA));
+  assert.equal(auditAfterDenied.length, auditBeforeDenied.length);
+  const [first, second] = await Promise.all([service.getBudgetPlanningPeriod(actor, month), service.getBudgetPlanningPeriod(actor, month)]);
+  assert.equal(first.id, second.id);
+  const createdEvents = await db.select().from(auditEvents).where(and(eq(auditEvents.householdId, fixture.householdA), eq(auditEvents.entityId, first.id), eq(auditEvents.eventType, "budget_plan_created")));
+  assert.equal(createdEvents.length, 1);
+  await service.getBudgetPlanningPeriod(viewer, month);
+  await service.getBudgetPlanningPeriod(advisor, month);
+  const createdEventsAfterReads = await db.select().from(auditEvents).where(and(eq(auditEvents.householdId, fixture.householdA), eq(auditEvents.entityId, first.id), eq(auditEvents.eventType, "budget_plan_created")));
+  assert.equal(createdEventsAfterReads.length, 1);
+  const copied = await service.copyBudgetPlanningPeriod(actor, month, `copy-${randomUUID()}`);
+  assert.equal(copied.id, first.id);
+  const copyEvents = await db.select().from(auditEvents).where(and(eq(auditEvents.householdId, fixture.householdA), eq(auditEvents.entityId, first.id), eq(auditEvents.eventType, "budget_plan_copied_forward")));
+  assert.equal(copyEvents.length, 0);
+  await assert.rejects(
+    () => service.createBudgetPlanningCategory(actor, first.id, first.version + 1, { name: "stale", categoryType: "fixed_expense", essentialStatus: "essential", monthlyTarget: "1.00" }),
+    (error: unknown) => error instanceof Error && "code" in error && error.code === "CONFLICT",
+  );
+  const history = await service.getBudgetPlanningChangeHistory(actor, first.id);
+  assert.equal(history.filter((event) => event.eventType === "budget_plan_created").length, 1);
+  const [period] = await db.select().from(budgetPlanningPeriods).where(eq(budgetPlanningPeriods.id, first.id));
+  assert.equal(period.version, first.version);
+});
+
 test("household finance stays tenant-scoped and CSV imports are reviewable and duplicate-safe", { skip: !enabled }, async () => {
   process.env.NODE_ENV = "test";
   process.env.CAPITAL_OS_TEST_CONTEXT = "1";

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   auditEvents,
@@ -8,6 +8,8 @@ import {
   bankConnectionCredentials,
   bankSyncRuns,
   bankWebhookEvents,
+  budgetPlanningCategorySnapshots,
+  budgetPlanningPeriods,
   emergencyReserves,
   financeBills,
   financeCategories,
@@ -16,6 +18,7 @@ import {
   financialAccounts,
   goals,
   incomeSources,
+  idempotencyKeys,
   recurringTransactions,
   riskStates,
   upcomingExpenses,
@@ -383,6 +386,251 @@ function currentPeriod(asOf = calendarToday()) {
   return { start, end, daysInMonth, daysElapsed, label };
 }
 
+type PlanningCategoryInput = {
+  name: string;
+  categoryType: "fixed_expense" | "variable_essential" | "variable_discretionary" | "savings" | "investment" | "debt_payment" | "transfer" | "income" | "one_time_expense";
+  essentialStatus: "essential" | "discretionary" | "mixed";
+  monthlyTarget: string;
+  warningThreshold?: string;
+  notes?: string | null;
+};
+
+function planningMonth(month: string) {
+  if (!/^\d{4}-\d{2}$/.test(month)) throw new GovernanceError("INVALID_STATE", "Planning month must use YYYY-MM");
+  assertDate(`${month}-01`, "Planning month");
+  return `${month}-01`;
+}
+
+function planningSnapshot(row: typeof budgetPlanningCategorySnapshots.$inferSelect) {
+  return {
+    id: row.id, sourceCategoryId: row.sourceCategoryId, name: row.name, categoryType: row.categoryType,
+    essentialStatus: row.essentialStatus, monthlyTarget: row.monthlyTarget ?? "0.00", warningThreshold: row.warningThreshold,
+    notes: row.notes, sortOrder: row.sortOrder, archived: row.archived,
+  };
+}
+
+/** Pure selection rule shared by planning bootstraps and regression tests. */
+export function latestFinalizedPlanningPeriod<T extends { month: string; status: string }>(periods: T[], targetMonth: string) {
+  return periods
+    .filter((period) => ["approved", "closed"].includes(period.status) && period.month < targetMonth)
+    .sort((left, right) => right.month.localeCompare(left.month))[0] ?? null;
+}
+
+async function bootstrapPlanningPeriod(actor: Actor, month: string) {
+  const household = await householdId(actor);
+  const monthDate = planningMonth(month);
+  return db.transaction((tx) => bootstrapPlanningPeriodInTransaction(tx, actor, household, monthDate));
+}
+
+async function bootstrapPlanningPeriodInTransaction(tx: any, actor: Actor, household: string, monthDate: string) {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`budget-plan:${household}:${monthDate}`}, 0))`);
+    const [existing] = await tx.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.householdId, household), eq(budgetPlanningPeriods.month, monthDate)));
+    if (existing) return { period: existing, created: false, source: "existing" as const };
+    assertPermission(actor.role, "contribute");
+    const prior = await tx.select().from(budgetPlanningPeriods)
+      .where(and(eq(budgetPlanningPeriods.householdId, household), inArray(budgetPlanningPeriods.status, ["approved", "closed"]), sql`${budgetPlanningPeriods.month} < ${monthDate}`))
+      .orderBy(desc(budgetPlanningPeriods.month)).limit(1);
+    const [period] = await tx.insert(budgetPlanningPeriods).values({ householdId: household, month: monthDate, createdBy: actor.userId, copiedFromPeriodId: prior[0]?.id }).returning();
+    let source: "taxonomy" | "prior_finalized" | "empty" = "empty";
+    if (prior[0]) {
+      const sources = await tx.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, prior[0].id));
+      if (sources.length) {
+        source = "prior_finalized";
+        await tx.insert(budgetPlanningCategorySnapshots).values(sources.map((source: typeof budgetPlanningCategorySnapshots.$inferSelect, sortOrder: number) => ({
+        householdId: household, periodId: period.id, sourceCategoryId: source.sourceCategoryId, name: source.name, categoryType: source.categoryType, essentialStatus: source.essentialStatus, monthlyTarget: source.monthlyTarget, warningThreshold: source.warningThreshold, notes: source.notes, sortOrder, archived: source.archived, createdBy: actor.userId, updatedBy: actor.userId,
+        })));
+      }
+    } else {
+      const sources = await tx.select().from(financeCategories).where(eq(financeCategories.householdId, household));
+      if (sources.length) {
+        source = "taxonomy";
+        await tx.insert(budgetPlanningCategorySnapshots).values(sources.map((source: typeof financeCategories.$inferSelect, sortOrder: number) => ({
+        householdId: household, periodId: period.id, sourceCategoryId: source.id, name: source.name, categoryType: source.categoryType, essentialStatus: source.essentialStatus, monthlyTarget: source.monthlyTarget, warningThreshold: source.warningThreshold, sortOrder, archived: !source.active, createdBy: actor.userId, updatedBy: actor.userId,
+        })));
+      }
+    }
+    await tx.insert(auditEvents).values({
+      householdId: household,
+      eventType: source === "prior_finalized" ? "budget_plan_copied_forward" : "budget_plan_created",
+      actor: actor.userId,
+      entity: "budget_planning_period",
+      entityId: period.id,
+      afterState: { month: monthDate.slice(0, 7), source, copiedFromPeriodId: prior[0]?.id ?? null },
+      reason: source === "prior_finalized" ? "Planning period copied from latest finalized plan" : "Planning period lazily initialized from current finance taxonomy",
+    });
+    return { period, created: true, source };
+}
+
+export async function getBudgetPlanningPeriod(actor: Actor, month = nowMonth()) {
+  assertPermission(actor.role, "read");
+  const bootstrap = await bootstrapPlanningPeriod(actor, month);
+  const { period } = bootstrap;
+  const categories = await db.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, period.id)).orderBy(budgetPlanningCategorySnapshots.sortOrder);
+  const transactions = await db.select().from(financeTransactions).where(and(eq(financeTransactions.householdId, actor.householdId), sql`${financeTransactions.transactionDate} >= ${period.month} and ${financeTransactions.transactionDate} < (${period.month}::date + interval '1 month')::date`));
+  const advisoryActual = transactions.filter((transaction) => transaction.reviewStatus === "approved" && !transaction.pending && transaction.businessTag === "household" && !isExcludedFromHouseholdSpending(transaction))
+    .reduce((sum, transaction) => sum + numeric(transaction.amount), 0);
+  const advisoryTarget = categories.filter((category) => !category.archived && !["income", "transfer"].includes(category.categoryType)).reduce((sum, category) => sum + numeric(category.monthlyTarget), 0);
+  return { id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, copiedFromPeriodId: period.copiedFromPeriodId, createdBy: period.createdBy, createdAt: period.createdAt, updatedAt: period.updatedAt, approvedAt: period.approvedAt, approvedBy: period.approvedBy, closedAt: period.closedAt, closedBy: period.closedBy, categories: categories.map(planningSnapshot), advisory: { projectedExpenseTarget: advisoryTarget.toFixed(2), reviewedHouseholdNetActivity: advisoryActual.toFixed(2), affectsOfficialTotals: false } };
+}
+
+async function requireDraftVersion(actor: Actor, periodId: string, version: number) {
+  const [period] = await db.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId)));
+  if (!period) return planningNotFound("Budget planning period");
+  if (period.status !== "draft") throw new GovernanceError("CONFLICT", "Closed or approved planning periods are immutable");
+  if (period.version !== version) throw new GovernanceError("CONFLICT", "Planning period version is stale; refresh and retry");
+  return period;
+}
+
+export async function createBudgetPlanningCategory(actor: Actor, periodId: string, version: number, input: PlanningCategoryInput) {
+  assertPermission(actor.role, "contribute"); assertMoney(input.monthlyTarget, "Monthly target", { required: true });
+  const [category] = await db.transaction(async (tx) => {
+    const [period] = await tx.update(budgetPlanningPeriods).set({ version: version + 1, updatedAt: new Date() })
+      .where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.status, "draft"), eq(budgetPlanningPeriods.version, version))).returning();
+    if (!period) throw new GovernanceError("CONFLICT", "Planning period is stale or no longer a draft");
+    const [{ max }] = await tx.select({ max: sql<number>`coalesce(max(${budgetPlanningCategorySnapshots.sortOrder}), -1)` }).from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, period.id));
+    const [created] = await tx.insert(budgetPlanningCategorySnapshots).values({ householdId: actor.householdId, periodId, ...input, warningThreshold: input.warningThreshold ?? "1.00", sortOrder: max + 1, createdBy: actor.userId, updatedBy: actor.userId }).returning();
+    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "budget_plan_category_created", actor: actor.userId, entity: "budget_planning_category_snapshot", entityId: created.id, afterState: planningSnapshot(created), reason: "Draft budget planning edit" });
+    return [created];
+  });
+  return { ...planningSnapshot(category), version: version + 1 };
+}
+
+export async function updateBudgetPlanningCategory(actor: Actor, periodId: string, categoryId: string, version: number, input: Partial<PlanningCategoryInput> & { archived?: boolean }) {
+  assertPermission(actor.role, "contribute"); if (input.monthlyTarget !== undefined) assertMoney(input.monthlyTarget, "Monthly target", { required: true });
+  const [category] = await db.transaction(async (tx) => {
+    const [period] = await tx.update(budgetPlanningPeriods).set({ version: version + 1, updatedAt: new Date() })
+      .where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.status, "draft"), eq(budgetPlanningPeriods.version, version))).returning();
+    if (!period) throw new GovernanceError("CONFLICT", "Planning period is stale or no longer a draft");
+    const [updated] = await tx.update(budgetPlanningCategorySnapshots).set({ ...input, updatedBy: actor.userId, updatedAt: new Date() })
+      .where(and(eq(budgetPlanningCategorySnapshots.id, categoryId), eq(budgetPlanningCategorySnapshots.periodId, periodId), eq(budgetPlanningCategorySnapshots.householdId, actor.householdId))).returning();
+    if (!updated) return planningNotFound("Budget planning category");
+    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: input.archived ? "budget_plan_category_archived" : "budget_plan_category_updated", actor: actor.userId, entity: "budget_planning_category_snapshot", entityId: updated.id, afterState: planningSnapshot(updated), reason: "Draft budget planning edit" });
+    return [updated];
+  });
+  return { ...planningSnapshot(category), version: version + 1 };
+}
+
+export async function approveBudgetPlanningPeriod(actor: Actor, periodId: string, version: number, idempotencyKey: string) {
+  assertPermission(actor.role, "approve"); if (!idempotencyKey?.trim()) throw new GovernanceError("INVALID_STATE", "Idempotency-Key is required");
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`budget-plan-idempotency:${actor.householdId}:budget_plan_approve:${idempotencyKey}`}, 0))`);
+    const [used] = await tx.select().from(idempotencyKeys).where(and(eq(idempotencyKeys.householdId, actor.householdId), eq(idempotencyKeys.key, idempotencyKey)));
+    if (used?.operation !== undefined) { if (used.operation !== "budget_plan_approve") throw new GovernanceError("IDEMPOTENCY_CONFLICT", "Idempotency-Key was used for another operation"); return used.responseBody; }
+    const [period] = await tx.update(budgetPlanningPeriods).set({ status: "approved", approvedAt: new Date(), approvedBy: actor.userId, version: version + 1, updatedAt: new Date() })
+      .where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.status, "draft"), eq(budgetPlanningPeriods.version, version))).returning();
+    if (!period) throw new GovernanceError("CONFLICT", "Planning period is stale or no longer a draft");
+    const response = { id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, approvedAt: period.approvedAt };
+    await tx.insert(idempotencyKeys).values({ householdId: actor.householdId, key: idempotencyKey, operation: "budget_plan_approve", responseStatus: 200, responseBody: response });
+    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "budget_plan_approved", actor: actor.userId, entity: "budget_planning_period", entityId: period.id, afterState: response, reason: "Owner-approved immutable budget plan" });
+    return response;
+  });
+}
+
+async function planningIdempotency<T extends Record<string, unknown>>(actor: Actor, key: string, operation: string, work: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<T>) {
+  if (!key?.trim()) throw new GovernanceError("INVALID_STATE", "Idempotency-Key is required");
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`budget-plan-idempotency:${actor.householdId}:${operation}:${key}`}, 0))`);
+    const [existing] = await tx.select().from(idempotencyKeys).where(and(eq(idempotencyKeys.householdId, actor.householdId), eq(idempotencyKeys.key, key)));
+    if (existing) {
+      if (existing.operation !== operation) throw new GovernanceError("IDEMPOTENCY_CONFLICT", "Idempotency-Key was used for another operation");
+      return existing.responseBody as T;
+    }
+    const response = await work(tx);
+    await tx.insert(idempotencyKeys).values({ householdId: actor.householdId, key, operation, responseStatus: 200, responseBody: response });
+    return response;
+  });
+}
+
+export async function copyBudgetPlanningPeriod(actor: Actor, month: string, idempotencyKey: string) {
+  assertPermission(actor.role, "contribute");
+  const monthDate = planningMonth(month);
+  return planningIdempotency(actor, idempotencyKey, "budget_plan_copy", async (tx) => {
+    const bootstrap = await bootstrapPlanningPeriodInTransaction(tx, actor, actor.householdId, monthDate);
+    const { period } = bootstrap;
+    const categories = await tx.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, period.id)).orderBy(budgetPlanningCategorySnapshots.sortOrder);
+    const response = { id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, copiedFromPeriodId: period.copiedFromPeriodId, createdBy: period.createdBy, createdAt: period.createdAt, updatedAt: period.updatedAt, approvedAt: period.approvedAt, approvedBy: period.approvedBy, closedAt: period.closedAt, closedBy: period.closedBy, categories: categories.map(planningSnapshot) };
+    return response;
+  });
+}
+
+export async function reorderBudgetPlanningCategories(actor: Actor, periodId: string, version: number, categoryIds: string[]) {
+  assertPermission(actor.role, "contribute");
+  const response = await db.transaction(async (tx) => {
+    const [period] = await tx.update(budgetPlanningPeriods).set({ version: version + 1, updatedAt: new Date() }).where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.version, version), eq(budgetPlanningPeriods.status, "draft"))).returning();
+    if (!period) throw new GovernanceError("CONFLICT", "Planning period version is stale or no longer a draft");
+    const rows = await tx.select({ id: budgetPlanningCategorySnapshots.id }).from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, periodId));
+    if (rows.length !== categoryIds.length || new Set(categoryIds).size !== categoryIds.length || rows.some((row) => !categoryIds.includes(row.id))) {
+      throw new GovernanceError("INVALID_STATE", "Reorder list must contain every category snapshot exactly once");
+    }
+    await tx.update(budgetPlanningCategorySnapshots).set({ sortOrder: sql`-(${budgetPlanningCategorySnapshots.sortOrder} + 1)`, updatedAt: new Date(), updatedBy: actor.userId }).where(eq(budgetPlanningCategorySnapshots.periodId, periodId));
+    for (const [sortOrder, id] of categoryIds.entries()) await tx.update(budgetPlanningCategorySnapshots).set({ sortOrder, updatedAt: new Date(), updatedBy: actor.userId }).where(eq(budgetPlanningCategorySnapshots.id, id));
+    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "budget_plan_categories_reordered", actor: actor.userId, entity: "budget_planning_period", entityId: periodId, afterState: { categoryIds, version: period.version }, reason: "Draft budget planning edit" });
+    return { version: period.version, categoryIds };
+  });
+  return response;
+}
+
+export async function closeBudgetPlanningPeriod(actor: Actor, periodId: string, version: number, idempotencyKey: string) {
+  assertPermission(actor.role, "approve");
+  return planningIdempotency(actor, idempotencyKey, "budget_plan_close", async (tx) => {
+    const [period] = await tx.update(budgetPlanningPeriods).set({ status: "closed", closedAt: new Date(), closedBy: actor.userId, version: version + 1, updatedAt: new Date() })
+      .where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.status, "approved"), eq(budgetPlanningPeriods.version, version))).returning();
+    if (!period) throw new GovernanceError("CONFLICT", "Only a current approved planning period can be closed");
+    const response = { id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, closedAt: period.closedAt };
+    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "budget_plan_closed", actor: actor.userId, entity: "budget_planning_period", entityId: period.id, afterState: response, reason: "Owner closed immutable budget plan" });
+    return response;
+  });
+}
+
+export async function getBudgetPlanningHistory(actor: Actor) {
+  const rows = await db.select().from(budgetPlanningPeriods).where(eq(budgetPlanningPeriods.householdId, actor.householdId)).orderBy(desc(budgetPlanningPeriods.month));
+  return rows.map((period) => ({ id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, copiedFromPeriodId: period.copiedFromPeriodId, createdBy: period.createdBy, createdAt: period.createdAt, updatedAt: period.updatedAt, approvedAt: period.approvedAt, approvedBy: period.approvedBy, closedAt: period.closedAt, closedBy: period.closedBy }));
+}
+
+export async function getBudgetPlanningChangeHistory(actor: Actor, periodId: string) {
+  const [period] = await db.select({ id: budgetPlanningPeriods.id }).from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId)));
+  if (!period) return planningNotFound("Budget planning period");
+  const snapshots = await db.select({ id: budgetPlanningCategorySnapshots.id }).from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, periodId));
+  const entityIds = [periodId, ...snapshots.map((snapshot) => snapshot.id)];
+  const rows = await db.select().from(auditEvents).where(and(eq(auditEvents.householdId, actor.householdId), inArray(auditEvents.entityId, entityIds))).orderBy(desc(auditEvents.timestamp));
+  return rows.map((row) => ({ id: row.id, eventType: row.eventType, actor: row.actor, entity: row.entity, entityId: row.entityId, timestamp: row.timestamp.toISOString(), reason: row.reason }));
+}
+
+export async function getBudgetPlanningComparison(actor: Actor, month = nowMonth()) {
+  const date = planningMonth(month);
+  const year = date.slice(0, 4);
+  const quarter = Math.floor((Number(date.slice(5, 7)) - 1) / 3);
+  const rows = await db.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.householdId, actor.householdId), inArray(budgetPlanningPeriods.status, ["approved", "closed"])));
+  const snapshotTotals = async (periods: typeof rows) => {
+    const ids = periods.map((p) => p.id); if (!ids.length) return "0.00";
+    const categories = await db.select().from(budgetPlanningCategorySnapshots).where(inArray(budgetPlanningCategorySnapshots.periodId, ids));
+    return categories.filter((c) => !c.archived && c.categoryType !== "income" && c.categoryType !== "transfer").reduce((sum, c) => sum + numeric(c.monthlyTarget), 0).toFixed(2);
+  };
+  const monthRows = rows.filter((p) => p.month === date);
+  const quarterRows = rows.filter((p) => p.month.slice(0, 4) === year && Math.floor((Number(p.month.slice(5, 7)) - 1) / 3) === quarter);
+  const yearRows = rows.filter((p) => p.month.slice(0, 4) === year);
+  return { month, monthBudgeted: await snapshotTotals(monthRows), quarterBudgeted: await snapshotTotals(quarterRows), yearBudgeted: await snapshotTotals(yearRows), approvedPeriodCount: rows.length };
+}
+
+export async function getBudgetPlanningCategoryContributionDetail(actor: Actor, periodId: string, categoryId: string) {
+  const [period] = await db.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId)));
+  if (!period) return planningNotFound("Budget planning period");
+  const [snapshot] = await db.select().from(budgetPlanningCategorySnapshots).where(and(eq(budgetPlanningCategorySnapshots.id, categoryId), eq(budgetPlanningCategorySnapshots.periodId, periodId)));
+  if (!snapshot) return planningNotFound("Budget planning category");
+  const transactions = await db.select().from(financeTransactions).where(and(eq(financeTransactions.householdId, actor.householdId), sql`${financeTransactions.transactionDate} >= ${period.month} and ${financeTransactions.transactionDate} < (${period.month}::date + interval '1 month')::date`));
+  const relevant = transactions.filter((t) => t.categoryId === snapshot.sourceCategoryId);
+  const included = relevant.filter((t) => t.reviewStatus === "approved" && !t.pending && t.businessTag === "household" && !isExcludedFromHouseholdSpending(t, snapshot.categoryType));
+  const excluded = relevant.filter((t) => !included.includes(t));
+  return { category: planningSnapshot(snapshot), includedReviewedHouseholdTransactions: included, includedActual: Math.max(0, -included.reduce((sum, t) => sum + numeric(t.amount), 0)).toFixed(2), exclusions: {
+    uncategorized: transactions.filter((t) => !t.categoryId).length,
+    excluded: excluded.filter((t) => t.excludedFromBudget || t.reviewStatus === "excluded").length,
+    business: excluded.filter((t) => t.businessTag !== "household").length,
+    transfers: excluded.filter((t) => Boolean(t.transferGroupId) || snapshot.categoryType === "transfer").length,
+    unreviewed: excluded.filter((t) => t.reviewStatus !== "approved").length,
+    rows: excluded,
+  } };
+}
+
 function currentPeriodTransactions(data: Awaited<ReturnType<typeof loadFinanceData>>, asOf = calendarToday()) {
   const period = currentPeriod(asOf);
   const categoryTypes = new Map(data.categories.map((category) => [category.id, category.categoryType]));
@@ -396,6 +644,20 @@ function currentPeriodTransactions(data: Awaited<ReturnType<typeof loadFinanceDa
       categoryTypes.get(transaction.categoryId ?? ""),
     )
   );
+}
+
+async function currentApprovedPlanningCategories(household: string, asOf = calendarToday()) {
+  const month = `${asOf.slice(0, 7)}-01`;
+  const [period] = await db.select().from(budgetPlanningPeriods).where(and(
+    eq(budgetPlanningPeriods.householdId, household),
+    eq(budgetPlanningPeriods.month, month),
+    inArray(budgetPlanningPeriods.status, ["approved", "closed"]),
+  ));
+  if (!period) return null;
+  const categories = await db.select().from(budgetPlanningCategorySnapshots)
+    .where(and(eq(budgetPlanningCategorySnapshots.periodId, period.id), eq(budgetPlanningCategorySnapshots.archived, false)))
+    .orderBy(budgetPlanningCategorySnapshots.sortOrder);
+  return { period, categories };
 }
 
 function financeDataConfidence(data: Awaited<ReturnType<typeof loadFinanceData>>) {
@@ -429,9 +691,13 @@ type TransactionReviewStatus = "approved" | "needs_review" | "excluded" | "possi
 export async function getBudget(actor?: Actor) {
   const data = await loadFinanceData(actor);
   const period = currentPeriod();
+  const approvedPlan = await currentApprovedPlanningCategories(data.id);
+  // Drafts never enter this path: Budget is an official view and only frozen
+  // reviewed snapshots may establish its targets.
+  const categories = approvedPlan?.categories ?? [];
   const performance = calculateBudgetPerformance(
-    data.categories.map((category) => ({
-      id: category.id,
+    categories.map((category) => ({
+      id: category.sourceCategoryId ?? category.id,
       name: category.name,
       categoryType: category.categoryType,
       essentialStatus: category.essentialStatus,
@@ -465,6 +731,7 @@ export async function getBudget(actor?: Actor) {
     },
     notes: [
       `Current period: ${period.start} through ${calendarToday()}.`,
+      ...(approvedPlan ? [`Official targets are from approved plan ${approvedPlan.period.month.slice(0, 7)}.`] : ["No approved plan exists for this month; official Budget targets fail closed until an owner approves one."]),
       "Approved income appears by category; the Transfer and Credit card payment categories, plus linked transfer pairs, are excluded from Budget Performance and expense totals to avoid double counting.",
       "Imported rows remain reviewable until a household member approves them.",
     ],
@@ -519,6 +786,7 @@ export async function getCashFlow(actor?: Actor) {
 
 export async function getSafeToDeploy(actor?: Actor) {
   const data = await loadFinanceData(actor);
+  const approvedPlan = await currentApprovedPlanningCategories(data.id);
   const asOf = calendarToday();
   const incomeDate = nextIncomeDate(data.income, asOf);
   const approvedManualActivity = currentPeriodTransactions(data, asOf)
@@ -530,7 +798,9 @@ export async function getSafeToDeploy(actor?: Actor) {
   const bills = data.bills
     .filter((bill) => bill.active && (!incomeDate || bill.dueDate < incomeDate))
     .reduce((sum, bill) => sum + cents(bill.expectedAmount), 0);
-  const essential = data.categories.filter((category) => category.essentialStatus === "essential" && category.categoryType !== "income").reduce((sum, category) => sum + cents(category.monthlyTarget), 0);
+  const essential = approvedPlan
+    ? approvedPlan.categories.filter((category) => category.essentialStatus === "essential" && category.categoryType !== "income").reduce((sum, category) => sum + cents(category.monthlyTarget), 0)
+    : liquid; // fail closed on first use: no reviewed plan means no deployable surplus.
   const reserveTarget = cents(data.reserve?.essentialMonthlyExpenses) * (data.reserve?.targetMonths ?? 3);
   const reserveShortfall = Math.max(0, reserveTarget - cents(data.reserve?.currentAmount));
   const protectedCommitments = data.goalsRows.reduce((sum, goal) => sum + cents(goal.weeklyContribution) * 4, 0);

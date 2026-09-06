@@ -12,8 +12,9 @@ export interface WeeklyBudgetGuidanceCategory {
   /**
      * @minimum 0
      * @maximum 10000
+     * @nullable
      */
-  allocationBasisPoints: number;
+  allocationBasisPoints: number | null;
   /**
      * @nullable
      * @pattern ^-?[0-9]+\.[0-9]{2}$

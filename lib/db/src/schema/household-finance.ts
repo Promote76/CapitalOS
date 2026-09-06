@@ -211,6 +211,7 @@ export const budgetPlanningCategorySnapshots = pgTable(
     categoryType: budgetCategoryTypeEnum("category_type").notNull(),
     essentialStatus: essentialStatusEnum("essential_status").notNull(),
     monthlyTarget: money("monthly_target"),
+    allocationBasisPoints: integer("allocation_basis_points"),
     warningThreshold: numeric("warning_threshold", { precision: 6, scale: 4 }).notNull().default("1.00"),
     notes: text("notes"),
     sortOrder: integer("sort_order").notNull().default(0),

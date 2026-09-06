@@ -223,14 +223,15 @@ test("copy-forward selects the latest finalized plan, including a newer closed p
 
 test("weekly guidance template balances exact cents across the approved catalog", () => {
   const names = ["Housing", "Food", "Transportation", "Utilities", "Insurance", "Healthcare", "Childcare", "Debt payment", "Personal", "Entertainment", "Savings", "Investments", "Other"];
-  const result = allocateWeeklyGuidanceCents(123_457, names.map((name, index) => ({ id: String(index), name, categoryType: "fixed_expense", archived: false })));
+  const basisPoints = [3000, 1200, 1000, 800, 600, 500, 500, 800, 400, 300, 500, 300, 100];
+  const result = allocateWeeklyGuidanceCents(123_457, names.map((name, index) => ({ id: String(index), name, categoryType: "fixed_expense", archived: false, allocationBasisPoints: basisPoints[index] })));
   assert.equal(result.isCompleteTemplate, true);
   assert.equal([...result.allocations.values()].reduce((total, amount) => total + amount, 0), 123_457);
   assert.equal(weeklyGuidanceCents(10_000), 2_308);
 });
 
 test("weekly guidance fails closed for custom or incomplete allocation templates", () => {
-  const result = allocateWeeklyGuidanceCents(100_000, [{ id: "custom", name: "Pets", categoryType: "variable_essential", archived: false }]);
+  const result = allocateWeeklyGuidanceCents(100_000, [{ id: "custom", categoryType: "variable_essential", archived: false, allocationBasisPoints: null }]);
   assert.equal(result.isCompleteTemplate, false);
   assert.equal(result.allocations.size, 0);
 });

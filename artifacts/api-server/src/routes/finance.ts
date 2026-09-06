@@ -64,6 +64,8 @@ import {
   GetWeeklyBudgetGuidanceResponse,
   AcceptWeeklyBudgetGuidanceBody,
   AcceptWeeklyBudgetGuidanceResponse,
+  UpdateWeeklyBudgetAllocationsBody,
+  UpdateWeeklyBudgetAllocationsResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
@@ -116,6 +118,7 @@ import {
   getBudgetPlanningChangeHistory,
   getWeeklyBudgetGuidance,
   acceptWeeklyBudgetGuidance,
+  updateWeeklyBudgetAllocations,
 } from "../services/household-finance";
 
 const router: IRouter = Router();
@@ -138,6 +141,12 @@ router.post("/budget-planning-periods/:periodId/weekly-guidance/accept", asyncRo
   const periodId = Array.isArray(req.params.periodId) ? req.params.periodId[0] : req.params.periodId;
   const body = AcceptWeeklyBudgetGuidanceBody.parse(req.body);
   res.json(AcceptWeeklyBudgetGuidanceResponse.parse(await acceptWeeklyBudgetGuidance(actorFrom(res), periodId, body, req.header("Idempotency-Key") ?? "")));
+}));
+
+router.put("/budget-planning-periods/:periodId/weekly-guidance/allocations", asyncRoute(async (req, res) => {
+  const periodId = Array.isArray(req.params.periodId) ? req.params.periodId[0] : req.params.periodId;
+  const body = UpdateWeeklyBudgetAllocationsBody.parse(req.body);
+  res.json(UpdateWeeklyBudgetAllocationsResponse.parse(await updateWeeklyBudgetAllocations(actorFrom(res), periodId, body)));
 }));
 
 router.post("/budget-planning-periods/:periodId/categories", asyncRoute(async (req, res) => {

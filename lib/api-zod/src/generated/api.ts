@@ -3242,6 +3242,10 @@ export const GetBudgetPlanningPeriodParams = zod.object({
 export const getBudgetPlanningPeriodResponseCreatedByRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const getBudgetPlanningPeriodResponseApprovedByRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const getBudgetPlanningPeriodResponseClosedByRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const getBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMin = 0;
+export const getBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMax = 10000;
+export const getBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMultipleOf = 1;
+
 
 
 export const GetBudgetPlanningPeriodResponse = zod.object({
@@ -3264,6 +3268,7 @@ export const GetBudgetPlanningPeriodResponse = zod.object({
   "categoryType": zod.string(),
   "essentialStatus": zod.string(),
   "monthlyTarget": zod.string(),
+  "allocationBasisPoints": zod.number().min(getBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMin).max(getBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMax).multipleOf(getBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMultipleOf).nullable(),
   "warningThreshold": zod.string(),
   "notes": zod.string().nullish(),
   "sortOrder": zod.number(),
@@ -3291,6 +3296,7 @@ export const getWeeklyBudgetGuidanceResponseIncludedOutflowCountMin = 0;
 
 export const getWeeklyBudgetGuidanceResponseCategoriesItemAllocationBasisPointsMin = 0;
 export const getWeeklyBudgetGuidanceResponseCategoriesItemAllocationBasisPointsMax = 10000;
+export const getWeeklyBudgetGuidanceResponseCategoriesItemAllocationBasisPointsMultipleOf = 1;
 
 export const getWeeklyBudgetGuidanceResponseCategoriesItemRecommendedMonthlyRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
 export const getWeeklyBudgetGuidanceResponseCategoriesItemRecommendedWeeklyRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
@@ -3311,7 +3317,7 @@ export const GetWeeklyBudgetGuidanceResponse = zod.object({
   "affectsOfficialTotals": zod.literal(false),
   "categories": zod.array(zod.object({
   "categoryId": zod.string(),
-  "allocationBasisPoints": zod.number().min(getWeeklyBudgetGuidanceResponseCategoriesItemAllocationBasisPointsMin).max(getWeeklyBudgetGuidanceResponseCategoriesItemAllocationBasisPointsMax),
+  "allocationBasisPoints": zod.number().min(getWeeklyBudgetGuidanceResponseCategoriesItemAllocationBasisPointsMin).max(getWeeklyBudgetGuidanceResponseCategoriesItemAllocationBasisPointsMax).multipleOf(getWeeklyBudgetGuidanceResponseCategoriesItemAllocationBasisPointsMultipleOf).nullable(),
   "recommendedMonthly": zod.string().regex(getWeeklyBudgetGuidanceResponseCategoriesItemRecommendedMonthlyRegExp).nullable(),
   "recommendedWeekly": zod.string().regex(getWeeklyBudgetGuidanceResponseCategoriesItemRecommendedWeeklyRegExp).nullable(),
   "eligibleActualSpending": zod.string().regex(getWeeklyBudgetGuidanceResponseCategoriesItemEligibleActualSpendingRegExp),
@@ -3320,6 +3326,47 @@ export const GetWeeklyBudgetGuidanceResponse = zod.object({
   "reason": zod.string(),
   "eligible": zod.boolean()
 }))
+})
+
+
+/**
+ * @summary Owner updates the exact 100 percent allocation template for a draft period
+ */
+export const UpdateWeeklyBudgetAllocationsParams = zod.object({
+  "periodId": zod.coerce.string()
+})
+
+export const updateWeeklyBudgetAllocationsBodyVersionMultipleOf = 1;
+
+
+export const updateWeeklyBudgetAllocationsBodyAllocationsItemBasisPointsMin = 0;
+export const updateWeeklyBudgetAllocationsBodyAllocationsItemBasisPointsMax = 10000;
+export const updateWeeklyBudgetAllocationsBodyAllocationsItemBasisPointsMultipleOf = 1;
+
+
+
+
+export const UpdateWeeklyBudgetAllocationsBody = zod.object({
+  "version": zod.number().min(1).multipleOf(updateWeeklyBudgetAllocationsBodyVersionMultipleOf),
+  "allocations": zod.array(zod.object({
+  "categoryId": zod.string().min(1),
+  "basisPoints": zod.number().min(updateWeeklyBudgetAllocationsBodyAllocationsItemBasisPointsMin).max(updateWeeklyBudgetAllocationsBodyAllocationsItemBasisPointsMax).multipleOf(updateWeeklyBudgetAllocationsBodyAllocationsItemBasisPointsMultipleOf)
+})).min(1)
+})
+
+export const updateWeeklyBudgetAllocationsResponseVersionMultipleOf = 1;
+
+export const updateWeeklyBudgetAllocationsResponseAllocationsMinOne = 0;
+export const updateWeeklyBudgetAllocationsResponseAllocationsMaxOne = 10000;
+export const updateWeeklyBudgetAllocationsResponseAllocationsMultipleOfOne = 1;
+
+
+
+export const UpdateWeeklyBudgetAllocationsResponse = zod.object({
+  "periodId": zod.string(),
+  "version": zod.number().min(1).multipleOf(updateWeeklyBudgetAllocationsResponseVersionMultipleOf),
+  "totalBasisPoints": zod.literal(10000),
+  "allocations": zod.record(zod.string(), zod.number().min(updateWeeklyBudgetAllocationsResponseAllocationsMinOne).max(updateWeeklyBudgetAllocationsResponseAllocationsMaxOne).multipleOf(updateWeeklyBudgetAllocationsResponseAllocationsMultipleOfOne))
 })
 
 
@@ -3347,6 +3394,12 @@ export const CreateBudgetPlanningCategoryBody = zod.object({
   "notes": zod.string().max(createBudgetPlanningCategoryBodyNotesMax).nullish()
 })
 
+export const createBudgetPlanningCategoryResponseOneAllocationBasisPointsMin = 0;
+export const createBudgetPlanningCategoryResponseOneAllocationBasisPointsMax = 10000;
+export const createBudgetPlanningCategoryResponseOneAllocationBasisPointsMultipleOf = 1;
+
+
+
 export const CreateBudgetPlanningCategoryResponse = zod.object({
   "id": zod.string(),
   "sourceCategoryId": zod.string().nullish(),
@@ -3354,6 +3407,7 @@ export const CreateBudgetPlanningCategoryResponse = zod.object({
   "categoryType": zod.string(),
   "essentialStatus": zod.string(),
   "monthlyTarget": zod.string(),
+  "allocationBasisPoints": zod.number().min(createBudgetPlanningCategoryResponseOneAllocationBasisPointsMin).max(createBudgetPlanningCategoryResponseOneAllocationBasisPointsMax).multipleOf(createBudgetPlanningCategoryResponseOneAllocationBasisPointsMultipleOf).nullable(),
   "warningThreshold": zod.string(),
   "notes": zod.string().nullish(),
   "sortOrder": zod.number(),
@@ -3428,6 +3482,12 @@ export const UpdateBudgetPlanningCategoryBody = zod.object({
   "archived": zod.boolean().optional()
 })
 
+export const updateBudgetPlanningCategoryResponseOneAllocationBasisPointsMin = 0;
+export const updateBudgetPlanningCategoryResponseOneAllocationBasisPointsMax = 10000;
+export const updateBudgetPlanningCategoryResponseOneAllocationBasisPointsMultipleOf = 1;
+
+
+
 export const UpdateBudgetPlanningCategoryResponse = zod.object({
   "id": zod.string(),
   "sourceCategoryId": zod.string().nullish(),
@@ -3435,6 +3495,7 @@ export const UpdateBudgetPlanningCategoryResponse = zod.object({
   "categoryType": zod.string(),
   "essentialStatus": zod.string(),
   "monthlyTarget": zod.string(),
+  "allocationBasisPoints": zod.number().min(updateBudgetPlanningCategoryResponseOneAllocationBasisPointsMin).max(updateBudgetPlanningCategoryResponseOneAllocationBasisPointsMax).multipleOf(updateBudgetPlanningCategoryResponseOneAllocationBasisPointsMultipleOf).nullable(),
   "warningThreshold": zod.string(),
   "notes": zod.string().nullish(),
   "sortOrder": zod.number(),
@@ -3495,6 +3556,10 @@ export const CopyBudgetPlanningPeriodHeader = zod.object({
 export const copyBudgetPlanningPeriodResponseCreatedByRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const copyBudgetPlanningPeriodResponseApprovedByRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const copyBudgetPlanningPeriodResponseClosedByRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const copyBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMin = 0;
+export const copyBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMax = 10000;
+export const copyBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMultipleOf = 1;
+
 
 
 export const CopyBudgetPlanningPeriodResponse = zod.object({
@@ -3517,6 +3582,7 @@ export const CopyBudgetPlanningPeriodResponse = zod.object({
   "categoryType": zod.string(),
   "essentialStatus": zod.string(),
   "monthlyTarget": zod.string(),
+  "allocationBasisPoints": zod.number().min(copyBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMin).max(copyBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMax).multipleOf(copyBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMultipleOf).nullable(),
   "warningThreshold": zod.string(),
   "notes": zod.string().nullish(),
   "sortOrder": zod.number(),
@@ -3671,6 +3737,10 @@ export const GetBudgetPlanningCategoryContributionDetailParams = zod.object({
   "categoryId": zod.coerce.string()
 })
 
+export const getBudgetPlanningCategoryContributionDetailResponseCategoryAllocationBasisPointsMin = 0;
+export const getBudgetPlanningCategoryContributionDetailResponseCategoryAllocationBasisPointsMax = 10000;
+export const getBudgetPlanningCategoryContributionDetailResponseCategoryAllocationBasisPointsMultipleOf = 1;
+
 export const getBudgetPlanningCategoryContributionDetailResponseIncludedReviewedHouseholdTransactionsItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const getBudgetPlanningCategoryContributionDetailResponseIncludedReviewedHouseholdTransactionsItemAmountRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
 export const getBudgetPlanningCategoryContributionDetailResponseIncludedActualRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
@@ -3696,6 +3766,7 @@ export const GetBudgetPlanningCategoryContributionDetailResponse = zod.object({
   "categoryType": zod.string(),
   "essentialStatus": zod.string(),
   "monthlyTarget": zod.string(),
+  "allocationBasisPoints": zod.number().min(getBudgetPlanningCategoryContributionDetailResponseCategoryAllocationBasisPointsMin).max(getBudgetPlanningCategoryContributionDetailResponseCategoryAllocationBasisPointsMax).multipleOf(getBudgetPlanningCategoryContributionDetailResponseCategoryAllocationBasisPointsMultipleOf).nullable(),
   "warningThreshold": zod.string(),
   "notes": zod.string().nullish(),
   "sortOrder": zod.number(),

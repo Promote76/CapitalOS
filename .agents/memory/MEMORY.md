@@ -24,3 +24,4 @@
 - [Imported transaction signs](capital-os-imported-transaction-signs.md) — normalize provider signs before persistence, preserve native amounts, and never silently rewrite legacy signs.
 - [Durable transfer classification](capital-os-transfer-classification.md) — transfer identity must survive category changes, and provider groups must reconcile to exactly two rows before they are trusted.
 - [Financial UI loading states](capital-os-financial-ui-states.md) — never render loading or failed financial queries as real zero balances; fail closed with explicit retry states.
+- [Budget allocation snapshots](capital-os-budget-allocation-snapshots.md) — version weekly allocation templates with draft periods; finalized periods preserve the exact reviewed percentages.

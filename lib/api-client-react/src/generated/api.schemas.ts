@@ -105,6 +105,12 @@ export interface BudgetPlanningCategory {
   categoryType: string;
   essentialStatus: string;
   monthlyTarget: string;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     * @nullable
+     */
+  allocationBasisPoints: number | null;
   warningThreshold: string;
   /** @nullable */
   notes?: string | null;
@@ -174,8 +180,9 @@ export interface WeeklyBudgetGuidanceCategory {
   /**
      * @minimum 0
      * @maximum 10000
+     * @nullable
      */
-  allocationBasisPoints: number;
+  allocationBasisPoints: number | null;
   /**
      * @nullable
      * @pattern ^-?[0-9]+\.[0-9]{2}$
@@ -224,6 +231,40 @@ export interface AcceptWeeklyBudgetGuidanceInput {
   categoryIds: string[];
   /** @minLength 1 */
   recommendationFingerprint: string;
+}
+
+export interface WeeklyBudgetAllocation {
+  /** @minLength 1 */
+  categoryId: string;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     */
+  basisPoints: number;
+}
+
+export interface WeeklyBudgetAllocationTemplateInput {
+  /** @minimum 1 */
+  version: number;
+  /** @minItems 1 */
+  allocations: WeeklyBudgetAllocation[];
+}
+
+export type WeeklyBudgetAllocationTemplateResultTotalBasisPoints = typeof WeeklyBudgetAllocationTemplateResultTotalBasisPoints[keyof typeof WeeklyBudgetAllocationTemplateResultTotalBasisPoints];
+
+
+export const WeeklyBudgetAllocationTemplateResultTotalBasisPoints = {
+  NUMBER_10000: 10000,
+} as const;
+
+export type WeeklyBudgetAllocationTemplateResultAllocations = {[key: string]: number};
+
+export interface WeeklyBudgetAllocationTemplateResult {
+  periodId: string;
+  /** @minimum 1 */
+  version: number;
+  totalBasisPoints: WeeklyBudgetAllocationTemplateResultTotalBasisPoints;
+  allocations: WeeklyBudgetAllocationTemplateResultAllocations;
 }
 
 export type AcceptWeeklyBudgetGuidanceResultTargets = {[key: string]: string};

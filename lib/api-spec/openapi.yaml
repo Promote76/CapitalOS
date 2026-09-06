@@ -1597,6 +1597,22 @@ paths:
         "200": { description: Advisory guidance that does not affect official totals, content: { application/json: { schema: { $ref: "#/components/schemas/WeeklyBudgetGuidance" } } } }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /budget-planning-periods/{periodId}/weekly-guidance/allocations:
+    put:
+      operationId: updateWeeklyBudgetAllocations
+      tags: [household-finance]
+      summary: Owner updates the exact 100 percent allocation template for a draft period
+      parameters:
+        - { name: periodId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/WeeklyBudgetAllocationTemplateInput" } } }
+      responses:
+        "200": { description: Versioned allocation template update, content: { application/json: { schema: { $ref: "#/components/schemas/WeeklyBudgetAllocationTemplateResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /budget-planning-periods/{periodId}/categories:
     post:
       operationId: createBudgetPlanningCategory
@@ -2672,7 +2688,7 @@ components:
         archived: { type: boolean }
     BudgetPlanningCategory:
       type: object
-      required: [id, name, categoryType, essentialStatus, monthlyTarget, warningThreshold, sortOrder, archived]
+      required: [id, name, categoryType, essentialStatus, monthlyTarget, allocationBasisPoints, warningThreshold, sortOrder, archived]
       properties:
         id: { type: string }
         sourceCategoryId: { type: [string, "null"] }
@@ -2680,6 +2696,7 @@ components:
         categoryType: { type: string }
         essentialStatus: { type: string }
         monthlyTarget: { type: string }
+        allocationBasisPoints: { type: [number, "null"], minimum: 0, maximum: 10000, multipleOf: 1 }
         warningThreshold: { type: string }
         notes: { type: [string, "null"] }
         sortOrder: { type: number }
@@ -2715,7 +2732,7 @@ components:
       required: [categoryId, allocationBasisPoints, recommendedMonthly, recommendedWeekly, eligibleActualSpending, remainingRecommendedAmount, status, reason, eligible]
       properties:
         categoryId: { type: string }
-        allocationBasisPoints: { type: number, minimum: 0, maximum: 10000 }
+        allocationBasisPoints: { type: [number, "null"], minimum: 0, maximum: 10000, multipleOf: 1 }
         recommendedMonthly: { type: [string, "null"], pattern: "^-?[0-9]+\\.[0-9]{2}$" }
         recommendedWeekly: { type: [string, "null"], pattern: "^-?[0-9]+\\.[0-9]{2}$" }
         eligibleActualSpending: { type: string, pattern: "^-?[0-9]+\\.[0-9]{2}$" }
@@ -2745,6 +2762,26 @@ components:
         version: { type: number, minimum: 1 }
         categoryIds: { type: array, minItems: 1, items: { type: string } }
         recommendationFingerprint: { type: string, minLength: 1 }
+    WeeklyBudgetAllocation:
+      type: object
+      required: [categoryId, basisPoints]
+      properties:
+        categoryId: { type: string, minLength: 1 }
+        basisPoints: { type: number, minimum: 0, maximum: 10000, multipleOf: 1 }
+    WeeklyBudgetAllocationTemplateInput:
+      type: object
+      required: [version, allocations]
+      properties:
+        version: { type: number, minimum: 1, multipleOf: 1 }
+        allocations: { type: array, minItems: 1, items: { $ref: "#/components/schemas/WeeklyBudgetAllocation" } }
+    WeeklyBudgetAllocationTemplateResult:
+      type: object
+      required: [periodId, version, totalBasisPoints, allocations]
+      properties:
+        periodId: { type: string }
+        version: { type: number, minimum: 1, multipleOf: 1 }
+        totalBasisPoints: { type: number, enum: [10000] }
+        allocations: { type: object, additionalProperties: { type: number, minimum: 0, maximum: 10000, multipleOf: 1 } }
     AcceptWeeklyBudgetGuidanceResult:
       type: object
       required: [periodId, version, acceptedCategoryIds, targets, affectsOfficialTotals]

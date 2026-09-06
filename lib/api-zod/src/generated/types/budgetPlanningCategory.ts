@@ -14,6 +14,12 @@ export interface BudgetPlanningCategory {
   categoryType: string;
   essentialStatus: string;
   monthlyTarget: string;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     * @nullable
+     */
+  allocationBasisPoints: number | null;
   warningThreshold: string;
   /** @nullable */
   notes?: string | null;

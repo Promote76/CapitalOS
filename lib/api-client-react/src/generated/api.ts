@@ -192,6 +192,8 @@ import type {
   UpcomingExpenseInput,
   UpcomingExpenseUpdateInput,
   UpdateBuyBoxInput,
+  WeeklyBudgetAllocationTemplateInput,
+  WeeklyBudgetAllocationTemplateResult,
   WeeklyBudgetGuidance
 } from './api.schemas';
 
@@ -7813,6 +7815,78 @@ export function useGetWeeklyBudgetGuidance<TData = Awaited<ReturnType<typeof get
 
 
 
+
+export const getUpdateWeeklyBudgetAllocationsUrl = (periodId: string,) => {
+
+
+
+
+  return `/api/budget-planning-periods/${periodId}/weekly-guidance/allocations`
+}
+
+/**
+ * @summary Owner updates the exact 100 percent allocation template for a draft period
+ */
+export const updateWeeklyBudgetAllocations = async (periodId: string,
+    weeklyBudgetAllocationTemplateInput: WeeklyBudgetAllocationTemplateInput, options?: Parameters<typeof customFetch>[1]): Promise<WeeklyBudgetAllocationTemplateResult> => {
+
+  return customFetch<WeeklyBudgetAllocationTemplateResult>(getUpdateWeeklyBudgetAllocationsUrl(periodId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(weeklyBudgetAllocationTemplateInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateWeeklyBudgetAllocationsMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWeeklyBudgetAllocations>>, TError,{periodId: string;data: BodyType<WeeklyBudgetAllocationTemplateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateWeeklyBudgetAllocations>>, TError,{periodId: string;data: BodyType<WeeklyBudgetAllocationTemplateInput>}, TContext> => {
+
+const mutationKey = ['updateWeeklyBudgetAllocations'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateWeeklyBudgetAllocations>>, {periodId: string;data: BodyType<WeeklyBudgetAllocationTemplateInput>}> = (props) => {
+          const {periodId,data} = props ?? {};
+
+          return  updateWeeklyBudgetAllocations(periodId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateWeeklyBudgetAllocationsMutationResult = NonNullable<Awaited<ReturnType<typeof updateWeeklyBudgetAllocations>>>
+    export type UpdateWeeklyBudgetAllocationsMutationBody = BodyType<WeeklyBudgetAllocationTemplateInput>
+    export type UpdateWeeklyBudgetAllocationsMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>
+
+    /**
+ * @summary Owner updates the exact 100 percent allocation template for a draft period
+ */
+export const useUpdateWeeklyBudgetAllocations = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateWeeklyBudgetAllocations>>, TError,{periodId: string;data: BodyType<WeeklyBudgetAllocationTemplateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateWeeklyBudgetAllocations>>,
+        TError,
+        {periodId: string;data: BodyType<WeeklyBudgetAllocationTemplateInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateWeeklyBudgetAllocationsMutationOptions(options));
+    }
 
 export const getCreateBudgetPlanningCategoryUrl = (periodId: string,) => {
 

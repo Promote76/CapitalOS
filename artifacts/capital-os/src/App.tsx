@@ -46,6 +46,7 @@ import {
   useGetBudgetPlanningChangeHistory,
   useGetWeeklyBudgetGuidance,
   useAcceptWeeklyBudgetGuidance,
+  useUpdateWeeklyBudgetAllocations,
   getGetWeeklyBudgetGuidanceQueryKey,
   getGetBudgetPlanningChangeHistoryQueryKey,
   getGetBudgetPlanningPeriodQueryKey,
@@ -1323,9 +1324,13 @@ function BudgetPlanningControlCenter() {
   const approvePeriod = useApproveBudgetPlanningPeriod({ request: { headers: { 'Idempotency-Key': idempotencyKeys.current.approve } } });
   const closePeriod = useCloseBudgetPlanningPeriod({ request: { headers: { 'Idempotency-Key': idempotencyKeys.current.close } } });
   const acceptGuidance = useAcceptWeeklyBudgetGuidance({ request: { headers: { 'Idempotency-Key': idempotencyKeys.current.guidance } } });
+  const updateAllocations = useUpdateWeeklyBudgetAllocations();
+  const [allocationPercentages, setAllocationPercentages] = useState<Record<string, string>>({});
+  const [allocationError, setAllocationError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const activeCategories = periodQuery.data ? periodQuery.data.categories.filter(c => !c.archived).sort((a, b) => a.sortOrder - b.sortOrder) : [];
   const archivedCategories = periodQuery.data ? periodQuery.data.categories.filter(c => c.archived).sort((a, b) => a.sortOrder - b.sortOrder) : [];
+  const allocatingCategories = activeCategories.filter(category => !['income', 'transfer'].includes(category.categoryType));
 
   const changeHistoryQuery = useGetBudgetPlanningChangeHistory(periodQuery.data?.id ?? '', {
     query: { enabled: !!periodQuery.data?.id, queryKey: periodQuery.data?.id ? getGetBudgetPlanningChangeHistoryQueryKey(periodQuery.data.id) : ['/api/budget-planning-change-history'] }
@@ -1334,6 +1339,27 @@ function BudgetPlanningControlCenter() {
   const guidanceQuery = useGetWeeklyBudgetGuidance(periodQuery.data?.id ?? '', {
     query: { enabled: !!periodQuery.data?.id, queryKey: periodQuery.data?.id ? getGetWeeklyBudgetGuidanceQueryKey(periodQuery.data.id) : ['/api/guidance-placeholder'], retry: false }
   });
+  useEffect(() => {
+    if (!periodQuery.data) return;
+    setAllocationPercentages(Object.fromEntries(
+      periodQuery.data.categories
+        .filter(category => !category.archived && !['income', 'transfer'].includes(category.categoryType))
+        .map(category => [category.id, category.allocationBasisPoints === null ? '' : (category.allocationBasisPoints / 100).toFixed(2)])
+    ));
+    setAllocationError(null);
+  }, [periodQuery.data?.id, periodQuery.data?.version]);
+  const allocationBasisPoints = allocatingCategories.map(category => {
+    const value = allocationPercentages[category.id] ?? '';
+    return /^\d+(?:\.\d{1,2})?$/.test(value) ? Math.round(Number(value) * 100) : null;
+  });
+  const allocationTotalBasisPoints = allocationBasisPoints.reduce<number>((sum, value) => sum + (value ?? 0), 0);
+  const allocationTemplateValid = allocatingCategories.length > 0
+    && allocationBasisPoints.every((value): value is number => value !== null && value >= 0 && value <= 10000)
+    && allocationTotalBasisPoints === 10000;
+  const persistedAllocationTotal = allocatingCategories.reduce((sum, category) => sum + (category.allocationBasisPoints ?? 0), 0);
+  const persistedAllocationTemplateValid = allocatingCategories.length > 0
+    && allocatingCategories.every(category => Number.isInteger(category.allocationBasisPoints) && category.allocationBasisPoints! >= 0 && category.allocationBasisPoints! <= 10000)
+    && persistedAllocationTotal === 10000;
 
   const submitApprove = useProviderProtectedAction(async (periodId: string, version: number) => {
     return approvePeriod.mutateAsync({ periodId, data: { version } });
@@ -1362,6 +1388,10 @@ function BudgetPlanningControlCenter() {
   };
 
   const handleApprove = async (period: BudgetPlanningPeriod) => {
+    if (!persistedAllocationTemplateValid) {
+      toast({ variant: 'destructive', title: 'Allocation template incomplete', description: 'Save every allocating category with a total of exactly 100.00% before approving this plan.' });
+      return;
+    }
     if (!confirm('Approve this plan? It will become immutable.')) return;
     try {
       await submitApprove(period.id, period.version);
@@ -1439,6 +1469,34 @@ function BudgetPlanningControlCenter() {
     }
   };
 
+  const handleSaveAllocations = async () => {
+    const period = periodQuery.data;
+    if (!period || period.status !== 'draft') return;
+    if (!allocationTemplateValid) {
+      setAllocationError('Enter every allocating category to no more than two decimal places and make the total exactly 100.00%.');
+      return;
+    }
+    try {
+      await updateAllocations.mutateAsync({
+        periodId: period.id,
+        data: {
+          version: period.version,
+          allocations: allocatingCategories.map((category, index) => ({ categoryId: category.id, basisPoints: allocationBasisPoints[index]! })),
+        },
+      });
+      setAllocationError(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningPeriodQueryKey(selectedMonth) }),
+        queryClient.invalidateQueries({ queryKey: getGetWeeklyBudgetGuidanceQueryKey(period.id) }),
+        queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningChangeHistoryQueryKey(period.id) }),
+      ]);
+      toast({ title: 'Weekly allocations saved', description: 'The draft template totals exactly 100.00%.' });
+    } catch (error) {
+      setAllocationError(error instanceof Error ? error.message : 'The allocation template could not be saved.');
+      handleMutationError(error, 'Save allocations');
+    }
+  };
+
   const [editingCategory, setEditingCategory] = useState<BudgetPlanningCategory | 'new' | null>(null);
   const [detailCategory, setDetailCategory] = useState<BudgetPlanningCategory | null>(null);
 
@@ -1507,7 +1565,7 @@ function BudgetPlanningControlCenter() {
                 {periodQuery.data.status === 'draft' && (
                   <>
                     <button onClick={() => setEditingCategory('new')} className="btn btn-secondary btn-sm"><Plus size={14} /> Category</button>
-                    <button onClick={() => handleApprove(periodQuery.data)} disabled={approvePeriod.isPending} className="btn btn-primary btn-sm"><Check size={14} /> Approve</button>
+                     <button onClick={() => handleApprove(periodQuery.data)} disabled={approvePeriod.isPending || !persistedAllocationTemplateValid} title={persistedAllocationTemplateValid ? 'Approve this plan' : 'Save a complete 100.00% allocation template before approval'} className="btn btn-primary btn-sm"><Check size={14} /> Approve</button>
                   </>
                 )}
                 {periodQuery.data.status === 'approved' && (
@@ -1566,6 +1624,49 @@ function BudgetPlanningControlCenter() {
                        </div>
                     )}
 
+                     <div style={{ background: 'var(--surface-default)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-default)' }}>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'flex-start', marginBottom: '12px' }}>
+                         <div>
+                           <strong style={{ color: 'var(--text-primary)' }}>Household allocation template</strong>
+                           <div style={{ marginTop: '3px' }}>Allocate every active spending, debt, saving, and investing category. Income, transfers, and credit-card payments never receive an allocation.</div>
+                         </div>
+                         <strong style={{ color: allocationTotalBasisPoints === 10000 ? 'var(--color-success)' : 'var(--color-critical)', whiteSpace: 'nowrap' }}>
+                           {(allocationTotalBasisPoints / 100).toFixed(2)} / 100.00%
+                         </strong>
+                       </div>
+                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px' }}>
+                         {allocatingCategories.map(category => (
+                           <label key={category.id} className="field" style={{ gap: '4px' }}>
+                             <span>{category.name}</span>
+                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                               <input
+                                 aria-label={`${category.name} allocation percentage`}
+                                 inputMode="decimal"
+                                 min="0"
+                                 max="100"
+                                 step="0.01"
+                                 value={allocationPercentages[category.id] ?? ''}
+                                 disabled={periodQuery.data.status !== 'draft' || updateAllocations.isPending}
+                                 onChange={event => {
+                                   setAllocationPercentages(current => ({ ...current, [category.id]: event.target.value }));
+                                   setAllocationError(null);
+                                 }}
+                               />
+                               <span>%</span>
+                             </div>
+                           </label>
+                         ))}
+                       </div>
+                       {allocationError && <div role="alert" style={{ marginTop: '10px', color: 'var(--color-critical)' }}>{allocationError}</div>}
+                       {periodQuery.data.status === 'draft' ? (
+                         <button className="btn btn-secondary btn-sm" style={{ marginTop: '12px' }} disabled={!allocationTemplateValid || updateAllocations.isPending} onClick={() => void handleSaveAllocations()}>
+                           {updateAllocations.isPending ? 'Saving…' : 'Save 100% allocation'}
+                         </button>
+                       ) : (
+                         <div style={{ marginTop: '10px' }}>This allocation template is preserved with the immutable {periodQuery.data.status} period.</div>
+                       )}
+                     </div>
+
                     {periodQuery.data.status === 'draft' && (
                       <div style={{ marginTop: '4px' }}>
                          <button
@@ -1596,7 +1697,7 @@ function BudgetPlanningControlCenter() {
                   <div key={cat.id} className="planning-category-card">
                      <div className="planning-category-header">
                         <div className="planning-row-info">
-                           <strong>{cat.name} {gCat && <span style={{ display: 'inline-block', marginLeft: '6px', padding: '2px 6px', background: 'var(--surface-subtle)', borderRadius: '4px', fontSize: '10px', fontWeight: 600, color: 'var(--text-secondary)' }}>{(gCat.allocationBasisPoints / 100).toFixed(2)}%</span>}</strong>
+                            <strong>{cat.name} {gCat?.allocationBasisPoints != null && <span style={{ display: 'inline-block', marginLeft: '6px', padding: '2px 6px', background: 'var(--surface-subtle)', borderRadius: '4px', fontSize: '10px', fontWeight: 600, color: 'var(--text-secondary)' }}>{(gCat.allocationBasisPoints / 100).toFixed(2)}%</span>}</strong>
                            <span>{cat.categoryType.replace(/_/g, ' ')} • {cat.essentialStatus}</span>
                            {cat.notes && <span style={{ marginTop: '4px', display: 'block', fontSize: '11px' }}>{cat.notes}</span>}
                         </div>

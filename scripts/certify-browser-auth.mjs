@@ -8,6 +8,42 @@ const publishedOrigin = (process.env.CAPITAL_OS_PUBLISHED_ORIGIN ?? "").replace(
 const artifactPath = path.join(rootDir, "docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md");
 const screenshotPath = "docs/certification/auth-sign-in-published-origin.png";
 const productionEvidencePath = path.join(rootDir, "docs/certification/CLERK_REVERIFICATION_PRODUCTION_EVIDENCE_2026-09-05.json");
+const baGates = [
+  ["BA-01", "Published Origin"],
+  ["BA-02", "Real Clerk Authentication"],
+  ["BA-03", "Owner Clean Sign-In"],
+  ["BA-04", "Onboarding Persistence"],
+  ["BA-05", "Saved Write / Reload"],
+  ["BA-06", "Sign-Out"],
+  ["BA-07", "Repeat Sign-In"],
+  ["BA-08", "Second Household"],
+  ["BA-09", "Direct URL IDOR"],
+  ["BA-10", "Owner Role"],
+  ["BA-11", "Advisor Role"],
+  ["BA-12", "Viewer Role"],
+  ["BA-13", "Session Revocation"],
+  ["BA-14", "Current Role Enforcement"],
+  ["BA-15", "Current Membership Enforcement"],
+  ["BA-16", "Multi-Tab Safety"],
+  ["BA-17", "Emergency Stop Browser"],
+  ["BA-18", "Treasury Authorization"],
+  ["BA-19", "Safe-to-Deploy Display"],
+  ["BA-20", "Audit / Telemetry"],
+];
+const rvGates = [
+  ["RV-01", "Successful provider reverification and protected-action retry"],
+  ["RV-02", "Cancelled reverification creates no mutation or success audit"],
+  ["RV-03", "Provider Challenge UI"],
+  ["RV-04", "Successful Reverification"],
+  ["RV-05", "Exact Protected Retry"],
+  ["RV-06", "Failed Challenge Denial"],
+  ["RV-07", "Cancelled Challenge Denial"],
+  ["RV-08", "Bounded Recent-Auth Window"],
+  ["RV-09", "Recent-Auth Expiry"],
+  ["RV-10", "Current Role Recheck"],
+  ["RV-11", "Current Household Recheck"],
+  ["RV-12", "Audit / Telemetry Safety"],
+];
 
 function redact(value) {
   return String(value)
@@ -72,14 +108,14 @@ function runAuthTests() {
 }
 
 function loadProductionEvidence(origin) {
-  if (!fs.existsSync(productionEvidencePath)) return { passedGates: [], error: null };
+  if (!fs.existsSync(productionEvidencePath)) return { passedGates: [], identityInventory: null, error: null };
   try {
     const evidence = JSON.parse(fs.readFileSync(productionEvidencePath, "utf8"));
     if (evidence.publishedOrigin !== origin) {
-      return { passedGates: [], error: "Production evidence origin does not match the configured published origin." };
+      return { passedGates: [], identityInventory: null, error: "Production evidence origin does not match the configured published origin." };
     }
     if (evidence.containsCredentials !== false) {
-      return { passedGates: [], error: "Production evidence did not explicitly confirm credential-safe redaction." };
+      return { passedGates: [], identityInventory: null, error: "Production evidence did not explicitly confirm credential-safe redaction." };
     }
     const allowedGates = new Set(["RV-01", "RV-02"]);
     const passedGates = Object.entries(evidence.gates ?? {})
@@ -90,10 +126,11 @@ function loadProductionEvidence(origin) {
         Array.isArray(gate?.evidence) &&
         gate.evidence.length > 0)
       .map(([id, gate]) => ({ id, title: gate.title, evidence: gate.evidence }));
-    return { passedGates, error: null };
+    return { passedGates, identityInventory: evidence.identityInventory ?? null, error: null };
   } catch (error) {
     return {
       passedGates: [],
+      identityInventory: null,
       error: error instanceof Error ? error.message : "Production evidence could not be parsed.",
     };
   }
@@ -102,6 +139,11 @@ function loadProductionEvidence(origin) {
 function writeArtifact({ origin, originCheck, source, authTests, productionEvidence }) {
   const ba = originCheck.passed ? 1 : 0;
   const rv = productionEvidence.passedGates.length;
+  const passedRvIds = new Set(productionEvidence.passedGates.map((gate) => gate.id));
+  const baMatrixLines = baGates.map(([id, title]) =>
+    `- ${id} ${title}: ${id === "BA-01" && originCheck.passed ? "PASS" : "BLOCKED"}`);
+  const rvMatrixLines = rvGates.map(([id, title]) =>
+    `- ${id} ${title}: ${passedRvIds.has(id) ? "PASS" : "BLOCKED"}`);
   const rvEvidenceLines = productionEvidence.passedGates.flatMap((gate) => [
     `- ${gate.id} ${gate.title}: PASS`,
     ...gate.evidence.map((item) => `  - ${item}`),
@@ -137,6 +179,8 @@ function writeArtifact({ origin, originCheck, source, authTests, productionEvide
     "",
     `**BA GATES:** ${ba}/20 certified`,
     "",
+    ...baMatrixLines,
+    "",
     "BA-01 is a published-origin preflight only. BA-02 through BA-20 remain BLOCKED",
     "because this run did not perform a real Clerk sign-in, onboarding, saved write,",
     "sign-out/repeat sign-in, second-household switch, role test, session expiry,",
@@ -146,6 +190,8 @@ function writeArtifact({ origin, originCheck, source, authTests, productionEvide
     "## Clerk reverification gates",
     "",
     `**RV GATES:** ${rv}/12 certified`,
+    "",
+    ...rvMatrixLines,
     "",
     ...(rvEvidenceLines.length > 0
       ? [
@@ -164,18 +210,18 @@ function writeArtifact({ origin, originCheck, source, authTests, productionEvide
     "",
     "## Human browser attempt",
     "",
-    "The user attempted the published-origin checklist but could not complete or",
-    "confidently evaluate it because:",
+    "An earlier published-origin attempt was inconclusive because:",
     "",
     "- dedicated Owner, Advisor, Viewer, and second-household identities were not available;",
     "- several requested approval actions could not be found or had no approvable items;",
-    "- the Clerk reverification challenge did not appear;",
     "- session-expiry, multi-tab, and repeat-sign-in cases could not be controlled; and",
     "- some attempted steps did not expose enough evidence to determine PASS or FAIL.",
     "",
-    "This attempt is **INCONCLUSIVE — MISSING CERTIFICATION PREREQUISITES**. It does",
-    "not count as a failed product control, but it also supplies no BA or RV PASS",
-    "evidence. No gate totals or release status changed.",
+    "",
+    "Subsequent production evidence closes RV-01 and RV-02. The production identity",
+    `inventory currently contains ${productionEvidence.identityInventory?.ownerMemberships ?? "unknown"} Owner, ${productionEvidence.identityInventory?.advisorMemberships ?? "unknown"} Advisor, and ${productionEvidence.identityInventory?.viewerMemberships ?? "unknown"} Viewer memberships across ${productionEvidence.identityInventory?.households ?? "unknown"} households.`,
+    "Advisor and Viewer browser gates cannot be certified until dedicated real Clerk",
+    "identities hold those roles through an approved application/admin boundary.",
     "",
     "## Remediation after the human attempt",
     "",

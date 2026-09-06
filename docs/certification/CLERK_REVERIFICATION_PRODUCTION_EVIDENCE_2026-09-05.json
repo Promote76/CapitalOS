@@ -3,6 +3,14 @@
   "environment": "production",
   "observedAt": "2026-09-05T20:35:00-05:00",
   "containsCredentials": false,
+  "identityInventory": {
+    "households": 2,
+    "ownerMemberships": 2,
+    "advisorMemberships": 0,
+    "viewerMemberships": 0,
+    "observedAt": "2026-09-05T20:42:00-05:00",
+    "source": "Read-only production PostgreSQL aggregate; no user identifiers retained."
+  },
   "gates": {
     "RV-01": {
       "status": "PASS",

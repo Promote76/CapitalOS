@@ -1,7 +1,7 @@
 # Capital OS authenticated browser and Clerk reverification certification
 
 **Date:** 2026-09-05
-**Current HEAD:** `4a95752a681d1d2bb7c27262671e1e07575e470a`
+**Current HEAD:** `70c267b90228579967f4491406a7af928de4c9be`
 **Published origin:** https://capital-os-fund.replit.app
 **Test environment:** Replit-managed Clerk production deployment; no credentials or session tokens recorded
 
@@ -28,6 +28,27 @@
 
 **BA GATES:** 1/20 certified
 
+- BA-01 Published Origin: PASS
+- BA-02 Real Clerk Authentication: BLOCKED
+- BA-03 Owner Clean Sign-In: BLOCKED
+- BA-04 Onboarding Persistence: BLOCKED
+- BA-05 Saved Write / Reload: BLOCKED
+- BA-06 Sign-Out: BLOCKED
+- BA-07 Repeat Sign-In: BLOCKED
+- BA-08 Second Household: BLOCKED
+- BA-09 Direct URL IDOR: BLOCKED
+- BA-10 Owner Role: BLOCKED
+- BA-11 Advisor Role: BLOCKED
+- BA-12 Viewer Role: BLOCKED
+- BA-13 Session Revocation: BLOCKED
+- BA-14 Current Role Enforcement: BLOCKED
+- BA-15 Current Membership Enforcement: BLOCKED
+- BA-16 Multi-Tab Safety: BLOCKED
+- BA-17 Emergency Stop Browser: BLOCKED
+- BA-18 Treasury Authorization: BLOCKED
+- BA-19 Safe-to-Deploy Display: BLOCKED
+- BA-20 Audit / Telemetry: BLOCKED
+
 BA-01 is a published-origin preflight only. BA-02 through BA-20 remain BLOCKED
 because this run did not perform a real Clerk sign-in, onboarding, saved write,
 sign-out/repeat sign-in, second-household switch, role test, session expiry,
@@ -37,6 +58,19 @@ Safe-to-Deploy display test.
 ## Clerk reverification gates
 
 **RV GATES:** 2/12 certified
+
+- RV-01 Successful provider reverification and protected-action retry: PASS
+- RV-02 Cancelled reverification creates no mutation or success audit: PASS
+- RV-03 Provider Challenge UI: BLOCKED
+- RV-04 Successful Reverification: BLOCKED
+- RV-05 Exact Protected Retry: BLOCKED
+- RV-06 Failed Challenge Denial: BLOCKED
+- RV-07 Cancelled Challenge Denial: BLOCKED
+- RV-08 Bounded Recent-Auth Window: BLOCKED
+- RV-09 Recent-Auth Expiry: BLOCKED
+- RV-10 Current Role Recheck: BLOCKED
+- RV-11 Current Household Recheck: BLOCKED
+- RV-12 Audit / Telemetry Safety: BLOCKED
 
 - RV-01 Successful strict provider reverification retries the original action: PASS
   - A protected Operations task mutation returned HTTP 403 before reverification and HTTP 200 after the provider flow.
@@ -53,18 +87,18 @@ Redacted evidence: docs/certification/CLERK_REVERIFICATION_PRODUCTION_EVIDENCE_2
 
 ## Human browser attempt
 
-The user attempted the published-origin checklist but could not complete or
-confidently evaluate it because:
+An earlier published-origin attempt was inconclusive because:
 
 - dedicated Owner, Advisor, Viewer, and second-household identities were not available;
 - several requested approval actions could not be found or had no approvable items;
-- the Clerk reverification challenge did not appear;
 - session-expiry, multi-tab, and repeat-sign-in cases could not be controlled; and
 - some attempted steps did not expose enough evidence to determine PASS or FAIL.
 
-This attempt is **INCONCLUSIVE — MISSING CERTIFICATION PREREQUISITES**. It does
-not count as a failed product control, but it also supplies no BA or RV PASS
-evidence. No gate totals or release status changed.
+
+Subsequent production evidence closes RV-01 and RV-02. The production identity
+inventory currently contains 2 Owner, 0 Advisor, and 0 Viewer memberships across 2 households.
+Advisor and Viewer browser gates cannot be certified until dedicated real Clerk
+identities hold those roles through an approved application/admin boundary.
 
 ## Remediation after the human attempt
 

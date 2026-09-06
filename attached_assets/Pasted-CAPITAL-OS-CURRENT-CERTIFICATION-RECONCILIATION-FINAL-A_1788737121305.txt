@@ -1,0 +1,585 @@
+CAPITAL OS — CURRENT CERTIFICATION RECONCILIATION + FINAL AUTH CLOSURE
+
+Use:
+
+docs/CAPITAL_OS_CURRENT_CERTIFICATION.md
+
+as the authoritative current certification.
+
+DO NOT ADD FEATURES.
+
+DO NOT:
+- add Grok
+- connect Schwab
+- activate Micro-Live
+- transmit orders
+- enable ACH
+- move money
+- enable AI execution
+
+==================================================
+1. FIX CURRENT GATE COUNTS
+==================================================
+
+Recompute release counts directly from the Current Result column
+of the current gate matrix.
+
+Do not manually preserve:
+
+PASS 11
+PARTIAL 2
+
+if the matrix does not support those values.
+
+Expected from the currently documented matrix:
+
+PASS = 13
+PARTIAL = 0
+BLOCKED = 4
+FAIL = 0
+
+But calculate from source rather than hardcoding.
+
+Add an automated certification invariant:
+
+matrix row count
+=
+PASS + PARTIAL + BLOCKED + FAIL
+
+If not:
+
+CERTIFICATION FAILS.
+
+==================================================
+2. IDENTIFY EXACT FOUR BLOCKERS
+==================================================
+
+Current expected blockers:
+
+Authenticated Browser E2E
+Clerk Reverification
+Micro-Live Foundation
+Schwab Read-Only
+
+Confirm from current matrix.
+
+Do not introduce historical P1/P0 wording as additional current
+critical gates unless explicitly restored to the current matrix.
+
+==================================================
+3. FINISH AUTHENTICATED BROWSER E2E
+==================================================
+
+Use the actual published Capital OS origin and real Clerk.
+
+Required dedicated identities:
+
+Owner A
+Advisor A
+Viewer A
+Owner B
+
+Execute and retain evidence for:
+
+BA-01 Real published origin
+BA-02 Real Clerk sign-in
+BA-03 Owner A authenticated
+BA-04 Onboarding persistence
+BA-05 Saved write + reload
+BA-06 Sign out
+BA-07 Repeat sign-in
+BA-08 Owner B / second household
+BA-09 Foreign URL/ID denial
+BA-10 Owner role
+BA-11 Advisor role
+BA-12 Viewer role
+BA-13 Session revocation
+BA-14 Current role recheck
+BA-15 Current membership recheck
+BA-16 Multi-tab stale-session denial
+BA-17 Emergency Stop browser
+BA-18 Treasury browser authorization
+BA-19 Safe-to-Deploy browser consistency
+BA-20 Audit/telemetry
+
+No critical skips.
+
+==================================================
+4. CONTRIBUTION-SPECIFIC BROWSER PROOF
+==================================================
+
+Execute the real contribution workflow.
+
+Use the configured Capital OS allocation policy.
+
+Do NOT assume old allocation percentages if current Budget
+configuration has changed.
+
+Record the current configured allocation before testing.
+
+Then:
+
+create contribution
+→ persist
+→ reload
+→ fresh API read
+→ verify allocation
+→ verify ledger
+→ verify goal/protected reserve
+→ verify Safe-to-Deploy
+
+Critical invariant:
+
+Protected Duplex contribution
+MUST NOT
+increase executable Safe-to-Deploy.
+
+Test duplicate submission.
+
+Expected:
+
+ONE economic event.
+
+Test rejected submission.
+
+Expected:
+
+NO false-success UI.
+
+==================================================
+5. SAFE-TO-DEPLOY BROWSER
+==================================================
+
+Compare:
+
+browser displayed value
+API authoritative value
+database classification
+
+for the same timestamp/context.
+
+Require explainable equality.
+
+Protected capital must remain excluded.
+
+==================================================
+6. OWNER ROLE
+==================================================
+
+Owner A:
+
+perform one safe owner-only action.
+
+Verify:
+
+UI permits
+API permits
+audit actor correct
+
+==================================================
+7. ADVISOR ROLE
+==================================================
+
+Advisor A:
+
+verify permitted advisory access.
+
+Verify Treasury protected-balance redaction.
+
+Attempt owner-only approval.
+
+Expected:
+
+DENIED by API.
+
+==================================================
+8. VIEWER ROLE
+==================================================
+
+Viewer A:
+
+perform allowed reads.
+
+Attempt direct API mutation.
+
+Expected:
+
+DENIED.
+
+==================================================
+9. SECOND HOUSEHOLD
+==================================================
+
+Owner B must not access any Household A:
+
+accounts
+budget
+Treasury
+properties
+strategies
+operations
+alerts
+execution state
+recommendations
+
+Test both UI navigation and direct API IDs.
+
+==================================================
+10. CURRENT ROLE RECHECK
+==================================================
+
+While a browser session is active:
+
+change the user's authoritative role/permission using a separate
+authorized session.
+
+Attempt a formerly permitted protected action.
+
+Expected:
+
+server uses CURRENT role.
+
+No stale browser privilege.
+
+==================================================
+11. CURRENT MEMBERSHIP RECHECK
+==================================================
+
+While session remains authenticated:
+
+remove/revoke household membership.
+
+Attempt household action.
+
+Expected:
+
+DENIED.
+
+Authentication alone must not preserve revoked authorization.
+
+==================================================
+12. CLERK REVERIFICATION
+==================================================
+
+Preserve already proven:
+
+RV-01 successful provider challenge + exact retry
+RV-02 cancelled challenge + no mutation
+
+Complete remaining real evidence.
+
+Required final matrix:
+
+RV-01 Successful provider challenge
+RV-02 Cancelled challenge denial
+RV-03 Provider challenge UI
+RV-04 Successful reverification
+RV-05 Exact protected-action retry
+RV-06 Failed challenge denial
+RV-07 Cancelled challenge denial
+RV-08 Bounded recent-auth window
+RV-09 Recent-auth expiry
+RV-10 Current role recheck
+RV-11 Current household/membership recheck
+RV-12 Audit/telemetry safety
+
+Use existing canonical numbering if different.
+
+No invented OTPs.
+No fake JWTs.
+No test header substitution.
+
+==================================================
+13. REVERIFICATION EXPIRY
+==================================================
+
+Prove:
+
+valid session
++
+expired recent-auth
+→ sensitive action blocked
+
+then:
+
+real provider reverification
+→ current authorization rechecked
+→ action allowed only if authorized
+
+==================================================
+14. REVERIFICATION DOES NOT ELEVATE AUTHORITY
+==================================================
+
+Verify:
+
+Viewer + successful reverification = Viewer
+
+Advisor + successful reverification = Advisor
+
+Authentication strength
+!=
+authorization level.
+
+==================================================
+15. EMERGENCY STOP BROWSER
+==================================================
+
+Use non-live execution state.
+
+Owner:
+
+request STOP
+→ authoritative server confirmation
+→ reload
+→ STOP persists
+
+No local-only success.
+
+Leave final state:
+
+STOP or DISABLED.
+
+Never ACTIVE.
+
+==================================================
+16. TREASURY BROWSER
+==================================================
+
+Owner:
+
+perform planning-only Treasury approval/reservation.
+
+Verify:
+
+persisted state
+audit
+no money moved
+
+Advisor:
+
+attempt same action.
+
+Expected:
+
+DENIED.
+
+==================================================
+17. AUTH TELEMETRY
+==================================================
+
+Verify observability for:
+
+authentication
+authorization denial
+reverification required
+successful reverification
+failed/cancelled reverification
+session revocation
+
+No passwords, JWTs, tokens, OTPs, or secrets in telemetry.
+
+==================================================
+18. HUMAN ACTION HANDOFF
+==================================================
+
+If a real Clerk challenge requires the project owner:
+
+prepare everything else first.
+
+Then return exact instructions:
+
+USER ACTION REQUIRED
+
+URL:
+<actual published URL>
+
+CERTIFICATION IDENTITY:
+<safe identity>
+
+ACTION:
+<exact protected action>
+
+WHEN CLERK OPENS:
+complete the provider challenge normally
+
+DO NOT SEND TO REPLIT OR CHAT:
+password
+OTP
+token
+cookie
+secret
+
+After the human completes the provider UI, automatically resume
+the persisted certification.
+
+==================================================
+19. CERTIFICATION COMMAND
+==================================================
+
+Run:
+
+pnpm run certify:browser-auth
+
+Required:
+
+BA 20/20
+RV 12/12
+
+If not:
+
+keep corresponding gate BLOCKED.
+
+==================================================
+20. REGRESSION
+==================================================
+
+Run all current certification commands that exist, including:
+
+typecheck
+API test suite
+route parity
+household privacy/current-surface
+financial integrity
+execution control
+operations recovery
+observability
+browser auth
+Micro-Live certification
+production candidate
+
+No current PASS gate may regress.
+
+==================================================
+21. UPDATE CURRENT CERTIFICATION
+==================================================
+
+Update:
+
+docs/CAPITAL_OS_CURRENT_CERTIFICATION.md
+
+Authenticated Browser E2E:
+PASS only if BA 20/20.
+
+Clerk Reverification:
+PASS only if RV 12/12.
+
+Recompute gate counts from matrix automatically.
+
+==================================================
+22. RECONCILE FINAL COMPLETION REPORT
+==================================================
+
+The historical Final Completion Report may retain historical
+information, but add/maintain a clear pointer that:
+
+CURRENT CERTIFICATION
+=
+docs/CAPITAL_OS_CURRENT_CERTIFICATION.md
+
+Do not allow stale historical Security/Operations language to
+override current certification.
+
+==================================================
+FINAL RESPONSE
+==================================================
+
+Return:
+
+CURRENT HEAD:
+<hash>
+
+CRITICAL GATES:
+<n>
+
+PASS:
+<n>
+
+PARTIAL:
+<n>
+
+BLOCKED:
+<n>
+
+FAIL:
+<n>
+
+GATE COUNT CONSISTENCY:
+PASS / FAIL
+
+AUTHENTICATED BROWSER:
+PASS / BLOCKED / FAIL
+
+BA:
+<n>/20
+
+CLERK REVERIFICATION:
+PASS / BLOCKED / FAIL
+
+RV:
+<n>/12
+
+CONTRIBUTION BROWSER:
+PASS / BLOCKED / FAIL
+
+PROTECTED DUPLEX:
+PASS / FAIL
+
+SAFE-TO-DEPLOY BROWSER:
+PASS / BLOCKED / FAIL
+
+OWNER:
+PASS / FAIL
+
+ADVISOR:
+PASS / FAIL
+
+VIEWER:
+PASS / FAIL
+
+SECOND HOUSEHOLD:
+PASS / FAIL
+
+CURRENT ROLE RECHECK:
+PASS / FAIL
+
+CURRENT MEMBERSHIP RECHECK:
+PASS / FAIL
+
+SESSION REVOCATION:
+PASS / FAIL
+
+RECENT-AUTH EXPIRY:
+PASS / FAIL
+
+EMERGENCY STOP BROWSER:
+PASS / FAIL
+
+TREASURY BROWSER:
+PASS / FAIL
+
+REAL MONEY MOVED:
+$0
+
+REAL ORDERS:
+0
+
+MICRO-LIVE:
+DISABLED
+
+SCHWAB:
+DISABLED
+
+AI EXECUTION:
+DISABLED
+
+CURRENT BLOCKERS:
+<exact list>
+
+PRODUCTION CANDIDATE:
+<actual status>
+
+NEXT BLOCKER:
+<one exact blocker>
+
+UPDATED CERTIFICATION:
+docs/CAPITAL_OS_CURRENT_CERTIFICATION.md

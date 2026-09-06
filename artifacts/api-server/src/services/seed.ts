@@ -52,7 +52,7 @@ export async function isDemoHousehold(householdId: string): Promise<boolean> {
   return household?.name === DEMO_HOUSEHOLD_NAME;
 }
 
-async function ensureTreasurySeed(householdId: string, ownerId: string) {
+async function ensureTreasurySeed(householdId: string, ownerId: string, fixtureMode: boolean) {
   const [existingPolicy] = await db
     .select({ id: treasuryPolicies.id })
     .from(treasuryPolicies)
@@ -61,16 +61,16 @@ async function ensureTreasurySeed(householdId: string, ownerId: string) {
   if (!existingPolicy) {
     await db.insert(treasuryPolicies).values({
       householdId,
-      minimumOperatingCash: "2000.00",
-      emergencyTargetMonths: 6,
-      minimumWeeklyDuplexContribution: "200.00",
-      maximumStrategyPercent: "15",
-      maximumSingleStrategyPercent: "5",
-      maximumSingleVenuePercent: "5",
-      maximumIlliquidPercent: "20",
-      maximumActivePercent: "30",
+      minimumOperatingCash: fixtureMode ? "2000.00" : "0.00",
+      emergencyTargetMonths: fixtureMode ? 6 : 0,
+      minimumWeeklyDuplexContribution: fixtureMode ? "200.00" : "0.00",
+      maximumStrategyPercent: fixtureMode ? "15" : "0",
+      maximumSingleStrategyPercent: fixtureMode ? "5" : "0",
+      maximumSingleVenuePercent: fixtureMode ? "5" : "0",
+      maximumIlliquidPercent: fixtureMode ? "20" : "0",
+      maximumActivePercent: fixtureMode ? "30" : "0",
       autoScale: false,
-      hierarchy: [
+      hierarchy: fixtureMode ? [
         "Required household obligations",
         "Minimum operating cash",
         "Emergency reserve",
@@ -79,9 +79,75 @@ async function ensureTreasurySeed(householdId: string, ownerId: string) {
         "Opportunity reserve",
         "Treasury / liquid yield",
         "Validated strategy capital",
-      ],
+      ] : [],
       updatedBy: ownerId,
     });
+  }
+
+  if (!fixtureMode) {
+    const remediatedPolicy = await db
+      .update(treasuryPolicies)
+      .set({
+        minimumOperatingCash: "0.00",
+        emergencyTargetMonths: 0,
+        minimumWeeklyDuplexContribution: "0.00",
+        maximumStrategyPercent: "0",
+        maximumSingleStrategyPercent: "0",
+        maximumSingleVenuePercent: "0",
+        maximumIlliquidPercent: "0",
+        maximumActivePercent: "0",
+        hierarchy: [],
+        updatedAt: new Date(),
+        updatedBy: ownerId,
+      })
+      .where(and(
+        eq(treasuryPolicies.householdId, householdId),
+        eq(treasuryPolicies.minimumOperatingCash, "2000.00"),
+        eq(treasuryPolicies.emergencyTargetMonths, 6),
+        eq(treasuryPolicies.minimumWeeklyDuplexContribution, "200.00"),
+      ))
+      .returning({ id: treasuryPolicies.id });
+
+    const fingerprints = [
+      ["Household Operating Cash", "OPERATING", "3000.00", "3500.00"],
+      ["Emergency Reserve", "EMERGENCY", "18000.00", "12000.00"],
+      ["Duplex Reserve", "PROTECTED_GOAL", "120000.00", "0.00"],
+      ["Closing Cost Reserve", "PROPERTY", "20000.00", "0.00"],
+      ["Opportunity Reserve", "OPPORTUNITY", "10000.00", "0.00"],
+      ["Treasury Reserve", "TREASURY", "15000.00", "0.00"],
+      ["Capital OS Strategy Capital", "STRATEGY", "5000.00", "0.00"],
+      ["Property Acquisition Capital", "PROPERTY", "135000.00", "0.00"],
+      ["Future 4-Plex Reserve", "LONG_TERM", "0.00", "0.00"],
+    ] as const;
+    const removedBucketIds: string[] = [];
+    for (const [name, bucketType, targetAmount, currentBalance] of fingerprints) {
+      const removed = await db
+        .delete(treasuryBuckets)
+        .where(and(
+          eq(treasuryBuckets.householdId, householdId),
+          eq(treasuryBuckets.name, name),
+          eq(treasuryBuckets.bucketType, bucketType),
+          eq(treasuryBuckets.targetAmount, targetAmount),
+          eq(treasuryBuckets.currentBalance, currentBalance),
+        ))
+        .returning({ id: treasuryBuckets.id });
+      removedBucketIds.push(...removed.map(({ id }) => id));
+    }
+    if (remediatedPolicy.length > 0 || removedBucketIds.length > 0) {
+      await db.insert(auditEvents).values({
+        householdId,
+        eventType: "authenticated_household_demo_data_removed",
+        actor: ownerId,
+        entity: "household",
+        entityId: householdId,
+        reason: "Removed untouched sample Treasury values from an authenticated household.",
+        metadata: {
+          policyNeutralized: remediatedPolicy.length > 0,
+          treasuryBucketsRemoved: removedBucketIds.length,
+        },
+      });
+    }
+    return;
   }
 
   const existingBuckets = await db
@@ -603,8 +669,14 @@ export type SeedContext = {
 let seedContext: SeedContext | undefined;
 const tenantContexts = new Map<string, SeedContext>();
 
-export async function ensureTenantCore(householdId: string, ownerId: string): Promise<SeedContext> {
-  const cached = tenantContexts.get(householdId);
+export async function ensureTenantCore(
+  householdId: string,
+  ownerId: string,
+  options: { fixtureMode?: boolean } = {},
+): Promise<SeedContext> {
+  const fixtureMode = options.fixtureMode ?? activeSecurityContext()?.authStrength !== "clerk_session";
+  const cacheKey = `${householdId}:${fixtureMode ? "fixture" : "authenticated"}`;
+  const cached = tenantContexts.get(cacheKey);
   if (cached) return cached;
 
   const result = await db.transaction(async (tx) => {
@@ -656,6 +728,70 @@ export async function ensureTenantCore(householdId: string, ownerId: string): Pr
     const treasuryAccountId = await findOrCreateAccount("treasury", "Capital OS Treasury", false, "conservative");
     const strategyCapitalAccountId = await findOrCreateAccount("strategy_capital", "Strategy Capital", false, "experimental");
 
+    if (!fixtureMode) {
+      await tx.update(goals).set({
+        name: "Set up your first goal",
+        targetAmount: "0.00",
+        currentAmount: "0.00",
+        protectedAmount: "0.00",
+        weeklyContribution: "0.00",
+        priority: "normal",
+        status: "draft",
+        updatedAt: new Date(),
+      }).where(and(
+        eq(goals.householdId, householdId),
+        eq(goals.name, "First Duplex Acquisition"),
+        eq(goals.targetAmount, "120000.00"),
+        eq(goals.weeklyContribution, "200.00"),
+        eq(goals.currentAmount, "0.00"),
+      ));
+      await tx.update(allocationRules).set({
+        totalWeekly: "0.00",
+        duplexReserve: "0.00",
+        capitalOs: "0.00",
+        opportunityReserve: "0.00",
+        updatedAt: new Date(),
+      }).where(and(
+        eq(allocationRules.householdId, householdId),
+        eq(allocationRules.totalWeekly, "250.00"),
+        eq(allocationRules.duplexReserve, "200.00"),
+        eq(allocationRules.capitalOs, "25.00"),
+        eq(allocationRules.opportunityReserve, "25.00"),
+      ));
+      await tx.update(propertyGoals).set({
+        name: "Set up your property plan",
+        updatedAt: new Date(),
+      }).where(and(
+        eq(propertyGoals.householdId, householdId),
+        eq(propertyGoals.name, "First property plan"),
+        eq(propertyGoals.targetBudget, "0.00"),
+        eq(propertyGoals.estimatedDownPayment, "0.00"),
+      ));
+      await tx.update(strategies).set({
+        name: "Set up your research plan",
+        updatedAt: new Date(),
+      }).where(and(
+        eq(strategies.householdId, householdId),
+        eq(strategies.name, "Research plan"),
+        eq(strategies.allocation, "0.00"),
+        eq(strategies.runtimeDays, "0"),
+        eq(strategies.enabled, false),
+      ));
+      await tx.update(riskStates).set({
+        maxActiveCapital: "0.00",
+        maxStrategyAllocation: "0.00",
+        maxWeeklyRisk: "0.0000",
+        maxDrawdown: "0.0000",
+        minimumCashReserve: "0.00",
+        updatedAt: new Date(),
+      }).where(and(
+        eq(riskStates.householdId, householdId),
+        eq(riskStates.maxActiveCapital, "5000.00"),
+        eq(riskStates.maxStrategyAllocation, "500.00"),
+        eq(riskStates.minimumCashReserve, "3000.00"),
+      ));
+    }
+
     const [existingGoal] = await tx
       .select({ id: goals.id })
       .from(goals)
@@ -667,14 +803,14 @@ export async function ensureTenantCore(householdId: string, ownerId: string): Pr
         .insert(goals)
         .values({
           householdId,
-          name: "First Duplex Acquisition",
-          targetAmount: "120000.00",
+          name: fixtureMode ? "First Duplex Acquisition" : "Set up your first goal",
+          targetAmount: fixtureMode ? "120000.00" : "0.00",
           currentAmount: "0.00",
           protectedAmount: "0.00",
-          weeklyContribution: "200.00",
+          weeklyContribution: fixtureMode ? "200.00" : "0.00",
           startDate: new Date().toISOString().slice(0, 10),
           targetDate: "2027-06-30",
-          priority: "critical",
+          priority: fixtureMode ? "critical" : "normal",
           status: "draft",
         })
         .returning({ id: goals.id }))[0].id;
@@ -690,10 +826,10 @@ export async function ensureTenantCore(householdId: string, ownerId: string): Pr
         .insert(allocationRules)
         .values({
           householdId,
-          totalWeekly: "250.00",
-          duplexReserve: "200.00",
-          capitalOs: "25.00",
-          opportunityReserve: "25.00",
+          totalWeekly: fixtureMode ? "250.00" : "0.00",
+          duplexReserve: fixtureMode ? "200.00" : "0.00",
+          capitalOs: fixtureMode ? "25.00" : "0.00",
+          opportunityReserve: fixtureMode ? "25.00" : "0.00",
           active: true,
           createdBy: ownerId,
         })
@@ -710,7 +846,7 @@ export async function ensureTenantCore(householdId: string, ownerId: string): Pr
         .insert(propertyGoals)
         .values({
           householdId,
-          name: "First property plan",
+          name: fixtureMode ? "First property plan" : "Set up your property plan",
           targetMarket: "To be selected",
           targetBudget: "0.00",
           estimatedDownPayment: "0.00",
@@ -731,7 +867,7 @@ export async function ensureTenantCore(householdId: string, ownerId: string): Pr
         .insert(strategies)
         .values({
           householdId,
-          name: "Research plan",
+          name: fixtureMode ? "Research plan" : "Set up your research plan",
           strategyType: "core_plan",
           stage: "research",
           allocation: "0.00",
@@ -771,11 +907,11 @@ export async function ensureTenantCore(householdId: string, ownerId: string): Pr
         .values({
           householdId,
           state: "normal",
-          maxActiveCapital: "5000.00",
-          maxStrategyAllocation: "500.00",
-          maxWeeklyRisk: "0.0100",
-          maxDrawdown: "0.0500",
-          minimumCashReserve: "3000.00",
+          maxActiveCapital: fixtureMode ? "5000.00" : "0.00",
+          maxStrategyAllocation: fixtureMode ? "500.00" : "0.00",
+          maxWeeklyRisk: fixtureMode ? "0.0100" : "0.0000",
+          maxDrawdown: fixtureMode ? "0.0500" : "0.0000",
+          minimumCashReserve: fixtureMode ? "3000.00" : "0.00",
           protectedCapitalLocked: true,
           emergencyStopActive: false,
         })
@@ -821,8 +957,8 @@ export async function ensureTenantCore(householdId: string, ownerId: string): Pr
     };
   });
 
-  tenantContexts.set(householdId, result);
-  await ensureTreasurySeed(householdId, ownerId);
+  tenantContexts.set(cacheKey, result);
+  await ensureTreasurySeed(householdId, ownerId, fixtureMode);
   return result;
 }
 
@@ -929,7 +1065,7 @@ export async function ensureSeedData(): Promise<SeedContext> {
       };
       await ensureHouseholdFinanceSeed(seedContext.householdId);
       await ensurePropertyUnderwritingSeed(seedContext.householdId, seedContext.propertyGoalId);
-      await ensureTreasurySeed(seedContext.householdId, seedContext.ownerId);
+      await ensureTreasurySeed(seedContext.householdId, seedContext.ownerId, true);
       return seedContext;
     }
   }
@@ -1224,6 +1360,6 @@ export async function ensureSeedData(): Promise<SeedContext> {
   seedContext = result;
   await ensureHouseholdFinanceSeed(seedContext.householdId);
   await ensurePropertyUnderwritingSeed(seedContext.householdId, seedContext.propertyGoalId);
-  await ensureTreasurySeed(seedContext.householdId, seedContext.ownerId);
+  await ensureTreasurySeed(seedContext.householdId, seedContext.ownerId, true);
   return result;
 }

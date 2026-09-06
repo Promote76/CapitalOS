@@ -1,7 +1,7 @@
 # Capital OS financial integrity certification
 
 **Date:** 2026-09-05
-**Current HEAD:** `a0685179edd4f0f17af4217a0f40f18cfa5dfb41`
+**Current HEAD:** `8ccef3e4aba1fa376c7b52e092a1a48702115472`
 **Database target:** disposable local PostgreSQL cluster; no shared or production database was used
 **Target sentinel:** `financial-integrity-local-certification-20260905`
 

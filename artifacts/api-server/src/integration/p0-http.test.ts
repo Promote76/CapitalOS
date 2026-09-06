@@ -1133,6 +1133,82 @@ function replaceRouteParams(route: RouteProbe, values: Record<string, string>, f
   return route.path.replace(/:([A-Za-z0-9_]+)/g, (_match, name: string) => values[name] ?? fallback);
 }
 
+test("authenticated households do not inherit demo planning or Treasury values", { skip: !enabled }, async () => {
+  process.env.NODE_ENV = "test";
+  process.env.CAPITAL_OS_TEST_CONTEXT = "1";
+  const fixture = await createFixture();
+  database ??= await import("@workspace/db");
+  const { ensureTenantCore } = await import("../services/seed.ts");
+
+  await ensureTenantCore(fixture.householdA, fixture.userA, { fixtureMode: false });
+
+  const [goal] = await database.db.select().from(database.goals)
+    .where(eq(database.goals.householdId, fixture.householdA)).limit(1);
+  const [allocation] = await database.db.select().from(database.allocationRules)
+    .where(eq(database.allocationRules.householdId, fixture.householdA)).limit(1);
+  const [risk] = await database.db.select().from(database.riskStates)
+    .where(eq(database.riskStates.householdId, fixture.householdA)).limit(1);
+  const [policy] = await database.db.select().from(database.treasuryPolicies)
+    .where(eq(database.treasuryPolicies.householdId, fixture.householdA)).limit(1);
+  const buckets = await database.db.select().from(database.treasuryBuckets)
+    .where(eq(database.treasuryBuckets.householdId, fixture.householdA));
+
+  assert.equal(goal?.name, "Set up your first goal");
+  assert.equal(goal?.targetAmount, "0.00");
+  assert.equal(goal?.weeklyContribution, "0.00");
+  assert.equal(allocation?.totalWeekly, "0.00");
+  assert.equal(allocation?.duplexReserve, "0.00");
+  assert.equal(allocation?.capitalOs, "0.00");
+  assert.equal(allocation?.opportunityReserve, "0.00");
+  assert.equal(risk?.maxActiveCapital, "0.00");
+  assert.equal(risk?.maxStrategyAllocation, "0.00");
+  assert.equal(risk?.minimumCashReserve, "0.00");
+  assert.equal(policy?.minimumOperatingCash, "0.00");
+  assert.equal(policy?.minimumWeeklyDuplexContribution, "0.00");
+  assert.deepEqual(policy?.hierarchy, []);
+  assert.equal(buckets.length, 0);
+
+  await ensureTenantCore(fixture.householdB, fixture.userB, { fixtureMode: true });
+  const [modifiedBucket] = await database.db.select({ id: database.treasuryBuckets.id })
+    .from(database.treasuryBuckets)
+    .where(and(
+      eq(database.treasuryBuckets.householdId, fixture.householdB),
+      eq(database.treasuryBuckets.name, "Opportunity Reserve"),
+    ))
+    .limit(1);
+  assert.ok(modifiedBucket?.id);
+  await database.db.update(database.treasuryBuckets)
+    .set({ currentBalance: "1.00" })
+    .where(eq(database.treasuryBuckets.id, modifiedBucket.id));
+
+  await ensureTenantCore(fixture.householdB, fixture.userB, { fixtureMode: false });
+
+  const remediatedBuckets = await database.db.select({
+    id: database.treasuryBuckets.id,
+    name: database.treasuryBuckets.name,
+    currentBalance: database.treasuryBuckets.currentBalance,
+  }).from(database.treasuryBuckets)
+    .where(eq(database.treasuryBuckets.householdId, fixture.householdB));
+  assert.deepEqual(remediatedBuckets, [{
+    id: modifiedBucket.id,
+    name: "Opportunity Reserve",
+    currentBalance: "1.00",
+  }]);
+  const [remediatedGoal] = await database.db.select().from(database.goals)
+    .where(eq(database.goals.householdId, fixture.householdB)).limit(1);
+  assert.equal(remediatedGoal?.name, "Set up your first goal");
+  assert.equal(remediatedGoal?.targetAmount, "0.00");
+
+  const remediationAudit = await database.db.select().from(database.auditEvents)
+    .where(and(
+      eq(database.auditEvents.householdId, fixture.householdB),
+      eq(database.auditEvents.eventType, "authenticated_household_demo_data_removed"),
+    ));
+  assert.equal(remediationAudit.length, 1);
+  assert.equal(remediationAudit[0]?.actor, fixture.userB);
+  assert.equal((remediationAudit[0]?.metadata as { treasuryBucketsRemoved?: number }).treasuryBucketsRemoved, 8);
+});
+
 test("P0-01 preflight inventories the authoritative route set and rejects unsafe generic probes", { skip: !enabled }, async () => {
   process.env.NODE_ENV = "test";
   process.env.CAPITAL_OS_TEST_CONTEXT = "1";

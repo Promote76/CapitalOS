@@ -520,6 +520,22 @@ async function ensureHouseholdFinanceSeed(householdId: string) {
         budgetPerformance: { month: "August 2026", source: "seeded household ledger" },
       });
     }
+    await db.update(financeTransactions).set({
+      transferGroupId: "seed-card-payment-aug",
+      excludedFromBudget: true,
+      updatedAt: new Date(),
+    }).where(and(
+      eq(financeTransactions.householdId, householdId),
+      eq(financeTransactions.externalId, "seed-debt-aug"),
+    ));
+    await db.update(financeSnapshots).set({
+      debtService: "0.00",
+      netCashFlow: "3849.00",
+      freeCashFlow: "3849.00",
+    }).where(and(
+      eq(financeSnapshots.householdId, householdId),
+      eq(financeSnapshots.snapshotDate, "2026-08-31"),
+    ));
     return;
   }
 
@@ -595,7 +611,7 @@ async function ensureHouseholdFinanceSeed(householdId: string) {
       { householdId, accountId: checking.id, externalId: "seed-transit-aug", transactionDate: "2026-08-10", description: "Fuel and transit", merchant: "Transportation", originalAmount: "312.00", amount: "-312.00", categoryId: categoryId("Transportation"), dataSource: "manual", reviewStatus: "approved" },
       { householdId, accountId: checking.id, externalId: "seed-utilities-aug", transactionDate: "2026-08-12", description: "Utilities", merchant: "Utilities", originalAmount: "244.00", amount: "-244.00", categoryId: categoryId("Utilities"), dataSource: "manual", reviewStatus: "approved" },
       { householdId, accountId: checking.id, externalId: "seed-insurance-aug", transactionDate: "2026-08-14", description: "Insurance premium", merchant: "Insurance", originalAmount: "320.00", amount: "-320.00", categoryId: categoryId("Insurance"), dataSource: "manual", reviewStatus: "approved" },
-      { householdId, accountId: card.id, externalId: "seed-debt-aug", transactionDate: "2026-08-16", description: "Card payment", merchant: "Debt payment", originalAmount: "350.00", amount: "-350.00", categoryId: categoryId("Debt payment"), dataSource: "manual", reviewStatus: "approved" },
+      { householdId, accountId: card.id, externalId: "seed-debt-aug", transactionDate: "2026-08-16", description: "Card payment", merchant: "Debt payment", originalAmount: "350.00", amount: "-350.00", categoryId: categoryId("Debt payment"), dataSource: "manual", reviewStatus: "approved", transferGroupId: "seed-card-payment-aug", excludedFromBudget: true },
       { householdId, accountId: card.id, externalId: "seed-personal-aug", transactionDate: "2026-08-18", description: "Personal spending", merchant: "Personal", originalAmount: "265.00", amount: "-265.00", categoryId: categoryId("Personal"), dataSource: "manual", reviewStatus: "approved" },
       { householdId, accountId: card.id, externalId: "seed-entertainment-aug", transactionDate: "2026-08-20", description: "Streaming and dining", merchant: "Entertainment", originalAmount: "138.00", amount: "-138.00", categoryId: categoryId("Entertainment"), dataSource: "manual", reviewStatus: "approved" },
       { householdId, accountId: savings.id, externalId: "seed-duplex-aug", transactionDate: "2026-08-23", description: "Protected duplex contribution", merchant: "Duplex Fund", originalAmount: "800.00", amount: "-800.00", categoryId: categoryId("Duplex Fund"), dataSource: "manual", reviewStatus: "approved" },
@@ -637,11 +653,11 @@ async function ensureHouseholdFinanceSeed(householdId: string) {
       grossInflow: "8400.00",
       essentialOutflow: "3148.00",
       discretionaryOutflow: "403.00",
-      debtService: "350.00",
+        debtService: "0.00",
       savingsContributions: "900.00",
       investmentContributions: "100.00",
-      netCashFlow: "3499.00",
-      freeCashFlow: "3499.00",
+        netCashFlow: "3849.00",
+        freeCashFlow: "3849.00",
       safeToDeploy: "0.00",
       safeToDeployConfidence: "86.00",
       financialHealthScore: "83.00",

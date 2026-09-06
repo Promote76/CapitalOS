@@ -54,7 +54,7 @@ test("transfers do not create income", () => {
     { amountCents: -500 * 100, kind: "transfer" },
   ]);
   assert.equal(summary.incomeCents, 2_000 * 100);
-  assert.equal(summary.netCashFlowCents, 1_500 * 100);
+  assert.equal(summary.netCashFlowCents, 2_000 * 100);
 });
 
 test("accounting totals include only reviewed eligible transactions with live categories", () => {
@@ -122,7 +122,7 @@ test("accounting totals include only reviewed eligible transactions with live ca
     expensesCents: 1_200 * 100,
     contributionsCents: 0,
     debtReductionCents: 0,
-    netCashFlowCents: 3_500 * 100,
+    netCashFlowCents: 3_800 * 100,
   });
 });
 

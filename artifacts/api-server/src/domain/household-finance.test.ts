@@ -10,6 +10,8 @@ import {
   canViewFinancialBalance,
   deduplicateImportedTransactions,
   detectRecurringTransactions,
+  isExcludedFromHouseholdSpending,
+  reviewedTransactionBudgetExclusion,
 } from "./household-finance.ts";
 import { csvImportBankingAdapter, normalizeImportedAmount } from "../adapters/banking.ts";
 
@@ -58,6 +60,43 @@ test("budget totals use signed transaction amounts and exclude transfers", () =>
   );
   assert.equal(housing.actual, "1750.00");
   assert.equal(housing.variance, "50.00");
+});
+
+test("transfer categories fail closed even when a row exclusion flag is inconsistent", () => {
+  const [transfer] = calculateBudgetPerformance(
+    [{ id: "transfer", name: "Transfer", categoryType: "transfer", essentialStatus: "mixed", monthlyTarget: "0.00", warningThreshold: "1.05" }],
+    [{ id: "approved-transfer", amount: "-500.00", categoryId: "transfer", excludedFromBudget: false }],
+    30,
+    30,
+  );
+  assert.equal(transfer.actual, "0.00");
+  assert.equal(transfer.projectedMonthEnd, "0.00");
+});
+
+test("credit-card payments are excluded explicitly by category or transfer group", () => {
+  assert.equal(isExcludedFromHouseholdSpending({
+    excludedFromBudget: false,
+    transferGroupId: null,
+  }, "transfer"), true);
+  assert.equal(isExcludedFromHouseholdSpending({
+    excludedFromBudget: false,
+    transferGroupId: "card-payment-pair",
+  }, "debt_payment"), true);
+
+  const [debt] = calculateBudgetPerformance(
+    [{ id: "card-payment", name: "Credit card payment", categoryType: "transfer", essentialStatus: "mixed", monthlyTarget: "0.00", warningThreshold: "1.05" }],
+    [{ id: "card-payment-row", amount: "-350.00", categoryId: "card-payment", excludedFromBudget: false }],
+    30,
+    30,
+  );
+  assert.equal(debt.actual, "0.00");
+});
+
+test("review transitions cannot include transfers after approval", () => {
+  assert.equal(reviewedTransactionBudgetExclusion("approved", "transfer", null), true);
+  assert.equal(reviewedTransactionBudgetExclusion("approved", "debt_payment", "card-payment-pair"), true);
+  assert.equal(reviewedTransactionBudgetExclusion("excluded", "fixed_expense", null), true);
+  assert.equal(reviewedTransactionBudgetExclusion("approved", "fixed_expense", null), false);
 });
 
 test("refunds reduce the original category spend", () => {

@@ -29,6 +29,8 @@ import {
   canonicalManualTransactionAmount,
   canViewFinancialBalance,
   deduplicateImportedTransactions,
+  isExcludedFromHouseholdSpending,
+  reviewedTransactionBudgetExclusion,
 } from "../domain/household-finance";
 import {
   BankingProviderError,
@@ -59,6 +61,7 @@ const DEFAULT_FINANCE_CATEGORY_CATALOG = [
   { name: "Savings", categoryType: "savings", essentialStatus: "mixed" },
   { name: "Investments", categoryType: "investment", essentialStatus: "mixed" },
   { name: "Transfer", categoryType: "transfer", essentialStatus: "mixed" },
+  { name: "Credit card payment", categoryType: "transfer", essentialStatus: "mixed" },
   { name: "Other", categoryType: "one_time_expense", essentialStatus: "mixed" },
 ] as const;
 
@@ -158,19 +161,42 @@ async function ensureDefaultFinanceCategories(id: string) {
       eq(financeCategories.householdId, id),
       inArray(financeCategories.name, defaultNames),
     ));
-  if (existing.length === DEFAULT_FINANCE_CATEGORY_CATALOG.length) return;
   await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`finance-category-catalog:${id}`}, 0))`);
-    await tx.insert(financeCategories).values(
-      DEFAULT_FINANCE_CATEGORY_CATALOG.map((category) => ({
-        householdId: id,
-        ...category,
-        monthlyTarget: "0.00",
-        warningThreshold: "1.00",
-      })),
-    ).onConflictDoNothing({
-      target: [financeCategories.householdId, financeCategories.name],
-    });
+    if (existing.length !== DEFAULT_FINANCE_CATEGORY_CATALOG.length) {
+      await tx.insert(financeCategories).values(
+        DEFAULT_FINANCE_CATEGORY_CATALOG.map((category) => ({
+          householdId: id,
+          ...category,
+          monthlyTarget: "0.00",
+          warningThreshold: "1.00",
+        })),
+      ).onConflictDoNothing({
+        target: [financeCategories.householdId, financeCategories.name],
+      });
+    }
+    await tx.execute(sql`
+      update finance_transactions as ft
+      set
+        transfer_group_id = coalesce(ft.transfer_group_id, 'legacy-transfer:' || ft.id::text),
+        excluded_from_budget = true,
+        updated_at = now()
+      where ft.household_id = ${id}
+        and (
+          ft.external_id = 'seed-debt-aug'
+          or exists (
+            select 1
+            from finance_categories as category
+            where category.id = ft.category_id
+              and category.household_id = ${id}
+              and category.category_type = 'transfer'
+          )
+        )
+        and (
+          ft.transfer_group_id is null
+          or ft.excluded_from_budget = false
+        )
+    `);
   });
 }
 
@@ -359,12 +385,16 @@ function currentPeriod(asOf = calendarToday()) {
 
 function currentPeriodTransactions(data: Awaited<ReturnType<typeof loadFinanceData>>, asOf = calendarToday()) {
   const period = currentPeriod(asOf);
+  const categoryTypes = new Map(data.categories.map((category) => [category.id, category.categoryType]));
   return data.transactions.filter((transaction) =>
     transaction.transactionDate >= period.start &&
     transaction.transactionDate < period.end &&
     transaction.reviewStatus === "approved" &&
     !transaction.pending &&
-    !transaction.excludedFromBudget
+    !isExcludedFromHouseholdSpending(
+      transaction,
+      categoryTypes.get(transaction.categoryId ?? ""),
+    )
   );
 }
 
@@ -413,12 +443,13 @@ export async function getBudget(actor?: Actor) {
       amount: transaction.amount,
       categoryId: transaction.categoryId,
       excludedFromBudget: transaction.excludedFromBudget,
+      transferGroupId: transaction.transferGroupId,
     })),
     period.daysElapsed,
     period.daysInMonth,
   );
   const totals = performance.reduce((result, category) => {
-    if (category.categoryType === "income") return result;
+    if (category.categoryType === "income" || category.categoryType === "transfer") return result;
     result.budgeted += numeric(category.budgeted);
     result.actual += numeric(category.actual);
     return result;
@@ -434,7 +465,7 @@ export async function getBudget(actor?: Actor) {
     },
     notes: [
       `Current period: ${period.start} through ${calendarToday()}.`,
-      "Approved income appears by category; expense summary totals exclude income, transfers, and credit-card payments to avoid double counting.",
+      "Approved income appears by category; the Transfer and Credit card payment categories, plus linked transfer pairs, are excluded from Budget Performance and expense totals to avoid double counting.",
       "Imported rows remain reviewable until a household member approves them.",
     ],
   };
@@ -1009,12 +1040,25 @@ export async function reviewFinancialTransaction(actor: Actor, transactionId: st
     }
 
     const categoryId = input.categoryId !== undefined ? input.categoryId : transaction.categoryId;
+    let categoryType: string | null = null;
     if (categoryId) {
-      const [category] = await tx.select({ id: financeCategories.id })
+      const [category] = await tx.select({ id: financeCategories.id, categoryType: financeCategories.categoryType })
         .from(financeCategories)
         .where(and(eq(financeCategories.id, categoryId), eq(financeCategories.householdId, id), eq(financeCategories.active, true)))
         .limit(1);
       if (!category) throw new GovernanceError("INVALID_STATE", "The selected category is not available in this household");
+      categoryType = category.categoryType;
+    }
+    let priorCategoryType: string | null = categoryType;
+    if (transaction.categoryId && transaction.categoryId !== categoryId) {
+      const [priorCategory] = await tx.select({ categoryType: financeCategories.categoryType })
+        .from(financeCategories)
+        .where(and(
+          eq(financeCategories.id, transaction.categoryId),
+          eq(financeCategories.householdId, id),
+        ))
+        .limit(1);
+      priorCategoryType = priorCategory?.categoryType ?? null;
     }
     if (input.status === "approved" && !categoryId) {
       throw new GovernanceError("INVALID_STATE", "An approved transaction must have a household category");
@@ -1022,11 +1066,25 @@ export async function reviewFinancialTransaction(actor: Actor, transactionId: st
     const review = reviewMetadata(transaction.metadata);
     const existingNote = typeof review.note === "string" ? review.note : null;
     const nextNote = input.note === undefined ? existingNote : input.note;
-    const nextExcluded = input.status !== "approved";
+    const nextTransferGroupId =
+      transaction.transferGroupId ??
+      (
+        categoryType === "transfer" ||
+        priorCategoryType === "transfer" ||
+        transaction.reviewStatus === "possible_transfer"
+          ? `reviewed-transfer:${transaction.id}`
+          : null
+      );
+    const nextExcluded = reviewedTransactionBudgetExclusion(
+      input.status,
+      categoryType,
+      nextTransferGroupId,
+    );
     if (
       transaction.reviewStatus === input.status &&
       transaction.categoryId === categoryId &&
       transaction.excludedFromBudget === nextExcluded &&
+      transaction.transferGroupId === nextTransferGroupId &&
       existingNote === nextNote
     ) {
       const [account] = await tx.select({ nickname: financialAccounts.nickname })
@@ -1057,6 +1115,7 @@ export async function reviewFinancialTransaction(actor: Actor, transactionId: st
       reviewStatus: input.status,
       businessTag: input.status === "possible_business" ? "business" : input.status === "approved" ? "household" : transaction.businessTag,
       excludedFromBudget: nextExcluded,
+      transferGroupId: nextTransferGroupId,
       metadata: nextMetadata,
       updatedAt: new Date(),
     }).where(and(
@@ -1075,11 +1134,13 @@ export async function reviewFinancialTransaction(actor: Actor, transactionId: st
         reviewStatus: transaction.reviewStatus,
         categoryId: transaction.categoryId,
         excludedFromBudget: transaction.excludedFromBudget,
+        transferGroupId: transaction.transferGroupId,
       },
       afterState: {
         reviewStatus: input.status,
         categoryId,
         excludedFromBudget: nextExcluded,
+        transferGroupId: nextTransferGroupId,
         note: nextNote,
       },
       metadata: { source: "household-finance-review", idempotent: false },
@@ -1741,6 +1802,9 @@ export async function syncReadOnlyBankConnection(actor: Actor, connectionId: str
         decimalCents(transaction.amount);
         const amount = normalizeImportedAmount(transaction.amount, provider.transactionAmountConvention);
         const reviewStatus = providerReviewStatus(transaction);
+        const transferGroupId = transaction.reviewHint === "possible_transfer"
+          ? `provider-transfer:${connection.id}:${transaction.providerTransactionId}`
+          : null;
         const pending = transaction.pending ?? false;
         const existing = await tx.select().from(financeTransactions).where(and(
           eq(financeTransactions.householdId, id),
@@ -1764,6 +1828,8 @@ export async function syncReadOnlyBankConnection(actor: Actor, connectionId: str
             ...(signContractApplied ? { originalAmount: transaction.amount, amount } : {}),
             pending,
             ...(existing[0].reviewStatus === "approved" ? {} : { reviewStatus }),
+            transferGroupId: existing[0].transferGroupId ?? transferGroupId,
+            excludedFromBudget: existing[0].excludedFromBudget || Boolean(existing[0].transferGroupId ?? transferGroupId),
             metadata: {
               ...existing[0].metadata,
               bankSync: {
@@ -1790,6 +1856,8 @@ export async function syncReadOnlyBankConnection(actor: Actor, connectionId: str
           amount,
           dataSource: "plaid",
           reviewStatus,
+          transferGroupId,
+          excludedFromBudget: Boolean(transferGroupId),
           pending,
           metadata: {
             bankSync: {

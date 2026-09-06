@@ -2263,6 +2263,156 @@ test("household finance stays tenant-scoped and CSV imports are reviewable and d
     assert.equal(manualCashFlow.status, 200);
     assert.equal((await manualCashFlow.json() as { metrics: { netCashFlow: string } }).metrics.netCashFlow, "-12.50");
 
+    const cardPaymentEntry = await request(`/financial-accounts/${accountA.id}/transactions`, fixture.userA, fixture.householdA, {
+      method: "POST",
+      body: JSON.stringify({
+        transactionDate: "2026-09-04",
+        description: "Credit card statement payment",
+        amount: "350.00",
+        direction: "outflow",
+      }),
+    });
+    assert.equal(cardPaymentEntry.status, 201);
+    const cardPaymentRow = await cardPaymentEntry.json() as { id: string };
+    const cardPaymentQueue = await request("/financial-transactions/review-queue", fixture.userA, fixture.householdA);
+    const cardPaymentQueueBody = await cardPaymentQueue.json() as {
+      categories: Array<{ id: string; name: string }>;
+    };
+    const cardPaymentCategory = cardPaymentQueueBody.categories.find(({ name }) => name === "Credit card payment");
+    const debtPaymentCategory = cardPaymentQueueBody.categories.find(({ name }) => name === "Debt payment");
+    const transferCategory = cardPaymentQueueBody.categories.find(({ name }) => name === "Transfer");
+    assert.ok(cardPaymentCategory);
+    assert.ok(debtPaymentCategory);
+    assert.ok(transferCategory);
+    const cardPaymentApproval = await request(
+      `/financial-transactions/${cardPaymentRow.id}/review`,
+      fixture.userA,
+      fixture.householdA,
+      {
+        method: "POST",
+        body: JSON.stringify({ status: "approved", categoryId: cardPaymentCategory.id }),
+      },
+    );
+    assert.equal(cardPaymentApproval.status, 200);
+    assert.equal(
+      (await cardPaymentApproval.json() as { excludedFromBudget: boolean }).excludedFromBudget,
+      true,
+    );
+    const reclassifiedCardPayment = await request(
+      `/financial-transactions/${cardPaymentRow.id}/review`,
+      fixture.userA,
+      fixture.householdA,
+      {
+        method: "POST",
+        body: JSON.stringify({ status: "approved", categoryId: debtPaymentCategory.id }),
+      },
+    );
+    assert.equal(reclassifiedCardPayment.status, 200);
+    assert.equal(
+      (await reclassifiedCardPayment.json() as { excludedFromBudget: boolean }).excludedFromBudget,
+      true,
+    );
+    const [persistedCardPayment] = await database.db.select({
+      transferGroupId: database.financeTransactions.transferGroupId,
+      excludedFromBudget: database.financeTransactions.excludedFromBudget,
+    }).from(database.financeTransactions).where(eq(database.financeTransactions.id, cardPaymentRow.id));
+    assert.ok(persistedCardPayment.transferGroupId);
+    assert.equal(persistedCardPayment.excludedFromBudget, true);
+    const cashFlowAfterCardPayment = await request("/cash-flow", fixture.userA, fixture.householdA);
+    assert.equal(
+      (await cashFlowAfterCardPayment.json() as { metrics: { netCashFlow: string } }).metrics.netCashFlow,
+      "-12.50",
+    );
+    const budgetAfterCardPayment = await request("/budget", fixture.userA, fixture.householdA);
+    const budgetAfterCardPaymentBody = await budgetAfterCardPayment.json() as {
+      categories: Array<{ name: string; actual: string }>;
+      totals: { actual: string };
+    };
+    assert.equal(
+      budgetAfterCardPaymentBody.categories.find(({ name }) => name === "Credit card payment")?.actual,
+      "0.00",
+    );
+    assert.equal(
+      budgetAfterCardPaymentBody.categories.find(({ name }) => name === "Debt payment")?.actual,
+      "0.00",
+    );
+    assert.equal(budgetAfterCardPaymentBody.totals.actual, "12.50");
+
+    const accountingBeforeLegacyTransfer = await request("/accounting", fixture.userA, fixture.householdA);
+    assert.equal(accountingBeforeLegacyTransfer.status, 200);
+    const accountingNetBeforeLegacyTransfer = (
+      await accountingBeforeLegacyTransfer.json() as { cashFlow: { netCashFlow: string } }
+    ).cashFlow.netCashFlow;
+    const [legacyTransfer] = await database.db.insert(database.financeTransactions).values({
+      householdId: fixture.householdA,
+      accountId: accountA.id,
+      transactionDate: "2026-09-04",
+      description: "Legacy transfer without durable identity",
+      amount: "-75.00",
+      categoryId: transferCategory.id,
+      dataSource: "manual",
+      reviewStatus: "approved",
+      excludedFromBudget: false,
+    }).returning({ id: database.financeTransactions.id });
+    const accountingWithLegacyTransferFirst = await request("/accounting", fixture.userA, fixture.householdA);
+    assert.equal(accountingWithLegacyTransferFirst.status, 200);
+    assert.equal(
+      (await accountingWithLegacyTransferFirst.json() as { cashFlow: { netCashFlow: string } }).cashFlow.netCashFlow,
+      accountingNetBeforeLegacyTransfer,
+    );
+    await request("/budget", fixture.userA, fixture.householdA);
+    const [backfilledLegacyTransfer] = await database.db.select({
+      transferGroupId: database.financeTransactions.transferGroupId,
+      excludedFromBudget: database.financeTransactions.excludedFromBudget,
+    }).from(database.financeTransactions).where(eq(database.financeTransactions.id, legacyTransfer.id));
+    assert.ok(backfilledLegacyTransfer.transferGroupId);
+    assert.equal(backfilledLegacyTransfer.excludedFromBudget, true);
+
+    const [legacyTransferReclassification] = await database.db.insert(database.financeTransactions).values({
+      householdId: fixture.householdA,
+      accountId: accountA.id,
+      transactionDate: "2026-09-04",
+      description: "Legacy transfer reclassified after deployment",
+      amount: "-80.00",
+      categoryId: transferCategory.id,
+      dataSource: "manual",
+      reviewStatus: "approved",
+      excludedFromBudget: false,
+    }).returning({ id: database.financeTransactions.id });
+    const legacyReclassification = await request(
+      `/financial-transactions/${legacyTransferReclassification.id}/review`,
+      fixture.userA,
+      fixture.householdA,
+      {
+        method: "POST",
+        body: JSON.stringify({ status: "approved", categoryId: debtPaymentCategory.id }),
+      },
+    );
+    assert.equal(legacyReclassification.status, 200);
+    assert.equal(
+      (await legacyReclassification.json() as { excludedFromBudget: boolean }).excludedFromBudget,
+      true,
+    );
+    const [persistedLegacyReclassification] = await database.db.select({
+      transferGroupId: database.financeTransactions.transferGroupId,
+      excludedFromBudget: database.financeTransactions.excludedFromBudget,
+    }).from(database.financeTransactions).where(eq(
+      database.financeTransactions.id,
+      legacyTransferReclassification.id,
+    ));
+    assert.ok(persistedLegacyReclassification.transferGroupId);
+    assert.equal(persistedLegacyReclassification.excludedFromBudget, true);
+    const budgetAfterLegacyTransfers = await request("/budget", fixture.userA, fixture.householdA);
+    assert.equal(
+      (await budgetAfterLegacyTransfers.json() as { totals: { actual: string } }).totals.actual,
+      "12.50",
+    );
+    const cashFlowAfterLegacyTransfers = await request("/cash-flow", fixture.userA, fixture.householdA);
+    assert.equal(
+      (await cashFlowAfterLegacyTransfers.json() as { metrics: { netCashFlow: string } }).metrics.netCashFlow,
+      "-12.50",
+    );
+
     const accountBResponse = await request("/financial-accounts", fixture.userB, fixture.householdB, {
       method: "POST",
       body: JSON.stringify({

@@ -54,6 +54,7 @@ export function reconcileCrossViewTotals(input: {
 export function summarizeCashFlow(lines: CashFlowLine[]) {
   return lines.reduce(
     (summary, line) => {
+      if (line.kind === "transfer") return summary;
       if (line.kind === "income") summary.incomeCents += Math.max(0, line.amountCents);
       if (line.kind === "expense") summary.expensesCents += Math.max(0, Math.abs(line.amountCents));
       if (line.kind === "contribution") summary.contributionsCents += Math.max(0, Math.abs(line.amountCents));

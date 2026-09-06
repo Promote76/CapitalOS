@@ -173,6 +173,14 @@ test("read-only bank sync certifies cursor replay, reauthorization, tenant isola
     const queue = await service.getTransactionReviewQueue(actor);
     assert.equal(queue.transactions.length, 1);
     assert.equal(queue.transactions[0].reviewStatus, "possible_transfer");
+    assert.equal(queue.transactions[0].excludedFromBudget, true);
+    const [persistedPossibleTransfer] = await db.select({
+      transferGroupId: financeTransactions.transferGroupId,
+    }).from(financeTransactions).where(and(
+      eq(financeTransactions.householdId, household.id),
+      eq(financeTransactions.externalId, "fixture-transaction-1"),
+    ));
+    assert.ok(persistedPossibleTransfer.transferGroupId);
     mode = "interrupted";
     const interrupted = await service.syncReadOnlyBankConnection(actor, connection.id);
     assert.equal(interrupted.status, "outage");

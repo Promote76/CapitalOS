@@ -14,7 +14,31 @@ export type HouseholdTransactionInput = {
   amount: string;
   categoryId: string | null;
   excludedFromBudget: boolean;
+  transferGroupId?: string | null;
 };
+
+export function isExcludedFromHouseholdSpending(
+  transaction: Pick<HouseholdTransactionInput, "excludedFromBudget" | "transferGroupId">,
+  categoryType?: string | null,
+) {
+  return (
+    transaction.excludedFromBudget ||
+    Boolean(transaction.transferGroupId) ||
+    categoryType === "transfer"
+  );
+}
+
+export function reviewedTransactionBudgetExclusion(
+  reviewStatus: string,
+  categoryType?: string | null,
+  transferGroupId?: string | null,
+) {
+  return (
+    reviewStatus !== "approved" ||
+    categoryType === "transfer" ||
+    Boolean(transferGroupId)
+  );
+}
 
 export type BudgetPerformance = {
   id: string;
@@ -82,7 +106,10 @@ export function calculateBudgetPerformance(
     .map((category) => {
       const budgeted = cents(category.monthlyTarget);
       const netSpend = transactions
-        .filter((transaction) => transaction.categoryId === category.id && !transaction.excludedFromBudget)
+        .filter((transaction) =>
+          transaction.categoryId === category.id &&
+          !isExcludedFromHouseholdSpending(transaction, category.categoryType)
+        )
         .reduce((sum, transaction) => sum + cents(transaction.amount), 0);
       const actual = Math.max(0, category.categoryType === "income" ? netSpend : -netSpend);
       const variance = budgeted - actual;
@@ -123,9 +150,10 @@ export function calculateCashFlowMetrics(
   let investmentContributions = 0;
   let propertyContributions = 0;
 
-  for (const transaction of transactions.filter((item) => !item.excludedFromBudget)) {
+  for (const transaction of transactions.filter((item) =>
+    !isExcludedFromHouseholdSpending(item, item.categoryType)
+  )) {
     const amount = cents(transaction.amount);
-    if (transaction.categoryType === "transfer") continue;
     if (amount > 0 && transaction.categoryType === "income") {
       grossInflow += amount;
       continue;

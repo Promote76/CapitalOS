@@ -41,6 +41,21 @@ RV-01 through RV-12 remain BLOCKED pending a real provider challenge, failed/can
 challenge cases, bounded recent-auth expiry, current role/household rechecks, and
 safe audit/telemetry evidence from an authenticated browser session.
 
+## Human browser attempt
+
+The user attempted the published-origin checklist but could not complete or
+confidently evaluate it because:
+
+- dedicated Owner, Advisor, Viewer, and second-household identities were not available;
+- several requested approval actions could not be found or had no approvable items;
+- the Clerk reverification challenge did not appear;
+- session-expiry, multi-tab, and repeat-sign-in cases could not be controlled; and
+- some attempted steps did not expose enough evidence to determine PASS or FAIL.
+
+This attempt is **INCONCLUSIVE — MISSING CERTIFICATION PREREQUISITES**. It does
+not count as a failed product control, but it also supplies no BA or RV PASS
+evidence. No gate totals or release status changed.
+
 ## User action required — Clerk certification
 
 **PUBLISHED URL:**

@@ -1,7 +1,7 @@
 # Capital OS current certification
 
-**Certification date:** 2026-09-05
-**Current HEAD:** `204e4df`
+**Certification date:** 2026-09-06
+**Current HEAD:** `51d2139`
 **Previous certification:** **NOT READY** (`docs/PRODUCTION_CANDIDATE_CERTIFICATION_2026-09-02.md`)  
 **Current decision:** **NOT READY — CONTROLLED INTERNAL EVALUATION ONLY**
 
@@ -75,6 +75,23 @@ introduced during this certification.
 - Redacted production evidence closes RV-01 for a successful provider challenge
   and exact protected-action retry, and RV-02 for a cancelled challenge with no
   task mutation or audit side effect.
+- Budget planning now provides advisory weekly guidance from reviewed, posted,
+  household-tagged transactions only. Verified income, eligible money out,
+  excluded-row counts, calculation date, and a recommendation fingerprint remain
+  visible at the decision boundary.
+- Weekly recommendations use exact integer-cent and basis-point calculations.
+  Missing verified income, incomplete allocation templates, stale fingerprints,
+  stale period versions, unknown categories, and immutable periods fail closed.
+- Owners can accept one or more current recommendations into a mutable draft
+  through a locked, idempotent, actor-attributed write. Acceptance changes neither
+  source transactions nor official Budget totals; separate period approval remains
+  required.
+- Weekly allocation templates are versioned with each planning period, must cover
+  every active allocating category, and must total exactly 100.00% before approval.
+  Approved and closed periods preserve the exact reviewed percentages.
+- Budget exclusion counts now link to a household-scoped transaction review queue
+  so owners can resolve blocked accounting evidence without weakening pending,
+  transfer, business/property, excluded, or unreviewed-row safeguards.
 
 ## Evidence summary
 
@@ -83,8 +100,9 @@ introduced during this certification.
 | Generated finance artifacts                    | PASS                                                                                                                                                    | `pnpm run check:generated-finance-artifacts`                                                                                                                                  |
 | Generated-artifact failure/recovery regression | PASS                                                                                                                                                    | `pnpm run test:generated-finance-artifacts`                                                                                                                                   |
 | Workspace/API typechecks                       | PASS                                                                                                                                                    | `pnpm run typecheck`, API typecheck                                                                                                                                           |
-| OpenAPI route/method parity                    | PASS                                                                                                                                                    | `scripts/check-api-contract.mjs`; 149 route/method combinations                                                                                                               |
-| PostgreSQL-backed API suite                    | PASS                                                                                                                                                    | 123 passed, 0 failed, 0 skipped with `CAPITAL_OS_RUN_INTEGRATION=1`                                                                                                           |
+| OpenAPI route/method parity                    | PASS                                                                                                                                                    | `scripts/check-api-contract.mjs`; 163 route/method combinations                                                                                                               |
+| PostgreSQL-backed API suite                    | PASS for the 2026-09-05 isolated run; current Budget expansion awaits guarded replay                                                                    | Historical isolated run: 123 passed, 0 failed, 0 skipped; latest local source regression: 106 passed, 0 failed, 31 database-gated skips                                        |
+| Weekly Budget guidance                        | PARTIAL — contract, exact-cent domain rules, fail-closed authenticated browser state, and database fixture source are present; current guarded database replay remains open | `artifacts/api-server/src/domain/household-finance.test.ts`; `artifacts/api-server/src/integration/p0-http.test.ts`; authenticated `/budget` browser evidence from 2026-09-06 |
 | Execution-control focused fixture              | PASS against the dedicated isolated certification target; 3 passed, 0 failed, 0 skipped                                                                 | `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/integration/execution-control.test.ts`                                          |
 | Execution-control certification command        | PASS — EC-01 through EC-17 collected                                                                                                                    | `pnpm run certify:execution-control`; `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md`                                                                      |
 | Historical P0 evidence                         | PASS for the documented internal scope                                                                                                                  | `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`                                                                                                                       |
@@ -100,7 +118,7 @@ introduced during this certification.
 
 | Gate                      | Previous result | Current implementation                                                                                                                                                                                                                                                                 | Runtime test/evidence                                                                                                                                                                                                      | Current result | Evidence                                                                                                                                                                                                                                                                                                          |
 | ------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tenant / IDOR             | PARTIAL PASS    | Actor-scoped initialization and current route coverage are implemented                                                                                                                                                                                                               | Isolated disposable PostgreSQL certification passed the discovered 149-route inventory, household isolation, foreign/malformed identifiers, role boundaries, tampering, and audit probes | **PASS**       | `docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md`; `artifacts/api-server/src/integration/p0-http.test.ts`; `scripts/certify-financial-integrity.mjs` |
+| Tenant / IDOR             | PARTIAL PASS    | Actor-scoped initialization and the current 163-route inventory are implemented                                                                                                                                                                                                       | Isolated disposable PostgreSQL certification passed the predecessor 149-route inventory, household isolation, foreign/malformed identifiers, role boundaries, tampering, and audit probes; the 14 added Budget planning and review-queue pairs await guarded replay | **PARTIAL**       | `docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md`; `docs/PRODUCTION_CANDIDATE_EVIDENCE_INDEX.md`; `artifacts/api-server/src/integration/p0-http.test.ts`; `scripts/certify-financial-integrity.mjs` |
 | Treasury                  | Not closed      | Actor-scoped reads, advisor redaction, locked decisions, linked planning reservations, replay handling, concurrency protection, and decision audit are implemented                                                                                                                   | Isolated disposable PostgreSQL certification passed actor boundary, redaction, owner approval, reservation, concurrency, double-reservation protection, replay, conflict, cross-household isolation, and audit cases | **PASS** | `docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md`; `artifacts/api-server/src/services/treasury.ts`; `scripts/certify-financial-integrity.mjs` |
 | Manual finance            | Not closed      | Manual review lifecycle and downstream recalculation are implemented                                                                                                                                                                                                                   | PostgreSQL suite passed create → review → approve/reject → fresh read → budget/cash-flow/Safe-to-Deploy recalculation                                                                                                      | **PASS**       | `artifacts/api-server/src/integration/p0-http.test.ts`; current 99/99 run                                                                                                                                                                                                                                         |
 | Authenticated browser E2E | BLOCKED         | Clerk onboarding, saved-write reload, sign-out, repeat sign-in, and second-household isolation are implemented                                                                                                                                                                           | Published origin and live Clerk sign-in route preflight passed; real sign-in, onboarding, saved-write reload, role, second-household, session, multi-tab, Emergency Stop, Treasury, and Safe-to-Deploy browser evidence remains incomplete | **BLOCKED** | `docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md`; `docs/certification/auth-sign-in-published-origin.png` |
@@ -109,6 +127,7 @@ introduced during this certification.
 | Worker / scheduler        | BLOCKED         | Durable job schema, lease-owner fencing, retry/dead-letter lifecycle, scheduler leadership, opt-in runtime loops, lifecycle audit events, and runtime metrics exist                                                                                                                    | OR-01 through OR-24 all passed on a fresh disposable PostgreSQL target; child-process graceful shutdown, hard crash recovery, contention, scheduler recovery, audit attribution, and metrics evidence retained             | **PASS**       | `docs/certification/OPERATIONS_RECOVERY_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/services/operations.ts`; `artifacts/api-server/src/services/operations-scheduler.ts`; `artifacts/api-server/src/integration/operations-recovery-certification.test.ts`; `scripts/certify-operations-recovery.mjs` |
 | Observability             | PARTIAL         | Authenticated OpenMetrics export, safe low-cardinality API/database/financial/operations/execution/provider/banking metrics, deterministic persisted alert rules, durable retry/dead-letter/replay, recovery notices, actor attribution, and a named Slack destination are implemented | OB-01 through OB-25 passed on a fresh disposable PostgreSQL target; a controlled synthetic critical alert, replay, and recovery notice received real Slack provider receipts                                               | **PASS**       | `docs/certification/OBSERVABILITY_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/integration/observability-certification.test.ts`; `scripts/certify-observability.mjs`                                                                                                                                   |
 | Accounting                | PARTIAL         | Exact-cent arithmetic, ledger balance checks, cross-view separation, and explicit unavailable-value handling are implemented                                                                                                                                                            | Isolated disposable PostgreSQL certification passed exact-cent, ledger, cross-view, source-boundary, unknown-value, and API regression checks | **PASS** | `docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md`; `artifacts/api-server/src/services/accounting.ts`; `scripts/certify-financial-integrity.mjs` |
+| Budget planning guidance  | Not certified   | Exact-cent weekly guidance, period-versioned exact-100% allocations, owner-only idempotent acceptance, immutable finalized snapshots, and a household-scoped exclusion review path are implemented                                                                                      | Pure/domain and contract checks pass; authenticated browser evidence proves the fail-closed missing-income state and responsive containment; the owner acceptance fixture is database-gated and has not yet been replayed on the guarded disposable target | **PARTIAL** | `artifacts/api-server/src/domain/household-finance.test.ts`; `artifacts/api-server/src/integration/p0-http.test.ts`; `artifacts/api-server/src/services/household-finance.ts`; `artifacts/capital-os/src/App.tsx`; `lib/api-spec/openapi.yaml` |
 | Safe-to-Deploy            | PARTIAL         | Conservative server-side calculation and manual-review exclusions exist                                                                                                                                                                                                               | Isolated disposable PostgreSQL certification passed protected-reserve, business-cash, paper/unrealized P&L, property candidate, Treasury reservation, stale-data, unknown-funds, and concurrent-reservation checks | **PASS** | `docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md`; `artifacts/api-server/src/services/household-finance.ts`; `scripts/certify-financial-integrity.mjs` |
 | Server Emergency Stop     | BLOCKED         | PostgreSQL-backed household control state, deterministic STOP transition, audit/idempotency records, legacy risk reconciliation, and OMS enforcement are implemented                                                                                                                   | Dedicated isolated target passed EC-01 through EC-17; STOP remained household-scoped and persisted through a fresh API process restart; audit attribution, replay, denied transition, and OMS pre-intent evidence retained | **PASS**       | `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/services/execution-control.ts`; `scripts/certify-execution-control.mjs`                                                                                                                                             |
 | Guardian                  | PASS            | Missing/stale health defaults to STOP and disagreement locks the boundary                                                                                                                                                                                                              | Domain and Micro-Live certification tests pass                                                                                                                                                                             | **PASS**       | `artifacts/api-server/src/domain/execution-*.test.ts`; `scripts/certify-micro-live.mjs`                                                                                                                                                                                                                           |
@@ -119,10 +138,10 @@ introduced during this certification.
 
 ## Release status counts
 
-There are **16 critical gates** in the matrix:
+There are **17 critical gates** in the matrix:
 
-- **PASS:** 12
-- **PARTIAL:** 0
+- **PASS:** 11
+- **PARTIAL:** 2
 - **BLOCKED:** 4
 - **FAIL:** 0
 
@@ -131,8 +150,9 @@ unreleased.
 
 ## Security and financial-integrity status
 
-- Tenant boundaries are actor-scoped and the current 149-route identifier matrix
-  passed isolated adversarial certification.
+- Tenant boundaries are actor-scoped. The predecessor 149-route identifier matrix
+  passed isolated adversarial certification; guarded replay remains open for the
+  current 163-route inventory.
 - Treasury approvals remain planning reservations only. They do not debit executable
   capital or move money.
 - Accounting exposes unavailable values explicitly rather than presenting
@@ -150,6 +170,9 @@ unreleased.
 - Banking remains consent-gated, read-only, credential-reference based, and
   provider-disabled.
 - Exact-cent domain logic and PostgreSQL `numeric(18,2)` storage remain in force.
+- Weekly Budget guidance is advisory and cannot become official through acceptance
+  alone. It requires reviewed verified income, an exact-100% period allocation,
+  current recommendation evidence, owner authority, and a mutable draft.
 
 ## Operational status
 

@@ -14,3 +14,15 @@ Legacy rows can violate a newly tightened API response contract even when the da
 **Why:** A contribution metadata contract exposed older null values during a normal preview read.
 
 **How to apply:** Whenever an existing JSON column becomes required in OpenAPI, audit historical rows and normalize null/legacy values before response validation.
+
+Certification browser runs that depend on newly added tables must use the same
+disposable, fully migrated target as the HTTP fixture; a shared development
+database can be stale even when code generation and the current schema source
+are correct.
+
+**Why:** The shared development database lacked a current Family Office table,
+which correctly produced a fail-closed browser view and could not certify the
+positive proposal/portfolio state.
+
+**How to apply:** Run authenticated browser certification inside the guarded
+disposable-target command, not against an unverified shared `DATABASE_URL`.

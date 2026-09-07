@@ -143,9 +143,14 @@ async function main() {
     };
     if (run("node", ["scripts/certify-migrations.mjs"], "Run guarded isolated migration certification", certificationEnv) !== 0) return;
     const fixtureEnv = { ...certificationEnv, DATABASE_URL: databaseUrl };
+    const testArgs = ["--test"];
+    if (process.env.CAPITAL_OS_TEST_NAME_PATTERN) {
+      testArgs.push("--test-name-pattern", process.env.CAPITAL_OS_TEST_NAME_PATTERN);
+    }
+    testArgs.push("artifacts/api-server/src/integration/p0-http.test.ts");
     certificationStatus = run(
       tsxCli,
-      ["--test", "artifacts/api-server/src/integration/p0-http.test.ts"],
+      testArgs,
       "Run P0-01, P0-05, P0-06, and P0-08 household privacy fixture",
       fixtureEnv,
     );
@@ -154,6 +159,15 @@ async function main() {
       record("P0-01 PASS — every discovered route and applicable identifier/body probe completed without cross-household leakage.");
       record("P0-06 PASS — Owner, Partner, Advisor, Viewer, permission grant/revoke, membership transitions, selection, and tampering cases passed.");
       record("P0-08 PASS — permitted audit actors persisted and denied actions created no misleading audit row.");
+    }
+    if (certificationStatus === 0 && process.env.CAPITAL_OS_RUN_BROWSER === "1") {
+      certificationStatus = run(
+        "pnpm",
+        ["--filter", "@workspace/api-server", "run", "test:family-office-browser"],
+        "Run authenticated Family Office browser boundary fixture",
+        fixtureEnv,
+      );
+      if (certificationStatus === 0) record("Authenticated Family Office browser certification: PASS");
     }
   } catch (error) {
     record(`Certification setup failed: ${error instanceof Error ? error.message : "unknown error"}`);

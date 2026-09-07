@@ -43,7 +43,9 @@ export class XaiIntelligenceProvider implements IntelligenceProvider {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15_000);
     try {
-      const response = await this.fetcher("https://api.x.ai/v1/chat/completions", {
+      const response = await this.fetcher(
+        this.env.XAI_API_URL?.trim() || "https://api.x.ai/v1/chat/completions",
+        {
         method: "POST",
         signal: controller.signal,
         headers: {
@@ -65,7 +67,8 @@ export class XaiIntelligenceProvider implements IntelligenceProvider {
             },
           ],
         }),
-      });
+        },
+      );
       if (!response.ok) throw new ProviderUnavailableError();
       const content = extractContent(await response.json());
       if (!content) throw new ProviderUnavailableError();

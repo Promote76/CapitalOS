@@ -1,6 +1,6 @@
 # Capital OS tenant-isolation route matrix
 
-**Inventory date:** 2026-09-06
+**Inventory date:** 2026-09-07
 **Source:** `artifacts/api-server/src/integration/tenant-route-inventory.mjs` (authoritative), `artifacts/api-server/src/routes`, and `artifacts/api-server/src/integration/p0-http.test.ts`
 <!-- tenant-route-inventory: 170 -->
 **Inventory result:** 170 Express route/method pairs match the executable route inventory.
@@ -14,8 +14,11 @@ database-backed fixture exercised the applicable route and identifier/body bound
 The full 170-route preflight target is defined below. The latest executed 163-route preflight replay passed on 2026-09-06: 379 executed
 probes, 56 scoped collection reads, 57 cross-household rejections, and 57 malformed
 rejections (11 tests passed, 0 failed/skipped). This supersedes the historical
-2026-09-05 149-route result. Public health and auth routes are explicitly handled
-as public/identity boundaries rather than household-scoped object routes.
+2026-09-05 149-route result. A separate guarded P0-09 replay on 2026-09-07
+executed all seven Family Office routes, including the new provider, role,
+step-up, Shadow-only, and no-execution assertions. Public health and auth routes
+are explicitly handled as public/identity boundaries rather than household-scoped
+object routes.
 
 | Method / route family | Caller-controlled IDs | Household scope method | A→A test | A→B test | Role test | Status |
 |---|---|---|---|---|---|---|
@@ -37,12 +40,13 @@ as public/identity boundaries rather than household-scoped object routes.
 | GET /reports | Query/report identifiers where applicable | Request-scoped reporting service | PASS | PASS | PASS | PASS |
 | GET /strategy-lab; POST strategies; strategy versions; experiments; graduation; journal | strategyId and parent evidence IDs | Strategy Lab service scopes records and keeps capital inaccessible | PASS | PASS | PASS |
 | GET /treasury; POST /treasury/requests; POST /treasury/requests/:requestId/decision | requestId, bucket and account IDs | Treasury service resolves current household and persisted lock state | PASS | PASS | PASS | PASS |
+| GET /family-office; GET /family-office/real-estate; POST /family-office/research; POST /family-office/proposals/:proposalId/decision; POST /family-office/shadow/portfolios; POST /family-office/shadow/intents; POST /family-office/tax-liens | proposalId, shadowPortfolioId, householdId mass-assignment field, research/provider body | Request-scoped household predicates; role and recent-auth middleware; provider fail-closed handling; Shadow-only persistence | PASS | PASS | PASS | PASS |
 
 ## Current executable evidence
 
 - The two-household fixture proves a foreign goal ID is rejected before a contribution is created.
 - The same fixture provisions Owner, Partner, Advisor, and Viewer memberships in both households and passes the role-header regression, partner contribution allow, advisor/viewer contribution denial, and contribution mass-assignment assertions on isolated Neon PostgreSQL.
 - The same fixture passes recent-auth denial, parallel transfer overdraft prevention, 100-request contention, transfer replay, persisted household/actor attribution, and ledger debit/credit reconciliation on isolated Neon PostgreSQL.
-- The route preflight discovers and asserts exactly 170 route/method pairs, compares household-scoped collection reads, sends same-household, foreign, and malformed path identifiers, injects mass-assignment fields into applicable generic write probes, and fails on unexpected server errors. The latest executed evidence above predates the seven open Family Office routes and does not close this expanded surface.
+- The route preflight discovers and asserts exactly 170 route/method pairs, compares household-scoped collection reads, sends same-household, foreign, and malformed path identifiers, injects mass-assignment fields into applicable generic write probes, and fails on unexpected server errors. The prior 163-route replay is supplemented by the dedicated P0-09 Family Office replay recorded below.
 - Parameterized routes require non-error same-household behavior, reject foreign identifiers without a successful write/read response, and reject malformed identifiers with a 4xx response. Parameterless writes must not return another household's identifiers after body tampering.
-- The latest executed preflight on the disposable target on 2026-09-06 had zero failures: 379 total probes, 56 scoped collection-read comparisons, 57 cross-household rejections, and 57 malformed-identifier rejections. That evidence covers the prior 163-route surface only; the seven newly added Family Office routes remain open until the guarded replay is rerun.
+- The latest executed preflight on the disposable target on 2026-09-06 had zero failures: 379 total probes, 56 scoped collection-read comparisons, 57 cross-household rejections, and 57 malformed-identifier rejections. The dedicated 2026-09-07 Family Office replay passed one P0-09 test over seven routes, with five role denials, four recent-auth denials, malformed-provider and prompt-injection checks, Shadow-only writes, and zero ledger/contribution records.

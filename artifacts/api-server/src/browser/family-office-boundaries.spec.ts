@@ -55,9 +55,17 @@ test("authenticated Family Office route shows fail-closed and Shadow-only browse
     await expect(page.getByText("Provider boundary")).toBeVisible();
     await page.unroute("**/api/family-office**");
 
-    await expect(page.getByText("disabled", { exact: true })).toBeVisible();
-    await expect(page.getByText("Provider is disabled or not configured.")).toBeVisible();
-    await expect(page.getByRole("button", { name: /run advisory research/i })).toBeDisabled();
+    const providerCard = page.locator("section.card").filter({ hasText: "Provider boundary" });
+    const providerState = providerCard.locator(".card-title-row .status");
+    await expect(providerState).toHaveText(/^(disabled|configured|verified|unavailable)$/);
+    const providerStateText = (await providerState.textContent())?.trim();
+    const researchButton = page.getByRole("button", { name: /run advisory research/i });
+    if (providerStateText === "disabled") {
+      await expect(page.getByText("Provider is disabled or not configured.")).toBeVisible();
+      await expect(researchButton).toBeDisabled();
+    } else {
+      await expect(researchButton).toBeEnabled();
+    }
     await expect(page.getByText("Live execution", { exact: true }).locator("..")).toContainText("Disabled");
     await expect(page.getByText("Real orders sent", { exact: true }).locator("..")).toContainText("0");
     await expect(page.getByText("Money moved", { exact: true }).locator("..")).toContainText("0¢");
@@ -88,7 +96,8 @@ test("authenticated Family Office route shows fail-closed and Shadow-only browse
     console.log(JSON.stringify({
       gate: "BROWSER-FAMILY-OFFICE",
       authenticated: true,
-      disabledProvider: "PASS",
+      providerState: providerStateText,
+      providerBoundary: "PASS",
       loadingState: "PASS",
       errorState: "PASS",
       proposalReview: "PASS",

@@ -19,7 +19,7 @@ test("Family Office provider is disabled unless both feature flags and a key are
     GROK_INTELLIGENCE_ENABLED: "true",
     XAI_ENABLED: "true",
     XAI_API_KEY: "server-only",
-  }).state, "ready");
+  }).state, "configured");
 });
 
 test("disabled provider fails closed without making a network request", async () => {
@@ -30,7 +30,7 @@ test("disabled provider fails closed without making a network request", async ()
   });
   await assert.rejects(
     provider.research({ analyst: "CIO", scope: "research", prompt: "test" }),
-    (error: unknown) => error instanceof ProviderUnavailableError && error.code === "AI_PROVIDER_UNAVAILABLE",
+    (error: unknown) => error instanceof ProviderUnavailableError && error.code === "AI_PROVIDER_DISABLED",
   );
   assert.equal(called, false);
 });
@@ -79,6 +79,40 @@ test("provider rejects malformed output and sanitizes control characters in prom
   assert.equal(requestBody.includes("\u0000"), false);
   assert.equal(requestBody.includes("\u0007"), false);
   assert.equal(requestBody.includes("\u001b"), false);
+});
+
+test("provider classifies rate limits and invalid structured output without exposing payloads", async () => {
+  const env = {
+    GROK_INTELLIGENCE_ENABLED: "true",
+    XAI_ENABLED: "true",
+    XAI_API_KEY: "server-only",
+  };
+  const rateLimited = new XaiIntelligenceProvider(env, async () => new Response("limited", { status: 429 }));
+  await assert.rejects(
+    rateLimited.research({ analyst: "CIO", scope: "research", prompt: "test" }),
+    (error: unknown) => error instanceof ProviderUnavailableError && error.code === "AI_PROVIDER_RATE_LIMITED",
+  );
+  const invalid = new XaiIntelligenceProvider(env, async () => new Response(JSON.stringify({
+    choices: [{ message: { content: "{}" } }],
+  }), { status: 200 }));
+  await assert.rejects(
+    invalid.research({ analyst: "CIO", scope: "research", prompt: "test" }),
+    (error: unknown) => error instanceof ProviderUnavailableError && error.code === "AI_PROVIDER_INVALID_RESPONSE",
+  );
+});
+
+test("provider classifies aborted requests as timeouts", async () => {
+  const provider = new XaiIntelligenceProvider({
+    GROK_INTELLIGENCE_ENABLED: "true",
+    XAI_ENABLED: "true",
+    XAI_API_KEY: "server-only",
+  }, async () => {
+    throw new DOMException("The operation was aborted", "AbortError");
+  });
+  await assert.rejects(
+    provider.research({ analyst: "CIO", scope: "research", prompt: "test" }),
+    (error: unknown) => error instanceof ProviderUnavailableError && error.code === "AI_PROVIDER_TIMEOUT",
+  );
 });
 
 test("Shadow decisions have no execution decision and unsupported decisions fail", () => {

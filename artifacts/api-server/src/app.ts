@@ -15,7 +15,7 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import { requestContext } from "./middleware/request-context";
 import { errorHandler } from "./middleware/errors";
-import { correlationId, rateLimit, securityHeaders, trustedProxySetting, writeBoundary } from "./middleware/safety";
+import { allowedOrigins, correlationId, rateLimit, securityHeaders, trustedProxySetting, writeBoundary } from "./middleware/safety";
 import { readReliabilityConfiguration } from "./domain/reliability.ts";
 import { apiMetrics } from "./observability/metrics";
 
@@ -52,8 +52,9 @@ app.use(
 // sessions or origin headers, and require the untouched request bytes.
 app.use("/api", bankingWebhookRouter);
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
+const corsOrigins = allowedOrigins();
 app.use(cors({
-  origin: process.env.CAPITAL_OS_ALLOWED_ORIGIN ?? false,
+  origin: corsOrigins.length > 0 ? corsOrigins : false,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Idempotency-Key", "X-Correlation-ID", "X-Test-User-Id", "X-Test-Household-Id"],
 }));

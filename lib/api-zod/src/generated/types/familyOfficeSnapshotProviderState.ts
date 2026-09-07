@@ -11,5 +11,7 @@ export type FamilyOfficeSnapshotProviderState = typeof FamilyOfficeSnapshotProvi
 
 export const FamilyOfficeSnapshotProviderState = {
   disabled: 'disabled',
-  ready: 'ready',
+  configured: 'configured',
+  verified: 'verified',
+  unavailable: 'unavailable',
 } as const;

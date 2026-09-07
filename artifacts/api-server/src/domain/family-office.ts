@@ -240,7 +240,7 @@ export const researchOutputSchema = {
 
 export type FamilyOfficeProviderStatus = {
   enabled: boolean;
-  state: "disabled" | "ready";
+  state: "disabled" | "configured";
   model: string;
 };
 
@@ -248,7 +248,7 @@ export function familyOfficeProviderStatus(env: NodeJS.ProcessEnv = process.env)
   const model = env.XAI_MODEL?.trim() || "grok-configured-model";
   return {
     enabled: env.GROK_INTELLIGENCE_ENABLED === "true" && Boolean(env.XAI_ENABLED === "true" && env.XAI_API_KEY),
-    state: env.GROK_INTELLIGENCE_ENABLED === "true" && env.XAI_ENABLED === "true" && Boolean(env.XAI_API_KEY) ? "ready" : "disabled",
+    state: env.GROK_INTELLIGENCE_ENABLED === "true" && env.XAI_ENABLED === "true" && Boolean(env.XAI_API_KEY) ? "configured" : "disabled",
     model,
   };
 }

@@ -16,11 +16,13 @@ function runBoundary(
   const previous = {
     nodeEnv: process.env.NODE_ENV,
     allowedOrigin: process.env.CAPITAL_OS_ALLOWED_ORIGIN,
+    allowedOrigins: process.env.CAPITAL_OS_ALLOWED_ORIGINS,
     testContext: process.env.CAPITAL_OS_TEST_CONTEXT,
   };
   for (const [key, value] of Object.entries({
     NODE_ENV: env.NODE_ENV,
     CAPITAL_OS_ALLOWED_ORIGIN: env.CAPITAL_OS_ALLOWED_ORIGIN,
+    CAPITAL_OS_ALLOWED_ORIGINS: env.CAPITAL_OS_ALLOWED_ORIGINS,
     CAPITAL_OS_TEST_CONTEXT: env.CAPITAL_OS_TEST_CONTEXT,
   })) {
     if (value === undefined) delete process.env[key];
@@ -51,6 +53,7 @@ function runBoundary(
   });
   process.env.NODE_ENV = previous.nodeEnv;
   process.env.CAPITAL_OS_ALLOWED_ORIGIN = previous.allowedOrigin;
+  process.env.CAPITAL_OS_ALLOWED_ORIGINS = previous.allowedOrigins;
   process.env.CAPITAL_OS_TEST_CONTEXT = previous.testContext;
   return { statusCode, payload, continued };
 }
@@ -70,6 +73,19 @@ test("cross-site writes are blocked even with an allowed origin configured", () 
   assert.equal(result.statusCode, 403);
   assert.equal(result.continued, false);
   assert.equal((result.payload as { code: string }).code, "CSRF_BLOCKED");
+});
+
+test("writes accept any exact origin in the configured allowlist", () => {
+  const result = runBoundary(
+    {
+      NODE_ENV: "production",
+      CAPITAL_OS_ALLOWED_ORIGIN: "https://capital.example",
+      CAPITAL_OS_ALLOWED_ORIGINS: "https://capital-custom.example, https://capital-alt.example",
+    },
+    { Origin: "https://capital-custom.example", "Sec-Fetch-Site": "same-origin" },
+  );
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.continued, true);
 });
 
 test("the database-backed test context can exercise writes without weakening production policy", () => {

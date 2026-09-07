@@ -173,20 +173,29 @@ export function trustedProxySetting(
   return proxies.length === 1 ? proxies[0] : proxies;
 }
 
+export function allowedOrigins(
+  env: Record<string, string | undefined> = process.env,
+): string[] {
+  return [env.CAPITAL_OS_ALLOWED_ORIGIN, env.CAPITAL_OS_ALLOWED_ORIGINS]
+    .flatMap((value) => (value ?? "").split(","))
+    .map((value) => value.trim())
+    .filter((value, index, origins) => Boolean(value) && origins.indexOf(value) === index);
+}
+
 export function writeBoundary(req: Request, res: Response, next: NextFunction) {
   if (!writeMethods.has(req.method)) {
     next();
     return;
   }
   const origin = req.header("Origin");
-  const allowedOrigin = process.env.CAPITAL_OS_ALLOWED_ORIGIN;
+  const originAllowlist = allowedOrigins();
   const fetchSite = req.header("Sec-Fetch-Site");
   const isTestRequest = process.env.NODE_ENV === "test" && process.env.CAPITAL_OS_TEST_CONTEXT === "1";
   if (isTestRequest && !origin) {
     next();
     return;
   }
-  if (!allowedOrigin) {
+  if (originAllowlist.length === 0) {
     res.status(403).json({ code: "ORIGIN_POLICY_MISSING", message: "Write origin policy is not configured", correlationId: res.locals.correlationId });
     return;
   }
@@ -194,7 +203,7 @@ export function writeBoundary(req: Request, res: Response, next: NextFunction) {
     res.status(403).json({ code: "CSRF_BLOCKED", message: "Cross-site writes are not allowed", correlationId: res.locals.correlationId });
     return;
   }
-  if (origin !== allowedOrigin) {
+  if (!origin || !originAllowlist.includes(origin)) {
     res.status(403).json({ code: "ORIGIN_NOT_ALLOWED", message: "Write origin is not allowed", correlationId: res.locals.correlationId });
     return;
   }

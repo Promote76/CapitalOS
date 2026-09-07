@@ -10,9 +10,17 @@ export type IntelligenceProvider = {
   research(input: { analyst: string; scope: string; prompt: string }): Promise<ResearchOutput>;
 };
 
+export type ProviderFailureCode =
+  | "AI_PROVIDER_DISABLED"
+  | "AI_PROVIDER_TIMEOUT"
+  | "AI_PROVIDER_AUTHENTICATION_FAILED"
+  | "AI_PROVIDER_MODEL_UNAVAILABLE"
+  | "AI_PROVIDER_RATE_LIMITED"
+  | "AI_PROVIDER_UPSTREAM_ERROR"
+  | "AI_PROVIDER_INVALID_RESPONSE";
+
 export class ProviderUnavailableError extends Error {
-  public readonly code = "AI_PROVIDER_UNAVAILABLE";
-  constructor() {
+  constructor(public readonly code: ProviderFailureCode = "AI_PROVIDER_UPSTREAM_ERROR") {
     super("Family Office intelligence provider is unavailable");
     this.name = "ProviderUnavailableError";
   }
@@ -115,7 +123,7 @@ export class XaiIntelligenceProvider implements IntelligenceProvider {
   }
 
   async research(input: { analyst: string; scope: string; prompt: string }): Promise<ResearchOutput> {
-    if (!this.status.enabled) throw new ProviderUnavailableError();
+    if (!this.status.enabled) throw new ProviderUnavailableError("AI_PROVIDER_DISABLED");
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15_000);
     try {
@@ -152,21 +160,41 @@ export class XaiIntelligenceProvider implements IntelligenceProvider {
         }),
         },
       );
-      if (!response.ok) throw new ProviderUnavailableError();
-      const content = extractContent(await response.json());
-      if (!content) throw new ProviderUnavailableError();
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new ProviderUnavailableError("AI_PROVIDER_AUTHENTICATION_FAILED");
+        }
+        if (response.status === 404) {
+          throw new ProviderUnavailableError("AI_PROVIDER_MODEL_UNAVAILABLE");
+        }
+        if (response.status === 429) {
+          throw new ProviderUnavailableError("AI_PROVIDER_RATE_LIMITED");
+        }
+        throw new ProviderUnavailableError("AI_PROVIDER_UPSTREAM_ERROR");
+      }
+      let payload: unknown;
+      try {
+        payload = await response.json();
+      } catch {
+        throw new ProviderUnavailableError("AI_PROVIDER_INVALID_RESPONSE");
+      }
+      const content = extractContent(payload);
+      if (!content) throw new ProviderUnavailableError("AI_PROVIDER_INVALID_RESPONSE");
       let parsed: unknown;
       try {
         parsed = JSON.parse(content);
       } catch {
-        throw new ProviderUnavailableError();
+        throw new ProviderUnavailableError("AI_PROVIDER_INVALID_RESPONSE");
       }
       const result = researchOutputSchema.safeParse(parsed);
-      if (!result.success) throw new ProviderUnavailableError();
+      if (!result.success) throw new ProviderUnavailableError("AI_PROVIDER_INVALID_RESPONSE");
       return result.data;
     } catch (error) {
       if (error instanceof ProviderUnavailableError) throw error;
-      throw new ProviderUnavailableError();
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new ProviderUnavailableError("AI_PROVIDER_TIMEOUT");
+      }
+      throw new ProviderUnavailableError("AI_PROVIDER_UPSTREAM_ERROR");
     } finally {
       clearTimeout(timeout);
     }

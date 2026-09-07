@@ -117,3 +117,18 @@ Development provider activation and strict-schema validation remain certified.
 Production provider certification requires a real authenticated browser session
 that reaches `/family-office` and completes one advisory request without
 weakening Clerk protections.
+
+### Subsequent production route evidence
+
+A subsequent normal authenticated production session reached the Family Office
+route and completed one advisory research request:
+
+- `GET /api/family-office` returned HTTP 200.
+- `GET /api/family-office/real-estate` returned HTTP 200.
+- `POST /api/family-office/research` returned HTTP 201.
+- The production read replica recorded the latest run as `completed` with
+  provider status `ready`, no error code, and a retained output summary.
+
+This closes the production provider runtime gate. The separate automated Clerk
+reverification/browser-harness certification remains open and must not be
+represented as complete.

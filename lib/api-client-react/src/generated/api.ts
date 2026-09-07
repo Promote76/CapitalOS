@@ -87,6 +87,7 @@ import type {
   ExecutionControlState,
   FamilyOfficeProposal,
   FamilyOfficeProposalDecisionInput,
+  FamilyOfficeResearchFailure,
   FamilyOfficeResearchInput,
   FamilyOfficeResearchResult,
   FamilyOfficeSnapshot,
@@ -5499,7 +5500,7 @@ export const createFamilyOfficeResearch = async (familyOfficeResearchInput: Fami
 
 
 
-export const getCreateFamilyOfficeResearchMutationOptions = <TError = ErrorType<unknown>,
+export const getCreateFamilyOfficeResearchMutationOptions = <TError = ErrorType<FamilyOfficeResearchFailure>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFamilyOfficeResearch>>, TError,{data: BodyType<FamilyOfficeResearchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createFamilyOfficeResearch>>, TError,{data: BodyType<FamilyOfficeResearchInput>}, TContext> => {
 
@@ -5528,12 +5529,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateFamilyOfficeResearchMutationResult = NonNullable<Awaited<ReturnType<typeof createFamilyOfficeResearch>>>
     export type CreateFamilyOfficeResearchMutationBody = BodyType<FamilyOfficeResearchInput>
-    export type CreateFamilyOfficeResearchMutationError = ErrorType<unknown>
+    export type CreateFamilyOfficeResearchMutationError = ErrorType<FamilyOfficeResearchFailure>
 
     /**
  * @summary Run advisory Family Office research
  */
-export const useCreateFamilyOfficeResearch = <TError = ErrorType<unknown>,
+export const useCreateFamilyOfficeResearch = <TError = ErrorType<FamilyOfficeResearchFailure>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFamilyOfficeResearch>>, TError,{data: BodyType<FamilyOfficeResearchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createFamilyOfficeResearch>>,

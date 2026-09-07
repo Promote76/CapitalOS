@@ -148,6 +148,7 @@ import {
   getGetRealEstateIntelligenceQueryKey,
   getGetFamilyOfficeQueryKey,
   type FamilyOfficeProposalDecisionInputDecision,
+  type FamilyOfficeResearchFailure,
   type ShadowIntentInputDirection,
   type TaxLienCandidateInput,
 } from '@workspace/api-client-react';
@@ -3077,6 +3078,7 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
   const shadowPortfolios = snapshot?.shadowPortfolios ?? [];
   const shadowOutcomes = snapshot?.shadowOutcomes ?? [];
   const workforce = snapshot?.workforce;
+  const recentProviderRuns = snapshot?.runs.slice(0, 5) ?? [];
   const reports = snapshot?.reports ?? [];
   const taxLiens = realEstate?.taxLiens ?? [];
   const activeProposal = proposals.find((proposal) => proposal.id === intentDraft.proposalId) ?? proposals[0];
@@ -3102,7 +3104,11 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
       await refresh();
       onFeedback('Research completed as advisory evidence. No order or capital action was created.');
     } catch (error) {
-      onFeedback(error instanceof Error ? error.message : 'Family Office research is unavailable. No research was recorded.');
+      const failure = typeof error === 'object' && error !== null && 'data' in error
+        ? (error as { data?: FamilyOfficeResearchFailure }).data
+        : undefined;
+      await refresh();
+      onFeedback(failure?.message ?? (error instanceof Error ? error.message : 'Family Office research is unavailable. The blocked run was retained for review.'));
     }
   };
   const decideWithReverification = useProviderProtectedAction((proposalId: string, decision: FamilyOfficeProposalDecisionInputDecision) =>
@@ -3180,14 +3186,18 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
   return <main className="content">
     <PageHeading eyebrow="Family Office / intelligence gateway" title={<>Research before<br /><em>exposure.</em></>} description="A household-scoped analyst room for research, explanation, and Shadow-only review. Capital OS remains the authority for financial facts, readiness, risk, and execution." actions={<span className="status"><ShieldCheck size={13} /> Advisory only</span>} />
     <section className="card card-pad animate-in delay-1">
-      <CardTitle title="Provider boundary" subtitle="xAI/Grok is server-side, optional, and fail-closed." action={<span className={`status ${snapshot.provider.state === 'ready' ? '' : 'pending'}`}>{snapshot.provider.state}</span>} />
+      <CardTitle title="Provider boundary" subtitle="xAI/Grok is server-side, optional, and fail-closed." action={<span className={`status ${snapshot.provider.state === 'verified' ? '' : 'pending'}`}>{snapshot.provider.state}</span>} />
       <div className="protection-grid">
         <div><span>Provider model</span><strong>{snapshot.provider.model}</strong></div>
+        <div><span>Last provider check</span><strong>{snapshot.provider.lastCheckedAt ? new Date(snapshot.provider.lastCheckedAt).toLocaleString() : 'Never'}</strong></div>
+        <div><span>Last result</span><strong>{snapshot.provider.lastResult}</strong></div>
         <div><span>Live execution</span><strong>Disabled</strong></div>
         <div><span>Real orders sent</span><strong>{snapshot.summary.realOrdersSent}</strong></div>
         <div><span>Money moved</span><strong>{snapshot.summary.moneyMovedCents}¢</strong></div>
       </div>
       {snapshot.provider.state === 'disabled' && <div className="lab-disabled-note"><Lock size={13} /> Provider is disabled or not configured. No synthetic research is shown; deterministic Capital OS intelligence remains available elsewhere.</div>}
+      {snapshot.provider.state === 'configured' && <div className="lab-disabled-note"><CircleHelp size={13} /> Provider credentials and model are configured but have not yet completed a verified research request.</div>}
+      {snapshot.provider.state === 'unavailable' && <div className="operator-form-note warning"><AlertTriangle size={14} /><span><strong>Latest provider check failed.</strong> {humanize(snapshot.provider.lastErrorCode ?? 'AI_PROVIDER_UPSTREAM_ERROR')}. No research was fabricated and no execution authority was created.</span></div>}
       <div className="safety-inline"><ShieldCheck size={15} /> {snapshot.guardrails[0] ?? 'Research may not move money, place orders, alter risk, or unlock protected capital.'}</div>
     </section>
 
@@ -3230,6 +3240,14 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
           {workforce?.analysts.map((analyst) => <div className="review-row" key={analyst.id}>
             <div><strong>{analyst.analyst}</strong><span>{analyst.specialty} · {analyst.assignmentCount} assigned · {analyst.completedCount} completed · {analyst.retryCount} retries · {analyst.failureCount} failures</span></div>
             <div className="heading-actions"><span className={`status ${analyst.status === 'blocked' ? 'pending' : ''}`}>{analyst.status}</span><span className="status">${(analyst.spentCents / 100).toFixed(2)} / ${(analyst.budgetCents / 100).toFixed(2)}</span></div>
+          </div>)}
+        </div>
+        <div className="card-title-row page-section"><div><h3>Recent provider runs</h3><span className="intelligence-confidence">Safe operational status only; provider payloads and credentials are never shown.</span></div></div>
+        <div className="review-list">
+          {recentProviderRuns.length === 0 && <div className="micro-live-empty">No provider checks have been recorded.</div>}
+          {recentProviderRuns.map((run) => <div className="review-row" key={`${run.id}-provider`}>
+            <div><strong>{run.analyst}</strong><span>{run.scope} · {new Date(run.createdAt).toLocaleString()}</span><span>{run.errorCode ? humanize(run.errorCode) : run.outputSummary ?? 'No output summary recorded'}</span></div>
+            <span className={`status ${run.status === 'blocked' ? 'pending' : ''}`}>{run.status} / {run.providerStatus}</span>
           </div>)}
         </div>
         <div className="safety-inline"><Lock size={15} /> {workforce?.budgetGovernor ?? 'Work is bounded by persisted cost governors.'}</div>

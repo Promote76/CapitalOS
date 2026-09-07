@@ -1161,10 +1161,15 @@ paths:
             schema: { $ref: "#/components/schemas/FamilyOfficeResearchInput" }
       responses:
         "201":
-          description: Research run and optional proposal
+          description: Completed advisory research run and proposal
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FamilyOfficeResearchResult" }
+        "503":
+          description: Provider unavailable or provider output rejected; the blocked run is retained
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyOfficeResearchFailure" }
   /family-office/proposals/{proposalId}/decision:
     post:
       operationId: decideFamilyOfficeProposal
@@ -4612,11 +4617,14 @@ components:
       properties:
         provider:
           type: object
-          required: [state, enabled, model]
+          required: [state, enabled, model, lastCheckedAt, lastResult, lastErrorCode]
           properties:
-            state: { type: string, enum: [disabled, ready] }
+            state: { type: string, enum: [disabled, configured, verified, unavailable] }
             enabled: { type: boolean }
             model: { type: string }
+            lastCheckedAt: { type: ["string", "null"], format: date-time }
+            lastResult: { type: string, enum: [never, checking, verified, failed] }
+            lastErrorCode: { type: ["string", "null"] }
         guardrails: { type: array, items: { type: string } }
         runs: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeRun" } }
         proposals: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeProposal" } }
@@ -4641,7 +4649,27 @@ components:
       required: [run, proposal, advisoryOnly]
       properties:
         run: { $ref: "#/components/schemas/FamilyOfficeRun" }
-        proposal: { anyOf: [{ $ref: "#/components/schemas/FamilyOfficeProposal" }, { type: "null" }] }
+        proposal: { $ref: "#/components/schemas/FamilyOfficeProposal" }
+        advisoryOnly: { type: boolean }
+    FamilyOfficeResearchFailure:
+      type: object
+      required: [code, message, run, proposal, advisoryOnly]
+      properties:
+        code:
+          type: string
+          enum:
+            - AI_PROVIDER_DISABLED
+            - AI_PROVIDER_TIMEOUT
+            - AI_PROVIDER_AUTHENTICATION_FAILED
+            - AI_PROVIDER_MODEL_UNAVAILABLE
+            - AI_PROVIDER_RATE_LIMITED
+            - AI_PROVIDER_UPSTREAM_ERROR
+            - AI_PROVIDER_INVALID_RESPONSE
+            - AI_RESEARCH_PERSISTENCE_ERROR
+        message: { type: string }
+        correlationId: { type: ["string", "null"] }
+        run: { $ref: "#/components/schemas/FamilyOfficeRun" }
+        proposal: { type: "null" }
         advisoryOnly: { type: boolean }
     TaxLienCandidateInput:
       type: object

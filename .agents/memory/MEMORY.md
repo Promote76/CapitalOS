@@ -25,4 +25,4 @@
 - [Durable transfer classification](capital-os-transfer-classification.md) — transfer identity must survive category changes, and provider groups must reconcile to exactly two rows before they are trusted.
 - [Financial UI loading states](capital-os-financial-ui-states.md) — never render loading or failed financial queries as real zero balances; fail closed with explicit retry states.
 - [Budget allocation snapshots](capital-os-budget-allocation-snapshots.md) — version weekly allocation templates with draft periods; finalized periods preserve the exact reviewed percentages.
-- [xAI provider contract](capital-os-xai-provider-contract.md) — select an account-available model and require strict JSON schema; generic JSON can drift from the Capital OS contract.
+- [xAI provider contract](capital-os-xai-provider-contract.md) — require strict schema, persisted verification evidence, safe failure codes, and atomic advisory finalization.

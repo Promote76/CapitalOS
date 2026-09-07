@@ -2313,13 +2313,30 @@ export type FamilyOfficeSnapshotProviderState = typeof FamilyOfficeSnapshotProvi
 
 export const FamilyOfficeSnapshotProviderState = {
   disabled: 'disabled',
-  ready: 'ready',
+  configured: 'configured',
+  verified: 'verified',
+  unavailable: 'unavailable',
+} as const;
+
+export type FamilyOfficeSnapshotProviderLastResult = typeof FamilyOfficeSnapshotProviderLastResult[keyof typeof FamilyOfficeSnapshotProviderLastResult];
+
+
+export const FamilyOfficeSnapshotProviderLastResult = {
+  never: 'never',
+  checking: 'checking',
+  verified: 'verified',
+  failed: 'failed',
 } as const;
 
 export type FamilyOfficeSnapshotProvider = {
   state: FamilyOfficeSnapshotProviderState;
   enabled: boolean;
   model: string;
+  /** @nullable */
+  lastCheckedAt: string | null;
+  lastResult: FamilyOfficeSnapshotProviderLastResult;
+  /** @nullable */
+  lastErrorCode: string | null;
 };
 
 export type FamilyOfficeSnapshotSummary = {
@@ -2353,7 +2370,32 @@ export interface FamilyOfficeSnapshot {
 
 export interface FamilyOfficeResearchResult {
   run: FamilyOfficeRun;
-  proposal: FamilyOfficeProposal | null;
+  proposal: FamilyOfficeProposal;
+  advisoryOnly: boolean;
+}
+
+export type FamilyOfficeResearchFailureCode = typeof FamilyOfficeResearchFailureCode[keyof typeof FamilyOfficeResearchFailureCode];
+
+
+export const FamilyOfficeResearchFailureCode = {
+  AI_PROVIDER_DISABLED: 'AI_PROVIDER_DISABLED',
+  AI_PROVIDER_TIMEOUT: 'AI_PROVIDER_TIMEOUT',
+  AI_PROVIDER_AUTHENTICATION_FAILED: 'AI_PROVIDER_AUTHENTICATION_FAILED',
+  AI_PROVIDER_MODEL_UNAVAILABLE: 'AI_PROVIDER_MODEL_UNAVAILABLE',
+  AI_PROVIDER_RATE_LIMITED: 'AI_PROVIDER_RATE_LIMITED',
+  AI_PROVIDER_UPSTREAM_ERROR: 'AI_PROVIDER_UPSTREAM_ERROR',
+  AI_PROVIDER_INVALID_RESPONSE: 'AI_PROVIDER_INVALID_RESPONSE',
+  AI_RESEARCH_PERSISTENCE_ERROR: 'AI_RESEARCH_PERSISTENCE_ERROR',
+} as const;
+
+export interface FamilyOfficeResearchFailure {
+  code: FamilyOfficeResearchFailureCode;
+  message: string;
+  /** @nullable */
+  correlationId?: string | null;
+  run: FamilyOfficeRun;
+  /** @nullable */
+  proposal: null;
   advisoryOnly: boolean;
 }
 

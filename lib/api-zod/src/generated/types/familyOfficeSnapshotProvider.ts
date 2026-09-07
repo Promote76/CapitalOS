@@ -5,10 +5,16 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { FamilyOfficeSnapshotProviderLastResult } from './familyOfficeSnapshotProviderLastResult';
 import type { FamilyOfficeSnapshotProviderState } from './familyOfficeSnapshotProviderState';
 
 export type FamilyOfficeSnapshotProvider = {
   state: FamilyOfficeSnapshotProviderState;
   enabled: boolean;
   model: string;
+  /** @nullable */
+  lastCheckedAt: Date | null;
+  lastResult: FamilyOfficeSnapshotProviderLastResult;
+  /** @nullable */
+  lastErrorCode: string | null;
 };

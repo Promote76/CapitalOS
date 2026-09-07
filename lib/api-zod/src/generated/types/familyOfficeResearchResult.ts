@@ -10,6 +10,6 @@ import type { FamilyOfficeRun } from './familyOfficeRun';
 
 export interface FamilyOfficeResearchResult {
   run: FamilyOfficeRun;
-  proposal: FamilyOfficeProposal | null;
+  proposal: FamilyOfficeProposal;
   advisoryOnly: boolean;
 }

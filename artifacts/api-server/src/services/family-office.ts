@@ -209,6 +209,30 @@ export async function getFamilyOfficeSnapshot(actor: Actor) {
     getPropertyUnderwriting(actor),
   ]);
   const status = familyOfficeProviderStatus();
+  const latestRun = runs[0];
+  const lastResult = !latestRun
+    ? "never" as const
+    : latestRun.status === "running"
+      ? "checking" as const
+      : latestRun.status === "completed" && latestRun.providerStatus === "ready"
+        ? "verified" as const
+        : "failed" as const;
+  const provider = {
+    state: !status.enabled
+      ? "disabled" as const
+      : lastResult === "verified"
+        ? "verified" as const
+        : lastResult === "failed"
+          ? "unavailable" as const
+          : "configured" as const,
+    enabled: status.enabled,
+    model: status.model,
+    lastCheckedAt: latestRun?.completedAt ?? latestRun?.createdAt ?? null,
+    lastResult,
+    lastErrorCode: lastResult === "failed"
+      ? latestRun?.errorCode ?? "AI_PROVIDER_UPSTREAM_ERROR"
+      : null,
+  };
   const propertyCandidates = underwriting.candidates.map((candidate) => ({
     id: candidate.id,
     propertyGoalId: candidate.propertyGoalId,
@@ -248,7 +272,7 @@ export async function getFamilyOfficeSnapshot(actor: Actor) {
     purchaseAuthority: false,
   }));
   return {
-    provider: { state: status.state, enabled: status.enabled, model: status.model },
+    provider,
     guardrails: shadowGuardrails(),
     runs: runs.map(runView),
     proposals: proposals.map(proposalView),
@@ -457,114 +481,147 @@ export async function getRealEstateIntelligence(actor: Actor) {
   };
 }
 
-async function persistProviderOutput(actor: Actor, runId: string, output: ResearchOutput) {
-  const evidenceRows = output.evidence.length
-    ? await db.insert(familyOfficeEvidence).values(output.evidence.map((evidence) => ({
-      householdId: actor.householdId,
-      runId,
-      sourceKind: evidence.sourceKind,
-      title: evidence.title,
-      sourceUrl: evidence.sourceUrl,
-      excerpt: evidence.excerpt,
-      classification: evidence.classification,
-      freshness: evidence.freshness,
-      confidence: evidence.confidence.toFixed(2),
-    }))).returning({ id: familyOfficeEvidence.id })
-    : [];
-  const [proposal] = await db.insert(familyOfficeProposals).values({
-    householdId: actor.householdId,
-    runId,
-    title: output.title,
-    thesis: output.thesis,
-    label: output.label,
-    analyticalDirection: output.analyticalDirection,
-    confidence: output.confidence.toFixed(2),
-    facts: output.facts,
-    assumptions: output.assumptions,
-    risks: output.risks,
-    evidenceIds: evidenceRows.map((evidence) => evidence.id),
-  }).returning();
-  return proposal;
-}
-
 export async function runFamilyOfficeResearch(actor: Actor, input: ResearchInput) {
   assertPermission(actor.role, "contribute");
   await ensureFamilyOfficeWorkspace(actor.householdId);
   const analyst = input.analyst?.trim() || "Research Analyst";
-  let [scorecard] = await db.select({ id: familyOfficeAnalystScorecards.id })
-    .from(familyOfficeAnalystScorecards)
-    .where(and(
-      eq(familyOfficeAnalystScorecards.householdId, actor.householdId),
-      sql`lower(${familyOfficeAnalystScorecards.analyst}) = lower(${analyst})`,
-    ))
-    .limit(1);
-  if (!scorecard) {
-    [scorecard] = await db.insert(familyOfficeAnalystScorecards).values({
+  const { scorecard, run } = await db.transaction(async (tx) => {
+    let [currentScorecard] = await tx.select({ id: familyOfficeAnalystScorecards.id })
+      .from(familyOfficeAnalystScorecards)
+      .where(and(
+        eq(familyOfficeAnalystScorecards.householdId, actor.householdId),
+        sql`lower(${familyOfficeAnalystScorecards.analyst}) = lower(${analyst})`,
+      ))
+      .limit(1);
+    if (!currentScorecard) {
+      [currentScorecard] = await tx.insert(familyOfficeAnalystScorecards).values({
+        householdId: actor.householdId,
+        analyst,
+        specialty: "advisory research",
+        authority: "advisory_only",
+      }).returning({ id: familyOfficeAnalystScorecards.id });
+    }
+    await tx.update(familyOfficeAnalystScorecards).set({
+      assignmentCount: sql`${familyOfficeAnalystScorecards.assignmentCount} + 1`,
+      status: "working",
+      updatedAt: new Date(),
+    }).where(eq(familyOfficeAnalystScorecards.id, currentScorecard.id));
+    const [currentRun] = await tx.insert(familyOfficeRuns).values({
       householdId: actor.householdId,
       analyst,
-      specialty: "advisory research",
-      authority: "advisory_only",
-    }).returning({ id: familyOfficeAnalystScorecards.id });
-  }
-  await db.update(familyOfficeAnalystScorecards).set({
-    assignmentCount: sql`${familyOfficeAnalystScorecards.assignmentCount} + 1`,
-    status: "working",
-    updatedAt: new Date(),
-  }).where(eq(familyOfficeAnalystScorecards.id, scorecard.id));
-  const [run] = await db.insert(familyOfficeRuns).values({
-    householdId: actor.householdId,
-    analyst,
-    scope: input.scope.trim(),
-    status: "running",
-    providerStatus: "checking",
-    createdBy: actor.userId,
-  }).returning();
+      scope: input.scope.trim(),
+      status: "running",
+      providerStatus: "checking",
+      createdBy: actor.userId,
+    }).returning();
+    return { scorecard: currentScorecard, run: currentRun };
+  });
   const provider = new XaiIntelligenceProvider();
+  let output: ResearchOutput;
   try {
-    const output = await provider.research({ analyst, scope: input.scope, prompt: input.prompt });
-    const proposal = await persistProviderOutput(actor, run.id, output);
-    const [updated] = await db.update(familyOfficeRuns).set({
-      status: "completed",
-      providerStatus: "ready",
-      outputSummary: output.title,
-      completedAt: new Date(),
-    }).where(and(eq(familyOfficeRuns.id, run.id), eq(familyOfficeRuns.householdId, actor.householdId))).returning();
-    await db.update(familyOfficeAnalystScorecards).set({
-      completedCount: sql`${familyOfficeAnalystScorecards.completedCount} + 1`,
-      status: "available",
-      updatedAt: new Date(),
-    }).where(eq(familyOfficeAnalystScorecards.id, scorecard.id));
-    await db.insert(auditEvents).values({
-      householdId: actor.householdId,
-      eventType: "family_office_research_completed",
-      actor: actor.userId,
-      entity: "family_office_run",
-      entityId: run.id,
-      reason: "Advisory research completed; proposal remains human-reviewed and shadow-only.",
-      metadata: { advisoryOnly: true, executionAuthorization: false },
-    });
-    return { run: runView(updated), proposal: proposalView(proposal), advisoryOnly: true };
+    output = await provider.research({ analyst, scope: input.scope, prompt: input.prompt });
   } catch (error) {
-    const unavailable = error instanceof ProviderUnavailableError;
-    const [updated] = await db.update(familyOfficeRuns).set({
-      status: "blocked",
-      providerStatus: unavailable ? "unavailable" : "error",
-      errorCode: unavailable ? "AI_PROVIDER_UNAVAILABLE" : "AI_PROVIDER_ERROR",
-      completedAt: new Date(),
-    }).where(and(eq(familyOfficeRuns.id, run.id), eq(familyOfficeRuns.householdId, actor.householdId))).returning();
-    await db.update(familyOfficeAnalystScorecards).set({
-      failureCount: sql`${familyOfficeAnalystScorecards.failureCount} + 1`,
-      status: "blocked",
-      updatedAt: new Date(),
-    }).where(eq(familyOfficeAnalystScorecards.id, scorecard.id));
-    await db.insert(auditEvents).values({
-      householdId: actor.householdId,
-      eventType: "family_office_research_blocked",
-      actor: actor.userId,
-      entity: "family_office_run",
-      entityId: run.id,
-      reason: "Provider unavailable or response invalid; no research was fabricated.",
-      metadata: { advisoryOnly: true, executionAuthorization: false, errorCode: updated.errorCode },
+    const errorCode = error instanceof ProviderUnavailableError ? error.code : "AI_PROVIDER_UPSTREAM_ERROR";
+    const updated = await db.transaction(async (tx) => {
+      const [blockedRun] = await tx.update(familyOfficeRuns).set({
+        status: "blocked",
+        providerStatus: "unavailable",
+        errorCode,
+        completedAt: new Date(),
+      }).where(and(eq(familyOfficeRuns.id, run.id), eq(familyOfficeRuns.householdId, actor.householdId))).returning();
+      await tx.update(familyOfficeAnalystScorecards).set({
+        failureCount: sql`${familyOfficeAnalystScorecards.failureCount} + 1`,
+        status: "blocked",
+        updatedAt: new Date(),
+      }).where(eq(familyOfficeAnalystScorecards.id, scorecard.id));
+      await tx.insert(auditEvents).values({
+        householdId: actor.householdId,
+        eventType: "family_office_research_blocked",
+        actor: actor.userId,
+        entity: "family_office_run",
+        entityId: run.id,
+        reason: "Provider unavailable or response invalid; no research was fabricated.",
+        metadata: { advisoryOnly: true, executionAuthorization: false, errorCode },
+      });
+      return blockedRun;
+    });
+    return { run: runView(updated), proposal: null, advisoryOnly: true };
+  }
+
+  try {
+    return await db.transaction(async (tx) => {
+      const evidenceRows = output.evidence.length
+        ? await tx.insert(familyOfficeEvidence).values(output.evidence.map((evidence) => ({
+          householdId: actor.householdId,
+          runId: run.id,
+          sourceKind: evidence.sourceKind,
+          title: evidence.title,
+          sourceUrl: evidence.sourceUrl,
+          excerpt: evidence.excerpt,
+          classification: evidence.classification,
+          freshness: evidence.freshness,
+          confidence: evidence.confidence.toFixed(2),
+        }))).returning({ id: familyOfficeEvidence.id })
+        : [];
+      const [proposal] = await tx.insert(familyOfficeProposals).values({
+        householdId: actor.householdId,
+        runId: run.id,
+        title: output.title,
+        thesis: output.thesis,
+        label: output.label,
+        analyticalDirection: output.analyticalDirection,
+        confidence: output.confidence.toFixed(2),
+        facts: output.facts,
+        assumptions: output.assumptions,
+        risks: output.risks,
+        evidenceIds: evidenceRows.map((evidence) => evidence.id),
+      }).returning();
+      const [updated] = await tx.update(familyOfficeRuns).set({
+        status: "completed",
+        providerStatus: "ready",
+        errorCode: null,
+        outputSummary: output.title,
+        completedAt: new Date(),
+      }).where(and(eq(familyOfficeRuns.id, run.id), eq(familyOfficeRuns.householdId, actor.householdId))).returning();
+      await tx.update(familyOfficeAnalystScorecards).set({
+        completedCount: sql`${familyOfficeAnalystScorecards.completedCount} + 1`,
+        status: "available",
+        updatedAt: new Date(),
+      }).where(eq(familyOfficeAnalystScorecards.id, scorecard.id));
+      await tx.insert(auditEvents).values({
+        householdId: actor.householdId,
+        eventType: "family_office_research_completed",
+        actor: actor.userId,
+        entity: "family_office_run",
+        entityId: run.id,
+        reason: "Advisory research completed; proposal remains human-reviewed and shadow-only.",
+        metadata: { advisoryOnly: true, executionAuthorization: false },
+      });
+      return { run: runView(updated), proposal: proposalView(proposal), advisoryOnly: true };
+    });
+  } catch {
+    const updated = await db.transaction(async (tx) => {
+      const [blockedRun] = await tx.update(familyOfficeRuns).set({
+        status: "blocked",
+        providerStatus: "error",
+        errorCode: "AI_RESEARCH_PERSISTENCE_ERROR",
+        completedAt: new Date(),
+      }).where(and(eq(familyOfficeRuns.id, run.id), eq(familyOfficeRuns.householdId, actor.householdId))).returning();
+      await tx.update(familyOfficeAnalystScorecards).set({
+        failureCount: sql`${familyOfficeAnalystScorecards.failureCount} + 1`,
+        status: "blocked",
+        updatedAt: new Date(),
+      }).where(eq(familyOfficeAnalystScorecards.id, scorecard.id));
+      await tx.insert(auditEvents).values({
+        householdId: actor.householdId,
+        eventType: "family_office_research_blocked",
+        actor: actor.userId,
+        entity: "family_office_run",
+        entityId: run.id,
+        reason: "Research output could not be committed atomically; no proposal was retained.",
+        metadata: { advisoryOnly: true, executionAuthorization: false, errorCode: "AI_RESEARCH_PERSISTENCE_ERROR" },
+      });
+      return blockedRun;
     });
     return { run: runView(updated), proposal: null, advisoryOnly: true };
   }

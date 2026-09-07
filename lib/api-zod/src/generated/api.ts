@@ -2436,9 +2436,12 @@ export const getFamilyOfficeResponseSummaryConfidenceCalibrationMax = 100;
 
 export const GetFamilyOfficeResponse = zod.object({
   "provider": zod.object({
-  "state": zod.enum(['disabled', 'ready']),
+  "state": zod.enum(['disabled', 'configured', 'verified', 'unavailable']),
   "enabled": zod.boolean(),
-  "model": zod.string()
+  "model": zod.string(),
+  "lastCheckedAt": zod.coerce.date().nullable(),
+  "lastResult": zod.enum(['never', 'checking', 'verified', 'failed']),
+  "lastErrorCode": zod.string().nullable()
 }),
   "guardrails": zod.array(zod.string()),
   "runs": zod.array(zod.object({
@@ -2900,7 +2903,7 @@ export const CreateFamilyOfficeResearchResponse = zod.object({
   "completedAt": zod.coerce.date().nullable(),
   "advisoryOnly": zod.boolean()
 }),
-  "proposal": zod.union([zod.object({
+  "proposal": zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "thesis": zod.string(),
@@ -2917,7 +2920,7 @@ export const CreateFamilyOfficeResearchResponse = zod.object({
   "reviewReason": zod.string().nullable(),
   "advisoryOnly": zod.boolean(),
   "executionAuthorization": zod.boolean()
-}),zod.null()]),
+}),
   "advisoryOnly": zod.boolean()
 })
 

@@ -177,6 +177,7 @@ export const operationsGuidedRunEvents = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
     guidedRunId: uuid("guided_run_id").notNull().references(() => operationsGuidedRuns.id, { onDelete: "cascade" }),
+    idempotencyKey: text("idempotency_key").notNull(),
     action: text("action").notNull(),
     reason: text("reason").notNull(),
     actorId: uuid("actor_id").notNull().references(() => users.id),
@@ -184,6 +185,7 @@ export const operationsGuidedRunEvents = pgTable(
     occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
+    householdIdempotencyKeyUnique: uniqueIndex("operations_guided_run_events_household_idempotency_key_unique").on(table.householdId, table.idempotencyKey),
     householdOccurredIdx: index("operations_guided_run_events_household_occurred_idx").on(table.householdId, table.occurredAt),
     guidedRunOccurredIdx: index("operations_guided_run_events_run_occurred_idx").on(table.guidedRunId, table.occurredAt),
   }),

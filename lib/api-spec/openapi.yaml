@@ -2436,6 +2436,8 @@ paths:
       operationId: recordGuidedRunAction
       tags: [operations]
       summary: Persist a Guided Run the Day action
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content:

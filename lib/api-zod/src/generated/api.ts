@@ -6136,6 +6136,15 @@ export const CreateDailyOpsJournalEntryResponse = zod.object({
 /**
  * @summary Persist a Guided Run the Day action
  */
+export const recordGuidedRunActionHeaderIdempotencyKeyMin = 8;
+export const recordGuidedRunActionHeaderIdempotencyKeyMax = 128;
+
+
+
+export const RecordGuidedRunActionHeader = zod.object({
+  "Idempotency-Key": zod.string().min(recordGuidedRunActionHeaderIdempotencyKeyMin).max(recordGuidedRunActionHeaderIdempotencyKeyMax)
+})
+
 export const recordGuidedRunActionBodyReasonMax = 1000;
 
 

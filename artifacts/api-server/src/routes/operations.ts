@@ -21,6 +21,7 @@ import {
   CreateDailyOpsJournalEntryResponse,
   ListDailyOpsHistoryResponse,
   RecordGuidedRunActionBody,
+  RecordGuidedRunActionHeader,
   RecordGuidedRunActionResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
@@ -91,7 +92,12 @@ router.post("/operations/daily-ops/journal", asyncRoute(async (req, res) => {
 
 router.post("/operations/daily-ops/guided-run", asyncRoute(async (req, res) => {
   const body = RecordGuidedRunActionBody.parse(req.body);
-  res.status(201).json(RecordGuidedRunActionResponse.parse(await recordGuidedRunAction(actorFrom(res), body)));
+  const headers = RecordGuidedRunActionHeader.parse({ "Idempotency-Key": req.header("Idempotency-Key") });
+  res.status(201).json(RecordGuidedRunActionResponse.parse(await recordGuidedRunAction(
+    actorFrom(res),
+    body,
+    headers["Idempotency-Key"],
+  )));
 }));
 
 router.get("/operations/approvals", asyncRoute(async (_req, res) => {

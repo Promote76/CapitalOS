@@ -19,6 +19,7 @@ import {
   operationsDecisionJournalEntries,
   operationsGuidedRuns,
   operationsGuidedRunEvents,
+  idempotencyKeys,
 } from "@workspace/db/schema";
 import type { Actor } from "./capital-os";
 import { ensureTenantCore } from "./seed";
@@ -27,6 +28,7 @@ import { assertSafeAutomationAction, calculateOperationsHealth, classifyOperatio
 
 const today = () => new Date().toISOString().slice(0, 10);
 const dateAfter = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+const GUIDED_RUN_ACTION_OPERATION = "operations.guided_run_action";
 
 function taskResponse(task: typeof operationsTasks.$inferSelect) {
   return {
@@ -921,15 +923,69 @@ export async function recordGuidedRunAction(actor: Actor, input: {
   runId?: string;
   reason: string;
   snoozedUntil?: Date | string | null;
-}) {
+}, idempotencyKey: string) {
   assertPermission(actor.role, "contribute");
   const ids = await ensureTenantCore(actor.householdId, actor.userId);
   if (!input.reason.trim()) throw new GovernanceError("INVALID_STATE", "A reason is required for every Guided Run action");
   if (input.action === "SNOOZE" && !input.snoozedUntil) {
     throw new GovernanceError("INVALID_STATE", "Snooze requires a time until which the Guided Run is deferred");
   }
+  const normalizedIdempotencyKey = idempotencyKey.trim();
+  if (normalizedIdempotencyKey.length < 8 || normalizedIdempotencyKey.length > 128) {
+    throw new GovernanceError("INVALID_STATE", "An Idempotency-Key header with 8–128 characters is required");
+  }
+  const fingerprint = JSON.stringify({
+    action: input.action,
+    cadence: input.cadence,
+    runId: input.runId ?? null,
+    reason: input.reason.trim(),
+    snoozedUntil: input.snoozedUntil ? new Date(input.snoozedUntil).toISOString() : null,
+  });
   const runDate = today();
   return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`daily-ops-guided-run-idempotency:${ids.householdId}:${normalizedIdempotencyKey}`}, 0))`);
+    const [existingIdempotency] = await tx.select().from(idempotencyKeys).where(and(
+      eq(idempotencyKeys.householdId, ids.householdId),
+      eq(idempotencyKeys.key, normalizedIdempotencyKey),
+    )).limit(1);
+    if (existingIdempotency) {
+      const responseBody = existingIdempotency.responseBody;
+      if (
+        existingIdempotency.operation !== GUIDED_RUN_ACTION_OPERATION ||
+        responseBody?.fingerprint !== fingerprint ||
+        !responseBody?.response ||
+        typeof responseBody.response !== "object"
+      ) {
+        throw new GovernanceError("IDEMPOTENCY_CONFLICT", "Idempotency-Key was already used for a different request");
+      }
+      return responseBody.response as {
+        run: ReturnType<typeof guidedRunResponse>;
+        event: ReturnType<typeof guidedRunEventResponse>;
+      };
+    }
+    const [existingEvent] = await tx.select().from(operationsGuidedRunEvents).where(and(
+      eq(operationsGuidedRunEvents.householdId, ids.householdId),
+      eq(operationsGuidedRunEvents.idempotencyKey, normalizedIdempotencyKey),
+    )).limit(1);
+    if (existingEvent) {
+      const [existingRun] = await tx.select().from(operationsGuidedRuns).where(and(
+        eq(operationsGuidedRuns.id, existingEvent.guidedRunId),
+        eq(operationsGuidedRuns.householdId, ids.householdId),
+      )).limit(1);
+      if (!existingRun) throw new GovernanceError("INVALID_STATE", "The idempotent Guided Run result is no longer available");
+      const existingSnoozedUntil = existingEvent.snoozedUntil?.toISOString() ?? null;
+      const requestedSnoozedUntil = input.snoozedUntil ? new Date(input.snoozedUntil).toISOString() : null;
+      if (
+        existingEvent.action !== input.action ||
+        existingEvent.reason !== input.reason.trim() ||
+        existingRun.cadence !== input.cadence ||
+        (input.runId !== undefined && input.runId !== existingEvent.guidedRunId) ||
+        existingSnoozedUntil !== requestedSnoozedUntil
+      ) {
+        throw new GovernanceError("IDEMPOTENCY_CONFLICT", "Idempotency-Key was already used for a different Guided Run action");
+      }
+      return { run: guidedRunResponse(existingRun, [existingEvent]), event: guidedRunEventResponse(existingEvent) };
+    }
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`daily-ops-run:${ids.householdId}:${runDate}:${input.cadence}`}, 0))`);
     let run = input.runId
       ? (await tx.select().from(operationsGuidedRuns).where(and(
@@ -985,6 +1041,7 @@ export async function recordGuidedRunAction(actor: Actor, input: {
     const [event] = await tx.insert(operationsGuidedRunEvents).values({
       householdId: ids.householdId,
       guidedRunId: updatedRun.id,
+      idempotencyKey: normalizedIdempotencyKey,
       action: input.action,
       reason: input.reason.trim(),
       actorId: actor.userId,
@@ -999,7 +1056,18 @@ export async function recordGuidedRunAction(actor: Actor, input: {
       reason: input.reason.trim(),
       metadata: { action: input.action, cadence: updatedRun.cadence, runDate: updatedRun.runDate },
     });
-    return { run: guidedRunResponse(updatedRun, [event]), event: guidedRunEventResponse(event) };
+    const response = { run: guidedRunResponse(updatedRun, [event]), event: guidedRunEventResponse(event) };
+    await tx.insert(idempotencyKeys).values({
+      householdId: ids.householdId,
+      key: normalizedIdempotencyKey,
+      operation: GUIDED_RUN_ACTION_OPERATION,
+      responseStatus: 201,
+      responseBody: {
+        fingerprint,
+        response: JSON.parse(JSON.stringify(response)),
+      },
+    });
+    return response;
   });
 }
 

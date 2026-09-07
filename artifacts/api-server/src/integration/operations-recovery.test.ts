@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { randomUUID } from "node:crypto";
 import { db } from "@workspace/db";
-import { households, operationsJobs, operationsSchedulers } from "@workspace/db/schema";
+import { households, operationsGuidedRunEvents, operationsJobs, operationsSchedulers, users } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
-import { enqueueOperationsJob, claimNextOperationsJob, recoverStaleOperationsJobs, heartbeatOperationsWorker, failOperationsJob, reprocessOperationsJob } from "../services/operations.ts";
+import { enqueueOperationsJob, claimNextOperationsJob, recoverStaleOperationsJobs, heartbeatOperationsWorker, failOperationsJob, reprocessOperationsJob, recordGuidedRunAction } from "../services/operations.ts";
 import { runOperationsSchedulerTick } from "../services/operations-scheduler.ts";
 import type { Actor } from "../services/capital-os.ts";
 
@@ -42,6 +42,43 @@ suite("durable operations recovery (isolated PostgreSQL)", () => {
     await failOperationsJob(first.id, home.id, "worker-a", new Error("invalid payload"));
     const [current] = await db.select().from(operationsJobs).where(and(eq(operationsJobs.id, first.id), eq(operationsJobs.householdId, home.id)));
     assert.equal(current?.status, "DEAD_LETTER");
+    await cleanupHousehold(home.id);
+  });
+
+  it("replays one Guided Run action under concurrent retries and rejects key reuse", async () => {
+    const [home] = await db.insert(households).values({ name: `operations-cert-${randomUUID()}` }).returning({ id: households.id });
+    const [user] = await db.insert(users).values({
+      email: `operations-cert-${randomUUID()}@capitalos.test`,
+      externalAuthId: `operations-cert-${randomUUID()}`,
+      displayName: "Operations certification",
+      status: "active",
+    }).returning({ id: users.id });
+    const actor: Actor = { userId: user.id, householdId: home.id, role: "owner", source: "test-database" };
+    const input = { action: "START", cadence: "TODAY", reason: "Retry-safe Guided Run start" };
+    const key = `guided-run-${randomUUID()}`;
+    const [first, replay] = await Promise.all([
+      recordGuidedRunAction(actor, input, key),
+      recordGuidedRunAction(actor, input, key),
+    ]);
+    assert.equal(first.event.id, replay.event.id);
+    assert.equal(first.run.id, replay.run.id);
+    const events = await db.select().from(operationsGuidedRunEvents).where(and(
+      eq(operationsGuidedRunEvents.householdId, home.id),
+      eq(operationsGuidedRunEvents.idempotencyKey, key),
+    ));
+    assert.equal(events.length, 1);
+    await recordGuidedRunAction(actor, {
+      action: "COMPLETE",
+      cadence: "TODAY",
+      reason: "Complete after the original retry-safe start",
+    }, `guided-run-${randomUUID()}`);
+    const replayAfterLaterAction = await recordGuidedRunAction(actor, input, key);
+    assert.equal(replayAfterLaterAction.event.id, first.event.id);
+    assert.equal(replayAfterLaterAction.run.status, first.run.status);
+    await assert.rejects(
+      () => recordGuidedRunAction(actor, { ...input, action: "COMPLETE" }, key),
+      (error: unknown) => error instanceof Error && "code" in error && error.code === "IDEMPOTENCY_CONFLICT",
+    );
     await cleanupHousehold(home.id);
   });
 

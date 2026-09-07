@@ -2400,6 +2400,243 @@ export const RecordIntelligenceFeedbackResponse = zod.object({
 
 
 /**
+ * @summary Get the household-scoped advisory Family Office snapshot
+ */
+export const GetFamilyOfficeResponse = zod.object({
+  "provider": zod.object({
+  "state": zod.enum(['disabled', 'ready']),
+  "enabled": zod.boolean(),
+  "model": zod.string()
+}),
+  "guardrails": zod.array(zod.string()),
+  "runs": zod.array(zod.object({
+  "id": zod.string(),
+  "analyst": zod.string(),
+  "scope": zod.string(),
+  "status": zod.string(),
+  "providerStatus": zod.string(),
+  "errorCode": zod.string().nullable(),
+  "outputSummary": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable(),
+  "advisoryOnly": zod.boolean()
+})),
+  "proposals": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "thesis": zod.string(),
+  "label": zod.string(),
+  "analyticalDirection": zod.string(),
+  "confidence": zod.number(),
+  "facts": zod.array(zod.string()),
+  "assumptions": zod.array(zod.string()),
+  "risks": zod.array(zod.string()),
+  "evidenceIds": zod.array(zod.string()),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "reviewReason": zod.string().nullable(),
+  "advisoryOnly": zod.boolean(),
+  "executionAuthorization": zod.boolean()
+})),
+  "shadowPortfolios": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "benchmark": zod.string(),
+  "strategy": zod.string(),
+  "capitalModel": zod.string(),
+  "riskPolicy": zod.string(),
+  "enabled": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "authoritativeHouseholdAsset": zod.boolean(),
+  "liveExecutionEnabled": zod.boolean()
+})),
+  "shadowIntents": zod.array(zod.object({
+  "id": zod.string(),
+  "proposalId": zod.string(),
+  "shadowPortfolioId": zod.string(),
+  "symbol": zod.string(),
+  "direction": zod.string(),
+  "hypotheticalQuantity": zod.number(),
+  "hypotheticalNotional": zod.string(),
+  "referencePrice": zod.number(),
+  "referenceTimestamp": zod.coerce.date(),
+  "timeHorizon": zod.string(),
+  "status": zod.string(),
+  "advisoryOnly": zod.boolean(),
+  "transmitted": zod.boolean()
+})),
+  "summary": zod.object({
+  "liveExecutionEnabled": zod.boolean(),
+  "realOrdersSent": zod.number(),
+  "moneyMovedCents": zod.number(),
+  "shadowOnly": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Run advisory Family Office research
+ */
+export const createFamilyOfficeResearchBodyAnalystMax = 80;
+
+export const createFamilyOfficeResearchBodyScopeMax = 120;
+
+export const createFamilyOfficeResearchBodyPromptMax = 4000;
+
+
+
+export const CreateFamilyOfficeResearchBody = zod.object({
+  "analyst": zod.string().max(createFamilyOfficeResearchBodyAnalystMax).optional(),
+  "scope": zod.string().min(1).max(createFamilyOfficeResearchBodyScopeMax),
+  "prompt": zod.string().min(1).max(createFamilyOfficeResearchBodyPromptMax)
+})
+
+export const CreateFamilyOfficeResearchResponse = zod.object({
+  "run": zod.object({
+  "id": zod.string(),
+  "analyst": zod.string(),
+  "scope": zod.string(),
+  "status": zod.string(),
+  "providerStatus": zod.string(),
+  "errorCode": zod.string().nullable(),
+  "outputSummary": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable(),
+  "advisoryOnly": zod.boolean()
+}),
+  "proposal": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "thesis": zod.string(),
+  "label": zod.string(),
+  "analyticalDirection": zod.string(),
+  "confidence": zod.number(),
+  "facts": zod.array(zod.string()),
+  "assumptions": zod.array(zod.string()),
+  "risks": zod.array(zod.string()),
+  "evidenceIds": zod.array(zod.string()),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "reviewReason": zod.string().nullable(),
+  "advisoryOnly": zod.boolean(),
+  "executionAuthorization": zod.boolean()
+}),zod.null()]),
+  "advisoryOnly": zod.boolean()
+})
+
+
+/**
+ * @summary Record a human Shadow-only Family Office proposal decision
+ */
+export const DecideFamilyOfficeProposalParams = zod.object({
+  "proposalId": zod.coerce.string()
+})
+
+export const decideFamilyOfficeProposalBodyReasonMax = 500;
+
+
+
+export const DecideFamilyOfficeProposalBody = zod.object({
+  "decision": zod.enum(['watch', 'reject', 'request_more_research', 'approve_shadow']),
+  "reason": zod.string().min(1).max(decideFamilyOfficeProposalBodyReasonMax)
+})
+
+export const DecideFamilyOfficeProposalResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "thesis": zod.string(),
+  "label": zod.string(),
+  "analyticalDirection": zod.string(),
+  "confidence": zod.number(),
+  "facts": zod.array(zod.string()),
+  "assumptions": zod.array(zod.string()),
+  "risks": zod.array(zod.string()),
+  "evidenceIds": zod.array(zod.string()),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "reviewReason": zod.string().nullable(),
+  "advisoryOnly": zod.boolean(),
+  "executionAuthorization": zod.boolean()
+})
+
+
+/**
+ * @summary Create a hypothetical Shadow portfolio
+ */
+export const createShadowPortfolioBodyNameMax = 120;
+
+export const createShadowPortfolioBodyBenchmarkMax = 120;
+
+export const createShadowPortfolioBodyStrategyMax = 500;
+
+
+
+export const CreateShadowPortfolioBody = zod.object({
+  "name": zod.string().min(1).max(createShadowPortfolioBodyNameMax),
+  "benchmark": zod.string().max(createShadowPortfolioBodyBenchmarkMax).optional(),
+  "strategy": zod.string().max(createShadowPortfolioBodyStrategyMax).optional()
+})
+
+export const CreateShadowPortfolioResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "benchmark": zod.string(),
+  "strategy": zod.string(),
+  "capitalModel": zod.string(),
+  "riskPolicy": zod.string(),
+  "enabled": zod.boolean(),
+  "createdAt": zod.coerce.date(),
+  "authoritativeHouseholdAsset": zod.boolean(),
+  "liveExecutionEnabled": zod.boolean()
+})
+
+
+/**
+ * @summary Create a hypothetical, never-transmitted Shadow order intent
+ */
+export const createShadowIntentBodySymbolMax = 32;
+
+export const createShadowIntentBodyHypotheticalQuantityExclusiveMin = 0;
+
+export const createShadowIntentBodyHypotheticalNotionalRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createShadowIntentBodyReferencePriceExclusiveMin = 0;
+
+export const createShadowIntentBodyTimeHorizonMax = 120;
+
+
+
+export const CreateShadowIntentBody = zod.object({
+  "proposalId": zod.string(),
+  "shadowPortfolioId": zod.string(),
+  "symbol": zod.string().min(1).max(createShadowIntentBodySymbolMax),
+  "direction": zod.enum(['long', 'short', 'neutral']),
+  "hypotheticalQuantity": zod.number().gt(createShadowIntentBodyHypotheticalQuantityExclusiveMin),
+  "hypotheticalNotional": zod.string().regex(createShadowIntentBodyHypotheticalNotionalRegExp),
+  "referencePrice": zod.number().gt(createShadowIntentBodyReferencePriceExclusiveMin),
+  "timeHorizon": zod.string().min(1).max(createShadowIntentBodyTimeHorizonMax)
+})
+
+export const CreateShadowIntentResponse = zod.object({
+  "id": zod.string(),
+  "proposalId": zod.string(),
+  "shadowPortfolioId": zod.string(),
+  "symbol": zod.string(),
+  "direction": zod.string(),
+  "hypotheticalQuantity": zod.number(),
+  "hypotheticalNotional": zod.string(),
+  "referencePrice": zod.number(),
+  "referenceTimestamp": zod.coerce.date(),
+  "timeHorizon": zod.string(),
+  "status": zod.string(),
+  "advisoryOnly": zod.boolean(),
+  "transmitted": zod.boolean()
+})
+
+
+/**
  * @summary List append-only audit events
  */
 export const ListAuditEventsResponseItem = zod.object({

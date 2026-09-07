@@ -138,6 +138,14 @@ import {
   type BankConnection,
   type FinancialAccount,
   useGetTreasury,
+  useGetFamilyOffice,
+  useCreateFamilyOfficeResearch,
+  useDecideFamilyOfficeProposal,
+  useCreateShadowPortfolio,
+  useCreateShadowIntent,
+  getGetFamilyOfficeQueryKey,
+  type FamilyOfficeProposalDecisionInputDecision,
+  type ShadowIntentInputDirection,
 } from '@workspace/api-client-react';
 import { dashboardDataState } from './dashboard-state';
 import {
@@ -502,6 +510,7 @@ const secondaryNav = [
   { href: '/reports', label: 'Reports', icon: FileText },
   { href: '/documents', label: 'Documents', icon: ClipboardList },
   { href: '/insights', label: 'Insights', icon: Lightbulb },
+  { href: '/family-office', label: 'Family Office', icon: Sparkles },
 ];
 
 function AppShell({
@@ -3029,6 +3038,154 @@ function ActionModal({ kind, close, onComplete }: { kind: Exclude<ModalKind, nul
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !submitting) close(); }}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div className="modal-header"><div><div className="eyebrow">Capital OS / quick action</div><h2 id="modal-title">{copy.title}</h2><p>{copy.desc}</p></div><button className="icon-btn" aria-label="Close dialog" data-testid="button-close-modal" onClick={close} disabled={submitting}><X size={17} /></button></div><form className="modal-form" onSubmit={(event) => { void submit(event); }}>{(kind === 'contribution' || kind === 'transfer') && <div className="field"><label>Amount</label><input autoFocus required inputMode="decimal" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} data-testid="input-action-amount" placeholder="250" /></div>}{kind === 'contribution' && <div className="field"><label>Allocation rule</label><div className="field-help">The active household allocation rule applies server-side; this contribution is not manually routed to a sleeve.</div></div>}{(kind === 'strategy' || kind === 'property') && <div className="field"><label>{kind === 'property' ? 'Note title' : 'Strategy title'}</label><input autoFocus required value={name} onChange={(event) => setName(event.target.value)} data-testid="input-action-name" /></div>}<div className="field"><label>Note <span style={{ textTransform:'none', letterSpacing:0 }}>(optional)</span></label><textarea value={note} onChange={(event) => setNote(event.target.value)} data-testid="textarea-action-note" placeholder="A little context for later..." /></div><div className="modal-actions"><button type="button" className="btn" data-testid="button-cancel-modal" onClick={close} disabled={submitting}>Cancel</button><button type="submit" className="btn btn-primary" data-testid="button-submit-modal" disabled={submitting}><Check size={14} /> {submitting ? 'Saving…' : copy.submit}</button></div></form></div></div>;
 }
 
+function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => void }) {
+  const query = useGetFamilyOffice();
+  const research = useCreateFamilyOfficeResearch();
+  const decide = useDecideFamilyOfficeProposal();
+  const createPortfolio = useCreateShadowPortfolio();
+  const createIntent = useCreateShadowIntent();
+  const [researchDraft, setResearchDraft] = useState({ scope: 'family office intelligence', prompt: '', analyst: 'CIO analyst' });
+  const [portfolioDraft, setPortfolioDraft] = useState({ name: '', benchmark: 'SPY', strategy: '' });
+  const [intentDraft, setIntentDraft] = useState({ proposalId: '', shadowPortfolioId: '', symbol: '', direction: 'neutral' as ShadowIntentInputDirection, hypotheticalQuantity: '1', hypotheticalNotional: '1000.00', referencePrice: '100', timeHorizon: '12 months' });
+  const snapshot = query.data;
+  const proposals = snapshot?.proposals ?? [];
+  const shadowPortfolios = snapshot?.shadowPortfolios ?? [];
+  const activeProposal = proposals.find((proposal) => proposal.id === intentDraft.proposalId) ?? proposals[0];
+  const activePortfolio = shadowPortfolios.find((portfolio) => portfolio.id === intentDraft.shadowPortfolioId) ?? shadowPortfolios[0];
+
+  useEffect(() => {
+    if (activeProposal && !intentDraft.proposalId) setIntentDraft((draft) => ({ ...draft, proposalId: activeProposal.id }));
+    if (activePortfolio && !intentDraft.shadowPortfolioId) setIntentDraft((draft) => ({ ...draft, shadowPortfolioId: activePortfolio.id }));
+  }, [activeProposal, activePortfolio, intentDraft.proposalId, intentDraft.shadowPortfolioId]);
+
+  const refresh = async () => { await queryClient.invalidateQueries({ queryKey: getGetFamilyOfficeQueryKey() }); };
+  const runResearch = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!researchDraft.prompt.trim()) return;
+    try {
+      await research.mutateAsync({ data: researchDraft });
+      setResearchDraft({ ...researchDraft, prompt: '' });
+      await refresh();
+      onFeedback('Research completed as advisory evidence. No order or capital action was created.');
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'Family Office research is unavailable. No research was recorded.');
+    }
+  };
+  const decideWithReverification = useProviderProtectedAction((proposalId: string, decision: FamilyOfficeProposalDecisionInputDecision) =>
+    decide.mutateAsync({ proposalId, data: { decision, reason: `Human Family Office review: ${decision.replaceAll('_', ' ')}.` } }),
+  );
+  const recordDecision = async (proposalId: string, decision: FamilyOfficeProposalDecisionInputDecision) => {
+    try {
+      await decideWithReverification(proposalId, decision);
+      await refresh();
+      onFeedback(`Proposal marked ${decision.replaceAll('_', ' ')}. It remains Shadow-only.`);
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'The proposal decision could not be recorded.');
+    }
+  };
+  const submitPortfolio = async (event: FormEvent) => {
+    event.preventDefault();
+    try {
+      const portfolio = await createPortfolio.mutateAsync({ data: portfolioDraft });
+      setPortfolioDraft({ name: '', benchmark: 'SPY', strategy: '' });
+      setIntentDraft((draft) => ({ ...draft, shadowPortfolioId: portfolio.id }));
+      await refresh();
+      onFeedback('Hypothetical Shadow portfolio created. It is not a household asset.');
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'The Shadow portfolio could not be created.');
+    }
+  };
+  const submitIntent = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!activeProposal || !activePortfolio) {
+      onFeedback('Create a Shadow portfolio and review a proposal before recording an intent.');
+      return;
+    }
+    try {
+      await createIntent.mutateAsync({
+        data: {
+          ...intentDraft,
+          proposalId: activeProposal.id,
+          shadowPortfolioId: activePortfolio.id,
+          hypotheticalQuantity: Number(intentDraft.hypotheticalQuantity),
+          referencePrice: Number(intentDraft.referencePrice),
+        },
+      });
+      await refresh();
+      onFeedback('Hypothetical intent recorded. It was not transmitted and cannot reach OMS or household capital.');
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'The Shadow intent could not be recorded.');
+    }
+  };
+
+  if (query.isLoading) return <main className="content"><PageHeading eyebrow="Family Office / intelligence" title={<>Research before<br /><em>exposure.</em></>} description="Loading the household-scoped intelligence workspace." /><div className="card card-pad">Reading provider status and advisory records…</div></main>;
+  if (query.isError || !snapshot) return <main className="content"><PageHeading eyebrow="Family Office / intelligence" title={<>Research before<br /><em>exposure.</em></>} description="Grok intelligence is subordinate to Capital OS and fails closed when unavailable." /><section className="card card-pad dashboard-data-state unavailable" role="alert"><ShieldAlert size={22} /><h2>Family Office unavailable</h2><p>No advisory records are shown because the household service did not respond.</p><button className="btn btn-primary" onClick={() => { void query.refetch(); }}>Try again</button></section></main>;
+
+  return <main className="content">
+    <PageHeading eyebrow="Family Office / intelligence gateway" title={<>Research before<br /><em>exposure.</em></>} description="A household-scoped analyst room for research, explanation, and Shadow-only review. Capital OS remains the authority for financial facts, readiness, risk, and execution." actions={<span className="status"><ShieldCheck size={13} /> Advisory only</span>} />
+    <section className="card card-pad animate-in delay-1">
+      <CardTitle title="Provider boundary" subtitle="xAI/Grok is server-side, optional, and fail-closed." action={<span className={`status ${snapshot.provider.state === 'ready' ? '' : 'pending'}`}>{snapshot.provider.state}</span>} />
+      <div className="protection-grid">
+        <div><span>Provider model</span><strong>{snapshot.provider.model}</strong></div>
+        <div><span>Live execution</span><strong>Disabled</strong></div>
+        <div><span>Real orders sent</span><strong>{snapshot.summary.realOrdersSent}</strong></div>
+        <div><span>Money moved</span><strong>{snapshot.summary.moneyMovedCents}¢</strong></div>
+      </div>
+      {snapshot.provider.state === 'disabled' && <div className="lab-disabled-note"><Lock size={13} /> Provider is disabled or not configured. No synthetic research is shown; deterministic Capital OS intelligence remains available elsewhere.</div>}
+      <div className="safety-inline"><ShieldCheck size={15} /> {snapshot.guardrails[0] ?? 'Research may not move money, place orders, alter risk, or unlock protected capital.'}</div>
+    </section>
+
+    <section className="section-grid page-section">
+      <section className="card card-pad animate-in delay-2">
+        <CardTitle title="Commission an analyst" subtitle="Prompts are sanitized server-side and stored without credentials." action={<Sparkles size={17} color="var(--ink-soft)" />} />
+        <form className="account-form" onSubmit={runResearch}>
+          <div className="field"><label>Scope</label><input required maxLength={120} value={researchDraft.scope} onChange={(event) => setResearchDraft({ ...researchDraft, scope: event.target.value })} /></div>
+          <div className="field"><label>Analyst</label><input maxLength={80} value={researchDraft.analyst} onChange={(event) => setResearchDraft({ ...researchDraft, analyst: event.target.value })} /></div>
+          <div className="field" style={{ gridColumn: '1 / -1' }}><label>Research question</label><textarea required maxLength={4000} rows={5} value={researchDraft.prompt} onChange={(event) => setResearchDraft({ ...researchDraft, prompt: event.target.value })} placeholder="Compare current Florida tax-lien market signals with this household's property buy box. Separate facts, assumptions, and unknowns." /></div>
+          <button className="btn btn-primary" type="submit" disabled={research.isPending || snapshot.provider.state === 'disabled'}><Sparkles size={14} /> {research.isPending ? 'Researching…' : 'Run advisory research'}</button>
+        </form>
+      </section>
+      <section className="card card-pad animate-in delay-2">
+        <CardTitle title="Safety contract" subtitle="These boundaries are not configurable from the intelligence workspace." />
+        <div className="logic-grid">{snapshot.guardrails.map((guardrail) => <div key={guardrail}><span><Lock size={12} /> Guardrail</span><p>{guardrail}</p></div>)}</div>
+      </section>
+    </section>
+
+    <section className="card card-pad page-section animate-in delay-3">
+      <CardTitle title="Analyst proposals" subtitle={`${proposals.length} household-scoped proposal${proposals.length === 1 ? '' : 's'} · facts and uncertainty remain visible`} action={<span className="mono-label">Human review required</span>} />
+      {proposals.length === 0 ? <div className="empty-state"><BookOpen size={19} /><strong>No proposals yet</strong><span>Run a research question to create an advisory proposal when the provider is available.</span></div> : <div className="journal-list">{proposals.map((proposal) => <article key={proposal.id}><div className="journal-date"><span className={`status ${proposal.status === 'proposed' ? 'pending' : ''}`}>{proposal.status}</span><br />{new Date(proposal.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div><div><div className="card-title-row"><div><h3>{proposal.title}</h3><span className="intelligence-confidence">{proposal.label} · {proposal.analyticalDirection} · {proposal.confidence.toFixed(0)}% confidence</span></div><span className="status">No execution authority</span></div><p>{proposal.thesis}</p><div className="logic-grid"><div><span>Facts</span><p>{proposal.facts.join(' · ') || 'None recorded'}</p></div><div><span>Assumptions</span><p>{proposal.assumptions.join(' · ') || 'None recorded'}</p></div><div><span>Risks</span><p>{proposal.risks.join(' · ') || 'None recorded'}</p></div></div>{proposal.status === 'proposed' && <div className="heading-actions"><button className="btn" onClick={() => { void recordDecision(proposal.id, 'watch'); }} disabled={decide.isPending}>Watch</button><button className="btn" onClick={() => { void recordDecision(proposal.id, 'request_more_research'); }} disabled={decide.isPending}>Request more research</button><button className="btn btn-primary" onClick={() => { void recordDecision(proposal.id, 'approve_shadow'); }} disabled={decide.isPending}>Approve Shadow review</button></div>}</div></article>)}</div>}
+    </section>
+
+    <section className="section-grid page-section">
+      <section className="card card-pad">
+        <CardTitle title="Shadow portfolio" subtitle="Hypothetical tracking only · never a household asset" action={<BarChart3 size={17} color="var(--ink-soft)" />} />
+        <form className="account-form" onSubmit={submitPortfolio}>
+          <div className="field"><label>Name</label><input required maxLength={120} value={portfolioDraft.name} onChange={(event) => setPortfolioDraft({ ...portfolioDraft, name: event.target.value })} placeholder="Florida tax-lien watchlist" /></div>
+          <div className="field"><label>Benchmark</label><input maxLength={120} value={portfolioDraft.benchmark} onChange={(event) => setPortfolioDraft({ ...portfolioDraft, benchmark: event.target.value })} /></div>
+          <div className="field" style={{ gridColumn: '1 / -1' }}><label>Strategy note</label><textarea maxLength={500} rows={3} value={portfolioDraft.strategy} onChange={(event) => setPortfolioDraft({ ...portfolioDraft, strategy: event.target.value })} /></div>
+          <button className="btn btn-primary" type="submit" disabled={createPortfolio.isPending}>{createPortfolio.isPending ? 'Creating…' : 'Create Shadow portfolio'}</button>
+        </form>
+        <div className="review-list">{shadowPortfolios.map((portfolio) => <div className="review-row" key={portfolio.id}><div><strong>{portfolio.name}</strong><span>{portfolio.strategy || 'No strategy note'} · benchmark {portfolio.benchmark}</span></div><span className="status">{portfolio.liveExecutionEnabled ? 'Blocked by policy' : 'Shadow only'}</span></div>)}</div>
+      </section>
+      <section className="card card-pad">
+        <CardTitle title="Hypothetical intent" subtitle="Records a research scenario; it is never transmitted." action={<Activity size={17} color="var(--ink-soft)" />} />
+        <form className="account-form" onSubmit={submitIntent}>
+          <div className="field"><label>Proposal</label><select value={intentDraft.proposalId} onChange={(event) => setIntentDraft({ ...intentDraft, proposalId: event.target.value })}>{proposals.filter((proposal) => proposal.status !== 'rejected').map((proposal) => <option key={proposal.id} value={proposal.id}>{proposal.title}</option>)}</select></div>
+          <div className="field"><label>Shadow portfolio</label><select value={intentDraft.shadowPortfolioId} onChange={(event) => setIntentDraft({ ...intentDraft, shadowPortfolioId: event.target.value })}>{shadowPortfolios.map((portfolio) => <option key={portfolio.id} value={portfolio.id}>{portfolio.name}</option>)}</select></div>
+          <div className="field"><label>Symbol</label><input required maxLength={32} value={intentDraft.symbol} onChange={(event) => setIntentDraft({ ...intentDraft, symbol: event.target.value.toUpperCase() })} placeholder="T-BILL" /></div>
+          <div className="field"><label>Direction</label><select value={intentDraft.direction} onChange={(event) => setIntentDraft({ ...intentDraft, direction: event.target.value as ShadowIntentInputDirection })}><option value="neutral">Neutral</option><option value="long">Long</option><option value="short">Short</option></select></div>
+          <div className="field"><label>Notional</label><input required inputMode="decimal" value={intentDraft.hypotheticalNotional} onChange={(event) => setIntentDraft({ ...intentDraft, hypotheticalNotional: event.target.value })} /></div>
+          <div className="field"><label>Reference price</label><input required inputMode="decimal" value={intentDraft.referencePrice} onChange={(event) => setIntentDraft({ ...intentDraft, referencePrice: event.target.value })} /></div>
+          <div className="field"><label>Quantity</label><input required inputMode="decimal" value={intentDraft.hypotheticalQuantity} onChange={(event) => setIntentDraft({ ...intentDraft, hypotheticalQuantity: event.target.value })} /></div>
+          <div className="field"><label>Time horizon</label><input required maxLength={120} value={intentDraft.timeHorizon} onChange={(event) => setIntentDraft({ ...intentDraft, timeHorizon: event.target.value })} /></div>
+          <button className="btn btn-primary" type="submit" disabled={createIntent.isPending || !activeProposal || !activePortfolio}>{createIntent.isPending ? 'Recording…' : 'Record Shadow intent'}</button>
+        </form>
+        <div className="review-list">{snapshot.shadowIntents.slice(0, 5).map((intent) => <div className="review-row" key={intent.id}><div><strong>{intent.direction.toUpperCase()} {intent.symbol}</strong><span>{intent.hypotheticalNotional} · {intent.timeHorizon}</span></div><span className="status">{intent.transmitted ? 'Blocked' : 'Not transmitted'}</span></div>)}</div>
+      </section>
+    </section>
+  </main>;
+}
+
 function AppRouter({ onAction, onFeedback, transactions, dashboard, dashboardState, contributionsLoading, contributionsUnavailable, onRetry }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void; transactions: Transaction[]; dashboard?: DashboardSnapshot; dashboardState: 'loading' | 'unavailable' | 'empty' | 'ready'; contributionsLoading: boolean; contributionsUnavailable: boolean; onRetry: () => void }) {
   return <Switch>
     <Route path="/" component={() => <Dashboard onAction={onAction} onFeedback={onFeedback} transactions={transactions} dashboard={dashboard} dashboardState={dashboardState} contributionsLoading={contributionsLoading} contributionsUnavailable={contributionsUnavailable} onRetry={onRetry} />} />
@@ -3055,6 +3212,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, dashboardSta
     <Route path="/reports" component={() => <UtilityPage kind="reports" onAction={onAction} transactions={transactions} />} />
     <Route path="/documents" component={() => <UtilityPage kind="documents" onAction={onAction} transactions={transactions} />} />
      <Route path="/insights" component={() => <IntelligencePage onFeedback={onFeedback} />} />
+     <Route path="/family-office" component={() => <FamilyOfficePage onFeedback={onFeedback} />} />
     <Route component={NotFound} />
   </Switch>;
 }

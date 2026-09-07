@@ -85,6 +85,11 @@ import type {
   EmergencyStopInput,
   ExecutionControlCommandInput,
   ExecutionControlState,
+  FamilyOfficeProposal,
+  FamilyOfficeProposalDecisionInput,
+  FamilyOfficeResearchInput,
+  FamilyOfficeResearchResult,
+  FamilyOfficeSnapshot,
   FinanceInsights,
   FinanceSnapshot,
   FinanceTransaction,
@@ -176,6 +181,10 @@ import type {
   RiskSummary,
   RunStrategyExperimentInput,
   SafeToDeploy,
+  ShadowIntent,
+  ShadowIntentInput,
+  ShadowPortfolio,
+  ShadowPortfolioInput,
   StrategyAllocationInput,
   StrategyGraduationReview,
   StrategyLabExperiment,
@@ -5305,6 +5314,368 @@ export const useRecordIntelligenceFeedback = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getRecordIntelligenceFeedbackMutationOptions(options));
+    }
+
+export const getGetFamilyOfficeUrl = () => {
+
+
+
+
+  return `/api/family-office`
+}
+
+/**
+ * @summary Get the household-scoped advisory Family Office snapshot
+ */
+export const getFamilyOffice = async ( options?: Parameters<typeof customFetch>[1]): Promise<FamilyOfficeSnapshot> => {
+
+  return customFetch<FamilyOfficeSnapshot>(getGetFamilyOfficeUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFamilyOfficeQueryKey = () => {
+    return [
+    `/api/family-office`
+    ] as const;
+    }
+
+
+export const getGetFamilyOfficeQueryOptions = <TData = Awaited<ReturnType<typeof getFamilyOffice>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFamilyOffice>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFamilyOfficeQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFamilyOffice>>> = ({ signal }) => getFamilyOffice({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFamilyOffice>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFamilyOfficeQueryResult = NonNullable<Awaited<ReturnType<typeof getFamilyOffice>>>
+export type GetFamilyOfficeQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the household-scoped advisory Family Office snapshot
+ */
+
+export function useGetFamilyOffice<TData = Awaited<ReturnType<typeof getFamilyOffice>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFamilyOffice>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFamilyOfficeQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateFamilyOfficeResearchUrl = () => {
+
+
+
+
+  return `/api/family-office/research`
+}
+
+/**
+ * @summary Run advisory Family Office research
+ */
+export const createFamilyOfficeResearch = async (familyOfficeResearchInput: FamilyOfficeResearchInput, options?: Parameters<typeof customFetch>[1]): Promise<FamilyOfficeResearchResult> => {
+
+  return customFetch<FamilyOfficeResearchResult>(getCreateFamilyOfficeResearchUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(familyOfficeResearchInput)
+  }
+);}
+
+
+
+
+
+export const getCreateFamilyOfficeResearchMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFamilyOfficeResearch>>, TError,{data: BodyType<FamilyOfficeResearchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createFamilyOfficeResearch>>, TError,{data: BodyType<FamilyOfficeResearchInput>}, TContext> => {
+
+const mutationKey = ['createFamilyOfficeResearch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createFamilyOfficeResearch>>, {data: BodyType<FamilyOfficeResearchInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createFamilyOfficeResearch(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateFamilyOfficeResearchMutationResult = NonNullable<Awaited<ReturnType<typeof createFamilyOfficeResearch>>>
+    export type CreateFamilyOfficeResearchMutationBody = BodyType<FamilyOfficeResearchInput>
+    export type CreateFamilyOfficeResearchMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Run advisory Family Office research
+ */
+export const useCreateFamilyOfficeResearch = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFamilyOfficeResearch>>, TError,{data: BodyType<FamilyOfficeResearchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createFamilyOfficeResearch>>,
+        TError,
+        {data: BodyType<FamilyOfficeResearchInput>},
+        TContext
+      > => {
+      return useMutation(getCreateFamilyOfficeResearchMutationOptions(options));
+    }
+
+export const getDecideFamilyOfficeProposalUrl = (proposalId: string,) => {
+
+
+
+
+  return `/api/family-office/proposals/${proposalId}/decision`
+}
+
+/**
+ * @summary Record a human Shadow-only Family Office proposal decision
+ */
+export const decideFamilyOfficeProposal = async (proposalId: string,
+    familyOfficeProposalDecisionInput: FamilyOfficeProposalDecisionInput, options?: Parameters<typeof customFetch>[1]): Promise<FamilyOfficeProposal> => {
+
+  return customFetch<FamilyOfficeProposal>(getDecideFamilyOfficeProposalUrl(proposalId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(familyOfficeProposalDecisionInput)
+  }
+);}
+
+
+
+
+
+export const getDecideFamilyOfficeProposalMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideFamilyOfficeProposal>>, TError,{proposalId: string;data: BodyType<FamilyOfficeProposalDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideFamilyOfficeProposal>>, TError,{proposalId: string;data: BodyType<FamilyOfficeProposalDecisionInput>}, TContext> => {
+
+const mutationKey = ['decideFamilyOfficeProposal'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideFamilyOfficeProposal>>, {proposalId: string;data: BodyType<FamilyOfficeProposalDecisionInput>}> = (props) => {
+          const {proposalId,data} = props ?? {};
+
+          return  decideFamilyOfficeProposal(proposalId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecideFamilyOfficeProposalMutationResult = NonNullable<Awaited<ReturnType<typeof decideFamilyOfficeProposal>>>
+    export type DecideFamilyOfficeProposalMutationBody = BodyType<FamilyOfficeProposalDecisionInput>
+    export type DecideFamilyOfficeProposalMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Record a human Shadow-only Family Office proposal decision
+ */
+export const useDecideFamilyOfficeProposal = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideFamilyOfficeProposal>>, TError,{proposalId: string;data: BodyType<FamilyOfficeProposalDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof decideFamilyOfficeProposal>>,
+        TError,
+        {proposalId: string;data: BodyType<FamilyOfficeProposalDecisionInput>},
+        TContext
+      > => {
+      return useMutation(getDecideFamilyOfficeProposalMutationOptions(options));
+    }
+
+export const getCreateShadowPortfolioUrl = () => {
+
+
+
+
+  return `/api/family-office/shadow/portfolios`
+}
+
+/**
+ * @summary Create a hypothetical Shadow portfolio
+ */
+export const createShadowPortfolio = async (shadowPortfolioInput: ShadowPortfolioInput, options?: Parameters<typeof customFetch>[1]): Promise<ShadowPortfolio> => {
+
+  return customFetch<ShadowPortfolio>(getCreateShadowPortfolioUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(shadowPortfolioInput)
+  }
+);}
+
+
+
+
+
+export const getCreateShadowPortfolioMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShadowPortfolio>>, TError,{data: BodyType<ShadowPortfolioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createShadowPortfolio>>, TError,{data: BodyType<ShadowPortfolioInput>}, TContext> => {
+
+const mutationKey = ['createShadowPortfolio'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createShadowPortfolio>>, {data: BodyType<ShadowPortfolioInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createShadowPortfolio(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateShadowPortfolioMutationResult = NonNullable<Awaited<ReturnType<typeof createShadowPortfolio>>>
+    export type CreateShadowPortfolioMutationBody = BodyType<ShadowPortfolioInput>
+    export type CreateShadowPortfolioMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a hypothetical Shadow portfolio
+ */
+export const useCreateShadowPortfolio = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShadowPortfolio>>, TError,{data: BodyType<ShadowPortfolioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createShadowPortfolio>>,
+        TError,
+        {data: BodyType<ShadowPortfolioInput>},
+        TContext
+      > => {
+      return useMutation(getCreateShadowPortfolioMutationOptions(options));
+    }
+
+export const getCreateShadowIntentUrl = () => {
+
+
+
+
+  return `/api/family-office/shadow/intents`
+}
+
+/**
+ * @summary Create a hypothetical, never-transmitted Shadow order intent
+ */
+export const createShadowIntent = async (shadowIntentInput: ShadowIntentInput, options?: Parameters<typeof customFetch>[1]): Promise<ShadowIntent> => {
+
+  return customFetch<ShadowIntent>(getCreateShadowIntentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(shadowIntentInput)
+  }
+);}
+
+
+
+
+
+export const getCreateShadowIntentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShadowIntent>>, TError,{data: BodyType<ShadowIntentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createShadowIntent>>, TError,{data: BodyType<ShadowIntentInput>}, TContext> => {
+
+const mutationKey = ['createShadowIntent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createShadowIntent>>, {data: BodyType<ShadowIntentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createShadowIntent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateShadowIntentMutationResult = NonNullable<Awaited<ReturnType<typeof createShadowIntent>>>
+    export type CreateShadowIntentMutationBody = BodyType<ShadowIntentInput>
+    export type CreateShadowIntentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a hypothetical, never-transmitted Shadow order intent
+ */
+export const useCreateShadowIntent = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createShadowIntent>>, TError,{data: BodyType<ShadowIntentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createShadowIntent>>,
+        TError,
+        {data: BodyType<ShadowIntentInput>},
+        TContext
+      > => {
+      return useMutation(getCreateShadowIntentMutationOptions(options));
     }
 
 export const getListAuditEventsUrl = () => {

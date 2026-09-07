@@ -24,6 +24,7 @@ tags:
   - name: business
   - name: financing
   - name: observability
+  - name: family-office
 paths:
   /internal/metrics:
     get:
@@ -1126,6 +1127,86 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RecommendationFeedback"
+  /family-office:
+    get:
+      operationId: getFamilyOffice
+      tags: [family-office]
+      summary: Get the household-scoped advisory Family Office snapshot
+      responses:
+        "200":
+          description: Family Office snapshot
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyOfficeSnapshot" }
+  /family-office/research:
+    post:
+      operationId: createFamilyOfficeResearch
+      tags: [family-office]
+      summary: Run advisory Family Office research
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FamilyOfficeResearchInput" }
+      responses:
+        "201":
+          description: Research run and optional proposal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyOfficeResearchResult" }
+  /family-office/proposals/{proposalId}/decision:
+    post:
+      operationId: decideFamilyOfficeProposal
+      tags: [family-office]
+      summary: Record a human Shadow-only Family Office proposal decision
+      parameters:
+        - name: proposalId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FamilyOfficeProposalDecisionInput" }
+      responses:
+        "200":
+          description: Updated advisory proposal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyOfficeProposal" }
+  /family-office/shadow/portfolios:
+    post:
+      operationId: createShadowPortfolio
+      tags: [family-office]
+      summary: Create a hypothetical Shadow portfolio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ShadowPortfolioInput" }
+      responses:
+        "201":
+          description: Shadow portfolio
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShadowPortfolio" }
+  /family-office/shadow/intents:
+    post:
+      operationId: createShadowIntent
+      tags: [family-office]
+      summary: Create a hypothetical, never-transmitted Shadow order intent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ShadowIntentInput" }
+      responses:
+        "201":
+          description: Shadow order intent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShadowIntent" }
   /audit:
     get:
       operationId: listAuditEvents
@@ -4172,6 +4253,147 @@ components:
         feedback: { type: string }
         note: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
+        advisoryOnly: { type: boolean }
+    FamilyOfficeResearchInput:
+      type: object
+      required: [scope, prompt]
+      properties:
+        analyst: { type: string, maxLength: 80 }
+        scope: { type: string, minLength: 1, maxLength: 120 }
+        prompt: { type: string, minLength: 1, maxLength: 4000 }
+    FamilyOfficeEvidence:
+      type: object
+      required: [id, title, excerpt, sourceKind, classification, freshness, confidence, createdAt]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        excerpt: { type: string }
+        sourceKind: { type: string }
+        sourceUrl: { type: ["string", "null"] }
+        classification: { type: string }
+        freshness: { type: string }
+        confidence: { type: number }
+        createdAt: { type: string, format: date-time }
+    FamilyOfficeRun:
+      type: object
+      required: [id, analyst, scope, status, providerStatus, errorCode, outputSummary, createdAt, completedAt, advisoryOnly]
+      properties:
+        id: { type: string }
+        analyst: { type: string }
+        scope: { type: string }
+        status: { type: string }
+        providerStatus: { type: string }
+        errorCode: { type: ["string", "null"] }
+        outputSummary: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: ["string", "null"], format: date-time }
+        advisoryOnly: { type: boolean }
+    FamilyOfficeProposal:
+      type: object
+      required: [id, title, thesis, label, analyticalDirection, confidence, facts, assumptions, risks, evidenceIds, status, createdAt, reviewedAt, reviewReason, advisoryOnly, executionAuthorization]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        thesis: { type: string }
+        label: { type: string }
+        analyticalDirection: { type: string }
+        confidence: { type: number }
+        facts: { type: array, items: { type: string } }
+        assumptions: { type: array, items: { type: string } }
+        risks: { type: array, items: { type: string } }
+        evidenceIds: { type: array, items: { type: string } }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+        reviewedAt: { type: ["string", "null"], format: date-time }
+        reviewReason: { type: ["string", "null"] }
+        advisoryOnly: { type: boolean }
+        executionAuthorization: { type: boolean }
+    ShadowPortfolioInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        benchmark: { type: string, maxLength: 120 }
+        strategy: { type: string, maxLength: 500 }
+    ShadowPortfolio:
+      type: object
+      required: [id, name, benchmark, strategy, capitalModel, riskPolicy, enabled, createdAt, authoritativeHouseholdAsset, liveExecutionEnabled]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        benchmark: { type: string }
+        strategy: { type: string }
+        capitalModel: { type: string }
+        riskPolicy: { type: string }
+        enabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        authoritativeHouseholdAsset: { type: boolean }
+        liveExecutionEnabled: { type: boolean }
+    ShadowIntentInput:
+      type: object
+      required: [proposalId, shadowPortfolioId, symbol, direction, hypotheticalQuantity, hypotheticalNotional, referencePrice, timeHorizon]
+      properties:
+        proposalId: { type: string }
+        shadowPortfolioId: { type: string }
+        symbol: { type: string, minLength: 1, maxLength: 32 }
+        direction: { type: string, enum: [long, short, neutral] }
+        hypotheticalQuantity: { type: number, exclusiveMinimum: 0 }
+        hypotheticalNotional: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        referencePrice: { type: number, exclusiveMinimum: 0 }
+        timeHorizon: { type: string, minLength: 1, maxLength: 120 }
+    ShadowIntent:
+      type: object
+      required: [id, proposalId, shadowPortfolioId, symbol, direction, hypotheticalQuantity, hypotheticalNotional, referencePrice, referenceTimestamp, timeHorizon, status, advisoryOnly, transmitted]
+      properties:
+        id: { type: string }
+        proposalId: { type: string }
+        shadowPortfolioId: { type: string }
+        symbol: { type: string }
+        direction: { type: string }
+        hypotheticalQuantity: { type: number }
+        hypotheticalNotional: { type: string }
+        referencePrice: { type: number }
+        referenceTimestamp: { type: string, format: date-time }
+        timeHorizon: { type: string }
+        status: { type: string }
+        advisoryOnly: { type: boolean }
+        transmitted: { type: boolean }
+    FamilyOfficeProposalDecisionInput:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: { type: string, enum: [watch, reject, request_more_research, approve_shadow] }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    FamilyOfficeSnapshot:
+      type: object
+      required: [provider, guardrails, runs, proposals, shadowPortfolios, shadowIntents, summary]
+      properties:
+        provider:
+          type: object
+          required: [state, enabled, model]
+          properties:
+            state: { type: string, enum: [disabled, ready] }
+            enabled: { type: boolean }
+            model: { type: string }
+        guardrails: { type: array, items: { type: string } }
+        runs: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeRun" } }
+        proposals: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeProposal" } }
+        shadowPortfolios: { type: array, items: { $ref: "#/components/schemas/ShadowPortfolio" } }
+        shadowIntents: { type: array, items: { $ref: "#/components/schemas/ShadowIntent" } }
+        summary:
+          type: object
+          required: [liveExecutionEnabled, realOrdersSent, moneyMovedCents, shadowOnly]
+          properties:
+            liveExecutionEnabled: { type: boolean }
+            realOrdersSent: { type: number }
+            moneyMovedCents: { type: number }
+            shadowOnly: { type: boolean }
+    FamilyOfficeResearchResult:
+      type: object
+      required: [run, proposal, advisoryOnly]
+      properties:
+        run: { $ref: "#/components/schemas/FamilyOfficeRun" }
+        proposal: { anyOf: [{ $ref: "#/components/schemas/FamilyOfficeProposal" }, { type: "null" }] }
         advisoryOnly: { type: boolean }
     IntelligenceScenarioInput:
       type: object

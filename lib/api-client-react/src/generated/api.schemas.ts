@@ -1834,6 +1834,199 @@ export interface RecommendationFeedback {
   advisoryOnly: boolean;
 }
 
+export interface FamilyOfficeResearchInput {
+  /** @maxLength 80 */
+  analyst?: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  scope: string;
+  /**
+     * @minLength 1
+     * @maxLength 4000
+     */
+  prompt: string;
+}
+
+export interface FamilyOfficeEvidence {
+  id: string;
+  title: string;
+  excerpt: string;
+  sourceKind: string;
+  /** @nullable */
+  sourceUrl?: string | null;
+  classification: string;
+  freshness: string;
+  confidence: number;
+  createdAt: string;
+}
+
+export interface FamilyOfficeRun {
+  id: string;
+  analyst: string;
+  scope: string;
+  status: string;
+  providerStatus: string;
+  /** @nullable */
+  errorCode: string | null;
+  /** @nullable */
+  outputSummary: string | null;
+  createdAt: string;
+  /** @nullable */
+  completedAt: string | null;
+  advisoryOnly: boolean;
+}
+
+export interface FamilyOfficeProposal {
+  id: string;
+  title: string;
+  thesis: string;
+  label: string;
+  analyticalDirection: string;
+  confidence: number;
+  facts: string[];
+  assumptions: string[];
+  risks: string[];
+  evidenceIds: string[];
+  status: string;
+  createdAt: string;
+  /** @nullable */
+  reviewedAt: string | null;
+  /** @nullable */
+  reviewReason: string | null;
+  advisoryOnly: boolean;
+  executionAuthorization: boolean;
+}
+
+export interface ShadowPortfolioInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  /** @maxLength 120 */
+  benchmark?: string;
+  /** @maxLength 500 */
+  strategy?: string;
+}
+
+export interface ShadowPortfolio {
+  id: string;
+  name: string;
+  benchmark: string;
+  strategy: string;
+  capitalModel: string;
+  riskPolicy: string;
+  enabled: boolean;
+  createdAt: string;
+  authoritativeHouseholdAsset: boolean;
+  liveExecutionEnabled: boolean;
+}
+
+export type ShadowIntentInputDirection = typeof ShadowIntentInputDirection[keyof typeof ShadowIntentInputDirection];
+
+
+export const ShadowIntentInputDirection = {
+  long: 'long',
+  short: 'short',
+  neutral: 'neutral',
+} as const;
+
+export interface ShadowIntentInput {
+  proposalId: string;
+  shadowPortfolioId: string;
+  /**
+     * @minLength 1
+     * @maxLength 32
+     */
+  symbol: string;
+  direction: ShadowIntentInputDirection;
+  /** @exclusiveMinimum 0 */
+  hypotheticalQuantity: number;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  hypotheticalNotional: string;
+  /** @exclusiveMinimum 0 */
+  referencePrice: number;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  timeHorizon: string;
+}
+
+export interface ShadowIntent {
+  id: string;
+  proposalId: string;
+  shadowPortfolioId: string;
+  symbol: string;
+  direction: string;
+  hypotheticalQuantity: number;
+  hypotheticalNotional: string;
+  referencePrice: number;
+  referenceTimestamp: string;
+  timeHorizon: string;
+  status: string;
+  advisoryOnly: boolean;
+  transmitted: boolean;
+}
+
+export type FamilyOfficeProposalDecisionInputDecision = typeof FamilyOfficeProposalDecisionInputDecision[keyof typeof FamilyOfficeProposalDecisionInputDecision];
+
+
+export const FamilyOfficeProposalDecisionInputDecision = {
+  watch: 'watch',
+  reject: 'reject',
+  request_more_research: 'request_more_research',
+  approve_shadow: 'approve_shadow',
+} as const;
+
+export interface FamilyOfficeProposalDecisionInput {
+  decision: FamilyOfficeProposalDecisionInputDecision;
+  /**
+     * @minLength 1
+     * @maxLength 500
+     */
+  reason: string;
+}
+
+export type FamilyOfficeSnapshotProviderState = typeof FamilyOfficeSnapshotProviderState[keyof typeof FamilyOfficeSnapshotProviderState];
+
+
+export const FamilyOfficeSnapshotProviderState = {
+  disabled: 'disabled',
+  ready: 'ready',
+} as const;
+
+export type FamilyOfficeSnapshotProvider = {
+  state: FamilyOfficeSnapshotProviderState;
+  enabled: boolean;
+  model: string;
+};
+
+export type FamilyOfficeSnapshotSummary = {
+  liveExecutionEnabled: boolean;
+  realOrdersSent: number;
+  moneyMovedCents: number;
+  shadowOnly: boolean;
+};
+
+export interface FamilyOfficeSnapshot {
+  provider: FamilyOfficeSnapshotProvider;
+  guardrails: string[];
+  runs: FamilyOfficeRun[];
+  proposals: FamilyOfficeProposal[];
+  shadowPortfolios: ShadowPortfolio[];
+  shadowIntents: ShadowIntent[];
+  summary: FamilyOfficeSnapshotSummary;
+}
+
+export interface FamilyOfficeResearchResult {
+  run: FamilyOfficeRun;
+  proposal: FamilyOfficeProposal | null;
+  advisoryOnly: boolean;
+}
+
 export interface IntelligenceScenarioInput {
   /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   proposedWeekly: string;

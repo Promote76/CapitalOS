@@ -2,8 +2,8 @@
 
 **Inventory date:** 2026-09-07
 **Source:** `artifacts/api-server/src/integration/tenant-route-inventory.mjs` (authoritative), `artifacts/api-server/src/routes`, and `artifacts/api-server/src/integration/p0-http.test.ts`
-<!-- tenant-route-inventory: 170 -->
-**Inventory result:** 170 Express route/method pairs match the executable route inventory.
+<!-- tenant-route-inventory: 173 -->
+**Inventory result:** 173 Express route/method pairs match the executable route inventory.
 
 The machine-readable count above is checked by the route parity release check; adding
 an endpoint without refreshing this evidence fails certification with a stale-count
@@ -11,7 +11,7 @@ error.
 
 This is an evidence index, not a source-review substitute. `PASS` means the isolated
 database-backed fixture exercised the applicable route and identifier/body boundary.
-The full 170-route preflight target is defined below. The latest clean guarded
+The full 173-route preflight target is defined below. The latest clean guarded
 replay passed on 2026-09-07: 393 executed probes, 58 scoped collection reads,
 58 cross-household rejections, and 58 malformed rejections (12 tests passed,
 0 failed/skipped). This supersedes the historical 163-route replay and the
@@ -34,7 +34,7 @@ object routes.
 | GET /household; PATCH /household/privacy | No caller-owned household authority | Request context selects an active persisted membership | PASS | PASS | PASS | PASS |
 | GET /intelligence; POST /intelligence/refresh; /scenario; /feedback | Affected goal and feedback IDs | Advisory records scoped by request household | PASS | PASS | PASS | PASS |
 | GET /micro-live; POST /micro-live/rehearsal; /enablement-review; /venues/:venueId/approve; /venues/:venueId/reviews/:kind; /arm; /reconciliation-runs; incident reviews; reactivation completion | venueId, incidentId, requirementId, session/order IDs | Household-scoped Micro-Live services; disabled execution boundary | PASS | PASS | PASS | PASS |
-| GET/POST /operations; /operations/tasks; PATCH tasks; approvals; alerts; automations; notification preferences | taskId, approvalId, alertId, automationId | Household-scoped operations services | PASS | PASS | PASS | PASS |
+| GET/POST /operations; /operations/tasks; /operations/daily-ops; PATCH tasks; daily-ops journal and guided-run actions; approvals; alerts; automations; notification preferences | taskId, approvalId, alertId, automationId, guided-run IDs | Household-scoped operations services; Daily Ops journal and guided-run history remain review-only | PASS | PASS | PASS | PASS |
 | GET/POST /properties; PATCH /properties/buy-box; POST candidates; candidate analysis; GET strategies; strategy promotion/allocation | candidateId, strategyId, property goal/document IDs | Server-owned property and strategy relationships with household predicates | PASS | PASS | PASS | PASS |
 | GET /reports | Query/report identifiers where applicable | Request-scoped reporting service | PASS | PASS | PASS | PASS |
 | GET /strategy-lab; POST strategies; strategy versions; experiments; graduation; journal | strategyId and parent evidence IDs | Strategy Lab service scopes records and keeps capital inaccessible | PASS | PASS | PASS |
@@ -46,6 +46,6 @@ object routes.
 - The two-household fixture proves a foreign goal ID is rejected before a contribution is created.
 - The same fixture provisions Owner, Partner, Advisor, and Viewer memberships in both households and passes the role-header regression, partner contribution allow, advisor/viewer contribution denial, and contribution mass-assignment assertions on isolated Neon PostgreSQL.
 - The same fixture passes recent-auth denial, parallel transfer overdraft prevention, 100-request contention, transfer replay, persisted household/actor attribution, and ledger debit/credit reconciliation on isolated Neon PostgreSQL.
-- The route preflight discovers and asserts exactly 170 route/method pairs, compares household-scoped collection reads, sends same-household, foreign, and malformed path identifiers, injects mass-assignment fields into applicable generic write probes, and fails on unexpected server errors. The single clean guarded replay recorded below covers the complete current inventory, including the Family Office routes.
+- The route preflight discovers and asserts exactly 173 route/method pairs, compares household-scoped collection reads, sends same-household, foreign, and malformed path identifiers, injects mass-assignment fields into applicable generic write probes, and fails on unexpected server errors. The next clean guarded replay must include the Daily Ops routes alongside the existing Family Office routes.
 - Parameterized routes require non-error same-household behavior, reject foreign identifiers without a successful write/read response, and reject malformed identifiers with a 4xx response. Parameterless writes must not return another household's identifiers after body tampering.
 - The latest executed preflight on the disposable target on 2026-09-07 had zero failures: 393 total probes, 58 scoped collection-read comparisons, 58 cross-household rejections, and 58 malformed-identifier rejections. The same run passed the role, recent-auth, malformed-input, mass-assignment, Shadow-only, and no-execution assertions for the complete current surface.

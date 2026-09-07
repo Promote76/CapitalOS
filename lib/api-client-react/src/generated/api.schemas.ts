@@ -4329,6 +4329,185 @@ export interface OperationsTaskUpdate {
   assignedTo?: string;
 }
 
+export type DailyOpsJournalEntryEntryType = typeof DailyOpsJournalEntryEntryType[keyof typeof DailyOpsJournalEntryEntryType];
+
+
+export const DailyOpsJournalEntryEntryType = {
+  DECISION: 'DECISION',
+  HANDOFF: 'HANDOFF',
+  CLOSEOUT: 'CLOSEOUT',
+} as const;
+
+export interface DailyOpsJournalEntry {
+  id: string;
+  actorId: string;
+  entryType: DailyOpsJournalEntryEntryType;
+  title: string;
+  decisionContext: string;
+  /** @nullable */
+  outcome: string | null;
+  evidenceLinks: string[];
+  unresolvedBlockers: string[];
+  /** @nullable */
+  relatedEntityType: string | null;
+  /** @nullable */
+  relatedEntityId: string | null;
+  createdAt: string;
+}
+
+export type DailyOpsJournalEntryInputEntryType = typeof DailyOpsJournalEntryInputEntryType[keyof typeof DailyOpsJournalEntryInputEntryType];
+
+
+export const DailyOpsJournalEntryInputEntryType = {
+  DECISION: 'DECISION',
+  HANDOFF: 'HANDOFF',
+  CLOSEOUT: 'CLOSEOUT',
+} as const;
+
+export interface DailyOpsJournalEntryInput {
+  entryType: DailyOpsJournalEntryInputEntryType;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  decisionContext: string;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  outcome?: string | null;
+  /**
+     * @maxItems 20
+     * @items.maxLength 1000
+     */
+  evidenceLinks?: string[];
+  /**
+     * @maxItems 20
+     * @items.maxLength 500
+     */
+  unresolvedBlockers?: string[];
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  relatedEntityType?: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  relatedEntityId?: string | null;
+}
+
+export type GuidedRunEventAction = typeof GuidedRunEventAction[keyof typeof GuidedRunEventAction];
+
+
+export const GuidedRunEventAction = {
+  START: 'START',
+  COMPLETE: 'COMPLETE',
+  REOPEN: 'REOPEN',
+  SNOOZE: 'SNOOZE',
+  BLOCK: 'BLOCK',
+} as const;
+
+export interface GuidedRunEvent {
+  id: string;
+  action: GuidedRunEventAction;
+  reason: string;
+  actorId: string;
+  /** @nullable */
+  snoozedUntil: string | null;
+  occurredAt: string;
+}
+
+export type GuidedRunCadence = typeof GuidedRunCadence[keyof typeof GuidedRunCadence];
+
+
+export const GuidedRunCadence = {
+  TODAY: 'TODAY',
+  WEEK: 'WEEK',
+  MONTH: 'MONTH',
+} as const;
+
+export type GuidedRunStatus = typeof GuidedRunStatus[keyof typeof GuidedRunStatus];
+
+
+export const GuidedRunStatus = {
+  NOT_STARTED: 'NOT_STARTED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED',
+  REOPENED: 'REOPENED',
+  SNOOZED: 'SNOOZED',
+  BLOCKED: 'BLOCKED',
+} as const;
+
+export interface GuidedRun {
+  id: string;
+  runDate: string;
+  cadence: GuidedRunCadence;
+  status: GuidedRunStatus;
+  /** @nullable */
+  latestReason: string | null;
+  /** @nullable */
+  startedAt: string | null;
+  /** @nullable */
+  completedAt: string | null;
+  /** @nullable */
+  snoozedUntil: string | null;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+  events: GuidedRunEvent[];
+}
+
+export interface DailyOpsHistory {
+  journalEntries: DailyOpsJournalEntry[];
+  guidedRuns: GuidedRun[];
+}
+
+export type GuidedRunActionInputAction = typeof GuidedRunActionInputAction[keyof typeof GuidedRunActionInputAction];
+
+
+export const GuidedRunActionInputAction = {
+  START: 'START',
+  COMPLETE: 'COMPLETE',
+  REOPEN: 'REOPEN',
+  SNOOZE: 'SNOOZE',
+  BLOCK: 'BLOCK',
+} as const;
+
+export type GuidedRunActionInputCadence = typeof GuidedRunActionInputCadence[keyof typeof GuidedRunActionInputCadence];
+
+
+export const GuidedRunActionInputCadence = {
+  TODAY: 'TODAY',
+  WEEK: 'WEEK',
+  MONTH: 'MONTH',
+} as const;
+
+export interface GuidedRunActionInput {
+  action: GuidedRunActionInputAction;
+  cadence: GuidedRunActionInputCadence;
+  runId?: string;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+  /** @nullable */
+  snoozedUntil?: string | null;
+}
+
+export interface GuidedRunActionResult {
+  run: GuidedRun;
+  event: GuidedRunEvent;
+}
+
 export type OperationsApprovalStatus = typeof OperationsApprovalStatus[keyof typeof OperationsApprovalStatus];
 
 

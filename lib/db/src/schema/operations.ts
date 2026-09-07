@@ -126,6 +126,69 @@ export const operationsRuns = pgTable(
   }),
 );
 
+export const operationsDecisionJournalEntries = pgTable(
+  "operations_decision_journal_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    actorId: uuid("actor_id").notNull().references(() => users.id),
+    entryType: text("entry_type").notNull().default("DECISION"),
+    title: text("title").notNull(),
+    decisionContext: text("decision_context").notNull(),
+    outcome: text("outcome"),
+    evidenceLinks: jsonb("evidence_links").$type<string[]>().notNull().default([]),
+    unresolvedBlockers: jsonb("unresolved_blockers").$type<string[]>().notNull().default([]),
+    relatedEntityType: text("related_entity_type"),
+    relatedEntityId: text("related_entity_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdCreatedIdx: index("operations_decision_journal_household_created_idx").on(table.householdId, table.createdAt),
+    householdTypeIdx: index("operations_decision_journal_household_type_idx").on(table.householdId, table.entryType),
+  }),
+);
+
+export const operationsGuidedRuns = pgTable(
+  "operations_guided_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    runDate: date("run_date", { mode: "string" }).notNull(),
+    cadence: text("cadence").notNull(),
+    status: text("status").notNull().default("NOT_STARTED"),
+    latestReason: text("latest_reason"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
+    createdBy: uuid("created_by").notNull().references(() => users.id),
+    updatedBy: uuid("updated_by").notNull().references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdDateCadenceUnique: uniqueIndex("operations_guided_runs_household_date_cadence_unique").on(table.householdId, table.runDate, table.cadence),
+    householdStatusIdx: index("operations_guided_runs_household_status_idx").on(table.householdId, table.status),
+  }),
+);
+
+export const operationsGuidedRunEvents = pgTable(
+  "operations_guided_run_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    guidedRunId: uuid("guided_run_id").notNull().references(() => operationsGuidedRuns.id, { onDelete: "cascade" }),
+    action: text("action").notNull(),
+    reason: text("reason").notNull(),
+    actorId: uuid("actor_id").notNull().references(() => users.id),
+    snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdOccurredIdx: index("operations_guided_run_events_household_occurred_idx").on(table.householdId, table.occurredAt),
+    guidedRunOccurredIdx: index("operations_guided_run_events_run_occurred_idx").on(table.guidedRunId, table.occurredAt),
+  }),
+);
+
 export const operationsJobs = pgTable(
   "operations_jobs",
   {
@@ -260,6 +323,9 @@ export type OperationsApproval = typeof operationsApprovals.$inferSelect;
 export type OperationsAlert = typeof operationsAlerts.$inferSelect;
 export type OperationsAutomation = typeof operationsAutomations.$inferSelect;
 export type OperationsRun = typeof operationsRuns.$inferSelect;
+export type OperationsDecisionJournalEntry = typeof operationsDecisionJournalEntries.$inferSelect;
+export type OperationsGuidedRun = typeof operationsGuidedRuns.$inferSelect;
+export type OperationsGuidedRunEvent = typeof operationsGuidedRunEvents.$inferSelect;
 export type OperationsJob = typeof operationsJobs.$inferSelect;
 export type OperationsJobAttempt = typeof operationsJobAttempts.$inferSelect;
 export type OperationsWorker = typeof operationsWorkers.$inferSelect;

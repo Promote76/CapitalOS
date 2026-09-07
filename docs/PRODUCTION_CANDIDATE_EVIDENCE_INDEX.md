@@ -2,7 +2,7 @@
 
 **Evidence date:** 2026-09-07
 **Decision:** **IN-HOUSE ONLY — READY FOR CONTROLLED INTERNAL USE**
-<!-- tenant-route-inventory: 170 -->
+<!-- tenant-route-inventory: 173 -->
 
 This index distinguishes executable evidence from source review and blocked infrastructure evidence. It must not be used to check a release-gate item unless the referenced evidence actually exists.
 The route count marker is checked against the authoritative route inventory during
@@ -11,7 +11,7 @@ API contract certification; stale evidence fails that release check.
 | Area | Evidence | Result | Gate state |
 |---|---|---|---|
 | Identity | Clerk middleware/provider source review; signed-out production-like request returns 401; authenticated Clerk browser run | Authenticated onboarding, persistence, sign-out, repeat sign-in, and isolation passed; provider-supported step-up remains open | PASS for P0-05; P1 step-up OPEN |
-| Tenant isolation | `docs/certification/household-privacy-runs/household-privacy-2026-09-07T01-25-33Z.log` | One clean guarded disposable-target replay covered all 170 route/method pairs: 393 probes, 58 scoped collection reads, 58 foreign-identifier rejections, and 58 malformed-identifier rejections. Household A/B reads and writes stayed household-scoped. | PASS |
+| Tenant isolation | `docs/certification/household-privacy-runs/household-privacy-2026-09-07T01-25-33Z.log` | The current executable inventory contains 173 route/method pairs after adding Daily Ops journal and guided-run history. The referenced clean replay predates those three routes and remains evidence for the prior 170-route surface only. | OPEN |
 | Authorization | `docs/certification/household-privacy-runs/household-privacy-2026-09-07T01-25-33Z.log` and source review | The same complete replay passed role, recent-auth, malformed-input, mass-assignment, Shadow-only, and no-execution assertions across the current route surface. Middleware and service source review is recorded separately from executed evidence. | PASS for the isolated current surface |
 | Origin / CSRF | `scripts/certify-production-origin.mjs` and `src/middleware/safety.test.ts` | Five published-origin probes and the middleware matrix pass; full authenticated route matrix remains open | PASS for P0-02; broader route coverage OPEN |
 | Financial concurrency | Database-backed HTTP fixture | Targeted race, 100-request contention, balanced ledger totals, and transfer replay passed on isolated Neon PostgreSQL | PARTIAL |
@@ -26,8 +26,10 @@ API contract certification; stale evidence fails that release check.
 
 ## Latest matrix execution
 
-All 170 route/method pairs are in the current executable surface; the
-certification run included the 170-route tenant preflight and one clean guarded
+All 173 route/method pairs are in the current executable surface; the
+certification checklist included the 173-route tenant preflight target, while the
+referenced certification run predates the Daily Ops routes and covered the prior
+170-route surface. The clean guarded
 replay covered the complete inventory. The run passed with 393 probes,
 58 scoped collection reads, 58 cross-household rejections, and 58 malformed
 rejections (12 tests passed; none failed or skipped). P0-01, P0-06, and P0-08

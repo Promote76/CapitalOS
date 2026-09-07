@@ -2384,6 +2384,57 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+  /operations/daily-ops:
+    get:
+      operationId: listDailyOpsHistory
+      tags: [operations]
+      summary: List household Daily Ops journal and guided-run history
+      responses:
+        "200":
+          description: Daily Ops review history
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DailyOpsHistory" }
+  /operations/daily-ops/journal:
+    post:
+      operationId: createDailyOpsJournalEntry
+      tags: [operations]
+      summary: Record a household Daily Ops decision, handoff, or closeout note
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DailyOpsJournalEntryInput" }
+      responses:
+        "201":
+          description: Created Daily Ops journal entry
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DailyOpsJournalEntry" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /operations/daily-ops/guided-run:
+    post:
+      operationId: recordGuidedRunAction
+      tags: [operations]
+      summary: Persist a Guided Run the Day action
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GuidedRunActionInput" }
+      responses:
+        "201":
+          description: Updated guided run and persisted action event
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GuidedRunActionResult" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /operations/approvals:
     get:
       operationId: listOperationsApprovals
@@ -6044,6 +6095,81 @@ components:
       properties:
         status: { type: string, enum: [OPEN, IN_PROGRESS, WAITING, BLOCKED, COMPLETED, DISMISSED, EXPIRED] }
         assignedTo: { type: string }
+    DailyOpsJournalEntry:
+      type: object
+      required: [id, actorId, entryType, title, decisionContext, outcome, evidenceLinks, unresolvedBlockers, relatedEntityType, relatedEntityId, createdAt]
+      properties:
+        id: { type: string }
+        actorId: { type: string }
+        entryType: { type: string, enum: [DECISION, HANDOFF, CLOSEOUT] }
+        title: { type: string }
+        decisionContext: { type: string }
+        outcome: { type: ["string", "null"] }
+        evidenceLinks: { type: array, items: { type: string } }
+        unresolvedBlockers: { type: array, items: { type: string } }
+        relatedEntityType: { type: ["string", "null"] }
+        relatedEntityId: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    DailyOpsJournalEntryInput:
+      type: object
+      required: [entryType, title, decisionContext]
+      properties:
+        entryType: { type: string, enum: [DECISION, HANDOFF, CLOSEOUT] }
+        title: { type: string, minLength: 1, maxLength: 160 }
+        decisionContext: { type: string, minLength: 1, maxLength: 2000 }
+        outcome: { type: ["string", "null"], maxLength: 1000 }
+        evidenceLinks: { type: array, items: { type: string, maxLength: 1000 }, maxItems: 20 }
+        unresolvedBlockers: { type: array, items: { type: string, maxLength: 500 }, maxItems: 20 }
+        relatedEntityType: { type: ["string", "null"], maxLength: 80 }
+        relatedEntityId: { type: ["string", "null"], maxLength: 160 }
+    GuidedRunEvent:
+      type: object
+      required: [id, action, reason, actorId, snoozedUntil, occurredAt]
+      properties:
+        id: { type: string }
+        action: { type: string, enum: [START, COMPLETE, REOPEN, SNOOZE, BLOCK] }
+        reason: { type: string }
+        actorId: { type: string }
+        snoozedUntil: { type: ["string", "null"], format: date-time }
+        occurredAt: { type: string, format: date-time }
+    GuidedRun:
+      type: object
+      required: [id, runDate, cadence, status, latestReason, startedAt, completedAt, snoozedUntil, createdBy, updatedBy, createdAt, updatedAt, events]
+      properties:
+        id: { type: string }
+        runDate: { type: string, format: date }
+        cadence: { type: string, enum: [TODAY, WEEK, MONTH] }
+        status: { type: string, enum: [NOT_STARTED, IN_PROGRESS, COMPLETED, REOPENED, SNOOZED, BLOCKED] }
+        latestReason: { type: ["string", "null"] }
+        startedAt: { type: ["string", "null"], format: date-time }
+        completedAt: { type: ["string", "null"], format: date-time }
+        snoozedUntil: { type: ["string", "null"], format: date-time }
+        createdBy: { type: string }
+        updatedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        events: { type: array, items: { $ref: "#/components/schemas/GuidedRunEvent" } }
+    DailyOpsHistory:
+      type: object
+      required: [journalEntries, guidedRuns]
+      properties:
+        journalEntries: { type: array, items: { $ref: "#/components/schemas/DailyOpsJournalEntry" } }
+        guidedRuns: { type: array, items: { $ref: "#/components/schemas/GuidedRun" } }
+    GuidedRunActionInput:
+      type: object
+      required: [action, cadence, reason]
+      properties:
+        action: { type: string, enum: [START, COMPLETE, REOPEN, SNOOZE, BLOCK] }
+        cadence: { type: string, enum: [TODAY, WEEK, MONTH] }
+        runId: { type: string }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+        snoozedUntil: { type: ["string", "null"], format: date-time }
+    GuidedRunActionResult:
+      type: object
+      required: [run, event]
+      properties:
+        run: { $ref: "#/components/schemas/GuidedRun" }
+        event: { $ref: "#/components/schemas/GuidedRunEvent" }
     OperationsApproval:
       type: object
       required: [id, requestType, requestedBy, relatedEntity, currentState, proposedState, financialImpact, riskImpact, duplexImpact, reason, evidence, requiredAuthority, expiresAt, status, createdAt]

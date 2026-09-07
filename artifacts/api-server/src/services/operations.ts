@@ -16,6 +16,9 @@ import {
   auditEvents,
   operationsRuns,
   operationsTasks,
+  operationsDecisionJournalEntries,
+  operationsGuidedRuns,
+  operationsGuidedRunEvents,
 } from "@workspace/db/schema";
 import type { Actor } from "./capital-os";
 import { ensureTenantCore } from "./seed";
@@ -93,6 +96,54 @@ function automationResponse(automation: typeof operationsAutomations.$inferSelec
     priority: automation.priority,
     lastRun: automation.lastRun,
     nextRun: automation.nextRun,
+  };
+}
+
+function journalEntryResponse(entry: typeof operationsDecisionJournalEntries.$inferSelect) {
+  return {
+    id: entry.id,
+    actorId: entry.actorId,
+    entryType: entry.entryType,
+    title: entry.title,
+    decisionContext: entry.decisionContext,
+    outcome: entry.outcome,
+    evidenceLinks: entry.evidenceLinks,
+    unresolvedBlockers: entry.unresolvedBlockers,
+    relatedEntityType: entry.relatedEntityType,
+    relatedEntityId: entry.relatedEntityId,
+    createdAt: entry.createdAt,
+  };
+}
+
+function guidedRunEventResponse(event: typeof operationsGuidedRunEvents.$inferSelect) {
+  return {
+    id: event.id,
+    action: event.action,
+    reason: event.reason,
+    actorId: event.actorId,
+    snoozedUntil: event.snoozedUntil,
+    occurredAt: event.occurredAt,
+  };
+}
+
+function guidedRunResponse(
+  run: typeof operationsGuidedRuns.$inferSelect,
+  events: typeof operationsGuidedRunEvents.$inferSelect[] = [],
+) {
+  return {
+    id: run.id,
+    runDate: run.runDate,
+    cadence: run.cadence,
+    status: run.status,
+    latestReason: run.latestReason,
+    startedAt: run.startedAt,
+    completedAt: run.completedAt,
+    snoozedUntil: run.snoozedUntil,
+    createdBy: run.createdBy,
+    updatedBy: run.updatedBy,
+    createdAt: run.createdAt,
+    updatedAt: run.updatedAt,
+    events: events.map(guidedRunEventResponse),
   };
 }
 
@@ -792,6 +843,164 @@ export async function getOperationsOverview(actor: Actor) {
 export async function listOperationsTasks(actor: Actor) {
   const data = await loadOperations(actor);
   return data.tasks.map(taskResponse);
+}
+
+export async function listDailyOpsHistory(actor: Actor) {
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
+  const [journalEntries, runs, events] = await Promise.all([
+    db.select().from(operationsDecisionJournalEntries)
+      .where(eq(operationsDecisionJournalEntries.householdId, ids.householdId))
+      .orderBy(desc(operationsDecisionJournalEntries.createdAt))
+      .limit(50),
+    db.select().from(operationsGuidedRuns)
+      .where(eq(operationsGuidedRuns.householdId, ids.householdId))
+      .orderBy(desc(operationsGuidedRuns.runDate), desc(operationsGuidedRuns.updatedAt))
+      .limit(20),
+    db.select().from(operationsGuidedRunEvents)
+      .where(eq(operationsGuidedRunEvents.householdId, ids.householdId))
+      .orderBy(desc(operationsGuidedRunEvents.occurredAt))
+      .limit(100),
+  ]);
+  const eventsByRun = new Map<string, typeof events>();
+  for (const event of events) {
+    const runEvents = eventsByRun.get(event.guidedRunId) ?? [];
+    runEvents.push(event);
+    eventsByRun.set(event.guidedRunId, runEvents);
+  }
+  return {
+    journalEntries: journalEntries.map(journalEntryResponse),
+    guidedRuns: runs.map((run) => guidedRunResponse(run, eventsByRun.get(run.id) ?? [])),
+  };
+}
+
+export async function createDailyOpsJournalEntry(actor: Actor, input: {
+  entryType: string;
+  title: string;
+  decisionContext: string;
+  outcome?: string | null;
+  evidenceLinks?: string[];
+  unresolvedBlockers?: string[];
+  relatedEntityType?: string | null;
+  relatedEntityId?: string | null;
+}) {
+  assertPermission(actor.role, "contribute");
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
+  return db.transaction(async (tx) => {
+    const [entry] = await tx.insert(operationsDecisionJournalEntries).values({
+      householdId: ids.householdId,
+      actorId: actor.userId,
+      entryType: input.entryType,
+      title: input.title,
+      decisionContext: input.decisionContext,
+      outcome: input.outcome ?? null,
+      evidenceLinks: input.evidenceLinks ?? [],
+      unresolvedBlockers: input.unresolvedBlockers ?? [],
+      relatedEntityType: input.relatedEntityType ?? null,
+      relatedEntityId: input.relatedEntityId ?? null,
+    }).returning();
+    await tx.insert(auditEvents).values({
+      householdId: ids.householdId,
+      eventType: "daily_ops_journal_entry_created",
+      actor: actor.userId,
+      entity: "operations_decision_journal_entry",
+      entityId: entry.id,
+      reason: input.title,
+      metadata: {
+        entryType: input.entryType,
+        unresolvedBlockerCount: (input.unresolvedBlockers ?? []).length,
+        evidenceLinkCount: (input.evidenceLinks ?? []).length,
+      },
+    });
+    return journalEntryResponse(entry);
+  });
+}
+
+export async function recordGuidedRunAction(actor: Actor, input: {
+  action: string;
+  cadence: string;
+  runId?: string;
+  reason: string;
+  snoozedUntil?: Date | string | null;
+}) {
+  assertPermission(actor.role, "contribute");
+  const ids = await ensureTenantCore(actor.householdId, actor.userId);
+  if (!input.reason.trim()) throw new GovernanceError("INVALID_STATE", "A reason is required for every Guided Run action");
+  if (input.action === "SNOOZE" && !input.snoozedUntil) {
+    throw new GovernanceError("INVALID_STATE", "Snooze requires a time until which the Guided Run is deferred");
+  }
+  const runDate = today();
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`daily-ops-run:${ids.householdId}:${runDate}:${input.cadence}`}, 0))`);
+    let run = input.runId
+      ? (await tx.select().from(operationsGuidedRuns).where(and(
+          eq(operationsGuidedRuns.id, input.runId),
+          eq(operationsGuidedRuns.householdId, ids.householdId),
+        )).limit(1))[0]
+      : (await tx.select().from(operationsGuidedRuns).where(and(
+          eq(operationsGuidedRuns.householdId, ids.householdId),
+          eq(operationsGuidedRuns.runDate, runDate),
+          eq(operationsGuidedRuns.cadence, input.cadence),
+        )).limit(1))[0];
+    if (input.runId && !run) {
+      throw new GovernanceError("INVALID_STATE", "Guided Run was not found for this household");
+    }
+    if (run && run.cadence !== input.cadence) {
+      throw new GovernanceError("INVALID_STATE", "Guided Run cadence does not match the requested action");
+    }
+    if (!run) {
+      [run] = await tx.insert(operationsGuidedRuns).values({
+        householdId: ids.householdId,
+        runDate,
+        cadence: input.cadence,
+        createdBy: actor.userId,
+        updatedBy: actor.userId,
+      }).returning();
+    }
+
+    const now = new Date();
+    const statusByAction: Record<string, string> = {
+      START: "IN_PROGRESS",
+      COMPLETE: "COMPLETED",
+      REOPEN: "REOPENED",
+      SNOOZE: "SNOOZED",
+      BLOCK: "BLOCKED",
+    };
+    const status = statusByAction[input.action];
+    if (!status) throw new GovernanceError("INVALID_STATE", "Unsupported Guided Run action");
+    const [updatedRun] = await tx.update(operationsGuidedRuns).set({
+      status,
+      latestReason: input.reason.trim(),
+      startedAt: input.action === "START" || (input.action === "COMPLETE" && !run.startedAt) ? (run.startedAt ?? now) : run.startedAt,
+      completedAt: input.action === "COMPLETE" ? now : input.action === "REOPEN" ? null : run.completedAt,
+      snoozedUntil: input.action === "SNOOZE"
+        ? new Date(input.snoozedUntil as string | Date)
+        : null,
+      updatedBy: actor.userId,
+      updatedAt: now,
+    }).where(and(
+      eq(operationsGuidedRuns.id, run.id),
+      eq(operationsGuidedRuns.householdId, ids.householdId),
+    )).returning();
+    if (!updatedRun) throw new GovernanceError("INVALID_STATE", "Guided Run could not be updated");
+    const [event] = await tx.insert(operationsGuidedRunEvents).values({
+      householdId: ids.householdId,
+      guidedRunId: updatedRun.id,
+      action: input.action,
+      reason: input.reason.trim(),
+      actorId: actor.userId,
+      snoozedUntil: input.action === "SNOOZE" ? new Date(input.snoozedUntil as string | Date) : null,
+    }).returning();
+    await tx.insert(auditEvents).values({
+      householdId: ids.householdId,
+      eventType: "daily_ops_guided_run_action",
+      actor: actor.userId,
+      entity: "operations_guided_run",
+      entityId: updatedRun.id,
+      reason: input.reason.trim(),
+      metadata: { action: input.action, cadence: updatedRun.cadence, runDate: updatedRun.runDate },
+    });
+    return { run: guidedRunResponse(updatedRun, [event]), event: guidedRunEventResponse(event) };
+  });
 }
 
 export async function createOperationsTask(actor: Actor, input: {

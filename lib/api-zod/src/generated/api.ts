@@ -5973,6 +5973,146 @@ export const UpdateOperationsTaskResponse = zod.object({
 
 
 /**
+ * @summary List household Daily Ops journal and guided-run history
+ */
+export const ListDailyOpsHistoryResponse = zod.object({
+  "journalEntries": zod.array(zod.object({
+  "id": zod.string(),
+  "actorId": zod.string(),
+  "entryType": zod.enum(['DECISION', 'HANDOFF', 'CLOSEOUT']),
+  "title": zod.string(),
+  "decisionContext": zod.string(),
+  "outcome": zod.string().nullable(),
+  "evidenceLinks": zod.array(zod.string()),
+  "unresolvedBlockers": zod.array(zod.string()),
+  "relatedEntityType": zod.string().nullable(),
+  "relatedEntityId": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})),
+  "guidedRuns": zod.array(zod.object({
+  "id": zod.string(),
+  "runDate": zod.coerce.date(),
+  "cadence": zod.enum(['TODAY', 'WEEK', 'MONTH']),
+  "status": zod.enum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'REOPENED', 'SNOOZED', 'BLOCKED']),
+  "latestReason": zod.string().nullable(),
+  "startedAt": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "snoozedUntil": zod.coerce.date().nullable(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "action": zod.enum(['START', 'COMPLETE', 'REOPEN', 'SNOOZE', 'BLOCK']),
+  "reason": zod.string(),
+  "actorId": zod.string(),
+  "snoozedUntil": zod.coerce.date().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}))
+})
+
+
+/**
+ * @summary Record a household Daily Ops decision, handoff, or closeout note
+ */
+export const createDailyOpsJournalEntryBodyTitleMax = 160;
+
+export const createDailyOpsJournalEntryBodyDecisionContextMax = 2000;
+
+export const createDailyOpsJournalEntryBodyOutcomeMax = 1000;
+
+export const createDailyOpsJournalEntryBodyEvidenceLinksItemMax = 1000;
+
+export const createDailyOpsJournalEntryBodyEvidenceLinksMax = 20;
+
+export const createDailyOpsJournalEntryBodyUnresolvedBlockersItemMax = 500;
+
+export const createDailyOpsJournalEntryBodyUnresolvedBlockersMax = 20;
+
+export const createDailyOpsJournalEntryBodyRelatedEntityTypeMax = 80;
+
+export const createDailyOpsJournalEntryBodyRelatedEntityIdMax = 160;
+
+
+
+export const CreateDailyOpsJournalEntryBody = zod.object({
+  "entryType": zod.enum(['DECISION', 'HANDOFF', 'CLOSEOUT']),
+  "title": zod.string().min(1).max(createDailyOpsJournalEntryBodyTitleMax),
+  "decisionContext": zod.string().min(1).max(createDailyOpsJournalEntryBodyDecisionContextMax),
+  "outcome": zod.string().max(createDailyOpsJournalEntryBodyOutcomeMax).nullish(),
+  "evidenceLinks": zod.array(zod.string().max(createDailyOpsJournalEntryBodyEvidenceLinksItemMax)).max(createDailyOpsJournalEntryBodyEvidenceLinksMax).optional(),
+  "unresolvedBlockers": zod.array(zod.string().max(createDailyOpsJournalEntryBodyUnresolvedBlockersItemMax)).max(createDailyOpsJournalEntryBodyUnresolvedBlockersMax).optional(),
+  "relatedEntityType": zod.string().max(createDailyOpsJournalEntryBodyRelatedEntityTypeMax).nullish(),
+  "relatedEntityId": zod.string().max(createDailyOpsJournalEntryBodyRelatedEntityIdMax).nullish()
+})
+
+export const CreateDailyOpsJournalEntryResponse = zod.object({
+  "id": zod.string(),
+  "actorId": zod.string(),
+  "entryType": zod.enum(['DECISION', 'HANDOFF', 'CLOSEOUT']),
+  "title": zod.string(),
+  "decisionContext": zod.string(),
+  "outcome": zod.string().nullable(),
+  "evidenceLinks": zod.array(zod.string()),
+  "unresolvedBlockers": zod.array(zod.string()),
+  "relatedEntityType": zod.string().nullable(),
+  "relatedEntityId": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Persist a Guided Run the Day action
+ */
+export const recordGuidedRunActionBodyReasonMax = 1000;
+
+
+
+export const RecordGuidedRunActionBody = zod.object({
+  "action": zod.enum(['START', 'COMPLETE', 'REOPEN', 'SNOOZE', 'BLOCK']),
+  "cadence": zod.enum(['TODAY', 'WEEK', 'MONTH']),
+  "runId": zod.string().optional(),
+  "reason": zod.string().min(1).max(recordGuidedRunActionBodyReasonMax),
+  "snoozedUntil": zod.coerce.date().nullish()
+})
+
+export const RecordGuidedRunActionResponse = zod.object({
+  "run": zod.object({
+  "id": zod.string(),
+  "runDate": zod.coerce.date(),
+  "cadence": zod.enum(['TODAY', 'WEEK', 'MONTH']),
+  "status": zod.enum(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'REOPENED', 'SNOOZED', 'BLOCKED']),
+  "latestReason": zod.string().nullable(),
+  "startedAt": zod.coerce.date().nullable(),
+  "completedAt": zod.coerce.date().nullable(),
+  "snoozedUntil": zod.coerce.date().nullable(),
+  "createdBy": zod.string(),
+  "updatedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "events": zod.array(zod.object({
+  "id": zod.string(),
+  "action": zod.enum(['START', 'COMPLETE', 'REOPEN', 'SNOOZE', 'BLOCK']),
+  "reason": zod.string(),
+  "actorId": zod.string(),
+  "snoozedUntil": zod.coerce.date().nullable(),
+  "occurredAt": zod.coerce.date()
+}))
+}),
+  "event": zod.object({
+  "id": zod.string(),
+  "action": zod.enum(['START', 'COMPLETE', 'REOPEN', 'SNOOZE', 'BLOCK']),
+  "reason": zod.string(),
+  "actorId": zod.string(),
+  "snoozedUntil": zod.coerce.date().nullable(),
+  "occurredAt": zod.coerce.date()
+})
+})
+
+
+/**
  * @summary List pending and recent household approvals
  */
 export const ListOperationsApprovalsResponseItem = zod.object({

@@ -28,13 +28,17 @@ import {
   getGetFamilyOfficeQueryKey,
   getGetOperationsOverviewQueryKey,
   getGetTreasuryQueryKey,
+  getListDailyOpsHistoryQueryKey,
   getListOperationsTasksQueryKey,
+  useCreateDailyOpsJournalEntry,
   useCreateFamilyOfficeResearch,
   useGetAccountingOverview,
   useGetFamilyOffice,
   useGetOperationsOverview,
   useGetTreasury,
+  useListDailyOpsHistory,
   useListOperationsTasks,
+  useRecordGuidedRunAction,
   useUpdateOperationsTask,
   type OperationsTask,
   type OperationsTaskStatus,
@@ -59,13 +63,13 @@ function money(value: string | number | null | undefined, fallback = "Unavailabl
   return Number.isFinite(amount) ? `$${amount.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : fallback;
 }
 
-function dateLabel(value: string | null | undefined, fallback = "Date unavailable") {
+function dateLabel(value: string | Date | null | undefined, fallback = "Date unavailable") {
   if (!value) return fallback;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? fallback : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function dateTimeLabel(value: string | null | undefined, fallback = "Not recorded") {
+function dateTimeLabel(value: string | Date | null | undefined, fallback = "Not recorded") {
   if (!value) return fallback;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? fallback : date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -177,13 +181,23 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
   const tasksQuery = useListOperationsTasks({ query: { queryKey: getListOperationsTasksQueryKey(), refetchInterval: HOUR } });
   const research = useCreateFamilyOfficeResearch();
   const updateTask = useUpdateOperationsTask();
+  const createJournal = useCreateDailyOpsJournalEntry();
+  const recordGuidedRunAction = useRecordGuidedRunAction();
   const [cadence, setCadence] = useState<Cadence>("TODAY");
-  const [runStarted, setRunStarted] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [runReason, setRunReason] = useState("");
+  const [snoozeUntil, setSnoozeUntil] = useState("");
+  const [journalType, setJournalType] = useState<"DECISION" | "HANDOFF" | "CLOSEOUT">("HANDOFF");
+  const [journalTitle, setJournalTitle] = useState("");
+  const [journalContext, setJournalContext] = useState("");
+  const [journalOutcome, setJournalOutcome] = useState("");
+  const [journalEvidence, setJournalEvidence] = useState("");
+  const [journalBlockers, setJournalBlockers] = useState("");
 
   const snapshot = familyOffice.data;
   const treasurySnapshot = treasury.data;
   const accountingSnapshot = accounting.data;
+  const dailyOps = useListDailyOpsHistory({ query: { queryKey: getListDailyOpsHistoryQueryKey(), refetchInterval: HOUR } });
   const tasks = tasksQuery.data ?? operations.data?.tasks ?? [];
   const visibleTasks = useMemo(() => tasks.filter((task) => inCadence(task, cadence)), [tasks, cadence]);
   const openTasks = tasks.filter((task) => task.status !== "COMPLETED" && task.status !== "DISMISSED" && task.status !== "EXPIRED");
@@ -199,6 +213,8 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
   const treasuryFreshness: "fresh" | "stale" | "unknown" | "unavailable" = treasurySnapshot ? "fresh" : treasury.isError ? "unavailable" : "unknown";
   const accountingFreshness: "fresh" | "stale" | "unknown" | "unavailable" = accountingSnapshot ? "fresh" : accounting.isError ? "unavailable" : "unknown";
   const completedCount = visibleTasks.filter((task) => task.status === "COMPLETED").length;
+  const guidedRun = dailyOps.data?.guidedRuns.find((run) => run.cadence === cadence);
+  const guidedRunStatus = guidedRun?.status ?? "NOT_STARTED";
   const posture = treasurySnapshot?.health.state ?? "Unavailable";
   const riskItems = treasurySnapshot
     ? [
@@ -215,7 +231,7 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
   const refreshAll = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([familyOffice.refetch(), treasury.refetch(), accounting.refetch(), operations.refetch(), tasksQuery.refetch()]);
+      await Promise.all([familyOffice.refetch(), treasury.refetch(), accounting.refetch(), operations.refetch(), tasksQuery.refetch(), dailyOps.refetch()]);
       onFeedback("The operating cockpit was refreshed. Stale or unavailable sources remain visible.");
     } finally {
       setRefreshing(false);
@@ -249,8 +265,64 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
     }
   };
 
-  const dataLoading = familyOffice.isLoading || treasury.isLoading || accounting.isLoading || tasksQuery.isLoading;
-  const dataUnavailable = familyOffice.isError && treasury.isError && accounting.isError && tasksQuery.isError;
+  const handleGuidedRunAction = async (action: "START" | "COMPLETE" | "REOPEN" | "SNOOZE" | "BLOCK") => {
+    if (!runReason.trim()) {
+      onFeedback("Add a reason before recording a Guided Run action.");
+      return;
+    }
+    if (action === "SNOOZE" && !snoozeUntil) {
+      onFeedback("Choose when the Guided Run should resume.");
+      return;
+    }
+    try {
+      await recordGuidedRunAction.mutateAsync({
+        data: {
+          action,
+          cadence,
+          runId: guidedRun?.id,
+          reason: runReason.trim(),
+          snoozedUntil: action === "SNOOZE" ? new Date(snoozeUntil).toISOString() : null,
+        },
+      });
+      await dailyOps.refetch();
+      setRunReason("");
+      onFeedback(`Guided Run ${titleCase(action)} recorded. This remains a review handoff, not financial authority.`);
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : "The Guided Run action could not be saved.");
+    }
+  };
+
+  const handleJournalSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!journalTitle.trim() || !journalContext.trim()) {
+      onFeedback("Add a title and decision context before saving the journal entry.");
+      return;
+    }
+    try {
+      await createJournal.mutateAsync({
+        data: {
+          entryType: journalType,
+          title: journalTitle.trim(),
+          decisionContext: journalContext.trim(),
+          outcome: journalOutcome.trim() || null,
+          evidenceLinks: journalEvidence.split(",").map((item) => item.trim()).filter(Boolean),
+          unresolvedBlockers: journalBlockers.split(",").map((item) => item.trim()).filter(Boolean),
+        },
+      });
+      await dailyOps.refetch();
+      setJournalTitle("");
+      setJournalContext("");
+      setJournalOutcome("");
+      setJournalEvidence("");
+      setJournalBlockers("");
+      onFeedback("Daily Ops journal entry saved for the household handoff history.");
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : "The journal entry could not be saved.");
+    }
+  };
+
+  const dataLoading = familyOffice.isLoading || treasury.isLoading || accounting.isLoading || tasksQuery.isLoading || dailyOps.isLoading;
+  const dataUnavailable = familyOffice.isError && treasury.isError && accounting.isError && tasksQuery.isError && dailyOps.isError;
 
   return (
     <main className="content daily-ops-page">
@@ -338,8 +410,17 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
           </div>
         </div>
         <div className="daily-ops-runbar">
-          <div><span className="daily-ops-eyebrow">Guided Run the Day</span><strong>{completedCount} of {visibleTasks.length || "—"} visible tasks complete</strong><p>{runStarted ? "Move one item at a time. Reopen or block it when the evidence is not ready." : "A guided sequence for review work, not a substitute for the authoritative destination."}</p></div>
-          <button className="btn btn-primary" type="button" onClick={() => setRunStarted((value) => !value)}><Target size={14} /> {runStarted ? "Pause guided run" : "Start guided run"}</button>
+          <div><span className="daily-ops-eyebrow">Guided Run the Day · {titleCase(guidedRunStatus)}</span><strong>{completedCount} of {visibleTasks.length || "—"} visible tasks complete</strong><p>{guidedRun?.latestReason ?? "A guided sequence for review work, not a substitute for the authoritative destination."}</p></div>
+          <div className="daily-ops-run-actions">
+            <input aria-label="Reason for Guided Run action" placeholder="Reason for this handoff or status" value={runReason} onChange={(event) => setRunReason(event.target.value)} />
+            <button className="btn btn-primary" type="button" disabled={recordGuidedRunAction.isPending} onClick={() => { void handleGuidedRunAction("START"); }}><Target size={14} /> Start</button>
+            <button className="btn" type="button" disabled={recordGuidedRunAction.isPending || !guidedRun} onClick={() => { void handleGuidedRunAction("COMPLETE"); }}><Check size={14} /> Complete</button>
+            <button className="btn" type="button" disabled={recordGuidedRunAction.isPending || !guidedRun} onClick={() => { void handleGuidedRunAction("REOPEN"); }}>Reopen</button>
+            <button className="btn" type="button" disabled={recordGuidedRunAction.isPending || !guidedRun} onClick={() => { void handleGuidedRunAction("BLOCK"); }}><LockKeyhole size={13} /> Block</button>
+            <input aria-label="Guided Run snooze until" type="datetime-local" value={snoozeUntil} onChange={(event) => setSnoozeUntil(event.target.value)} />
+            <button className="btn" type="button" disabled={recordGuidedRunAction.isPending || !guidedRun} onClick={() => { void handleGuidedRunAction("SNOOZE"); }}>Snooze</button>
+          </div>
+          {guidedRun?.events.length ? <div className="daily-ops-run-history" aria-label="Guided Run history">{guidedRun.events.slice(0, 4).map((event) => <span key={event.id}><b>{titleCase(event.action)}</b> · {event.reason} · {dateTimeLabel(event.occurredAt)}</span>)}</div> : null}
         </div>
         {tasksQuery.isError && <DataUnavailable label="Operations tasks" onRetry={() => { void tasksQuery.refetch(); }} />}
         {!tasksQuery.isError && visibleTasks.length === 0 && <div className="daily-ops-empty"><CheckCircle2 size={17} /> No tasks are due in this cadence. Open the technical Operations workspace for the full household queue.</div>}
@@ -361,7 +442,21 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
       </section>
 
       <section className="daily-ops-three-col page-section animate-in delay-3">
-        <article className="card card-pad"><SectionHeading eyebrow="Decision journal" title="Keep the why." detail="Recent provider runs and completed work provide a review trail; authoritative decisions remain in their source systems." action={<History size={17} color="var(--color-primary)" />} /><div className="daily-ops-journal-list">{snapshot?.runs.slice(0, 3).map((run) => <div key={run.id}><span className={`status ${run.status === "completed" ? "" : "pending"}`}>{titleCase(run.status)}</span><div><strong>{run.scope}</strong><span>{dateTimeLabel(run.createdAt)} · {run.advisoryOnly ? "advisory" : "review"}</span></div></div>)}{!snapshot?.runs.length && <div className="daily-ops-empty">No provider journal entries recorded.</div>}</div><Link className="text-link" href="/family-office">Open Family Office history <ArrowUpRight size={12} /></Link></article>
+        <article className="card card-pad daily-ops-journal-card">
+          <SectionHeading eyebrow="Decision journal" title="Keep the why." detail="Handoffs and closeouts are household review history; authoritative decisions remain in their source systems." action={<History size={17} color="var(--color-primary)" />} />
+          <div className="daily-ops-journal-list">
+            {dailyOps.data?.journalEntries.slice(0, 5).map((entry) => <div key={entry.id}><span className={`status ${entry.entryType === "CLOSEOUT" ? "" : "pending"}`}>{titleCase(entry.entryType)}</span><div><strong>{entry.title}</strong><span>{dateTimeLabel(entry.createdAt)} · actor {entry.actorId.slice(0, 8)}</span><small>{entry.decisionContext}</small>{entry.unresolvedBlockers.length > 0 && <small className="daily-ops-blocker">Blockers: {entry.unresolvedBlockers.join(" · ")}</small>}</div></div>)}
+            {!dailyOps.data?.journalEntries.length && <div className="daily-ops-empty">No Daily Ops handoff or closeout entries recorded.</div>}
+          </div>
+          <form className="daily-ops-journal-form" onSubmit={(event) => { void handleJournalSubmit(event); }}>
+            <div className="daily-ops-form-row"><select aria-label="Journal entry type" value={journalType} onChange={(event) => setJournalType(event.target.value as typeof journalType)}><option value="HANDOFF">Handoff</option><option value="CLOSEOUT">Closeout</option><option value="DECISION">Decision context</option></select><input aria-label="Journal entry title" placeholder="What should the next operator know?" value={journalTitle} onChange={(event) => setJournalTitle(event.target.value)} /></div>
+            <textarea aria-label="Decision context" placeholder="Context, decision boundary, and what remains unresolved" value={journalContext} onChange={(event) => setJournalContext(event.target.value)} rows={3} />
+            <div className="daily-ops-form-row"><input aria-label="Outcome" placeholder="Outcome (optional)" value={journalOutcome} onChange={(event) => setJournalOutcome(event.target.value)} /><input aria-label="Evidence links" placeholder="Evidence links, comma separated (optional)" value={journalEvidence} onChange={(event) => setJournalEvidence(event.target.value)} /></div>
+            <input aria-label="Unresolved blockers" placeholder="Unresolved blockers, comma separated (optional)" value={journalBlockers} onChange={(event) => setJournalBlockers(event.target.value)} />
+            <button className="btn btn-primary" type="submit" disabled={createJournal.isPending}><History size={13} /> {createJournal.isPending ? "Saving…" : "Save handoff note"}</button>
+          </form>
+          <Link className="text-link" href="/family-office">Open Family Office history <ArrowUpRight size={12} /></Link>
+        </article>
         <article className="card card-pad"><SectionHeading eyebrow="Scenario desk" title="Stress, don’t execute." detail="Scenario framing can inform a review; it cannot write allocations or reach an order system." action={<Activity size={17} color="var(--color-warning)" />} /><div className="daily-ops-scenario"><div><strong>Liquidity stress tests</strong><span>{treasurySnapshot ? `${treasurySnapshot.stressTests.length} governed scenarios available` : "Unavailable"}</span></div><div><strong>Protected capital</strong><span>{treasurySnapshot ? `${money(treasurySnapshot.totals.protectedCapital)} remains distinct` : "Unavailable"}</span></div><div><XCircle size={14} /><span>Execution disabled</span></div></div><Link className="text-link" href="/treasury">Open Treasury scenarios <ArrowUpRight size={12} /></Link></article>
         <article className="card card-pad"><SectionHeading eyebrow="Advisor value" title="Measure the help." detail="Workforce telemetry is advisory and cannot grant an analyst authority." action={<Gauge size={17} color="var(--color-protected)" />} />{snapshot?.workforce?.analysts.slice(0, 3).map((analyst) => <div className="daily-ops-advisor-row" key={analyst.id}><div><strong>{analyst.analyst}</strong><span>{analyst.specialty} · {analyst.completedCount} completed</span></div><span className="status">{analyst.qualityScore ? `${analyst.qualityScore.toFixed(0)}% quality` : "Unrated"}</span></div>)}{!snapshot?.workforce?.analysts.length && <div className="daily-ops-empty"><CircleHelp size={16} /> Advisor scorecards are unavailable.</div>}<Link className="text-link" href="/family-office">Open scorecards <ArrowUpRight size={12} /></Link></article>
       </section>

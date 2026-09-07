@@ -17,6 +17,11 @@ import {
   UpdateOperationsNotificationPreferencesResponse,
   UpdateOperationsTaskBody,
   UpdateOperationsTaskResponse,
+  CreateDailyOpsJournalEntryBody,
+  CreateDailyOpsJournalEntryResponse,
+  ListDailyOpsHistoryResponse,
+  RecordGuidedRunActionBody,
+  RecordGuidedRunActionResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
@@ -37,6 +42,9 @@ import {
   listOperationsJobs, listOperationsWorkerHealth, reprocessOperationsJob,
   listOperationsSchedulers, acquireOperationsSchedulerLeadership, recoverMissedOperationsSchedules,
   getOperationsSchedulerMetrics,
+  listDailyOpsHistory,
+  createDailyOpsJournalEntry,
+  recordGuidedRunAction,
 } from "../services/operations";
 
 const router: IRouter = Router();
@@ -70,6 +78,20 @@ router.post("/operations/tasks", asyncRoute(async (req, res) => {
 router.patch("/operations/tasks/:taskId", asyncRoute(async (req, res) => {
   const body = UpdateOperationsTaskBody.parse(req.body);
   res.json(UpdateOperationsTaskResponse.parse(await updateOperationsTask(actorFrom(res), String(req.params.taskId), body)));
+}));
+
+router.get("/operations/daily-ops", asyncRoute(async (_req, res) => {
+  res.json(ListDailyOpsHistoryResponse.parse(await listDailyOpsHistory(actorFrom(res))));
+}));
+
+router.post("/operations/daily-ops/journal", asyncRoute(async (req, res) => {
+  const body = CreateDailyOpsJournalEntryBody.parse(req.body);
+  res.status(201).json(CreateDailyOpsJournalEntryResponse.parse(await createDailyOpsJournalEntry(actorFrom(res), body)));
+}));
+
+router.post("/operations/daily-ops/guided-run", asyncRoute(async (req, res) => {
+  const body = RecordGuidedRunActionBody.parse(req.body);
+  res.status(201).json(RecordGuidedRunActionResponse.parse(await recordGuidedRunAction(actorFrom(res), body)));
 }));
 
 router.get("/operations/approvals", asyncRoute(async (_req, res) => {

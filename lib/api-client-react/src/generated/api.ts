@@ -81,6 +81,9 @@ import type {
   CreateResearchStrategyInput,
   CreateStrategyVersionInput,
   CsvImportInput,
+  DailyOpsHistory,
+  DailyOpsJournalEntry,
+  DailyOpsJournalEntryInput,
   DashboardSnapshot,
   EmergencyStopInput,
   ExecutionControlCommandInput,
@@ -111,6 +114,8 @@ import type {
   FinancingSnapshot,
   ForbiddenResponse,
   GoalSummary,
+  GuidedRunActionInput,
+  GuidedRunActionResult,
   HealthStatus,
   HouseholdSummary,
   ImportFinancialAccountCsv200,
@@ -11590,6 +11595,225 @@ export const useUpdateOperationsTask = <TError = ErrorType<BadRequestResponse | 
         TContext
       > => {
       return useMutation(getUpdateOperationsTaskMutationOptions(options));
+    }
+
+export const getListDailyOpsHistoryUrl = () => {
+
+
+
+
+  return `/api/operations/daily-ops`
+}
+
+/**
+ * @summary List household Daily Ops journal and guided-run history
+ */
+export const listDailyOpsHistory = async ( options?: Parameters<typeof customFetch>[1]): Promise<DailyOpsHistory> => {
+
+  return customFetch<DailyOpsHistory>(getListDailyOpsHistoryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDailyOpsHistoryQueryKey = () => {
+    return [
+    `/api/operations/daily-ops`
+    ] as const;
+    }
+
+
+export const getListDailyOpsHistoryQueryOptions = <TData = Awaited<ReturnType<typeof listDailyOpsHistory>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDailyOpsHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDailyOpsHistoryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDailyOpsHistory>>> = ({ signal }) => listDailyOpsHistory({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDailyOpsHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDailyOpsHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof listDailyOpsHistory>>>
+export type ListDailyOpsHistoryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List household Daily Ops journal and guided-run history
+ */
+
+export function useListDailyOpsHistory<TData = Awaited<ReturnType<typeof listDailyOpsHistory>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDailyOpsHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDailyOpsHistoryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateDailyOpsJournalEntryUrl = () => {
+
+
+
+
+  return `/api/operations/daily-ops/journal`
+}
+
+/**
+ * @summary Record a household Daily Ops decision, handoff, or closeout note
+ */
+export const createDailyOpsJournalEntry = async (dailyOpsJournalEntryInput: DailyOpsJournalEntryInput, options?: Parameters<typeof customFetch>[1]): Promise<DailyOpsJournalEntry> => {
+
+  return customFetch<DailyOpsJournalEntry>(getCreateDailyOpsJournalEntryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(dailyOpsJournalEntryInput)
+  }
+);}
+
+
+
+
+
+export const getCreateDailyOpsJournalEntryMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDailyOpsJournalEntry>>, TError,{data: BodyType<DailyOpsJournalEntryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createDailyOpsJournalEntry>>, TError,{data: BodyType<DailyOpsJournalEntryInput>}, TContext> => {
+
+const mutationKey = ['createDailyOpsJournalEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createDailyOpsJournalEntry>>, {data: BodyType<DailyOpsJournalEntryInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createDailyOpsJournalEntry(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateDailyOpsJournalEntryMutationResult = NonNullable<Awaited<ReturnType<typeof createDailyOpsJournalEntry>>>
+    export type CreateDailyOpsJournalEntryMutationBody = BodyType<DailyOpsJournalEntryInput>
+    export type CreateDailyOpsJournalEntryMutationError = ErrorType<BadRequestResponse | ForbiddenResponse>
+
+    /**
+ * @summary Record a household Daily Ops decision, handoff, or closeout note
+ */
+export const useCreateDailyOpsJournalEntry = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDailyOpsJournalEntry>>, TError,{data: BodyType<DailyOpsJournalEntryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createDailyOpsJournalEntry>>,
+        TError,
+        {data: BodyType<DailyOpsJournalEntryInput>},
+        TContext
+      > => {
+      return useMutation(getCreateDailyOpsJournalEntryMutationOptions(options));
+    }
+
+export const getRecordGuidedRunActionUrl = () => {
+
+
+
+
+  return `/api/operations/daily-ops/guided-run`
+}
+
+/**
+ * @summary Persist a Guided Run the Day action
+ */
+export const recordGuidedRunAction = async (guidedRunActionInput: GuidedRunActionInput, options?: Parameters<typeof customFetch>[1]): Promise<GuidedRunActionResult> => {
+
+  return customFetch<GuidedRunActionResult>(getRecordGuidedRunActionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(guidedRunActionInput)
+  }
+);}
+
+
+
+
+
+export const getRecordGuidedRunActionMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordGuidedRunAction>>, TError,{data: BodyType<GuidedRunActionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordGuidedRunAction>>, TError,{data: BodyType<GuidedRunActionInput>}, TContext> => {
+
+const mutationKey = ['recordGuidedRunAction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordGuidedRunAction>>, {data: BodyType<GuidedRunActionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordGuidedRunAction(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordGuidedRunActionMutationResult = NonNullable<Awaited<ReturnType<typeof recordGuidedRunAction>>>
+    export type RecordGuidedRunActionMutationBody = BodyType<GuidedRunActionInput>
+    export type RecordGuidedRunActionMutationError = ErrorType<BadRequestResponse | ForbiddenResponse>
+
+    /**
+ * @summary Persist a Guided Run the Day action
+ */
+export const useRecordGuidedRunAction = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordGuidedRunAction>>, TError,{data: BodyType<GuidedRunActionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordGuidedRunAction>>,
+        TError,
+        {data: BodyType<GuidedRunActionInput>},
+        TContext
+      > => {
+      return useMutation(getRecordGuidedRunActionMutationOptions(options));
     }
 
 export const getListOperationsApprovalsUrl = () => {

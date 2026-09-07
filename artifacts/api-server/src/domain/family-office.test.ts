@@ -52,6 +52,30 @@ test("provider rejects malformed output and sanitizes control characters in prom
     scope: "market\u0007 scope",
     prompt: "question\u001b[31m",
   }), ProviderUnavailableError);
+  const parsedBody = JSON.parse(requestBody) as {
+    response_format?: {
+      type?: string;
+      json_schema?: {
+        name?: string;
+        strict?: boolean;
+        schema?: { required?: string[] };
+      };
+    };
+  };
+  assert.equal(parsedBody.response_format?.type, "json_schema");
+  assert.equal(parsedBody.response_format?.json_schema?.name, "capital_os_research");
+  assert.equal(parsedBody.response_format?.json_schema?.strict, true);
+  assert.deepEqual(parsedBody.response_format?.json_schema?.schema?.required, [
+    "title",
+    "thesis",
+    "label",
+    "analyticalDirection",
+    "confidence",
+    "facts",
+    "assumptions",
+    "risks",
+    "evidence",
+  ]);
   assert.equal(requestBody.includes("\u0000"), false);
   assert.equal(requestBody.includes("\u0007"), false);
   assert.equal(requestBody.includes("\u001b"), false);

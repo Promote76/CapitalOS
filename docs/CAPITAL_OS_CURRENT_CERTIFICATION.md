@@ -1,15 +1,22 @@
 # Capital OS current certification
 
-**Certification date:** 2026-09-06
-**Certification source HEAD:** `1650f776a21970028617ecc898a958ecd3ec40a8`
+**Certification date:** 2026-09-07
+**Certification source base HEAD:** `298f5034cc6d43312e078343587b025f38c505ac`
 **Previous certification:** **NOT READY** (`docs/PRODUCTION_CANDIDATE_CERTIFICATION_2026-09-02.md`)  
 **Current decision:** **READY FOR CONTROLLED INTERNAL USE ONLY — PUBLIC PRODUCTION NOT CERTIFIED**
 
-This is the single current certification document. The source HEAD above predates
-the uncommitted evidence/doc/fixture reconciliation changes. The current-surface
-replay supersedes historical 149-route claims: 163/163 routes are certified, with
-P0-01, P0-06, and P0-08 PASS. See
-`docs/certification/CURRENT_SURFACE_CERTIFICATION_2026-09-06.md`.
+This is the single current certification document. The current-surface replay
+supersedes historical 149-route and 163-route claims: all 170 route/method pairs
+completed one clean guarded disposable-target replay with 393 probes, 58 scoped
+collection reads, 58 foreign-identifier rejections, and 58 malformed-identifier
+rejections. P0-01, P0-06, and P0-08 remain PASS. The focused Family Office
+certification separately exercised its seven-route HTTP and authenticated-browser
+slice. See `docs/certification/CURRENT_SURFACE_CERTIFICATION_2026-09-07.md` and
+`docs/PRODUCTION_CANDIDATE_EVIDENCE_INDEX.md`.
+
+The 2026-09-07 transaction-review reverification remediation and this report are
+working-tree changes after the base HEAD. Their local checks are recorded below;
+they are not represented as published-production certification.
 
 ## Scope and non-goals
 
@@ -97,6 +104,24 @@ introduced during this certification.
 - Budget exclusion counts now link to a household-scoped transaction review queue
   so owners can resolve blocked accounting evidence without weakening pending,
   transfer, business/property, excluded, or unreviewed-row safeguards.
+- Family Office provider research now fails with HTTP 503, persists blocked-run
+  evidence and audit records atomically, distinguishes configured from verified
+  provider state, exposes only safe runtime failure classifications, and supports
+  exact-match multiple-origin allowlists.
+- A normal authenticated production session completed one advisory-only Grok
+  research run with retained output and no execution authority. This is provider
+  runtime evidence, not complete Clerk reverification certification.
+- A production transaction-review request exposed a raw HTTP 403 with no Clerk
+  dialog. The published origin policy and household owner role were confirmed
+  correct, and the server's strict recent-authentication boundary remains intact.
+  The client adapter now extracts Clerk's exact `forbidden` /
+  `reverification-error` hint from generated-client and known middleware error
+  envelopes while refusing unrelated 403 responses.
+- The 403 remediation passed three focused extractor regressions and the Capital
+  OS TypeScript check. The web workflow restarted cleanly and the signed-out
+  application surface rendered without runtime errors. A republished production
+  build and a fresh authenticated 403 → provider challenge → identical-request
+  retry remain required before this remediation is browser-certified.
 
 ## Evidence summary
 
@@ -105,8 +130,8 @@ introduced during this certification.
 | Generated finance artifacts                    | PASS                                                                                                                                                    | `pnpm run check:generated-finance-artifacts`                                                                                                                                  |
 | Generated-artifact failure/recovery regression | PASS                                                                                                                                                    | `pnpm run test:generated-finance-artifacts`                                                                                                                                   |
 | Workspace/API typechecks                       | PASS                                                                                                                                                    | `pnpm run typecheck`, API typecheck                                                                                                                                           |
-| OpenAPI route/method parity                    | PASS                                                                                                                                                    | `scripts/check-api-contract.mjs`; 163 route/method combinations                                                                                                               |
-| PostgreSQL-backed API suite                    | PASS for current-surface household replay | 163 routes, 379 probes, 11 passed, 0 failed/skipped; local source regression: 108 passed, 31 database-gated skips |
+| OpenAPI route/method parity                    | PASS                                                                                                                                                    | `scripts/check-api-contract.mjs`; 170 route/method combinations                                                                                                               |
+| PostgreSQL-backed API suite                    | PASS for current-surface household replay | 170 routes, 393 probes, 12 passed, 0 failed/skipped; 58 scoped reads, 58 foreign rejections, and 58 malformed rejections |
 | Weekly Budget guidance                        | PASS server/database; contribution-specific browser evidence BLOCKED | 14 added planning pairs passed current replay; no browser-visible 80/10/10 sleeve configuration/verification |
 | Execution-control focused fixture              | PASS against the dedicated isolated certification target; 3 passed, 0 failed, 0 skipped                                                                 | `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/integration/execution-control.test.ts`                                          |
 | Execution-control certification command        | PASS — EC-01 through EC-17 collected                                                                                                                    | `pnpm run certify:execution-control`; `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md`                                                                      |
@@ -117,13 +142,13 @@ introduced during this certification.
 | Durable operations recovery certification      | PASS — 29 tests passed, 0 failed, 0 skipped; OR-01 through OR-24 all passed against a fresh disposable PostgreSQL target                                | `docs/certification/OPERATIONS_RECOVERY_CERTIFICATION_2026-09-04.md`; `pnpm run certify:operations-recovery`                                                                  |
 | Observability certification                    | PASS — 26 assertions passed, 0 failed, 0 skipped; OB-01 through OB-25 all passed against a fresh disposable PostgreSQL target with a real Slack receipt | `docs/certification/OBSERVABILITY_CERTIFICATION_2026-09-04.md`; `pnpm run certify:observability`                                                                              |
 | Financial-integrity certification              | PASS — TI 15/15, TR 12/12, AC 14/14, SD 20/20 on a fresh disposable PostgreSQL target | `docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md`; `pnpm run certify:financial-integrity`                                                                  |
-| Clerk reverification certification             | RETIRED AS RELEASE REQUIREMENT — application protection remains enabled; historical evidence is retained at RV 2/12 and is not presented as complete certification | `docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md`; `docs/certification/CLERK_REVERIFICATION_PRODUCTION_EVIDENCE_2026-09-05.json` |
+| Clerk reverification certification             | RETIRED AS RELEASE REQUIREMENT — strict application protection remains enabled; historical RV-01/RV-02 evidence is retained, while the 2026-09-07 transaction-review envelope remediation is implementation-verified but awaits republished authenticated browser evidence | `docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md`; `docs/certification/CLERK_REVERIFICATION_PRODUCTION_EVIDENCE_2026-09-05.json`; `artifacts/capital-os/src/lib/reverification.test.ts` |
 
 ## Current gate matrix
 
 | Gate                      | Previous result | Current implementation                                                                                                                                                                                                                                                                 | Runtime test/evidence                                                                                                                                                                                                      | Current result | Evidence                                                                                                                                                                                                                                                                                                          |
 | ------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tenant / IDOR             | PARTIAL PASS    | Actor-scoped initialization and the current 163-route inventory are implemented | Current disposable replay covered all 163 routes: 379 probes, 56 scoped reads, 57 foreign and 57 malformed rejections; 11 passed, none failed/skipped | **PASS** | `docs/certification/CURRENT_SURFACE_CERTIFICATION_2026-09-06.md` |
+| Tenant / IDOR             | PARTIAL PASS    | Actor-scoped initialization and the current 170-route inventory are implemented | Current disposable replay covered all 170 routes: 393 probes, 58 scoped reads, 58 foreign and 58 malformed rejections; 12 passed, none failed/skipped | **PASS** | `docs/certification/CURRENT_SURFACE_CERTIFICATION_2026-09-07.md`; `docs/PRODUCTION_CANDIDATE_EVIDENCE_INDEX.md` |
 | Treasury                  | Not closed      | Actor-scoped reads, advisor redaction, locked decisions, linked planning reservations, replay handling, concurrency protection, and decision audit are implemented                                                                                                                   | Isolated disposable PostgreSQL certification passed actor boundary, redaction, owner approval, reservation, concurrency, double-reservation protection, replay, conflict, cross-household isolation, and audit cases | **PASS** | `docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md`; `artifacts/api-server/src/services/treasury.ts`; `scripts/certify-financial-integrity.mjs` |
 | Manual finance            | Not closed      | Manual review lifecycle and downstream recalculation are implemented                                                                                                                                                                                                                   | PostgreSQL suite passed create → review → approve/reject → fresh read → budget/cash-flow/Safe-to-Deploy recalculation                                                                                                      | **PASS**       | `artifacts/api-server/src/integration/p0-http.test.ts`; current 99/99 run                                                                                                                                                                                                                                         |
 | Authenticated browser E2E | BLOCKED         | Clerk onboarding, saved-write reload, sign-out, repeat sign-in, and second-household isolation are implemented                                                                                                                                                                           | Published origin and live Clerk sign-in route preflight passed; real sign-in, onboarding, saved-write reload, role, second-household, session, multi-tab, Emergency Stop, Treasury, and Safe-to-Deploy browser evidence remains incomplete | **BLOCKED** | `docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md`; `docs/certification/auth-sign-in-published-origin.png` |
@@ -154,7 +179,7 @@ unreleased.
 
 ## Security and financial-integrity status
 
-- Tenant boundaries are actor-scoped. The current 163-route identifier matrix
+- Tenant boundaries are actor-scoped. The current 170-route identifier matrix
   passed isolated adversarial certification; route-inventory drift is resolved.
 - Treasury approvals remain planning reservations only. They do not debit executable
   capital or move money.
@@ -170,6 +195,10 @@ unreleased.
 - Clerk reverification remains enabled as a defense-in-depth control. Its retained
   RV 2/12 evidence is historical operational evidence, not a release requirement
   and not a claim of complete reverification certification.
+- The transaction-review 403 remediation does not weaken strict reverification
+  and is not counted as production browser evidence until a republished build
+  visibly opens the provider challenge and successfully retries the original
+  protected request.
 - Banking remains consent-gated, read-only, credential-reference based, and
   provider-disabled.
 - Exact-cent domain logic and PostgreSQL `numeric(18,2)` storage remain in force.

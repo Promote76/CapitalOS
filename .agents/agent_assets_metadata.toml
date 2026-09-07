@@ -78,3 +78,17 @@ mtime_ms = 1788615078301
 storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:a275880a-7e86-4ab1-a13b-802e51c9d9ab/31e7b0bf-dac2-42ba-b367-9ddcdfa03594/962caee3-53e8-472d-97d1-0c607841bf1c"
 storage_version_token = "1788615113948983"
 content_type = "text/markdown"
+
+[[outputs]]
+id = "36oDnxsWEOBYkqpovFLcQ"
+uri = "file://docs/CAPITAL_OS_VALUATION_AUDIT_2026-09-07.md"
+type = "text"
+title = "Capital OS Valuation Audit"
+description = "Dated as-is appraisal for the hypothetical $100M-AUM family-office operator lens, including sale ranges, operator economics, personal-statement treatment, technical evidence, risks, and diligence gaps."
+logical_id = "ac4ff60b-8071-4dcf-9af1-99e2b7fc28f1"
+content_hash = "sha256:9ec8cfa7f988b0043e17be32c56cf1290dbdccba822026d250b1706da4af06a1"
+size = 21296
+mtime_ms = 1788817883744
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:a275880a-7e86-4ab1-a13b-802e51c9d9ab/ac4ff60b-8071-4dcf-9af1-99e2b7fc28f1/47836b05-6e2c-4419-9f20-01c86ea1a479"
+storage_version_token = "1788817916959995"
+content_type = "text/markdown"

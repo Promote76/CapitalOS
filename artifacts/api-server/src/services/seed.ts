@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   accounts,
@@ -36,6 +36,7 @@ import {
   strategies,
   treasuryBuckets,
   treasuryPolicies,
+  taxLienCertificateCandidates,
   users,
   upcomingExpenses,
 } from "@workspace/db";
@@ -357,7 +358,7 @@ async function ensurePropertyUnderwritingSeed(householdId: string, propertyGoalI
       minimumReadinessScore: "60",
     });
   }
-  const [candidate] = await db.select({ id: propertyCandidates.id }).from(propertyCandidates).where(eq(propertyCandidates.propertyGoalId, propertyGoalId)).limit(1);
+  const [candidate] = await db.select({ id: propertyCandidates.id, sourceKind: propertyCandidates.sourceKind }).from(propertyCandidates).where(eq(propertyCandidates.propertyGoalId, propertyGoalId)).limit(1);
   let candidateId = candidate?.id;
   if (!candidate) {
     const [createdCandidate] = await db.insert(propertyCandidates).values({
@@ -385,6 +386,12 @@ async function ensurePropertyUnderwritingSeed(householdId: string, propertyGoalI
       squareFootage: "2400",
       yearBuilt: "1928",
       listingSource: "Manual research",
+      sourceKind: "third_party_property",
+      sourcePriority: "8",
+      dataFreshness: "unknown",
+      liveAvailability: "unverified",
+      parcelReconciliation: "unknown",
+      sourceRecords: [{ title: "Manual research record", sourceKind: "third_party_property" }],
       dateDiscovered: "2026-08-28",
       lastReviewed: "2026-08-31",
       status: "watchlist",
@@ -394,6 +401,16 @@ async function ensurePropertyUnderwritingSeed(householdId: string, propertyGoalI
       nextAction: "Confirm rent comparables and request an insurance quote.",
     }).returning({ id: propertyCandidates.id });
     candidateId = createdCandidate.id;
+  } else if (candidate.sourceKind === null) {
+    await db.update(propertyCandidates).set({
+      sourceKind: "third_party_property",
+      sourcePriority: "8",
+      dataFreshness: "unknown",
+      liveAvailability: "unverified",
+      parcelReconciliation: "unknown",
+      sourceRecords: [{ title: "Manual research record", sourceKind: "third_party_property" }],
+      updatedAt: new Date(),
+    }).where(and(eq(propertyCandidates.id, candidate.id), isNull(propertyCandidates.sourceKind)));
   }
   const [snapshot] = await db.select({ id: propertyReadinessSnapshots.id }).from(propertyReadinessSnapshots).where(eq(propertyReadinessSnapshots.propertyGoalId, propertyGoalId)).limit(1);
   if (!snapshot) {
@@ -488,6 +505,106 @@ async function ensurePropertyUnderwritingSeed(householdId: string, propertyGoalI
       { propertyGoalId, name: "Insurance estimate", metadata: { status: "needed", private: true, description: "Property-specific quote before offer review" } },
     ]);
   }
+}
+
+async function ensureFamilyOfficeIntelligenceSeed(householdId: string) {
+  const existing = await db.select({ id: taxLienCertificateCandidates.id })
+    .from(taxLienCertificateCandidates)
+    .where(eq(taxLienCertificateCandidates.householdId, householdId))
+    .limit(1);
+  if (existing.length > 0) return;
+  await db.insert(taxLienCertificateCandidates).values([
+    {
+      householdId,
+      jurisdictionPolicy: "FLORIDA_COUNTY_HELD_V1",
+      county: "Marion",
+      state: "FL",
+      certificateNumber: "2026-002290",
+      parcelNumber: "R0747-003-019",
+      taxYear: "2026",
+      faceAmount: "235.52",
+      currentPurchaseAmount: "235.52",
+      statedRate: "18.0000",
+      status: "historical_research",
+      owner: "Historical record; verify current owner",
+      propertyAddress: "Marion County, FL",
+      legalDescription: "0.42 acre parcel; historical research record",
+      propertyUse: "residential_land",
+      acreage: "0.4200",
+      assessedValue: "29097.00",
+      justValue: "29097.00",
+      conservativeValue: "29097.00",
+      certToValue: "0.0081",
+      totalLienExposure: "235.52",
+      totalExposureToValue: "0.0081",
+      homesteadStatus: "unknown",
+      priorCertificates: [],
+      openCertificates: [],
+      redeemedCertificates: [],
+      taxDeedHistory: [],
+      access: "unknown",
+      buildability: "unknown",
+      flood: "unknown",
+      wetland: "unknown",
+      codeStatus: "unknown",
+      titleRisk: "unknown",
+      redemptionAssessment: "unknown",
+      riskFlags: ["Historical evidence only", "Current eligibility not verified"],
+      liveAvailability: "unverified",
+      parcelReconciliation: "partial",
+      certificateReconciliation: "partial",
+      sourceRecords: [{ title: "MCTC historical export", sourceKind: "county_tax_collector", verifiedAt: "2026-08-31" }],
+      dataFreshness: "stale",
+      score: "0",
+      decision: "REVIEW_REQUIRED",
+      lastVerifiedAt: new Date("2026-08-31T00:00:00.000Z"),
+    },
+    {
+      householdId,
+      jurisdictionPolicy: "FLORIDA_COUNTY_HELD_V1",
+      county: "Marion",
+      state: "FL",
+      certificateNumber: "2026-004534",
+      parcelNumber: "R1312-001-002",
+      taxYear: "2026",
+      faceAmount: "215.06",
+      currentPurchaseAmount: "215.06",
+      statedRate: "18.0000",
+      status: "historical_research",
+      owner: "Historical record; verify current owner",
+      propertyAddress: "Marion County, FL",
+      legalDescription: "1.19 acre parcel; historical research record",
+      propertyUse: "residential_land",
+      acreage: "1.1900",
+      assessedValue: "19544.00",
+      justValue: "19544.00",
+      conservativeValue: "19544.00",
+      certToValue: "0.0110",
+      totalLienExposure: "215.06",
+      totalExposureToValue: "0.0110",
+      homesteadStatus: "unknown",
+      priorCertificates: [],
+      openCertificates: [],
+      redeemedCertificates: [],
+      taxDeedHistory: [],
+      access: "unknown",
+      buildability: "unknown",
+      flood: "unknown",
+      wetland: "unknown",
+      codeStatus: "unknown",
+      titleRisk: "unknown",
+      redemptionAssessment: "unknown",
+      riskFlags: ["Historical evidence only", "Current eligibility not verified"],
+      liveAvailability: "unverified",
+      parcelReconciliation: "partial",
+      certificateReconciliation: "partial",
+      sourceRecords: [{ title: "MCTC historical export", sourceKind: "county_tax_collector", verifiedAt: "2026-08-31" }],
+      dataFreshness: "stale",
+      score: "0",
+      decision: "REVIEW_REQUIRED",
+      lastVerifiedAt: new Date("2026-08-31T00:00:00.000Z"),
+    },
+  ]);
 }
 
 async function ensureHouseholdFinanceSeed(householdId: string) {
@@ -975,6 +1092,8 @@ export async function ensureTenantCore(
 
   tenantContexts.set(cacheKey, result);
   await ensureTreasurySeed(householdId, ownerId, fixtureMode);
+  await ensurePropertyUnderwritingSeed(householdId, result.propertyGoalId);
+  await ensureFamilyOfficeIntelligenceSeed(householdId);
   return result;
 }
 
@@ -1081,6 +1200,7 @@ export async function ensureSeedData(): Promise<SeedContext> {
       };
       await ensureHouseholdFinanceSeed(seedContext.householdId);
       await ensurePropertyUnderwritingSeed(seedContext.householdId, seedContext.propertyGoalId);
+      await ensureFamilyOfficeIntelligenceSeed(seedContext.householdId);
       await ensureTreasurySeed(seedContext.householdId, seedContext.ownerId, true);
       return seedContext;
     }
@@ -1376,6 +1496,7 @@ export async function ensureSeedData(): Promise<SeedContext> {
   seedContext = result;
   await ensureHouseholdFinanceSeed(seedContext.householdId);
   await ensurePropertyUnderwritingSeed(seedContext.householdId, seedContext.propertyGoalId);
+  await ensureFamilyOfficeIntelligenceSeed(seedContext.householdId);
   await ensureTreasurySeed(seedContext.householdId, seedContext.ownerId, true);
   return result;
 }

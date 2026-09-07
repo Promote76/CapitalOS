@@ -10,6 +10,7 @@ import type { PropertyUnderwritingDocumentsItemMetadata } from './propertyUnderw
 export type PropertyUnderwritingDocumentsItem = {
   id?: string;
   name?: string;
-  storagePath?: string;
+  /** @nullable */
+  storagePath?: string | null;
   metadata?: PropertyUnderwritingDocumentsItemMetadata;
 };

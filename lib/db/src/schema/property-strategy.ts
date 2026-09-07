@@ -84,6 +84,24 @@ export const propertyCandidates = pgTable(
     yearBuilt: numeric("year_built", { precision: 5, scale: 0 }),
     listingSource: text("listing_source"),
     listingUrl: text("listing_url"),
+    county: text("county"),
+    zoning: text("zoning"),
+    floodZone: text("flood_zone"),
+    condition: text("condition"),
+    utilities: money("utilities"),
+    maintenance: money("maintenance"),
+    ownerOccupancyEligible: boolean("owner_occupancy_eligible"),
+    sourceKind: text("source_kind"),
+    sourcePriority: numeric("source_priority", { precision: 3, scale: 0 }),
+    dataFreshness: text("data_freshness").notNull().default("unknown"),
+    liveAvailability: text("live_availability").notNull().default("unverified"),
+    parcelReconciliation: text("parcel_reconciliation").notNull().default("unknown"),
+    sourceRecords: jsonb("source_records").$type<Array<{
+      title: string;
+      sourceKind: string;
+      sourceUrl?: string;
+      verifiedAt?: string;
+    }>>().notNull().default([]),
     dateDiscovered: date("date_discovered"),
     lastReviewed: date("last_reviewed"),
     financingEstimate: money("financing_estimate"),

@@ -11,6 +11,156 @@ export const familyOfficeLabels = [
 export const analyticalDirections = ["BULLISH", "NEUTRAL", "BEARISH"] as const;
 export const proposalDecisions = ["watch", "reject", "request_more_research", "approve_shadow"] as const;
 
+export const floridaSourceHierarchy = [
+  "county_tax_collector",
+  "property_appraiser",
+  "clerk_recorder",
+  "state_statute",
+  "official_state_guidance",
+  "county_gis",
+  "government_record",
+  "third_party_property",
+  "informal",
+] as const;
+export const liveAvailabilityStates = ["verified_available", "unverified", "unavailable", "redeemed"] as const;
+export const reconciliationStates = ["matched", "partial", "unresolved", "conflict", "unknown"] as const;
+export const redemptionAssessments = ["high", "moderate", "low", "unknown"] as const;
+export const taxLienDecisions = ["WATCH", "REVIEW_REQUIRED", "REJECT"] as const;
+
+export type FloridaSourceKind = (typeof floridaSourceHierarchy)[number];
+export type LiveAvailability = (typeof liveAvailabilityStates)[number];
+export type ReconciliationState = (typeof reconciliationStates)[number];
+export type RedemptionAssessment = (typeof redemptionAssessments)[number];
+
+export function sourcePriorityFor(sourceKind: string | null | undefined): number {
+  const normalized = sourceKind?.trim().toLowerCase() as FloridaSourceKind | undefined;
+  const index = normalized ? floridaSourceHierarchy.indexOf(normalized) : -1;
+  return index === -1 ? floridaSourceHierarchy.length + 1 : index + 1;
+}
+
+export function classifyDataFreshness(
+  lastVerifiedAt: Date | string | null | undefined,
+  now = new Date(),
+  staleAfterDays = 30,
+): "fresh" | "stale" | "unknown" {
+  if (!lastVerifiedAt) return "unknown";
+  const verified = lastVerifiedAt instanceof Date ? lastVerifiedAt : new Date(lastVerifiedAt);
+  if (Number.isNaN(verified.getTime())) return "unknown";
+  const ageMs = now.getTime() - verified.getTime();
+  return ageMs <= staleAfterDays * 24 * 60 * 60 * 1000 ? "fresh" : "stale";
+}
+
+export type TaxLienReviewInput = {
+  currentPurchaseAmountCents: number;
+  conservativeValueCents: number;
+  totalLienExposureCents: number;
+  sourcePriority: number;
+  dataFreshness: "fresh" | "stale" | "unknown";
+  liveAvailability: LiveAvailability;
+  parcelReconciliation: ReconciliationState;
+  certificateReconciliation: ReconciliationState;
+  stackRisk: "low" | "moderate" | "high" | "unknown";
+  redemptionAssessment: RedemptionAssessment;
+  access: string;
+  buildability: string;
+  homesteadStatus: string;
+  flood: string;
+  wetland: string;
+  codeStatus: string;
+  titleRisk: string;
+  bankruptcyOrLitigation: string;
+  opportunityReserveAfterCents: number;
+  strategicReserveAfterCents: number;
+  positionLimitCents?: number;
+  opportunityReserveMinimumCents?: number;
+  strategicReserveMinimumCents?: number;
+};
+
+export function reviewTaxLienCandidate(input: TaxLienReviewInput) {
+  const positionLimitCents = input.positionLimitCents ?? 30_000;
+  const opportunityReserveMinimumCents = input.opportunityReserveMinimumCents ?? 50_000;
+  const strategicReserveMinimumCents = input.strategicReserveMinimumCents ?? 100_000;
+  const hardStops: string[] = [];
+  if (input.parcelReconciliation !== "matched") hardStops.push("Parcel cannot be reconciled to an authoritative record.");
+  if (input.certificateReconciliation !== "matched") hardStops.push("Certificate cannot be reconciled to an authoritative county record.");
+  if (input.liveAvailability !== "verified_available") {
+    hardStops.push(
+      input.liveAvailability === "redeemed"
+        ? "Certificate is recorded as redeemed."
+        : "Current live availability is not verified; historical evidence is watch-only.",
+    );
+  }
+  if (input.currentPurchaseAmountCents > positionLimitCents) hardStops.push("Position exceeds the Florida proof-of-process hard cap.");
+  if (input.opportunityReserveAfterCents < opportunityReserveMinimumCents) hardStops.push("Opportunity reserve would fall below the required floor.");
+  if (input.strategicReserveAfterCents < strategicReserveMinimumCents) hardStops.push("Strategic reserve would fall below the required floor.");
+  if (input.access.toLowerCase() === "unresolved" || input.access.toLowerCase() === "landlocked") hardStops.push("Access is unresolved or landlocked.");
+  if (input.buildability.toLowerCase() === "non_buildable" || input.buildability.toLowerCase() === "non-buildable") hardStops.push("Parcel is not buildable.");
+  if (["material", "high", "unresolved"].includes(input.flood.toLowerCase()) || ["material", "high", "unresolved"].includes(input.wetland.toLowerCase())) {
+    hardStops.push("Material flood or wetland risk remains unresolved.");
+  }
+  if (["unresolved", "active", "high"].includes(input.codeStatus.toLowerCase())) hardStops.push("Code or demolition risk remains unresolved.");
+  if (["unresolved", "active", "high"].includes(input.titleRisk.toLowerCase())) hardStops.push("Title risk remains unresolved.");
+  if (["unresolved", "active", "high"].includes(input.bankruptcyOrLitigation.toLowerCase())) hardStops.push("Bankruptcy or litigation risk remains unresolved.");
+  if (input.homesteadStatus.toLowerCase() === "restricted") hardStops.push("Homestead restrictions cannot be bypassed.");
+  if (input.conservativeValueCents <= 0) hardStops.push("Conservative collateral value is unknown.");
+
+  const certToValue = input.conservativeValueCents > 0
+    ? input.currentPurchaseAmountCents / input.conservativeValueCents
+    : Number.POSITIVE_INFINITY;
+  const totalExposureToValue = input.conservativeValueCents > 0
+    ? input.totalLienExposureCents / input.conservativeValueCents
+    : Number.POSITIVE_INFINITY;
+  const scoreParts = [
+    input.conservativeValueCents >= 2_000_000 ? 20 : input.conservativeValueCents >= 1_500_000 ? 14 : 5,
+    certToValue <= 0.02 ? 15 : certToValue <= 0.05 ? 9 : 2,
+    input.redemptionAssessment === "high" ? 15 : input.redemptionAssessment === "moderate" ? 10 : input.redemptionAssessment === "low" ? 4 : 0,
+    input.redemptionAssessment === "high" ? 10 : input.redemptionAssessment === "moderate" ? 6 : 2,
+    input.stackRisk === "low" ? 10 : input.stackRisk === "moderate" ? 6 : 2,
+    ["verified", "clear", "normal"].includes(input.access.toLowerCase()) && ["buildable", "normal", "verified"].includes(input.buildability.toLowerCase()) ? 10 : 3,
+    input.homesteadStatus.toLowerCase() === "clear" ? 10 : input.homesteadStatus.toLowerCase() === "pending" ? 5 : 1,
+    input.dataFreshness === "fresh" && input.sourcePriority <= 3 ? 5 : input.dataFreshness === "stale" ? 2 : 0,
+    input.currentPurchaseAmountCents <= 27_500 ? 5 : input.currentPurchaseAmountCents <= positionLimitCents ? 3 : 0,
+  ];
+  const score = Math.min(100, scoreParts.reduce((sum, part) => sum + part, 0));
+  const intrinsicDisqualifier = input.currentPurchaseAmountCents > positionLimitCents
+    || input.opportunityReserveAfterCents < opportunityReserveMinimumCents
+    || input.strategicReserveAfterCents < strategicReserveMinimumCents
+    || ["unavailable", "redeemed"].includes(input.liveAvailability)
+    || input.access.toLowerCase() === "landlocked"
+    || ["non_buildable", "non-buildable"].includes(input.buildability.toLowerCase())
+    || ["material", "high"].includes(input.flood.toLowerCase())
+    || ["material", "high"].includes(input.wetland.toLowerCase())
+    || ["active", "high"].includes(input.codeStatus.toLowerCase())
+    || ["active", "high"].includes(input.titleRisk.toLowerCase())
+    || ["active", "high"].includes(input.bankruptcyOrLitigation.toLowerCase())
+    || input.homesteadStatus.toLowerCase() === "restricted";
+  const decision = intrinsicDisqualifier
+    ? "REJECT"
+    : hardStops.length > 0 || input.dataFreshness !== "fresh" || input.redemptionAssessment === "unknown"
+      ? "REVIEW_REQUIRED"
+      : "WATCH";
+  return {
+    score,
+    decision,
+    hardStops,
+    certToValue,
+    totalExposureToValue,
+    redemptionUncertainty: input.redemptionAssessment === "unknown",
+    capitalGovernor: {
+      positionLimitCents,
+      opportunityReserveMinimumCents,
+      strategicReserveMinimumCents,
+      opportunityReserveAfterCents: input.opportunityReserveAfterCents,
+      strategicReserveAfterCents: input.strategicReserveAfterCents,
+      passes: input.currentPurchaseAmountCents <= positionLimitCents
+        && input.opportunityReserveAfterCents >= opportunityReserveMinimumCents
+        && input.strategicReserveAfterCents >= strategicReserveMinimumCents,
+    },
+    advisoryOnly: true,
+    purchaseAuthority: false,
+  };
+}
+
 export type ResearchOutput = {
   title: string;
   thesis: string;

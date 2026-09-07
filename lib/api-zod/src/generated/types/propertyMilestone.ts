@@ -10,7 +10,7 @@ export interface PropertyMilestone {
   id: string;
   name: string;
   status: string;
-  progress: number;
+  progress: string;
   target: string;
   currentState: string;
   nextAction: string;

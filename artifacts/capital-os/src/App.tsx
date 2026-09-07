@@ -3187,6 +3187,40 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
       <div className="safety-inline"><ShieldCheck size={15} /> {snapshot.guardrails[0] ?? 'Research may not move money, place orders, alter risk, or unlock protected capital.'}</div>
     </section>
 
+    <section className="card card-pad page-section animate-in delay-2">
+      <CardTitle title="Florida real-estate intelligence desks" subtitle="Source-backed research stays separate from purchase authority. Official county and state records outrank third-party data." action={<Building2 size={17} color="var(--ink-soft)" />} />
+      <div className="protection-grid">
+        <div><span>Jurisdiction</span><strong>{snapshot.realEstate.policy.jurisdiction}</strong></div>
+        <div><span>Initial deployment cap</span><strong>${(snapshot.realEstate.policy.initialDeploymentCapCents / 100).toFixed(2)}</strong></div>
+        <div><span>Single-position cap</span><strong>${(snapshot.realEstate.policy.singlePositionHardCapCents / 100).toFixed(2)}</strong></div>
+        <div><span>Autonomous purchase</span><strong>{snapshot.realEstate.policy.autonomousPurchase ? 'Enabled' : 'None'}</strong></div>
+      </div>
+      <div className="safety-inline"><ShieldCheck size={15} /> Property buy-box and Capital Governor hard stops remain authoritative. This desk cannot bid, purchase, file a deed, apply for lending, or move household capital.</div>
+      <div className="section-grid page-section">
+        <div>
+          <div className="card-title-row"><div><h3>Property acquisition desk</h3><span className="intelligence-confidence">{snapshot.realEstate.propertyCandidates.length} candidate{snapshot.realEstate.propertyCandidates.length === 1 ? '' : 's'} · deterministic screening</span></div><span className="status">Review only</span></div>
+          <div className="review-list">
+            {snapshot.realEstate.propertyCandidates.length === 0 ? <div className="empty-state"><Home size={17} /><span>No property candidates have been sourced.</span></div> : snapshot.realEstate.propertyCandidates.map((candidate) => <div className="review-row" key={candidate.id}>
+              <div><strong>{candidate.addressLabel}</strong><span>{[candidate.city, candidate.state].filter(Boolean).join(', ') || 'Location unknown'} · {candidate.propertyType} · buy-box {candidate.buyBox.score}/100</span><span>Source: {candidate.sourceKind} · freshness {candidate.dataFreshness} · availability {candidate.liveAvailability} · parcel {candidate.parcelReconciliation}</span></div>
+              <span className={`status ${candidate.intelligence.hardStops.length > 0 ? 'pending' : ''}`}>{candidate.intelligence.hardStops.length > 0 ? `${candidate.intelligence.hardStops.length} hard stop${candidate.intelligence.hardStops.length === 1 ? '' : 's'}` : 'Review'}</span>
+            </div>)}
+          </div>
+          {snapshot.realEstate.propertyCandidates.map((candidate) => candidate.intelligence.hardStops.length > 0 && <div className="operator-form-note warning" key={`${candidate.id}-hard-stops`}><AlertTriangle size={14} /><span><strong>{candidate.addressLabel}:</strong> {candidate.intelligence.hardStops.join(' · ')}</span></div>)}
+        </div>
+        <div>
+          <div className="card-title-row"><div><h3>Florida tax-lien certificate desk</h3><span className="intelligence-confidence">{snapshot.realEstate.taxLienCandidates.length} historical or live candidate{snapshot.realEstate.taxLienCandidates.length === 1 ? '' : 's'}</span></div><span className="status">Human purchase only</span></div>
+          <div className="review-list">
+            {snapshot.realEstate.taxLienCandidates.length === 0 ? <div className="empty-state"><FileText size={17} /><span>No Florida certificate candidates have been sourced.</span></div> : snapshot.realEstate.taxLienCandidates.map((candidate) => <div className="review-row" key={candidate.id}>
+              <div><strong>{candidate.county} · {candidate.certificateNumber}</strong><span>Parcel {candidate.parcelNumber} · ${candidate.currentPurchaseAmount} · score {candidate.score}/100</span><span>Source priority {candidate.sourcePriority} · freshness {candidate.dataFreshness} · availability {candidate.liveAvailability} · redemption {candidate.redemptionAssessment}{candidate.redemptionUncertainty ? ' (uncertain)' : ''}</span><span>Parcel {candidate.parcelReconciliation} · certificate {candidate.certificateReconciliation}</span></div>
+              <span className={`status ${candidate.decision === 'REJECT' ? 'review' : 'pending'}`}>{candidate.decision}</span>
+            </div>)}
+          </div>
+          {snapshot.realEstate.taxLienCandidates.map((candidate) => candidate.hardStops.length > 0 && <div className="operator-form-note warning" key={`${candidate.id}-hard-stops`}><AlertTriangle size={14} /><span><strong>{candidate.certificateNumber}:</strong> {candidate.hardStops.join(' · ')}</span></div>)}
+        </div>
+      </div>
+      <div className="field-help">Source hierarchy: {snapshot.realEstate.sourceHierarchy.join(' → ')}. Historical records can create a watch item, never a live-buy instruction.</div>
+    </section>
+
     <section className="section-grid page-section">
       <section className="card card-pad animate-in delay-2">
         <CardTitle title="Commission an analyst" subtitle="Prompts are sanitized server-side and stored without credentials." action={<Sparkles size={17} color="var(--ink-soft)" />} />

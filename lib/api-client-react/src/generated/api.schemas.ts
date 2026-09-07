@@ -590,7 +590,7 @@ export interface PropertyMilestone {
   id: string;
   name: string;
   status: string;
-  progress: number;
+  progress: string;
   target: string;
   currentState: string;
   nextAction: string;
@@ -772,9 +772,11 @@ export type PropertyUnderwritingPreapprovalsItem = {
   provider?: string;
   status?: string;
   estimatedMaximumPurchasePrice?: string;
-  estimatedRate?: string;
+  /** @nullable */
+  estimatedRate?: string | null;
   estimatedCashRequired?: string;
-  expiration?: string;
+  /** @nullable */
+  expiration?: string | null;
   documentsNeeded?: string;
   notes?: string;
 };
@@ -797,7 +799,8 @@ export type PropertyUnderwritingDocumentsItemMetadata = {
 export type PropertyUnderwritingDocumentsItem = {
   id?: string;
   name?: string;
-  storagePath?: string;
+  /** @nullable */
+  storagePath?: string | null;
   metadata?: PropertyUnderwritingDocumentsItemMetadata;
 };
 
@@ -1990,6 +1993,178 @@ export interface FamilyOfficeProposalDecisionInput {
   reason: string;
 }
 
+export interface FamilyOfficeSourceRecord {
+  title: string;
+  sourceKind: string;
+  /** @nullable */
+  sourceUrl?: string | null;
+  /** @nullable */
+  verifiedAt?: string | null;
+}
+
+export type FamilyOfficePropertyCandidateBuyBox = {
+  score: number;
+  failures: string[];
+};
+
+export type FamilyOfficePropertyCandidateIntelligence = {
+  sourceKind: string;
+  sourcePriority: number;
+  dataFreshness: string;
+  liveAvailability: string;
+  parcelReconciliation: string;
+  hardStops: string[];
+  deterministicBuyBoxAuthoritative: boolean;
+  advisoryOnly: boolean;
+  purchaseAuthority: boolean;
+};
+
+export interface FamilyOfficePropertyCandidate {
+  id: string;
+  propertyGoalId: string;
+  addressLabel: string;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  county?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  zip?: string | null;
+  /** @nullable */
+  askingPrice?: string | null;
+  /** @nullable */
+  estimatedRent?: string | null;
+  /** @nullable */
+  annualPropertyTaxes?: string | null;
+  /** @nullable */
+  insurance?: string | null;
+  propertyType: string;
+  units: string;
+  bedrooms: string;
+  bathrooms?: string;
+  /** @nullable */
+  zoning?: string | null;
+  /** @nullable */
+  floodZone?: string | null;
+  /** @nullable */
+  condition?: string | null;
+  sourceKind: string;
+  /** @nullable */
+  sourcePriority: number | null;
+  sourceRecords?: FamilyOfficeSourceRecord[];
+  dataFreshness: string;
+  liveAvailability: string;
+  parcelReconciliation: string;
+  buyBox: FamilyOfficePropertyCandidateBuyBox;
+  intelligence: FamilyOfficePropertyCandidateIntelligence;
+  status: string;
+  advisoryOnly: boolean;
+  purchaseAuthority: boolean;
+}
+
+export type FamilyOfficeTaxLienCandidateDecision = typeof FamilyOfficeTaxLienCandidateDecision[keyof typeof FamilyOfficeTaxLienCandidateDecision];
+
+
+export const FamilyOfficeTaxLienCandidateDecision = {
+  WATCH: 'WATCH',
+  REVIEW_REQUIRED: 'REVIEW_REQUIRED',
+  REJECT: 'REJECT',
+} as const;
+
+export type FamilyOfficeTaxLienCandidateCapitalGovernor = {
+  positionLimitCents: number;
+  opportunityReserveMinimumCents: number;
+  strategicReserveMinimumCents: number;
+  opportunityReserveAfterCents: number;
+  strategicReserveAfterCents: number;
+  passes: boolean;
+};
+
+export interface FamilyOfficeTaxLienCandidate {
+  id: string;
+  jurisdictionPolicy: string;
+  county: string;
+  state: string;
+  certificateNumber: string;
+  parcelNumber: string;
+  taxYear: string;
+  faceAmount: string;
+  currentPurchaseAmount: string;
+  /** @nullable */
+  statedRate?: string | null;
+  status: string;
+  /** @nullable */
+  owner?: string | null;
+  /** @nullable */
+  propertyAddress?: string | null;
+  /** @nullable */
+  legalDescription?: string | null;
+  /** @nullable */
+  propertyUse?: string | null;
+  /** @nullable */
+  acreage?: string | null;
+  /** @nullable */
+  assessedValue?: string | null;
+  /** @nullable */
+  justValue?: string | null;
+  /** @nullable */
+  conservativeValue?: string | null;
+  certToValue?: number;
+  /** @nullable */
+  totalLienExposure?: string | null;
+  totalExposureToValue?: number;
+  homesteadStatus: string;
+  priorCertificates: string[];
+  openCertificates: string[];
+  redeemedCertificates: string[];
+  taxDeedHistory: string[];
+  access: string;
+  buildability: string;
+  flood: string;
+  wetland: string;
+  codeStatus: string;
+  titleRisk: string;
+  redemptionAssessment: string;
+  redemptionUncertainty: boolean;
+  riskFlags: string[];
+  liveAvailability: string;
+  parcelReconciliation: string;
+  certificateReconciliation: string;
+  sourcePriority: number;
+  sourceRecords: FamilyOfficeSourceRecord[];
+  dataFreshness: string;
+  score: number;
+  decision: FamilyOfficeTaxLienCandidateDecision;
+  hardStops: string[];
+  capitalGovernor: FamilyOfficeTaxLienCandidateCapitalGovernor;
+  /** @nullable */
+  lastVerifiedAt?: string | null;
+  advisoryOnly: boolean;
+  purchaseAuthority: boolean;
+}
+
+export type FamilyOfficeRealEstateSnapshotPolicy = {
+  jurisdiction: string;
+  startingBankrollCents: number;
+  initialDeploymentCapCents: number;
+  preferredPositionRangeCents: number[];
+  singlePositionHardCapCents: number;
+  opportunityReserveMinimumCents: number;
+  strategicReserveMinimumCents: number;
+  primaryOutcome: string;
+  autonomousPurchase: false;
+};
+
+export interface FamilyOfficeRealEstateSnapshot {
+  propertyCandidates: FamilyOfficePropertyCandidate[];
+  taxLienCandidates: FamilyOfficeTaxLienCandidate[];
+  sourceHierarchy: string[];
+  policy: FamilyOfficeRealEstateSnapshotPolicy;
+  advisoryOnly: boolean;
+  purchaseAuthority: boolean;
+}
+
 export type FamilyOfficeSnapshotProviderState = typeof FamilyOfficeSnapshotProviderState[keyof typeof FamilyOfficeSnapshotProviderState];
 
 
@@ -2018,6 +2193,7 @@ export interface FamilyOfficeSnapshot {
   proposals: FamilyOfficeProposal[];
   shadowPortfolios: ShadowPortfolio[];
   shadowIntents: ShadowIntent[];
+  realEstate: FamilyOfficeRealEstateSnapshot;
   summary: FamilyOfficeSnapshotSummary;
 }
 

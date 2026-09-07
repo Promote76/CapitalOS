@@ -1,5 +1,42 @@
 type Factor = { key: string; label: string; score: number; weight: number; reason: string };
 
+export type PropertyIntelligenceReviewInput = {
+  sourceKind: string | null | undefined;
+  sourcePriority: number | null | undefined;
+  dataFreshness: string;
+  liveAvailability: string;
+  parcelReconciliation: string;
+  buyBoxFailures: string[];
+};
+
+export function reviewPropertyIntelligence(input: PropertyIntelligenceReviewInput) {
+  const hardStops = [...input.buyBoxFailures];
+  if (input.liveAvailability !== "verified_available") {
+    hardStops.push(
+      input.liveAvailability === "unavailable"
+        ? "Listing is no longer available."
+        : "Live listing availability is not verified.",
+    );
+  }
+  if (input.parcelReconciliation !== "matched") {
+    hardStops.push("Parcel identity is not reconciled to an authoritative record.");
+  }
+  if (input.dataFreshness !== "fresh") {
+    hardStops.push(input.dataFreshness === "stale" ? "Property source data is stale." : "Property source freshness is unknown.");
+  }
+  return {
+    sourceKind: input.sourceKind ?? "unknown",
+    sourcePriority: input.sourcePriority ?? 10,
+    dataFreshness: input.dataFreshness,
+    liveAvailability: input.liveAvailability,
+    parcelReconciliation: input.parcelReconciliation,
+    hardStops: [...new Set(hardStops)],
+    deterministicBuyBoxAuthoritative: true,
+    advisoryOnly: true,
+    purchaseAuthority: false,
+  };
+}
+
 export type DealAnalysisInput = {
   purchasePriceCents: number;
   downPaymentPercent: number;

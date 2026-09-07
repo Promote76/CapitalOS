@@ -11,9 +11,11 @@ export type PropertyUnderwritingPreapprovalsItem = {
   provider?: string;
   status?: string;
   estimatedMaximumPurchasePrice?: string;
-  estimatedRate?: string;
+  /** @nullable */
+  estimatedRate?: string | null;
   estimatedCashRequired?: string;
-  expiration?: string;
+  /** @nullable */
+  expiration?: string | null;
   documentsNeeded?: string;
   notes?: string;
 };

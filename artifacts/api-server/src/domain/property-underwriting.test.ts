@@ -7,6 +7,7 @@ import {
   calculatePropertyGovernor,
   calculatePropertyReadiness,
   calculateStressScenario,
+  reviewPropertyIntelligence,
 } from "./property-underwriting.ts";
 
 test("deal analysis stays in cents and separates owner housing from rental cash flow", () => {
@@ -124,4 +125,19 @@ test("downside stress test distinguishes review from failure", () => {
   });
   assert.ok(["pass", "review", "fail"].includes(result.result));
   assert.equal(Number.isInteger(result.monthlyCashFlowCents), true);
+});
+
+test("property intelligence keeps stale or unverified evidence subordinate to deterministic buy-box hard stops", () => {
+  const result = reviewPropertyIntelligence({
+    sourceKind: "third_party_property",
+    sourcePriority: 8,
+    dataFreshness: "unknown",
+    liveAvailability: "unverified",
+    parcelReconciliation: "unknown",
+    buyBoxFailures: ["The projected monthly cash flow is below the buy-box floor."],
+  });
+  assert.equal(result.deterministicBuyBoxAuthoritative, true);
+  assert.equal(result.purchaseAuthority, false);
+  assert.equal(result.hardStops.length, 4);
+  assert.ok(result.hardStops.includes("The projected monthly cash flow is below the buy-box floor."));
 });

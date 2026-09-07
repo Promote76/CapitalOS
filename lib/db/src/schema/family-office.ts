@@ -123,6 +123,69 @@ export const shadowOrderIntents = pgTable(
   }),
 );
 
+export const taxLienCertificateCandidates = pgTable(
+  "tax_lien_certificate_candidates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    jurisdictionPolicy: text("jurisdiction_policy").notNull().default("FLORIDA_COUNTY_HELD_V1"),
+    county: text("county").notNull(),
+    state: text("state").notNull().default("FL"),
+    certificateNumber: text("certificate_number").notNull(),
+    parcelNumber: text("parcel_number").notNull(),
+    taxYear: text("tax_year").notNull(),
+    faceAmount: numeric("face_amount", { precision: 18, scale: 2 }).notNull().default("0"),
+    currentPurchaseAmount: numeric("current_purchase_amount", { precision: 18, scale: 2 }).notNull().default("0"),
+    statedRate: numeric("stated_rate", { precision: 7, scale: 4 }),
+    status: text("status").notNull().default("historical_research"),
+    owner: text("owner"),
+    propertyAddress: text("property_address"),
+    legalDescription: text("legal_description"),
+    propertyUse: text("property_use"),
+    acreage: numeric("acreage", { precision: 12, scale: 4 }),
+    assessedValue: numeric("assessed_value", { precision: 18, scale: 2 }),
+    justValue: numeric("just_value", { precision: 18, scale: 2 }),
+    conservativeValue: numeric("conservative_value", { precision: 18, scale: 2 }),
+    certToValue: numeric("cert_to_value", { precision: 8, scale: 4 }),
+    totalLienExposure: numeric("total_lien_exposure", { precision: 18, scale: 2 }),
+    totalExposureToValue: numeric("total_exposure_to_value", { precision: 8, scale: 4 }),
+    homesteadStatus: text("homestead_status").notNull().default("unknown"),
+    priorCertificates: jsonb("prior_certificates").$type<string[]>().notNull().default([]),
+    openCertificates: jsonb("open_certificates").$type<string[]>().notNull().default([]),
+    redeemedCertificates: jsonb("redeemed_certificates").$type<string[]>().notNull().default([]),
+    taxDeedHistory: jsonb("tax_deed_history").$type<string[]>().notNull().default([]),
+    access: text("access").notNull().default("unknown"),
+    buildability: text("buildability").notNull().default("unknown"),
+    flood: text("flood").notNull().default("unknown"),
+    wetland: text("wetland").notNull().default("unknown"),
+    codeStatus: text("code_status").notNull().default("unknown"),
+    titleRisk: text("title_risk").notNull().default("unknown"),
+    redemptionAssessment: text("redemption_assessment").notNull().default("unknown"),
+    riskFlags: jsonb("risk_flags").$type<string[]>().notNull().default([]),
+    liveAvailability: text("live_availability").notNull().default("unverified"),
+    parcelReconciliation: text("parcel_reconciliation").notNull().default("unresolved"),
+    certificateReconciliation: text("certificate_reconciliation").notNull().default("unresolved"),
+    sourceRecords: jsonb("source_records").$type<Array<{
+      title: string;
+      sourceKind: string;
+      sourceUrl?: string;
+      verifiedAt?: string;
+    }>>().notNull().default([]),
+    dataFreshness: text("data_freshness").notNull().default("unknown"),
+    score: numeric("score", { precision: 5, scale: 2 }).notNull().default("0"),
+    decision: text("decision").notNull().default("REVIEW_REQUIRED"),
+    lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("tax_lien_certificate_candidates_household_idx").on(table.householdId),
+    countyIdx: index("tax_lien_certificate_candidates_county_idx").on(table.county),
+    parcelIdx: index("tax_lien_certificate_candidates_parcel_idx").on(table.parcelNumber),
+    certificateIdx: index("tax_lien_certificate_candidates_certificate_idx").on(table.certificateNumber),
+  }),
+);
+
 export const taxLienCandidates = pgTable(
   "tax_lien_candidates",
   {
@@ -168,4 +231,6 @@ export type FamilyOfficeEvidence = typeof familyOfficeEvidence.$inferSelect;
 export type FamilyOfficeProposal = typeof familyOfficeProposals.$inferSelect;
 export type ShadowPortfolio = typeof shadowPortfolios.$inferSelect;
 export type ShadowOrderIntent = typeof shadowOrderIntents.$inferSelect;
+
+export type TaxLienCertificateCandidate = typeof taxLienCertificateCandidates.$inferSelect;
 export type TaxLienCandidate = typeof taxLienCandidates.$inferSelect;

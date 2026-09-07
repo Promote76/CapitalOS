@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { FamilyOfficeProposal } from './familyOfficeProposal';
+import type { FamilyOfficeRealEstateSnapshot } from './familyOfficeRealEstateSnapshot';
 import type { FamilyOfficeRun } from './familyOfficeRun';
 import type { FamilyOfficeSnapshotProvider } from './familyOfficeSnapshotProvider';
 import type { FamilyOfficeSnapshotSummary } from './familyOfficeSnapshotSummary';
@@ -19,5 +20,6 @@ export interface FamilyOfficeSnapshot {
   proposals: FamilyOfficeProposal[];
   shadowPortfolios: ShadowPortfolio[];
   shadowIntents: ShadowIntent[];
+  realEstate: FamilyOfficeRealEstateSnapshot;
   summary: FamilyOfficeSnapshotSummary;
 }

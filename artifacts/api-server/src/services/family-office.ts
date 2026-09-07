@@ -8,16 +8,21 @@ import {
   shadowOrderIntents,
   shadowPortfolios,
   taxLienCandidates,
+  taxLienCertificateCandidates,
 } from "@workspace/db";
 import { assertPermission, GovernanceError } from "../domain/governance";
 import { parseMoneyToCents } from "../domain/finance";
 import {
   assertShadowOnlyDecision,
+  classifyDataFreshness,
   familyOfficeProviderStatus,
+  reviewTaxLienCandidate,
   shadowGuardrails,
+  sourcePriorityFor,
   type ResearchOutput,
 } from "../domain/family-office";
 import { assessTaxLienCandidate, realEstateGuardrails } from "../domain/real-estate-intelligence";
+import { reviewPropertyIntelligence } from "../domain/property-underwriting";
 import { ProviderUnavailableError, XaiIntelligenceProvider } from "./family-office-provider";
 import { getPropertyUnderwriting } from "./property-underwriting";
 import type { Actor } from "./capital-os";
@@ -74,22 +79,89 @@ function portfolioView(portfolio: typeof shadowPortfolios.$inferSelect) {
     liveExecutionEnabled: false,
   };
 }
-
 export async function getFamilyOfficeSnapshot(actor: Actor) {
   assertPermission(actor.role, "read");
-  const [runs, proposals, portfolios, intents] = await Promise.all([
+  const [runs, proposals, portfolios, intents, taxLienCandidates, underwriting] = await Promise.all([
     db.select().from(familyOfficeRuns).where(eq(familyOfficeRuns.householdId, actor.householdId)).orderBy(desc(familyOfficeRuns.createdAt)).limit(20),
     db.select().from(familyOfficeProposals).where(eq(familyOfficeProposals.householdId, actor.householdId)).orderBy(desc(familyOfficeProposals.createdAt)).limit(20),
     db.select().from(shadowPortfolios).where(eq(shadowPortfolios.householdId, actor.householdId)).orderBy(desc(shadowPortfolios.createdAt)),
     db.select().from(shadowOrderIntents).where(eq(shadowOrderIntents.householdId, actor.householdId)).orderBy(desc(shadowOrderIntents.createdAt)).limit(20),
+    db.select().from(taxLienCertificateCandidates).where(eq(taxLienCertificateCandidates.householdId, actor.householdId)).orderBy(desc(taxLienCertificateCandidates.updatedAt)),
+    getPropertyUnderwriting(actor),
   ]);
   const status = familyOfficeProviderStatus();
+  const propertyCandidates = underwriting.candidates.map((candidate) => ({
+    id: candidate.id,
+    propertyGoalId: candidate.propertyGoalId,
+    addressLabel: candidate.addressLabel,
+    city: candidate.city,
+    county: candidate.county,
+    state: candidate.state,
+    zip: candidate.zip,
+    askingPrice: candidate.askingPrice,
+    estimatedRent: candidate.estimatedRent,
+    annualPropertyTaxes: candidate.annualPropertyTaxes,
+    insurance: candidate.insurance,
+    propertyType: candidate.propertyType,
+    units: candidate.units,
+    bedrooms: candidate.bedrooms,
+    bathrooms: candidate.bathrooms,
+    zoning: candidate.zoning,
+    floodZone: candidate.floodZone,
+    condition: candidate.condition,
+    sourceKind: candidate.sourceKind ?? "unknown",
+    sourcePriority: candidate.sourcePriority === null ? 10 : Number(candidate.sourcePriority),
+    sourceRecords: candidate.sourceRecords,
+    dataFreshness: candidate.dataFreshness,
+    liveAvailability: candidate.liveAvailability,
+    parcelReconciliation: candidate.parcelReconciliation,
+    buyBox: candidate.deal.buyBox,
+    intelligence: reviewPropertyIntelligence({
+      sourceKind: candidate.sourceKind,
+      sourcePriority: candidate.sourcePriority === null ? 10 : Number(candidate.sourcePriority),
+      dataFreshness: candidate.dataFreshness,
+      liveAvailability: candidate.liveAvailability,
+      parcelReconciliation: candidate.parcelReconciliation,
+      buyBoxFailures: candidate.deal.buyBox.failures,
+    }),
+    status: candidate.status,
+    advisoryOnly: true,
+    purchaseAuthority: false,
+  }));
   return {
     provider: { state: status.state, enabled: status.enabled, model: status.model },
     guardrails: shadowGuardrails(),
     runs: runs.map(runView),
     proposals: proposals.map(proposalView),
     shadowPortfolios: portfolios.map(portfolioView),
+    realEstate: {
+      propertyCandidates,
+      taxLienCandidates: taxLienCandidates.map(taxLienView),
+      sourceHierarchy: [
+        "County Tax Collector",
+        "Property Appraiser",
+        "Clerk / Recorder",
+        "State Statutes",
+        "Official State Guidance",
+        "County GIS",
+        "Other Government Records",
+        "Third-Party Property Sources",
+        "Social / Informal Sources",
+      ],
+      policy: {
+        jurisdiction: "Florida county-held certificates",
+        startingBankrollCents: 200_000,
+        initialDeploymentCapCents: 50_000,
+        preferredPositionRangeCents: [10_000, 27_500],
+        singlePositionHardCapCents: 30_000,
+        opportunityReserveMinimumCents: 50_000,
+        strategicReserveMinimumCents: 100_000,
+        primaryOutcome: "REDEMPTION",
+        autonomousPurchase: false,
+      },
+      advisoryOnly: true,
+      purchaseAuthority: false,
+    },
     shadowIntents: intents.map((intent) => ({
       id: intent.id,
       proposalId: intent.proposalId,
@@ -114,7 +186,7 @@ export async function getFamilyOfficeSnapshot(actor: Actor) {
   };
 }
 
-function taxLienView(candidate: typeof taxLienCandidates.$inferSelect) {
+function legacyTaxLienView(candidate: typeof taxLienCandidates.$inferSelect) {
   return {
     id: candidate.id,
     jurisdiction: candidate.jurisdiction,
@@ -150,6 +222,85 @@ function taxLienView(candidate: typeof taxLienCandidates.$inferSelect) {
   };
 }
 
+function taxLienView(candidate: typeof taxLienCertificateCandidates.$inferSelect) {
+  const sourcePriority = candidate.sourceRecords.length
+    ? Math.min(...candidate.sourceRecords.map((record) => sourcePriorityFor(record.sourceKind)))
+    : sourcePriorityFor(undefined);
+  const review = reviewTaxLienCandidate({
+    currentPurchaseAmountCents: Math.round(Number(candidate.currentPurchaseAmount) * 100),
+    conservativeValueCents: Math.round(Number(candidate.conservativeValue ?? "0") * 100),
+    totalLienExposureCents: Math.round(Number(candidate.totalLienExposure ?? candidate.currentPurchaseAmount) * 100),
+    sourcePriority,
+    dataFreshness: candidate.dataFreshness as "fresh" | "stale" | "unknown",
+    liveAvailability: candidate.liveAvailability as "verified_available" | "unverified" | "unavailable" | "redeemed",
+    parcelReconciliation: candidate.parcelReconciliation as "matched" | "partial" | "unresolved" | "conflict" | "unknown",
+    certificateReconciliation: candidate.certificateReconciliation as "matched" | "partial" | "unresolved" | "conflict" | "unknown",
+    stackRisk: candidate.openCertificates.length > 1 ? "high" : candidate.openCertificates.length === 1 ? "moderate" : "low",
+    redemptionAssessment: candidate.redemptionAssessment as "high" | "moderate" | "low" | "unknown",
+    access: candidate.access,
+    buildability: candidate.buildability,
+    homesteadStatus: candidate.homesteadStatus,
+    flood: candidate.flood,
+    wetland: candidate.wetland,
+    codeStatus: candidate.codeStatus,
+    titleRisk: candidate.titleRisk,
+    bankruptcyOrLitigation: candidate.riskFlags.some((flag) => /bankrupt|litigat/i.test(flag)) ? "unresolved" : "clear",
+    opportunityReserveAfterCents: 50_000,
+    strategicReserveAfterCents: 100_000,
+  });
+  return {
+    id: candidate.id,
+    jurisdictionPolicy: candidate.jurisdictionPolicy,
+    county: candidate.county,
+    state: candidate.state,
+    certificateNumber: candidate.certificateNumber,
+    parcelNumber: candidate.parcelNumber,
+    taxYear: candidate.taxYear,
+    faceAmount: candidate.faceAmount,
+    currentPurchaseAmount: candidate.currentPurchaseAmount,
+    statedRate: candidate.statedRate,
+    status: candidate.status,
+    owner: candidate.owner,
+    propertyAddress: candidate.propertyAddress,
+    legalDescription: candidate.legalDescription,
+    propertyUse: candidate.propertyUse,
+    acreage: candidate.acreage,
+    assessedValue: candidate.assessedValue,
+    justValue: candidate.justValue,
+    conservativeValue: candidate.conservativeValue,
+    certToValue: review.certToValue,
+    totalLienExposure: candidate.totalLienExposure,
+    totalExposureToValue: review.totalExposureToValue,
+    homesteadStatus: candidate.homesteadStatus,
+    priorCertificates: candidate.priorCertificates,
+    openCertificates: candidate.openCertificates,
+    redeemedCertificates: candidate.redeemedCertificates,
+    taxDeedHistory: candidate.taxDeedHistory,
+    access: candidate.access,
+    buildability: candidate.buildability,
+    flood: candidate.flood,
+    wetland: candidate.wetland,
+    codeStatus: candidate.codeStatus,
+    titleRisk: candidate.titleRisk,
+    redemptionAssessment: candidate.redemptionAssessment,
+    redemptionUncertainty: review.redemptionUncertainty,
+    riskFlags: candidate.riskFlags,
+    liveAvailability: candidate.liveAvailability,
+    parcelReconciliation: candidate.parcelReconciliation,
+    certificateReconciliation: candidate.certificateReconciliation,
+    sourcePriority,
+    sourceRecords: candidate.sourceRecords,
+    dataFreshness: candidate.dataFreshness,
+    score: review.score,
+    decision: review.decision,
+    hardStops: review.hardStops,
+    capitalGovernor: review.capitalGovernor,
+    lastVerifiedAt: candidate.lastVerifiedAt,
+    advisoryOnly: true,
+    purchaseAuthority: false,
+  };
+}
+
 export async function getRealEstateIntelligence(actor: Actor) {
   assertPermission(actor.role, "read");
   const [property, taxLiens] = await Promise.all([
@@ -164,7 +315,7 @@ export async function getRealEstateIntelligence(actor: Actor) {
       purchaseAuthorized: false,
       capitalCommitmentAuthorized: false,
     },
-    taxLiens: taxLiens.map(taxLienView),
+    taxLiens: taxLiens.map(legacyTaxLienView),
     guardrails: realEstateGuardrails(),
     summary: {
       taxLienCount: taxLiens.length,
@@ -429,5 +580,5 @@ export async function createTaxLienCandidate(actor: Actor, input: TaxLienCandida
       hardStopCount: assessment.hardStops.length,
     },
   });
-  return taxLienView(candidate);
+  return legacyTaxLienView(candidate);
 }

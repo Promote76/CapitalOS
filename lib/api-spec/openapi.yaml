@@ -3170,7 +3170,7 @@ components:
         id: { type: string }
         name: { type: string }
         status: { type: string }
-        progress: { type: number }
+        progress: { type: string }
         target: { type: string }
         currentState: { type: string }
         nextAction: { type: string }
@@ -3362,9 +3362,9 @@ components:
               provider: { type: string }
               status: { type: string }
               estimatedMaximumPurchasePrice: { type: string }
-              estimatedRate: { type: string }
+              estimatedRate: { type: ["string", "null"] }
               estimatedCashRequired: { type: string }
-              expiration: { type: string }
+              expiration: { type: ["string", "null"] }
               documentsNeeded: { type: string }
               notes: { type: string }
         markets:
@@ -3385,7 +3385,7 @@ components:
             properties:
               id: { type: string }
               name: { type: string }
-              storagePath: { type: string }
+              storagePath: { type: ["string", "null"] }
               metadata: { type: object, properties: { status: { type: string }, private: { type: boolean }, description: { type: string } } }
         milestones:
           type: array
@@ -4391,9 +4391,151 @@ components:
       properties:
         decision: { type: string, enum: [watch, reject, request_more_research, approve_shadow] }
         reason: { type: string, minLength: 1, maxLength: 500 }
+    FamilyOfficeSourceRecord:
+      type: object
+      required: [title, sourceKind]
+      properties:
+        title: { type: string }
+        sourceKind: { type: string }
+        sourceUrl: { type: ["string", "null"] }
+        verifiedAt: { type: ["string", "null"], format: date }
+    FamilyOfficePropertyCandidate:
+      type: object
+      required: [id, propertyGoalId, addressLabel, propertyType, units, bedrooms, sourceKind, sourcePriority, dataFreshness, liveAvailability, parcelReconciliation, buyBox, intelligence, status, advisoryOnly, purchaseAuthority]
+      properties:
+        id: { type: string }
+        propertyGoalId: { type: string }
+        addressLabel: { type: string }
+        city: { type: ["string", "null"] }
+        county: { type: ["string", "null"] }
+        state: { type: ["string", "null"] }
+        zip: { type: ["string", "null"] }
+        askingPrice: { type: ["string", "null"] }
+        estimatedRent: { type: ["string", "null"] }
+        annualPropertyTaxes: { type: ["string", "null"] }
+        insurance: { type: ["string", "null"] }
+        propertyType: { type: string }
+        units: { type: string }
+        bedrooms: { type: string }
+        bathrooms: { type: string }
+        zoning: { type: ["string", "null"] }
+        floodZone: { type: ["string", "null"] }
+        condition: { type: ["string", "null"] }
+        sourceKind: { type: string }
+        sourcePriority: { type: [number, "null"] }
+        sourceRecords: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeSourceRecord" } }
+        dataFreshness: { type: string }
+        liveAvailability: { type: string }
+        parcelReconciliation: { type: string }
+        buyBox:
+          type: object
+          required: [score, failures]
+          properties:
+            score: { type: number }
+            failures: { type: array, items: { type: string } }
+        intelligence:
+          type: object
+          required: [sourceKind, sourcePriority, dataFreshness, liveAvailability, parcelReconciliation, hardStops, deterministicBuyBoxAuthoritative, advisoryOnly, purchaseAuthority]
+          properties:
+            sourceKind: { type: string }
+            sourcePriority: { type: number }
+            dataFreshness: { type: string }
+            liveAvailability: { type: string }
+            parcelReconciliation: { type: string }
+            hardStops: { type: array, items: { type: string } }
+            deterministicBuyBoxAuthoritative: { type: boolean }
+            advisoryOnly: { type: boolean }
+            purchaseAuthority: { type: boolean }
+        status: { type: string }
+        advisoryOnly: { type: boolean }
+        purchaseAuthority: { type: boolean }
+    FamilyOfficeTaxLienCandidate:
+      type: object
+      required: [id, jurisdictionPolicy, county, state, certificateNumber, parcelNumber, taxYear, faceAmount, currentPurchaseAmount, status, homesteadStatus, priorCertificates, openCertificates, redeemedCertificates, taxDeedHistory, access, buildability, flood, wetland, codeStatus, titleRisk, redemptionAssessment, redemptionUncertainty, riskFlags, liveAvailability, parcelReconciliation, certificateReconciliation, sourcePriority, sourceRecords, dataFreshness, score, decision, hardStops, capitalGovernor, advisoryOnly, purchaseAuthority]
+      properties:
+        id: { type: string }
+        jurisdictionPolicy: { type: string }
+        county: { type: string }
+        state: { type: string }
+        certificateNumber: { type: string }
+        parcelNumber: { type: string }
+        taxYear: { type: string }
+        faceAmount: { type: string }
+        currentPurchaseAmount: { type: string }
+        statedRate: { type: ["string", "null"] }
+        status: { type: string }
+        owner: { type: ["string", "null"] }
+        propertyAddress: { type: ["string", "null"] }
+        legalDescription: { type: ["string", "null"] }
+        propertyUse: { type: ["string", "null"] }
+        acreage: { type: ["string", "null"] }
+        assessedValue: { type: ["string", "null"] }
+        justValue: { type: ["string", "null"] }
+        conservativeValue: { type: ["string", "null"] }
+        certToValue: { type: number }
+        totalLienExposure: { type: ["string", "null"] }
+        totalExposureToValue: { type: number }
+        homesteadStatus: { type: string }
+        priorCertificates: { type: array, items: { type: string } }
+        openCertificates: { type: array, items: { type: string } }
+        redeemedCertificates: { type: array, items: { type: string } }
+        taxDeedHistory: { type: array, items: { type: string } }
+        access: { type: string }
+        buildability: { type: string }
+        flood: { type: string }
+        wetland: { type: string }
+        codeStatus: { type: string }
+        titleRisk: { type: string }
+        redemptionAssessment: { type: string }
+        redemptionUncertainty: { type: boolean }
+        riskFlags: { type: array, items: { type: string } }
+        liveAvailability: { type: string }
+        parcelReconciliation: { type: string }
+        certificateReconciliation: { type: string }
+        sourcePriority: { type: number }
+        sourceRecords: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeSourceRecord" } }
+        dataFreshness: { type: string }
+        score: { type: number }
+        decision: { type: string, enum: [WATCH, REVIEW_REQUIRED, REJECT] }
+        hardStops: { type: array, items: { type: string } }
+        capitalGovernor:
+          type: object
+          required: [positionLimitCents, opportunityReserveMinimumCents, strategicReserveMinimumCents, opportunityReserveAfterCents, strategicReserveAfterCents, passes]
+          properties:
+            positionLimitCents: { type: number }
+            opportunityReserveMinimumCents: { type: number }
+            strategicReserveMinimumCents: { type: number }
+            opportunityReserveAfterCents: { type: number }
+            strategicReserveAfterCents: { type: number }
+            passes: { type: boolean }
+        lastVerifiedAt: { type: ["string", "null"], format: date-time }
+        advisoryOnly: { type: boolean }
+        purchaseAuthority: { type: boolean }
+    FamilyOfficeRealEstateSnapshot:
+      type: object
+      required: [propertyCandidates, taxLienCandidates, sourceHierarchy, policy, advisoryOnly, purchaseAuthority]
+      properties:
+        propertyCandidates: { type: array, items: { $ref: "#/components/schemas/FamilyOfficePropertyCandidate" } }
+        taxLienCandidates: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeTaxLienCandidate" } }
+        sourceHierarchy: { type: array, items: { type: string } }
+        policy:
+          type: object
+          required: [jurisdiction, startingBankrollCents, initialDeploymentCapCents, preferredPositionRangeCents, singlePositionHardCapCents, opportunityReserveMinimumCents, strategicReserveMinimumCents, primaryOutcome, autonomousPurchase]
+          properties:
+            jurisdiction: { type: string }
+            startingBankrollCents: { type: number }
+            initialDeploymentCapCents: { type: number }
+            preferredPositionRangeCents: { type: array, items: { type: number } }
+            singlePositionHardCapCents: { type: number }
+            opportunityReserveMinimumCents: { type: number }
+            strategicReserveMinimumCents: { type: number }
+            primaryOutcome: { type: string }
+            autonomousPurchase: { type: boolean, enum: [false] }
+        advisoryOnly: { type: boolean }
+        purchaseAuthority: { type: boolean }
     FamilyOfficeSnapshot:
       type: object
-      required: [provider, guardrails, runs, proposals, shadowPortfolios, shadowIntents, summary]
+      required: [provider, guardrails, runs, proposals, shadowPortfolios, shadowIntents, realEstate, summary]
       properties:
         provider:
           type: object
@@ -4407,6 +4549,7 @@ components:
         proposals: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeProposal" } }
         shadowPortfolios: { type: array, items: { $ref: "#/components/schemas/ShadowPortfolio" } }
         shadowIntents: { type: array, items: { $ref: "#/components/schemas/ShadowIntent" } }
+        realEstate: { $ref: "#/components/schemas/FamilyOfficeRealEstateSnapshot" }
         summary:
           type: object
           required: [liveExecutionEnabled, realOrdersSent, moneyMovedCents, shadowOnly]

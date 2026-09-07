@@ -1,0 +1,1209 @@
+PROMPT 3 OF 3
+
+CAPITAL OS — GROK SHADOW INVESTMENT OFFICE & AI FAMILY-OFFICE WORKFORCE
+
+MISSION
+
+Expand the Grok integration into a persistent family-office
+operations, intelligence, monitoring, and Shadow Investment Office.
+
+This phase prepares Capital OS to determine whether Grok actually
+creates economic value before Grok is ever permitted to influence
+real execution.
+
+No Grok discretionary trading.
+
+No autonomous money movement.
+
+==================================================
+
+1. SHADOW INVESTMENT OFFICE
+   ==================================================
+
+Create:
+
+Investment Proposal
+↓
+Human Approve for Shadow
+↓
+Shadow Portfolio
+↓
+Shadow Order Intent
+↓
+Reference Market Price
+↓
+Outcome Tracking
+↓
+Performance Attribution
+↓
+Grok Scorecard
+↓
+Investment Committee Review
+
+No real broker transmission.
+
+==================================================
+2. SHADOW PORTFOLIO
+
+Create:
+
+ShadowPortfolio
+
+Fields:
+
+id
+householdId
+name
+benchmark
+createdAt
+
+capitalModel
+strategy
+riskPolicy
+
+positions[]
+cashModel
+performance
+
+Shadow portfolios never become authoritative household assets.
+
+==================================================
+3. SHADOW ORDER INTENT
+
+Create:
+
+ShadowOrderIntent {
+
+proposalId
+shadowPortfolioId
+
+symbol
+direction
+
+hypotheticalQuantity
+hypotheticalNotional
+
+referencePrice
+referenceTimestamp
+
+timeHorizon
+
+thesisId
+model
+agent
+
+status
+}
+
+No OMS brokerage order.
+
+==================================================
+4. PERFORMANCE TRACKING
+
+For each recommendation track:
+
+proposal timestamp
+
+reference entry price
+
+1-day result
+5-day result
+30-day result
+90-day result
+custom horizon
+
+maximum favorable excursion
+
+maximum adverse excursion
+
+hypothetical return
+
+benchmark return
+
+excess return
+
+volatility
+
+drawdown
+
+thesis status
+
+==================================================
+5. GROK PERFORMANCE LEDGER
+
+Create agent-level performance statistics.
+
+Examples:
+
+recommendation count
+
+directional hit rate
+
+benchmark-relative return
+
+high-confidence hit rate
+
+false-positive rate
+
+material-event detection rate
+
+risk-warning accuracy
+
+average adverse excursion
+
+average favorable excursion
+
+research cost
+
+AI cost per useful decision
+
+Do not evaluate Grok solely by absolute profit.
+
+==================================================
+6. CONFIDENCE CALIBRATION
+
+Track performance by confidence bucket:
+
+0–49
+50–64
+65–74
+75–84
+85–94
+95–100
+
+Compare predicted confidence to subsequent outcomes.
+
+Confidence is not probability unless calibration empirically
+supports that interpretation.
+
+==================================================
+7. AGENT SCORECARDS
+
+Create scorecards for:
+
+Research Analyst
+
+Macro Analyst
+
+X Intelligence Analyst
+
+Market Analyst
+
+Portfolio Analyst
+
+Risk Challenger
+
+Scenario Analyst
+
+Earnings Analyst
+
+Real Estate Analyst
+
+Tax Lien Analyst
+
+Counterparty Analyst
+
+Due-Diligence Analyst
+
+==================================================
+8. GROK WORKFORCE MANAGER
+
+Create:
+
+AI Workforce Manager
+
+Responsibilities:
+
+agent registry
+agent enable/disable
+assignments
+schedules
+cost
+health
+performance
+last run
+next run
+failures
+quality score
+
+Poor-performing agents can be:
+
+PAUSED
+REVIEWED
+RECONFIGURED
+RETIRED
+
+==================================================
+9. FAMILY OFFICE CHIEF OF STAFF
+
+Create:
+
+Grok Chief of Staff
+
+May coordinate:
+
+research queue
+investment committee
+property pipeline
+tax lien watchlists
+business intelligence
+pending diligence
+document reviews
+counterparty monitoring
+scheduled reports
+
+Cannot make financial commitments.
+
+==================================================
+10. FAMILY OFFICE TREASURY ANALYST
+
+Analyze:
+
+liquidity forecasts
+upcoming obligations
+reserve adequacy
+capital needs
+capital allocation scenarios
+
+Cannot calculate authoritative Safe-to-Deploy independently.
+
+Cannot transfer capital.
+
+==================================================
+11. BUSINESS INTELLIGENCE ANALYST
+
+Create business intelligence support for operating companies.
+
+May analyze:
+
+revenue
+expenses
+margins
+customer concentration
+operating trends
+business KPIs
+market competition
+industry changes
+
+Keep household/business accounting boundaries intact.
+
+==================================================
+12. TRUCKING INTELLIGENCE
+
+Prepare a Truck Ledger intelligence adapter.
+
+Potential research:
+
+diesel prices
+freight trends
+carrier conditions
+lease-purchase economics
+driver trends
+regulations
+competitor apps
+shipper trends
+product opportunities
+
+Do not merge Truck Ledger database architecture into Capital OS
+unless explicitly approved.
+
+Use adapter boundaries.
+
+==================================================
+13. AXIOM / VENTURE INTELLIGENCE
+
+Prepare venture intelligence support for user-defined operating
+ventures.
+
+Analyze:
+
+market
+competitors
+technology
+regulation
+partnerships
+capital needs
+risks
+
+Keep venture accounting distinct from household capital.
+
+==================================================
+14. COMPETITOR INTELLIGENCE
+
+Create watches for:
+
+financial software
+family-office software
+real-estate platforms
+trucking software
+AI agents
+brokerage technology
+tax-lien platforms
+relevant startups
+
+Generate:
+
+NEW_COMPETITOR
+PRODUCT_CHANGE
+PRICING_CHANGE
+FUNDING_EVENT
+STRATEGIC_THREAT
+OPPORTUNITY
+
+==================================================
+15. FRAUD / ANOMALY ANALYST
+
+Grok may analyze sanitized anomalies such as:
+
+unusual transaction classifications
+unexpected capital changes
+duplicate-looking events
+unusual vendor changes
+accounting inconsistencies
+
+It may flag:
+
+REVIEW_REQUIRED.
+
+It cannot freeze accounts or move money.
+
+==================================================
+16. DOCUMENT ANALYST
+
+Create document-analysis workflows for:
+
+investment research
+property reports
+lender terms
+contracts
+statements
+broker reports
+tax records
+county exports
+due diligence
+business documents
+
+Preserve source citations/provenance.
+
+Never treat model interpretation as legal advice.
+
+==================================================
+17. TAX RESEARCH ASSISTANT
+
+May:
+
+research tax rules
+summarize potential tax treatment
+identify questions for CPA
+organize tax-related records
+
+May not:
+
+file tax returns
+make authoritative tax elections
+represent itself as CPA
+submit filings
+
+==================================================
+18. VENDOR PROCUREMENT ANALYST
+
+Research:
+
+brokerages
+data vendors
+banks
+lenders
+insurance
+software
+market-data providers
+property services
+legal/title vendors
+
+Compare:
+
+features
+pricing
+risks
+contracts
+service quality
+integration fit
+
+==================================================
+19. CYBER / OPERATIONAL RISK ANALYST
+
+Read sanitized Capital OS security/operations signals.
+
+Analyze:
+
+alerts
+queue failures
+provider incidents
+suspicious trends
+authorization spikes
+system degradation
+
+May recommend:
+
+REVIEW
+SAFE MODE
+INCIDENT INVESTIGATION
+
+Cannot change execution state directly.
+
+==================================================
+20. SOFTWARE QA ANALYST
+
+Grok may review:
+
+test failures
+logs
+API errors
+regression reports
+UI inconsistencies
+documentation drift
+
+Create engineering recommendations.
+
+No autonomous production deployment without existing deployment
+controls.
+
+==================================================
+21. FAMILY CAPITAL EDUCATOR
+
+Create plain-language explanations of:
+
+investment proposals
+property deals
+risk
+budget
+protected capital
+Treasury
+tax liens
+portfolio decisions
+
+Audience:
+
+family members who are not investment specialists.
+
+==================================================
+22. KNOWLEDGE LIBRARIAN
+
+Build institutional memory.
+
+Track:
+
+why investment considered
+why approved/rejected
+assumptions
+evidence
+risks
+subsequent outcome
+lessons learned
+reliable sources
+failed signals
+
+Create searchable:
+
+Family Office Knowledge Base
+
+==================================================
+23. DECISION MEMORY
+
+Every major decision should create:
+
+DecisionRecord {
+
+decisionType
+subject
+date
+
+proposal
+evidence
+
+argumentsFor[]
+argumentsAgainst[]
+
+risks[]
+
+humanDecision
+reason
+
+subsequentOutcome
+lessonsLearned
+}
+
+==================================================
+24. MORNING BRIEF
+
+Create one unified morning brief.
+
+Sections:
+
+CAPITAL
+
+Protected Capital
+Available Investment Allocation
+Upcoming Obligations
+
+MARKETS
+
+Macro
+Rates
+Market Regime
+Overnight Events
+
+PORTFOLIO
+
+Exposure
+Watchlist
+Shadow Performance
+Risk Alerts
+
+REAL ESTATE
+
+Property Pipeline
+New Candidates
+Financing Changes
+Tax Lien Opportunities
+
+BUSINESS
+
+Operating Company Highlights
+
+OPERATIONS
+
+Pending Tasks
+Diligence
+Counterparty Reviews
+
+EXECUTION
+
+DISABLED / CURRENT STATE
+
+==================================================
+25. WEEKLY CIO REPORT
+
+Generate:
+
+FAMILY OFFICE WEEKLY CIO REPORT
+
+Sections:
+
+Capital Position
+
+Net Worth Context
+
+Protected Capital
+
+Investment Committee Activity
+
+Portfolio Research
+
+Shadow Portfolio Performance
+
+Grok Agent Performance
+
+Property Acquisition Pipeline
+
+Tax Lien Portfolio
+
+Operating Businesses
+
+Material Risks
+
+Upcoming Decisions
+
+AI Cost
+
+Recommended Priorities
+
+==================================================
+26. MONTHLY FAMILY OFFICE REVIEW
+
+Generate monthly:
+
+Capital allocation review
+
+Savings progress
+
+Duplex acquisition progress
+
+Portfolio research performance
+
+Shadow strategy performance
+
+Property pipeline
+
+Tax lien performance
+
+Business performance
+
+AI workforce value
+
+Risk incidents
+
+Upcoming opportunities
+
+==================================================
+27. SCHWAB READ-ONLY ADAPTER PREPARATION
+
+Prepare, but do NOT bypass existing Schwab certification.
+
+Define:
+
+BrokerPortfolioProvider
+
+Methods:
+
+getAccounts
+getBalances
+getPositions
+getOrders
+getFills
+getTransactions
+getMarketData
+
+Implement:
+
+SchwabReadOnlyAdapter
+
+feature flag:
+
+SCHWAB_READ_ONLY_ENABLED=false
+
+No trade methods in read-only adapter.
+
+==================================================
+28. SCHWAB CREDENTIAL BOUNDARY
+
+Grok must NEVER receive:
+
+Schwab Client Secret
+access token
+refresh token
+account identifier requiring secrecy
+
+Capital OS retrieves brokerage data.
+
+Then Capital OS provides Grok a sanitized portfolio projection.
+
+Architecture:
+
+SCHWAB
+↓
+CAPITAL OS ADAPTER
+↓
+CAPITAL OS RECONCILIATION
+↓
+SANITIZED PORTFOLIO SNAPSHOT
+↓
+GROK PORTFOLIO ANALYST
+
+Never:
+
+SCHWAB → GROK directly.
+
+==================================================
+29. BROKER RECONCILIATION
+
+When Schwab read-only is later enabled:
+
+reconcile:
+
+cash
+positions
+cost basis
+orders
+fills
+investment transactions
+
+against Capital OS.
+
+Unknown mismatch:
+
+RECONCILIATION_REQUIRED
+
+Do not fabricate agreement.
+
+==================================================
+30. SHADOW PORTFOLIO FROM BROKER CONTEXT
+
+After read-only certification:
+
+Grok may analyze actual portfolio exposure.
+
+But proposed changes remain Shadow Mode.
+
+Example:
+
+Grok proposal
+↓
+Capital OS Shadow Portfolio
+↓
+market outcome
+↓
+performance comparison
+
+No order.
+
+==================================================
+31. POST-TRADE ANALYST
+
+Future-compatible.
+
+When real trades eventually exist, analyze:
+
+original thesis
+entry
+exit
+market regime
+slippage
+timing
+adverse selection
+risk events
+whether profit came from intended edge
+whether loss invalidated thesis
+
+Cannot modify position.
+
+==================================================
+32. STRATEGY AUDITOR
+
+Compare:
+
+expected behavior
+actual behavior
+benchmark
+risk
+costs
+drawdown
+regime
+
+Classify:
+
+EDGE_SUPPORTED
+INCONCLUSIVE
+EDGE_DETERIORATING
+STRATEGY_FAILURE
+
+==================================================
+33. NEWS / EVENT WATCHER
+
+Persistent watches for:
+
+companies
+CEOs
+Federal Reserve
+Treasury
+BLS
+SEC
+HUD
+FHA
+brokers
+lenders
+counties
+property-tax authorities
+industries
+operating businesses
+
+Only surface:
+
+MATERIAL events.
+
+Avoid notification spam.
+
+==================================================
+34. X EARLY-WARNING SYSTEM
+
+Use X to identify potential:
+
+breaking events
+executive statements
+industry issues
+market narratives
+customer complaints
+business opportunities
+
+Require corroboration before changing fact status.
+
+==================================================
+35. EVENT TRIAGE
+
+Classify:
+
+NOISE
+
+MONITOR
+
+MATERIAL
+
+CRITICAL_REVIEW
+
+Avoid treating every social trend as investment-relevant.
+
+==================================================
+36. AUTOMATION BOUNDARY
+
+Scheduled Grok workers may:
+
+research
+monitor
+summarize
+compare
+write intelligence records
+create alerts
+create review tasks
+
+May not:
+
+trade
+move money
+approve Treasury
+unlock capital
+change risk settings
+sign agreements
+
+==================================================
+37. GROK ECONOMIC VALUE
+
+Calculate:
+
+AI Cost
+
+versus:
+
+Research Value
+Time Saved
+Material Events Detected
+Avoided Loss Indicators
+Shadow Excess Return
+Decision Quality
+
+Do not invent dollar value where it cannot be supported.
+
+==================================================
+38. AI WORKFORCE REPORT
+
+Example:
+
+GROK WORKFORCE
+
+Research Analyst
+Quality: 82
+Cost: $42
+Status: ACTIVE
+
+Macro Analyst
+Quality: 76
+Cost: $31
+Status: ACTIVE
+
+Risk Challenger
+Quality: 91
+Validated warnings: 14
+Status: ACTIVE
+
+Tax Lien Analyst
+Candidates reviewed: 48
+Rejected: 39
+Watch: 7
+Committee: 2
+
+==================================================
+39. AGENT BUDGETS
+
+Each agent gets:
+
+hourly call cap
+daily call cap
+daily token budget
+monthly budget
+tool-call cap
+
+Chief of Staff cannot bypass budgets.
+
+==================================================
+40. HUMAN APPROVAL
+
+Require human approval for:
+
+Shadow portfolio inclusion
+
+property pursuit
+
+tax lien purchase decision
+
+vendor selection
+
+lender engagement
+
+strategy promotion
+
+No AI approval replaces human authority.
+
+==================================================
+41. SHADOW GRADUATION FRAMEWORK
+
+Do not enable real trading here.
+
+Prepare criteria for future Micro-Live:
+
+minimum research observations
+
+minimum Shadow decisions
+
+measured performance
+
+acceptable drawdown
+
+risk warning quality
+
+data integrity
+
+reconciliation integrity
+
+no critical unresolved incidents
+
+human approval
+
+==================================================
+42. MICRO-LIVE REMAINS SEPARATE
+
+Micro-Live continues as its own certification boundary.
+
+Do not modify:
+
+$20 initial experimental cap
+$1 per-order cap
+no leverage
+no withdrawals
+no automatic refill
+Guardian requirement
+execution-control requirement
+
+unless explicitly authorized by a later prompt.
+
+==================================================
+43. UI
+
+Add Family Office areas:
+
+Overview
+
+Intelligence
+
+Investment Committee
+
+Shadow Portfolio
+
+AI Workforce
+
+Real Estate
+
+Tax Liens
+
+Business Intelligence
+
+Due Diligence
+
+Counterparties
+
+Knowledge Base
+
+Reports
+
+==================================================
+44. FAMILY OFFICE COMMAND CENTER
+
+Dashboard:
+
+Protected Capital
+
+Capital Available for Research
+
+Pending Investment Proposals
+
+Shadow Portfolio
+
+Property Pipeline
+
+Tax Lien Pipeline
+
+Business Health
+
+Risk Alerts
+
+Material News
+
+Pending Diligence
+
+AI Workforce Cost
+
+Agent Performance
+
+Execution Status
+
+==================================================
+45. CERTIFICATION
+
+Create:
+
+pnpm run certify:grok-family-office
+
+Required gates:
+
+FO-01 Shadow Portfolio Isolation
+FO-02 Shadow Order Isolation
+FO-03 Performance Ledger
+FO-04 Confidence Calibration
+FO-05 Agent Scorecards
+FO-06 Workforce Manager
+FO-07 Chief of Staff
+FO-08 Treasury Analyst Boundary
+FO-09 Business Intelligence Boundary
+FO-10 Competitor Intelligence
+FO-11 Fraud/Anomaly Advisory Boundary
+FO-12 Document Analyst
+FO-13 Tax Research Boundary
+FO-14 Vendor Analyst
+FO-15 Cyber Risk Analyst
+FO-16 Software QA
+FO-17 Family Educator
+FO-18 Knowledge Librarian
+FO-19 Morning Brief
+FO-20 Weekly CIO Report
+FO-21 Monthly Review
+FO-22 Schwab Read-Only Abstraction
+FO-23 Broker Credential Isolation
+FO-24 Broker Reconciliation Design
+FO-25 Post-Trade Analyst Boundary
+FO-26 Strategy Auditor
+FO-27 News/Event Watcher
+FO-28 X Early Warning
+FO-29 Agent Cost Limits
+FO-30 Human Authority
+
+==================================================
+46. FINAL AUTHORITY MATRIX
+
+GROK:
+
+Research:
+YES
+
+Monitoring:
+YES
+
+X Search:
+YES
+
+Web Search:
+YES
+
+Portfolio Analysis:
+YES
+
+Property Analysis:
+YES
+
+Tax Lien Analysis:
+YES
+
+Business Analysis:
+YES
+
+Due Diligence:
+YES
+
+Shadow Recommendations:
+YES
+
+Investment Committee Support:
+YES
+
+Human Education:
+YES
+
+Trading:
+NO
+
+Bank Transfer:
+NO
+
+Withdrawal:
+NO
+
+Safe-to-Deploy Modification:
+NO
+
+Protected Capital Unlock:
+NO
+
+Treasury Approval:
+NO
+
+Risk Override:
+NO
+
+Guardian Override:
+NO
+
+Broker Credentials:
+NO
+
+==================================================
+FINAL RESPONSE
+
+GROK FAMILY OFFICE:
+PASS / PARTIAL / BLOCKED
+
+FO:
+<n>/30
+
+SHADOW PORTFOLIO:
+PASS / FAIL
+
+AI PERFORMANCE LEDGER:
+PASS / FAIL
+
+AI WORKFORCE:
+PASS / FAIL
+
+MORNING BRIEF:
+PASS / FAIL
+
+WEEKLY CIO:
+PASS / FAIL
+
+KNOWLEDGE BASE:
+PASS / FAIL
+
+REAL ESTATE ADAPTER:
+PASS / FAIL
+
+TAX LIEN ADAPTER:
+PASS / FAIL
+
+BUSINESS INTELLIGENCE:
+PASS / FAIL
+
+SCHWAB READ-ONLY ARCHITECTURE:
+PREPARED / BLOCKED
+
+SCHWAB TRADING:
+DISABLED
+
+MICRO-LIVE:
+DISABLED
+
+AI EXECUTION:
+DISABLED
+
+REAL ORDERS:
+0
+
+REAL MONEY MOVED:
+$0
+
+NEXT PHASE:
+SCHWAB READ-ONLY CERTIFICATION → GROK SHADOW PORTFOLIO VALIDATION

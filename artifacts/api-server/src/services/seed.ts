@@ -331,9 +331,13 @@ async function ensureTreasurySeed(householdId: string, ownerId: string, fixtureM
 }
 
 async function ensurePropertyUnderwritingSeed(householdId: string, propertyGoalId: string) {
-  const [buyBox] = await db.select({ id: buyBoxes.id }).from(buyBoxes).where(eq(buyBoxes.householdId, householdId)).limit(1);
-  if (!buyBox) {
-    await db.insert(buyBoxes).values({
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`property-underwriting-seed:${householdId}`}))`);
+    const db = tx;
+
+    const [buyBox] = await db.select({ id: buyBoxes.id }).from(buyBoxes).where(eq(buyBoxes.householdId, householdId)).limit(1);
+    if (!buyBox) {
+      await db.insert(buyBoxes).values({
       householdId,
       propertyType: "duplex",
       ownerOccupied: true,
@@ -356,12 +360,12 @@ async function ensurePropertyUnderwritingSeed(householdId: string, propertyGoalI
       propertyTaxCeiling: "9000.00",
       insuranceCostCeiling: "3000.00",
       minimumReadinessScore: "60",
-    });
-  }
-  const [candidate] = await db.select({ id: propertyCandidates.id, sourceKind: propertyCandidates.sourceKind }).from(propertyCandidates).where(eq(propertyCandidates.propertyGoalId, propertyGoalId)).limit(1);
-  let candidateId = candidate?.id;
-  if (!candidate) {
-    const [createdCandidate] = await db.insert(propertyCandidates).values({
+      });
+    }
+    const [candidate] = await db.select({ id: propertyCandidates.id, sourceKind: propertyCandidates.sourceKind }).from(propertyCandidates).where(eq(propertyCandidates.propertyGoalId, propertyGoalId)).limit(1);
+    let candidateId = candidate?.id;
+    if (!candidate) {
+      const [createdCandidate] = await db.insert(propertyCandidates).values({
       propertyGoalId,
       addressLabel: "Example watchlist duplex · Northside",
       city: "Chicago",
@@ -399,10 +403,10 @@ async function ensurePropertyUnderwritingSeed(householdId: string, propertyGoalI
       riskLevel: "moderate",
       notes: "Illustrative watchlist record. Verify all listing, rent, tax, insurance, and repair assumptions.",
       nextAction: "Confirm rent comparables and request an insurance quote.",
-    }).returning({ id: propertyCandidates.id });
-    candidateId = createdCandidate.id;
-  } else if (candidate.sourceKind === null) {
-    await db.update(propertyCandidates).set({
+      }).returning({ id: propertyCandidates.id });
+      candidateId = createdCandidate.id;
+    } else if (candidate.sourceKind === null) {
+      await db.update(propertyCandidates).set({
       sourceKind: "third_party_property",
       sourcePriority: "8",
       dataFreshness: "unknown",
@@ -410,22 +414,22 @@ async function ensurePropertyUnderwritingSeed(householdId: string, propertyGoalI
       parcelReconciliation: "unknown",
       sourceRecords: [{ title: "Manual research record", sourceKind: "third_party_property" }],
       updatedAt: new Date(),
-    }).where(and(eq(propertyCandidates.id, candidate.id), isNull(propertyCandidates.sourceKind)));
-  }
-  const [snapshot] = await db.select({ id: propertyReadinessSnapshots.id }).from(propertyReadinessSnapshots).where(eq(propertyReadinessSnapshots.propertyGoalId, propertyGoalId)).limit(1);
-  if (!snapshot) {
-    await db.insert(propertyReadinessSnapshots).values({
+      }).where(and(eq(propertyCandidates.id, candidate.id), isNull(propertyCandidates.sourceKind)));
+    }
+    const [snapshot] = await db.select({ id: propertyReadinessSnapshots.id }).from(propertyReadinessSnapshots).where(eq(propertyReadinessSnapshots.propertyGoalId, propertyGoalId)).limit(1);
+    if (!snapshot) {
+      await db.insert(propertyReadinessSnapshots).values({
       householdId,
       propertyGoalId,
       score: "66.00",
       status: "Preparing",
       factors: { downPayment: 40, closingCosts: 80, emergencyReserve: 80, incomeStability: 80, cashFlow: 80, savingsConsistency: 84, debtObligations: 82, creditReadiness: 76, documentReadiness: 45, marketResearch: 72, buyBoxCompletion: 91, propertyPipeline: 25 },
       nextAction: "Collect income and reserve documents before lender conversations.",
-    });
-  }
-  const [scenario] = await db.select({ id: financingScenarios.id }).from(financingScenarios).where(eq(financingScenarios.householdId, householdId)).limit(1);
-  if (!scenario && candidateId) {
-    await db.insert(financingScenarios).values([
+      });
+    }
+    const [scenario] = await db.select({ id: financingScenarios.id }).from(financingScenarios).where(eq(financingScenarios.householdId, householdId)).limit(1);
+    if (!scenario && candidateId) {
+      await db.insert(financingScenarios).values([
       {
         householdId,
         propertyCandidateId: candidateId,
@@ -477,34 +481,35 @@ async function ensurePropertyUnderwritingSeed(householdId: string, propertyGoalI
         monthlyPrincipalInterest: "2718.00",
         estimatedMonthlyHousingCost: "3668.00",
       },
-    ]);
-  }
-  const [preapproval] = await db.select({ id: preapprovalRecords.id }).from(preapprovalRecords).where(eq(preapprovalRecords.householdId, householdId)).limit(1);
-  if (!preapproval) {
-    await db.insert(preapprovalRecords).values({
+      ]);
+    }
+    const [preapproval] = await db.select({ id: preapprovalRecords.id }).from(preapprovalRecords).where(eq(preapprovalRecords.householdId, householdId)).limit(1);
+    if (!preapproval) {
+      await db.insert(preapprovalRecords).values({
       householdId,
       provider: "Local lender conversation",
       status: "research",
       notes: "Not an approval or qualification. Use this tracker to prepare questions and documents.",
       documentsNeeded: "Pay stubs, tax returns, statements, ID, reserve history",
-    });
-  }
-  const [market] = await db.select({ id: targetMarkets.id }).from(targetMarkets).where(eq(targetMarkets.householdId, householdId)).limit(1);
-  if (!market) {
-    await db.insert(targetMarkets).values([
+      });
+    }
+    const [market] = await db.select({ id: targetMarkets.id }).from(targetMarkets).where(eq(targetMarkets.householdId, householdId)).limit(1);
+    if (!market) {
+      await db.insert(targetMarkets).values([
       { householdId, name: "Northside / transit", score: "78.00", medianPrice: "465000.00", rentYield: "0.067", notes: "Strong fit for commute, independent entrances, and house-hack research." },
       { householdId, name: "Near West / neighborhood retail", score: "71.00", medianPrice: "510000.00", rentYield: "0.061", notes: "Higher entry price; compare taxes and insurance carefully." },
       { householdId, name: "Southwest / larger lots", score: "64.00", medianPrice: "395000.00", rentYield: "0.073", notes: "More space and parking; verify commute, block stability, and deferred maintenance." },
-    ]);
-  }
-  const [document] = await db.select({ id: propertyDocuments.id }).from(propertyDocuments).where(eq(propertyDocuments.propertyGoalId, propertyGoalId)).limit(1);
-  if (!document) {
-    await db.insert(propertyDocuments).values([
+      ]);
+    }
+    const [document] = await db.select({ id: propertyDocuments.id }).from(propertyDocuments).where(eq(propertyDocuments.propertyGoalId, propertyGoalId)).limit(1);
+    if (!document) {
+      await db.insert(propertyDocuments).values([
       { propertyGoalId, name: "Income documentation", metadata: { status: "needed", private: true, description: "Recent pay stubs and tax returns" } },
       { propertyGoalId, name: "Reserve history", metadata: { status: "needed", private: true, description: "Statements showing protected reserve history" } },
       { propertyGoalId, name: "Insurance estimate", metadata: { status: "needed", private: true, description: "Property-specific quote before offer review" } },
-    ]);
-  }
+      ]);
+    }
+  });
 }
 
 async function ensureFamilyOfficeIntelligenceSeed(householdId: string) {

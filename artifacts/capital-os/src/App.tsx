@@ -221,6 +221,7 @@ import NotFound from '@/pages/not-found';
 import TreasuryPage from '@/pages/treasury';
 import AccountingPage from '@/pages/accounting';
 import OperationsPage from '@/pages/operations';
+import DailyOpsPage from '@/pages/daily-ops';
 import BusinessPage from '@/pages/business';
 import FinancingPage from '@/pages/financing';
 import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
@@ -511,6 +512,7 @@ const planningNav = [
   { href: '/income', label: 'Income', icon: CircleDollarSign },
 ];
 const secondaryNav = [
+  { href: '/daily-ops', label: 'Daily Ops', icon: Sparkles },
   { href: '/operations', label: 'Operations', icon: ClipboardCheck },
   { href: '/transactions', label: 'Transactions', icon: ReceiptText },
   { href: '/contributions', label: 'Contributions', icon: WalletCards },
@@ -3405,6 +3407,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, dashboardSta
     <Route path="/accounts" component={() => <AccountsPage onFeedback={onFeedback} />} />
     <Route path="/accounting" component={() => <AccountingPage onFeedback={onFeedback} />} />
     <Route path="/operations" component={() => <OperationsPage onFeedback={onFeedback} />} />
+     <Route path="/daily-ops" component={() => <DailyOpsPage onFeedback={onFeedback} />} />
     <Route path="/business" component={() => <BusinessPage onFeedback={onFeedback} />} />
     <Route path="/goals" component={() => <GoalsPage onAction={onAction} />} />
     <Route path="/strategies" component={() => <StrategiesPage onFeedback={onFeedback} />} />

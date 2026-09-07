@@ -77,6 +77,9 @@ introduced during this certification.
 - Redacted production evidence closes RV-01 for a successful provider challenge
   and exact protected-action retry, and RV-02 for a cancelled challenge with no
   task mutation or audit side effect.
+- Clerk reverification remains enabled as a defense-in-depth application control,
+  but it is no longer a release-certification requirement. Historical RV evidence
+  remains retained and is not represented as complete certification.
 - Budget planning now provides advisory weekly guidance from reviewed, posted,
   household-tagged transactions only. Verified income, eligible money out,
   excluded-row counts, calculation date, and a recommendation fingerprint remain
@@ -108,13 +111,13 @@ introduced during this certification.
 | Execution-control focused fixture              | PASS against the dedicated isolated certification target; 3 passed, 0 failed, 0 skipped                                                                 | `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/integration/execution-control.test.ts`                                          |
 | Execution-control certification command        | PASS — EC-01 through EC-17 collected                                                                                                                    | `pnpm run certify:execution-control`; `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md`                                                                      |
 | Historical P0 evidence                         | PASS for the documented internal scope                                                                                                                  | `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`                                                                                                                       |
-| Current production-candidate command           | PASS for the restricted in-house candidate                                                                                                              | The 17-row gate-count invariant passed at 13 PASS / 0 PARTIAL / 4 BLOCKED / 0 FAIL, and all seven retained P0 mappings are green; public production remains blocked by the four current gates below |
-| Internal reliability command                   | FAIL-CLOSED                                                                                                                                             | Implementation checks pass; RV-01 and RV-02 have production evidence, while the broader authenticated-browser and reverification matrices remain open                           |
+| Current production-candidate command           | PASS for the restricted in-house candidate                                                                                                              | The 16-row gate-count invariant passed at 13 PASS / 0 PARTIAL / 3 BLOCKED / 0 FAIL, and all seven retained P0 mappings are green; public production remains blocked by the three current gates below |
+| Internal reliability command                   | FAIL-CLOSED                                                                                                                                             | Implementation checks pass; broader authenticated-browser evidence remains open. Clerk reverification remains enabled but is tracked outside release certification.              |
 | Micro-Live command                             | BLOCKED                                                                                                                                                 | Internal safety core passes; provider, restart, credential, automation, and browser gates remain blocked                                                                      |
 | Durable operations recovery certification      | PASS — 29 tests passed, 0 failed, 0 skipped; OR-01 through OR-24 all passed against a fresh disposable PostgreSQL target                                | `docs/certification/OPERATIONS_RECOVERY_CERTIFICATION_2026-09-04.md`; `pnpm run certify:operations-recovery`                                                                  |
 | Observability certification                    | PASS — 26 assertions passed, 0 failed, 0 skipped; OB-01 through OB-25 all passed against a fresh disposable PostgreSQL target with a real Slack receipt | `docs/certification/OBSERVABILITY_CERTIFICATION_2026-09-04.md`; `pnpm run certify:observability`                                                                              |
 | Financial-integrity certification              | PASS — TI 15/15, TR 12/12, AC 14/14, SD 20/20 on a fresh disposable PostgreSQL target | `docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md`; `pnpm run certify:financial-integrity`                                                                  |
-| Clerk reverification certification             | BLOCKED — RV 2/12; successful retry and cancelled/no-side-effect paths passed in production, but the current gate requires RV 12/12                  | `docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md`; `docs/certification/CLERK_REVERIFICATION_PRODUCTION_EVIDENCE_2026-09-05.json`; `pnpm run certify:browser-auth` |
+| Clerk reverification certification             | RETIRED AS RELEASE REQUIREMENT — application protection remains enabled; historical evidence is retained at RV 2/12 and is not presented as complete certification | `docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md`; `docs/certification/CLERK_REVERIFICATION_PRODUCTION_EVIDENCE_2026-09-05.json` |
 
 ## Current gate matrix
 
@@ -124,7 +127,6 @@ introduced during this certification.
 | Treasury                  | Not closed      | Actor-scoped reads, advisor redaction, locked decisions, linked planning reservations, replay handling, concurrency protection, and decision audit are implemented                                                                                                                   | Isolated disposable PostgreSQL certification passed actor boundary, redaction, owner approval, reservation, concurrency, double-reservation protection, replay, conflict, cross-household isolation, and audit cases | **PASS** | `docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md`; `artifacts/api-server/src/services/treasury.ts`; `scripts/certify-financial-integrity.mjs` |
 | Manual finance            | Not closed      | Manual review lifecycle and downstream recalculation are implemented                                                                                                                                                                                                                   | PostgreSQL suite passed create → review → approve/reject → fresh read → budget/cash-flow/Safe-to-Deploy recalculation                                                                                                      | **PASS**       | `artifacts/api-server/src/integration/p0-http.test.ts`; current 99/99 run                                                                                                                                                                                                                                         |
 | Authenticated browser E2E | BLOCKED         | Clerk onboarding, saved-write reload, sign-out, repeat sign-in, and second-household isolation are implemented                                                                                                                                                                           | Published origin and live Clerk sign-in route preflight passed; real sign-in, onboarding, saved-write reload, role, second-household, session, multi-tab, Emergency Stop, Treasury, and Safe-to-Deploy browser evidence remains incomplete | **BLOCKED** | `docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md`; `docs/certification/auth-sign-in-published-origin.png` |
-| Clerk reverification      | BLOCKED         | Provider-supported strict reverification exists in the Clerk client and API middleware; protected Operations task completion records actor-attributed evidence atomically                                                                                                                | RV-01 successful challenge/retry and RV-02 cancelled/no-side-effect paths passed with redacted production evidence; RV-03 through RV-12 remain blocked on expiry, current role/household rechecks, and remaining browser audit/telemetry cases | **BLOCKED** | `docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md`; `docs/certification/CLERK_REVERIFICATION_PRODUCTION_EVIDENCE_2026-09-05.json`; `artifacts/api-server/src/middleware/reverification.test.ts` |
 | Migration upgrade         | BLOCKED         | Historical schema artifact and additive upgrade path are committed                                                                                                                                                                                                                     | Disposable branch upgrade preserved representative data, constraints, ownership, balances, and audit actor; current rerun is blocked because no disposable certification DB URL is configured                              | **PASS**       | `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`; `scripts/certify-migrations.mjs`                                                                                                                                                                                                                         |
 | Worker / scheduler        | BLOCKED         | Durable job schema, lease-owner fencing, retry/dead-letter lifecycle, scheduler leadership, opt-in runtime loops, lifecycle audit events, and runtime metrics exist                                                                                                                    | OR-01 through OR-24 all passed on a fresh disposable PostgreSQL target; child-process graceful shutdown, hard crash recovery, contention, scheduler recovery, audit attribution, and metrics evidence retained             | **PASS**       | `docs/certification/OPERATIONS_RECOVERY_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/services/operations.ts`; `artifacts/api-server/src/services/operations-scheduler.ts`; `artifacts/api-server/src/integration/operations-recovery-certification.test.ts`; `scripts/certify-operations-recovery.mjs` |
 | Observability             | PARTIAL         | Authenticated OpenMetrics export, safe low-cardinality API/database/financial/operations/execution/provider/banking metrics, deterministic persisted alert rules, durable retry/dead-letter/replay, recovery notices, actor attribution, and a named Slack destination are implemented | OB-01 through OB-25 passed on a fresh disposable PostgreSQL target; a controlled synthetic critical alert, replay, and recovery notice received real Slack provider receipts                                               | **PASS**       | `docs/certification/OBSERVABILITY_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/integration/observability-certification.test.ts`; `scripts/certify-observability.mjs`                                                                                                                                   |
@@ -140,11 +142,11 @@ introduced during this certification.
 
 ## Release status counts
 
-There are **17 critical gates** in the matrix:
+There are **16 critical gates** in the matrix:
 
 - **PASS:** 13
 - **PARTIAL:** 0
-- **BLOCKED:** 4
+- **BLOCKED:** 3
 - **FAIL:** 0
 
 Any PARTIAL, BLOCKED, or FAIL critical gate keeps the production candidate
@@ -165,9 +167,9 @@ unreleased.
   unrealized results remain outside executable household capital.
 - AI and automation cannot move money, unlock reserves, enable Micro-Live, or submit
   external actions.
-- Clerk reverification is partially certified at RV 2/12. Successful retry and
-  cancelled/no-side-effect behavior are proven in production; expiry and
-  authorization-change cases remain blocked.
+- Clerk reverification remains enabled as a defense-in-depth control. Its retained
+  RV 2/12 evidence is historical operational evidence, not a release requirement
+  and not a claim of complete reverification certification.
 - Banking remains consent-gated, read-only, credential-reference based, and
   provider-disabled.
 - Exact-cent domain logic and PostgreSQL `numeric(18,2)` storage remain in force.
@@ -200,9 +202,8 @@ Capital OS is approved only for controlled internal evaluation within the
 non-executing family-capital scope. The unresolved blockers are listed in the
 gate matrix above.
 
-The exact four current critical blockers are:
+The exact three current critical blockers are:
 
 1. Authenticated Browser E2E
-2. Clerk Reverification
-3. Micro-Live Foundation
-4. Schwab Read-Only
+2. Micro-Live Foundation
+3. Schwab Read-Only

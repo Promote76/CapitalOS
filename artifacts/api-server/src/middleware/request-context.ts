@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { clerkClient, getAuth } from "@clerk/express";
+import { reverificationError } from "@clerk/shared/authorization-errors";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { auditEvents, db, householdMembers, households, users } from "@workspace/db";
 import { ensureSeedData } from "../services/seed";
@@ -14,7 +15,28 @@ import {
   runWithSecurityContext,
   type RequestSecurityContext,
 } from "./request-scope";
+import { hasProviderReverification } from "./reverification";
+
 const roles = new Set<HouseholdRole>(["owner", "partner", "viewer", "advisor"]);
+
+function requiresRecentAuthentication(req: Request) {
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return false;
+  const path = req.path;
+  return path === "/household/privacy" ||
+    path === "/allocations" ||
+    path === "/transfers" ||
+    path === "/risk/emergency-stop" ||
+    path.startsWith("/recommendations/") ||
+    path.startsWith("/operations/tasks/") ||
+    path.startsWith("/operations/approvals/") ||
+    path.includes("/treasury/requests/") ||
+    path.startsWith("/business/distributions") ||
+    path.startsWith("/micro-live/") ||
+    path.startsWith("/execution-control/") ||
+    path.startsWith("/financial-transactions/") ||
+    /^\/budget-planning-periods\/[0-9a-fA-F-]{36}\/(approve|close)$/.test(path) ||
+    path.startsWith("/financing");
+}
 
 export type ResolvedClerkIdentity = {
   externalAuthId: string;
@@ -205,6 +227,18 @@ export async function requestContext(req: Request, res: Response, next: NextFunc
   try {
     const auth = await authenticatedContext(req) ?? await testDatabaseContext(req);
     if (auth) {
+      if (requiresRecentAuthentication(req) && !hasProviderReverification(req, auth)) {
+        if (auth.authStrength === "clerk_session") {
+          res.status(403).json(reverificationError("strict"));
+          return;
+        }
+        res.status(403).json({
+          code: "STEP_UP_REQUIRED",
+          message: "A test-only step-up marker is required by the isolated fixture.",
+          correlationId: res.locals.correlationId,
+        });
+        return;
+      }
       setLocals(res, auth);
       runWithSecurityContext(auth, next);
       return;

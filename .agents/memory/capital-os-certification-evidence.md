@@ -98,3 +98,13 @@ though the individual gate results were already correct.
 PASS, PARTIAL, BLOCKED, and FAIL, require every row to classify exactly once,
 and compare the derived totals with the documented release summary before
 running the remaining candidate checks.
+
+Clerk reverification remains a defense-in-depth application control but is not a
+release-certification gate.
+
+**Why:** The project owner explicitly retired reverification evidence as a
+release requirement while choosing to retain the live step-up protection.
+
+**How to apply:** Keep server and client reverification enforcement intact,
+retain historical RV evidence without claiming full certification, and exclude
+the reverification row from canonical release-gate counts and blocker lists.

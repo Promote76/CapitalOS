@@ -9,6 +9,12 @@ Clerk's `useReverification()` recognizes the provider hint as a returned payload
 
 **How to apply:** When adding a protected mutation, route its generated-client call through the shared reverification wrapper and preserve non-reverification errors as errors.
 
+Generated-client reverification adapters must recognize Clerk's exact hint even when production middleware places it inside a standard error envelope; never promote an unrelated HTTP 403 into a reverification challenge.
+
+**Why:** A valid signed-in owner can otherwise see a raw `HTTP 403` with no verification dialog even though the server correctly emitted Clerk's challenge.
+
+**How to apply:** Extract only the exact `forbidden` / `reverification-error` signature from known error payload containers. During diagnosis, rule out origin-policy and role denials before changing Clerk or weakening the server gate.
+
 Protected lifecycle mutations must also be matched by the server's recent-auth gate; a client reverification wrapper alone is never an authorization boundary.
 
 **Why:** An authenticated caller can bypass the browser and invoke a mutation directly, so client-only step-up protection leaves approval and closure routes exposed.

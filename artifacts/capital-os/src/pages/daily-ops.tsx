@@ -174,11 +174,11 @@ function TaskCard({
 }
 
 export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
-  const familyOffice = useGetFamilyOffice({ query: { queryKey: getGetFamilyOfficeQueryKey(), refetchInterval: HOUR } });
-  const treasury = useGetTreasury({ query: { queryKey: getGetTreasuryQueryKey(), refetchInterval: HOUR } });
-  const accounting = useGetAccountingOverview({ query: { queryKey: getGetAccountingOverviewQueryKey(), refetchInterval: HOUR } });
-  const operations = useGetOperationsOverview({ query: { queryKey: getGetOperationsOverviewQueryKey(), refetchInterval: HOUR } });
-  const tasksQuery = useListOperationsTasks({ query: { queryKey: getListOperationsTasksQueryKey(), refetchInterval: HOUR } });
+  const familyOffice = useGetFamilyOffice({ query: { queryKey: getGetFamilyOfficeQueryKey(), refetchInterval: HOUR, retry: false } });
+  const treasury = useGetTreasury({ query: { queryKey: getGetTreasuryQueryKey(), refetchInterval: HOUR, retry: false } });
+  const accounting = useGetAccountingOverview({ query: { queryKey: getGetAccountingOverviewQueryKey(), refetchInterval: HOUR, retry: false } });
+  const operations = useGetOperationsOverview({ query: { queryKey: getGetOperationsOverviewQueryKey(), refetchInterval: HOUR, retry: false } });
+  const tasksQuery = useListOperationsTasks({ query: { queryKey: getListOperationsTasksQueryKey(), refetchInterval: HOUR, retry: false } });
   const research = useCreateFamilyOfficeResearch();
   const updateTask = useUpdateOperationsTask();
   const createJournal = useCreateDailyOpsJournalEntry();
@@ -197,7 +197,7 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
   const snapshot = familyOffice.data;
   const treasurySnapshot = treasury.data;
   const accountingSnapshot = accounting.data;
-  const dailyOps = useListDailyOpsHistory({ query: { queryKey: getListDailyOpsHistoryQueryKey(), refetchInterval: HOUR } });
+  const dailyOps = useListDailyOpsHistory({ query: { queryKey: getListDailyOpsHistoryQueryKey(), refetchInterval: HOUR, retry: false } });
   const tasks = tasksQuery.data ?? operations.data?.tasks ?? [];
   const visibleTasks = useMemo(() => tasks.filter((task) => inCadence(task, cadence)), [tasks, cadence]);
   const openTasks = tasks.filter((task) => task.status !== "COMPLETED" && task.status !== "DISMISSED" && task.status !== "EXPIRED");
@@ -231,7 +231,7 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
   const refreshAll = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([familyOffice.refetch(), treasury.refetch(), accounting.refetch(), operations.refetch(), tasksQuery.refetch(), dailyOps.refetch()]);
+      await Promise.allSettled([familyOffice.refetch(), treasury.refetch(), accounting.refetch(), operations.refetch(), tasksQuery.refetch(), dailyOps.refetch()]);
       onFeedback("The operating cockpit was refreshed. Stale or unavailable sources remain visible.");
     } finally {
       setRefreshing(false);

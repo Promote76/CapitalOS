@@ -28,3 +28,4 @@
 - [xAI provider contract](capital-os-xai-provider-contract.md) — require strict schema, persisted verification evidence, safe failure codes, and atomic advisory finalization.
 - [Schwab read-only boundary](capital-os-schwab-boundary.md) — keep the observation-only contract disabled until an approved connector and real provider evidence exist.
 - [Daily Ops review history boundary](capital-os-daily-ops-history.md) — persist reasoned operator handoffs separately from financial authority and execution state.
+- [Daily Ops certification boundary](capital-os-daily-ops-certification.md) — certify authenticated tenant isolation and fail-closed source failures with disposable household-marked fixtures.

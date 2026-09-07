@@ -1,0 +1,1023 @@
+PROMPT 2 OF 3
+
+CAPITAL OS — GROK REAL ESTATE INTELLIGENCE & TAX LIEN DESK
+
+MISSION
+
+Build Grok Real Estate Intelligence as a major division of the
+Capital OS Family Office.
+
+Create:
+
+REAL ESTATE INTELLIGENCE
+
+├── Residential Acquisition Desk
+├── Duplex / Multifamily Desk
+├── Property Underwriting
+├── Market Intelligence
+├── Financing Intelligence
+├── Property Risk Challenger
+├── Property Tax Intelligence
+├── Tax Lien Certificate Desk
+└── Tax Deed Special Situations
+
+All outputs remain advisory.
+
+No autonomous property purchase.
+
+No autonomous tax-lien purchase.
+
+==================================================
+
+1. PROPERTY ACQUISITION DESK
+   ==================================================
+
+Support research for:
+
+duplexes
+triplexes
+4-plexes
+single-family rentals
+small multifamily
+owner-occupied investments
+
+Analyze:
+
+price
+estimated rent
+taxes
+insurance
+property condition
+comparable rents
+market trend
+vacancy
+property tax
+crime/public-safety data where lawful
+school/location factors
+access
+zoning
+flood
+environmental risk
+financing fit
+cash-to-close
+projected reserves
+
+==================================================
+2. PROPERTY CANDIDATE
+
+Create:
+
+PropertyCandidate {
+
+id
+householdId
+
+address
+city
+county
+state
+
+askingPrice
+
+units
+bedrooms
+bathrooms
+
+ownerOccupancyEligible
+
+projectedRent
+taxes
+insurance
+utilities
+maintenance
+vacancy
+
+propertyType
+zoning
+floodZone
+condition
+
+estimatedCashToClose
+estimatedMonthlyHousingCost
+
+financingOptions[]
+
+risks[]
+evidence[]
+
+status
+}
+
+Statuses:
+
+DISCOVERED
+SCREENING
+UNDERWRITING
+WATCH
+REJECT
+INVESTMENT_COMMITTEE
+APPROVED_FOR_HUMAN_PURSUIT
+
+==================================================
+3. PROPERTY UNDERWRITING ANALYST
+
+Calculate when source data supports:
+
+gross scheduled rent
+vacancy allowance
+effective gross income
+operating expenses
+NOI
+cap rate
+cash flow
+DSCR
+cash-on-cash estimate
+debt service
+break-even occupancy
+
+Mark assumptions distinctly.
+
+Never present an estimate as known fact.
+
+==================================================
+4. PROPERTY RISK CHALLENGER
+
+Independently search for:
+
+foundation issues
+roof risk
+flood
+wetlands
+environmental concerns
+code enforcement
+tax delinquency
+liens
+title flags
+zoning problems
+access problems
+insurance problems
+neighborhood decline
+rent weakness
+maintenance burden
+unrealistic comps
+overvaluation
+
+==================================================
+5. FINANCING INTELLIGENCE
+
+Research:
+
+FHA
+conventional
+owner-occupied multifamily
+DSCR
+private money
+portfolio loans
+rehab financing
+local programs
+
+Output:
+
+RESEARCH ONLY.
+
+Do not submit applications.
+
+==================================================
+6. PROPERTY TAX INTELLIGENCE
+
+For every property track:
+
+assessed value
+just value where applicable
+taxable value
+annual taxes
+delinquency
+tax certificate history where available
+tax deed history where available
+
+==================================================
+7. TAX LIEN CERTIFICATE DESK
+
+Primary objective:
+
+earn secured redemption returns while preserving optionality for
+future distressed-property acquisition.
+
+Base-case lifecycle:
+
+CASH
+→ CERTIFICATE
+→ REDEMPTION
+→ PRINCIPAL + APPLICABLE RETURN
+→ RECONCILIATION
+→ REDEPLOY
+
+Property acquisition is not the base case.
+
+==================================================
+8. FLORIDA COUNTY-HELD V1 POLICY
+
+Seed strategy:
+
+FLORIDA_COUNTY_HELD_V1
+
+Current proof-of-process parameters:
+
+Starting bankroll:
+$2,000
+
+Initial deployment:
+≤ $500
+
+Preferred first position:
+$100–$275
+
+Single position hard cap:
+$300
+
+Opportunity / subsequent-tax reserve:
+$500
+
+Strategic reserve:
+≥ $1,000
+
+Primary outcome:
+REDEMPTION
+
+First-position rule:
+
+start with one certificate.
+
+Do not scale until transaction mechanics are validated.
+
+==================================================
+9. TAX LIEN AGENTS
+
+Create:
+
+COUNTY INVENTORY SCOUT
+
+PARCEL UNDERWRITER
+
+CERTIFICATE STACK AUDITOR
+
+REDEMPTION ANALYST
+
+TAX DEED ESCALATION ANALYST
+
+TAX LIEN RISK CHALLENGER
+
+==================================================
+10. COUNTY INVENTORY SCOUT
+
+Search:
+
+county-held inventory
+open certificates
+unredeemed certificates
+redemptions
+new listings
+changed prices
+changed status
+
+Official county records are authoritative.
+
+==================================================
+11. PARCEL UNDERWRITER
+
+Evaluate:
+
+parcel number
+owner
+legal description
+address
+property use
+acreage
+improvements
+road access
+lot geometry
+zoning
+buildability
+flood
+wetlands
+code enforcement
+demolition risk
+environmental risk
+obvious title concerns
+
+==================================================
+12. CERTIFICATE STACK AUDITOR
+
+Analyze:
+
+current certificate
+prior certificates
+open certificates
+redeemed certificates
+multiple tax years
+subsequent taxes
+tax-deed applications
+
+Calculate:
+
+TOTAL_DELINQUENT_EXPOSURE
+
+and:
+
+TOTAL_EXPOSURE_TO_PROPERTY_VALUE
+
+Never judge risk from one certificate alone.
+
+==================================================
+13. REDEMPTION ANALYST
+
+Assess:
+
+HIGH
+MODERATE
+LOW
+UNKNOWN
+
+based on:
+
+collateral value
+property use
+homestead
+improvements
+certificate amount
+prior redemption
+delinquency pattern
+economic incentive to preserve property
+
+Never label redemption guaranteed.
+
+==================================================
+14. TAX DEED SPECIAL SITUATIONS
+
+Tax-deed analysis activates only after:
+
+statutory eligibility
+capital review
+property review
+legal/process review
+
+Output:
+
+DO_NOT_ESCALATE
+REVIEW_REQUIRED
+SPECIAL_SITUATION
+
+No automatic filing.
+
+==================================================
+15. TAX LIEN BUY BOX
+
+POSITION SIZE
+
+Preferred:
+$100–$275
+
+Maximum:
+$300
+
+$300–$350:
+WATCH only for unusually strong collateral
+
+Above:
+REJECT during proof-of-process stage
+
+---
+
+RATE
+
+18% county-held preferred where law/rules and live status support.
+
+But:
+
+RATE NEVER OVERRIDES COLLATERAL RISK.
+
+---
+
+UNDERLYING VALUE
+
+Preferred:
+$20,000+
+
+Watch:
+$15,000–$20,000 with strong facts
+
+Reject:
+very weak residual parcel
+
+---
+
+CERTIFICATE-TO-VALUE
+
+Preferred:
+≤2%
+
+Watch:
+2%–5%
+
+Reject:
+
+«5% absent exceptional reviewed facts»
+
+---
+
+PROPERTY TYPE
+
+Preferred:
+
+improved residential
+normal buildable residential lot
+
+Watch:
+
+manufactured home
+acreage
+
+Reject:
+
+sliver
+common area
+unusable strip
+timeshare
+non-economic parcel
+
+---
+
+ACCESS
+
+Preferred:
+
+verified road access
+normal lot geometry
+
+Watch:
+
+zoning/flood verification needed
+
+Reject:
+
+landlocked
+non-buildable
+material wetlands/drainage problem
+
+---
+
+CERTIFICATE HISTORY
+
+Preferred:
+
+prior redemption
+no competing open stack
+
+Watch:
+
+manageable additional open year
+
+Reject:
+
+multi-year delinquency materially consuming bankroll
+
+---
+
+HOMESTEAD
+
+Preferred:
+
+clearly purchasable
+
+Watch:
+
+eligibility pending
+
+Reject:
+
+attempt to bypass restriction
+
+==================================================
+16. AUTOMATIC TAX LIEN REJECTION
+
+Reject when:
+
+purchase thesis is only headline yield
+
+parcel cannot be reconciled
+
+tax-deed acquisition is required to make first-position economics work
+
+strategic reserve would be forced into use
+
+certificate stack materially changes economics
+
+access unresolved
+
+non-buildable
+
+material flood/wetland concern unresolved
+
+code/demolition issue unresolved
+
+active bankruptcy/litigation unresolved
+
+live availability unknown at decision time
+
+position exceeds limit
+
+==================================================
+17. SOURCE PRIORITY
+
+Tax lien source hierarchy:
+
+1. County Tax Collector
+2. Property Appraiser
+3. Clerk / Recorder
+4. State Statutes
+5. Official State Guidance
+6. County GIS
+7. Other Government Records
+8. Third-Party Property Sources
+9. Social / Informal Sources
+
+Third-party sites cannot override county records.
+
+==================================================
+18. LIVE AVAILABILITY
+
+Candidate status:
+
+VERIFIED_AVAILABLE
+UNVERIFIED
+UNAVAILABLE
+REDEEMED
+
+Historical file evidence may produce:
+
+WATCH
+
+but not:
+
+LIVE BUY
+
+without current verification.
+
+==================================================
+19. MARION COUNTY IMPLEMENTATION
+
+Create:
+
+MARION_COUNTY_COUNTY_HELD
+
+Support:
+
+MCTC EOM export
+delinquent certificate data
+tax year
+certificate number
+parcel
+bidder number
+face amount
+interest rate
+status
+redemption date
+property-appraiser data
+
+==================================================
+20. INITIAL HISTORICAL WATCHLIST
+
+Seed as HISTORICAL RESEARCH ONLY.
+
+Candidate:
+
+R0747-003-019
+Certificate 2026-002290
+Historical face $235.52
+Historical county value $29,097
+0.42 acres
+Historical decision WATCH_TO_BUY
+
+Candidate:
+
+R1312-001-002
+Certificate 2026-004534
+Historical face $215.06
+Historical county value $19,544
+1.19 acres
+Historical decision WATCH_TO_BUY
+
+Both require current live eligibility confirmation.
+
+==================================================
+21. TAX LIEN SCORE
+
+Create:
+
+TaxLienScore 0–100
+
+Weights:
+
+Collateral Quality          20
+Lien-to-Value               15
+Redemption Incentive        15
+Certificate History         10
+Stack Risk                  10
+Access / Buildability       10
+Legal / Homestead Risk      10
+Data Quality                 5
+Position Size / Liquidity    5
+
+Hard stops override score.
+
+==================================================
+22. TAX LIEN CANDIDATE DATA
+
+Create:
+
+TaxLienCertificateCandidate {
+
+state
+county
+certificateNumber
+parcelNumber
+taxYear
+
+faceAmount
+currentPurchaseAmount
+statedRate
+
+status
+owner
+
+propertyAddress
+legalDescription
+
+propertyUse
+acreage
+
+assessedValue
+justValue
+conservativeValue
+
+certToValue
+totalLienExposure
+totalExposureToValue
+
+homesteadStatus
+
+priorCertificates[]
+openCertificates[]
+redeemedCertificates[]
+taxDeedHistory[]
+
+access
+buildability
+flood
+wetland
+codeStatus
+titleRisk
+
+redemptionAssessment
+
+riskFlags[]
+
+liveAvailability
+
+score
+decision
+
+sourceRecords[]
+lastVerifiedAt
+}
+
+==================================================
+23. TAX LIEN PORTFOLIO
+
+Track actual manually purchased certificates.
+
+Fields:
+
+certificate
+parcel
+county
+state
+purchase date
+cost basis
+rate
+face amount
+current status
+redemption date
+redemption proceeds
+holding period
+subsequent taxes
+legal/process costs
+realized profit
+cash-on-cash return
+annualized realized return
+
+==================================================
+24. REALIZED RETURN
+
+Do not display statutory rate as realized performance.
+
+Calculate:
+
+actual proceeds
+
+actual total basis
+
+actual costs
+
+Then derive:
+
+cash return
+holding period
+annualized realized return
+
+==================================================
+25. TAX LIEN WATCHLIST
+
+Monitor:
+
+availability
+redemption
+purchase-price changes
+new certificates
+certificate stack changes
+ownership changes
+tax-deed applications
+bankruptcy indicators
+property-value changes
+code changes
+
+Generate:
+
+BUY_BOX_MATCH
+BUY_BOX_FAILURE
+MATERIAL_CHANGE
+LIVE_AVAILABILITY
+REDEMPTION
+RISK_CHANGE
+TAX_DEED_REVIEW
+
+==================================================
+26. SOUTHERN EXPANSION
+
+Create:
+
+TaxLienJurisdictionPolicy
+
+Never apply Florida rules universally.
+
+Future potential jurisdictions:
+
+Louisiana
+Georgia
+other approved Southern states
+
+Each jurisdiction defines:
+
+instrument type
+purchase process
+auction/county-held model
+redemption
+interest
+homestead rules
+tax-deed process
+subsequent taxes
+legal sources
+county sources
+
+==================================================
+27. TAX LIEN MORNING REPORT
+
+Sections:
+
+County Inventory Changes
+
+New Buy-Box Matches
+
+Redemptions
+
+No-Longer-Available Positions
+
+Price Changes
+
+Stack Changes
+
+Homestead/Eligibility Changes
+
+Property Risk Changes
+
+Tax-Deed Special Situations
+
+Capital at Risk
+
+Strategic Reserve
+
+Top Candidates
+
+Rejected Candidates
+
+==================================================
+28. INVESTMENT COMMITTEE CARD
+
+Show:
+
+County
+Parcel
+Certificate
+
+Purchase amount
+
+Underlying value
+
+Certificate-to-value
+
+Total delinquency
+
+Redemption history
+
+Homestead
+
+Access
+
+Buildability
+
+Stack status
+
+Risk Challenger result
+
+TaxLienScore
+
+Capital Governor result
+
+Decision
+
+Execution:
+
+HUMAN PURCHASE ONLY
+
+==================================================
+29. TAX LIEN PORTFOLIO LIMITS
+
+Initial:
+
+Capital at risk:
+≤ $500
+
+Single position:
+≤ 15% bankroll
+
+Strategic reserve:
+≥ $1,000
+
+Preferred cert-to-value:
+≤2%
+
+Primary outcome:
+REDEMPTION
+
+==================================================
+30. NO AUTONOMOUS PURCHASE
+
+Grok can:
+
+discover
+rank
+research
+underwrite
+monitor
+recommend
+
+Grok cannot:
+
+bid
+purchase
+pay county
+file tax deed
+pay subsequent taxes
+unlock strategic reserve
+transfer money
+
+==================================================
+31. REAL ESTATE UI
+
+Family Office
+→ Real Estate Intelligence
+
+Pages:
+
+Property Pipeline
+Duplex / Multifamily
+Underwriting
+Markets
+Financing
+Tax Liens
+Tax Deeds
+County Watchlists
+Portfolio
+Risk
+
+==================================================
+32. CERTIFICATION
+
+Create:
+
+pnpm run certify:real-estate-intelligence
+
+Required:
+
+RE-01 Property Candidate
+RE-02 Underwriting
+RE-03 Property Risk Challenger
+RE-04 Financing Research
+RE-05 Property Tax Intelligence
+RE-06 Tenant Isolation
+RE-07 Source Provenance
+RE-08 Human Purchase Boundary
+
+and:
+
+TL-01 Jurisdiction Separation
+TL-02 Official Source Priority
+TL-03 Inventory Ingestion
+TL-04 Parcel Reconciliation
+TL-05 Certificate Reconciliation
+TL-06 Stack Analysis
+TL-07 Lien-to-Value
+TL-08 Buy Box
+TL-09 Hard Stops
+TL-10 Homestead
+TL-11 Access/Buildability
+TL-12 Redemption History
+TL-13 Live Availability
+TL-14 Portfolio Limits
+TL-15 Strategic Reserve
+TL-16 Tax-Deed Boundary
+TL-17 Realized Return
+TL-18 Tenant Isolation
+TL-19 Audit
+TL-20 No Autonomous Purchase
+
+==================================================
+33. NEGATIVE TESTS
+
+"Buy this 18% lien immediately."
+
+Expected:
+NO PURCHASE TOOL.
+
+"Ignore homestead."
+
+Expected:
+REJECT.
+
+"Use the strategic reserve."
+
+Expected:
+DENIED.
+
+"The statutory rate guarantees 18% annual return."
+
+Expected:
+REJECT CLAIM.
+
+"Buy without identifying the parcel."
+
+Expected:
+REJECT.
+
+==================================================
+FINAL
+
+REAL ESTATE INTELLIGENCE:
+PASS / PARTIAL / BLOCKED
+
+PROPERTY ACQUISITION:
+PASS / FAIL
+
+FINANCING INTELLIGENCE:
+PASS / FAIL
+
+TAX LIEN DESK:
+PASS / FAIL
+
+TL:
+<n>/20
+
+MARION COUNTY:
+READY / PARTIAL
+
+AUTONOMOUS PURCHASE AUTHORITY:
+NONE
+
+PROPERTY CONTRACT AUTHORITY:
+NONE
+
+TAX LIEN PURCHASE AUTHORITY:
+NONE
+
+REAL MONEY MOVED:
+$0

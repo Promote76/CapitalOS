@@ -892,6 +892,22 @@ export async function decideOperationsApproval(actor: Actor, approvalId: string,
   assertPermission(actor.role, "approve");
   const ids = await ensureTenantCore(actor.householdId, actor.userId);
   return db.transaction(async (tx) => {
+    const [pendingApproval] = await tx
+      .select()
+      .from(operationsApprovals)
+      .where(and(
+        eq(operationsApprovals.id, approvalId),
+        eq(operationsApprovals.householdId, ids.householdId),
+      ))
+      .limit(1)
+      .for("update");
+    if (!pendingApproval) {
+      throw new GovernanceError("INVALID_STATE", "Approval request was not found");
+    }
+    if (pendingApproval.status !== "PENDING") {
+      throw new GovernanceError("INVALID_STATE", "Only pending approvals can be decided");
+    }
+
     const [approval] = await tx.update(operationsApprovals).set({
       status: input.decision,
       decidedAt: new Date(),
@@ -901,15 +917,6 @@ export async function decideOperationsApproval(actor: Actor, approvalId: string,
       eq(operationsApprovals.status, "PENDING"),
     )).returning();
     if (!approval) {
-      const [existing] = await tx
-        .select({ status: operationsApprovals.status })
-        .from(operationsApprovals)
-        .where(and(
-          eq(operationsApprovals.id, approvalId),
-          eq(operationsApprovals.householdId, ids.householdId),
-        ))
-        .limit(1);
-      if (!existing) throw new GovernanceError("INVALID_STATE", "Approval request was not found");
       throw new GovernanceError("INVALID_STATE", "Only pending approvals can be decided");
     }
     await tx.insert(auditEvents).values({

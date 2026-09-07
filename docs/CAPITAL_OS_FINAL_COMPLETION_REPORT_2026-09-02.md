@@ -1,20 +1,21 @@
 # Capital OS Final Completion Report
 
 **Date:** 2026-09-02  
-**Last updated:** 2026-09-06
+**Last updated:** 2026-09-07
 **Repository / release:** Current Capital OS workspace; no public release is certified by this report  
 **Certification scope:** Internal-only, non-public, non-executing family-capital scope plus separately assessed Controlled Micro-Live boundary
 **Release decision:** **IN-HOUSE ONLY — READY FOR CONTROLLED INTERNAL USE**  
 **Public Production Candidate status:** **NOT CERTIFIED**
 
-> **Historical report reconciled on 2026-09-06:** This report records earlier
+> **Historical report reconciled on 2026-09-07:** This report records earlier
 > evidence. The authoritative current certification is
 > `docs/CAPITAL_OS_CURRENT_CERTIFICATION.md`; supporting current-surface route
-> evidence is in `docs/certification/CURRENT_SURFACE_CERTIFICATION_2026-09-06.md`. The current
-> source-derived inventory is 163 route/method pairs (not 149); all 163 passed the
-> current disposable tenant replay. P0-01, P0-06, and P0-08 are PASS. Contribution
-> browser evidence and post-contribution Safe-to-Deploy browser comparison remain
-> BLOCKED, while the server/database `$200` Duplex protection is PASS.
+> evidence is in `docs/certification/CURRENT_SURFACE_CERTIFICATION_2026-09-07.md`.
+> The current source-derived inventory is 170 route/method pairs; one clean
+> guarded disposable-target replay covered all 170 with 393 probes, 58 scoped
+> collection reads, 58 foreign-identifier rejections, and 58 malformed-identifier
+> rejections. P0-01, P0-06, and P0-08 remain PASS. Public production remains not
+> certified; the authoritative report records three critical blockers.
 
 ## Executive Summary
 
@@ -22,15 +23,23 @@ Capital OS is a household financial planning and advisory application for budget
 
 The hardening work established meaningful controls around authenticated identity, household scoping, role checks, effective membership permission loading, origin enforcement, exact-cent financial logic, atomic transfer debits, idempotency boundaries, ledger evidence, Treasury protected-capital state, persistence truth in the UI, generated API contracts, and the disabled Micro-Live execution boundary.
 
-Executable evidence is currently strongest for domain safety and isolated PostgreSQL
-HTTP behavior. The workspace typechecks, builds, regenerates API clients, passes
-163-route parity, and passes 108 API tests with 31 database-gated skips in normal
-mode. The latest isolated database-backed fixture proves the current 163-route
-tenant preflight, role/effective-permission cases, persisted actor attribution,
-cross-household boundaries, and contribution/ledger idempotency invariants.
-Contribution-specific browser evidence remains blocked.
+Executable evidence is currently strongest for domain safety and isolated
+PostgreSQL HTTP behavior. The workspace typechecks, builds, regenerates API
+clients, and passes 170-route parity. The latest guarded database-backed fixture
+covered the complete 170-route inventory with 393 probes and 12 passing test
+groups, including role/effective-permission cases, persisted actor attribution,
+cross-household boundaries, malformed identifiers, and economic idempotency
+invariants. Contribution-specific browser evidence remains blocked.
 
-Capital OS is qualified only for controlled, in-house evaluation within the documented non-executing scope. Public production release is out of scope. The provider-supported Clerk reverification flow is implemented but its approved authenticated browser evidence remains outside this certification, as does contribution-specific authenticated browser evidence. Durable queue and reconciliation controls are implemented locally, but their database-backed restart run is not claimed as executed evidence.
+Capital OS is qualified only for controlled, in-house evaluation within the
+documented non-executing scope. Public production release is not certified.
+Historical Clerk evidence covers one successful provider challenge/retry and one
+cancelled challenge without mutation. A later transaction-review request exposed
+a raw HTTP 403 with no dialog; its client-envelope remediation is locally
+verified but still requires publication and a fresh authenticated browser
+challenge/retry. Operations recovery and observability now have isolated
+database-backed certification, including restart behavior and a real Slack
+delivery receipt.
 
 No real banking, ACH, brokerage, live venue, blockchain, external investor capital, automated withdrawal, or autonomous AI capability was added or enabled.
 
@@ -44,7 +53,7 @@ latest route-isolation evidence was refreshed on 2026-09-05.
 
 | Gate | Status | Implementation | Execution | Certification | Current reason |
 |---|---|---|---|---|---|
-| P0-01 Caller-controlled identifier / IDOR matrix | PASS | IMPLEMENTED | 163-route current-surface inventory, household reads, foreign/malformed identifiers, and mass-assignment probes executed in isolated PostgreSQL | CERTIFIED | No unsafe success, tenant leakage, or server error observed |
+| P0-01 Caller-controlled identifier / IDOR matrix | PASS | IMPLEMENTED | 170-route current-surface inventory, household reads, foreign/malformed identifiers, and mass-assignment probes executed in isolated PostgreSQL | CERTIFIED | No unsafe success, tenant leakage, or server error observed |
 | P0-02 Origin / CSRF certification | PASS | IMPLEMENTED | Middleware matrix and published-origin probes executed | CERTIFIED | Five published-origin write-safety probes passed |
 | P0-03 Existing-schema upgrade | PASS | IMPLEMENTED (historical artifact) | Disposable historical upgrade and data-preservation comparison executed | CERTIFIED | Representative records, balances, statuses, and audit actor survived |
 | P0-05 Authenticated browser journey | PASS | IMPLEMENTED | Authenticated Clerk journey executed; onboarding, persistence, sign-out, sign-in, and second-household isolation assertions passed | CERTIFIED | Lifecycle assertions passed in the documented browser run |
@@ -82,7 +91,14 @@ Audit Attribution
 Persisted Result
 ```
 
-High-risk authenticated writes now use Clerk's provider-supported reverification contract: the server checks `auth.has({ reverification: "strict" })`, returns Clerk's standardized reverification hint, and the client uses `useReverification()` to open the provider UI and retry the original action. This is implementation evidence only until the approved browser run passes.
+High-risk authenticated writes use Clerk's provider-supported reverification
+contract: the server checks `auth.has({ reverification: "strict" })`, returns
+Clerk's standardized reverification hint, and the client uses
+`useReverification()` to open the provider UI and retry the original action.
+Historical production evidence retains RV-01 successful retry and RV-02
+cancel-without-mutation. The 2026-09-07 transaction-review envelope remediation
+does not weaken this boundary and is not certified until the republished flow
+visibly opens the provider challenge and retries the identical request.
 
 ## Module Inventory
 
@@ -102,6 +118,7 @@ High-risk authenticated writes now use Clerk's provider-supported reverification
 | Micro-Live | DISABLED BY DESIGN | Rehearsal and eligibility boundaries exist; real transmission is false |
 | Accounting | IMPLEMENTED / PARTIAL | Exact-cent and ledger safeguards plus explicit cross-view reconciliation; liability/valuation completeness remains limited by source data |
 | Operations | IMPLEMENTED / PREPARED | Persisted tasks/alerts, durable safe-operation jobs, retry/dead-letter state, and safe prepare-only actions; worker deployment remains an operational gate |
+| Family Office | IMPLEMENTED / ADVISORY | Grok research, proposals, Shadow portfolios/intents, Florida tax-lien intelligence, reports, and workforce views remain human-reviewed and non-executing |
 | Insights | ADVISORY | No autonomous financial authority |
 | Risk | IMPLEMENTED / PARTIAL | Emergency/risk state requires persisted API behavior; reload proof remains open |
 | Security | PARTIAL | Clerk bridge, request context, origin checks, and permission checks exist; production step-up/open matrix remain |
@@ -114,12 +131,12 @@ High-risk authenticated writes now use Clerk's provider-supported reverification
 | Area | Status | Evidence | Known limitation |
 |---|---|---|---|
 | Authentication | PARTIAL | Clerk middleware/provider wiring; authenticated browser lifecycle and signed-out protected request both pass | Provider-supported reverification is implemented; approved browser evidence is not certified; public release is out of scope |
-| Tenant isolation | PASS for P0-01 | Current isolated PostgreSQL fixture executed all 163 route/method pairs and applicable household-read, foreign/malformed-identifier, and mass-assignment probes | Contribution browser proof remains separately blocked |
+| Tenant isolation | PASS for P0-01 | Current isolated PostgreSQL fixture executed all 170 route/method pairs and applicable household-read, foreign/malformed-identifier, and mass-assignment probes | Contribution browser proof remains separately blocked |
 | Roles | PASS for P0-06 | Isolated PostgreSQL fixture provisions Owner, Partner, Advisor, and Viewer in both households and passes role, grant/revoke, membership, selection, and tampering cases | Authenticated browser proof remains separately open |
 | Effective permissions | PASS for P0-06 | Active membership permissions are loaded and centralized checks pass the stored-permission grant/revoke and role fallback cases | Provider-supported reverification remains an independent evidence gate |
-| Step-up | IMPLEMENTED / NOT CERTIFIED | Protected Clerk requests use `auth.has({ reverification: "strict" })`; the client uses `useReverification()` and retries only after the provider hint is satisfied | Approved browser evidence is still required; session age, test headers, and invented OTPs are not proof |
+| Step-up | PARTIAL EVIDENCE / REMEDIATION OPEN | Protected Clerk requests use `auth.has({ reverification: "strict" })`; historical RV-01/RV-02 provider evidence is retained, and the client now recognizes exact Clerk hints across known generated-client/middleware envelopes | The transaction-review remediation passed focused tests but still requires republished authenticated browser evidence |
 | Origin / CSRF | PASS for P0-02 | Middleware matrix and five published-origin write-safety probes pass, including missing, malformed, cross-site, allowed, and invalid-credential origins | Broader security operations and production configuration evidence remain open |
-| IDOR | PASS for P0-01 | Current isolated PostgreSQL fixture passed all 163 route/method pairs plus applicable foreign/malformed-identifier and mass-assignment probes | Contribution browser proof is separately blocked |
+| IDOR | PASS for P0-01 | Current isolated PostgreSQL fixture passed all 170 route/method pairs plus applicable foreign/malformed-identifier and mass-assignment probes | Contribution browser proof is separately blocked |
 | Mass assignment | PASS for P0-01/P0-06 | Isolated HTTP probes inject household, actor, role, permission, and protected-field tampering into applicable writes | No caller-supplied server-owned field was accepted as another household or actor |
 | Audit attribution | PASS for P0-08 | Fixture queries persisted actors for exercised permitted Owner, Partner, Advisor, and granted Viewer actions and verifies denied tampering has no misleading audit row | Broader operational retention/shipping remains open |
 | Secret handling | OPEN | No secret values are claimed in this report; runtime configuration uses workspace secret mechanisms | Bundle, logs, errors, audit payload, AI context, vault rotation, and access-audit evidence are not complete |
@@ -158,7 +175,7 @@ This inventory separates resources that exist from certification evidence that h
 |---|---|---|---|
 | Certification PostgreSQL | AVAILABLE | CERTIFIED for executed gates | Isolated Neon project `capital-os-certification` (`still-band-85811770`), main branch `br-curly-bread-a53x6g2k`, is disposable and separate from Replit `DATABASE_URL`. Clean baseline and database-backed HTTP certification passed. |
 | Old-schema test PostgreSQL | AVAILABLE | CERTIFIED for P0-03 | Disposable Neon branches applied the approved historical snapshot, ran the additive current-schema upgrade, and verified preserved representative records, balances, statuses, and audit actor. |
-| Clerk test environment | AVAILABLE | EXECUTED / CERTIFIED for P0-05; step-up NOT CERTIFIED | Replit-managed Clerk development tenant completed the authenticated onboarding, persistence, sign-out, sign-in, and isolation journey. Provider-supported reverification needs a separate approved browser run. |
+| Clerk test environment | AVAILABLE | EXECUTED / CERTIFIED for P0-05; transaction-review step-up remediation OPEN | Replit-managed Clerk development tenant completed the authenticated onboarding, persistence, sign-out, sign-in, and isolation journey. Historical RV-01/RV-02 evidence is retained; the latest envelope fix awaits republished browser evidence. |
 | Browser E2E URL | AVAILABLE | EXECUTED / PASS | Published autoscale URL is available and healthy: `https://capital-os-fund.replit.app`. The documented authenticated browser lifecycle passed. |
 
 ### Migration status
@@ -192,7 +209,7 @@ The additive `operations_jobs` table is applied to the development database thro
 | Domain | 63 | 0 | 0 | 0 | PASS |
 | HTTP integration | 1 fixture | 0 | 0 | 0 | Targeted scenarios PASS |
 | Database integration | 1 fixture | 0 | 0 | 0 | Real PostgreSQL fixture PASS |
-| Tenant / IDOR | 163 route/method pairs plus applicable identifier/body probes | 0 | 0 | 0 | PASS for P0-01 |
+| Tenant / IDOR | 170 route/method pairs plus 393 current-surface probes | 0 | 0 | 0 | PASS for P0-01 |
 | Role / permission | Owner/Partner/Advisor/Viewer role and effective-permission fixture paths | 0 | 0 | 0 | PASS for P0-06 |
 | Security | 4 middleware tests / 27 scenarios plus domain coverage | 0 | Browser/security matrix | Full HTTP matrix | PARTIAL |
 | Concurrency | Targeted race plus 100-request contention and same-key creation executed | 0 | 0 | Broader economic paths | PARTIAL |
@@ -201,13 +218,12 @@ The additive `operations_jobs` table is applied to the development database thro
 | Migration | Clean baseline and existing-schema preservation PASS | 0 | 0 | Rollback/forward-fix | PARTIAL |
 | Browser E2E | Authenticated Clerk journey executed | 0 | 0 | 0 | PASS |
 
-The default API command reports 93 passing tests and 27 intentionally skipped
-database-backed tests without the certification URL. The certification runner
-emits all seven in-scope P0 gates individually and exits nonzero whenever any P0
-is not `PASS`. The expanded database-backed fixture and authenticated Clerk
-browser journey were recorded with zero failures; the internal reliability
-command passes implementation checks but remains fail-closed until its explicit
-evidence gates are certified.
+The current guarded household-privacy runner covered all 170 route/method pairs
+with 393 probes and 12 passing test groups, with no failures or skips. The
+certification runner emits all seven in-scope P0 gates individually and exits
+nonzero whenever any P0 is not `PASS`. Operations recovery separately passed 29
+tests covering OR-01 through OR-24. Observability passed 26 assertions covering
+OB-01 through OB-25, including a real Slack receipt.
 
 ## P1 Internal Reliability Sprint
 
@@ -215,13 +231,13 @@ The sprint added durable safe-operation state, cross-view accounting reconciliat
 
 | P1 area | Status | Evidence / limitation |
 |---|---|---|
-| Durable safe operations | IMPLEMENTED | Household-scoped job keys, transactional claims, retry/backoff, dead-letter, and stale-worker recovery are persisted; a restart-backed database fixture is still open |
+| Durable safe operations | CERTIFIED FOR INTERNAL SCOPE | OR-01 through OR-24 passed on a fresh disposable PostgreSQL target, including shutdown, hard-crash recovery, contention, scheduler recovery, attribution, and metrics |
 | Accounting reconciliation | IMPLEMENTED | API exposes accounting-scope net worth and separate planning/Treasury/business/property statuses |
-| Metrics and alerts | IMPLEMENTED | Provider-neutral names, severity levels, and fail-closed responses are committed; deployment sink/configuration remains open |
+| Metrics and alerts | CERTIFIED FOR INTERNAL SCOPE | OB-01 through OB-25 passed with persisted incidents, bounded retries, dead-letter/replay, recovery notices, and a real named Slack-destination receipt |
 | Micro-Live durability | IMPLEMENTED | Recovery failure persists `FAILURE`, stops the session, opens an incident, and audits the transition; real transmission remains disabled |
 | Rate-limit topology | DOCUMENTED | Shared store/trusted-proxy requirements are documented; current limiter is not a horizontal production guarantee |
 | Contribution browser proof | OPEN | Exact `$250` allocation, reload, duplicate submission, and failure UX need a fresh approved authenticated Clerk browser run |
-| Provider step-up | IMPLEMENTED / OPEN EVIDENCE | Server-side Clerk reverification and client retry flow are wired for protected actions; no approved browser evidence has been executed. A project owner with Clerk dashboard access must configure/confirm the supported factor in the approved Development environment and run the browser matrix. Session age, test headers, and invented OTPs are not used as proof. |
+| Provider step-up | HISTORICAL RV-01/RV-02 RETAINED; CURRENT REMEDIATION OPEN | Strict server-side Clerk reverification remains enabled. The transaction-review adapter now preserves exact Clerk hints across known error envelopes, but the republished provider dialog and identical-request retry still require fresh browser evidence. |
 | Restore | DEFERRED | Refusal-first future verifier scaffold only; managed backup/restore is not a release gate and is not certified |
 
 ## Exact Repeatable Commands
@@ -286,12 +302,12 @@ No reviewed local-only action claims that financial, legal, permission, or owner
 |---|---|---|
 | Liveness/readiness | PARTIAL | Separate endpoints and outage behavior are tested |
 | Structured logs | IMPLEMENTED | Pino logs and correlation IDs exist |
-| Scheduler / queue | IMPLEMENTED / PREPARED | Durable safe-operation jobs, transactional claims, retry/backoff, dead-letter, and stale-worker recovery exist; worker deployment/restart execution remains open |
-| Retries | IMPLEMENTED / PREPARED | Bounded attempts and delayed retry timestamps are persisted; database-backed lifecycle execution remains open |
-| Dead letter / escalation | IMPLEMENTED / PREPARED | Dead-letter state, persisted failures, incidents, and audit events exist; alert sink configuration remains open |
+| Scheduler / queue | PASS FOR INTERNAL SCOPE | OR-01 through OR-24 passed against fresh disposable PostgreSQL, including graceful shutdown, hard-crash recovery, contention, scheduler recovery, and attribution |
+| Retries | PASS FOR INTERNAL SCOPE | Bounded attempts, delayed retries, restart behavior, and recovery lifecycle passed the operations certification |
+| Dead letter / escalation | PASS FOR INTERNAL SCOPE | Persisted failures, incidents, dead-letter/replay, recovery notices, and audit lifecycle passed isolated certification |
 | Automation health | IMPLEMENTED | Safe action validation and failure counts derive from persisted job state |
 | Reconciliation / Guardian | IMPLEMENTED / DISABLED | Failure state is durable and Guardian fails closed to `STOP`; real transmission remains disabled |
-| Observability | IMPLEMENTED / PARTIAL | Provider-neutral metric names and alert responses are defined; external sink and retention configuration remain open |
+| Observability | PASS FOR INTERNAL SCOPE | OB-01 through OB-25 passed with low-cardinality metrics, persisted alerts, replay/recovery, and a real named Slack-destination receipt |
 | Audit retention | OPEN | Retention and shipping configuration are not recorded |
 | Rate-limit deployment | OPEN | Shared multi-instance model is not recorded |
 
@@ -373,8 +389,8 @@ remains locked regardless of rehearsal readiness.
 
 | Category | Status | Reason |
 |---|---|---|
-| Identity | PARTIAL | Clerk wiring, authenticated browser identity lifecycle, and signed-out rejection pass; provider-supported step-up remains open |
-| Tenant isolation | PASS for P0-01 | All 149 discovered route/method pairs and applicable tenant-boundary probes pass in isolated PostgreSQL |
+| Identity | PARTIAL | Clerk wiring, authenticated browser identity lifecycle, signed-out rejection, and historical RV-01/RV-02 evidence pass; the transaction-review envelope remediation awaits republished browser evidence |
+| Tenant isolation | PASS for P0-01 | All 170 route/method pairs and applicable tenant-boundary probes pass in isolated PostgreSQL |
 | Authorization | PASS for P0-06 | Role, effective-permission, membership, selection, tampering, and denied-action probes pass in isolated PostgreSQL |
 | Origin / CSRF | PASS for published-origin boundary | Middleware matrix and five published-origin write-safety probes pass; authenticated browser journey is certified separately under P0-05 |
 | Concurrency | PARTIAL | Targeted transfer race, 100-request contention with balanced ledger totals, concurrent capital-request creation, and concurrent distribution preparation pass; broader economic paths remain open |
@@ -382,7 +398,9 @@ remains locked regardless of rehearsal readiness.
 | Migration | PASS for disposable existing-schema upgrade | Historical records, balances, statuses, and audit actor survived the additive current-schema upgrade |
 | Browser E2E | PASS for P0-05 | Authenticated Clerk journey passed visible onboarding, saved-write reload, sign-out, repeat sign-in, and second-household isolation |
 | Accounting | IMPLEMENTED / PARTIAL | Exact cents, empty-ledger safeguards, and explicit cross-view separation pass; source-data completeness remains limited |
-| Operations | IMPLEMENTED / PREPARED | Durable queue lifecycle and fail-closed safe actions exist; restart-backed worker execution is not certified |
+| Operations | PASS for internal scope | OR-01 through OR-24 passed against fresh disposable PostgreSQL; safe operations remain prepare-only |
+| Observability | PASS for internal scope | OB-01 through OB-25 passed, including a controlled critical alert, replay, recovery notice, and real Slack receipt |
+| Family Office / Grok | PASS for controlled advisory scope | Seven Family Office routes passed focused isolated HTTP/browser certification; a normal authenticated production session completed one advisory research run with retained output and no execution authority |
 | Security | PARTIAL | Core middleware and domain boundaries exist; full route, secret, rate-limit, and production step-up proof is open |
 | Micro-Live | PASS for disabled boundary | Real transmission and capital access remain disabled by design |
 
@@ -397,7 +415,7 @@ These are listed as resolved only where current source and targeted test evidenc
 5. **Treasury protected-capital lock:** decision logic uses persisted lock state.
 6. **Empty-ledger false positive:** empty or zero-value ledger evidence does not count as reconciled.
 7. **Micro-Live event relationship:** order-event persistence uses the order-intent relationship and validates sequences in the current tested boundary.
-8. **OpenAPI security and parity:** Clerk bearer security/forbidden responses are represented and 163 route/method pairs pass parity. The shared authoritative inventory also checks the tenant evidence documents and fails clearly when a route addition leaves their counts stale.
+8. **OpenAPI security and parity:** Clerk bearer security/forbidden responses are represented and 170 route/method pairs pass parity. The shared authoritative inventory also checks the tenant evidence documents and fails clearly when a route addition leaves their counts stale.
 9. **UI false-success claims:** reviewed local-only actions no longer claim that authoritative financial, legal, permission, or ownership state was saved.
 10. **Clean migration baseline:** `CAPITAL_OS_CERTIFICATION_ALLOW_RESET=1 pnpm run certify:migrations` reset and applied the generated baseline on the isolated Neon certification branch and verified representative tables with exit code `0`.
 11. **High-contention transfer ledger:** the isolated PostgreSQL HTTP fixture completed 100 concurrent `$25` transfers from `$1,000`, produced 40 successes/60 overdraft rejections, ended at `$0`, and reconciled `$1,000` debits to `$1,000` credits.
@@ -406,6 +424,11 @@ These are listed as resolved only where current source and targeted test evidenc
 14. **Existing-schema upgrade preservation:** representative users, memberships, accounts, ledger entries, balances, transaction state, and audit actor survived the isolated additive upgrade.
 15. **Current keyed-write idempotency breadth:** strategy allocation and mismatched replay cases were added to the isolated fixture; the full fixture passed with zero failures.
 16. **Authenticated browser lifecycle:** the Clerk browser run passed visible first-user onboarding, household creation, saved-write reload, sign-out to the public boundary, repeat sign-in, and second-household isolation.
+17. **Operations recovery:** OR-01 through OR-24 passed against fresh disposable PostgreSQL, including graceful shutdown, hard-crash recovery, contention, scheduler recovery, actor attribution, and metrics.
+18. **Observability delivery:** OB-01 through OB-25 passed with persisted incidents, bounded retry/dead-letter/replay, recovery notices, and a real Slack provider receipt to the named operator destination.
+19. **Family Office boundary:** seven Family Office routes passed focused HTTP and authenticated-browser certification with advisory-only proposals, Shadow intent non-transmission, tenant isolation, and no household-capital movement.
+20. **Grok provider runtime:** strict-schema development activation passed, and a normal authenticated production session completed one retained advisory research run without execution authority.
+21. **Reverification error transport:** the transaction-review adapter now recognizes Clerk's exact hint through known generated-client and middleware envelopes while refusing unrelated HTTP 403 responses; focused tests and frontend typecheck pass, but republished browser evidence remains open.
 
 ## Remaining Risks
 
@@ -418,9 +441,7 @@ No in-scope P0 risks remain. The seven in-scope P0 gates are certified.
 | Issue | Impact | Current safeguard | Required fix | Release effect |
 |---|---|---|---|---|
 | Contribution-specific browser allocation proof is unexercised | The complete contribution allocation and cross-view reload assertions are not yet browser-certified | Authenticated browser lifecycle and server-side contribution tests pass | Add the contribution-specific browser assertions when the next browser certification run is available | P1 evidence gap; P0-05 current lifecycle gate is certified |
-| Provider-supported Clerk step-up browser evidence absent | The implementation cannot be treated as certified without observing the provider flow | Clerk `auth.has({ reverification: "strict" })` plus client `useReverification()` | Run the approved Development browser matrix with a real supported factor and attach the result | P1; no high-risk production promotion |
-| Durable worker restart evidence absent | A worker deployment could mishandle in-flight safe work | Durable job state, retry/backoff, dead-letter, and stale-worker recovery | Execute an isolated database-backed restart/claim/recovery fixture | P1 evidence gap |
-| Metrics/alert sink configuration absent | Failures may not be detected or escalated outside the process | Provider-neutral metric names, severity, and fail-closed responses | Configure and verify the deployment sink and operator routing | P1 deployment block |
+| Transaction-review Clerk challenge/retry evidence is not refreshed after the 403 remediation | The local fix cannot be represented as production browser certification | Strict `auth.has({ reverification: "strict" })`, historical RV-01/RV-02 evidence, exact-hint extraction, and unrelated-403 rejection remain intact | Publish the remediation, then execute a stale protected transaction review that visibly opens Clerk and retries the identical request successfully | P1; authenticated-browser critical blocker |
 | Shared rate limiting not configured | Per-process controls may fail under multiple instances | No multi-instance claim | Record single-instance constraint or provide shared limiter/trusted proxy | P1 deployment block |
 | Cross-view source completeness limited | Net worth and business reporting may diverge when external valuations are incomplete | Accounting API explicitly separates non-accounting scopes | Add approved source adapters and reconciliation evidence before relying on those valuations | P1 financial reporting risk |
 | Micro-Live production integration not certified | A future venue integration would require stronger operational evidence | Real execution disabled; failures persist and stop | Keep disabled, then execute an isolated recovery/incident fixture before any controlled integration | P1 future-integration block |
@@ -448,8 +469,11 @@ Within the current non-executing family-capital scope, Capital OS may be used fo
 - property underwriting and decision support;
 - accounting review within the documented partial valuation scope;
 - Strategy Lab research and eligibility review;
-- advisory intelligence;
-- prepare-only operational workflows;
+- Family Office advisory research and human-reviewed proposals;
+- Shadow Investment Office portfolios and hypothetical, non-transmitted intents;
+- Florida tax-lien candidate intelligence and review;
+- advisory reports, scorecards, and workforce management;
+- certified prepare-only operational workflows;
 - Micro-Live rehearsal and disabled-by-design safety review.
 
 These uses remain subject to authentication, household scope, role/permission boundaries, human review, and the documented internal-only boundaries in this report.
@@ -473,18 +497,37 @@ Capital OS is not authorized by this report to:
 
 | Requirement | Classification | Current status |
 |---|---|---|
-| Clerk production instance and supported step-up | Public release only | Reverification is implemented but not browser-certified; public release is out of scope |
+| Clerk production instance and supported step-up | Public release only | Strict reverification and historical RV-01/RV-02 evidence remain; the transaction-review envelope remediation awaits publication and refreshed browser evidence |
 | Managed PostgreSQL | Internal requirement | Must use the managed publication path and dedicated lifecycle evidence |
 | Explicit allowed origins | Internal requirement | `CAPITAL_OS_ALLOWED_ORIGIN` is configured for `https://capital-os-fund.replit.app`; published-origin probes pass |
-| Durable queue/scheduler | Public/operational expansion | Implemented/prepared; worker deployment and restart evidence remain open |
+| Durable queue/scheduler | Internal reliability requirement | OR-01 through OR-24 passed isolated restart/recovery certification; production deployment behavior remains separately governed |
 | Structured logging/correlation | Internal requirement | Implemented at current level |
 | Audit retention/shipping | Public/operational expansion | Append-only application contract documented; external sink/retention not configured |
 | Shared rate limiter or single-instance constraint | Public/operational expansion | Single-process internal constraint documented; shared store not configured |
-| Alerting | Public/operational expansion | Metric/severity contract implemented; deployment routing not configured/evidenced |
+| Alerting | Internal reliability requirement | Persisted alert lifecycle and a real named Slack receipt passed OB-01 through OB-25; production retention remains separate |
 | Real banking, ACH, live trading, blockchain | Future / prohibited for this certification | Disabled and out of scope |
 
 ## Final Determination
 
 **Capital OS is qualified only as an internal-only candidate for its current non-executing family-capital scope.**
 
-The reason is scope-based: all seven in-scope P0 gates are `PASS`. This does not authorize public release, external users, banking, live trading, or any other prohibited capability. Provider-supported step-up browser evidence, contribution-specific browser evidence, and deployment-level operational evidence remain open; the newly implemented reverification and reliability controls are explicitly not treated as certification until those evidence gates execute.
+The seven in-scope historical P0 gates remain `PASS`, the complete 170-route
+tenant surface passed its latest guarded replay, and the Family Office,
+operations-recovery, observability, and authenticated Grok runtime slices have
+the evidence described above. This does not authorize public release, external
+users, banking, live trading, or any other prohibited capability.
+
+The authoritative current certification remains:
+
+**PRODUCTION CANDIDATE: NOT READY**
+
+The exact current critical blockers are:
+
+1. Authenticated Browser E2E, including republished transaction-review Clerk
+   challenge and identical-request retry evidence;
+2. Micro-Live Foundation; and
+3. Schwab Read-Only.
+
+Micro-Live execution, real banking and ACH, brokerage/trading, blockchain
+transactions, autonomous AI execution, external investor capital, and all
+provider transmission remain disabled.

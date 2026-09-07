@@ -1865,6 +1865,20 @@ export interface FamilyOfficeEvidence {
   createdAt: string;
 }
 
+export type FamilyOfficeSourceMarkerKey = typeof FamilyOfficeSourceMarkerKey[keyof typeof FamilyOfficeSourceMarkerKey];
+
+
+export const FamilyOfficeSourceMarkerKey = {
+  accounting: 'accounting',
+  treasury: 'treasury',
+  operations: 'operations',
+} as const;
+
+export interface FamilyOfficeSourceMarker {
+  key: FamilyOfficeSourceMarkerKey;
+  label: string;
+}
+
 export interface FamilyOfficeRun {
   id: string;
   analyst: string;
@@ -1875,6 +1889,8 @@ export interface FamilyOfficeRun {
   errorCode: string | null;
   /** @nullable */
   outputSummary: string | null;
+  /** @maxItems 3 */
+  sourceMarkers: FamilyOfficeSourceMarker[];
   createdAt: string;
   /** @nullable */
   completedAt: string | null;
@@ -2400,6 +2416,8 @@ export type FamilyOfficeSnapshotRefreshCadenceLastSuccessfulBrief = {
   contextAsOf: string | null;
   /** @nullable */
   outputSummary: string | null;
+  /** @maxItems 3 */
+  sourceMarkers: FamilyOfficeSourceMarker[];
 } | null;
 
 export type FamilyOfficeSnapshotRefreshCadence = {

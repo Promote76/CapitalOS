@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { FamilyOfficeSourceMarker } from './familyOfficeSourceMarker';
 
 export interface FamilyOfficeRun {
   id: string;
@@ -16,6 +17,8 @@ export interface FamilyOfficeRun {
   errorCode: string | null;
   /** @nullable */
   outputSummary: string | null;
+  /** @maxItems 3 */
+  sourceMarkers: FamilyOfficeSourceMarker[];
   createdAt: Date;
   /** @nullable */
   completedAt: Date | null;

@@ -9,6 +9,8 @@ import {
   familyOfficeRefreshes,
   familyOfficeReports,
   familyOfficeRuns,
+  familyOfficeSourceMarkerKeys,
+  type FamilyOfficeSourceMarkerKey,
   shadowOrderIntents,
   shadowPortfolioOutcomes,
   shadowPortfolios,
@@ -33,6 +35,7 @@ import { getPropertyUnderwriting } from "./property-underwriting";
 import type { Actor } from "./capital-os";
 
 type ResearchInput = { analyst?: string; scope: string; prompt: string };
+type ResearchOptions = { refreshId?: string; sourceMarkers?: readonly FamilyOfficeSourceMarkerKey[] };
 type RefreshTrigger = "on_demand" | "hourly" | "daily";
 type RefreshContextFreshness = "fresh" | "stale" | "unknown";
 
@@ -53,6 +56,20 @@ const defaultReports = [
   ["monthly", "Monthly Family Office report", 30],
 ] as const;
 
+const sourceMarkerLabels: Record<FamilyOfficeSourceMarkerKey, string> = {
+  accounting: "Accounting",
+  treasury: "Treasury",
+  operations: "Daily Ops",
+};
+
+function boundedSourceMarkers(markers: readonly FamilyOfficeSourceMarkerKey[] | undefined) {
+  return familyOfficeSourceMarkerKeys.filter((marker) => markers?.includes(marker));
+}
+
+function sourceMarkerViews(markers: readonly FamilyOfficeSourceMarkerKey[]) {
+  return boundedSourceMarkers(markers).map((key) => ({ key, label: sourceMarkerLabels[key] }));
+}
+
 function runView(run: typeof familyOfficeRuns.$inferSelect) {
   return {
     id: run.id,
@@ -62,6 +79,7 @@ function runView(run: typeof familyOfficeRuns.$inferSelect) {
     providerStatus: run.providerStatus,
     errorCode: run.errorCode,
     outputSummary: run.outputSummary,
+    sourceMarkers: sourceMarkerViews(run.sourceMarkers),
     createdAt: run.createdAt,
     completedAt: run.completedAt,
     advisoryOnly: true,
@@ -304,6 +322,7 @@ export async function getFamilyOfficeSnapshot(actor: Actor) {
           providerModel: latestSuccessfulRefresh.providerModel,
           contextAsOf: latestSuccessfulRefresh.contextAsOf,
           outputSummary: runs.find((run) => run.id === latestSuccessfulRefresh.runId)?.outputSummary ?? null,
+          sourceMarkers: sourceMarkerViews(runs.find((run) => run.id === latestSuccessfulRefresh.runId)?.sourceMarkers ?? []),
         }
       : null,
     nextEligibleAt: nextEligibleAt(refreshes),
@@ -563,7 +582,7 @@ export async function getRealEstateIntelligence(actor: Actor) {
 export async function runFamilyOfficeResearch(
   actor: Actor,
   input: ResearchInput,
-  options: { refreshId?: string } = {},
+  options: ResearchOptions = {},
 ) {
   assertPermission(actor.role, "contribute");
   await ensureFamilyOfficeWorkspace(actor.householdId);
@@ -595,6 +614,7 @@ export async function runFamilyOfficeResearch(
       scope: input.scope.trim(),
       status: "running",
       providerStatus: "checking",
+      sourceMarkers: boundedSourceMarkers(options.sourceMarkers),
       createdBy: actor.userId,
     }).returning();
     if (options.refreshId) {
@@ -837,7 +857,7 @@ export async function requestFamilyOfficeRefresh(
       analyst: "CIO analyst",
       scope: "adaptive family office morning brief",
       prompt: "Review current household conditions and return only evidence-backed advisory priorities, watch items, concentration or risk reviews, and Shadow-only research suggestions. Do not recommend execution or money movement.",
-    }, { refreshId: refresh.refresh.id });
+    }, { refreshId: refresh.refresh.id, sourceMarkers: input.contextFreshness === "fresh" ? familyOfficeSourceMarkerKeys : [] });
     return { refresh: await getFamilyOfficeRefresh(actor, refresh.refresh.id), accepted: true, result };
   }
   return { refresh: refreshView(refresh.refresh), accepted: false, result: null };

@@ -3248,7 +3248,13 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
         <div className="review-list">
           {recentProviderRuns.length === 0 && <div className="micro-live-empty">No provider checks have been recorded.</div>}
           {recentProviderRuns.map((run) => <div className="review-row" key={`${run.id}-provider`}>
-            <div><strong>{run.analyst}</strong><span>{run.scope} · {new Date(run.createdAt).toLocaleString()}</span><span>{run.errorCode ? humanize(run.errorCode) : run.outputSummary ?? 'No output summary recorded'}</span></div>
+            <div>
+              <strong>{run.analyst}</strong>
+              <span>{run.scope} · {new Date(run.createdAt).toLocaleString()}</span>
+              <span>{run.errorCode ? humanize(run.errorCode) : run.outputSummary ?? 'No output summary recorded'}</span>
+              <span>Provider: {snapshot.refreshes.find((refresh) => refresh.runId === run.id)?.providerModel ?? 'Model not recorded'} · authoritative sources: {run.sourceMarkers.length ? run.sourceMarkers.map((source) => source.label).join(', ') : 'none recorded'}</span>
+              {snapshot.refreshes.find((refresh) => refresh.runId === run.id)?.contextAsOf && <span>Context as of {new Date(snapshot.refreshes.find((refresh) => refresh.runId === run.id)!.contextAsOf!).toLocaleString()}</span>}
+            </div>
             <span className={`status ${run.status === 'blocked' ? 'pending' : ''}`}>{run.status} / {run.providerStatus}</span>
           </div>)}
         </div>

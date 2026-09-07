@@ -1,0 +1,1 @@
+ALTER TABLE "family_office_runs" ADD COLUMN "source_markers" jsonb DEFAULT '[]'::jsonb NOT NULL;

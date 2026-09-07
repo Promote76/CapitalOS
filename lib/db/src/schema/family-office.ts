@@ -11,6 +11,9 @@ import {
 } from "drizzle-orm/pg-core";
 import { households, users } from "./households.ts";
 
+export const familyOfficeSourceMarkerKeys = ["accounting", "treasury", "operations"] as const;
+export type FamilyOfficeSourceMarkerKey = (typeof familyOfficeSourceMarkerKeys)[number];
+
 export const familyOfficeRuns = pgTable(
   "family_office_runs",
   {
@@ -22,6 +25,7 @@ export const familyOfficeRuns = pgTable(
     providerStatus: text("provider_status").notNull().default("disabled"),
     errorCode: text("error_code"),
     outputSummary: text("output_summary"),
+    sourceMarkers: jsonb("source_markers").$type<FamilyOfficeSourceMarkerKey[]>().notNull().default([]),
     costCents: numeric("cost_cents", { precision: 12, scale: 2 }).notNull().default("0"),
     createdBy: uuid("created_by").references(() => users.id),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

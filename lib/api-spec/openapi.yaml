@@ -4435,9 +4435,15 @@ components:
         freshness: { type: string }
         confidence: { type: number }
         createdAt: { type: string, format: date-time }
+    FamilyOfficeSourceMarker:
+      type: object
+      required: [key, label]
+      properties:
+        key: { type: string, enum: [accounting, treasury, operations] }
+        label: { type: string }
     FamilyOfficeRun:
       type: object
-      required: [id, analyst, scope, status, providerStatus, errorCode, outputSummary, createdAt, completedAt, advisoryOnly]
+      required: [id, analyst, scope, status, providerStatus, errorCode, outputSummary, sourceMarkers, createdAt, completedAt, advisoryOnly]
       properties:
         id: { type: string }
         analyst: { type: string }
@@ -4446,6 +4452,7 @@ components:
         providerStatus: { type: string }
         errorCode: { type: ["string", "null"] }
         outputSummary: { type: ["string", "null"] }
+        sourceMarkers: { type: array, maxItems: 3, items: { $ref: "#/components/schemas/FamilyOfficeSourceMarker" } }
         createdAt: { type: string, format: date-time }
         completedAt: { type: ["string", "null"], format: date-time }
         advisoryOnly: { type: boolean }
@@ -4786,7 +4793,7 @@ components:
           properties:
             lastSuccessfulBrief:
               type: [object, "null"]
-              required: [runId, completedAt, resultFingerprint, providerModel, contextAsOf, outputSummary]
+              required: [runId, completedAt, resultFingerprint, providerModel, contextAsOf, outputSummary, sourceMarkers]
               properties:
                 runId: { type: string }
                 completedAt: { type: ["string", "null"], format: date-time }
@@ -4794,6 +4801,7 @@ components:
                 providerModel: { type: ["string", "null"] }
                 contextAsOf: { type: ["string", "null"], format: date-time }
                 outputSummary: { type: ["string", "null"] }
+                sourceMarkers: { type: array, maxItems: 3, items: { $ref: "#/components/schemas/FamilyOfficeSourceMarker" } }
             nextEligibleAt: { type: ["string", "null"], format: date-time }
             lastAttempt:
               type: [object, "null"]

@@ -2402,6 +2402,10 @@ export const RecordIntelligenceFeedbackResponse = zod.object({
 /**
  * @summary Get the household-scoped advisory Family Office snapshot
  */
+export const getFamilyOfficeResponseRunsItemSourceMarkersMax = 3;
+
+export const getFamilyOfficeResponseRefreshCadenceLastSuccessfulBriefSourceMarkersMax = 3;
+
 export const getFamilyOfficeResponseShadowOutcomesItemConfidenceMin = 0;
 export const getFamilyOfficeResponseShadowOutcomesItemConfidenceMax = 100;
 
@@ -2452,6 +2456,10 @@ export const GetFamilyOfficeResponse = zod.object({
   "providerStatus": zod.string(),
   "errorCode": zod.string().nullable(),
   "outputSummary": zod.string().nullable(),
+  "sourceMarkers": zod.array(zod.object({
+  "key": zod.enum(['accounting', 'treasury', 'operations']),
+  "label": zod.string()
+})).max(getFamilyOfficeResponseRunsItemSourceMarkersMax),
   "createdAt": zod.coerce.date(),
   "completedAt": zod.coerce.date().nullable(),
   "advisoryOnly": zod.boolean()
@@ -2478,7 +2486,11 @@ export const GetFamilyOfficeResponse = zod.object({
   "resultFingerprint": zod.string().nullable(),
   "providerModel": zod.string().nullable(),
   "contextAsOf": zod.coerce.date().nullable(),
-  "outputSummary": zod.string().nullable()
+  "outputSummary": zod.string().nullable(),
+  "sourceMarkers": zod.array(zod.object({
+  "key": zod.enum(['accounting', 'treasury', 'operations']),
+  "label": zod.string()
+})).max(getFamilyOfficeResponseRefreshCadenceLastSuccessfulBriefSourceMarkersMax)
 }).nullable(),
   "nextEligibleAt": zod.coerce.date().nullable(),
   "lastAttempt": zod.object({
@@ -2960,6 +2972,10 @@ export const CreateFamilyOfficeResearchBody = zod.object({
   "prompt": zod.string().min(1).max(createFamilyOfficeResearchBodyPromptMax)
 })
 
+export const createFamilyOfficeResearchResponseRunSourceMarkersMax = 3;
+
+
+
 export const CreateFamilyOfficeResearchResponse = zod.object({
   "run": zod.object({
   "id": zod.string(),
@@ -2969,6 +2985,10 @@ export const CreateFamilyOfficeResearchResponse = zod.object({
   "providerStatus": zod.string(),
   "errorCode": zod.string().nullable(),
   "outputSummary": zod.string().nullable(),
+  "sourceMarkers": zod.array(zod.object({
+  "key": zod.enum(['accounting', 'treasury', 'operations']),
+  "label": zod.string()
+})).max(createFamilyOfficeResearchResponseRunSourceMarkersMax),
   "createdAt": zod.coerce.date(),
   "completedAt": zod.coerce.date().nullable(),
   "advisoryOnly": zod.boolean()

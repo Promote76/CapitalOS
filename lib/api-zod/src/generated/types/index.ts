@@ -169,6 +169,8 @@ export * from './familyOfficeSnapshotProviderState';
 export * from './familyOfficeSnapshotRefreshCadence';
 export * from './familyOfficeSnapshotRefreshCadenceLastSuccessfulBrief';
 export * from './familyOfficeSnapshotSummary';
+export * from './familyOfficeSourceMarker';
+export * from './familyOfficeSourceMarkerKey';
 export * from './familyOfficeSourceRecord';
 export * from './familyOfficeTaxLienCandidate';
 export * from './familyOfficeTaxLienCandidateCapitalGovernor';

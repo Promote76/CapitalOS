@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { FamilyOfficeSourceMarker } from './familyOfficeSourceMarker';
 
 /**
  * @nullable
@@ -21,4 +22,6 @@ export type FamilyOfficeSnapshotRefreshCadenceLastSuccessfulBrief = {
   contextAsOf: Date | null;
   /** @nullable */
   outputSummary: string | null;
+  /** @maxItems 3 */
+  sourceMarkers: FamilyOfficeSourceMarker[];
 } | null;

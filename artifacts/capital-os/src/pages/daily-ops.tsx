@@ -459,7 +459,7 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
       <div className="daily-ops-refresh-summary">
         <span><strong>Last successful brief:</strong> {snapshot?.refreshCadence.lastSuccessfulBrief?.outputSummary ?? "None recorded"} · {dateTimeLabel(snapshot?.refreshCadence.lastSuccessfulBrief?.completedAt, "Not recorded")}</span>
         {snapshot?.refreshCadence.lastSuccessfulBrief && (
-          <span><strong>Provenance:</strong> {snapshot.refreshCadence.lastSuccessfulBrief.providerModel ?? "Model not recorded"} · context as of {dateTimeLabel(snapshot.refreshCadence.lastSuccessfulBrief.contextAsOf, "Not recorded")}</span>
+          <span><strong>Provenance:</strong> {snapshot.refreshCadence.lastSuccessfulBrief.providerModel ?? "Model not recorded"} · context as of {dateTimeLabel(snapshot.refreshCadence.lastSuccessfulBrief.contextAsOf, "Not recorded")} · sources {snapshot.refreshCadence.lastSuccessfulBrief.sourceMarkers.length ? snapshot.refreshCadence.lastSuccessfulBrief.sourceMarkers.map((source) => source.label).join(", ") : "none recorded"}</span>
         )}
         <span><strong>Next eligible refresh:</strong> {dateTimeLabel(snapshot?.refreshCadence.nextEligibleAt, "Available when context is current")}</span>
         {refreshBlockReason && <span><strong>Refresh status:</strong> {refreshBlockReason}</span>}
@@ -467,10 +467,14 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
       {snapshot?.refreshes.some((refresh) => refresh.status === "completed") && (
         <div className="daily-ops-refresh-history" aria-label="Recent brief provenance">
           {snapshot.refreshes.filter((refresh) => refresh.status === "completed").slice(0, 3).map((refresh) => (
-            <span key={refresh.id}>
-              <strong>{snapshot.runs.find((run) => run.id === refresh.runId)?.outputSummary ?? "Saved brief"}</strong>
-              {" · "}{refresh.providerModel ?? "Model not recorded"}{" · context as of "}{dateTimeLabel(refresh.contextAsOf, "Not recorded")}
-            </span>
+            (() => {
+              const run = snapshot.runs.find((candidate) => candidate.id === refresh.runId);
+              return <span key={refresh.id}>
+                <strong>{run?.outputSummary ?? "Saved brief"}</strong>
+                {" · "}{refresh.providerModel ?? "Model not recorded"}{" · context as of "}{dateTimeLabel(refresh.contextAsOf, "Not recorded")}
+                {" · sources "}{run?.sourceMarkers.length ? run.sourceMarkers.map((source) => source.label).join(", ") : "none recorded"}
+              </span>;
+            })()
           ))}
         </div>
       )}

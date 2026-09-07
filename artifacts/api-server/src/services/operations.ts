@@ -847,32 +847,147 @@ export async function listOperationsTasks(actor: Actor) {
   return data.tasks.map(taskResponse);
 }
 
-export async function listDailyOpsHistory(actor: Actor) {
+export type DailyOpsHistoryFilters = {
+  entryType?: string;
+  cadence?: string;
+  from?: string;
+  to?: string;
+};
+
+type NormalizedDailyOpsHistoryFilters = {
+  entryType: "ALL" | "HANDOFF" | "CLOSEOUT" | "DECISION" | "CADENCE";
+  cadence: "ALL" | "TODAY" | "WEEK" | "MONTH";
+  from: Date | null;
+  to: Date | null;
+};
+
+function normalizeDailyOpsHistoryFilters(filters: DailyOpsHistoryFilters = {}): NormalizedDailyOpsHistoryFilters {
+  const entryType = (filters.entryType ?? "ALL").toUpperCase();
+  const cadence = (filters.cadence ?? "ALL").toUpperCase();
+  const allowedEntryTypes = new Set(["ALL", "HANDOFF", "CLOSEOUT", "DECISION", "CADENCE"]);
+  const allowedCadences = new Set(["ALL", "TODAY", "WEEK", "MONTH"]);
+  if (!allowedEntryTypes.has(entryType)) {
+    throw new GovernanceError("INVALID_STATE", "Daily Ops entryType must be ALL, HANDOFF, CLOSEOUT, DECISION, or CADENCE");
+  }
+  if (!allowedCadences.has(cadence)) {
+    throw new GovernanceError("INVALID_STATE", "Daily Ops cadence must be TODAY, WEEK, or MONTH");
+  }
+
+  const parseDate = (value: string | undefined, label: string, endOfDay: boolean) => {
+    if (!value) return null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      throw new GovernanceError("INVALID_STATE", `Daily Ops ${label} must use YYYY-MM-DD`);
+    }
+    const parsed = new Date(`${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`);
+    if (Number.isNaN(parsed.getTime())) {
+      throw new GovernanceError("INVALID_STATE", `Daily Ops ${label} is not a valid date`);
+    }
+    return parsed;
+  };
+  const from = parseDate(filters.from, "from date", false);
+  const to = parseDate(filters.to, "to date", true);
+  if (from && to && from > to) {
+    throw new GovernanceError("INVALID_STATE", "Daily Ops from date must be on or before the to date");
+  }
+  return {
+    entryType: entryType as NormalizedDailyOpsHistoryFilters["entryType"],
+    cadence: cadence as NormalizedDailyOpsHistoryFilters["cadence"],
+    from,
+    to,
+  };
+}
+
+function dateMatchesHistoryRange(value: Date, filters: NormalizedDailyOpsHistoryFilters) {
+  return (!filters.from || value >= filters.from) && (!filters.to || value <= filters.to);
+}
+
+async function loadDailyOpsHistory(actor: Actor, rawFilters: DailyOpsHistoryFilters = {}) {
+  assertPermission(actor.role, "read");
   const ids = await ensureTenantCore(actor.householdId, actor.userId);
+  const filters = normalizeDailyOpsHistoryFilters(rawFilters);
   const [journalEntries, runs, events] = await Promise.all([
     db.select().from(operationsDecisionJournalEntries)
       .where(eq(operationsDecisionJournalEntries.householdId, ids.householdId))
-      .orderBy(desc(operationsDecisionJournalEntries.createdAt))
-      .limit(50),
+      .orderBy(desc(operationsDecisionJournalEntries.createdAt)),
     db.select().from(operationsGuidedRuns)
       .where(eq(operationsGuidedRuns.householdId, ids.householdId))
-      .orderBy(desc(operationsGuidedRuns.runDate), desc(operationsGuidedRuns.updatedAt))
-      .limit(20),
+      .orderBy(desc(operationsGuidedRuns.runDate), desc(operationsGuidedRuns.updatedAt)),
     db.select().from(operationsGuidedRunEvents)
       .where(eq(operationsGuidedRunEvents.householdId, ids.householdId))
       .orderBy(desc(operationsGuidedRunEvents.occurredAt))
-      .limit(100),
   ]);
   const eventsByRun = new Map<string, typeof events>();
   for (const event of events) {
+    if (!dateMatchesHistoryRange(event.occurredAt, filters)) continue;
     const runEvents = eventsByRun.get(event.guidedRunId) ?? [];
     runEvents.push(event);
     eventsByRun.set(event.guidedRunId, runEvents);
   }
-  return {
-    journalEntries: journalEntries.map(journalEntryResponse),
-    guidedRuns: runs.map((run) => guidedRunResponse(run, eventsByRun.get(run.id) ?? [])),
+  const includeJournal = filters.entryType !== "CADENCE" && filters.cadence === "ALL";
+  const journalTypeMatches = (entry: typeof journalEntries[number]) =>
+    includeJournal &&
+    (filters.entryType === "ALL" || entry.entryType === filters.entryType) &&
+    dateMatchesHistoryRange(entry.createdAt, filters);
+  const includeGuidedRuns = filters.entryType === "ALL" || filters.entryType === "CADENCE";
+  const guidedRunTypeMatches = (run: typeof runs[number]) => {
+    if (!includeGuidedRuns || (filters.cadence !== "ALL" && run.cadence !== filters.cadence)) return false;
+    const runEvents = eventsByRun.get(run.id) ?? [];
+    if (filters.from || filters.to || filters.entryType === "CADENCE") return runEvents.length > 0;
+    return true;
   };
+  return {
+    journalEntries: journalEntries.filter(journalTypeMatches).map(journalEntryResponse),
+    guidedRuns: runs.filter(guidedRunTypeMatches).map((run) => guidedRunResponse(run, eventsByRun.get(run.id) ?? [])),
+  };
+}
+
+export async function listDailyOpsHistory(actor: Actor, filters: DailyOpsHistoryFilters = {}) {
+  return loadDailyOpsHistory(actor, filters);
+}
+
+function csvCell(value: unknown) {
+  const text = Array.isArray(value) ? value.join(" | ") : value === null || value === undefined ? "" : String(value);
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
+export async function exportDailyOpsHistory(actor: Actor, filters: DailyOpsHistoryFilters = {}) {
+  const history = await loadDailyOpsHistory(actor, filters);
+  const rows = [
+    ["recordType", "entryType", "cadence", "recordId", "actorId", "timestamp", "runDate", "status", "action", "title", "context", "outcome", "evidenceLinks", "unresolvedBlockers"],
+    ...history.journalEntries.map((entry) => [
+      "JOURNAL",
+      entry.entryType,
+      "",
+      entry.id,
+      entry.actorId,
+      new Date(entry.createdAt).toISOString(),
+      "",
+      "",
+      "",
+      entry.title,
+      entry.decisionContext,
+      entry.outcome,
+      entry.evidenceLinks,
+      entry.unresolvedBlockers,
+    ]),
+    ...history.guidedRuns.flatMap((run) => run.events.map((event) => [
+      "GUIDED_RUN",
+      "CADENCE",
+      run.cadence,
+      event.id,
+      event.actorId,
+      new Date(event.occurredAt).toISOString(),
+      run.runDate,
+      run.status,
+      event.action,
+      `${run.cadence} Guided Run`,
+      event.reason,
+      run.latestReason,
+      [],
+      [],
+    ])),
+  ];
+  return rows.map((row) => row.map(csvCell).join(",")).join("\r\n") + "\r\n";
 }
 
 export async function createDailyOpsJournalEntry(actor: Actor, input: {

@@ -88,6 +88,7 @@ import type {
   EmergencyStopInput,
   ExecutionControlCommandInput,
   ExecutionControlState,
+  ExportDailyOpsHistoryParams,
   FamilyOfficeProposal,
   FamilyOfficeProposalDecisionInput,
   FamilyOfficeRefreshInput,
@@ -127,6 +128,7 @@ import type {
   IntelligenceFeedbackInput,
   IntelligenceScenarioInput,
   IntelligenceSnapshot,
+  ListDailyOpsHistoryParams,
   ListTransactionReviewQueueParams,
   ManualFinanceTransactionInput,
   ManualFinancialAccountInput,
@@ -11670,20 +11672,27 @@ export const useUpdateOperationsTask = <TError = ErrorType<BadRequestResponse | 
       return useMutation(getUpdateOperationsTaskMutationOptions(options));
     }
 
-export const getListDailyOpsHistoryUrl = () => {
+export const getListDailyOpsHistoryUrl = (params?: ListDailyOpsHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/operations/daily-ops`
+  return stringifiedParams.length > 0 ? `/api/operations/daily-ops?${stringifiedParams}` : `/api/operations/daily-ops`
 }
 
 /**
  * @summary List household Daily Ops journal and guided-run history
  */
-export const listDailyOpsHistory = async ( options?: Parameters<typeof customFetch>[1]): Promise<DailyOpsHistory> => {
+export const listDailyOpsHistory = async (params?: ListDailyOpsHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<DailyOpsHistory> => {
 
-  return customFetch<DailyOpsHistory>(getListDailyOpsHistoryUrl(),
+  return customFetch<DailyOpsHistory>(getListDailyOpsHistoryUrl(params),
   {
     ...options,
     method: 'GET'
@@ -11696,23 +11705,23 @@ export const listDailyOpsHistory = async ( options?: Parameters<typeof customFet
 
 
 
-export const getListDailyOpsHistoryQueryKey = () => {
+export const getListDailyOpsHistoryQueryKey = (params?: ListDailyOpsHistoryParams,) => {
     return [
-    `/api/operations/daily-ops`
+    `/api/operations/daily-ops`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListDailyOpsHistoryQueryOptions = <TData = Awaited<ReturnType<typeof listDailyOpsHistory>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDailyOpsHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListDailyOpsHistoryQueryOptions = <TData = Awaited<ReturnType<typeof listDailyOpsHistory>>, TError = ErrorType<BadRequestResponse>>(params?: ListDailyOpsHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDailyOpsHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListDailyOpsHistoryQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListDailyOpsHistoryQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDailyOpsHistory>>> = ({ signal }) => listDailyOpsHistory({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDailyOpsHistory>>> = ({ signal }) => listDailyOpsHistory(params, { signal, ...requestOptions });
 
 
 
@@ -11722,19 +11731,103 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListDailyOpsHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof listDailyOpsHistory>>>
-export type ListDailyOpsHistoryQueryError = ErrorType<unknown>
+export type ListDailyOpsHistoryQueryError = ErrorType<BadRequestResponse>
 
 
 /**
  * @summary List household Daily Ops journal and guided-run history
  */
 
-export function useListDailyOpsHistory<TData = Awaited<ReturnType<typeof listDailyOpsHistory>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDailyOpsHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export function useListDailyOpsHistory<TData = Awaited<ReturnType<typeof listDailyOpsHistory>>, TError = ErrorType<BadRequestResponse>>(
+ params?: ListDailyOpsHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDailyOpsHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListDailyOpsHistoryQueryOptions(options)
+  const queryOptions = getListDailyOpsHistoryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExportDailyOpsHistoryUrl = (params?: ExportDailyOpsHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/operations/daily-ops/export?${stringifiedParams}` : `/api/operations/daily-ops/export`
+}
+
+/**
+ * @summary Export the filtered household Daily Ops review trail
+ */
+export const exportDailyOpsHistory = async (params?: ExportDailyOpsHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+  return customFetch<string>(getExportDailyOpsHistoryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportDailyOpsHistoryQueryKey = (params?: ExportDailyOpsHistoryParams,) => {
+    return [
+    `/api/operations/daily-ops/export`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExportDailyOpsHistoryQueryOptions = <TData = Awaited<ReturnType<typeof exportDailyOpsHistory>>, TError = ErrorType<BadRequestResponse>>(params?: ExportDailyOpsHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportDailyOpsHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportDailyOpsHistoryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportDailyOpsHistory>>> = ({ signal }) => exportDailyOpsHistory(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportDailyOpsHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportDailyOpsHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof exportDailyOpsHistory>>>
+export type ExportDailyOpsHistoryQueryError = ErrorType<BadRequestResponse>
+
+
+/**
+ * @summary Export the filtered household Daily Ops review trail
+ */
+
+export function useExportDailyOpsHistory<TData = Awaited<ReturnType<typeof exportDailyOpsHistory>>, TError = ErrorType<BadRequestResponse>>(
+ params?: ExportDailyOpsHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportDailyOpsHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportDailyOpsHistoryQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

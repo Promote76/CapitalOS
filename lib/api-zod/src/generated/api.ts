@@ -6045,6 +6045,15 @@ export const UpdateOperationsTaskResponse = zod.object({
 /**
  * @summary List household Daily Ops journal and guided-run history
  */
+export const listDailyOpsHistoryQueryEntryTypeDefault = `ALL`;
+
+export const ListDailyOpsHistoryQueryParams = zod.object({
+  "entryType": zod.enum(['ALL', 'HANDOFF', 'CLOSEOUT', 'DECISION', 'CADENCE']).default(listDailyOpsHistoryQueryEntryTypeDefault).describe('Limit the review trail to a journal entry type or Guided Run cadence records.'),
+  "cadence": zod.enum(['TODAY', 'WEEK', 'MONTH']).optional().describe('Limit Guided Run records to a cadence.'),
+  "from": zod.date().optional().describe('Inclusive UTC start date for the review trail.'),
+  "to": zod.date().optional().describe('Inclusive UTC end date for the review trail.')
+})
+
 export const ListDailyOpsHistoryResponse = zod.object({
   "journalEntries": zod.array(zod.object({
   "id": zod.string(),
@@ -6082,6 +6091,21 @@ export const ListDailyOpsHistoryResponse = zod.object({
 }))
 }))
 })
+
+
+/**
+ * @summary Export the filtered household Daily Ops review trail
+ */
+export const exportDailyOpsHistoryQueryEntryTypeDefault = `ALL`;
+
+export const ExportDailyOpsHistoryQueryParams = zod.object({
+  "entryType": zod.enum(['ALL', 'HANDOFF', 'CLOSEOUT', 'DECISION', 'CADENCE']).default(exportDailyOpsHistoryQueryEntryTypeDefault).describe('Limit the review trail to a journal entry type or Guided Run cadence records.'),
+  "cadence": zod.enum(['TODAY', 'WEEK', 'MONTH']).optional().describe('Limit Guided Run records to a cadence.'),
+  "from": zod.date().optional().describe('Inclusive UTC start date for the review trail.'),
+  "to": zod.date().optional().describe('Inclusive UTC end date for the review trail.')
+})
+
+export const ExportDailyOpsHistoryResponse = zod.unknown()
 
 
 /**

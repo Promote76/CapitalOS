@@ -2405,12 +2405,72 @@ paths:
       operationId: listDailyOpsHistory
       tags: [operations]
       summary: List household Daily Ops journal and guided-run history
+      parameters:
+        - name: entryType
+          in: query
+          description: Limit the review trail to a journal entry type or Guided Run cadence records.
+          required: false
+          schema: { type: string, enum: [ALL, HANDOFF, CLOSEOUT, DECISION, CADENCE], default: ALL }
+        - name: cadence
+          in: query
+          description: Limit Guided Run records to a cadence.
+          required: false
+          schema: { type: string, enum: [TODAY, WEEK, MONTH] }
+        - name: from
+          in: query
+          description: Inclusive UTC start date for the review trail.
+          required: false
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          description: Inclusive UTC end date for the review trail.
+          required: false
+          schema: { type: string, format: date }
       responses:
         "200":
           description: Daily Ops review history
           content:
             application/json:
               schema: { $ref: "#/components/schemas/DailyOpsHistory" }
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /operations/daily-ops/export:
+    get:
+      operationId: exportDailyOpsHistory
+      tags: [operations]
+      summary: Export the filtered household Daily Ops review trail
+      parameters:
+        - name: entryType
+          in: query
+          description: Limit the review trail to a journal entry type or Guided Run cadence records.
+          required: false
+          schema: { type: string, enum: [ALL, HANDOFF, CLOSEOUT, DECISION, CADENCE], default: ALL }
+        - name: cadence
+          in: query
+          description: Limit Guided Run records to a cadence.
+          required: false
+          schema: { type: string, enum: [TODAY, WEEK, MONTH] }
+        - name: from
+          in: query
+          description: Inclusive UTC start date for the review trail.
+          required: false
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          description: Inclusive UTC end date for the review trail.
+          required: false
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: CSV export containing only Daily Ops review-history fields
+          content:
+            text/csv:
+              schema: { type: string }
+              example: |
+                recordType,entryType,cadence,recordId,actorId,timestamp,runDate,status,action,title,context,outcome,evidenceLinks,unresolvedBlockers
+                JOURNAL,HANDOFF,,00000000-0000-0000-0000-000000000000,00000000-0000-0000-0000-000000000000,2026-09-07T10:00:00.000Z,,,,"Shift handoff","Review context",,"https://example.com/evidence",
+        "400":
+          $ref: "#/components/responses/BadRequest"
   /operations/daily-ops/journal:
     post:
       operationId: createDailyOpsJournalEntry

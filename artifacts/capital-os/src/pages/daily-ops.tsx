@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   CircleHelp,
   Clock3,
+  Download,
   ExternalLink,
   Gauge,
   History,
@@ -29,6 +30,7 @@ import {
   getGetOperationsOverviewQueryKey,
   getGetTreasuryQueryKey,
   getListDailyOpsHistoryQueryKey,
+  exportDailyOpsHistory,
   getListOperationsTasksQueryKey,
   useCreateDailyOpsJournalEntry,
   useCreateFamilyOfficeRefresh,
@@ -47,6 +49,8 @@ import { Link } from "wouter";
 
 type Feedback = (message: string) => void;
 type Cadence = "TODAY" | "WEEK" | "MONTH";
+type HistoryEntryType = "ALL" | "HANDOFF" | "CLOSEOUT" | "DECISION" | "CADENCE";
+type HistoryCadence = "ALL" | Cadence;
 
 const HOUR = 60 * 60 * 1000;
 
@@ -73,6 +77,15 @@ function dateTimeLabel(value: string | Date | null | undefined, fallback = "Not 
   if (!value) return fallback;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? fallback : date.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function dateMatchesFilter(value: string | Date | null | undefined, from: string, to: string) {
+  if (!value) return false;
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return false;
+  const fromTime = from ? new Date(`${from}T00:00:00.000Z`).getTime() : Number.NEGATIVE_INFINITY;
+  const toTime = to ? new Date(`${to}T23:59:59.999Z`).getTime() : Number.POSITIVE_INFINITY;
+  return timestamp >= fromTime && timestamp <= toTime;
 }
 
 function priorityTone(priority: string) {
@@ -193,11 +206,16 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
   const [journalOutcome, setJournalOutcome] = useState("");
   const [journalEvidence, setJournalEvidence] = useState("");
   const [journalBlockers, setJournalBlockers] = useState("");
+  const [historyEntryType, setHistoryEntryType] = useState<HistoryEntryType>("ALL");
+  const [historyCadence, setHistoryCadence] = useState<HistoryCadence>("ALL");
+  const [historyFrom, setHistoryFrom] = useState("");
+  const [historyTo, setHistoryTo] = useState("");
+  const [exportingHistory, setExportingHistory] = useState(false);
 
   const snapshot = familyOffice.data;
   const treasurySnapshot = treasury.data;
   const accountingSnapshot = accounting.data;
-  const dailyOps = useListDailyOpsHistory({ query: { queryKey: getListDailyOpsHistoryQueryKey(), refetchInterval: HOUR, retry: false } });
+  const dailyOps = useListDailyOpsHistory(undefined, { query: { queryKey: getListDailyOpsHistoryQueryKey(), refetchInterval: HOUR, retry: false } });
   const tasks = tasksQuery.data ?? operations.data?.tasks ?? [];
   const visibleTasks = useMemo(() => tasks.filter((task) => inCadence(task, cadence)), [tasks, cadence]);
   const openTasks = tasks.filter((task) => task.status !== "COMPLETED" && task.status !== "DISMISSED" && task.status !== "EXPIRED");
@@ -238,6 +256,26 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
         { label: "Provider confidence", value: titleCase(providerState), detail: snapshot?.provider.lastErrorCode ? titleCase(snapshot.provider.lastErrorCode) : "Evidence status from the latest Grok run.", tone: providerState === "verified" ? "" : "pending" },
       ]
     : [];
+  const filteredJournalEntries = useMemo(() => {
+    const entries = dailyOps.data?.journalEntries ?? [];
+    if (historyCadence !== "ALL" || historyEntryType === "CADENCE") return [];
+    return entries.filter((entry) =>
+      (historyEntryType === "ALL" || entry.entryType === historyEntryType) &&
+      dateMatchesFilter(entry.createdAt, historyFrom, historyTo),
+    );
+  }, [dailyOps.data?.journalEntries, historyCadence, historyEntryType, historyFrom, historyTo]);
+  const filteredGuidedRuns = useMemo(() => {
+    const runs = dailyOps.data?.guidedRuns ?? [];
+    if (historyEntryType !== "ALL" && historyEntryType !== "CADENCE") return [];
+    return runs
+      .filter((run) => historyCadence === "ALL" || run.cadence === historyCadence)
+      .map((run) => ({
+        ...run,
+        events: run.events.filter((event) => dateMatchesFilter(event.occurredAt, historyFrom, historyTo)),
+      }))
+      .filter((run) => run.events.length > 0);
+  }, [dailyOps.data?.guidedRuns, historyCadence, historyEntryType, historyFrom, historyTo]);
+  const filteredHistoryCount = filteredJournalEntries.length + filteredGuidedRuns.reduce((count, run) => count + run.events.length, 0);
 
   useEffect(() => {
     if (cadence === "TODAY" && visibleTasks.length === 0 && tasks.some((task) => inCadence(task, "WEEK"))) setCadence("WEEK");
@@ -348,6 +386,32 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
       onFeedback("Daily Ops journal entry saved for the household handoff history.");
     } catch (error) {
       onFeedback(error instanceof Error ? error.message : "The journal entry could not be saved.");
+    }
+  };
+
+  const exportHistory = async () => {
+    setExportingHistory(true);
+    try {
+      const csv = await exportDailyOpsHistory({
+        entryType: historyEntryType === "ALL" ? undefined : historyEntryType,
+        cadence: historyCadence === "ALL" ? undefined : historyCadence,
+        from: historyFrom || undefined,
+        to: historyTo || undefined,
+      });
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `capital-os-daily-ops-history-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      onFeedback(`Exported ${filteredHistoryCount} Daily Ops review record${filteredHistoryCount === 1 ? "" : "s"}.`);
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : "The Daily Ops review trail could not be exported.");
+    } finally {
+      setExportingHistory(false);
     }
   };
 
@@ -492,10 +556,18 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
 
       <section className="daily-ops-three-col page-section animate-in delay-3">
         <article className="card card-pad daily-ops-journal-card">
-          <SectionHeading eyebrow="Decision journal" title="Keep the why." detail="Handoffs and closeouts are household review history; authoritative decisions remain in their source systems." action={<History size={17} color="var(--color-primary)" />} />
+          <SectionHeading eyebrow="Decision journal" title="Keep the why." detail="Handoffs, closeouts, decisions, and cadence actions are household review history; authoritative decisions remain in their source systems." action={<History size={17} color="var(--color-primary)" />} />
+          <div className="daily-ops-history-toolbar" aria-label="Daily Ops history filters">
+            <label><span>Record type</span><select aria-label="Daily Ops history record type" value={historyEntryType} onChange={(event) => setHistoryEntryType(event.target.value as HistoryEntryType)}><option value="ALL">All review records</option><option value="HANDOFF">Handoffs</option><option value="CLOSEOUT">Closeouts</option><option value="DECISION">Decisions</option><option value="CADENCE">Guided cadence</option></select></label>
+            <label><span>Cadence</span><select aria-label="Daily Ops history cadence" value={historyCadence} onChange={(event) => setHistoryCadence(event.target.value as HistoryCadence)}><option value="ALL">All cadences</option><option value="TODAY">Today</option><option value="WEEK">Week</option><option value="MONTH">Month</option></select></label>
+            <label><span>From</span><input aria-label="Daily Ops history start date" type="date" value={historyFrom} onChange={(event) => setHistoryFrom(event.target.value)} /></label>
+            <label><span>To</span><input aria-label="Daily Ops history end date" type="date" value={historyTo} onChange={(event) => setHistoryTo(event.target.value)} /></label>
+            <button className="btn daily-ops-history-export" type="button" onClick={() => { void exportHistory(); }} disabled={exportingHistory || dailyOps.isLoading || dailyOps.isError}><Download size={13} /> {exportingHistory ? "Exporting…" : "Export CSV"}</button>
+          </div>
           <div className="daily-ops-journal-list">
-            {dailyOps.data?.journalEntries.slice(0, 5).map((entry) => <div key={entry.id}><span className={`status ${entry.entryType === "CLOSEOUT" ? "" : "pending"}`}>{titleCase(entry.entryType)}</span><div><strong>{entry.title}</strong><span>{dateTimeLabel(entry.createdAt)} · actor {entry.actorId.slice(0, 8)}</span><small>{entry.decisionContext}</small>{entry.unresolvedBlockers.length > 0 && <small className="daily-ops-blocker">Blockers: {entry.unresolvedBlockers.join(" · ")}</small>}</div></div>)}
-            {!dailyOps.data?.journalEntries.length && <div className="daily-ops-empty">No Daily Ops handoff or closeout entries recorded.</div>}
+            {filteredJournalEntries.map((entry) => <div key={entry.id}><span className={`status ${entry.entryType === "CLOSEOUT" ? "" : "pending"}`}>{titleCase(entry.entryType)}</span><div><strong>{entry.title}</strong><span>{dateTimeLabel(entry.createdAt)} · actor {entry.actorId.slice(0, 8)}</span><small>{entry.decisionContext}</small>{entry.evidenceLinks.length > 0 && <small>Evidence: {entry.evidenceLinks.length} link{entry.evidenceLinks.length === 1 ? "" : "s"}</small>}{entry.unresolvedBlockers.length > 0 && <small className="daily-ops-blocker">Blockers: {entry.unresolvedBlockers.join(" · ")}</small>}</div></div>)}
+            {filteredGuidedRuns.flatMap((run) => run.events.map((event) => <div key={event.id}><span className="status pending">Cadence</span><div><strong>{titleCase(run.cadence)} Guided Run · {titleCase(event.action)}</strong><span>{dateTimeLabel(event.occurredAt)} · actor {event.actorId.slice(0, 8)}</span><small>{event.reason}</small></div></div>))}
+            {filteredHistoryCount === 0 && <div className="daily-ops-empty">No Daily Ops review records match these filters.</div>}
           </div>
           <form className="daily-ops-journal-form" onSubmit={(event) => { void handleJournalSubmit(event); }}>
             <div className="daily-ops-form-row"><select aria-label="Journal entry type" value={journalType} onChange={(event) => setJournalType(event.target.value as typeof journalType)}><option value="HANDOFF">Handoff</option><option value="CLOSEOUT">Closeout</option><option value="DECISION">Decision context</option></select><input aria-label="Journal entry title" placeholder="What should the next operator know?" value={journalTitle} onChange={(event) => setJournalTitle(event.target.value)} /></div>

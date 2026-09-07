@@ -44,6 +44,7 @@ import {
   listOperationsSchedulers, acquireOperationsSchedulerLeadership, recoverMissedOperationsSchedules,
   getOperationsSchedulerMetrics,
   listDailyOpsHistory,
+  exportDailyOpsHistory,
   createDailyOpsJournalEntry,
   recordGuidedRunAction,
 } from "../services/operations";
@@ -81,8 +82,26 @@ router.patch("/operations/tasks/:taskId", asyncRoute(async (req, res) => {
   res.json(UpdateOperationsTaskResponse.parse(await updateOperationsTask(actorFrom(res), String(req.params.taskId), body)));
 }));
 
-router.get("/operations/daily-ops", asyncRoute(async (_req, res) => {
-  res.json(ListDailyOpsHistoryResponse.parse(await listDailyOpsHistory(actorFrom(res))));
+function dailyOpsHistoryFilters(query: Record<string, unknown>) {
+  const stringValue = (value: unknown) => typeof value === "string" && value.trim() ? value.trim() : undefined;
+  return {
+    entryType: stringValue(query.entryType ?? query.type),
+    cadence: stringValue(query.cadence),
+    from: stringValue(query.from),
+    to: stringValue(query.to),
+  };
+}
+
+router.get("/operations/daily-ops", asyncRoute(async (req, res) => {
+  res.json(ListDailyOpsHistoryResponse.parse(await listDailyOpsHistory(actorFrom(res), dailyOpsHistoryFilters(req.query as Record<string, unknown>))));
+}));
+
+router.get("/operations/daily-ops/export", asyncRoute(async (req, res) => {
+  const csv = await exportDailyOpsHistory(actorFrom(res), dailyOpsHistoryFilters(req.query as Record<string, unknown>));
+  res.type("text/csv");
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Content-Disposition", 'attachment; filename="capital-os-daily-ops-history.csv"');
+  res.send(csv);
 }));
 
 router.post("/operations/daily-ops/journal", asyncRoute(async (req, res) => {

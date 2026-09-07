@@ -5004,3 +5004,81 @@ export type RecoverMissedOperationsSchedules200 = {
   recovered: number;
 };
 
+export type ListDailyOpsHistoryParams = {
+/**
+ * Limit the review trail to a journal entry type or Guided Run cadence records.
+ */
+entryType?: ListDailyOpsHistoryEntryType;
+/**
+ * Limit Guided Run records to a cadence.
+ */
+cadence?: ListDailyOpsHistoryCadence;
+/**
+ * Inclusive UTC start date for the review trail.
+ */
+from?: string;
+/**
+ * Inclusive UTC end date for the review trail.
+ */
+to?: string;
+};
+
+export type ListDailyOpsHistoryEntryType = typeof ListDailyOpsHistoryEntryType[keyof typeof ListDailyOpsHistoryEntryType];
+
+
+export const ListDailyOpsHistoryEntryType = {
+  ALL: 'ALL',
+  HANDOFF: 'HANDOFF',
+  CLOSEOUT: 'CLOSEOUT',
+  DECISION: 'DECISION',
+  CADENCE: 'CADENCE',
+} as const;
+
+export type ListDailyOpsHistoryCadence = typeof ListDailyOpsHistoryCadence[keyof typeof ListDailyOpsHistoryCadence];
+
+
+export const ListDailyOpsHistoryCadence = {
+  TODAY: 'TODAY',
+  WEEK: 'WEEK',
+  MONTH: 'MONTH',
+} as const;
+
+export type ExportDailyOpsHistoryParams = {
+/**
+ * Limit the review trail to a journal entry type or Guided Run cadence records.
+ */
+entryType?: ExportDailyOpsHistoryEntryType;
+/**
+ * Limit Guided Run records to a cadence.
+ */
+cadence?: ExportDailyOpsHistoryCadence;
+/**
+ * Inclusive UTC start date for the review trail.
+ */
+from?: string;
+/**
+ * Inclusive UTC end date for the review trail.
+ */
+to?: string;
+};
+
+export type ExportDailyOpsHistoryEntryType = typeof ExportDailyOpsHistoryEntryType[keyof typeof ExportDailyOpsHistoryEntryType];
+
+
+export const ExportDailyOpsHistoryEntryType = {
+  ALL: 'ALL',
+  HANDOFF: 'HANDOFF',
+  CLOSEOUT: 'CLOSEOUT',
+  DECISION: 'DECISION',
+  CADENCE: 'CADENCE',
+} as const;
+
+export type ExportDailyOpsHistoryCadence = typeof ExportDailyOpsHistoryCadence[keyof typeof ExportDailyOpsHistoryCadence];
+
+
+export const ExportDailyOpsHistoryCadence = {
+  TODAY: 'TODAY',
+  WEEK: 'WEEK',
+  MONTH: 'MONTH',
+} as const;
+

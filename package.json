@@ -18,6 +18,7 @@
     "certify:family-office": "CAPITAL_OS_TEST_NAME_PATTERN='P0-09 Family Office' CAPITAL_OS_RUN_BROWSER=1 node scripts/certify-household-privacy.mjs",
     "certify:financial-integrity": "node scripts/certify-financial-integrity.mjs",
     "certify:browser-auth": "node scripts/certify-browser-auth.mjs",
+    "certify:schwab-read-only": "node scripts/certify-schwab-read-only.mjs",
     "certify:migrations": "node scripts/certify-migrations.mjs",
     "certify:internal-reliability": "node scripts/certify-internal-reliability.mjs"
   },

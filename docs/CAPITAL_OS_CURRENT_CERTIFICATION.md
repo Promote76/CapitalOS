@@ -111,6 +111,12 @@ introduced during this certification.
 - A normal authenticated production session completed one advisory-only Grok
   research run with retained output and no execution authority. This is provider
   runtime evidence, not complete Clerk reverification certification.
+- Schwab read-only portfolio scaffolding now has an observation-only provider
+  contract, disabled-by-default feature boundary, unknown-preserving
+  normalization, freshness states, fail-closed reconciliation, sanitized Grok
+  projection, and independent Shadow baseline semantics. The approved Schwab
+  connector was not attached, so live Schwab remains blocked and no provider
+  data is claimed.
 - A production transaction-review request exposed a raw HTTP 403 with no Clerk
   dialog. The published origin policy and household owner role were confirmed
   correct, and the server's strict recent-authentication boundary remains intact.
@@ -143,6 +149,7 @@ introduced during this certification.
 | Observability certification                    | PASS — 26 assertions passed, 0 failed, 0 skipped; OB-01 through OB-25 all passed against a fresh disposable PostgreSQL target with a real Slack receipt | `docs/certification/OBSERVABILITY_CERTIFICATION_2026-09-04.md`; `pnpm run certify:observability`                                                                              |
 | Financial-integrity certification              | PASS — TI 15/15, TR 12/12, AC 14/14, SD 20/20 on a fresh disposable PostgreSQL target | `docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md`; `pnpm run certify:financial-integrity`                                                                  |
 | Clerk reverification certification             | RETIRED AS RELEASE REQUIREMENT — strict application protection remains enabled; historical RV-01/RV-02 evidence is retained, while the 2026-09-07 transaction-review envelope remediation is implementation-verified but awaits republished authenticated browser evidence | `docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md`; `docs/certification/CLERK_REVERIFICATION_PRODUCTION_EVIDENCE_2026-09-05.json`; `artifacts/capital-os/src/lib/reverification.test.ts` |
+| Schwab read-only portfolio                   | BLOCKED — provider not configured; 14/20 implementation gates collected, 1 partial, and 5 live/persistence gates blocked | `docs/certification/SCHWAB_READ_ONLY_CERTIFICATION_2026-09-07.md`; `docs/SCHWAB_READ_ONLY_ARCHITECTURE.md`; `pnpm run certify:schwab-read-only` |
 
 ## Current gate matrix
 

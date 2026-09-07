@@ -2402,6 +2402,38 @@ export const RecordIntelligenceFeedbackResponse = zod.object({
 /**
  * @summary Get the household-scoped advisory Family Office snapshot
  */
+export const getFamilyOfficeResponseShadowOutcomesItemConfidenceMin = 0;
+export const getFamilyOfficeResponseShadowOutcomesItemConfidenceMax = 100;
+
+export const getFamilyOfficeResponseWorkforceAnalystsItemAssignmentCountMin = 0;
+
+export const getFamilyOfficeResponseWorkforceAnalystsItemCompletedCountMin = 0;
+
+export const getFamilyOfficeResponseWorkforceAnalystsItemRetryCountMin = 0;
+
+export const getFamilyOfficeResponseWorkforceAnalystsItemFailureCountMin = 0;
+
+export const getFamilyOfficeResponseWorkforceAnalystsItemQualityScoreMin = 0;
+export const getFamilyOfficeResponseWorkforceAnalystsItemQualityScoreMax = 100;
+
+export const getFamilyOfficeResponseWorkforceAnalystsItemCalibrationScoreMin = 0;
+export const getFamilyOfficeResponseWorkforceAnalystsItemCalibrationScoreMax = 100;
+
+export const getFamilyOfficeResponseWorkforceAnalystsItemBudgetCentsMin = 0;
+
+export const getFamilyOfficeResponseWorkforceAnalystsItemSpentCentsMin = 0;
+
+export const getFamilyOfficeResponseWorkforceAnalystsItemValueCentsMin = 0;
+
+export const getFamilyOfficeResponseWorkforceAnalystsItemBudgetRemainingCentsMin = 0;
+
+export const getFamilyOfficeResponseSummaryOutcomesWithAttributionMin = 0;
+
+export const getFamilyOfficeResponseSummaryConfidenceCalibrationMin = 0;
+export const getFamilyOfficeResponseSummaryConfidenceCalibrationMax = 100;
+
+
+
 export const GetFamilyOfficeResponse = zod.object({
   "provider": zod.object({
   "state": zod.enum(['disabled', 'ready']),
@@ -2465,6 +2497,66 @@ export const GetFamilyOfficeResponse = zod.object({
   "status": zod.string(),
   "advisoryOnly": zod.boolean(),
   "transmitted": zod.boolean()
+})),
+  "shadowOutcomes": zod.array(zod.object({
+  "id": zod.string(),
+  "shadowPortfolioId": zod.string(),
+  "shadowIntentId": zod.string().nullable(),
+  "periodStart": zod.coerce.date(),
+  "periodEnd": zod.coerce.date().nullable(),
+  "status": zod.enum(['unknown', 'pending', 'observed']),
+  "shadowReturnBps": zod.number().nullable(),
+  "benchmarkReturnBps": zod.number().nullable(),
+  "attributionBps": zod.number().nullable(),
+  "maxDrawdownBps": zod.number().nullable(),
+  "confidence": zod.number().min(getFamilyOfficeResponseShadowOutcomesItemConfidenceMin).max(getFamilyOfficeResponseShadowOutcomesItemConfidenceMax),
+  "evidenceIds": zod.array(zod.string()),
+  "asOf": zod.coerce.date(),
+  "advisoryOnly": zod.boolean(),
+  "householdCapitalIncluded": zod.literal(false),
+  "executionAuthorization": zod.literal(false)
+})),
+  "workforce": zod.object({
+  "analysts": zod.array(zod.object({
+  "id": zod.string(),
+  "analyst": zod.string(),
+  "specialty": zod.string(),
+  "status": zod.string(),
+  "assignmentCount": zod.number().min(getFamilyOfficeResponseWorkforceAnalystsItemAssignmentCountMin),
+  "completedCount": zod.number().min(getFamilyOfficeResponseWorkforceAnalystsItemCompletedCountMin),
+  "retryCount": zod.number().min(getFamilyOfficeResponseWorkforceAnalystsItemRetryCountMin),
+  "failureCount": zod.number().min(getFamilyOfficeResponseWorkforceAnalystsItemFailureCountMin),
+  "qualityScore": zod.number().min(getFamilyOfficeResponseWorkforceAnalystsItemQualityScoreMin).max(getFamilyOfficeResponseWorkforceAnalystsItemQualityScoreMax),
+  "calibrationScore": zod.number().min(getFamilyOfficeResponseWorkforceAnalystsItemCalibrationScoreMin).max(getFamilyOfficeResponseWorkforceAnalystsItemCalibrationScoreMax),
+  "budgetCents": zod.number().min(getFamilyOfficeResponseWorkforceAnalystsItemBudgetCentsMin),
+  "spentCents": zod.number().min(getFamilyOfficeResponseWorkforceAnalystsItemSpentCentsMin),
+  "valueCents": zod.number().min(getFamilyOfficeResponseWorkforceAnalystsItemValueCentsMin),
+  "authority": zod.string(),
+  "budgetRemainingCents": zod.number().min(getFamilyOfficeResponseWorkforceAnalystsItemBudgetRemainingCentsMin),
+  "updatedAt": zod.coerce.date(),
+  "advisoryOnly": zod.boolean(),
+  "executionAuthorization": zod.literal(false)
+})),
+  "authority": zod.string(),
+  "budgetGovernor": zod.string()
+}),
+  "reports": zod.array(zod.object({
+  "id": zod.string(),
+  "reportType": zod.enum(['morning', 'weekly', 'monthly']),
+  "title": zod.string(),
+  "status": zod.enum(['unknown', 'scheduled', 'generated', 'stale', 'failed']),
+  "freshness": zod.enum(['fresh', 'stale', 'unknown']),
+  "summary": zod.string().nullable(),
+  "citations": zod.array(zod.object({
+  "title": zod.string(),
+  "sourceUrl": zod.string().nullable(),
+  "freshness": zod.enum(['fresh', 'stale', 'unknown'])
+})),
+  "scheduledFor": zod.coerce.date(),
+  "generatedAt": zod.coerce.date().nullable(),
+  "executionDisabled": zod.literal(true),
+  "updatedAt": zod.coerce.date(),
+  "advisoryOnly": zod.boolean()
 })),
   "realEstate": zod.object({
   "propertyCandidates": zod.array(zod.object({
@@ -2598,7 +2690,9 @@ export const GetFamilyOfficeResponse = zod.object({
   "liveExecutionEnabled": zod.boolean(),
   "realOrdersSent": zod.number(),
   "moneyMovedCents": zod.number(),
-  "shadowOnly": zod.boolean()
+  "shadowOnly": zod.boolean(),
+  "outcomesWithAttribution": zod.number().min(getFamilyOfficeResponseSummaryOutcomesWithAttributionMin),
+  "confidenceCalibration": zod.number().min(getFamilyOfficeResponseSummaryConfidenceCalibrationMin).max(getFamilyOfficeResponseSummaryConfidenceCalibrationMax).nullable()
 })
 })
 

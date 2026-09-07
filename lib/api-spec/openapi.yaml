@@ -4385,6 +4385,79 @@ components:
         status: { type: string }
         advisoryOnly: { type: boolean }
         transmitted: { type: boolean }
+    ShadowPortfolioOutcome:
+      type: object
+      required: [id, shadowPortfolioId, shadowIntentId, periodStart, periodEnd, status, shadowReturnBps, benchmarkReturnBps, attributionBps, maxDrawdownBps, confidence, evidenceIds, asOf, advisoryOnly, householdCapitalIncluded, executionAuthorization]
+      properties:
+        id: { type: string }
+        shadowPortfolioId: { type: string }
+        shadowIntentId: { type: ["string", "null"] }
+        periodStart: { type: string, format: date-time }
+        periodEnd: { type: ["string", "null"], format: date-time }
+        status: { type: string, enum: [unknown, pending, observed] }
+        shadowReturnBps: { type: ["number", "null"] }
+        benchmarkReturnBps: { type: ["number", "null"] }
+        attributionBps: { type: ["number", "null"] }
+        maxDrawdownBps: { type: ["number", "null"] }
+        confidence: { type: number, minimum: 0, maximum: 100 }
+        evidenceIds: { type: array, items: { type: string } }
+        asOf: { type: string, format: date-time }
+        advisoryOnly: { type: boolean }
+        householdCapitalIncluded: { type: boolean, enum: [false] }
+        executionAuthorization: { type: boolean, enum: [false] }
+    FamilyOfficeAnalystScorecard:
+      type: object
+      required: [id, analyst, specialty, status, assignmentCount, completedCount, retryCount, failureCount, qualityScore, calibrationScore, budgetCents, spentCents, valueCents, authority, budgetRemainingCents, updatedAt, advisoryOnly, executionAuthorization]
+      properties:
+        id: { type: string }
+        analyst: { type: string }
+        specialty: { type: string }
+        status: { type: string }
+        assignmentCount: { type: number, minimum: 0 }
+        completedCount: { type: number, minimum: 0 }
+        retryCount: { type: number, minimum: 0 }
+        failureCount: { type: number, minimum: 0 }
+        qualityScore: { type: number, minimum: 0, maximum: 100 }
+        calibrationScore: { type: number, minimum: 0, maximum: 100 }
+        budgetCents: { type: number, minimum: 0 }
+        spentCents: { type: number, minimum: 0 }
+        valueCents: { type: number, minimum: 0 }
+        authority: { type: string }
+        budgetRemainingCents: { type: number, minimum: 0 }
+        updatedAt: { type: string, format: date-time }
+        advisoryOnly: { type: boolean }
+        executionAuthorization: { type: boolean, enum: [false] }
+    FamilyOfficeWorkforce:
+      type: object
+      required: [analysts, authority, budgetGovernor]
+      properties:
+        analysts: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeAnalystScorecard" } }
+        authority: { type: string }
+        budgetGovernor: { type: string }
+    FamilyOfficeReport:
+      type: object
+      required: [id, reportType, title, status, freshness, summary, citations, scheduledFor, generatedAt, executionDisabled, updatedAt, advisoryOnly]
+      properties:
+        id: { type: string }
+        reportType: { type: string, enum: [morning, weekly, monthly] }
+        title: { type: string }
+        status: { type: string, enum: [unknown, scheduled, generated, stale, failed] }
+        freshness: { type: string, enum: [fresh, stale, unknown] }
+        summary: { type: ["string", "null"] }
+        citations:
+          type: array
+          items:
+            type: object
+            required: [title, sourceUrl, freshness]
+            properties:
+              title: { type: string }
+              sourceUrl: { type: ["string", "null"] }
+              freshness: { type: string, enum: [fresh, stale, unknown] }
+        scheduledFor: { type: string, format: date-time }
+        generatedAt: { type: ["string", "null"], format: date-time }
+        executionDisabled: { type: boolean, enum: [true] }
+        updatedAt: { type: string, format: date-time }
+        advisoryOnly: { type: boolean }
     FamilyOfficeProposalDecisionInput:
       type: object
       required: [decision, reason]
@@ -4535,7 +4608,7 @@ components:
         purchaseAuthority: { type: boolean }
     FamilyOfficeSnapshot:
       type: object
-      required: [provider, guardrails, runs, proposals, shadowPortfolios, shadowIntents, realEstate, summary]
+      required: [provider, guardrails, runs, proposals, shadowPortfolios, shadowIntents, shadowOutcomes, workforce, reports, realEstate, summary]
       properties:
         provider:
           type: object
@@ -4549,15 +4622,20 @@ components:
         proposals: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeProposal" } }
         shadowPortfolios: { type: array, items: { $ref: "#/components/schemas/ShadowPortfolio" } }
         shadowIntents: { type: array, items: { $ref: "#/components/schemas/ShadowIntent" } }
+        shadowOutcomes: { type: array, items: { $ref: "#/components/schemas/ShadowPortfolioOutcome" } }
+        workforce: { $ref: "#/components/schemas/FamilyOfficeWorkforce" }
+        reports: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeReport" } }
         realEstate: { $ref: "#/components/schemas/FamilyOfficeRealEstateSnapshot" }
         summary:
           type: object
-          required: [liveExecutionEnabled, realOrdersSent, moneyMovedCents, shadowOnly]
+          required: [liveExecutionEnabled, realOrdersSent, moneyMovedCents, shadowOnly, outcomesWithAttribution, confidenceCalibration]
           properties:
             liveExecutionEnabled: { type: boolean }
             realOrdersSent: { type: number }
             moneyMovedCents: { type: number }
             shadowOnly: { type: boolean }
+            outcomesWithAttribution: { type: number, minimum: 0 }
+            confidenceCalibration: { type: [number, "null"], minimum: 0, maximum: 100 }
     FamilyOfficeResearchResult:
       type: object
       required: [run, proposal, advisoryOnly]

@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  integer,
   jsonb,
   numeric,
   pgTable,
@@ -123,6 +124,81 @@ export const shadowOrderIntents = pgTable(
   }),
 );
 
+export const shadowPortfolioOutcomes = pgTable(
+  "shadow_portfolio_outcomes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    shadowPortfolioId: uuid("shadow_portfolio_id").notNull().references(() => shadowPortfolios.id, { onDelete: "cascade" }),
+    shadowIntentId: uuid("shadow_intent_id").references(() => shadowOrderIntents.id, { onDelete: "set null" }),
+    periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
+    periodEnd: timestamp("period_end", { withTimezone: true }),
+    status: text("status").notNull().default("unknown"),
+    shadowReturnBps: numeric("shadow_return_bps", { precision: 10, scale: 2 }),
+    benchmarkReturnBps: numeric("benchmark_return_bps", { precision: 10, scale: 2 }),
+    attributionBps: numeric("attribution_bps", { precision: 10, scale: 2 }),
+    maxDrawdownBps: numeric("max_drawdown_bps", { precision: 10, scale: 2 }),
+    confidence: numeric("confidence", { precision: 5, scale: 2 }).notNull().default("0"),
+    evidenceIds: jsonb("evidence_ids").$type<string[]>().notNull().default([]),
+    asOf: timestamp("as_of", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("shadow_portfolio_outcomes_household_idx").on(table.householdId),
+    portfolioIdx: index("shadow_portfolio_outcomes_portfolio_idx").on(table.shadowPortfolioId),
+    asOfIdx: index("shadow_portfolio_outcomes_as_of_idx").on(table.asOf),
+  }),
+);
+
+export const familyOfficeAnalystScorecards = pgTable(
+  "family_office_analyst_scorecards",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    analyst: text("analyst").notNull(),
+    specialty: text("specialty").notNull(),
+    status: text("status").notNull().default("unrated"),
+    assignmentCount: integer("assignment_count").notNull().default(0),
+    completedCount: integer("completed_count").notNull().default(0),
+    retryCount: integer("retry_count").notNull().default(0),
+    failureCount: integer("failure_count").notNull().default(0),
+    qualityScore: numeric("quality_score", { precision: 5, scale: 2 }).notNull().default("0"),
+    calibrationScore: numeric("calibration_score", { precision: 5, scale: 2 }).notNull().default("0"),
+    budgetCents: integer("budget_cents").notNull().default(0),
+    spentCents: integer("spent_cents").notNull().default(0),
+    valueCents: integer("value_cents").notNull().default(0),
+    authority: text("authority").notNull().default("advisory_only"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdAnalystIdx: index("family_office_analyst_scorecards_household_idx").on(table.householdId, table.analyst),
+  }),
+);
+
+export const familyOfficeReports = pgTable(
+  "family_office_reports",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    reportType: text("report_type").notNull(),
+    title: text("title").notNull(),
+    status: text("status").notNull().default("unknown"),
+    freshness: text("freshness").notNull().default("unknown"),
+    summary: text("summary"),
+    citations: jsonb("citations").$type<Array<{ title: string; sourceUrl: string | null; freshness: string }>>().notNull().default([]),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
+    generatedAt: timestamp("generated_at", { withTimezone: true }),
+    executionDisabled: boolean("execution_disabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdReportIdx: index("family_office_reports_household_idx").on(table.householdId, table.reportType),
+    scheduledIdx: index("family_office_reports_scheduled_idx").on(table.scheduledFor),
+  }),
+);
+
 export const taxLienCertificateCandidates = pgTable(
   "tax_lien_certificate_candidates",
   {
@@ -231,6 +307,9 @@ export type FamilyOfficeEvidence = typeof familyOfficeEvidence.$inferSelect;
 export type FamilyOfficeProposal = typeof familyOfficeProposals.$inferSelect;
 export type ShadowPortfolio = typeof shadowPortfolios.$inferSelect;
 export type ShadowOrderIntent = typeof shadowOrderIntents.$inferSelect;
+export type ShadowPortfolioOutcome = typeof shadowPortfolioOutcomes.$inferSelect;
+export type FamilyOfficeAnalystScorecard = typeof familyOfficeAnalystScorecards.$inferSelect;
+export type FamilyOfficeReport = typeof familyOfficeReports.$inferSelect;
 
 export type TaxLienCertificateCandidate = typeof taxLienCertificateCandidates.$inferSelect;
 export type TaxLienCandidate = typeof taxLienCandidates.$inferSelect;

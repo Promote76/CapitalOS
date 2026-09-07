@@ -11,4 +11,12 @@ export type FamilyOfficeSnapshotSummary = {
   realOrdersSent: number;
   moneyMovedCents: number;
   shadowOnly: boolean;
+  /** @minimum 0 */
+  outcomesWithAttribution: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  confidenceCalibration: number | null;
 };

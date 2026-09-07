@@ -7,11 +7,14 @@
  */
 import type { FamilyOfficeProposal } from './familyOfficeProposal';
 import type { FamilyOfficeRealEstateSnapshot } from './familyOfficeRealEstateSnapshot';
+import type { FamilyOfficeReport } from './familyOfficeReport';
 import type { FamilyOfficeRun } from './familyOfficeRun';
 import type { FamilyOfficeSnapshotProvider } from './familyOfficeSnapshotProvider';
 import type { FamilyOfficeSnapshotSummary } from './familyOfficeSnapshotSummary';
+import type { FamilyOfficeWorkforce } from './familyOfficeWorkforce';
 import type { ShadowIntent } from './shadowIntent';
 import type { ShadowPortfolio } from './shadowPortfolio';
+import type { ShadowPortfolioOutcome } from './shadowPortfolioOutcome';
 
 export interface FamilyOfficeSnapshot {
   provider: FamilyOfficeSnapshotProvider;
@@ -20,6 +23,9 @@ export interface FamilyOfficeSnapshot {
   proposals: FamilyOfficeProposal[];
   shadowPortfolios: ShadowPortfolio[];
   shadowIntents: ShadowIntent[];
+  shadowOutcomes: ShadowPortfolioOutcome[];
+  workforce: FamilyOfficeWorkforce;
+  reports: FamilyOfficeReport[];
   realEstate: FamilyOfficeRealEstateSnapshot;
   summary: FamilyOfficeSnapshotSummary;
 }

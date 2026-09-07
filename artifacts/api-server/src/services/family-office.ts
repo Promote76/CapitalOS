@@ -1,11 +1,14 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import {
   auditEvents,
   db,
+  familyOfficeAnalystScorecards,
   familyOfficeEvidence,
   familyOfficeProposals,
+  familyOfficeReports,
   familyOfficeRuns,
   shadowOrderIntents,
+  shadowPortfolioOutcomes,
   shadowPortfolios,
   taxLienCandidates,
   taxLienCertificateCandidates,
@@ -28,6 +31,18 @@ import { getPropertyUnderwriting } from "./property-underwriting";
 import type { Actor } from "./capital-os";
 
 type ResearchInput = { analyst?: string; scope: string; prompt: string };
+
+const defaultAnalysts = [
+  ["CIO Analyst", "portfolio research", 5000],
+  ["Risk Analyst", "risk and confidence calibration", 4000],
+  ["Operations Analyst", "workforce and report quality", 3000],
+] as const;
+
+const defaultReports = [
+  ["morning", "Morning Family Office brief", 1],
+  ["weekly", "Weekly Shadow performance review", 7],
+  ["monthly", "Monthly Family Office report", 30],
+] as const;
 
 function runView(run: typeof familyOfficeRuns.$inferSelect) {
   return {
@@ -79,13 +94,117 @@ function portfolioView(portfolio: typeof shadowPortfolios.$inferSelect) {
     liveExecutionEnabled: false,
   };
 }
+
+function outcomeView(outcome: typeof shadowPortfolioOutcomes.$inferSelect) {
+  return {
+    id: outcome.id,
+    shadowPortfolioId: outcome.shadowPortfolioId,
+    shadowIntentId: outcome.shadowIntentId,
+    periodStart: outcome.periodStart,
+    periodEnd: outcome.periodEnd,
+    status: outcome.status,
+    shadowReturnBps: outcome.shadowReturnBps === null ? null : Number(outcome.shadowReturnBps),
+    benchmarkReturnBps: outcome.benchmarkReturnBps === null ? null : Number(outcome.benchmarkReturnBps),
+    attributionBps: outcome.attributionBps === null ? null : Number(outcome.attributionBps),
+    maxDrawdownBps: outcome.maxDrawdownBps === null ? null : Number(outcome.maxDrawdownBps),
+    confidence: Number(outcome.confidence),
+    evidenceIds: outcome.evidenceIds,
+    asOf: outcome.asOf,
+    advisoryOnly: true,
+    householdCapitalIncluded: false,
+    executionAuthorization: false,
+  };
+}
+
+function scorecardView(scorecard: typeof familyOfficeAnalystScorecards.$inferSelect) {
+  return {
+    id: scorecard.id,
+    analyst: scorecard.analyst,
+    specialty: scorecard.specialty,
+    status: scorecard.status,
+    assignmentCount: scorecard.assignmentCount,
+    completedCount: scorecard.completedCount,
+    retryCount: scorecard.retryCount,
+    failureCount: scorecard.failureCount,
+    qualityScore: Number(scorecard.qualityScore),
+    calibrationScore: Number(scorecard.calibrationScore),
+    budgetCents: scorecard.budgetCents,
+    spentCents: scorecard.spentCents,
+    valueCents: scorecard.valueCents,
+    authority: scorecard.authority,
+    budgetRemainingCents: Math.max(0, scorecard.budgetCents - scorecard.spentCents),
+    updatedAt: scorecard.updatedAt,
+    advisoryOnly: true,
+    executionAuthorization: false,
+  };
+}
+
+function reportView(report: typeof familyOfficeReports.$inferSelect) {
+  return {
+    id: report.id,
+    reportType: report.reportType,
+    title: report.title,
+    status: report.status,
+    freshness: report.freshness,
+    summary: report.summary,
+    citations: report.citations,
+    scheduledFor: report.scheduledFor,
+    generatedAt: report.generatedAt,
+    executionDisabled: report.executionDisabled,
+    updatedAt: report.updatedAt,
+    advisoryOnly: true,
+  };
+}
+
+async function ensureFamilyOfficeWorkspace(householdId: string) {
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`family-office-workspace:${householdId}`}))`);
+    const existingScorecards = await tx.select({ id: familyOfficeAnalystScorecards.id })
+      .from(familyOfficeAnalystScorecards)
+      .where(eq(familyOfficeAnalystScorecards.householdId, householdId))
+      .limit(1);
+    if (!existingScorecards[0]) {
+      await tx.insert(familyOfficeAnalystScorecards).values(defaultAnalysts.map(([analyst, specialty, budgetCents]) => ({
+        householdId,
+        analyst,
+        specialty,
+        authority: "advisory_only",
+        budgetCents,
+      })));
+    }
+
+    const existingReports = await tx.select({ id: familyOfficeReports.id })
+      .from(familyOfficeReports)
+      .where(eq(familyOfficeReports.householdId, householdId))
+      .limit(1);
+    if (!existingReports[0]) {
+      const now = Date.now();
+      await tx.insert(familyOfficeReports).values(defaultReports.map(([reportType, title, days]) => ({
+        householdId,
+        reportType,
+        title,
+        status: "unknown",
+        freshness: "unknown",
+        summary: "No report has been generated. The provider and execution path are disabled.",
+        citations: [],
+        scheduledFor: new Date(now + days * 86_400_000),
+        executionDisabled: true,
+      })));
+    }
+  });
+}
+
 export async function getFamilyOfficeSnapshot(actor: Actor) {
   assertPermission(actor.role, "read");
-  const [runs, proposals, portfolios, intents, taxLienCandidates, underwriting] = await Promise.all([
+  await ensureFamilyOfficeWorkspace(actor.householdId);
+  const [runs, proposals, portfolios, intents, outcomes, scorecards, reports, taxLienCandidates, underwriting] = await Promise.all([
     db.select().from(familyOfficeRuns).where(eq(familyOfficeRuns.householdId, actor.householdId)).orderBy(desc(familyOfficeRuns.createdAt)).limit(20),
     db.select().from(familyOfficeProposals).where(eq(familyOfficeProposals.householdId, actor.householdId)).orderBy(desc(familyOfficeProposals.createdAt)).limit(20),
     db.select().from(shadowPortfolios).where(eq(shadowPortfolios.householdId, actor.householdId)).orderBy(desc(shadowPortfolios.createdAt)),
     db.select().from(shadowOrderIntents).where(eq(shadowOrderIntents.householdId, actor.householdId)).orderBy(desc(shadowOrderIntents.createdAt)).limit(20),
+    db.select().from(shadowPortfolioOutcomes).where(eq(shadowPortfolioOutcomes.householdId, actor.householdId)).orderBy(desc(shadowPortfolioOutcomes.asOf)).limit(50),
+    db.select().from(familyOfficeAnalystScorecards).where(eq(familyOfficeAnalystScorecards.householdId, actor.householdId)).orderBy(desc(familyOfficeAnalystScorecards.updatedAt)),
+    db.select().from(familyOfficeReports).where(eq(familyOfficeReports.householdId, actor.householdId)).orderBy(desc(familyOfficeReports.scheduledFor)),
     db.select().from(taxLienCertificateCandidates).where(eq(taxLienCertificateCandidates.householdId, actor.householdId)).orderBy(desc(taxLienCertificateCandidates.updatedAt)),
     getPropertyUnderwriting(actor),
   ]);
@@ -177,11 +296,22 @@ export async function getFamilyOfficeSnapshot(actor: Actor) {
       advisoryOnly: true,
       transmitted: false,
     })),
+    shadowOutcomes: outcomes.map(outcomeView),
+    workforce: {
+      analysts: scorecards.map(scorecardView),
+      authority: "Human review is required for every decision. Analysts cannot place orders or access household capital.",
+      budgetGovernor: "Assignments are bounded by the persisted per-analyst budget; over-budget work remains blocked.",
+    },
+    reports: reports.map(reportView),
     summary: {
       liveExecutionEnabled: false,
       realOrdersSent: 0,
       moneyMovedCents: 0,
       shadowOnly: true,
+      outcomesWithAttribution: outcomes.filter((outcome) => outcome.attributionBps !== null).length,
+      confidenceCalibration: outcomes.length
+        ? Number((outcomes.reduce((total, outcome) => total + Number(outcome.confidence), 0) / outcomes.length).toFixed(2))
+        : null,
     },
   };
 }
@@ -359,7 +489,28 @@ async function persistProviderOutput(actor: Actor, runId: string, output: Resear
 
 export async function runFamilyOfficeResearch(actor: Actor, input: ResearchInput) {
   assertPermission(actor.role, "contribute");
+  await ensureFamilyOfficeWorkspace(actor.householdId);
   const analyst = input.analyst?.trim() || "Research Analyst";
+  let [scorecard] = await db.select({ id: familyOfficeAnalystScorecards.id })
+    .from(familyOfficeAnalystScorecards)
+    .where(and(
+      eq(familyOfficeAnalystScorecards.householdId, actor.householdId),
+      sql`lower(${familyOfficeAnalystScorecards.analyst}) = lower(${analyst})`,
+    ))
+    .limit(1);
+  if (!scorecard) {
+    [scorecard] = await db.insert(familyOfficeAnalystScorecards).values({
+      householdId: actor.householdId,
+      analyst,
+      specialty: "advisory research",
+      authority: "advisory_only",
+    }).returning({ id: familyOfficeAnalystScorecards.id });
+  }
+  await db.update(familyOfficeAnalystScorecards).set({
+    assignmentCount: sql`${familyOfficeAnalystScorecards.assignmentCount} + 1`,
+    status: "working",
+    updatedAt: new Date(),
+  }).where(eq(familyOfficeAnalystScorecards.id, scorecard.id));
   const [run] = await db.insert(familyOfficeRuns).values({
     householdId: actor.householdId,
     analyst,
@@ -378,6 +529,11 @@ export async function runFamilyOfficeResearch(actor: Actor, input: ResearchInput
       outputSummary: output.title,
       completedAt: new Date(),
     }).where(and(eq(familyOfficeRuns.id, run.id), eq(familyOfficeRuns.householdId, actor.householdId))).returning();
+    await db.update(familyOfficeAnalystScorecards).set({
+      completedCount: sql`${familyOfficeAnalystScorecards.completedCount} + 1`,
+      status: "available",
+      updatedAt: new Date(),
+    }).where(eq(familyOfficeAnalystScorecards.id, scorecard.id));
     await db.insert(auditEvents).values({
       householdId: actor.householdId,
       eventType: "family_office_research_completed",
@@ -396,6 +552,11 @@ export async function runFamilyOfficeResearch(actor: Actor, input: ResearchInput
       errorCode: unavailable ? "AI_PROVIDER_UNAVAILABLE" : "AI_PROVIDER_ERROR",
       completedAt: new Date(),
     }).where(and(eq(familyOfficeRuns.id, run.id), eq(familyOfficeRuns.householdId, actor.householdId))).returning();
+    await db.update(familyOfficeAnalystScorecards).set({
+      failureCount: sql`${familyOfficeAnalystScorecards.failureCount} + 1`,
+      status: "blocked",
+      updatedAt: new Date(),
+    }).where(eq(familyOfficeAnalystScorecards.id, scorecard.id));
     await db.insert(auditEvents).values({
       householdId: actor.householdId,
       eventType: "family_office_research_blocked",
@@ -465,18 +626,32 @@ export async function createShadowOrderIntent(actor: Actor, input: {
   ]);
   if (!proposal || !portfolio) throw new GovernanceError("INVALID_STATE", "Shadow proposal or portfolio was not found");
   if (proposal.status !== "shadow_approved") throw new GovernanceError("FORBIDDEN", "A human must approve this proposal for Shadow before creating a hypothetical intent");
-  const [intent] = await db.insert(shadowOrderIntents).values({
-    householdId: actor.householdId,
-    proposalId: proposal.id,
-    shadowPortfolioId: portfolio.id,
-    symbol: input.symbol.trim().toUpperCase().slice(0, 32),
-    direction: input.direction,
-    hypotheticalQuantity: input.hypotheticalQuantity.toFixed(8),
-    hypotheticalNotional: input.hypotheticalNotional,
-    referencePrice: input.referencePrice.toFixed(8),
-    referenceTimestamp: new Date(),
-    timeHorizon: input.timeHorizon.trim().slice(0, 120),
-  }).returning();
+  const [intent] = await db.transaction(async (tx) => {
+    const referenceTimestamp = new Date();
+    const [created] = await tx.insert(shadowOrderIntents).values({
+      householdId: actor.householdId,
+      proposalId: proposal.id,
+      shadowPortfolioId: portfolio.id,
+      symbol: input.symbol.trim().toUpperCase().slice(0, 32),
+      direction: input.direction,
+      hypotheticalQuantity: input.hypotheticalQuantity.toFixed(8),
+      hypotheticalNotional: input.hypotheticalNotional,
+      referencePrice: input.referencePrice.toFixed(8),
+      referenceTimestamp,
+      timeHorizon: input.timeHorizon.trim().slice(0, 120),
+    }).returning();
+    await tx.insert(shadowPortfolioOutcomes).values({
+      householdId: actor.householdId,
+      shadowPortfolioId: portfolio.id,
+      shadowIntentId: created.id,
+      periodStart: referenceTimestamp,
+      status: "pending",
+      confidence: "0",
+      evidenceIds: [],
+      asOf: referenceTimestamp,
+    });
+    return [created];
+  });
   return {
     id: intent.id,
     proposalId: intent.proposalId,

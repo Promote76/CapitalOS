@@ -207,6 +207,7 @@ import {
   WalletCards,
   TrendingUp,
   PiggyBank,
+  Users as UsersIcon,
   X,
 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -3074,6 +3075,9 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
   const realEstate = realEstateQuery.data;
   const proposals = snapshot?.proposals ?? [];
   const shadowPortfolios = snapshot?.shadowPortfolios ?? [];
+  const shadowOutcomes = snapshot?.shadowOutcomes ?? [];
+  const workforce = snapshot?.workforce;
+  const reports = snapshot?.reports ?? [];
   const taxLiens = realEstate?.taxLiens ?? [];
   const activeProposal = proposals.find((proposal) => proposal.id === intentDraft.proposalId) ?? proposals[0];
   const activePortfolio = shadowPortfolios.find((portfolio) => portfolio.id === intentDraft.shadowPortfolioId) ?? shadowPortfolios[0];
@@ -3185,6 +3189,71 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
       </div>
       {snapshot.provider.state === 'disabled' && <div className="lab-disabled-note"><Lock size={13} /> Provider is disabled or not configured. No synthetic research is shown; deterministic Capital OS intelligence remains available elsewhere.</div>}
       <div className="safety-inline"><ShieldCheck size={15} /> {snapshot.guardrails[0] ?? 'Research may not move money, place orders, alter risk, or unlock protected capital.'}</div>
+    </section>
+
+    <section className="section-grid page-section animate-in delay-2">
+      <div className="card card-pad">
+        <CardTitle title="Shadow performance & attribution" subtitle="Hypothetical marks are separate from household assets, ledger balances, OMS, brokerage, Treasury, and Safe-to-Deploy." action={<BarChart3 size={17} color="var(--ink-soft)" />} />
+        <div className="protection-grid">
+          <div><span>Shadow portfolios</span><strong>{shadowPortfolios.length}</strong></div>
+          <div><span>Hypothetical intents</span><strong>{snapshot.shadowIntents.length}</strong></div>
+          <div><span>Marked outcomes</span><strong>{shadowOutcomes.length}</strong></div>
+          <div><span>Attribution records</span><strong>{snapshot.summary.outcomesWithAttribution}</strong></div>
+        </div>
+        {shadowOutcomes.length === 0 && <div className="lab-disabled-note"><CircleHelp size={13} /> No outcome marks are available yet. A new Shadow intent starts as pending until a reviewed evidence mark exists.</div>}
+        <div className="review-list">
+          {shadowOutcomes.slice(0, 6).map((outcome) => {
+            const portfolio = shadowPortfolios.find((item) => item.id === outcome.shadowPortfolioId);
+            const bps = outcome.attributionBps === null ? 'Unknown' : `${outcome.attributionBps.toFixed(0)} bps`;
+            return <div className="review-row" key={outcome.id}>
+              <div><strong>{portfolio?.name ?? 'Shadow portfolio'}</strong><span>{outcome.status} · as of {new Date(outcome.asOf).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · confidence {outcome.confidence.toFixed(0)}%</span></div>
+              <span className={`status ${outcome.status === 'unknown' ? 'pending' : ''}`}>Attribution {bps}</span>
+            </div>;
+          })}
+        </div>
+      </div>
+      <div className="card card-pad">
+        <CardTitle title="Confidence calibration" subtitle="Calibration remains unknown until Shadow outcomes have reviewed evidence." action={<Gauge size={17} color="var(--ink-soft)" />} />
+        <div className="report-summary">
+          <strong>{snapshot.summary.confidenceCalibration === null ? 'Unknown' : `${snapshot.summary.confidenceCalibration.toFixed(0)}%`}</strong>
+          <span>Observed confidence coverage</span>
+        </div>
+        <div className="safety-inline"><ShieldCheck size={15} /> Outcome marks never authorize a live order or change household capital.</div>
+      </div>
+    </section>
+
+    <section className="section-grid page-section animate-in delay-2">
+      <div className="card card-pad">
+        <CardTitle title="Analyst workforce health" subtitle={workforce?.authority ?? 'Human review remains required.'} action={<UsersIcon size={17} color="var(--ink-soft)" />} />
+        {workforce?.analysts.length === 0 && <div className="micro-live-empty">No analyst assignments are recorded.</div>}
+        <div className="review-list">
+          {workforce?.analysts.map((analyst) => <div className="review-row" key={analyst.id}>
+            <div><strong>{analyst.analyst}</strong><span>{analyst.specialty} · {analyst.assignmentCount} assigned · {analyst.completedCount} completed · {analyst.retryCount} retries · {analyst.failureCount} failures</span></div>
+            <div className="heading-actions"><span className={`status ${analyst.status === 'blocked' ? 'pending' : ''}`}>{analyst.status}</span><span className="status">${(analyst.spentCents / 100).toFixed(2)} / ${(analyst.budgetCents / 100).toFixed(2)}</span></div>
+          </div>)}
+        </div>
+        <div className="safety-inline"><Lock size={15} /> {workforce?.budgetGovernor ?? 'Work is bounded by persisted cost governors.'}</div>
+      </div>
+      <div className="card card-pad">
+        <CardTitle title="Quality & value" subtitle="Scorecards are advisory workforce telemetry, not an autonomous authority." action={<ClipboardCheck size={17} color="var(--ink-soft)" />} />
+        <div className="review-list">
+          {workforce?.analysts.map((analyst) => <div className="review-row" key={`${analyst.id}-quality`}>
+            <div><strong>{analyst.analyst}</strong><span>Quality {analyst.qualityScore ? `${analyst.qualityScore.toFixed(0)}%` : 'Unrated'} · calibration {analyst.calibrationScore ? `${analyst.calibrationScore.toFixed(0)}%` : 'Unknown'}</span></div>
+            <span className="status">Value ${(analyst.valueCents / 100).toFixed(2)}</span>
+          </div>)}
+        </div>
+      </div>
+    </section>
+
+    <section className="card card-pad page-section animate-in delay-2">
+      <CardTitle title="Scheduled Family Office reports" subtitle="Morning, weekly, and monthly records retain freshness and citation state. Generation and execution remain disabled." action={<CalendarDays size={17} color="var(--ink-soft)" />} />
+      <div className="review-list">
+        {reports.map((report) => <div className="review-row" key={report.id}>
+          <div><strong>{report.title}</strong><span>{report.reportType} · next scheduled {new Date(report.scheduledFor).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · {report.citations.length ? `${report.citations.length} citations` : 'No citations recorded'}</span><span>{report.citations.length ? report.citations.map((citation) => `${citation.title} (${citation.freshness})`).join(' · ') : 'Citation state: unknown until a sourced report is generated.'}</span></div>
+          <div className="heading-actions"><span className={`status ${report.freshness !== 'fresh' ? 'pending' : ''}`}>{report.status} / {report.freshness}</span><span className="status">Execution disabled</span></div>
+        </div>)}
+      </div>
+      <div className="safety-inline"><FileText size={15} /> Reports display only cited, freshness-aware advisory records. Unknown or stale source state stays visible rather than being inferred.</div>
     </section>
 
     <section className="card card-pad page-section animate-in delay-2">

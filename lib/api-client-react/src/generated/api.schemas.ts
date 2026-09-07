@@ -1974,6 +1974,149 @@ export interface ShadowIntent {
   transmitted: boolean;
 }
 
+export type ShadowPortfolioOutcomeStatus = typeof ShadowPortfolioOutcomeStatus[keyof typeof ShadowPortfolioOutcomeStatus];
+
+
+export const ShadowPortfolioOutcomeStatus = {
+  unknown: 'unknown',
+  pending: 'pending',
+  observed: 'observed',
+} as const;
+
+export interface ShadowPortfolioOutcome {
+  id: string;
+  shadowPortfolioId: string;
+  /** @nullable */
+  shadowIntentId: string | null;
+  periodStart: string;
+  /** @nullable */
+  periodEnd: string | null;
+  status: ShadowPortfolioOutcomeStatus;
+  /** @nullable */
+  shadowReturnBps: number | null;
+  /** @nullable */
+  benchmarkReturnBps: number | null;
+  /** @nullable */
+  attributionBps: number | null;
+  /** @nullable */
+  maxDrawdownBps: number | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  confidence: number;
+  evidenceIds: string[];
+  asOf: string;
+  advisoryOnly: boolean;
+  householdCapitalIncluded: false;
+  executionAuthorization: false;
+}
+
+export interface FamilyOfficeAnalystScorecard {
+  id: string;
+  analyst: string;
+  specialty: string;
+  status: string;
+  /** @minimum 0 */
+  assignmentCount: number;
+  /** @minimum 0 */
+  completedCount: number;
+  /** @minimum 0 */
+  retryCount: number;
+  /** @minimum 0 */
+  failureCount: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  qualityScore: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  calibrationScore: number;
+  /** @minimum 0 */
+  budgetCents: number;
+  /** @minimum 0 */
+  spentCents: number;
+  /** @minimum 0 */
+  valueCents: number;
+  authority: string;
+  /** @minimum 0 */
+  budgetRemainingCents: number;
+  updatedAt: string;
+  advisoryOnly: boolean;
+  executionAuthorization: false;
+}
+
+export interface FamilyOfficeWorkforce {
+  analysts: FamilyOfficeAnalystScorecard[];
+  authority: string;
+  budgetGovernor: string;
+}
+
+export type FamilyOfficeReportReportType = typeof FamilyOfficeReportReportType[keyof typeof FamilyOfficeReportReportType];
+
+
+export const FamilyOfficeReportReportType = {
+  morning: 'morning',
+  weekly: 'weekly',
+  monthly: 'monthly',
+} as const;
+
+export type FamilyOfficeReportStatus = typeof FamilyOfficeReportStatus[keyof typeof FamilyOfficeReportStatus];
+
+
+export const FamilyOfficeReportStatus = {
+  unknown: 'unknown',
+  scheduled: 'scheduled',
+  generated: 'generated',
+  stale: 'stale',
+  failed: 'failed',
+} as const;
+
+export type FamilyOfficeReportFreshness = typeof FamilyOfficeReportFreshness[keyof typeof FamilyOfficeReportFreshness];
+
+
+export const FamilyOfficeReportFreshness = {
+  fresh: 'fresh',
+  stale: 'stale',
+  unknown: 'unknown',
+} as const;
+
+export type FamilyOfficeReportCitationsItemFreshness = typeof FamilyOfficeReportCitationsItemFreshness[keyof typeof FamilyOfficeReportCitationsItemFreshness];
+
+
+export const FamilyOfficeReportCitationsItemFreshness = {
+  fresh: 'fresh',
+  stale: 'stale',
+  unknown: 'unknown',
+} as const;
+
+export type FamilyOfficeReportCitationsItem = {
+  title: string;
+  /** @nullable */
+  sourceUrl: string | null;
+  freshness: FamilyOfficeReportCitationsItemFreshness;
+};
+
+export interface FamilyOfficeReport {
+  id: string;
+  reportType: FamilyOfficeReportReportType;
+  title: string;
+  status: FamilyOfficeReportStatus;
+  freshness: FamilyOfficeReportFreshness;
+  /** @nullable */
+  summary: string | null;
+  citations: FamilyOfficeReportCitationsItem[];
+  scheduledFor: string;
+  /** @nullable */
+  generatedAt: string | null;
+  executionDisabled: true;
+  updatedAt: string;
+  advisoryOnly: boolean;
+}
+
 export type FamilyOfficeProposalDecisionInputDecision = typeof FamilyOfficeProposalDecisionInputDecision[keyof typeof FamilyOfficeProposalDecisionInputDecision];
 
 
@@ -2184,6 +2327,14 @@ export type FamilyOfficeSnapshotSummary = {
   realOrdersSent: number;
   moneyMovedCents: number;
   shadowOnly: boolean;
+  /** @minimum 0 */
+  outcomesWithAttribution: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     * @nullable
+     */
+  confidenceCalibration: number | null;
 };
 
 export interface FamilyOfficeSnapshot {
@@ -2193,6 +2344,9 @@ export interface FamilyOfficeSnapshot {
   proposals: FamilyOfficeProposal[];
   shadowPortfolios: ShadowPortfolio[];
   shadowIntents: ShadowIntent[];
+  shadowOutcomes: ShadowPortfolioOutcome[];
+  workforce: FamilyOfficeWorkforce;
+  reports: FamilyOfficeReport[];
   realEstate: FamilyOfficeRealEstateSnapshot;
   summary: FamilyOfficeSnapshotSummary;
 }

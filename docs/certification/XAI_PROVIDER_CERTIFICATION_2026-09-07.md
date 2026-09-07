@@ -71,9 +71,49 @@ limits, override Guardian, approve Treasury, or enable Micro-Live.
 
 ## Open claims
 
-- This is development activation evidence, not a production deployment
-  certification.
+- Production deployment and public-origin evidence are recorded below, but the
+  authenticated production provider request remains blocked by Clerk test-session
+  transport.
 - One successful live request does not certify provider uptime, future model
   compatibility, rate limits, billing exhaustion, or disaster recovery.
 - Production migration, backup restore, PITR, and external-provider operational
   monitoring remain separate gates.
+
+## Production deployment evidence
+
+The updated build was published as a public autoscale deployment:
+
+```text
+https://capital-os-fund.replit.app
+```
+
+Observed production evidence:
+
+- The deployments service reported an active deployment with a successful
+  current build.
+- `GET /api/health/live` returned HTTP 200.
+- `GET /api/health/ready` returned HTTP 200 with PostgreSQL ready.
+- The five published-origin probes passed: missing and malformed origins were
+  denied, cross-site mutation was CSRF-blocked, and same-origin unauthenticated
+  requests reached the authentication boundary.
+- Deployment logs showed the API process opening port 8080 and serving requests.
+  Initial sidecar healthcheck errors occurred only before the artifact port
+  opened.
+
+### Authenticated provider gate
+
+The authenticated production Grok request is **BLOCKED**, not failed:
+
+- Password sign-in reached Clerk's email verification-code challenge.
+- A server-created one-time sign-in ticket was rejected as invalid or already
+  used before Family Office navigation.
+- Fresh temporary Clerk sessions were rejected by production `/api/auth/me`
+  with HTTP 401 over both bearer-token and session-cookie transports.
+- Every temporary session was revoked.
+- No production `/api/family-office/research` request reached the application,
+  so no production Grok call or financial/application mutation occurred.
+
+Development provider activation and strict-schema validation remain certified.
+Production provider certification requires a real authenticated browser session
+that reaches `/family-office` and completes one advisory request without
+weakening Clerk protections.

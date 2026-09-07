@@ -80,7 +80,7 @@ test("disabled Schwab provider fails closed without making a provider request", 
 test("enabled without an attached connector remains action-required", async () => {
   const provider = new SchwabReadOnlyProvider({ SCHWAB_READ_ONLY_ENABLED: "true" });
   const health = await provider.getProviderHealth();
-  assert.equal(health.state, "configured");
+  assert.equal(health.state, "not_configured");
   assert.equal(health.status, "ACTION_REQUIRED");
   await assert.rejects(
     provider.getAccounts({ credentialRef: "server-side-reference" }),

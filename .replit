@@ -47,6 +47,7 @@ channel = "stable-25_05"
 [userenv.shared]
 GROK_INTELLIGENCE_ENABLED = "true"
 XAI_ENABLED = "true"
+XAI_MODEL = "grok-4.20-0309-non-reasoning"
 
 [userenv.production]
 CAPITAL_OS_ALLOWED_ORIGIN = "https://capital-os-fund.replit.app"

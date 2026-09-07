@@ -1149,6 +1149,22 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/RealEstateIntelligence" }
+  /family-office/refresh:
+    post:
+      operationId: createFamilyOfficeRefresh
+      tags: [family-office]
+      summary: Request a bounded, household-scoped Family Office refresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FamilyOfficeRefreshInput" }
+      responses:
+        "200":
+          description: Refresh record, including a durable skip or block reason
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyOfficeRefreshResult" }
   /family-office/research:
     post:
       operationId: createFamilyOfficeResearch
@@ -4371,6 +4387,27 @@ components:
         createdAt: { type: string, format: date-time }
         completedAt: { type: ["string", "null"], format: date-time }
         advisoryOnly: { type: boolean }
+    FamilyOfficeRefreshInput:
+      type: object
+      required: [trigger, contextFreshness]
+      properties:
+        trigger: { type: string, enum: [on_demand, hourly, daily] }
+        contextFreshness: { type: string, enum: [fresh, stale, unknown] }
+    FamilyOfficeRefresh:
+      type: object
+      required: [id, trigger, status, requestedAt, completedAt, providerStatus, failureClassification, evidenceFreshness, resultFingerprint, skipReason, runId]
+      properties:
+        id: { type: string }
+        trigger: { type: string }
+        status: { type: string }
+        requestedAt: { type: string, format: date-time }
+        completedAt: { type: ["string", "null"], format: date-time }
+        providerStatus: { type: string }
+        failureClassification: { type: ["string", "null"] }
+        evidenceFreshness: { type: string }
+        resultFingerprint: { type: ["string", "null"] }
+        skipReason: { type: ["string", "null"] }
+        runId: { type: ["string", "null"] }
     FamilyOfficeProposal:
       type: object
       required: [id, title, thesis, label, analyticalDirection, confidence, facts, assumptions, risks, evidenceIds, status, createdAt, reviewedAt, reviewReason, advisoryOnly, executionAuthorization]
@@ -4664,7 +4701,7 @@ components:
         purchaseAuthority: { type: boolean }
     FamilyOfficeSnapshot:
       type: object
-      required: [provider, guardrails, runs, proposals, shadowPortfolios, shadowIntents, shadowOutcomes, workforce, reports, realEstate, summary]
+      required: [provider, guardrails, runs, refreshes, refreshCadence, proposals, shadowPortfolios, shadowIntents, shadowOutcomes, workforce, reports, realEstate, summary]
       properties:
         provider:
           type: object
@@ -4678,6 +4715,25 @@ components:
             lastErrorCode: { type: ["string", "null"] }
         guardrails: { type: array, items: { type: string } }
         runs: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeRun" } }
+        refreshes: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeRefresh" } }
+        refreshCadence:
+          type: object
+          required: [lastSuccessfulBrief, nextEligibleAt, lastAttempt, blockedReason]
+          properties:
+            lastSuccessfulBrief:
+              type: [object, "null"]
+              required: [runId, completedAt, resultFingerprint, outputSummary]
+              properties:
+                runId: { type: string }
+                completedAt: { type: ["string", "null"], format: date-time }
+                resultFingerprint: { type: ["string", "null"] }
+                outputSummary: { type: ["string", "null"] }
+            nextEligibleAt: { type: ["string", "null"], format: date-time }
+            lastAttempt:
+              type: [object, "null"]
+              allOf:
+                - $ref: "#/components/schemas/FamilyOfficeRefresh"
+            blockedReason: { type: ["string", "null"] }
         proposals: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeProposal" } }
         shadowPortfolios: { type: array, items: { $ref: "#/components/schemas/ShadowPortfolio" } }
         shadowIntents: { type: array, items: { $ref: "#/components/schemas/ShadowIntent" } }
@@ -4702,6 +4758,12 @@ components:
         run: { $ref: "#/components/schemas/FamilyOfficeRun" }
         proposal: { $ref: "#/components/schemas/FamilyOfficeProposal" }
         advisoryOnly: { type: boolean }
+    FamilyOfficeRefreshResult:
+      type: object
+      required: [refresh, accepted]
+      properties:
+        refresh: { $ref: "#/components/schemas/FamilyOfficeRefresh" }
+        accepted: { type: boolean }
     FamilyOfficeResearchFailure:
       type: object
       required: [code, message, run, proposal, advisoryOnly]

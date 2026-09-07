@@ -1,10 +1,12 @@
 import { and, desc, eq, sql } from "drizzle-orm";
+import { createHash } from "node:crypto";
 import {
   auditEvents,
   db,
   familyOfficeAnalystScorecards,
   familyOfficeEvidence,
   familyOfficeProposals,
+  familyOfficeRefreshes,
   familyOfficeReports,
   familyOfficeRuns,
   shadowOrderIntents,
@@ -31,6 +33,13 @@ import { getPropertyUnderwriting } from "./property-underwriting";
 import type { Actor } from "./capital-os";
 
 type ResearchInput = { analyst?: string; scope: string; prompt: string };
+type RefreshTrigger = "on_demand" | "hourly" | "daily";
+type RefreshContextFreshness = "fresh" | "stale" | "unknown";
+
+const refreshWindows: Record<Exclude<RefreshTrigger, "on_demand">, number> = {
+  hourly: 60 * 60 * 1000,
+  daily: 24 * 60 * 60 * 1000,
+};
 
 const defaultAnalysts = [
   ["CIO Analyst", "portfolio research", 5000],
@@ -57,6 +66,51 @@ function runView(run: typeof familyOfficeRuns.$inferSelect) {
     completedAt: run.completedAt,
     advisoryOnly: true,
   };
+}
+
+function refreshView(refresh: typeof familyOfficeRefreshes.$inferSelect) {
+  return {
+    id: refresh.id,
+    trigger: refresh.trigger,
+    status: refresh.status,
+    requestedAt: refresh.requestedAt,
+    completedAt: refresh.completedAt,
+    providerStatus: refresh.providerStatus,
+    failureClassification: refresh.failureClassification,
+    evidenceFreshness: refresh.evidenceFreshness,
+    resultFingerprint: refresh.resultFingerprint,
+    skipReason: refresh.skipReason,
+    runId: refresh.runId,
+  };
+}
+
+function resultFingerprint(output: ResearchOutput) {
+  return createHash("sha256").update(JSON.stringify(output)).digest("hex");
+}
+
+function evidenceFreshness(output: ResearchOutput) {
+  if (output.evidence.length === 0) return "unknown";
+  const freshness = output.evidence.map((item) => item.freshness.trim().toLowerCase());
+  if (freshness.some((value) => value === "stale" || value === "expired")) return "stale";
+  if (freshness.every((value) => value === "fresh" || value === "current")) return "fresh";
+  return "unknown";
+}
+
+function refreshBlockedReason(providerEnabled: boolean, contextFreshness: RefreshContextFreshness) {
+  if (!providerEnabled) return { status: "blocked", providerStatus: "disabled", failureClassification: "AI_PROVIDER_DISABLED", skipReason: "Provider is disabled or not configured." };
+  if (contextFreshness !== "fresh") return { status: "blocked", providerStatus: "blocked", failureClassification: "REFRESH_STALE_CONTEXT", skipReason: "Refresh was blocked because the cockpit context is stale or unavailable." };
+  return null;
+}
+
+function nextEligibleAt(refreshes: typeof familyOfficeRefreshes.$inferSelect[]) {
+  const cadenceRefreshes = refreshes.filter((refresh) => refresh.status !== "blocked");
+  const latestHourly = cadenceRefreshes.find((refresh) => refresh.trigger === "hourly");
+  const latestDaily = cadenceRefreshes.find((refresh) => refresh.trigger === "daily");
+  const candidates = [
+    latestHourly ? new Date(latestHourly.requestedAt).getTime() + refreshWindows.hourly : null,
+    latestDaily ? new Date(latestDaily.requestedAt).getTime() + refreshWindows.daily : null,
+  ].filter((value): value is number => value !== null);
+  return candidates.length ? new Date(Math.min(...candidates)) : null;
 }
 
 function proposalView(proposal: typeof familyOfficeProposals.$inferSelect) {
@@ -197,7 +251,7 @@ async function ensureFamilyOfficeWorkspace(householdId: string) {
 export async function getFamilyOfficeSnapshot(actor: Actor) {
   assertPermission(actor.role, "read");
   await ensureFamilyOfficeWorkspace(actor.householdId);
-  const [runs, proposals, portfolios, intents, outcomes, scorecards, reports, taxLienCandidates, underwriting] = await Promise.all([
+  const [runs, proposals, portfolios, intents, outcomes, scorecards, reports, refreshes, taxLienCandidates, underwriting] = await Promise.all([
     db.select().from(familyOfficeRuns).where(eq(familyOfficeRuns.householdId, actor.householdId)).orderBy(desc(familyOfficeRuns.createdAt)).limit(20),
     db.select().from(familyOfficeProposals).where(eq(familyOfficeProposals.householdId, actor.householdId)).orderBy(desc(familyOfficeProposals.createdAt)).limit(20),
     db.select().from(shadowPortfolios).where(eq(shadowPortfolios.householdId, actor.householdId)).orderBy(desc(shadowPortfolios.createdAt)),
@@ -205,6 +259,7 @@ export async function getFamilyOfficeSnapshot(actor: Actor) {
     db.select().from(shadowPortfolioOutcomes).where(eq(shadowPortfolioOutcomes.householdId, actor.householdId)).orderBy(desc(shadowPortfolioOutcomes.asOf)).limit(50),
     db.select().from(familyOfficeAnalystScorecards).where(eq(familyOfficeAnalystScorecards.householdId, actor.householdId)).orderBy(desc(familyOfficeAnalystScorecards.updatedAt)),
     db.select().from(familyOfficeReports).where(eq(familyOfficeReports.householdId, actor.householdId)).orderBy(desc(familyOfficeReports.scheduledFor)),
+    db.select().from(familyOfficeRefreshes).where(eq(familyOfficeRefreshes.householdId, actor.householdId)).orderBy(desc(familyOfficeRefreshes.requestedAt)).limit(20),
     db.select().from(taxLienCertificateCandidates).where(eq(taxLienCertificateCandidates.householdId, actor.householdId)).orderBy(desc(taxLienCertificateCandidates.updatedAt)),
     getPropertyUnderwriting(actor),
   ]);
@@ -232,6 +287,24 @@ export async function getFamilyOfficeSnapshot(actor: Actor) {
     lastErrorCode: lastResult === "failed"
       ? latestRun?.errorCode ?? "AI_PROVIDER_UPSTREAM_ERROR"
       : null,
+  };
+  const latestSuccessfulRefresh = refreshes.find((refresh) =>
+    refresh.status === "completed" && refresh.providerStatus === "ready" && refresh.runId,
+  );
+  const latestRefresh = refreshes[0] ?? null;
+  const latestRefreshBlock = refreshes.find((refresh) => refresh.status === "blocked" || refresh.status === "skipped");
+  const refreshCadence = {
+    lastSuccessfulBrief: latestSuccessfulRefresh
+      ? {
+          runId: latestSuccessfulRefresh.runId,
+          completedAt: latestSuccessfulRefresh.completedAt,
+          resultFingerprint: latestSuccessfulRefresh.resultFingerprint,
+          outputSummary: runs.find((run) => run.id === latestSuccessfulRefresh.runId)?.outputSummary ?? null,
+        }
+      : null,
+    nextEligibleAt: nextEligibleAt(refreshes),
+    lastAttempt: latestRefresh ? refreshView(latestRefresh) : null,
+    blockedReason: latestRefreshBlock?.skipReason ?? null,
   };
   const propertyCandidates = underwriting.candidates.map((candidate) => ({
     id: candidate.id,
@@ -275,6 +348,8 @@ export async function getFamilyOfficeSnapshot(actor: Actor) {
     provider,
     guardrails: shadowGuardrails(),
     runs: runs.map(runView),
+    refreshes: refreshes.map(refreshView),
+    refreshCadence,
     proposals: proposals.map(proposalView),
     shadowPortfolios: portfolios.map(portfolioView),
     realEstate: {
@@ -481,7 +556,11 @@ export async function getRealEstateIntelligence(actor: Actor) {
   };
 }
 
-export async function runFamilyOfficeResearch(actor: Actor, input: ResearchInput) {
+export async function runFamilyOfficeResearch(
+  actor: Actor,
+  input: ResearchInput,
+  options: { refreshId?: string } = {},
+) {
   assertPermission(actor.role, "contribute");
   await ensureFamilyOfficeWorkspace(actor.householdId);
   const analyst = input.analyst?.trim() || "Research Analyst";
@@ -514,6 +593,14 @@ export async function runFamilyOfficeResearch(actor: Actor, input: ResearchInput
       providerStatus: "checking",
       createdBy: actor.userId,
     }).returning();
+    if (options.refreshId) {
+      await tx.update(familyOfficeRefreshes).set({
+        runId: currentRun.id,
+      }).where(and(
+        eq(familyOfficeRefreshes.id, options.refreshId),
+        eq(familyOfficeRefreshes.householdId, actor.householdId),
+      ));
+    }
     return { scorecard: currentScorecard, run: currentRun };
   });
   const provider = new XaiIntelligenceProvider();
@@ -529,6 +616,19 @@ export async function runFamilyOfficeResearch(actor: Actor, input: ResearchInput
         errorCode,
         completedAt: new Date(),
       }).where(and(eq(familyOfficeRuns.id, run.id), eq(familyOfficeRuns.householdId, actor.householdId))).returning();
+      if (options.refreshId) {
+        await tx.update(familyOfficeRefreshes).set({
+          status: "failed",
+          completedAt: new Date(),
+          providerStatus: errorCode === "AI_PROVIDER_DISABLED" ? "disabled" : "unavailable",
+          failureClassification: errorCode,
+          evidenceFreshness: "unknown",
+          skipReason: "Provider research did not complete; no brief was fabricated.",
+        }).where(and(
+          eq(familyOfficeRefreshes.id, options.refreshId),
+          eq(familyOfficeRefreshes.householdId, actor.householdId),
+        ));
+      }
       await tx.update(familyOfficeAnalystScorecards).set({
         failureCount: sql`${familyOfficeAnalystScorecards.failureCount} + 1`,
         status: "blocked",
@@ -583,6 +683,20 @@ export async function runFamilyOfficeResearch(actor: Actor, input: ResearchInput
         outputSummary: output.title,
         completedAt: new Date(),
       }).where(and(eq(familyOfficeRuns.id, run.id), eq(familyOfficeRuns.householdId, actor.householdId))).returning();
+      if (options.refreshId) {
+        await tx.update(familyOfficeRefreshes).set({
+          status: "completed",
+          completedAt: updated.completedAt,
+          providerStatus: "ready",
+          failureClassification: null,
+          evidenceFreshness: evidenceFreshness(output),
+          resultFingerprint: resultFingerprint(output),
+          skipReason: null,
+        }).where(and(
+          eq(familyOfficeRefreshes.id, options.refreshId),
+          eq(familyOfficeRefreshes.householdId, actor.householdId),
+        ));
+      }
       await tx.update(familyOfficeAnalystScorecards).set({
         completedCount: sql`${familyOfficeAnalystScorecards.completedCount} + 1`,
         status: "available",
@@ -607,6 +721,19 @@ export async function runFamilyOfficeResearch(actor: Actor, input: ResearchInput
         errorCode: "AI_RESEARCH_PERSISTENCE_ERROR",
         completedAt: new Date(),
       }).where(and(eq(familyOfficeRuns.id, run.id), eq(familyOfficeRuns.householdId, actor.householdId))).returning();
+      if (options.refreshId) {
+        await tx.update(familyOfficeRefreshes).set({
+          status: "failed",
+          completedAt: new Date(),
+          providerStatus: "error",
+          failureClassification: "AI_RESEARCH_PERSISTENCE_ERROR",
+          evidenceFreshness: "unknown",
+          skipReason: "Research output could not be committed atomically; no brief was retained.",
+        }).where(and(
+          eq(familyOfficeRefreshes.id, options.refreshId),
+          eq(familyOfficeRefreshes.householdId, actor.householdId),
+        ));
+      }
       await tx.update(familyOfficeAnalystScorecards).set({
         failureCount: sql`${familyOfficeAnalystScorecards.failureCount} + 1`,
         status: "blocked",
@@ -625,6 +752,93 @@ export async function runFamilyOfficeResearch(actor: Actor, input: ResearchInput
     });
     return { run: runView(updated), proposal: null, advisoryOnly: true };
   }
+}
+
+export async function requestFamilyOfficeRefresh(
+  actor: Actor,
+  input: {
+    trigger: RefreshTrigger;
+    contextFreshness: RefreshContextFreshness;
+  },
+) {
+  assertPermission(actor.role, "contribute");
+  await ensureFamilyOfficeWorkspace(actor.householdId);
+  const now = new Date();
+  const providerStatus = familyOfficeProviderStatus();
+  const refresh = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`family-office-refresh:${actor.householdId}`}, 0))`);
+    const [latest] = await tx.select().from(familyOfficeRefreshes)
+      .where(eq(familyOfficeRefreshes.householdId, actor.householdId))
+      .orderBy(desc(familyOfficeRefreshes.requestedAt))
+      .limit(1);
+    const blocked = refreshBlockedReason(providerStatus.enabled, input.contextFreshness);
+    if (blocked) {
+      const [blockedRefresh] = await tx.insert(familyOfficeRefreshes).values({
+        householdId: actor.householdId,
+        trigger: input.trigger,
+        status: blocked.status,
+        requestedAt: now,
+        completedAt: now,
+        providerStatus: blocked.providerStatus,
+        failureClassification: blocked.failureClassification,
+        evidenceFreshness: input.contextFreshness,
+        skipReason: blocked.skipReason,
+        createdBy: actor.userId,
+      }).returning();
+      return { refresh: blockedRefresh, shouldRun: false };
+    }
+    const window = input.trigger === "on_demand" ? 0 : refreshWindows[input.trigger];
+    const latestRequestedAt = latest ? new Date(latest.requestedAt).getTime() : 0;
+    if ((input.trigger !== "on_demand" && latestRequestedAt + window > now.getTime()) ||
+        (input.trigger === "on_demand" && latest?.status === "requested")) {
+      const [skippedRefresh] = await tx.insert(familyOfficeRefreshes).values({
+        householdId: actor.householdId,
+        trigger: input.trigger,
+        status: "skipped",
+        requestedAt: now,
+        completedAt: now,
+        providerStatus: providerStatus.enabled ? "ready" : "disabled",
+        failureClassification: "REFRESH_DEDUPLICATED",
+        evidenceFreshness: latest?.evidenceFreshness ?? input.contextFreshness,
+        resultFingerprint: latest?.resultFingerprint,
+        skipReason: input.trigger === "on_demand"
+          ? "An equivalent refresh is already in progress."
+          : `${input.trigger} refresh is bounded to one attempt per ${input.trigger === "hourly" ? "hour" : "day"}.`,
+        runId: latest?.runId,
+        createdBy: actor.userId,
+      }).returning();
+      return { refresh: skippedRefresh, shouldRun: false };
+    }
+    const [requestedRefresh] = await tx.insert(familyOfficeRefreshes).values({
+      householdId: actor.householdId,
+      trigger: input.trigger,
+      status: "requested",
+      requestedAt: now,
+      providerStatus: "checking",
+      evidenceFreshness: input.contextFreshness,
+      createdBy: actor.userId,
+    }).returning();
+    return { refresh: requestedRefresh, shouldRun: true };
+  });
+
+  if (refresh.shouldRun) {
+    const result = await runFamilyOfficeResearch(actor, {
+      analyst: "CIO analyst",
+      scope: "adaptive family office morning brief",
+      prompt: "Review current household conditions and return only evidence-backed advisory priorities, watch items, concentration or risk reviews, and Shadow-only research suggestions. Do not recommend execution or money movement.",
+    }, { refreshId: refresh.refresh.id });
+    return { refresh: await getFamilyOfficeRefresh(actor, refresh.refresh.id), accepted: true, result };
+  }
+  return { refresh: refreshView(refresh.refresh), accepted: false, result: null };
+}
+
+async function getFamilyOfficeRefresh(actor: Actor, refreshId: string) {
+  const [refresh] = await db.select().from(familyOfficeRefreshes).where(and(
+    eq(familyOfficeRefreshes.id, refreshId),
+    eq(familyOfficeRefreshes.householdId, actor.householdId),
+  )).limit(1);
+  if (!refresh) throw new GovernanceError("INVALID_STATE", "Refresh record was not found");
+  return refreshView(refresh);
 }
 
 export async function decideFamilyOfficeProposal(actor: Actor, proposalId: string, decision: string, reason: string) {

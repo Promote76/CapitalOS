@@ -2456,6 +2456,42 @@ export const GetFamilyOfficeResponse = zod.object({
   "completedAt": zod.coerce.date().nullable(),
   "advisoryOnly": zod.boolean()
 })),
+  "refreshes": zod.array(zod.object({
+  "id": zod.string(),
+  "trigger": zod.string(),
+  "status": zod.string(),
+  "requestedAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable(),
+  "providerStatus": zod.string(),
+  "failureClassification": zod.string().nullable(),
+  "evidenceFreshness": zod.string(),
+  "resultFingerprint": zod.string().nullable(),
+  "skipReason": zod.string().nullable(),
+  "runId": zod.string().nullable()
+})),
+  "refreshCadence": zod.object({
+  "lastSuccessfulBrief": zod.object({
+  "runId": zod.string(),
+  "completedAt": zod.coerce.date().nullable(),
+  "resultFingerprint": zod.string().nullable(),
+  "outputSummary": zod.string().nullable()
+}).nullable(),
+  "nextEligibleAt": zod.coerce.date().nullable(),
+  "lastAttempt": zod.object({
+  "id": zod.string(),
+  "trigger": zod.string(),
+  "status": zod.string(),
+  "requestedAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable(),
+  "providerStatus": zod.string(),
+  "failureClassification": zod.string().nullable(),
+  "evidenceFreshness": zod.string(),
+  "resultFingerprint": zod.string().nullable(),
+  "skipReason": zod.string().nullable(),
+  "runId": zod.string().nullable()
+}).nullable(),
+  "blockedReason": zod.string().nullable()
+}),
   "proposals": zod.array(zod.object({
   "id": zod.string(),
   "title": zod.string(),
@@ -2870,6 +2906,32 @@ export const GetRealEstateIntelligenceResponse = zod.object({
   "biddingAuthorized": zod.boolean(),
   "householdCapitalAccessible": zod.boolean()
 })
+})
+
+
+/**
+ * @summary Request a bounded, household-scoped Family Office refresh
+ */
+export const CreateFamilyOfficeRefreshBody = zod.object({
+  "trigger": zod.enum(['on_demand', 'hourly', 'daily']),
+  "contextFreshness": zod.enum(['fresh', 'stale', 'unknown'])
+})
+
+export const CreateFamilyOfficeRefreshResponse = zod.object({
+  "refresh": zod.object({
+  "id": zod.string(),
+  "trigger": zod.string(),
+  "status": zod.string(),
+  "requestedAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable(),
+  "providerStatus": zod.string(),
+  "failureClassification": zod.string().nullable(),
+  "evidenceFreshness": zod.string(),
+  "resultFingerprint": zod.string().nullable(),
+  "skipReason": zod.string().nullable(),
+  "runId": zod.string().nullable()
+}),
+  "accepted": zod.boolean()
 })
 
 

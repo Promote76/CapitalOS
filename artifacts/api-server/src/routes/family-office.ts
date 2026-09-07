@@ -2,6 +2,8 @@ import { Router, type IRouter } from "express";
 import {
   CreateFamilyOfficeResearchBody,
   CreateFamilyOfficeResearchResponse,
+  CreateFamilyOfficeRefreshBody,
+  CreateFamilyOfficeRefreshResponse,
   CreateShadowIntentBody,
   CreateShadowIntentResponse,
   CreateShadowPortfolioBody,
@@ -24,6 +26,7 @@ import {
   getFamilyOfficeSnapshot,
   getRealEstateIntelligence,
   createTaxLienCandidate,
+  requestFamilyOfficeRefresh,
   runFamilyOfficeResearch,
 } from "../services/family-office";
 
@@ -48,6 +51,11 @@ router.get("/family-office", asyncRoute(async (_req, res) => {
 
 router.get("/family-office/real-estate", asyncRoute(async (_req, res) => {
   res.json(GetRealEstateIntelligenceResponse.parse(await getRealEstateIntelligence(actorFrom(res))));
+}));
+
+router.post("/family-office/refresh", asyncRoute(async (req, res) => {
+  const body = CreateFamilyOfficeRefreshBody.parse(req.body);
+  res.status(200).json(CreateFamilyOfficeRefreshResponse.parse(await requestFamilyOfficeRefresh(actorFrom(res), body)));
 }));
 
 router.post("/family-office/research", asyncRoute(async (req, res) => {

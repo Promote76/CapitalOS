@@ -33,6 +33,30 @@ export const familyOfficeRuns = pgTable(
   }),
 );
 
+export const familyOfficeRefreshes = pgTable(
+  "family_office_refreshes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    trigger: text("trigger").notNull().default("on_demand"),
+    status: text("status").notNull().default("requested"),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    providerStatus: text("provider_status").notNull().default("disabled"),
+    failureClassification: text("failure_classification"),
+    evidenceFreshness: text("evidence_freshness").notNull().default("unknown"),
+    resultFingerprint: text("result_fingerprint"),
+    skipReason: text("skip_reason"),
+    runId: uuid("run_id").references(() => familyOfficeRuns.id, { onDelete: "set null" }),
+    createdBy: uuid("created_by").references(() => users.id),
+  },
+  (table) => ({
+    householdIdx: index("family_office_refreshes_household_idx").on(table.householdId),
+    householdRequestedIdx: index("family_office_refreshes_household_requested_idx").on(table.householdId, table.requestedAt),
+    triggerRequestedIdx: index("family_office_refreshes_trigger_requested_idx").on(table.trigger, table.requestedAt),
+  }),
+);
+
 export const familyOfficeEvidence = pgTable(
   "family_office_evidence",
   {

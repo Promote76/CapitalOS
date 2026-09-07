@@ -31,7 +31,7 @@ import {
   getListDailyOpsHistoryQueryKey,
   getListOperationsTasksQueryKey,
   useCreateDailyOpsJournalEntry,
-  useCreateFamilyOfficeResearch,
+  useCreateFamilyOfficeRefresh,
   useGetAccountingOverview,
   useGetFamilyOffice,
   useGetOperationsOverview,
@@ -179,7 +179,7 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
   const accounting = useGetAccountingOverview({ query: { queryKey: getGetAccountingOverviewQueryKey(), refetchInterval: HOUR, retry: false } });
   const operations = useGetOperationsOverview({ query: { queryKey: getGetOperationsOverviewQueryKey(), refetchInterval: HOUR, retry: false } });
   const tasksQuery = useListOperationsTasks({ query: { queryKey: getListOperationsTasksQueryKey(), refetchInterval: HOUR, retry: false } });
-  const research = useCreateFamilyOfficeResearch();
+  const refreshFamilyOffice = useCreateFamilyOfficeRefresh();
   const updateTask = useUpdateOperationsTask();
   const createJournal = useCreateDailyOpsJournalEntry();
   const recordGuidedRunAction = useRecordGuidedRunAction();
@@ -208,6 +208,21 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
   const activeProposal = snapshot?.proposals.find((proposal) => proposal.status === "pending" || proposal.status === "PENDING");
   const latestRun = snapshot?.runs[0];
   const providerState = snapshot?.provider.state ?? "unavailable";
+  const contextFresh = Boolean(
+    snapshot &&
+    treasurySnapshot &&
+    accountingSnapshot &&
+    operations.data &&
+    !familyOffice.isError &&
+    !treasury.isError &&
+    !accounting.isError &&
+    !operations.isError,
+  );
+  const refreshBlockReason = !snapshot?.provider.enabled
+    ? "Refresh is blocked because Grok is disabled or not configured."
+    : !contextFresh
+      ? "Refresh is blocked until the authoritative cockpit context is current."
+      : snapshot?.refreshCadence.blockedReason ?? null;
   const providerFreshness: "fresh" | "stale" | "unknown" | "unavailable" =
     providerState === "verified" ? "fresh" : providerState === "unavailable" ? "unavailable" : "unknown";
   const treasuryFreshness: "fresh" | "stale" | "unknown" | "unavailable" = treasurySnapshot ? "fresh" : treasury.isError ? "unavailable" : "unknown";
@@ -228,6 +243,34 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
     if (cadence === "TODAY" && visibleTasks.length === 0 && tasks.some((task) => inCadence(task, "WEEK"))) setCadence("WEEK");
   }, [cadence, tasks, visibleTasks.length]);
 
+  const requestGrokRefresh = async (trigger: "on_demand" | "hourly" | "daily") => {
+    try {
+      const result = await refreshFamilyOffice.mutateAsync({
+        data: {
+          trigger,
+          contextFreshness: contextFresh ? "fresh" : "unknown",
+        },
+      });
+      await familyOffice.refetch();
+      if (result.refresh.status === "completed") {
+        onFeedback("Grok returned a fresh advisory brief. No financial action was created.");
+      } else {
+        onFeedback(result.refresh.skipReason ?? "Grok refresh was blocked; no synthetic brief was shown.");
+      }
+    } catch (error) {
+      await familyOffice.refetch();
+      onFeedback(error instanceof Error ? error.message : "Grok is unavailable. The failed refresh was retained for review.");
+    }
+  };
+
+  useEffect(() => {
+    if (!snapshot?.provider.enabled || !contextFresh) return;
+    const interval = window.setInterval(() => {
+      if (contextFresh && snapshot?.provider.enabled) void requestGrokRefresh("hourly");
+    }, HOUR);
+    return () => window.clearInterval(interval);
+  }, [contextFresh, snapshot?.provider.enabled]);
+
   const refreshAll = async () => {
     setRefreshing(true);
     try {
@@ -239,20 +282,7 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
   };
 
   const refreshGrok = async () => {
-    try {
-      await research.mutateAsync({
-        data: {
-          scope: "adaptive family office morning brief",
-          prompt: "Review current household conditions and return only evidence-backed advisory priorities, watch items, concentration or risk reviews, and Shadow-only research suggestions. Do not recommend execution or money movement.",
-          analyst: "CIO analyst",
-        },
-      });
-      await familyOffice.refetch();
-      onFeedback("Grok returned a fresh advisory brief. No financial action was created.");
-    } catch (error) {
-      await familyOffice.refetch();
-      onFeedback(error instanceof Error ? error.message : "Grok is unavailable. The failed run was retained for review.");
-    }
+    await requestGrokRefresh("on_demand");
   };
 
   const handleTaskUpdate = async (task: OperationsTask, status: OperationsTaskStatus) => {
@@ -354,10 +384,16 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
             <span><LockKeyhole size={12} /> No broker credentials or execution authority</span>
           </div>
         </div>
-        <button className="btn btn-primary" type="button" onClick={() => { void refreshGrok(); }} disabled={research.isPending || familyOffice.isFetching}>
-          <Sparkles size={14} /> {research.isPending ? "Reviewing…" : "Refresh brief"}
+        <button className="btn btn-primary" type="button" onClick={() => { void refreshGrok(); }} disabled={refreshFamilyOffice.isPending || familyOffice.isFetching || !contextFresh}>
+          <Sparkles size={14} /> {refreshFamilyOffice.isPending ? "Reviewing…" : "Refresh brief"}
         </button>
       </section>
+
+      <div className="daily-ops-refresh-summary">
+        <span><strong>Last successful brief:</strong> {snapshot?.refreshCadence.lastSuccessfulBrief?.outputSummary ?? "None recorded"} · {dateTimeLabel(snapshot?.refreshCadence.lastSuccessfulBrief?.completedAt, "Not recorded")}</span>
+        <span><strong>Next eligible refresh:</strong> {dateTimeLabel(snapshot?.refreshCadence.nextEligibleAt, "Available when context is current")}</span>
+        {refreshBlockReason && <span><strong>Refresh status:</strong> {refreshBlockReason}</span>}
+      </div>
 
       {snapshot?.provider.state === "unavailable" && (
         <div className="daily-ops-provider-warning"><ShieldAlert size={16} /><span><strong>Grok is unavailable.</strong> {titleCase(snapshot.provider.lastErrorCode ?? "Provider failure")}. No synthetic brief is shown; use the linked authoritative workspaces below.</span></div>
@@ -462,7 +498,7 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
       </section>
 
       <div className="daily-ops-disclaimer"><ShieldCheck size={15} /><span>Safe boundary: Grok is advisory, Shadow-only, evidence-backed, and timestamped. It cannot buy, sell, transfer, withdraw, override policy, use broker credentials, or move household capital.</span></div>
-      <div className="daily-ops-freshness"><span>Bounded refresh: on demand + at most hourly while this page is open.</span><span>Operations: {tasksQuery.isFetching ? "refreshing" : "ready"} · latest task read {dateTimeLabel(tasks[0]?.createdAt)}</span><span><ExternalLink size={11} /> Source links open authoritative workspaces.</span></div>
+      <div className="daily-ops-freshness"><span>Bounded refresh: on demand + at most hourly while this page is open; daily requests are also deduplicated server-side.</span><span>Operations: {tasksQuery.isFetching ? "refreshing" : "ready"} · latest task read {dateTimeLabel(tasks[0]?.createdAt)}</span><span><ExternalLink size={11} /> Source links open authoritative workspaces.</span></div>
     </main>
   );
 }

@@ -90,6 +90,8 @@ import type {
   ExecutionControlState,
   FamilyOfficeProposal,
   FamilyOfficeProposalDecisionInput,
+  FamilyOfficeRefreshInput,
+  FamilyOfficeRefreshResult,
   FamilyOfficeResearchFailure,
   FamilyOfficeResearchInput,
   FamilyOfficeResearchResult,
@@ -5478,6 +5480,77 @@ export function useGetRealEstateIntelligence<TData = Awaited<ReturnType<typeof g
 
 
 
+
+export const getCreateFamilyOfficeRefreshUrl = () => {
+
+
+
+
+  return `/api/family-office/refresh`
+}
+
+/**
+ * @summary Request a bounded, household-scoped Family Office refresh
+ */
+export const createFamilyOfficeRefresh = async (familyOfficeRefreshInput: FamilyOfficeRefreshInput, options?: Parameters<typeof customFetch>[1]): Promise<FamilyOfficeRefreshResult> => {
+
+  return customFetch<FamilyOfficeRefreshResult>(getCreateFamilyOfficeRefreshUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(familyOfficeRefreshInput)
+  }
+);}
+
+
+
+
+
+export const getCreateFamilyOfficeRefreshMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFamilyOfficeRefresh>>, TError,{data: BodyType<FamilyOfficeRefreshInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createFamilyOfficeRefresh>>, TError,{data: BodyType<FamilyOfficeRefreshInput>}, TContext> => {
+
+const mutationKey = ['createFamilyOfficeRefresh'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createFamilyOfficeRefresh>>, {data: BodyType<FamilyOfficeRefreshInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createFamilyOfficeRefresh(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateFamilyOfficeRefreshMutationResult = NonNullable<Awaited<ReturnType<typeof createFamilyOfficeRefresh>>>
+    export type CreateFamilyOfficeRefreshMutationBody = BodyType<FamilyOfficeRefreshInput>
+    export type CreateFamilyOfficeRefreshMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Request a bounded, household-scoped Family Office refresh
+ */
+export const useCreateFamilyOfficeRefresh = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFamilyOfficeRefresh>>, TError,{data: BodyType<FamilyOfficeRefreshInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createFamilyOfficeRefresh>>,
+        TError,
+        {data: BodyType<FamilyOfficeRefreshInput>},
+        TContext
+      > => {
+      return useMutation(getCreateFamilyOfficeRefreshMutationOptions(options));
+    }
 
 export const getCreateFamilyOfficeResearchUrl = () => {
 

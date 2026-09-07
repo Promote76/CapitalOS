@@ -4012,6 +4012,22 @@ button {
   background: var(--surface-warning);
   font-size: 11px;
 }
+.daily-ops-refresh-summary {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.daily-ops-refresh-summary strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
 .daily-ops-unavailable {
   color: #991b1b;
   border-color: #fecaca;

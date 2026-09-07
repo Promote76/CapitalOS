@@ -1881,6 +1881,48 @@ export interface FamilyOfficeRun {
   advisoryOnly: boolean;
 }
 
+export type FamilyOfficeRefreshInputTrigger = typeof FamilyOfficeRefreshInputTrigger[keyof typeof FamilyOfficeRefreshInputTrigger];
+
+
+export const FamilyOfficeRefreshInputTrigger = {
+  on_demand: 'on_demand',
+  hourly: 'hourly',
+  daily: 'daily',
+} as const;
+
+export type FamilyOfficeRefreshInputContextFreshness = typeof FamilyOfficeRefreshInputContextFreshness[keyof typeof FamilyOfficeRefreshInputContextFreshness];
+
+
+export const FamilyOfficeRefreshInputContextFreshness = {
+  fresh: 'fresh',
+  stale: 'stale',
+  unknown: 'unknown',
+} as const;
+
+export interface FamilyOfficeRefreshInput {
+  trigger: FamilyOfficeRefreshInputTrigger;
+  contextFreshness: FamilyOfficeRefreshInputContextFreshness;
+}
+
+export interface FamilyOfficeRefresh {
+  id: string;
+  trigger: string;
+  status: string;
+  requestedAt: string;
+  /** @nullable */
+  completedAt: string | null;
+  providerStatus: string;
+  /** @nullable */
+  failureClassification: string | null;
+  evidenceFreshness: string;
+  /** @nullable */
+  resultFingerprint: string | null;
+  /** @nullable */
+  skipReason: string | null;
+  /** @nullable */
+  runId: string | null;
+}
+
 export interface FamilyOfficeProposal {
   id: string;
   title: string;
@@ -2339,6 +2381,30 @@ export type FamilyOfficeSnapshotProvider = {
   lastErrorCode: string | null;
 };
 
+/**
+ * @nullable
+ */
+export type FamilyOfficeSnapshotRefreshCadenceLastSuccessfulBrief = {
+  runId: string;
+  /** @nullable */
+  completedAt: string | null;
+  /** @nullable */
+  resultFingerprint: string | null;
+  /** @nullable */
+  outputSummary: string | null;
+} | null;
+
+export type FamilyOfficeSnapshotRefreshCadence = {
+  /** @nullable */
+  lastSuccessfulBrief: FamilyOfficeSnapshotRefreshCadenceLastSuccessfulBrief;
+  /** @nullable */
+  nextEligibleAt: string | null;
+  /** @nullable */
+  lastAttempt: FamilyOfficeRefresh | null;
+  /** @nullable */
+  blockedReason: string | null;
+};
+
 export type FamilyOfficeSnapshotSummary = {
   liveExecutionEnabled: boolean;
   realOrdersSent: number;
@@ -2358,6 +2424,8 @@ export interface FamilyOfficeSnapshot {
   provider: FamilyOfficeSnapshotProvider;
   guardrails: string[];
   runs: FamilyOfficeRun[];
+  refreshes: FamilyOfficeRefresh[];
+  refreshCadence: FamilyOfficeSnapshotRefreshCadence;
   proposals: FamilyOfficeProposal[];
   shadowPortfolios: ShadowPortfolio[];
   shadowIntents: ShadowIntent[];
@@ -2372,6 +2440,11 @@ export interface FamilyOfficeResearchResult {
   run: FamilyOfficeRun;
   proposal: FamilyOfficeProposal;
   advisoryOnly: boolean;
+}
+
+export interface FamilyOfficeRefreshResult {
+  refresh: FamilyOfficeRefresh;
+  accepted: boolean;
 }
 
 export type FamilyOfficeResearchFailureCode = typeof FamilyOfficeResearchFailureCode[keyof typeof FamilyOfficeResearchFailureCode];

@@ -40,7 +40,7 @@ import {
   useGetTreasury,
   useListDailyOpsHistory,
   useListOperationsTasks,
-  useRecordGuidedRunAction,
+  recordGuidedRunAction,
   useUpdateOperationsTask,
   type OperationsTask,
   type OperationsTaskStatus,
@@ -195,9 +195,9 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
   const refreshFamilyOffice = useCreateFamilyOfficeRefresh();
   const updateTask = useUpdateOperationsTask();
   const createJournal = useCreateDailyOpsJournalEntry();
-  const recordGuidedRunAction = useRecordGuidedRunAction();
   const [cadence, setCadence] = useState<Cadence>("TODAY");
   const [refreshing, setRefreshing] = useState(false);
+  const [guidedRunSaving, setGuidedRunSaving] = useState(false);
   const [runReason, setRunReason] = useState("");
   const [snoozeUntil, setSnoozeUntil] = useState("");
   const [journalType, setJournalType] = useState<"DECISION" | "HANDOFF" | "CLOSEOUT">("HANDOFF");
@@ -343,20 +343,23 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
       return;
     }
     try {
-      await recordGuidedRunAction.mutateAsync({
-        data: {
-          action,
-          cadence,
-          runId: guidedRun?.id,
-          reason: runReason.trim(),
-          snoozedUntil: action === "SNOOZE" ? new Date(snoozeUntil).toISOString() : null,
-        },
+      setGuidedRunSaving(true);
+      await recordGuidedRunAction({
+        action,
+        cadence,
+        runId: guidedRun?.id,
+        reason: runReason.trim(),
+        snoozedUntil: action === "SNOOZE" ? new Date(snoozeUntil).toISOString() : null,
+      }, {
+        headers: { "Idempotency-Key": crypto.randomUUID() },
       });
       await dailyOps.refetch();
       setRunReason("");
       onFeedback(`Guided Run ${titleCase(action)} recorded. This remains a review handoff, not financial authority.`);
     } catch (error) {
       onFeedback(error instanceof Error ? error.message : "The Guided Run action could not be saved.");
+    } finally {
+      setGuidedRunSaving(false);
     }
   };
 
@@ -526,12 +529,12 @@ export default function DailyOpsPage({ onFeedback }: { onFeedback: Feedback }) {
           <div><span className="daily-ops-eyebrow">Guided Run the Day · {titleCase(guidedRunStatus)}</span><strong>{completedCount} of {visibleTasks.length || "—"} visible tasks complete</strong><p>{guidedRun?.latestReason ?? "A guided sequence for review work, not a substitute for the authoritative destination."}</p></div>
           <div className="daily-ops-run-actions">
             <input aria-label="Reason for Guided Run action" placeholder="Reason for this handoff or status" value={runReason} onChange={(event) => setRunReason(event.target.value)} />
-            <button className="btn btn-primary" type="button" disabled={recordGuidedRunAction.isPending} onClick={() => { void handleGuidedRunAction("START"); }}><Target size={14} /> Start</button>
-            <button className="btn" type="button" disabled={recordGuidedRunAction.isPending || !guidedRun} onClick={() => { void handleGuidedRunAction("COMPLETE"); }}><Check size={14} /> Complete</button>
-            <button className="btn" type="button" disabled={recordGuidedRunAction.isPending || !guidedRun} onClick={() => { void handleGuidedRunAction("REOPEN"); }}>Reopen</button>
-            <button className="btn" type="button" disabled={recordGuidedRunAction.isPending || !guidedRun} onClick={() => { void handleGuidedRunAction("BLOCK"); }}><LockKeyhole size={13} /> Block</button>
+            <button className="btn btn-primary" type="button" disabled={guidedRunSaving} onClick={() => { void handleGuidedRunAction("START"); }}><Target size={14} /> Start</button>
+            <button className="btn" type="button" disabled={guidedRunSaving || !guidedRun} onClick={() => { void handleGuidedRunAction("COMPLETE"); }}><Check size={14} /> Complete</button>
+            <button className="btn" type="button" disabled={guidedRunSaving || !guidedRun} onClick={() => { void handleGuidedRunAction("REOPEN"); }}>Reopen</button>
+            <button className="btn" type="button" disabled={guidedRunSaving || !guidedRun} onClick={() => { void handleGuidedRunAction("BLOCK"); }}><LockKeyhole size={13} /> Block</button>
             <input aria-label="Guided Run snooze until" type="datetime-local" value={snoozeUntil} onChange={(event) => setSnoozeUntil(event.target.value)} />
-            <button className="btn" type="button" disabled={recordGuidedRunAction.isPending || !guidedRun} onClick={() => { void handleGuidedRunAction("SNOOZE"); }}>Snooze</button>
+            <button className="btn" type="button" disabled={guidedRunSaving || !guidedRun} onClick={() => { void handleGuidedRunAction("SNOOZE"); }}>Snooze</button>
           </div>
           {guidedRun?.events.length ? <div className="daily-ops-run-history" aria-label="Guided Run history">{guidedRun.events.slice(0, 4).map((event) => <span key={event.id}><b>{titleCase(event.action)}</b> · {event.reason} · {dateTimeLabel(event.occurredAt)}</span>)}</div> : null}
         </div>

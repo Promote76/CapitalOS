@@ -14,3 +14,9 @@ Hourly Grok refreshes should begin on the bounded timer after the initial cockpi
 **Why:** An immediate provider call can replace a deliberately blocked fixture before the cockpit renders its fail-closed state and creates unexpected external work during an authenticated page load.
 
 **How to apply:** Keep on-demand refresh explicit; let the open-page hourly timer call the guarded refresh endpoint only while provider and authoritative context are current.
+
+For authenticated browser certifications, use an in-page fetch for raw API assertions rather than assuming a separate Playwright request context carries the same Clerk session.
+
+**Why:** The routed browser page and a detached request context can resolve different household views even when both target the same path.
+
+**How to apply:** Assert persisted response shape and tenant isolation through `page.evaluate` fetch after the UI has rendered the authenticated result.

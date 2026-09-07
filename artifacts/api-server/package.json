@@ -12,7 +12,7 @@
     "fixture:budget-review-browser": "../../scripts/node_modules/.bin/tsx src/integration/budget-review-browser-fixture.ts",
     "test:budget-review-browser": "playwright test --config playwright.config.ts src/browser/budget-review-recovery.spec.ts",
     "test:family-office-browser": "playwright test --config playwright.config.ts src/browser/family-office-boundaries.spec.ts",
-    "test:daily-ops-browser": "playwright test --config playwright.config.ts src/browser/daily-ops-certification.spec.ts",
+    "test:daily-ops-browser": "playwright test --config playwright.config.ts src/browser/daily-ops-certification.spec.ts src/browser/guided-run-journal-certification.spec.ts",
     "test": "../../scripts/node_modules/.bin/tsx --test src/domain/*.test.ts src/middleware/*.test.ts src/integration/*.test.ts"
   },
   "dependencies": {

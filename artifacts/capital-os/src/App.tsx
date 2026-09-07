@@ -143,9 +143,13 @@ import {
   useDecideFamilyOfficeProposal,
   useCreateShadowPortfolio,
   useCreateShadowIntent,
+  useGetRealEstateIntelligence,
+  useCreateTaxLienCandidate,
+  getGetRealEstateIntelligenceQueryKey,
   getGetFamilyOfficeQueryKey,
   type FamilyOfficeProposalDecisionInputDecision,
   type ShadowIntentInputDirection,
+  type TaxLienCandidateInput,
 } from '@workspace/api-client-react';
 import { dashboardDataState } from './dashboard-state';
 import {
@@ -174,6 +178,7 @@ import {
   LayoutDashboard,
   Lightbulb,
   LockKeyhole,
+  MapPin,
   Menu,
   MoreHorizontal,
   NotebookPen,
@@ -3044,12 +3049,32 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
   const decide = useDecideFamilyOfficeProposal();
   const createPortfolio = useCreateShadowPortfolio();
   const createIntent = useCreateShadowIntent();
+  const realEstateQuery = useGetRealEstateIntelligence();
+  const createTaxLien = useCreateTaxLienCandidate();
   const [researchDraft, setResearchDraft] = useState({ scope: 'family office intelligence', prompt: '', analyst: 'CIO analyst' });
   const [portfolioDraft, setPortfolioDraft] = useState({ name: '', benchmark: 'SPY', strategy: '' });
   const [intentDraft, setIntentDraft] = useState({ proposalId: '', shadowPortfolioId: '', symbol: '', direction: 'neutral' as ShadowIntentInputDirection, hypotheticalQuantity: '1', hypotheticalNotional: '1000.00', referencePrice: '100', timeHorizon: '12 months' });
+  const [taxLienDraft, setTaxLienDraft] = useState<TaxLienCandidateInput>({
+    jurisdiction: 'Florida',
+    county: '',
+    parcelId: '',
+    certificateNumber: '',
+    propertyAddress: '',
+    sourceKind: 'user_supplied',
+    sourceFreshness: 'unknown',
+    redemptionStatus: 'unknown',
+    liveAvailability: 'unknown',
+    faceAmount: '0.00',
+    estimatedTotalExposure: '0.00',
+    estimatedPropertyValue: '0.00',
+    householdSafeToDeploy: '0.00',
+    requiredReserveFloor: '0.00',
+  });
   const snapshot = query.data;
+  const realEstate = realEstateQuery.data;
   const proposals = snapshot?.proposals ?? [];
   const shadowPortfolios = snapshot?.shadowPortfolios ?? [];
+  const taxLiens = realEstate?.taxLiens ?? [];
   const activeProposal = proposals.find((proposal) => proposal.id === intentDraft.proposalId) ?? proposals[0];
   const activePortfolio = shadowPortfolios.find((portfolio) => portfolio.id === intentDraft.shadowPortfolioId) ?? shadowPortfolios[0];
 
@@ -3058,7 +3083,12 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
     if (activePortfolio && !intentDraft.shadowPortfolioId) setIntentDraft((draft) => ({ ...draft, shadowPortfolioId: activePortfolio.id }));
   }, [activeProposal, activePortfolio, intentDraft.proposalId, intentDraft.shadowPortfolioId]);
 
-  const refresh = async () => { await queryClient.invalidateQueries({ queryKey: getGetFamilyOfficeQueryKey() }); };
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getGetFamilyOfficeQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetRealEstateIntelligenceQueryKey() }),
+    ]);
+  };
   const runResearch = async (event: FormEvent) => {
     event.preventDefault();
     if (!researchDraft.prompt.trim()) return;
@@ -3117,6 +3147,28 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
       onFeedback(error instanceof Error ? error.message : 'The Shadow intent could not be recorded.');
     }
   };
+  const submitTaxLien = async (event: FormEvent) => {
+    event.preventDefault();
+    try {
+      await createTaxLien.mutateAsync({ data: taxLienDraft });
+      setTaxLienDraft((draft) => ({
+        ...draft,
+        county: '',
+        parcelId: '',
+        certificateNumber: '',
+        propertyAddress: '',
+        officialParcelId: undefined,
+        officialCertificateNumber: undefined,
+        redemptionDeadline: undefined,
+        sourceUrl: undefined,
+        notes: undefined,
+      }));
+      await refresh();
+      onFeedback('Florida tax-lien candidate recorded for research. No bid, purchase, or capital commitment was created.');
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : 'The Florida tax-lien candidate could not be recorded.');
+    }
+  };
 
   if (query.isLoading) return <main className="content"><PageHeading eyebrow="Family Office / intelligence" title={<>Research before<br /><em>exposure.</em></>} description="Loading the household-scoped intelligence workspace." /><div className="card card-pad">Reading provider status and advisory records…</div></main>;
   if (query.isError || !snapshot) return <main className="content"><PageHeading eyebrow="Family Office / intelligence" title={<>Research before<br /><em>exposure.</em></>} description="Grok intelligence is subordinate to Capital OS and fails closed when unavailable." /><section className="card card-pad dashboard-data-state unavailable" role="alert"><ShieldAlert size={22} /><h2>Family Office unavailable</h2><p>No advisory records are shown because the household service did not respond.</p><button className="btn btn-primary" onClick={() => { void query.refetch(); }}>Try again</button></section></main>;
@@ -3150,6 +3202,41 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
         <div className="logic-grid">{snapshot.guardrails.map((guardrail) => <div key={guardrail}><span><Lock size={12} /> Guardrail</span><p>{guardrail}</p></div>)}</div>
       </section>
     </section>
+
+     <section className="section-grid page-section">
+       <section className="card card-pad animate-in delay-2">
+         <CardTitle title="Deterministic acquisition desk" subtitle="Capital OS remains authoritative for readiness, buy-box fit, stress, and the Property Capital Governor." action={<ShieldCheck size={17} color="var(--color-protected)" />} />
+         {realEstateQuery.isLoading ? <div className="loading-card">Loading property underwriting…</div> : realEstateQuery.isError || !realEstate ? <div className="dashboard-data-state unavailable"><ShieldAlert size={18} /><span>Property intelligence is unavailable. No candidate is treated as qualified.</span><button className="btn" onClick={() => { void realEstateQuery.refetch(); }}>Retry</button></div> : <><div className="protection-grid"><div><span>Readiness</span><strong>{(realEstate.property.propertyGoal.readiness?.score ?? 0).toFixed(0)} / 100</strong></div><div><span>Buy-box candidates</span><strong>{realEstate.property.candidates.length}</strong></div><div><span>Safe to deploy</span><strong>{realEstate.property.household.safeToDeploy}</strong></div><div><span>Authority</span><strong>Capital OS</strong></div></div><div className="review-list">{realEstate.property.candidates.slice(0, 5).map((candidate) => <div className="review-row" key={candidate.id}><div><strong>{candidate.addressLabel}</strong><span>Buy-box {candidate.buyBoxScore} · deal quality {candidate.dealQualityScore} · {candidate.dataConfidence} confidence</span></div><span className={`status ${candidate.readinessStatus === 'blocked' ? 'pending' : ''}`}>{candidate.readinessStatus || 'not analyzed'}</span></div>)}</div>{realEstate.property.candidates.length === 0 && <div className="empty-state"><Home size={19} /><strong>No property candidates yet</strong><span>Add candidates in the Property underwriting workspace before treating market research as actionable.</span></div>}<div className="safety-inline"><Lock size={14} /> {realEstate.property.nextAction}</div></>}
+       </section>
+       <section className="card card-pad animate-in delay-2">
+         <CardTitle title="Florida tax-lien desk" subtitle="Record source evidence and reconciliation state; this desk cannot bid, purchase, file a deed, or access household capital." action={<MapPin size={17} color="var(--ink-soft)" />} />
+         <form className="account-form" onSubmit={submitTaxLien}>
+           <div className="field"><label>County</label><input required maxLength={120} value={taxLienDraft.county} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, county: event.target.value })} placeholder="Example: Orange" /></div>
+           <div className="field"><label>Property address</label><input required maxLength={240} value={taxLienDraft.propertyAddress} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, propertyAddress: event.target.value })} /></div>
+           <div className="field"><label>Parcel ID</label><input required maxLength={160} value={taxLienDraft.parcelId} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, parcelId: event.target.value })} /></div>
+           <div className="field"><label>Certificate number</label><input required maxLength={120} value={taxLienDraft.certificateNumber} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, certificateNumber: event.target.value })} /></div>
+           <div className="field"><label>Official parcel ID <span style={{ textTransform:'none', letterSpacing:0 }}>(optional)</span></label><input maxLength={160} value={taxLienDraft.officialParcelId ?? ''} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, officialParcelId: event.target.value || undefined })} /></div>
+           <div className="field"><label>Official certificate <span style={{ textTransform:'none', letterSpacing:0 }}>(optional)</span></label><input maxLength={120} value={taxLienDraft.officialCertificateNumber ?? ''} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, officialCertificateNumber: event.target.value || undefined })} /></div>
+           <div className="field"><label>Source kind</label><select value={taxLienDraft.sourceKind} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, sourceKind: event.target.value as TaxLienCandidateInput['sourceKind'] })}><option value="user_supplied">User supplied</option><option value="official_county">Official county</option><option value="official_state">Official state</option><option value="licensed_provider">Licensed provider</option><option value="model_inference">Model inference</option></select></div>
+           <div className="field"><label>Source freshness</label><select value={taxLienDraft.sourceFreshness} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, sourceFreshness: event.target.value as TaxLienCandidateInput['sourceFreshness'] })}><option value="unknown">Unknown</option><option value="current">Current</option><option value="stale">Stale</option></select></div>
+           <div className="field"><label>Redemption status</label><select value={taxLienDraft.redemptionStatus} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, redemptionStatus: event.target.value as TaxLienCandidateInput['redemptionStatus'] })}><option value="unknown">Unknown</option><option value="open">Open</option><option value="closed">Closed</option><option value="disputed">Disputed</option></select></div>
+           <div className="field"><label>Live availability</label><select value={taxLienDraft.liveAvailability} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, liveAvailability: event.target.value as TaxLienCandidateInput['liveAvailability'] })}><option value="unknown">Unknown</option><option value="verified">Verified</option><option value="stale">Stale</option><option value="unavailable">Unavailable</option></select></div>
+           <div className="field"><label>Face amount</label><input required inputMode="decimal" value={taxLienDraft.faceAmount} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, faceAmount: event.target.value })} /></div>
+           <div className="field"><label>Estimated total exposure</label><input required inputMode="decimal" value={taxLienDraft.estimatedTotalExposure} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, estimatedTotalExposure: event.target.value })} /></div>
+           <div className="field"><label>Estimated property value</label><input required inputMode="decimal" value={taxLienDraft.estimatedPropertyValue} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, estimatedPropertyValue: event.target.value })} /></div>
+           <div className="field"><label>Household safe to deploy</label><input required inputMode="decimal" value={taxLienDraft.householdSafeToDeploy} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, householdSafeToDeploy: event.target.value })} /></div>
+           <div className="field"><label>Required reserve floor</label><input required inputMode="decimal" value={taxLienDraft.requiredReserveFloor} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, requiredReserveFloor: event.target.value })} /></div>
+           <div className="field"><label>Source URL <span style={{ textTransform:'none', letterSpacing:0 }}>(optional)</span></label><input maxLength={2000} value={taxLienDraft.sourceUrl ?? ''} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, sourceUrl: event.target.value || undefined })} placeholder="County or state record link" /></div>
+           <div className="field" style={{ gridColumn: '1 / -1' }}><label>Research note <span style={{ textTransform:'none', letterSpacing:0 }}>(optional)</span></label><textarea maxLength={2000} rows={3} value={taxLienDraft.notes ?? ''} onChange={(event) => setTaxLienDraft({ ...taxLienDraft, notes: event.target.value || undefined })} /></div>
+           <button className="btn btn-primary" type="submit" disabled={createTaxLien.isPending}>{createTaxLien.isPending ? 'Recording…' : 'Record research candidate'}</button>
+         </form>
+       </section>
+     </section>
+
+     <section className="card card-pad page-section animate-in delay-3">
+       <CardTitle title="Tax-lien review queue" subtitle={`${taxLiens.length} Florida candidate${taxLiens.length === 1 ? '' : 's'} · clean evidence is still human review required`} action={<span className="mono-label">{realEstate?.summary.blockedTaxLienCount ?? 0} blocked</span>} />
+       {taxLiens.length === 0 ? <div className="empty-state"><MapPin size={19} /><strong>No tax-lien candidates</strong><span>Record a county or state source above to begin an auditable research queue.</span></div> : <div className="journal-list">{taxLiens.map((candidate) => <article key={candidate.id}><div className="journal-date"><span className={`status ${candidate.reviewStatus === 'blocked' ? 'pending' : ''}`}>{candidate.reviewStatus}</span><br />{new Date(candidate.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div><div><div className="card-title-row"><div><h3>{candidate.county} · certificate {candidate.certificateNumber}</h3><span className="intelligence-confidence">{candidate.propertyAddress} · {candidate.sourceKind} · {candidate.sourceFreshness}</span></div><span className="status">No bid authority</span></div><div className="logic-grid"><div><span>Identity</span><p>{candidate.reconciliationStatus}</p></div><div><span>Reserve</span><p>{candidate.reserveStatus} · exposure {candidate.estimatedTotalExposure}</p></div><div><span>Redemption</span><p>{candidate.redemptionStatus} · availability {candidate.liveAvailability}</p></div></div>{candidate.hardStops.length > 0 && <div className="safety-inline"><ShieldAlert size={14} /> {candidate.hardStops.join(' ')}</div>}</div></article>)}</div>}
+     </section>
 
     <section className="card card-pad page-section animate-in delay-3">
       <CardTitle title="Analyst proposals" subtitle={`${proposals.length} household-scoped proposal${proposals.length === 1 ? '' : 's'} · facts and uncertainty remain visible`} action={<span className="mono-label">Human review required</span>} />

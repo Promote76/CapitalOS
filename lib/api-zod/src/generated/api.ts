@@ -2476,6 +2476,179 @@ export const GetFamilyOfficeResponse = zod.object({
 
 
 /**
+ * @summary Get deterministic real-estate underwriting and Florida tax-lien research
+ */
+export const GetRealEstateIntelligenceResponse = zod.object({
+  "property": zod.object({
+  "propertyGoal": zod.object({
+  "id": zod.string().optional(),
+  "name": zod.string().optional(),
+  "targetMarket": zod.string().optional(),
+  "targetBudget": zod.string().optional(),
+  "targetCashToClose": zod.string().optional(),
+  "targetDate": zod.string().optional(),
+  "readiness": zod.object({
+  "score": zod.number().optional(),
+  "status": zod.string().optional(),
+  "nextAction": zod.string().optional()
+}).optional()
+}),
+  "buyBox": zod.object({
+  "id": zod.string(),
+  "householdId": zod.string(),
+  "propertyType": zod.string(),
+  "ownerOccupied": zod.boolean(),
+  "purchasePriceMinimum": zod.string(),
+  "purchasePriceMaximum": zod.string(),
+  "targetCashToClose": zod.string(),
+  "minimumBedroomsPerUnit": zod.string(),
+  "minimumBathroomsPerUnit": zod.string(),
+  "minimumEstimatedRent": zod.string(),
+  "maximumEstimatedRehabilitation": zod.string(),
+  "minimumCashFlow": zod.string(),
+  "maximumMonthlyHousingCost": zod.string(),
+  "minimumDscrEstimate": zod.string(),
+  "minimumPropertyCondition": zod.string(),
+  "targetMarkets": zod.array(zod.string()),
+  "excludedMarkets": zod.array(zod.string()),
+  "minimumReadinessScore": zod.string()
+}),
+  "candidates": zod.array(zod.object({
+  "id": zod.string(),
+  "propertyGoalId": zod.string(),
+  "addressLabel": zod.string(),
+  "propertyType": zod.string(),
+  "units": zod.string(),
+  "bedrooms": zod.string(),
+  "askingPrice": zod.string(),
+  "estimatedRent": zod.string(),
+  "repairs": zod.string(),
+  "status": zod.string(),
+  "buyBoxScore": zod.string(),
+  "dealQualityScore": zod.string(),
+  "dataConfidence": zod.string(),
+  "readinessStatus": zod.string().optional(),
+  "nextAction": zod.string().optional()
+})),
+  "financingScenarios": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "name": zod.string().optional(),
+  "loanType": zod.string().optional(),
+  "purchasePrice": zod.string().optional(),
+  "loanAmount": zod.string().optional(),
+  "estimatedMonthlyHousingCost": zod.string().optional()
+})),
+  "cashToClose": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "propertyCandidateId": zod.string().optional(),
+  "estimatedCashToClose": zod.string().optional()
+})),
+  "stressTests": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "propertyCandidateId": zod.string().optional(),
+  "name": zod.string().optional(),
+  "monthlyCashFlow": zod.string().optional(),
+  "emergencyReserveRemaining": zod.string().optional(),
+  "result": zod.string().optional()
+})),
+  "preapprovals": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "provider": zod.string().optional(),
+  "status": zod.string().optional(),
+  "estimatedMaximumPurchasePrice": zod.string().optional(),
+  "estimatedRate": zod.string().optional(),
+  "estimatedCashRequired": zod.string().optional(),
+  "expiration": zod.string().optional(),
+  "documentsNeeded": zod.string().optional(),
+  "notes": zod.string().optional()
+})),
+  "markets": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "name": zod.string().optional(),
+  "score": zod.string().optional(),
+  "medianPrice": zod.string().optional(),
+  "rentYield": zod.string().optional(),
+  "notes": zod.string().optional()
+})),
+  "documents": zod.array(zod.object({
+  "id": zod.string().optional(),
+  "name": zod.string().optional(),
+  "storagePath": zod.string().optional(),
+  "metadata": zod.object({
+  "status": zod.string().optional(),
+  "private": zod.boolean().optional(),
+  "description": zod.string().optional()
+}).optional()
+})),
+  "milestones": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "status": zod.string(),
+  "progress": zod.number(),
+  "target": zod.string(),
+  "currentState": zod.string(),
+  "nextAction": zod.string(),
+  "dueDate": zod.coerce.date().nullish()
+})),
+  "nextAction": zod.string(),
+  "dataConfidence": zod.number(),
+  "household": zod.object({
+  "emergencyReserve": zod.string().optional(),
+  "emergencyReserveMonths": zod.number().optional(),
+  "freeCashFlow": zod.string().optional(),
+  "safeToDeploy": zod.string().optional()
+})
+}).and(zod.object({
+  "authority": zod.string().optional(),
+  "advisoryOnly": zod.boolean().optional(),
+  "purchaseAuthorized": zod.boolean().optional(),
+  "capitalCommitmentAuthorized": zod.boolean().optional()
+})),
+  "taxLiens": zod.array(zod.object({
+  "id": zod.string(),
+  "jurisdiction": zod.string(),
+  "county": zod.string(),
+  "parcelId": zod.string(),
+  "certificateNumber": zod.string(),
+  "propertyAddress": zod.string(),
+  "sourceKind": zod.string(),
+  "sourceUrl": zod.string().nullable(),
+  "sourceRetrievedAt": zod.coerce.date().nullable(),
+  "sourceFreshness": zod.string(),
+  "officialParcelId": zod.string().nullable(),
+  "officialCertificateNumber": zod.string().nullable(),
+  "redemptionStatus": zod.string(),
+  "redemptionDeadline": zod.string().nullable(),
+  "liveAvailability": zod.string(),
+  "availabilityCheckedAt": zod.coerce.date().nullable(),
+  "faceAmount": zod.string(),
+  "estimatedTotalExposure": zod.string(),
+  "estimatedPropertyValue": zod.string(),
+  "householdSafeToDeploy": zod.string(),
+  "requiredReserveFloor": zod.string(),
+  "reconciliationStatus": zod.string(),
+  "reserveStatus": zod.string(),
+  "reviewStatus": zod.string(),
+  "hardStops": zod.array(zod.string()),
+  "notes": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "advisoryOnly": zod.boolean(),
+  "purchaseAuthorized": zod.boolean(),
+  "bidAuthorized": zod.boolean()
+})),
+  "guardrails": zod.array(zod.string()),
+  "summary": zod.object({
+  "taxLienCount": zod.number(),
+  "blockedTaxLienCount": zod.number(),
+  "purchaseAuthorized": zod.boolean(),
+  "biddingAuthorized": zod.boolean(),
+  "householdCapitalAccessible": zod.boolean()
+})
+})
+
+
+/**
  * @summary Run advisory Family Office research
  */
 export const createFamilyOfficeResearchBodyAnalystMax = 80;
@@ -2633,6 +2806,93 @@ export const CreateShadowIntentResponse = zod.object({
   "status": zod.string(),
   "advisoryOnly": zod.boolean(),
   "transmitted": zod.boolean()
+})
+
+
+/**
+ * @summary Record a Florida tax-lien research candidate without authorizing a purchase
+ */
+export const createTaxLienCandidateBodyCountyMax = 120;
+
+export const createTaxLienCandidateBodyParcelIdMax = 160;
+
+export const createTaxLienCandidateBodyCertificateNumberMax = 120;
+
+export const createTaxLienCandidateBodyPropertyAddressMax = 240;
+
+export const createTaxLienCandidateBodySourceUrlMax = 2000;
+
+export const createTaxLienCandidateBodyOfficialParcelIdMax = 160;
+
+export const createTaxLienCandidateBodyOfficialCertificateNumberMax = 120;
+
+export const createTaxLienCandidateBodyRedemptionDeadlineMax = 80;
+
+export const createTaxLienCandidateBodyFaceAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createTaxLienCandidateBodyEstimatedTotalExposureRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createTaxLienCandidateBodyEstimatedPropertyValueRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createTaxLienCandidateBodyHouseholdSafeToDeployRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createTaxLienCandidateBodyRequiredReserveFloorRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createTaxLienCandidateBodyNotesMax = 2000;
+
+
+
+export const CreateTaxLienCandidateBody = zod.object({
+  "jurisdiction": zod.enum(['Florida']),
+  "county": zod.string().min(1).max(createTaxLienCandidateBodyCountyMax),
+  "parcelId": zod.string().min(1).max(createTaxLienCandidateBodyParcelIdMax),
+  "certificateNumber": zod.string().min(1).max(createTaxLienCandidateBodyCertificateNumberMax),
+  "propertyAddress": zod.string().min(1).max(createTaxLienCandidateBodyPropertyAddressMax),
+  "sourceKind": zod.enum(['official_county', 'official_state', 'licensed_provider', 'user_supplied', 'model_inference']),
+  "sourceUrl": zod.string().max(createTaxLienCandidateBodySourceUrlMax).optional(),
+  "sourceRetrievedAt": zod.coerce.date().optional(),
+  "sourceFreshness": zod.enum(['current', 'stale', 'unknown']),
+  "officialParcelId": zod.string().max(createTaxLienCandidateBodyOfficialParcelIdMax).optional(),
+  "officialCertificateNumber": zod.string().max(createTaxLienCandidateBodyOfficialCertificateNumberMax).optional(),
+  "redemptionStatus": zod.enum(['unknown', 'open', 'closed', 'disputed']),
+  "redemptionDeadline": zod.string().max(createTaxLienCandidateBodyRedemptionDeadlineMax).optional(),
+  "liveAvailability": zod.enum(['unknown', 'stale', 'verified', 'unavailable']),
+  "availabilityCheckedAt": zod.coerce.date().optional(),
+  "faceAmount": zod.string().regex(createTaxLienCandidateBodyFaceAmountRegExp),
+  "estimatedTotalExposure": zod.string().regex(createTaxLienCandidateBodyEstimatedTotalExposureRegExp),
+  "estimatedPropertyValue": zod.string().regex(createTaxLienCandidateBodyEstimatedPropertyValueRegExp),
+  "householdSafeToDeploy": zod.string().regex(createTaxLienCandidateBodyHouseholdSafeToDeployRegExp),
+  "requiredReserveFloor": zod.string().regex(createTaxLienCandidateBodyRequiredReserveFloorRegExp),
+  "notes": zod.string().max(createTaxLienCandidateBodyNotesMax).optional()
+})
+
+export const CreateTaxLienCandidateResponse = zod.object({
+  "id": zod.string(),
+  "jurisdiction": zod.string(),
+  "county": zod.string(),
+  "parcelId": zod.string(),
+  "certificateNumber": zod.string(),
+  "propertyAddress": zod.string(),
+  "sourceKind": zod.string(),
+  "sourceUrl": zod.string().nullable(),
+  "sourceRetrievedAt": zod.coerce.date().nullable(),
+  "sourceFreshness": zod.string(),
+  "officialParcelId": zod.string().nullable(),
+  "officialCertificateNumber": zod.string().nullable(),
+  "redemptionStatus": zod.string(),
+  "redemptionDeadline": zod.string().nullable(),
+  "liveAvailability": zod.string(),
+  "availabilityCheckedAt": zod.coerce.date().nullable(),
+  "faceAmount": zod.string(),
+  "estimatedTotalExposure": zod.string(),
+  "estimatedPropertyValue": zod.string(),
+  "householdSafeToDeploy": zod.string(),
+  "requiredReserveFloor": zod.string(),
+  "reconciliationStatus": zod.string(),
+  "reserveStatus": zod.string(),
+  "reviewStatus": zod.string(),
+  "hardStops": zod.array(zod.string()),
+  "notes": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "advisoryOnly": zod.boolean(),
+  "purchaseAuthorized": zod.boolean(),
+  "bidAuthorized": zod.boolean()
 })
 
 

@@ -169,6 +169,7 @@ import type {
   PropertyUnderwriting,
   ProviderWebhookPayload,
   ReadOnlyBankConnectionInput,
+  RealEstateIntelligence,
   ReceiveReadOnlyBankWebhook202,
   RecommendationDecisionInput,
   RecommendationFeedback,
@@ -192,6 +193,8 @@ import type {
   StrategyPromotionInput,
   StrategySummary,
   StrategyVersionCreated,
+  TaxLienCandidate,
+  TaxLienCandidateInput,
   TransactionReviewInput,
   TransactionReviewQueue,
   TransactionSummary,
@@ -5393,6 +5396,83 @@ export function useGetFamilyOffice<TData = Awaited<ReturnType<typeof getFamilyOf
 
 
 
+export const getGetRealEstateIntelligenceUrl = () => {
+
+
+
+
+  return `/api/family-office/real-estate`
+}
+
+/**
+ * @summary Get deterministic real-estate underwriting and Florida tax-lien research
+ */
+export const getRealEstateIntelligence = async ( options?: Parameters<typeof customFetch>[1]): Promise<RealEstateIntelligence> => {
+
+  return customFetch<RealEstateIntelligence>(getGetRealEstateIntelligenceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRealEstateIntelligenceQueryKey = () => {
+    return [
+    `/api/family-office/real-estate`
+    ] as const;
+    }
+
+
+export const getGetRealEstateIntelligenceQueryOptions = <TData = Awaited<ReturnType<typeof getRealEstateIntelligence>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRealEstateIntelligence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRealEstateIntelligenceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRealEstateIntelligence>>> = ({ signal }) => getRealEstateIntelligence({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRealEstateIntelligence>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRealEstateIntelligenceQueryResult = NonNullable<Awaited<ReturnType<typeof getRealEstateIntelligence>>>
+export type GetRealEstateIntelligenceQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get deterministic real-estate underwriting and Florida tax-lien research
+ */
+
+export function useGetRealEstateIntelligence<TData = Awaited<ReturnType<typeof getRealEstateIntelligence>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRealEstateIntelligence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRealEstateIntelligenceQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getCreateFamilyOfficeResearchUrl = () => {
 
 
@@ -5676,6 +5756,77 @@ export const useCreateShadowIntent = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateShadowIntentMutationOptions(options));
+    }
+
+export const getCreateTaxLienCandidateUrl = () => {
+
+
+
+
+  return `/api/family-office/tax-liens`
+}
+
+/**
+ * @summary Record a Florida tax-lien research candidate without authorizing a purchase
+ */
+export const createTaxLienCandidate = async (taxLienCandidateInput: TaxLienCandidateInput, options?: Parameters<typeof customFetch>[1]): Promise<TaxLienCandidate> => {
+
+  return customFetch<TaxLienCandidate>(getCreateTaxLienCandidateUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(taxLienCandidateInput)
+  }
+);}
+
+
+
+
+
+export const getCreateTaxLienCandidateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTaxLienCandidate>>, TError,{data: BodyType<TaxLienCandidateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTaxLienCandidate>>, TError,{data: BodyType<TaxLienCandidateInput>}, TContext> => {
+
+const mutationKey = ['createTaxLienCandidate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTaxLienCandidate>>, {data: BodyType<TaxLienCandidateInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createTaxLienCandidate(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTaxLienCandidateMutationResult = NonNullable<Awaited<ReturnType<typeof createTaxLienCandidate>>>
+    export type CreateTaxLienCandidateMutationBody = BodyType<TaxLienCandidateInput>
+    export type CreateTaxLienCandidateMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Record a Florida tax-lien research candidate without authorizing a purchase
+ */
+export const useCreateTaxLienCandidate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTaxLienCandidate>>, TError,{data: BodyType<TaxLienCandidateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createTaxLienCandidate>>,
+        TError,
+        {data: BodyType<TaxLienCandidateInput>},
+        TContext
+      > => {
+      return useMutation(getCreateTaxLienCandidateMutationOptions(options));
     }
 
 export const getListAuditEventsUrl = () => {

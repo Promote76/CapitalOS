@@ -7,15 +7,19 @@ import {
   familyOfficeRuns,
   shadowOrderIntents,
   shadowPortfolios,
+  taxLienCandidates,
 } from "@workspace/db";
 import { assertPermission, GovernanceError } from "../domain/governance";
+import { parseMoneyToCents } from "../domain/finance";
 import {
   assertShadowOnlyDecision,
   familyOfficeProviderStatus,
   shadowGuardrails,
   type ResearchOutput,
 } from "../domain/family-office";
+import { assessTaxLienCandidate, realEstateGuardrails } from "../domain/real-estate-intelligence";
 import { ProviderUnavailableError, XaiIntelligenceProvider } from "./family-office-provider";
+import { getPropertyUnderwriting } from "./property-underwriting";
 import type { Actor } from "./capital-os";
 
 type ResearchInput = { analyst?: string; scope: string; prompt: string };
@@ -106,6 +110,68 @@ export async function getFamilyOfficeSnapshot(actor: Actor) {
       realOrdersSent: 0,
       moneyMovedCents: 0,
       shadowOnly: true,
+    },
+  };
+}
+
+function taxLienView(candidate: typeof taxLienCandidates.$inferSelect) {
+  return {
+    id: candidate.id,
+    jurisdiction: candidate.jurisdiction,
+    county: candidate.county,
+    parcelId: candidate.parcelId,
+    certificateNumber: candidate.certificateNumber,
+    propertyAddress: candidate.propertyAddress,
+    sourceKind: candidate.sourceKind,
+    sourceUrl: candidate.sourceUrl,
+    sourceRetrievedAt: candidate.sourceRetrievedAt,
+    sourceFreshness: candidate.sourceFreshness,
+    officialParcelId: candidate.officialParcelId,
+    officialCertificateNumber: candidate.officialCertificateNumber,
+    redemptionStatus: candidate.redemptionStatus,
+    redemptionDeadline: candidate.redemptionDeadline,
+    liveAvailability: candidate.liveAvailability,
+    availabilityCheckedAt: candidate.availabilityCheckedAt,
+    faceAmount: candidate.faceAmount,
+    estimatedTotalExposure: candidate.estimatedTotalExposure,
+    estimatedPropertyValue: candidate.estimatedPropertyValue,
+    householdSafeToDeploy: candidate.householdSafeToDeploy,
+    requiredReserveFloor: candidate.requiredReserveFloor,
+    reconciliationStatus: candidate.reconciliationStatus,
+    reserveStatus: candidate.reserveStatus,
+    reviewStatus: candidate.reviewStatus,
+    hardStops: candidate.hardStops,
+    notes: candidate.notes,
+    createdAt: candidate.createdAt,
+    updatedAt: candidate.updatedAt,
+    advisoryOnly: true,
+    purchaseAuthorized: false,
+    bidAuthorized: false,
+  };
+}
+
+export async function getRealEstateIntelligence(actor: Actor) {
+  assertPermission(actor.role, "read");
+  const [property, taxLiens] = await Promise.all([
+    getPropertyUnderwriting(actor),
+    db.select().from(taxLienCandidates).where(eq(taxLienCandidates.householdId, actor.householdId)).orderBy(desc(taxLienCandidates.updatedAt)).limit(50),
+  ]);
+  return {
+    property: {
+      ...property,
+      authority: "deterministic_capital_os",
+      advisoryOnly: true,
+      purchaseAuthorized: false,
+      capitalCommitmentAuthorized: false,
+    },
+    taxLiens: taxLiens.map(taxLienView),
+    guardrails: realEstateGuardrails(),
+    summary: {
+      taxLienCount: taxLiens.length,
+      blockedTaxLienCount: taxLiens.filter((candidate) => candidate.reviewStatus === "blocked").length,
+      purchaseAuthorized: false,
+      biddingAuthorized: false,
+      householdCapitalAccessible: false,
     },
   };
 }
@@ -275,4 +341,93 @@ export async function createShadowOrderIntent(actor: Actor, input: {
     advisoryOnly: true,
     transmitted: false,
   };
+}
+
+export type TaxLienCandidateInput = {
+  jurisdiction: string;
+  county: string;
+  parcelId: string;
+  certificateNumber: string;
+  propertyAddress: string;
+  sourceKind: string;
+  sourceUrl?: string;
+  sourceRetrievedAt?: string | Date;
+  sourceFreshness: string;
+  officialParcelId?: string;
+  officialCertificateNumber?: string;
+  redemptionStatus: string;
+  redemptionDeadline?: string;
+  liveAvailability: string;
+  availabilityCheckedAt?: string | Date;
+  faceAmount: string;
+  estimatedTotalExposure: string;
+  estimatedPropertyValue: string;
+  householdSafeToDeploy: string;
+  requiredReserveFloor: string;
+  notes?: string;
+};
+
+export async function createTaxLienCandidate(actor: Actor, input: TaxLienCandidateInput) {
+  assertPermission(actor.role, "manage_risk");
+  if (input.jurisdiction.trim().toLowerCase() !== "florida") {
+    throw new GovernanceError("INVALID_STATE", "This desk currently supports Florida tax-lien research only");
+  }
+  const assessment = assessTaxLienCandidate({
+    sourceKind: input.sourceKind,
+    parcelId: input.parcelId,
+    officialParcelId: input.officialParcelId,
+    certificateNumber: input.certificateNumber,
+    officialCertificateNumber: input.officialCertificateNumber,
+    redemptionStatus: input.redemptionStatus,
+    liveAvailability: input.liveAvailability,
+    sourceFreshness: input.sourceFreshness,
+    estimatedTotalExposureCents: parseMoneyToCents(input.estimatedTotalExposure),
+    householdSafeToDeployCents: parseMoneyToCents(input.householdSafeToDeploy),
+    requiredReserveFloorCents: parseMoneyToCents(input.requiredReserveFloor),
+    estimatedPropertyValueCents: parseMoneyToCents(input.estimatedPropertyValue),
+  });
+  const toTimestamp = (value?: string | Date) => value ? (value instanceof Date ? value : new Date(value)) : null;
+  const [candidate] = await db.insert(taxLienCandidates).values({
+    householdId: actor.householdId,
+    jurisdiction: "Florida",
+    county: input.county.trim(),
+    parcelId: input.parcelId.trim(),
+    certificateNumber: input.certificateNumber.trim(),
+    propertyAddress: input.propertyAddress.trim(),
+    sourceKind: input.sourceKind,
+    sourceUrl: input.sourceUrl?.trim() || null,
+    sourceRetrievedAt: toTimestamp(input.sourceRetrievedAt),
+    sourceFreshness: input.sourceFreshness,
+    officialParcelId: input.officialParcelId?.trim() || null,
+    officialCertificateNumber: input.officialCertificateNumber?.trim() || null,
+    redemptionStatus: input.redemptionStatus,
+    redemptionDeadline: input.redemptionDeadline?.trim() || null,
+    liveAvailability: input.liveAvailability,
+    availabilityCheckedAt: toTimestamp(input.availabilityCheckedAt),
+    faceAmount: input.faceAmount,
+    estimatedTotalExposure: input.estimatedTotalExposure,
+    estimatedPropertyValue: input.estimatedPropertyValue,
+    householdSafeToDeploy: input.householdSafeToDeploy,
+    requiredReserveFloor: input.requiredReserveFloor,
+    reconciliationStatus: assessment.reconciliationStatus,
+    reserveStatus: assessment.reserveStatus,
+    reviewStatus: assessment.reviewStatus,
+    hardStops: assessment.hardStops,
+    notes: input.notes?.trim() || null,
+  }).returning();
+  await db.insert(auditEvents).values({
+    householdId: actor.householdId,
+    eventType: "family_office_tax_lien_recorded",
+    actor: actor.userId,
+    entity: "tax_lien_candidate",
+    entityId: candidate.id,
+    reason: "Florida tax-lien candidate recorded for research; no bid, purchase, or capital commitment was created.",
+    metadata: {
+      advisoryOnly: true,
+      purchaseAuthorized: false,
+      biddingAuthorized: false,
+      hardStopCount: assessment.hardStops.length,
+    },
+  });
+  return taxLienView(candidate);
 }

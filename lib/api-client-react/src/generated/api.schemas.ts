@@ -2027,6 +2027,166 @@ export interface FamilyOfficeResearchResult {
   advisoryOnly: boolean;
 }
 
+export type TaxLienCandidateInputJurisdiction = typeof TaxLienCandidateInputJurisdiction[keyof typeof TaxLienCandidateInputJurisdiction];
+
+
+export const TaxLienCandidateInputJurisdiction = {
+  Florida: 'Florida',
+} as const;
+
+export type TaxLienCandidateInputSourceKind = typeof TaxLienCandidateInputSourceKind[keyof typeof TaxLienCandidateInputSourceKind];
+
+
+export const TaxLienCandidateInputSourceKind = {
+  official_county: 'official_county',
+  official_state: 'official_state',
+  licensed_provider: 'licensed_provider',
+  user_supplied: 'user_supplied',
+  model_inference: 'model_inference',
+} as const;
+
+export type TaxLienCandidateInputSourceFreshness = typeof TaxLienCandidateInputSourceFreshness[keyof typeof TaxLienCandidateInputSourceFreshness];
+
+
+export const TaxLienCandidateInputSourceFreshness = {
+  current: 'current',
+  stale: 'stale',
+  unknown: 'unknown',
+} as const;
+
+export type TaxLienCandidateInputRedemptionStatus = typeof TaxLienCandidateInputRedemptionStatus[keyof typeof TaxLienCandidateInputRedemptionStatus];
+
+
+export const TaxLienCandidateInputRedemptionStatus = {
+  unknown: 'unknown',
+  open: 'open',
+  closed: 'closed',
+  disputed: 'disputed',
+} as const;
+
+export type TaxLienCandidateInputLiveAvailability = typeof TaxLienCandidateInputLiveAvailability[keyof typeof TaxLienCandidateInputLiveAvailability];
+
+
+export const TaxLienCandidateInputLiveAvailability = {
+  unknown: 'unknown',
+  stale: 'stale',
+  verified: 'verified',
+  unavailable: 'unavailable',
+} as const;
+
+export interface TaxLienCandidateInput {
+  jurisdiction: TaxLienCandidateInputJurisdiction;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  county: string;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  parcelId: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  certificateNumber: string;
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  propertyAddress: string;
+  sourceKind: TaxLienCandidateInputSourceKind;
+  /** @maxLength 2000 */
+  sourceUrl?: string;
+  sourceRetrievedAt?: string;
+  sourceFreshness: TaxLienCandidateInputSourceFreshness;
+  /** @maxLength 160 */
+  officialParcelId?: string;
+  /** @maxLength 120 */
+  officialCertificateNumber?: string;
+  redemptionStatus: TaxLienCandidateInputRedemptionStatus;
+  /** @maxLength 80 */
+  redemptionDeadline?: string;
+  liveAvailability: TaxLienCandidateInputLiveAvailability;
+  availabilityCheckedAt?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  faceAmount: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  estimatedTotalExposure: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  estimatedPropertyValue: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  householdSafeToDeploy: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  requiredReserveFloor: string;
+  /** @maxLength 2000 */
+  notes?: string;
+}
+
+export interface TaxLienCandidate {
+  id: string;
+  jurisdiction: string;
+  county: string;
+  parcelId: string;
+  certificateNumber: string;
+  propertyAddress: string;
+  sourceKind: string;
+  /** @nullable */
+  sourceUrl: string | null;
+  /** @nullable */
+  sourceRetrievedAt: string | null;
+  sourceFreshness: string;
+  /** @nullable */
+  officialParcelId: string | null;
+  /** @nullable */
+  officialCertificateNumber: string | null;
+  redemptionStatus: string;
+  /** @nullable */
+  redemptionDeadline: string | null;
+  liveAvailability: string;
+  /** @nullable */
+  availabilityCheckedAt: string | null;
+  faceAmount: string;
+  estimatedTotalExposure: string;
+  estimatedPropertyValue: string;
+  householdSafeToDeploy: string;
+  requiredReserveFloor: string;
+  reconciliationStatus: string;
+  reserveStatus: string;
+  reviewStatus: string;
+  hardStops: string[];
+  /** @nullable */
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  advisoryOnly: boolean;
+  purchaseAuthorized: boolean;
+  bidAuthorized: boolean;
+}
+
+export type RealEstateIntelligenceProperty = PropertyUnderwriting & {
+  authority?: string;
+  advisoryOnly?: boolean;
+  purchaseAuthorized?: boolean;
+  capitalCommitmentAuthorized?: boolean;
+};
+
+export type RealEstateIntelligenceSummary = {
+  taxLienCount: number;
+  blockedTaxLienCount: number;
+  purchaseAuthorized: boolean;
+  biddingAuthorized: boolean;
+  householdCapitalAccessible: boolean;
+};
+
+export interface RealEstateIntelligence {
+  property: RealEstateIntelligenceProperty;
+  taxLiens: TaxLienCandidate[];
+  guardrails: string[];
+  summary: RealEstateIntelligenceSummary;
+}
+
 export interface IntelligenceScenarioInput {
   /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   proposedWeekly: string;

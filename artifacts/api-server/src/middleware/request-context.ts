@@ -37,7 +37,8 @@ function requiresRecentAuthentication(req: Request) {
     /^\/budget-planning-periods\/[0-9a-fA-F-]{36}\/(approve|close)$/.test(path) ||
     path.startsWith("/financing") ||
     path.startsWith("/family-office/proposals/") ||
-    path.startsWith("/family-office/shadow/");
+    path.startsWith("/family-office/shadow/") ||
+    path.startsWith("/family-office/tax-liens");
 }
 
 export type ResolvedClerkIdentity = {

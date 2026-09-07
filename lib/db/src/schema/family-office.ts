@@ -123,8 +123,49 @@ export const shadowOrderIntents = pgTable(
   }),
 );
 
+export const taxLienCandidates = pgTable(
+  "tax_lien_candidates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    jurisdiction: text("jurisdiction").notNull().default("Florida"),
+    county: text("county").notNull(),
+    parcelId: text("parcel_id").notNull(),
+    certificateNumber: text("certificate_number").notNull(),
+    propertyAddress: text("property_address").notNull(),
+    sourceKind: text("source_kind").notNull().default("user_supplied"),
+    sourceUrl: text("source_url"),
+    sourceRetrievedAt: timestamp("source_retrieved_at", { withTimezone: true }),
+    sourceFreshness: text("source_freshness").notNull().default("unknown"),
+    officialParcelId: text("official_parcel_id"),
+    officialCertificateNumber: text("official_certificate_number"),
+    redemptionStatus: text("redemption_status").notNull().default("unknown"),
+    redemptionDeadline: text("redemption_deadline"),
+    liveAvailability: text("live_availability").notNull().default("unknown"),
+    availabilityCheckedAt: timestamp("availability_checked_at", { withTimezone: true }),
+    faceAmount: numeric("face_amount", { precision: 18, scale: 2 }).notNull().default("0"),
+    estimatedTotalExposure: numeric("estimated_total_exposure", { precision: 18, scale: 2 }).notNull().default("0"),
+    estimatedPropertyValue: numeric("estimated_property_value", { precision: 18, scale: 2 }).notNull().default("0"),
+    householdSafeToDeploy: numeric("household_safe_to_deploy", { precision: 18, scale: 2 }).notNull().default("0"),
+    requiredReserveFloor: numeric("required_reserve_floor", { precision: 18, scale: 2 }).notNull().default("0"),
+    reconciliationStatus: text("reconciliation_status").notNull().default("unresolved"),
+    reserveStatus: text("reserve_status").notNull().default("unknown"),
+    reviewStatus: text("review_status").notNull().default("research"),
+    hardStops: jsonb("hard_stops").$type<string[]>().notNull().default([]),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    householdIdx: index("tax_lien_candidates_household_idx").on(table.householdId),
+    countyIdx: index("tax_lien_candidates_county_idx").on(table.county),
+    statusIdx: index("tax_lien_candidates_status_idx").on(table.reviewStatus),
+  }),
+);
+
 export type FamilyOfficeRun = typeof familyOfficeRuns.$inferSelect;
 export type FamilyOfficeEvidence = typeof familyOfficeEvidence.$inferSelect;
 export type FamilyOfficeProposal = typeof familyOfficeProposals.$inferSelect;
 export type ShadowPortfolio = typeof shadowPortfolios.$inferSelect;
 export type ShadowOrderIntent = typeof shadowOrderIntents.$inferSelect;
+export type TaxLienCandidate = typeof taxLienCandidates.$inferSelect;

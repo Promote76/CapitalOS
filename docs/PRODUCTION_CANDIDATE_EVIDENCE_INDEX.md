@@ -2,7 +2,7 @@
 
 **Evidence date:** 2026-09-06
 **Decision:** **IN-HOUSE ONLY — READY FOR CONTROLLED INTERNAL USE**
-<!-- tenant-route-inventory: 168 -->
+<!-- tenant-route-inventory: 170 -->
 
 This index distinguishes executable evidence from source review and blocked infrastructure evidence. It must not be used to check a release-gate item unless the referenced evidence actually exists.
 The route count marker is checked against the authoritative route inventory during
@@ -11,8 +11,8 @@ API contract certification; stale evidence fails that release check.
 | Area | Evidence | Result | Gate state |
 |---|---|---|---|
 | Identity | Clerk middleware/provider source review; signed-out production-like request returns 401; authenticated Clerk browser run | Authenticated onboarding, persistence, sign-out, repeat sign-in, and isolation passed; provider-supported step-up remains open | PASS for P0-05; P1 step-up OPEN |
-| Tenant isolation | `docs/certification/household-privacy-runs/household-privacy-2026-09-06T22-50-17Z.log` | The latest executed replay covered the prior 163-route surface: 379 executed probes, 56 scoped collection reads, 57 cross-household rejections, 57 malformed rejections; 11 passed, 0 failed/skipped. Five newly added Family Office routes remain open. | OPEN for expanded 168-route surface |
-| Authorization | Prior household replay | Role/effective-permission, tampering, and denied-action coverage passed across the prior 163-route surface; the five newly added Family Office routes remain open. | OPEN for expanded 168-route surface |
+| Tenant isolation | `docs/certification/household-privacy-runs/household-privacy-2026-09-06T22-50-17Z.log` | The latest executed replay covered the prior 163-route surface: 379 executed probes, 56 scoped collection reads, 57 cross-household rejections, 57 malformed rejections; 11 passed, 0 failed/skipped. Seven newly added Family Office routes remain open. | OPEN for expanded 170-route surface |
+| Authorization | Prior household replay | Role/effective-permission, tampering, and denied-action coverage passed across the prior 163-route surface; the seven newly added Family Office routes remain open. | OPEN for expanded 170-route surface |
 | Origin / CSRF | `scripts/certify-production-origin.mjs` and `src/middleware/safety.test.ts` | Five published-origin probes and the middleware matrix pass; full authenticated route matrix remains open | PASS for P0-02; broader route coverage OPEN |
 | Financial concurrency | Database-backed HTTP fixture | Targeted race, 100-request contention, balanced ledger totals, and transfer replay passed on isolated Neon PostgreSQL | PARTIAL |
 | Idempotency | Database-backed HTTP fixture and domain idempotency tests | Isolated fixture passes every current keyed economic write path, concurrent duplicates, and mismatched replay conflicts | PASS for P0-07 |
@@ -25,7 +25,7 @@ API contract certification; stale evidence fails that release check.
 
 ## Latest matrix execution
 
-All 168 route/method pairs are in the current executable surface; the latest executed replay included the prior 163. The guarded replay plan included the 168-route tenant preflight, while the executed evidence below remains limited to the prior surface. It
+All 170 route/method pairs are in the current executable surface; the latest executed replay included the prior 163. The guarded replay plan included the 170-route tenant preflight, while the executed evidence below remains limited to the prior surface. It
 passed with 379 probes, 56 scoped collection reads, 57
 cross-household rejections, and 57 malformed rejections (11 tests passed; none
 failed or skipped). P0-01, P0-06, and P0-08 are current-surface PASS. The three

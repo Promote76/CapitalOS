@@ -6,10 +6,13 @@ import {
   CreateShadowIntentResponse,
   CreateShadowPortfolioBody,
   CreateShadowPortfolioResponse,
+  CreateTaxLienCandidateBody,
+  CreateTaxLienCandidateResponse,
   DecideFamilyOfficeProposalBody,
   DecideFamilyOfficeProposalParams,
   DecideFamilyOfficeProposalResponse,
   GetFamilyOfficeResponse,
+  GetRealEstateIntelligenceResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
@@ -18,6 +21,8 @@ import {
   createShadowPortfolio,
   decideFamilyOfficeProposal,
   getFamilyOfficeSnapshot,
+  getRealEstateIntelligence,
+  createTaxLienCandidate,
   runFamilyOfficeResearch,
 } from "../services/family-office";
 
@@ -25,6 +30,10 @@ const router: IRouter = Router();
 
 router.get("/family-office", asyncRoute(async (_req, res) => {
   res.json(GetFamilyOfficeResponse.parse(await getFamilyOfficeSnapshot(actorFrom(res))));
+}));
+
+router.get("/family-office/real-estate", asyncRoute(async (_req, res) => {
+  res.json(GetRealEstateIntelligenceResponse.parse(await getRealEstateIntelligence(actorFrom(res))));
 }));
 
 router.post("/family-office/research", asyncRoute(async (req, res) => {
@@ -46,6 +55,11 @@ router.post("/family-office/shadow/portfolios", asyncRoute(async (req, res) => {
 router.post("/family-office/shadow/intents", asyncRoute(async (req, res) => {
   const body = CreateShadowIntentBody.parse(req.body);
   res.status(201).json(CreateShadowIntentResponse.parse(await createShadowOrderIntent(actorFrom(res), body)));
+}));
+
+router.post("/family-office/tax-liens", asyncRoute(async (req, res) => {
+  const body = CreateTaxLienCandidateBody.parse(req.body);
+  res.status(201).json(CreateTaxLienCandidateResponse.parse(await createTaxLienCandidate(actorFrom(res), body)));
 }));
 
 export default router;

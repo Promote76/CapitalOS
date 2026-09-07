@@ -1138,6 +1138,17 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FamilyOfficeSnapshot" }
+  /family-office/real-estate:
+    get:
+      operationId: getRealEstateIntelligence
+      tags: [family-office]
+      summary: Get deterministic real-estate underwriting and Florida tax-lien research
+      responses:
+        "200":
+          description: Household-scoped real-estate intelligence
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RealEstateIntelligence" }
   /family-office/research:
     post:
       operationId: createFamilyOfficeResearch
@@ -1207,6 +1218,22 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ShadowIntent" }
+  /family-office/tax-liens:
+    post:
+      operationId: createTaxLienCandidate
+      tags: [family-office]
+      summary: Record a Florida tax-lien research candidate without authorizing a purchase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaxLienCandidateInput" }
+      responses:
+        "201":
+          description: Tax-lien research candidate
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TaxLienCandidate" }
   /audit:
     get:
       operationId: listAuditEvents
@@ -4395,6 +4422,90 @@ components:
         run: { $ref: "#/components/schemas/FamilyOfficeRun" }
         proposal: { anyOf: [{ $ref: "#/components/schemas/FamilyOfficeProposal" }, { type: "null" }] }
         advisoryOnly: { type: boolean }
+    TaxLienCandidateInput:
+      type: object
+      required: [jurisdiction, county, parcelId, certificateNumber, propertyAddress, sourceKind, sourceFreshness, redemptionStatus, liveAvailability, faceAmount, estimatedTotalExposure, estimatedPropertyValue, householdSafeToDeploy, requiredReserveFloor]
+      properties:
+        jurisdiction: { type: string, enum: [Florida] }
+        county: { type: string, minLength: 1, maxLength: 120 }
+        parcelId: { type: string, minLength: 1, maxLength: 160 }
+        certificateNumber: { type: string, minLength: 1, maxLength: 120 }
+        propertyAddress: { type: string, minLength: 1, maxLength: 240 }
+        sourceKind: { type: string, enum: [official_county, official_state, licensed_provider, user_supplied, model_inference] }
+        sourceUrl: { type: string, maxLength: 2000 }
+        sourceRetrievedAt: { type: string, format: date-time }
+        sourceFreshness: { type: string, enum: [current, stale, unknown] }
+        officialParcelId: { type: string, maxLength: 160 }
+        officialCertificateNumber: { type: string, maxLength: 120 }
+        redemptionStatus: { type: string, enum: [unknown, open, closed, disputed] }
+        redemptionDeadline: { type: string, maxLength: 80 }
+        liveAvailability: { type: string, enum: [unknown, stale, verified, unavailable] }
+        availabilityCheckedAt: { type: string, format: date-time }
+        faceAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        estimatedTotalExposure: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        estimatedPropertyValue: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        householdSafeToDeploy: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        requiredReserveFloor: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        notes: { type: string, maxLength: 2000 }
+    TaxLienCandidate:
+      type: object
+      required: [id, jurisdiction, county, parcelId, certificateNumber, propertyAddress, sourceKind, sourceUrl, sourceRetrievedAt, sourceFreshness, officialParcelId, officialCertificateNumber, redemptionStatus, redemptionDeadline, liveAvailability, availabilityCheckedAt, faceAmount, estimatedTotalExposure, estimatedPropertyValue, householdSafeToDeploy, requiredReserveFloor, reconciliationStatus, reserveStatus, reviewStatus, hardStops, notes, createdAt, updatedAt, advisoryOnly, purchaseAuthorized, bidAuthorized]
+      properties:
+        id: { type: string }
+        jurisdiction: { type: string }
+        county: { type: string }
+        parcelId: { type: string }
+        certificateNumber: { type: string }
+        propertyAddress: { type: string }
+        sourceKind: { type: string }
+        sourceUrl: { type: ["string", "null"] }
+        sourceRetrievedAt: { type: ["string", "null"], format: date-time }
+        sourceFreshness: { type: string }
+        officialParcelId: { type: ["string", "null"] }
+        officialCertificateNumber: { type: ["string", "null"] }
+        redemptionStatus: { type: string }
+        redemptionDeadline: { type: ["string", "null"] }
+        liveAvailability: { type: string }
+        availabilityCheckedAt: { type: ["string", "null"], format: date-time }
+        faceAmount: { type: string }
+        estimatedTotalExposure: { type: string }
+        estimatedPropertyValue: { type: string }
+        householdSafeToDeploy: { type: string }
+        requiredReserveFloor: { type: string }
+        reconciliationStatus: { type: string }
+        reserveStatus: { type: string }
+        reviewStatus: { type: string }
+        hardStops: { type: array, items: { type: string } }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        advisoryOnly: { type: boolean }
+        purchaseAuthorized: { type: boolean }
+        bidAuthorized: { type: boolean }
+    RealEstateIntelligence:
+      type: object
+      required: [property, taxLiens, guardrails, summary]
+      properties:
+        property:
+          allOf:
+            - $ref: "#/components/schemas/PropertyUnderwriting"
+          type: object
+          properties:
+            authority: { type: string }
+            advisoryOnly: { type: boolean }
+            purchaseAuthorized: { type: boolean }
+            capitalCommitmentAuthorized: { type: boolean }
+        taxLiens: { type: array, items: { $ref: "#/components/schemas/TaxLienCandidate" } }
+        guardrails: { type: array, items: { type: string } }
+        summary:
+          type: object
+          required: [taxLienCount, blockedTaxLienCount, purchaseAuthorized, biddingAuthorized, householdCapitalAccessible]
+          properties:
+            taxLienCount: { type: number }
+            blockedTaxLienCount: { type: number }
+            purchaseAuthorized: { type: boolean }
+            biddingAuthorized: { type: boolean }
+            householdCapitalAccessible: { type: boolean }
     IntelligenceScenarioInput:
       type: object
       required: [proposedWeekly]

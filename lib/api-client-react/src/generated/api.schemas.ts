@@ -1913,6 +1913,10 @@ export interface FamilyOfficeRefresh {
   completedAt: string | null;
   providerStatus: string;
   /** @nullable */
+  providerModel: string | null;
+  /** @nullable */
+  contextAsOf: string | null;
+  /** @nullable */
   failureClassification: string | null;
   evidenceFreshness: string;
   /** @nullable */
@@ -2390,6 +2394,10 @@ export type FamilyOfficeSnapshotRefreshCadenceLastSuccessfulBrief = {
   completedAt: string | null;
   /** @nullable */
   resultFingerprint: string | null;
+  /** @nullable */
+  providerModel: string | null;
+  /** @nullable */
+  contextAsOf: string | null;
   /** @nullable */
   outputSummary: string | null;
 } | null;

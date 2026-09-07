@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ProviderUnavailableError, XaiIntelligenceProvider } from "../services/family-office-provider.ts";
+import { ProviderUnavailableError, safeProviderModel, XaiIntelligenceProvider } from "../services/family-office-provider.ts";
 import {
   assertShadowOnlyDecision,
   familyOfficeProviderStatus,
@@ -33,6 +33,12 @@ test("disabled provider fails closed without making a network request", async ()
     (error: unknown) => error instanceof ProviderUnavailableError && error.code === "AI_PROVIDER_DISABLED",
   );
   assert.equal(called, false);
+});
+
+test("saved provider provenance only retains a bounded model identifier", () => {
+  assert.equal(safeProviderModel("grok-4-1-fast"), "grok-4-1-fast");
+  assert.equal(safeProviderModel("Bearer secret-value"), "unrecognized-model");
+  assert.equal(safeProviderModel("x".repeat(121)), "unrecognized-model");
 });
 
 test("provider rejects malformed output and sanitizes control characters in prompts", async () => {

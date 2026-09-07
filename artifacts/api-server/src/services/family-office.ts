@@ -28,7 +28,7 @@ import {
 } from "../domain/family-office";
 import { assessTaxLienCandidate, realEstateGuardrails } from "../domain/real-estate-intelligence";
 import { reviewPropertyIntelligence } from "../domain/property-underwriting";
-import { ProviderUnavailableError, XaiIntelligenceProvider } from "./family-office-provider";
+import { ProviderUnavailableError, safeProviderModel, XaiIntelligenceProvider } from "./family-office-provider";
 import { getPropertyUnderwriting } from "./property-underwriting";
 import type { Actor } from "./capital-os";
 
@@ -76,6 +76,8 @@ function refreshView(refresh: typeof familyOfficeRefreshes.$inferSelect) {
     requestedAt: refresh.requestedAt,
     completedAt: refresh.completedAt,
     providerStatus: refresh.providerStatus,
+    providerModel: refresh.providerModel,
+    contextAsOf: refresh.contextAsOf,
     failureClassification: refresh.failureClassification,
     evidenceFreshness: refresh.evidenceFreshness,
     resultFingerprint: refresh.resultFingerprint,
@@ -299,6 +301,8 @@ export async function getFamilyOfficeSnapshot(actor: Actor) {
           runId: latestSuccessfulRefresh.runId,
           completedAt: latestSuccessfulRefresh.completedAt,
           resultFingerprint: latestSuccessfulRefresh.resultFingerprint,
+          providerModel: latestSuccessfulRefresh.providerModel,
+          contextAsOf: latestSuccessfulRefresh.contextAsOf,
           outputSummary: runs.find((run) => run.id === latestSuccessfulRefresh.runId)?.outputSummary ?? null,
         }
       : null,
@@ -688,6 +692,7 @@ export async function runFamilyOfficeResearch(
           status: "completed",
           completedAt: updated.completedAt,
           providerStatus: "ready",
+          providerModel: safeProviderModel(provider.status.model),
           failureClassification: null,
           evidenceFreshness: evidenceFreshness(output),
           resultFingerprint: resultFingerprint(output),
@@ -780,6 +785,8 @@ export async function requestFamilyOfficeRefresh(
         requestedAt: now,
         completedAt: now,
         providerStatus: blocked.providerStatus,
+        providerModel: safeProviderModel(providerStatus.model),
+        contextAsOf: now,
         failureClassification: blocked.failureClassification,
         evidenceFreshness: input.contextFreshness,
         skipReason: blocked.skipReason,
@@ -798,6 +805,8 @@ export async function requestFamilyOfficeRefresh(
         requestedAt: now,
         completedAt: now,
         providerStatus: providerStatus.enabled ? "ready" : "disabled",
+        providerModel: latest?.providerModel ?? safeProviderModel(providerStatus.model),
+        contextAsOf: latest?.contextAsOf ?? now,
         failureClassification: "REFRESH_DEDUPLICATED",
         evidenceFreshness: latest?.evidenceFreshness ?? input.contextFreshness,
         resultFingerprint: latest?.resultFingerprint,
@@ -815,6 +824,8 @@ export async function requestFamilyOfficeRefresh(
       status: "requested",
       requestedAt: now,
       providerStatus: "checking",
+      providerModel: safeProviderModel(providerStatus.model),
+      contextAsOf: now,
       evidenceFreshness: input.contextFreshness,
       createdBy: actor.userId,
     }).returning();

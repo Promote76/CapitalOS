@@ -127,6 +127,13 @@
       "when": 1788812252670,
       "tag": "0017_optimal_sasquatch",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788812876898,
+      "tag": "0018_omniscient_blue_marvel",
+      "breakpoints": true
     }
   ]
 }

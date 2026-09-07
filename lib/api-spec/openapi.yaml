@@ -4395,7 +4395,7 @@ components:
         contextFreshness: { type: string, enum: [fresh, stale, unknown] }
     FamilyOfficeRefresh:
       type: object
-      required: [id, trigger, status, requestedAt, completedAt, providerStatus, failureClassification, evidenceFreshness, resultFingerprint, skipReason, runId]
+      required: [id, trigger, status, requestedAt, completedAt, providerStatus, providerModel, contextAsOf, failureClassification, evidenceFreshness, resultFingerprint, skipReason, runId]
       properties:
         id: { type: string }
         trigger: { type: string }
@@ -4403,6 +4403,8 @@ components:
         requestedAt: { type: string, format: date-time }
         completedAt: { type: ["string", "null"], format: date-time }
         providerStatus: { type: string }
+        providerModel: { type: ["string", "null"] }
+        contextAsOf: { type: ["string", "null"], format: date-time }
         failureClassification: { type: ["string", "null"] }
         evidenceFreshness: { type: string }
         resultFingerprint: { type: ["string", "null"] }
@@ -4722,11 +4724,13 @@ components:
           properties:
             lastSuccessfulBrief:
               type: [object, "null"]
-              required: [runId, completedAt, resultFingerprint, outputSummary]
+              required: [runId, completedAt, resultFingerprint, providerModel, contextAsOf, outputSummary]
               properties:
                 runId: { type: string }
                 completedAt: { type: ["string", "null"], format: date-time }
                 resultFingerprint: { type: ["string", "null"] }
+                providerModel: { type: ["string", "null"] }
+                contextAsOf: { type: ["string", "null"], format: date-time }
                 outputSummary: { type: ["string", "null"] }
             nextEligibleAt: { type: ["string", "null"], format: date-time }
             lastAttempt:

@@ -16,5 +16,9 @@ export type FamilyOfficeSnapshotRefreshCadenceLastSuccessfulBrief = {
   /** @nullable */
   resultFingerprint: string | null;
   /** @nullable */
+  providerModel: string | null;
+  /** @nullable */
+  contextAsOf: Date | null;
+  /** @nullable */
   outputSummary: string | null;
 } | null;

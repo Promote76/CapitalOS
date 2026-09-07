@@ -15,6 +15,10 @@ export interface FamilyOfficeRefresh {
   completedAt: Date | null;
   providerStatus: string;
   /** @nullable */
+  providerModel: string | null;
+  /** @nullable */
+  contextAsOf: Date | null;
+  /** @nullable */
   failureClassification: string | null;
   evidenceFreshness: string;
   /** @nullable */

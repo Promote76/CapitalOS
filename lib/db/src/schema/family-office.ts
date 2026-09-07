@@ -43,6 +43,8 @@ export const familyOfficeRefreshes = pgTable(
     requestedAt: timestamp("requested_at", { withTimezone: true }).defaultNow().notNull(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     providerStatus: text("provider_status").notNull().default("disabled"),
+    providerModel: text("provider_model"),
+    contextAsOf: timestamp("context_as_of", { withTimezone: true }),
     failureClassification: text("failure_classification"),
     evidenceFreshness: text("evidence_freshness").notNull().default("unknown"),
     resultFingerprint: text("result_fingerprint"),

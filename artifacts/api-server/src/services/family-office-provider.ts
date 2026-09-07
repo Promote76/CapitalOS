@@ -19,6 +19,11 @@ export type ProviderFailureCode =
   | "AI_PROVIDER_UPSTREAM_ERROR"
   | "AI_PROVIDER_INVALID_RESPONSE";
 
+export function safeProviderModel(model: string) {
+  const normalized = model.trim();
+  return /^[A-Za-z0-9._:/-]{1,120}$/.test(normalized) ? normalized : "unrecognized-model";
+}
+
 export class ProviderUnavailableError extends Error {
   constructor(public readonly code: ProviderFailureCode = "AI_PROVIDER_UPSTREAM_ERROR") {
     super("Family Office intelligence provider is unavailable");

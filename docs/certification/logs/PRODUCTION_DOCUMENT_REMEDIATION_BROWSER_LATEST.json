@@ -1,0 +1,11 @@
+{
+  "runner": "production-document-remediation-certification",
+  "version": "2026-09-08.published-origin.browser.v1",
+  "observedAt": "2026-09-08T15:53:13.926Z",
+  "origin": "https://capital-os-fund.replit.app",
+  "household": "d6672e…529a",
+  "documents": [],
+  "checks": [],
+  "result": "BLOCKED",
+  "error": "PRODUCTION_CLERK_MFA_REQUIRED"
+}

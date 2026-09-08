@@ -15,6 +15,7 @@
     "test:daily-ops-browser": "playwright test --config playwright.config.ts src/browser/daily-ops-certification.spec.ts src/browser/guided-run-journal-certification.spec.ts",
     "test:capital-governor-browser": "playwright test --config playwright.config.ts src/browser/capital-governor-certification.spec.ts",
     "certify:document-budget-bridge": "playwright test --config playwright.config.ts src/browser/document-budget-bridge-certification.spec.ts",
+    "certify:production-document-remediation-browser": "playwright test --config playwright.config.ts src/browser/production-document-remediation-certification.spec.ts",
     "test": "../../scripts/node_modules/.bin/tsx --test src/domain/*.test.ts src/middleware/*.test.ts src/integration/*.test.ts"
   },
   "dependencies": {

@@ -203,3 +203,18 @@ The downstream read chain is recorded in redacted JSON at `docs/certification/lo
 - variable-income, Budget, cash-flow Forecast, Safe-to-Deploy, and Capital Governor responses
 
 The runner exits `2` and records `BLOCKED` when a required operator/session prerequisite or explicit fail-closed downstream gate is unavailable. It exits `1` for an observed failed invariant. A run must be executed against the published origin with the approved session before this report can be changed from **BLOCKED** to **PASS**; no fabricated session, direct production SQL, or synthetic evidence is accepted.
+
+## Browser-backed published-origin certification
+
+The repeatable certification path is now browser-backed and does not require collecting or passing a Clerk session cookie:
+
+```text
+CAPITAL_OS_BROWSER_ORIGIN=https://<published-origin> \
+CAPITAL_OS_PRODUCTION_HOUSEHOLD_ID=d6672e8d-c193-4182-bd76-4170329e529a \
+CAPITAL_OS_PRODUCTION_DOCUMENT_IDS=c9e3f924-6977-4430-a66b-0089d66b3427,da39387c-7a42-4e9e-966b-54974bf27b76 \
+pnpm run certify:production-document-remediation-browser
+```
+
+The operator email and password are read from the secure `CAPITAL_OS_PRODUCTION_OPERATOR_EMAIL` and `CAPITAL_OS_PRODUCTION_OPERATOR_PASSWORD` environment variables when present, falling back to the existing browser-test secret names. The browser signs in through the published Clerk UI, verifies `/api/auth/me` resolves to the target household and approver boundary, then resolves the canonical trucking business with an idempotency key, independently corrects and links both documents, records both identity reviews, and compares the required downstream invariants. Redacted evidence is written to `docs/certification/logs/PRODUCTION_DOCUMENT_REMEDIATION_BROWSER_LATEST.json`.
+
+The first published-origin execution on 2026-09-08 was **BLOCKED** at `PRODUCTION_CLERK_MFA_REQUIRED`. No business, document, audit, income, budget, or money-movement mutation was attempted. The certification must remain **BLOCKED** until an approved operator can complete the production Clerk factor through the published UI; no MFA code, session cookie, direct SQL, or fabricated identity is accepted.

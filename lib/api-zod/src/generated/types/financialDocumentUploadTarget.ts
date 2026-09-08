@@ -13,5 +13,4 @@ export interface FinancialDocumentUploadTarget {
   documentType: string;
   uploadURL: string;
   objectPath: string;
-  uploadGrant: string;
 }

@@ -5,9 +5,9 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
-import type { BankStatementEvidence } from './bankStatementEvidence';
-import type { BankStatementTransactionEvidence } from './bankStatementTransactionEvidence';
+import type { FinancialDocumentBankStatement } from './financialDocumentBankStatement';
 import type { FinancialDocumentSourceMetadata } from './financialDocumentSourceMetadata';
+import type { FinancialDocumentTransactionsItem } from './financialDocumentTransactionsItem';
 
 export interface FinancialDocument {
   id: string;
@@ -39,6 +39,7 @@ export interface FinancialDocument {
   reviewDecision?: string | null;
   /** @nullable */
   reviewReason?: string | null;
-  bankStatement?: BankStatementEvidence | null;
-  transactions?: BankStatementTransactionEvidence[];
+  /** @nullable */
+  bankStatement?: FinancialDocumentBankStatement;
+  transactions?: FinancialDocumentTransactionsItem[];
 }

@@ -21,11 +21,6 @@ export interface FinancialDocumentIngestInput {
      * @maximum 52428800
      */
   sourceSizeBytes: number;
-  /**
-     * @minLength 40
-     * @maxLength 2048
-     */
-  uploadGrant: string;
   businessId?: string;
   sourceInstitution?: string;
   accountId?: string;

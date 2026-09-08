@@ -1,1 +1,0 @@
-CREATE UNIQUE INDEX "bank_statement_transactions_household_fingerprint_unique" ON "bank_statement_transactions" USING btree ("household_id","evidence_fingerprint");

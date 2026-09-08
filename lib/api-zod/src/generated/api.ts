@@ -4635,6 +4635,235 @@ export const GetBudgetPlanningCategoryContributionDetailResponse = zod.object({
 
 
 /**
+ * @summary Get deterministic variable-income household planning intelligence
+ */
+export const getVariableBudgetIntelligenceQueryAsOfRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+
+
+export const GetVariableBudgetIntelligenceQueryParams = zod.object({
+  "asOf": zod.coerce.string().regex(getVariableBudgetIntelligenceQueryAsOfRegExp).optional()
+})
+
+export const GetVariableBudgetIntelligenceResponse = zod.object({
+  "asOf": zod.string(),
+  "source": zod.object({
+  "verifiedIncomeEventCount": zod.number(),
+  "approvedBudgetPeriod": zod.string().nullable(),
+  "incomeAuthority": zod.string(),
+  "planningStatus": zod.string()
+}),
+  "incomeProfile": zod.object({
+  "id": zod.string().optional(),
+  "calculationDate": zod.string(),
+  "currentMonthVerifiedIncome": zod.string(),
+  "trailing4WeekIncome": zod.string(),
+  "trailing8WeekIncome": zod.string(),
+  "trailing13WeekIncome": zod.string(),
+  "trailing3MonthIncome": zod.string(),
+  "trailing6MonthIncome": zod.string(),
+  "highestRecentMonth": zod.string(),
+  "lowestRecentMonth": zod.string(),
+  "medianRecentMonth": zod.string(),
+  "incomeFloor": zod.string(),
+  "baseIncome": zod.string(),
+  "strongMonthIncome": zod.string(),
+  "incomeVolatility": zod.number(),
+  "sourceCount": zod.number(),
+  "sourceFreshness": zod.string().nullable(),
+  "policy": zod.string(),
+  "confidenceStatus": zod.string(),
+  "recentMonthCount": zod.number(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+}),
+  "constraints": zod.object({
+  "verifiedIncome": zod.string(),
+  "incomeFloor": zod.string(),
+  "baseIncome": zod.string(),
+  "strongIncome": zod.string(),
+  "mandatoryObligations": zod.string(),
+  "essentialVariableCosts": zod.string(),
+  "reserveRequirements": zod.string(),
+  "discretionarySpending": zod.string(),
+  "currentCash": zod.string(),
+  "cashBuffer": zod.string(),
+  "capitalGoals": zod.string(),
+  "next30DayObligations": zod.string(),
+  "operatingBudgetCap": zod.string(),
+  "minimumViableOperatingCost": zod.string(),
+  "optionalDiscretionaryAllowance": zod.string(),
+  "capitalSurplusAtFloor": zod.string(),
+  "capitalSurplusAtBase": zod.string(),
+  "capitalSurplusAtStrong": zod.string(),
+  "forecastShortfall": zod.string(),
+  "obligationCoverage": zod.number(),
+  "status": zod.string()
+}),
+  "obligations": zod.object({
+  "next7Days": zod.string(),
+  "next14Days": zod.string(),
+  "next30Days": zod.string(),
+  "next60Days": zod.string(),
+  "next90Days": zod.string(),
+  "items": zod.array(zod.object({
+  "name": zod.string(),
+  "dueDate": zod.string(),
+  "amount": zod.string(),
+  "required": zod.boolean(),
+  "source": zod.string()
+}))
+}),
+  "reserve": zod.object({
+  "targetMonths": zod.number(),
+  "target": zod.string(),
+  "current": zod.string(),
+  "fundingGap": zod.string(),
+  "monthlyFunding": zod.string(),
+  "status": zod.string()
+}),
+  "cash": zod.object({
+  "current": zod.string(),
+  "buffer": zod.string(),
+  "coverage": zod.number(),
+  "pressure": zod.string()
+}),
+  "forecast": zod.array(zod.object({
+  "days": zod.number(),
+  "scenarioIncome": zod.string(),
+  "openingCash": zod.string(),
+  "obligations": zod.string(),
+  "essentialSpending": zod.string(),
+  "reserveContributions": zod.string(),
+  "approvedCapitalContributions": zod.string(),
+  "endingProjectedCash": zod.string(),
+  "bufferShortfall": zod.string(),
+  "status": zod.string()
+})),
+  "vehicleScenarios": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "vehiclePrice": zod.string().optional(),
+  "downPayment": zod.string().optional(),
+  "loanAmount": zod.string().optional(),
+  "estimatedApr": zod.string().optional(),
+  "loanTermMonths": zod.string().optional(),
+  "monthlyPayment": zod.string().optional(),
+  "insurance": zod.string().optional(),
+  "fuel": zod.string().optional(),
+  "maintenanceReserve": zod.string().optional(),
+  "registrationReserve": zod.string().optional(),
+  "parkingTolls": zod.string().optional(),
+  "otherMonthlyCost": zod.string().optional(),
+  "totalMonthlyCost": zod.string(),
+  "affordabilityStatus": zod.string(),
+  "newOperatingBudget": zod.string(),
+  "newFloorSurplus": zod.string(),
+  "capitalSurplusImpact": zod.string(),
+  "status": zod.string(),
+  "notes": zod.string().nullish(),
+  "active": zod.boolean().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+}))
+})
+
+
+/**
+ * @summary Recalculate a verified-income profile
+ */
+export const recalculateVariableIncomeProfileBodyCalculationDateRegExp = new RegExp('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+export const recalculateVariableIncomeProfileBodyApprovedFloorRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+
+
+export const RecalculateVariableIncomeProfileBody = zod.object({
+  "calculationDate": zod.string().regex(recalculateVariableIncomeProfileBodyCalculationDateRegExp).optional(),
+  "policy": zod.enum(['CONSERVATIVE_MINIMUM', 'TRAILING_MEDIAN_DISCOUNTED', 'USER_APPROVED_FLOOR']).optional(),
+  "approvedFloor": zod.string().regex(recalculateVariableIncomeProfileBodyApprovedFloorRegExp).optional()
+})
+
+export const RecalculateVariableIncomeProfileResponse = zod.object({
+  "id": zod.string().optional(),
+  "calculationDate": zod.string(),
+  "currentMonthVerifiedIncome": zod.string(),
+  "trailing4WeekIncome": zod.string(),
+  "trailing8WeekIncome": zod.string(),
+  "trailing13WeekIncome": zod.string(),
+  "trailing3MonthIncome": zod.string(),
+  "trailing6MonthIncome": zod.string(),
+  "highestRecentMonth": zod.string(),
+  "lowestRecentMonth": zod.string(),
+  "medianRecentMonth": zod.string(),
+  "incomeFloor": zod.string(),
+  "baseIncome": zod.string(),
+  "strongMonthIncome": zod.string(),
+  "incomeVolatility": zod.number(),
+  "sourceCount": zod.number(),
+  "sourceFreshness": zod.string().nullable(),
+  "policy": zod.string(),
+  "confidenceStatus": zod.string(),
+  "recentMonthCount": zod.number(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})
+
+
+/**
+ * @summary Create a planning-only vehicle affordability scenario
+ */
+export const createVehicleScenarioBodyNameMax = 120;
+
+export const createVehicleScenarioBodyLoanTermMonthsMin = 0;
+
+export const createVehicleScenarioBodyNotesMax = 1000;
+
+
+
+export const CreateVehicleScenarioBody = zod.object({
+  "name": zod.string().min(1).max(createVehicleScenarioBodyNameMax),
+  "vehiclePrice": zod.string().optional(),
+  "downPayment": zod.string().optional(),
+  "loanAmount": zod.string().optional(),
+  "estimatedApr": zod.string().optional(),
+  "loanTermMonths": zod.number().min(createVehicleScenarioBodyLoanTermMonthsMin).optional(),
+  "monthlyPayment": zod.string(),
+  "insurance": zod.string(),
+  "fuel": zod.string(),
+  "maintenanceReserve": zod.string(),
+  "registrationReserve": zod.string().optional(),
+  "parkingTolls": zod.string().optional(),
+  "otherMonthlyCost": zod.string().optional(),
+  "notes": zod.string().max(createVehicleScenarioBodyNotesMax).optional()
+})
+
+export const CreateVehicleScenarioResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "vehiclePrice": zod.string().optional(),
+  "downPayment": zod.string().optional(),
+  "loanAmount": zod.string().optional(),
+  "estimatedApr": zod.string().optional(),
+  "loanTermMonths": zod.string().optional(),
+  "monthlyPayment": zod.string().optional(),
+  "insurance": zod.string().optional(),
+  "fuel": zod.string().optional(),
+  "maintenanceReserve": zod.string().optional(),
+  "registrationReserve": zod.string().optional(),
+  "parkingTolls": zod.string().optional(),
+  "otherMonthlyCost": zod.string().optional(),
+  "totalMonthlyCost": zod.string(),
+  "affordabilityStatus": zod.string(),
+  "newOperatingBudget": zod.string(),
+  "newFloorSurplus": zod.string(),
+  "capitalSurplusImpact": zod.string(),
+  "status": zod.string(),
+  "notes": zod.string().nullish(),
+  "active": zod.boolean().optional(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})
+
+
+/**
  * @summary Get provider-neutral read-only banking adapter status
  */
 export const GetBankingStatusResponse = zod.object({

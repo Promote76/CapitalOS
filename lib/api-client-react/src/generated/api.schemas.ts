@@ -5264,6 +5264,190 @@ export interface OperationsSchedulerLease {
   heartbeatAt: string;
 }
 
+export type RecalculateVariableIncomeProfileInputPolicy = typeof RecalculateVariableIncomeProfileInputPolicy[keyof typeof RecalculateVariableIncomeProfileInputPolicy];
+
+
+export const RecalculateVariableIncomeProfileInputPolicy = {
+  CONSERVATIVE_MINIMUM: 'CONSERVATIVE_MINIMUM',
+  TRAILING_MEDIAN_DISCOUNTED: 'TRAILING_MEDIAN_DISCOUNTED',
+  USER_APPROVED_FLOOR: 'USER_APPROVED_FLOOR',
+} as const;
+
+export interface RecalculateVariableIncomeProfileInput {
+  /** @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ */
+  calculationDate?: string;
+  policy?: RecalculateVariableIncomeProfileInputPolicy;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  approvedFloor?: string;
+}
+
+export interface VariableIncomeProfile {
+  id?: string;
+  calculationDate: string;
+  currentMonthVerifiedIncome: string;
+  trailing4WeekIncome: string;
+  trailing8WeekIncome: string;
+  trailing13WeekIncome: string;
+  trailing3MonthIncome: string;
+  trailing6MonthIncome: string;
+  highestRecentMonth: string;
+  lowestRecentMonth: string;
+  medianRecentMonth: string;
+  incomeFloor: string;
+  baseIncome: string;
+  strongMonthIncome: string;
+  incomeVolatility: number;
+  sourceCount: number;
+  /** @nullable */
+  sourceFreshness: string | null;
+  policy: string;
+  confidenceStatus: string;
+  recentMonthCount: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface VehicleScenarioInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  vehiclePrice?: string;
+  downPayment?: string;
+  loanAmount?: string;
+  estimatedApr?: string;
+  /** @minimum 0 */
+  loanTermMonths?: number;
+  monthlyPayment: string;
+  insurance: string;
+  fuel: string;
+  maintenanceReserve: string;
+  registrationReserve?: string;
+  parkingTolls?: string;
+  otherMonthlyCost?: string;
+  /** @maxLength 1000 */
+  notes?: string;
+}
+
+export interface VehicleScenario {
+  id: string;
+  name: string;
+  vehiclePrice?: string;
+  downPayment?: string;
+  loanAmount?: string;
+  estimatedApr?: string;
+  loanTermMonths?: string;
+  monthlyPayment?: string;
+  insurance?: string;
+  fuel?: string;
+  maintenanceReserve?: string;
+  registrationReserve?: string;
+  parkingTolls?: string;
+  otherMonthlyCost?: string;
+  totalMonthlyCost: string;
+  affordabilityStatus: string;
+  newOperatingBudget: string;
+  newFloorSurplus: string;
+  capitalSurplusImpact: string;
+  status: string;
+  /** @nullable */
+  notes?: string | null;
+  active?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface VariableBudgetConstraintSet {
+  verifiedIncome: string;
+  incomeFloor: string;
+  baseIncome: string;
+  strongIncome: string;
+  mandatoryObligations: string;
+  essentialVariableCosts: string;
+  reserveRequirements: string;
+  discretionarySpending: string;
+  currentCash: string;
+  cashBuffer: string;
+  capitalGoals: string;
+  next30DayObligations: string;
+  operatingBudgetCap: string;
+  minimumViableOperatingCost: string;
+  optionalDiscretionaryAllowance: string;
+  capitalSurplusAtFloor: string;
+  capitalSurplusAtBase: string;
+  capitalSurplusAtStrong: string;
+  forecastShortfall: string;
+  obligationCoverage: number;
+  status: string;
+}
+
+export interface VariableBudgetForecast {
+  days: number;
+  scenarioIncome: string;
+  openingCash: string;
+  obligations: string;
+  essentialSpending: string;
+  reserveContributions: string;
+  approvedCapitalContributions: string;
+  endingProjectedCash: string;
+  bufferShortfall: string;
+  status: string;
+}
+
+export type VariableBudgetIntelligenceSource = {
+  verifiedIncomeEventCount: number;
+  /** @nullable */
+  approvedBudgetPeriod: string | null;
+  incomeAuthority: string;
+  planningStatus: string;
+};
+
+export type VariableBudgetIntelligenceObligationsItemsItem = {
+  name: string;
+  dueDate: string;
+  amount: string;
+  required: boolean;
+  source: string;
+};
+
+export type VariableBudgetIntelligenceObligations = {
+  next7Days: string;
+  next14Days: string;
+  next30Days: string;
+  next60Days: string;
+  next90Days: string;
+  items: VariableBudgetIntelligenceObligationsItemsItem[];
+};
+
+export type VariableBudgetIntelligenceReserve = {
+  targetMonths: number;
+  target: string;
+  current: string;
+  fundingGap: string;
+  monthlyFunding: string;
+  status: string;
+};
+
+export type VariableBudgetIntelligenceCash = {
+  current: string;
+  buffer: string;
+  coverage: number;
+  pressure: string;
+};
+
+export interface VariableBudgetIntelligence {
+  asOf: string;
+  source: VariableBudgetIntelligenceSource;
+  incomeProfile: VariableIncomeProfile;
+  constraints: VariableBudgetConstraintSet;
+  obligations: VariableBudgetIntelligenceObligations;
+  reserve: VariableBudgetIntelligenceReserve;
+  cash: VariableBudgetIntelligenceCash;
+  forecast: VariableBudgetForecast[];
+  vehicleScenarios: VehicleScenario[];
+}
+
 /**
  * Invalid request
  */
@@ -5318,6 +5502,13 @@ export type ListTransactionReviewQueueParams = {
  * @pattern ^[0-9a-fA-F-]{36}$
  */
 periodId?: string;
+};
+
+export type GetVariableBudgetIntelligenceParams = {
+/**
+ * @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+ */
+asOf?: string;
 };
 
 export type ReceiveReadOnlyBankWebhook202 = {

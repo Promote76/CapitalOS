@@ -34,6 +34,8 @@ import {
   useReviewFinancialTransaction,
   getListTransactionReviewQueueQueryKey,
   useGetBudget,
+  useGetVariableBudgetIntelligence,
+  useCreateVehicleScenario,
   useGetBudgetPlanningPeriod,
   useCreateBudgetPlanningCategory,
   useUpdateBudgetPlanningCategory,
@@ -1930,6 +1932,8 @@ function BudgetPlanningControlCenter() {
 function BudgetPage() {
   const query = useGetBudget();
   const safe = useGetSafeToDeploy();
+  const variableBudget = useGetVariableBudgetIntelligence();
+  const createVehicleScenario = useCreateVehicleScenario();
   const accounts = useListFinancialAccounts();
   const createTransaction = useCreateManualFinanceTransaction();
   const [transaction, setTransaction] = useState({
@@ -1942,6 +1946,14 @@ function BudgetPage() {
   });
   const [transactionMessage, setTransactionMessage] = useState('');
   const [transactionError, setTransactionError] = useState('');
+  const [vehicleScenario, setVehicleScenario] = useState({
+    name: '',
+    monthlyPayment: '',
+    insurance: '',
+    fuel: '',
+    maintenanceReserve: '',
+  });
+  const [vehicleScenarioMessage, setVehicleScenarioMessage] = useState('');
   useEffect(() => {
     if (!transaction.accountId && accounts.data?.accounts[0]) {
       setTransaction((current) => ({ ...current, accountId: accounts.data.accounts[0].id }));
@@ -2009,6 +2021,61 @@ function BudgetPage() {
         <FinanceMetric label="Remaining" value={displayMoney(data.totals.remaining, '$0')} detail="before the month closes" tone="green" action={<Link className="text-link" href="/cash-flow">View cash flow</Link>} />
         <FinanceMetric label="Safe to deploy" value={safe.isLoading ? 'Calculating…' : safe.isError ? 'Unavailable' : displayMoney(safe.data?.safeToDeploy, '$0')} detail={safe.isError ? 'Capital Governor could not be refreshed' : 'Capital Governor limit'} tone="lavender" action={safe.isError ? <button className="text-link" onClick={() => { void safe.refetch(); }} data-testid="button-retry-budget-safe-to-deploy">Try again</button> : <Link className="text-link" href="/cash-flow">See calculation</Link>} />
       </div>
+
+      <section className="card card-pad page-section animate-in delay-1 variable-budget-panel">
+        <CardTitle title="Variable-income planning" subtitle="Verified household income sets the floor. Business deposits and projected income stay out until a draw is verified." action={<button className="btn btn-secondary" onClick={() => { void variableBudget.refetch(); }}>Refresh intelligence</button>} />
+        {variableBudget.isLoading && <div className="finance-data-banner" role="status"><div className="finance-data-banner-icon"><Activity size={16} /></div><div><strong>Building income scenarios</strong><span>Checking verified income, approved planning data, bills, reserves, and household cash.</span></div></div>}
+        {variableBudget.isError && <div className="finance-empty-state" role="alert"><strong>Variable-income intelligence is unavailable</strong><span>No variable-income totals are shown until its household sources can be confirmed.</span><button className="btn btn-secondary" onClick={() => { void variableBudget.refetch(); }}>Try again</button></div>}
+        {variableBudget.isSuccess && variableBudget.data && <>
+          <div className="finance-grid variable-budget-metrics">
+            <FinanceMetric label="Income floor" value={displayMoney(variableBudget.data.incomeProfile.incomeFloor, '$0')} detail={variableBudget.data.incomeProfile.confidenceStatus.replaceAll('_', ' ').toLowerCase()} tone="lavender" />
+            <FinanceMetric label="Base month" value={displayMoney(variableBudget.data.incomeProfile.baseIncome, '$0')} detail="recent verified median" tone="blue" />
+            <FinanceMetric label="Strong month" value={displayMoney(variableBudget.data.incomeProfile.strongMonthIncome, '$0')} detail="recent verified high" tone="green" />
+            <FinanceMetric label="Capital surplus at floor" value={displayMoney(variableBudget.data.constraints.capitalSurplusAtFloor, '$0')} detail={variableBudget.data.constraints.status.replaceAll('_', ' ').toLowerCase()} tone="amber" />
+          </div>
+          <div className="variable-budget-columns">
+            <div className="finance-table">
+              <div className="finance-row"><div><strong>Operating budget cap</strong><span>Floor less mandatory, essential, and reserve needs</span></div><div className="finance-amount"><strong>{displayMoney(variableBudget.data.constraints.operatingBudgetCap, '$0')}</strong></div></div>
+              <div className="finance-row"><div><strong>Mandatory obligations</strong><span>Approved plan and essential bills</span></div><div className="finance-amount"><strong>{displayMoney(variableBudget.data.constraints.mandatoryObligations, '$0')}</strong></div></div>
+              <div className="finance-row"><div><strong>Reserve funding</strong><span>{variableBudget.data.reserve.status.replaceAll('_', ' ').toLowerCase()}</span></div><div className="finance-amount"><strong>{displayMoney(variableBudget.data.reserve.monthlyFunding, '$0')}</strong></div></div>
+              <div className="finance-row"><div><strong>Next 30-day obligations</strong><span>{variableBudget.data.cash.coverage}x cash coverage</span></div><div className="finance-amount"><strong>{displayMoney(variableBudget.data.obligations.next30Days, '$0')}</strong></div></div>
+            </div>
+            <div className="card card-pad variable-budget-callout">
+              <span className="eyebrow">Plan health</span>
+              <strong>{variableBudget.data.constraints.status.replaceAll('_', ' ')}</strong>
+              <p>{variableBudget.data.constraints.status === 'HEALTHY' ? 'The floor scenario covers the modeled operating plan with a buffer.' : variableBudget.data.constraints.status === 'INCOMPLETE_DATA' ? 'Add verified income history and approve the current planning period before using this as a household decision input.' : 'The floor scenario needs review before discretionary spending or capital commitments expand.'}</p>
+              <span className="finance-note"><ShieldCheck size={15} /> Safe-to-Deploy remains the authoritative capital-governor result.</span>
+            </div>
+          </div>
+          <div className="variable-budget-forecast">
+            <div><span className="eyebrow">Forward cash flow</span><strong>Floor / base / strong scenarios</strong></div>
+            <div className="forecast-strip">{[30, 60, 90].map((days) => <div className="forecast-card" key={days}><span>{days} days</span>{variableBudget.data.forecast.filter((row) => row.days === days).map((row, index) => <div key={`${days}-${index}`}><small>{index === 0 ? 'Floor' : index === 1 ? 'Base' : 'Strong'}</small><strong>{displayMoney(row.endingProjectedCash, '$0')}</strong><em className={row.status !== 'HEALTHY' ? 'warning' : ''}>{row.status.replaceAll('_', ' ').toLowerCase()}</em></div>)}</div>)}</div>
+          </div>
+          <div className="variable-budget-vehicle"><div className="variable-budget-section-heading"><div><span className="eyebrow">Vehicle affordability</span><strong>Model the full monthly cost before it becomes a commitment.</strong></div></div>
+            <form className="account-form transaction-form" onSubmit={async (event) => {
+              event.preventDefault();
+              setVehicleScenarioMessage('');
+              try {
+                await createVehicleScenario.mutateAsync({ data: vehicleScenario });
+                await variableBudget.refetch();
+                setVehicleScenario({ name: '', monthlyPayment: '', insurance: '', fuel: '', maintenanceReserve: '' });
+                setVehicleScenarioMessage('Scenario saved. It is planning-only and does not authorize a purchase.');
+              } catch (error) {
+                setVehicleScenarioMessage(error instanceof Error ? error.message : 'Scenario could not be saved.');
+              }
+            }}>
+              <div className="field"><label htmlFor="variable-vehicle-name">Scenario</label><input id="variable-vehicle-name" required value={vehicleScenario.name} onChange={(event) => setVehicleScenario({ ...vehicleScenario, name: event.target.value })} placeholder="Current SUV" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-payment">Payment</label><input id="variable-vehicle-payment" required inputMode="decimal" value={vehicleScenario.monthlyPayment} onChange={(event) => setVehicleScenario({ ...vehicleScenario, monthlyPayment: event.target.value })} placeholder="0.00" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-insurance">Insurance</label><input id="variable-vehicle-insurance" required inputMode="decimal" value={vehicleScenario.insurance} onChange={(event) => setVehicleScenario({ ...vehicleScenario, insurance: event.target.value })} placeholder="0.00" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-fuel">Fuel</label><input id="variable-vehicle-fuel" required inputMode="decimal" value={vehicleScenario.fuel} onChange={(event) => setVehicleScenario({ ...vehicleScenario, fuel: event.target.value })} placeholder="0.00" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-maintenance">Maintenance reserve</label><input id="variable-vehicle-maintenance" required inputMode="decimal" value={vehicleScenario.maintenanceReserve} onChange={(event) => setVehicleScenario({ ...vehicleScenario, maintenanceReserve: event.target.value })} placeholder="0.00" /></div>
+              <div className="modal-actions"><button className="btn btn-primary" type="submit" disabled={createVehicleScenario.isPending}>{createVehicleScenario.isPending ? 'Modeling…' : 'Save scenario'}</button></div>
+            </form>
+            {vehicleScenarioMessage && <div className="form-feedback" role="status">{vehicleScenarioMessage}</div>}
+            {variableBudget.data.vehicleScenarios.length > 0 && <div className="finance-table">{variableBudget.data.vehicleScenarios.map((scenario) => <div className="finance-row" key={scenario.id}><div><strong>{scenario.name}</strong><span>{scenario.status.replaceAll('_', ' ').toLowerCase()}</span></div><div className="finance-amount"><strong>{displayMoney(scenario.totalMonthlyCost, '$0')}</strong><span>monthly total</span></div></div>)}</div>}
+          </div>
+        </>}
+      </section>
 
       <BudgetPlanningControlCenter />
 

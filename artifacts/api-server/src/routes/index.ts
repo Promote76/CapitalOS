@@ -20,6 +20,7 @@ import executionControlRouter from "./execution-control";
 import metricsRouter from "./metrics";
 import observabilityRouter from "./observability";
 import familyOfficeRouter from "./family-office";
+import variableIncomeRouter from "./variable-income";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(executionControlRouter);
 router.use(metricsRouter);
 router.use(observabilityRouter);
 router.use(familyOfficeRouter);
+router.use(variableIncomeRouter);
 
 export default router;

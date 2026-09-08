@@ -3159,6 +3159,93 @@ button {
   gap: 12px;
   margin-top: 18px;
 }
+.variable-budget-panel {
+  margin-top: 24px;
+}
+.variable-budget-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+.variable-budget-callout {
+  background: linear-gradient(145deg, #f5f3ff, #fff);
+  border-color: #ddd6fe;
+}
+.variable-budget-callout strong {
+  display: block;
+  font: 500 22px var(--app-font-serif);
+  margin-top: 8px;
+  text-transform: capitalize;
+}
+.variable-budget-callout p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 10px 0 16px;
+}
+.variable-budget-forecast {
+  border-top: 1px solid var(--line);
+  margin-top: 22px;
+  padding-top: 18px;
+}
+.variable-budget-forecast > div:first-child,
+.variable-budget-section-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.variable-budget-forecast > div:first-child strong,
+.variable-budget-section-heading strong {
+  font: 500 19px var(--app-font-serif);
+}
+.forecast-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.forecast-card {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 12px;
+  background: var(--surface);
+}
+.forecast-card > span {
+  color: var(--text-secondary);
+  font: 500 11px var(--app-font-mono);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.forecast-card > div {
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+}
+.forecast-card small,
+.forecast-card em {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-style: normal;
+}
+.forecast-card strong {
+  font: 500 15px var(--app-font-mono);
+}
+.forecast-card em {
+  grid-column: 1 / -1;
+  text-transform: capitalize;
+}
+.forecast-card em.warning {
+  color: var(--danger, #b45309);
+}
+.variable-budget-vehicle {
+  border-top: 1px solid var(--line);
+  margin-top: 22px;
+  padding-top: 18px;
+}
 .metric-card {
   border: 1px solid var(--line);
   border-radius: 10px;

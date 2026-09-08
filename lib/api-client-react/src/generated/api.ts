@@ -128,6 +128,7 @@ import type {
   FinancingScenarioInput,
   FinancingSnapshot,
   ForbiddenResponse,
+  GetVariableBudgetIntelligenceParams,
   GoalSummary,
   GuidedRunActionInput,
   GuidedRunActionResult,
@@ -193,6 +194,7 @@ import type {
   ProviderWebhookPayload,
   ReadOnlyBankConnectionInput,
   RealEstateIntelligence,
+  RecalculateVariableIncomeProfileInput,
   ReceiveReadOnlyBankWebhook202,
   RecommendationDecisionInput,
   RecommendationFeedback,
@@ -229,6 +231,10 @@ import type {
   UpcomingExpenseInput,
   UpcomingExpenseUpdateInput,
   UpdateBuyBoxInput,
+  VariableBudgetIntelligence,
+  VariableIncomeProfile,
+  VehicleScenario,
+  VehicleScenarioInput,
   WeeklyBudgetAllocationTemplateInput,
   WeeklyBudgetAllocationTemplateResult,
   WeeklyBudgetGuidance
@@ -9330,6 +9336,232 @@ export function useGetBudgetPlanningCategoryContributionDetail<TData = Awaited<R
 
 
 
+
+export const getGetVariableBudgetIntelligenceUrl = (params?: GetVariableBudgetIntelligenceParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/variable-budget/intelligence?${stringifiedParams}` : `/api/variable-budget/intelligence`
+}
+
+/**
+ * @summary Get deterministic variable-income household planning intelligence
+ */
+export const getVariableBudgetIntelligence = async (params?: GetVariableBudgetIntelligenceParams, options?: Parameters<typeof customFetch>[1]): Promise<VariableBudgetIntelligence> => {
+
+  return customFetch<VariableBudgetIntelligence>(getGetVariableBudgetIntelligenceUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetVariableBudgetIntelligenceQueryKey = (params?: GetVariableBudgetIntelligenceParams,) => {
+    return [
+    `/api/variable-budget/intelligence`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetVariableBudgetIntelligenceQueryOptions = <TData = Awaited<ReturnType<typeof getVariableBudgetIntelligence>>, TError = ErrorType<ForbiddenResponse>>(params?: GetVariableBudgetIntelligenceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVariableBudgetIntelligence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetVariableBudgetIntelligenceQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getVariableBudgetIntelligence>>> = ({ signal }) => getVariableBudgetIntelligence(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getVariableBudgetIntelligence>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetVariableBudgetIntelligenceQueryResult = NonNullable<Awaited<ReturnType<typeof getVariableBudgetIntelligence>>>
+export type GetVariableBudgetIntelligenceQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary Get deterministic variable-income household planning intelligence
+ */
+
+export function useGetVariableBudgetIntelligence<TData = Awaited<ReturnType<typeof getVariableBudgetIntelligence>>, TError = ErrorType<ForbiddenResponse>>(
+ params?: GetVariableBudgetIntelligenceParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVariableBudgetIntelligence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetVariableBudgetIntelligenceQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRecalculateVariableIncomeProfileUrl = () => {
+
+
+
+
+  return `/api/variable-budget/profile/recalculate`
+}
+
+/**
+ * @summary Recalculate a verified-income profile
+ */
+export const recalculateVariableIncomeProfile = async (recalculateVariableIncomeProfileInput?: RecalculateVariableIncomeProfileInput, options?: Parameters<typeof customFetch>[1]): Promise<VariableIncomeProfile> => {
+
+  return customFetch<VariableIncomeProfile>(getRecalculateVariableIncomeProfileUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(recalculateVariableIncomeProfileInput)
+  }
+);}
+
+
+
+
+
+export const getRecalculateVariableIncomeProfileMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recalculateVariableIncomeProfile>>, TError,{data?: BodyType<RecalculateVariableIncomeProfileInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recalculateVariableIncomeProfile>>, TError,{data?: BodyType<RecalculateVariableIncomeProfileInput>}, TContext> => {
+
+const mutationKey = ['recalculateVariableIncomeProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recalculateVariableIncomeProfile>>, {data?: BodyType<RecalculateVariableIncomeProfileInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  recalculateVariableIncomeProfile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecalculateVariableIncomeProfileMutationResult = NonNullable<Awaited<ReturnType<typeof recalculateVariableIncomeProfile>>>
+    export type RecalculateVariableIncomeProfileMutationBody = BodyType<RecalculateVariableIncomeProfileInput> | undefined
+    export type RecalculateVariableIncomeProfileMutationError = ErrorType<BadRequestResponse | ForbiddenResponse>
+
+    /**
+ * @summary Recalculate a verified-income profile
+ */
+export const useRecalculateVariableIncomeProfile = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recalculateVariableIncomeProfile>>, TError,{data?: BodyType<RecalculateVariableIncomeProfileInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recalculateVariableIncomeProfile>>,
+        TError,
+        {data?: BodyType<RecalculateVariableIncomeProfileInput>},
+        TContext
+      > => {
+      return useMutation(getRecalculateVariableIncomeProfileMutationOptions(options));
+    }
+
+export const getCreateVehicleScenarioUrl = () => {
+
+
+
+
+  return `/api/variable-budget/vehicle-scenarios`
+}
+
+/**
+ * @summary Create a planning-only vehicle affordability scenario
+ */
+export const createVehicleScenario = async (vehicleScenarioInput: VehicleScenarioInput, options?: Parameters<typeof customFetch>[1]): Promise<VehicleScenario> => {
+
+  return customFetch<VehicleScenario>(getCreateVehicleScenarioUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(vehicleScenarioInput)
+  }
+);}
+
+
+
+
+
+export const getCreateVehicleScenarioMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createVehicleScenario>>, TError,{data: BodyType<VehicleScenarioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createVehicleScenario>>, TError,{data: BodyType<VehicleScenarioInput>}, TContext> => {
+
+const mutationKey = ['createVehicleScenario'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createVehicleScenario>>, {data: BodyType<VehicleScenarioInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createVehicleScenario(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateVehicleScenarioMutationResult = NonNullable<Awaited<ReturnType<typeof createVehicleScenario>>>
+    export type CreateVehicleScenarioMutationBody = BodyType<VehicleScenarioInput>
+    export type CreateVehicleScenarioMutationError = ErrorType<BadRequestResponse | ForbiddenResponse>
+
+    /**
+ * @summary Create a planning-only vehicle affordability scenario
+ */
+export const useCreateVehicleScenario = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createVehicleScenario>>, TError,{data: BodyType<VehicleScenarioInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createVehicleScenario>>,
+        TError,
+        {data: BodyType<VehicleScenarioInput>},
+        TContext
+      > => {
+      return useMutation(getCreateVehicleScenarioMutationOptions(options));
+    }
 
 export const getGetBankingStatusUrl = () => {
 

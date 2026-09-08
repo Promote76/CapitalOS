@@ -1890,6 +1890,43 @@ paths:
         "200": { description: Category contribution detail, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningContributionDetail" } } } }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /variable-budget/intelligence:
+    get:
+      operationId: getVariableBudgetIntelligence
+      tags: [household-finance]
+      summary: Get deterministic variable-income household planning intelligence
+      parameters:
+        - name: asOf
+          in: query
+          required: false
+          schema: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+      responses:
+        "200": { description: Variable-income planning intelligence, content: { application/json: { schema: { $ref: "#/components/schemas/VariableBudgetIntelligence" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /variable-budget/profile/recalculate:
+    post:
+      operationId: recalculateVariableIncomeProfile
+      tags: [household-finance]
+      summary: Recalculate a verified-income profile
+      requestBody:
+        required: false
+        content: { application/json: { schema: { $ref: "#/components/schemas/RecalculateVariableIncomeProfileInput" } } }
+      responses:
+        "200": { description: Persisted income profile, content: { application/json: { schema: { $ref: "#/components/schemas/VariableIncomeProfile" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /variable-budget/vehicle-scenarios:
+    post:
+      operationId: createVehicleScenario
+      tags: [household-finance]
+      summary: Create a planning-only vehicle affordability scenario
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/VehicleScenarioInput" } } }
+      responses:
+        "201": { description: Vehicle scenario, content: { application/json: { schema: { $ref: "#/components/schemas/VehicleScenario" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /banking/status:
     get:
       operationId: getBankingStatus
@@ -6938,3 +6975,181 @@ components:
         ownerId: { type: string }
         leaseExpiresAt: { type: string, format: date-time }
         heartbeatAt: { type: string, format: date-time }
+    RecalculateVariableIncomeProfileInput:
+      type: object
+      properties:
+        calculationDate: { type: string, pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" }
+        policy:
+          type: string
+          enum: [CONSERVATIVE_MINIMUM, TRAILING_MEDIAN_DISCOUNTED, USER_APPROVED_FLOOR]
+        approvedFloor: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+    VariableIncomeProfile:
+      type: object
+      required: [calculationDate, currentMonthVerifiedIncome, trailing4WeekIncome, trailing8WeekIncome, trailing13WeekIncome, trailing3MonthIncome, trailing6MonthIncome, highestRecentMonth, lowestRecentMonth, medianRecentMonth, incomeFloor, baseIncome, strongMonthIncome, incomeVolatility, sourceCount, sourceFreshness, policy, confidenceStatus, recentMonthCount]
+      properties:
+        id: { type: string }
+        calculationDate: { type: string }
+        currentMonthVerifiedIncome: { type: string }
+        trailing4WeekIncome: { type: string }
+        trailing8WeekIncome: { type: string }
+        trailing13WeekIncome: { type: string }
+        trailing3MonthIncome: { type: string }
+        trailing6MonthIncome: { type: string }
+        highestRecentMonth: { type: string }
+        lowestRecentMonth: { type: string }
+        medianRecentMonth: { type: string }
+        incomeFloor: { type: string }
+        baseIncome: { type: string }
+        strongMonthIncome: { type: string }
+        incomeVolatility: { type: number }
+        sourceCount: { type: number }
+        sourceFreshness: { type: ["string", "null"] }
+        policy: { type: string }
+        confidenceStatus: { type: string }
+        recentMonthCount: { type: number }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    VehicleScenarioInput:
+      type: object
+      required: [name, monthlyPayment, insurance, fuel, maintenanceReserve]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        vehiclePrice: { type: string }
+        downPayment: { type: string }
+        loanAmount: { type: string }
+        estimatedApr: { type: string }
+        loanTermMonths: { type: number, minimum: 0 }
+        monthlyPayment: { type: string }
+        insurance: { type: string }
+        fuel: { type: string }
+        maintenanceReserve: { type: string }
+        registrationReserve: { type: string }
+        parkingTolls: { type: string }
+        otherMonthlyCost: { type: string }
+        notes: { type: string, maxLength: 1000 }
+    VehicleScenario:
+      type: object
+      required: [id, name, totalMonthlyCost, affordabilityStatus, newOperatingBudget, newFloorSurplus, capitalSurplusImpact, status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        vehiclePrice: { type: string }
+        downPayment: { type: string }
+        loanAmount: { type: string }
+        estimatedApr: { type: string }
+        loanTermMonths: { type: string }
+        monthlyPayment: { type: string }
+        insurance: { type: string }
+        fuel: { type: string }
+        maintenanceReserve: { type: string }
+        registrationReserve: { type: string }
+        parkingTolls: { type: string }
+        otherMonthlyCost: { type: string }
+        totalMonthlyCost: { type: string }
+        affordabilityStatus: { type: string }
+        newOperatingBudget: { type: string }
+        newFloorSurplus: { type: string }
+        capitalSurplusImpact: { type: string }
+        status: { type: string }
+        notes: { type: ["string", "null"] }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    VariableBudgetConstraintSet:
+      type: object
+      required: [verifiedIncome, incomeFloor, baseIncome, strongIncome, mandatoryObligations, essentialVariableCosts, reserveRequirements, discretionarySpending, currentCash, cashBuffer, capitalGoals, next30DayObligations, operatingBudgetCap, minimumViableOperatingCost, optionalDiscretionaryAllowance, capitalSurplusAtFloor, capitalSurplusAtBase, capitalSurplusAtStrong, forecastShortfall, obligationCoverage, status]
+      properties:
+        verifiedIncome: { type: string }
+        incomeFloor: { type: string }
+        baseIncome: { type: string }
+        strongIncome: { type: string }
+        mandatoryObligations: { type: string }
+        essentialVariableCosts: { type: string }
+        reserveRequirements: { type: string }
+        discretionarySpending: { type: string }
+        currentCash: { type: string }
+        cashBuffer: { type: string }
+        capitalGoals: { type: string }
+        next30DayObligations: { type: string }
+        operatingBudgetCap: { type: string }
+        minimumViableOperatingCost: { type: string }
+        optionalDiscretionaryAllowance: { type: string }
+        capitalSurplusAtFloor: { type: string }
+        capitalSurplusAtBase: { type: string }
+        capitalSurplusAtStrong: { type: string }
+        forecastShortfall: { type: string }
+        obligationCoverage: { type: number }
+        status: { type: string }
+    VariableBudgetForecast:
+      type: object
+      required: [days, scenarioIncome, openingCash, obligations, essentialSpending, reserveContributions, approvedCapitalContributions, endingProjectedCash, bufferShortfall, status]
+      properties:
+        days: { type: number }
+        scenarioIncome: { type: string }
+        openingCash: { type: string }
+        obligations: { type: string }
+        essentialSpending: { type: string }
+        reserveContributions: { type: string }
+        approvedCapitalContributions: { type: string }
+        endingProjectedCash: { type: string }
+        bufferShortfall: { type: string }
+        status: { type: string }
+    VariableBudgetIntelligence:
+      type: object
+      required: [asOf, source, incomeProfile, constraints, obligations, reserve, cash, forecast, vehicleScenarios]
+      properties:
+        asOf: { type: string }
+        source:
+          type: object
+          required: [verifiedIncomeEventCount, approvedBudgetPeriod, incomeAuthority, planningStatus]
+          properties:
+            verifiedIncomeEventCount: { type: number }
+            approvedBudgetPeriod: { type: ["string", "null"] }
+            incomeAuthority: { type: string }
+            planningStatus: { type: string }
+        incomeProfile: { $ref: "#/components/schemas/VariableIncomeProfile" }
+        constraints: { $ref: "#/components/schemas/VariableBudgetConstraintSet" }
+        obligations:
+          type: object
+          required: [next7Days, next14Days, next30Days, next60Days, next90Days, items]
+          properties:
+            next7Days: { type: string }
+            next14Days: { type: string }
+            next30Days: { type: string }
+            next60Days: { type: string }
+            next90Days: { type: string }
+            items:
+              type: array
+              items:
+                type: object
+                required: [name, dueDate, amount, required, source]
+                properties:
+                  name: { type: string }
+                  dueDate: { type: string }
+                  amount: { type: string }
+                  required: { type: boolean }
+                  source: { type: string }
+        reserve:
+          type: object
+          required: [targetMonths, target, current, fundingGap, monthlyFunding, status]
+          properties:
+            targetMonths: { type: number }
+            target: { type: string }
+            current: { type: string }
+            fundingGap: { type: string }
+            monthlyFunding: { type: string }
+            status: { type: string }
+        cash:
+          type: object
+          required: [current, buffer, coverage, pressure]
+          properties:
+            current: { type: string }
+            buffer: { type: string }
+            coverage: { type: number }
+            pressure: { type: string }
+        forecast:
+          type: array
+          items: { $ref: "#/components/schemas/VariableBudgetForecast" }
+        vehicleScenarios:
+          type: array
+          items: { $ref: "#/components/schemas/VehicleScenario" }

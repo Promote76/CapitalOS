@@ -2,9 +2,11 @@
 
 **Date:** 2026-09-08  
 **Area:** Financial Documents, Budget, Accounting, Forecasts, and Capital Governor  
-**Overall assessment:** **IMPLEMENTED — RELEASE STATUS DETERMINED BY CURRENT CERTIFICATION**
+**Overall assessment:** **IMPLEMENTED — DOCUMENT-TO-BUDGET BRIDGE CERTIFIED 30/30**
 
 > **Post-implementation update (2026-09-08):** This report originally documented the gap that led to the document-to-Budget bridge work. That gap has now been implemented. The historical analysis below is retained as the design and safety rationale; statements written in the present tense about the bridge being absent describe the pre-implementation baseline, not the current product.
+
+> **Production upload-location audit (2026-09-08):** The real uploaded PDFs were found in production App Storage. Their persisted paths use the expected private `/objects/uploads/<opaque-object-id>` format. They were not uploaded into the project filesystem or the public-assets area. Two P&L files were, however, submitted through the Stevens Settlement intake and therefore received the wrong document type even though their physical storage location is correct.
 
 ## Executive conclusion
 
@@ -54,6 +56,41 @@ The Documents workflow:
 Parser errors remain explicit and prevent the parent statement from being verified.
 
 **Status:** Complete.
+
+#### Production upload-path audit
+
+A read-only production database inspection found ten real PDF document records. Every record points to the expected private App Storage namespace:
+
+```text
+/objects/uploads/<opaque-object-id>
+```
+
+This is the normalized application path stored in `financial_documents.source_object_path`. The file bytes are held in the project's private App Storage bucket; the path is not a local directory under the Replit project and is not the public `/storage/public-objects/` area.
+
+The workspace `attached_assets/` directory was also inspected. It contains conversation prompts and screenshots, but no PDF, CSV, XLS, or XLSX family financial documents. Therefore, the real documents were uploaded through the running Capital OS application rather than accidentally placed in the workspace attachment folder.
+
+##### Located production records
+
+| Uploaded filename | Persisted private object path | Recorded document type | Status | Audit finding |
+| --- | --- | --- | --- | --- |
+| `000001-9.pdf` | `/objects/uploads/f4407420-b333-4bea-8d13-3ace593d9357` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; likely another copy/version of the settlement document. |
+| `FUQC P&L (3).pdf` | `/objects/uploads/736fc9a6-bdb3-4dea-ab7f-92d04b3b2d11` | `STEVENS_SETTLEMENT` | `VERIFIED` | **Wrong intake classification.** The filename indicates P&L, but the record was created as a Stevens Settlement document. |
+| `FUQC P&L (2).pdf` | `/objects/uploads/bf778455-3f21-4f5d-9b7d-7b25a274c5a5` | `STEVENS_SETTLEMENT` | `VERIFIED` | **Wrong intake classification.** The filename indicates P&L, but the record was created as a Stevens Settlement document. |
+| `FUQC P&L (1).pdf` | `/objects/uploads/d93301dc-6d9e-479a-88be-b77ec5b4c66b` | `BUSINESS_PROFIT_AND_LOSS` | `VERIFIED` | Correct private storage namespace and document type. |
+| `FUQC P&L.pdf` | `/objects/uploads/03d4c196-80ee-4abf-b119-05863b961f22` | `BUSINESS_PROFIT_AND_LOSS` | `VERIFIED` | Correct private storage namespace and document type. |
+| `000001 (5).PDF` | `/objects/uploads/c5b5f238-fd27-49da-8618-e0db91216375` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
+| `000001 (3).PDF` | `/objects/uploads/c7d6eee0-d96e-4493-857a-c5e123b563df` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
+| `000001 (2).PDF` | `/objects/uploads/af5adb23-03d7-41f2-a94b-0de2941ce82a` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
+| `000001 (1).PDF` | `/objects/uploads/61386ef7-b7fb-423f-a7cf-c3a6ec660d80` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
+| `000001.PDF` | `/objects/uploads/290794bf-bcb1-4f87-9f0a-3292a92fcfe0` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be the first settlement upload in this group. |
+
+##### Conclusion and corrective guidance
+
+- **Storage location:** Correct. All ten production records use private App Storage.
+- **Wrong-location concern:** Not confirmed. No real financial PDFs were found in the workspace upload folder or public object namespace.
+- **Wrong intake/type confirmed:** `FUQC P&L (2).pdf` and `FUQC P&L (3).pdf` were recorded as `STEVENS_SETTLEMENT`, most likely because **Upload Stevens Settlement** was selected instead of **Upload P&L**.
+- **Possible duplicate/version groups:** Six filenames begin with `000001`, and four begin with `FUQC P&L`. Filename similarity alone is not enough to delete or merge them; document hashes and intended business purpose must be reviewed first.
+- **Safe next step:** Keep the original objects and audit history. Reclassify the two incorrectly typed P&L records through an explicit correction workflow if available, or upload the authoritative copies through **Upload P&L** and explicitly reject the wrongly classified records. Do not delete private objects directly from App Storage before their database provenance and downstream evidence links are resolved.
 
 ### 2. Statement transaction review
 
@@ -287,15 +324,22 @@ The current release result is generated by:
 
 `CAPITAL_OS_RUN_INTEGRATION=1 CAPITAL_OS_RUN_BROWSER=1 pnpm run certify:document-budget-bridge`
 
-The command requires focused domain tests, API and web typechecks, API-contract parity, generated-finance-artifact freshness, the real database integration fixture, and the authenticated browser journey. Skipped database or browser evidence is reported as **BLOCKED**, never as a pass. Current generated evidence is stored under `docs/certification/`.
+The command requires focused domain tests, API and web typechecks, API-contract parity, generated-finance-artifact freshness, the real database integration fixture, and the authenticated browser journey. Skipped database or browser evidence is reported as **BLOCKED**, never as a pass.
+
+The 2026-09-08 execution passed **DBB-01 through DBB-30 (30/30)**, including the database-backed integration fixture and authenticated upload/category/import/Budget/Accounting browser journey. Evidence is stored in:
+
+- `docs/certification/DOCUMENT_BUDGET_BRIDGE_CERTIFICATION_2026-09-08.md`
+- `docs/certification/logs/DOCUMENT_BUDGET_BRIDGE_CERTIFICATION_2026-09-08.log`
 
 ## Final decision
 
 **Evidence ingestion and review:** COMPLETE  
 **Advisory Budget evidence summary:** COMPLETE  
 **Risk and authority isolation:** COMPLETE  
-**Automatic category population:** INTENTIONALLY DISALLOWED
-**Human-approved category utilization:** IMPLEMENTED
-**Uploaded-document-to-Budget workflow:** IMPLEMENTED; RELEASE STATUS REQUIRES A CURRENT NON-BLOCKED CERTIFICATION
+**Automatic category population:** INTENTIONALLY DISALLOWED  
+**Human-approved category utilization:** IMPLEMENTED  
+**Production private-storage path:** VERIFIED  
+**Production document-type audit:** TWO P&L RECORDS REQUIRE CORRECTION  
+**Uploaded-document-to-Budget workflow:** IMPLEMENTED AND CERTIFIED 30/30
 
 The implemented correction does not make uploads automatically authoritative. It adds the controlled, human-approved bridge described in this report so Budget actuals can reflect reviewed statement activity without silently changing the family's plan.

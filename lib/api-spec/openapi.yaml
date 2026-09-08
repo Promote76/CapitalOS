@@ -1745,7 +1745,7 @@ paths:
     get:
       operationId: getBudgetPlanningPeriod
       tags: [household-finance]
-      summary: Get or lazily bootstrap a household monthly budget planning period
+      summary: Get the current draft or latest finalized household monthly budget planning period
       parameters:
         - name: month
           in: path
@@ -1754,7 +1754,20 @@ paths:
       responses:
         "200":
           description: Planning period and immutable category snapshots
-          content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningPeriod" } } }
+          content: { application/json: { schema: { oneOf: [{ $ref: "#/components/schemas/BudgetPlanningPeriod" }, { type: "null" }] } } }
+    post:
+      operationId: createBudgetPlanningPeriod
+      tags: [household-finance]
+      summary: Create a draft monthly plan from the latest finalized plan or household taxonomy
+      parameters:
+        - name: month
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+      responses:
+        "201": { description: Draft planning period, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningPeriod" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /budget-planning-periods/{periodId}/weekly-guidance:
     get:
       operationId: getWeeklyBudgetGuidance
@@ -1842,6 +1855,19 @@ paths:
       responses:
         "200": { description: Approved immutable period, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningApproval" } } } }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /budget-planning-periods/{periodId}/superseding-draft:
+    post:
+      operationId: createSupersedingBudgetPlanningPeriod
+      tags: [household-finance]
+      summary: Create a reviewable correction draft while preserving the approved plan
+      parameters:
+        - { name: periodId, in: path, required: true, schema: { type: string } }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201": { description: Superseding draft, content: { application/json: { schema: { $ref: "#/components/schemas/BudgetPlanningPeriod" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "409": { $ref: "#/components/responses/Conflict" }
   /budget-planning-periods/{month}/copy-forward:
     post:
@@ -3430,6 +3456,7 @@ components:
         status: { type: string, enum: [draft, approved, closed] }
         version: { type: number }
         copiedFromPeriodId: { type: [string, "null"] }
+        supersedesPeriodId: { type: [string, "null"] }
         createdBy: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
@@ -3520,6 +3547,7 @@ components:
         status: { type: string, enum: [approved] }
         version: { type: number }
         approvedAt: { type: string, format: date-time }
+        supersedesPeriodId: { type: [string, "null"] }
     BudgetPlanningReorderInput:
       type: object
       required: [version, categoryIds]
@@ -3550,6 +3578,7 @@ components:
         status: { type: string, enum: [draft, approved, closed] }
         version: { type: number, minimum: 1 }
         copiedFromPeriodId: { type: [string, "null"] }
+        supersedesPeriodId: { type: [string, "null"] }
         createdBy: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }

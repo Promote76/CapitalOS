@@ -38,6 +38,8 @@ import {
   useGetVariableBudgetIntelligence,
   useCreateVehicleScenario,
   useGetBudgetPlanningPeriod,
+  useCreateBudgetPlanningPeriod,
+  useCreateSupersedingBudgetPlanningPeriod,
   useCreateBudgetPlanningCategory,
   useUpdateBudgetPlanningCategory,
   useApproveBudgetPlanningPeriod,
@@ -497,6 +499,12 @@ function displayMoney(value: string | undefined, fallback: string) {
   return Number.isFinite(amount) ? `$${amount.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : fallback;
 }
 
+function moneyCents(value: string) {
+  const match = value.match(/^(-?)(\d+)(?:\.(\d{1,2}))?$/);
+  if (!match) return 0;
+  const amount = Number(match[2]) * 100 + Number((match[3] ?? '').padEnd(2, '0'));
+  return match[1] === '-' ? -amount : amount;
+}
 function displayDate(value: string | undefined, fallback: string) {
   if (!value) return fallback;
   const date = new Date(value);
@@ -1351,6 +1359,7 @@ function BudgetPlanningControlCenter() {
     approve: crypto.randomUUID(),
     close: crypto.randomUUID(),
     guidance: crypto.randomUUID(),
+    supersede: crypto.randomUUID(),
   });
 
   const reorderCategories = useReorderBudgetPlanningCategories();
@@ -1358,6 +1367,9 @@ function BudgetPlanningControlCenter() {
   const closePeriod = useCloseBudgetPlanningPeriod({ request: { headers: { 'Idempotency-Key': idempotencyKeys.current.close } } });
   const acceptGuidance = useAcceptWeeklyBudgetGuidance({ request: { headers: { 'Idempotency-Key': idempotencyKeys.current.guidance } } });
   const updateAllocations = useUpdateWeeklyBudgetAllocations();
+  const createPeriod = useCreateBudgetPlanningPeriod();
+  const createSupersedingPeriod = useCreateSupersedingBudgetPlanningPeriod({ request: { headers: { 'Idempotency-Key': idempotencyKeys.current.supersede } } });
+  const [builderStep, setBuilderStep] = useState(0);
   const [allocationPercentages, setAllocationPercentages] = useState<Record<string, string>>({});
   const [allocationError, setAllocationError] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -1393,6 +1405,21 @@ function BudgetPlanningControlCenter() {
   const persistedAllocationTemplateValid = allocatingCategories.length > 0
     && allocatingCategories.every(category => Number.isInteger(category.allocationBasisPoints) && category.allocationBasisPoints! >= 0 && category.allocationBasisPoints! <= 10000)
     && persistedAllocationTotal === 10000;
+  const plannedIncomeCents = activeCategories.filter(category => category.categoryType === 'income').reduce((sum, category) => sum + moneyCents(category.monthlyTarget), 0);
+  const plannedOutflowCents = activeCategories.filter(category => !['income', 'transfer'].includes(category.categoryType)).reduce((sum, category) => sum + moneyCents(category.monthlyTarget), 0);
+  const plannedIncome = plannedIncomeCents / 100;
+  const plannedOutflow = plannedOutflowCents / 100;
+  const builderSteps = [
+    { title: 'Income', detail: 'Add reliable monthly household income.', complete: activeCategories.some(category => category.categoryType === 'income' && Number(category.monthlyTarget) > 0) },
+    { title: 'Obligations', detail: 'Capture rent, debt, and other mandatory payments.', complete: activeCategories.some(category => ['fixed_expense', 'debt_payment'].includes(category.categoryType) && category.essentialStatus !== 'discretionary' && Number(category.monthlyTarget) > 0) },
+    { title: 'Essentials', detail: 'Plan groceries, utilities, transport, and care.', complete: activeCategories.some(category => category.categoryType === 'variable_essential' && category.essentialStatus !== 'discretionary' && Number(category.monthlyTarget) > 0) },
+    { title: 'Reserves', detail: 'Protect emergency and near-term reserves.', complete: activeCategories.some(category => category.categoryType === 'savings' && category.essentialStatus !== 'discretionary' && Number(category.monthlyTarget) > 0) },
+    { title: 'Discretionary', detail: 'Set a deliberate flexible-spending ceiling.', complete: activeCategories.some(category => category.essentialStatus === 'discretionary' && Number(category.monthlyTarget) > 0) },
+    { title: 'Capital surplus', detail: 'Assign remaining income to a named capital goal.', complete: activeCategories.some(category => ['investment', 'savings'].includes(category.categoryType) && /capital|invest|goal|opportunity/i.test(`${category.name} ${category.notes ?? ''}`) && Number(category.monthlyTarget) > 0) },
+    { title: 'Review', detail: 'Confirm every dollar has a role and allocations total 100%.', complete: plannedIncomeCents > 0 && plannedOutflowCents === plannedIncomeCents && persistedAllocationTemplateValid },
+    { title: 'Approval', detail: 'Approve and freeze this reviewed monthly plan.', complete: periodQuery.data?.status === 'approved' || periodQuery.data?.status === 'closed' },
+  ];
+  const builderLayersComplete = builderSteps.slice(0, 6).every(step => step.complete);
 
   const submitApprove = useProviderProtectedAction(async (periodId: string, version: number) => {
     return approvePeriod.mutateAsync({ periodId, data: { version } });
@@ -1421,6 +1448,10 @@ function BudgetPlanningControlCenter() {
   };
 
   const handleApprove = async (period: BudgetPlanningPeriod) => {
+    if (!builderLayersComplete || plannedOutflowCents !== plannedIncomeCents) {
+      toast({ variant: 'destructive', title: 'Plan layers incomplete', description: plannedOutflowCents !== plannedIncomeCents ? 'Assign all planned income before approval.' : 'Complete income, obligations, essentials, reserves, discretionary spending, and a named capital goal before approval.' });
+      return;
+    }
     if (!persistedAllocationTemplateValid) {
       toast({ variant: 'destructive', title: 'Allocation template incomplete', description: 'Save every allocating category with a total of exactly 100.00% before approving this plan.' });
       return;
@@ -1439,6 +1470,35 @@ function BudgetPlanningControlCenter() {
       toast({ title: 'Plan approved' });
     } catch (err: unknown) {
       handleMutationError(err, 'Approval');
+    }
+  };
+
+  const handleCreatePlan = async () => {
+    try {
+      await createPeriod.mutateAsync({ month: selectedMonth });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningPeriodQueryKey(selectedMonth) }),
+        queryClient.invalidateQueries({ queryKey: getListBudgetPlanningHistoryQueryKey() }),
+      ]);
+      setBuilderStep(0);
+      toast({ title: 'Draft plan created', description: 'Start with monthly household income.' });
+    } catch (error) {
+      handleMutationError(error, 'Create plan');
+    }
+  };
+
+  const handleCreateCorrection = async (periodId: string) => {
+    try {
+      await createSupersedingPeriod.mutateAsync({ periodId });
+      idempotencyKeys.current.supersede = crypto.randomUUID();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningPeriodQueryKey(selectedMonth) }),
+        queryClient.invalidateQueries({ queryKey: getListBudgetPlanningHistoryQueryKey() }),
+      ]);
+      setBuilderStep(0);
+      toast({ title: 'Correction draft created', description: 'The approved plan remains unchanged while this replacement is reviewed.' });
+    } catch (error) {
+      handleMutationError(error, 'Create correction');
     }
   };
 
@@ -1582,9 +1642,18 @@ function BudgetPlanningControlCenter() {
         <div className="budget-skeleton" aria-hidden="true"><div className="skeleton budget-skeleton-table" /></div>
       ) : periodQuery.isError ? (
         <div className="finance-empty-state" role="alert">
-           <strong>No plan found for {selectedMonth}</strong>
-           <span>Select a different month or ensure the service is available.</span>
+           <strong>Planning service unavailable</strong>
+           <span>The selected month could not be checked. No plan was created.</span>
            <button className="btn btn-secondary" onClick={() => void periodQuery.refetch()}>Try again</button>
+        </div>
+      ) : !periodQuery.data ? (
+        <div className="finance-empty-state budget-plan-empty">
+          <ClipboardList size={28} />
+          <strong>No plan for {formatMonth(selectedMonth)}</strong>
+          <span>Create a draft and work through income, obligations, essentials, reserves, discretionary spending, capital surplus, review, and approval.</span>
+          <button className="btn btn-primary" data-testid="button-create-budget-plan" disabled={createPeriod.isPending} onClick={() => void handleCreatePlan()}>
+            <Plus size={14} /> {createPeriod.isPending ? 'Creating…' : 'Create Plan'}
+          </button>
         </div>
       ) : periodQuery.data && (
         <div className="planning-period-content">
@@ -1598,11 +1667,14 @@ function BudgetPlanningControlCenter() {
                 {periodQuery.data.status === 'draft' && (
                   <>
                     <button onClick={() => setEditingCategory('new')} className="btn btn-secondary btn-sm"><Plus size={14} /> Category</button>
-                     <button onClick={() => handleApprove(periodQuery.data)} disabled={approvePeriod.isPending || !persistedAllocationTemplateValid} title={persistedAllocationTemplateValid ? 'Approve this plan' : 'Save a complete 100.00% allocation template before approval'} className="btn btn-primary btn-sm"><Check size={14} /> Approve</button>
+                     <button onClick={() => handleApprove(periodQuery.data!)} disabled={approvePeriod.isPending || !persistedAllocationTemplateValid} title={persistedAllocationTemplateValid ? 'Approve this plan' : 'Save a complete 100.00% allocation template before approval'} className="btn btn-primary btn-sm"><Check size={14} /> Approve</button>
                   </>
                 )}
                 {periodQuery.data.status === 'approved' && (
-                  <button onClick={() => handleClose(periodQuery.data)} disabled={closePeriod.isPending} className="btn btn-secondary btn-sm"><Lock size={14} /> Close Period</button>
+                  <>
+                    <button onClick={() => void handleCreateCorrection(periodQuery.data!.id)} disabled={createSupersedingPeriod.isPending} className="btn btn-primary btn-sm"><Pencil size={14} /> Create correction draft</button>
+                    <button onClick={() => handleClose(periodQuery.data!)} disabled={closePeriod.isPending} className="btn btn-secondary btn-sm"><Lock size={14} /> Close Period</button>
+                  </>
                 )}
              </div>
            </div>
@@ -1612,10 +1684,54 @@ function BudgetPlanningControlCenter() {
                <div className="finance-data-banner-icon planning-advisory-icon"><AlertTriangle size={16} /></div>
                <div>
                  <strong>Advisory Draft</strong>
-                 <span>Changes here do not affect official totals until approved. Projected expense target: {displayMoney(periodQuery.data.advisory.projectedExpenseTarget, '$0')}. Net activity: {displayMoney(periodQuery.data.advisory.reviewedHouseholdNetActivity, '$0')}. {periodQuery.data.copiedFromPeriodId ? 'Initialized from the latest finalized plan.' : 'Initialized from the live category taxonomy.'}</span>
+                  <span>Changes here do not affect official totals until approved. Projected expense target: {displayMoney(periodQuery.data.advisory.projectedExpenseTarget, '$0')}. Net activity: {displayMoney(periodQuery.data.advisory.reviewedHouseholdNetActivity, '$0')}. {periodQuery.data.supersedesPeriodId ? 'This correction draft preserves the approved plan until replacement approval.' : periodQuery.data.copiedFromPeriodId ? 'Initialized from the latest finalized plan.' : 'Initialized from the live category taxonomy.'}</span>
                </div>
              </div>
            )}
+
+            <div className="budget-builder" data-testid="budget-plan-builder">
+              <div className="budget-builder-heading">
+                <div>
+                  <span className="mono-label">Guided monthly plan</span>
+                  <h3>Step {builderStep + 1} of 8 · {builderSteps[builderStep].title}</h3>
+                  <p>{builderSteps[builderStep].detail}</p>
+                </div>
+                <span className={`status ${builderSteps[builderStep].complete ? 'success' : 'review'}`}>{builderSteps[builderStep].complete ? 'Complete' : 'Needs review'}</span>
+              </div>
+              <div className="budget-builder-steps" role="list" aria-label="Monthly plan steps">
+                {builderSteps.map((step, index) => (
+                  <button key={step.title} role="listitem" className={`budget-builder-step ${index === builderStep ? 'active' : ''} ${step.complete ? 'complete' : ''}`} onClick={() => setBuilderStep(index)}>
+                    <span>{step.complete ? <Check size={13} /> : index + 1}</span>{step.title}
+                  </button>
+                ))}
+              </div>
+              <div className="budget-builder-body">
+                {builderStep < 6 && (
+                  <>
+                    <p>Add or edit categories below for this layer. Category type and essential status determine where each target belongs; a single rent or category target never counts as the whole plan.</p>
+                    {periodQuery.data.status === 'draft' && <button className="btn btn-secondary btn-sm" onClick={() => setEditingCategory('new')}><Plus size={14} /> Add {builderSteps[builderStep].title.toLowerCase()} category</button>}
+                  </>
+                )}
+                {builderStep === 6 && (
+                  <div className="budget-builder-review">
+                    <div><span>Planned income</span><strong>{displayMoney(plannedIncome.toFixed(2), '$0')}</strong></div>
+                    <div><span>All planned outflows</span><strong>{displayMoney(plannedOutflow.toFixed(2), '$0')}</strong></div>
+                    <div><span>Unassigned surplus</span><strong>{displayMoney((plannedIncome - plannedOutflow).toFixed(2), '$0')}</strong></div>
+                    <div><span>Weekly allocation</span><strong>{(persistedAllocationTotal / 100).toFixed(2)}%</strong></div>
+                  </div>
+                )}
+                {builderStep === 7 && periodQuery.data.status === 'draft' && (
+                  <button className="btn btn-primary" disabled={approvePeriod.isPending || !builderLayersComplete || plannedOutflowCents !== plannedIncomeCents || !persistedAllocationTemplateValid} onClick={() => void handleApprove(periodQuery.data!)}>
+                    <Check size={14} /> Approve immutable plan
+                  </button>
+                )}
+                {builderStep === 7 && periodQuery.data.status !== 'draft' && <p>This version is approved and immutable. Create a correction draft to propose changes without rewriting this record.</p>}
+              </div>
+              <div className="budget-builder-nav">
+                <button className="btn btn-secondary btn-sm" disabled={builderStep === 0} onClick={() => setBuilderStep(step => step - 1)}>Back</button>
+                <button className="btn btn-primary btn-sm" disabled={builderStep === 7} onClick={() => setBuilderStep(step => step + 1)}>Next</button>
+              </div>
+            </div>
 
            <div className="guidance-panel card-pad" style={{ background: 'var(--surface-subtle)', borderRadius: '10px', marginBottom: '24px', border: '1px solid var(--border-default)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
@@ -1660,7 +1776,7 @@ function BudgetPlanningControlCenter() {
                                <Link
                                  key={reason}
                                  className="filter-chip"
-                                 href={`/transactions?periodId=${encodeURIComponent(periodQuery.data.id)}&reason=${encodeURIComponent(reason)}&month=${encodeURIComponent(selectedMonth)}`}
+                                 href={`/transactions?periodId=${encodeURIComponent(periodQuery.data!.id)}&reason=${encodeURIComponent(reason)}&month=${encodeURIComponent(selectedMonth)}`}
                                  data-testid={`link-weekly-guidance-exclusion-${reason}`}
                                >
                                  {humanize(reason, reason)} <span>({count})</span>
@@ -1692,7 +1808,7 @@ function BudgetPlanningControlCenter() {
                                  max="100"
                                  step="0.01"
                                  value={allocationPercentages[category.id] ?? ''}
-                                 disabled={periodQuery.data.status !== 'draft' || updateAllocations.isPending}
+                                 disabled={periodQuery.data!.status !== 'draft' || updateAllocations.isPending}
                                  onChange={event => {
                                    setAllocationPercentages(current => ({ ...current, [category.id]: event.target.value }));
                                    setAllocationError(null);
@@ -1849,7 +1965,7 @@ function BudgetPlanningControlCenter() {
                             </div>
                             <div className="planning-row-actions">
                                <button className="btn btn-secondary btn-sm" onClick={() => setDetailCategory(cat)} aria-label={`View Contributions for ${cat.name}`} title="View Contributions"><BarChart3 size={14} /></button>
-                               {periodQuery.data.status === 'draft' && (
+                               {periodQuery.data!.status === 'draft' && (
                                  <button className="btn btn-secondary btn-sm" onClick={() => setEditingCategory(cat)} aria-label={`Edit ${cat.name}`} title="Edit Category"><Pencil size={14} /></button>
                                )}
                             </div>
@@ -1894,7 +2010,7 @@ function BudgetPlanningControlCenter() {
                        <div>
                          <strong>{formatMonth(item.month)}</strong>
                          <div className="planning-history-item-meta" style={{ marginTop: '4px' }}>
-                           v{item.version} {item.copiedFromPeriodId ? '• Copied' : ''} {item.approvedAt ? `• Approved ${item.approvedAt.slice(0, 10)}` : ''}
+                            v{item.version} {item.supersedesPeriodId ? '• Correction draft' : item.copiedFromPeriodId ? '• Copied' : ''} {item.approvedAt ? `• Approved ${item.approvedAt.slice(0, 10)}` : ''}
                          </div>
                        </div>
                        <div className={`planning-history-item-status status ${item.status === 'draft' ? 'review' : item.status === 'approved' ? 'pending' : 'success'}`}>
@@ -1920,7 +2036,7 @@ function BudgetPlanningControlCenter() {
               onSuccess={() => {
                  setEditingCategory(null);
                  queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningPeriodQueryKey(selectedMonth) });
-                 queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningChangeHistoryQueryKey(periodQuery.data.id) });
+                 queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningChangeHistoryQueryKey(periodQuery.data!.id) });
               }}
               onError={(err) => handleMutationError(err, 'Save Category')}
             />
@@ -1938,6 +2054,210 @@ function BudgetPlanningControlCenter() {
       )}
     </section>
   );
+}
+
+function ActiveBudgetPage() {
+  const query = useGetBudget();
+  const safe = useGetSafeToDeploy();
+  const capitalGovernor = useGetCapitalGovernorV2();
+  const variableBudget = useGetVariableBudgetIntelligence();
+  const createVehicleScenario = useCreateVehicleScenario();
+  const accounts = useListFinancialAccounts();
+  const createTransaction = useCreateManualFinanceTransaction();
+  const [transaction, setTransaction] = useState({
+    accountId: '',
+    transactionDate: new Date().toLocaleDateString('en-CA'),
+    direction: 'outflow' as 'inflow' | 'outflow',
+    amount: '',
+    description: '',
+    merchant: '',
+  });
+  const [transactionMessage, setTransactionMessage] = useState('');
+  const [transactionError, setTransactionError] = useState('');
+  const [vehicleScenario, setVehicleScenario] = useState({
+    name: '',
+    monthlyPayment: '',
+    insurance: '',
+    fuel: '',
+    maintenanceReserve: '',
+  });
+  const [vehicleScenarioMessage, setVehicleScenarioMessage] = useState('');
+  useEffect(() => {
+    if (!transaction.accountId && accounts.data?.accounts[0]) {
+      setTransaction((current) => ({ ...current, accountId: accounts.data.accounts[0].id }));
+    }
+  }, [accounts.data, transaction.accountId]);
+  const submitTransaction = async (event: FormEvent) => {
+    event.preventDefault();
+    setTransactionMessage('');
+    setTransactionError('');
+    if (!transaction.accountId) {
+      setTransactionError('Add a manual account before recording a transaction.');
+      return;
+    }
+    try {
+      await createTransaction.mutateAsync({
+        accountId: transaction.accountId,
+        data: {
+          transactionDate: transaction.transactionDate,
+          direction: transaction.direction,
+          amount: transaction.amount,
+          description: transaction.description,
+          merchant: transaction.merchant.trim() || null,
+        },
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/budget'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/cash-flow'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/safe-to-deploy'] }),
+        queryClient.invalidateQueries({ queryKey: getListTransactionReviewQueueQueryKey() }),
+      ]);
+      setTransaction((current) => ({ ...current, amount: '', description: '', merchant: '' }));
+      setTransactionMessage('Transaction saved for review. It will not affect planning totals until approved.');
+    } catch (error) {
+      setTransactionError(error instanceof Error ? error.message : 'Transaction could not be saved.');
+    }
+  };
+  const data = query.data;
+  const hasBudgetData = Number(data?.totals.budgeted ?? 0) > 0;
+  const accountsAvailable = Boolean(accounts.data?.accounts.length);
+  const intelligenceIncomplete = variableBudget.data?.constraints.status === 'INCOMPLETE_DATA';
+  const safeCalculated = safe.isSuccess && Boolean(safe.data) && variableBudget.isSuccess && !intelligenceIncomplete && hasBudgetData;
+  return <main className="content">
+    <PageHeading eyebrow="Household finance / budget" title={<>Give every dollar<br /><em>a clear job.</em></>} description="A calm view of what came in, what went out, and what remains available for the plan." actions={<Link className="btn btn-primary" href="/cash-flow"><TrendingUp size={15} /> View cash flow</Link>} />
+    {query.isLoading && <div className="finance-data-banner" role="status"><div className="finance-data-banner-icon"><Activity size={16} /></div><div><strong>Loading household budget</strong><span>Confirming reviewed transactions and planning targets before showing totals.</span></div></div>}
+    {query.isError && <div className="card card-pad finance-route-error" role="alert"><div><strong>Budget data is temporarily unavailable</strong><span>No financial totals are shown until the household budget can be confirmed.</span></div><button className="btn btn-secondary" onClick={() => { void query.refetch(); }} data-testid="button-retry-budget">Try again</button></div>}
+    {query.isSuccess && <div className="finance-data-banner" role="note"><div className="finance-data-banner-icon"><ShieldCheck size={16} /></div><div><strong>{hasBudgetData ? 'Household planning data' : 'Start with your household facts'}</strong><span>{hasBudgetData ? 'Manual entries and CSV imports are read-only source records. Imported rows stay in review until approved.' : 'Add a manual account, income source, or CSV ledger to build this household view. No demo household data is shared here.'}</span></div></div>}
+    <section className="card card-pad page-section household-foundation animate-in" data-testid="household-financial-foundation">
+      <CardTitle title="Household financial foundation" subtitle="Income evidence becomes planning income only after household verification." action={<Link className="btn btn-secondary" href="/documents">Add financial evidence</Link>} />
+      <div className="foundation-grid">
+        <div><span className="mono-label">Observed cash inflows</span><strong>Needs classification</strong><small>Observed or business cash is not automatically verified household income.</small></div>
+        <div><span className="mono-label">Verified income & history</span><strong>{variableBudget.data && !intelligenceIncomplete ? displayMoney(variableBudget.data.incomeProfile.currentMonthVerifiedIncome, 'Not established') : 'Insufficient verified history'}</strong><small>{variableBudget.data?.incomeProfile.confidenceStatus.replaceAll('_', ' ') ?? 'Evidence required before scenarios are calculated.'}</small></div>
+        <div><span className="mono-label">Current household cash</span><strong>{variableBudget.data ? displayMoney(variableBudget.data.cash.current, 'Not available') : 'Not available'}</strong><small>Account balances are separate from period income.</small></div>
+        <div><span className="mono-label">Current plan state</span><strong>{hasBudgetData ? 'Plan in progress' : 'Not established'}</strong><small>{hasBudgetData ? 'Targets are available for this period.' : 'Create a plan after evidence and obligations are reviewed.'}</small></div>
+      </div>
+      <div className="foundation-actions"><Link className="btn btn-primary" href="/documents?type=STEVENS_SETTLEMENT">Upload Stevens settlement</Link><Link className="btn" href="/documents?type=BUSINESS_PROFIT_AND_LOSS">Upload P&amp;L</Link><Link className="btn" href="/documents?type=BANK_STATEMENT">Upload bank statement</Link><Link className="btn" href="/budget#budget-planning">Open plan builder</Link><Link className="btn" href="/bills">Set obligations &amp; reserves</Link></div>
+    </section>
+    <section className="card card-pad page-section animate-in">
+      <CardTitle title="Record a transaction" subtitle="Enter it once, then review it before it reaches your budget or Safe-to-Deploy." />
+      {accounts.isLoading ? <div className="finance-empty-state" role="status"><strong>Loading household accounts</strong><span>The transaction form will be ready when account ownership is confirmed.</span></div> : accounts.isError ? <div className="finance-empty-state" role="alert"><strong>Accounts are temporarily unavailable</strong><span>A transaction cannot be attributed safely until accounts load.</span><button className="btn btn-secondary" onClick={() => { void accounts.refetch(); }} data-testid="button-retry-budget-accounts">Try again</button></div> : !accountsAvailable ? <div className="finance-empty-state"><strong>Add an account first</strong><span>Transactions need a household account so balances and history stay attributable.</span><Link className="btn btn-secondary" href="/accounts">Open accounts</Link></div> : <form className="account-form transaction-form" onSubmit={submitTransaction}>
+        <div className="field"><label htmlFor="budget-transaction-account">Account</label><select id="budget-transaction-account" required value={transaction.accountId} onChange={(event) => setTransaction({ ...transaction, accountId: event.target.value })}><option value="" disabled>Select an account</option>{(accounts.data?.accounts ?? []).map((account) => <option value={account.id} key={account.id}>{account.nickname} · {account.institution}</option>)}</select></div>
+        <div className="field"><label htmlFor="budget-transaction-date">Date</label><input id="budget-transaction-date" required type="date" value={transaction.transactionDate} onChange={(event) => setTransaction({ ...transaction, transactionDate: event.target.value })} /></div>
+        <div className="field"><label htmlFor="budget-transaction-direction">Type</label><select id="budget-transaction-direction" value={transaction.direction} onChange={(event) => setTransaction({ ...transaction, direction: event.target.value as 'inflow' | 'outflow' })}><option value="outflow">Money out</option><option value="inflow">Money in</option></select></div>
+        <div className="field"><label htmlFor="budget-transaction-amount">Amount</label><input id="budget-transaction-amount" required inputMode="decimal" min="0.01" step="0.01" pattern="[0-9]+([.][0-9]{1,2})?" value={transaction.amount} onChange={(event) => setTransaction({ ...transaction, amount: event.target.value })} placeholder="0.00" /></div>
+        <div className="field"><label htmlFor="budget-transaction-description">Description</label><input id="budget-transaction-description" required maxLength={240} value={transaction.description} onChange={(event) => setTransaction({ ...transaction, description: event.target.value })} placeholder="What was this for?" /></div>
+        <div className="field"><label htmlFor="budget-transaction-merchant">Merchant <span style={{ textTransform: 'none', letterSpacing: 0 }}>(optional)</span></label><input id="budget-transaction-merchant" maxLength={160} value={transaction.merchant} onChange={(event) => setTransaction({ ...transaction, merchant: event.target.value })} placeholder="e.g. Grocery store" /></div>
+        <div className="modal-actions"><button type="submit" className="btn btn-primary" disabled={createTransaction.isPending}><Check size={14} /> {createTransaction.isPending ? 'Saving…' : 'Save for review'}</button></div>
+      </form>}
+      {transactionMessage && <div className="form-feedback success" role="status">{transactionMessage} <Link className="text-link" href="/transactions">Open the review queue</Link></div>}
+      {transactionError && <div className="form-feedback error" role="alert">{transactionError}</div>}
+      <div className="finance-note"><ShieldCheck size={16} /><span>Entries are household-scoped, actor-attributed, and excluded from budget calculations until a household member reviews them.</span></div>
+    </section>
+    {query.isLoading && <div className="budget-skeleton" aria-hidden="true"><div className="finance-grid"><div className="skeleton" /><div className="skeleton" /><div className="skeleton" /><div className="skeleton" /></div><div className="skeleton budget-skeleton-table" /></div>}
+    {query.isSuccess && data && <>
+      <div className="finance-grid animate-in delay-1">
+        <FinanceMetric label="Month planned" value={displayMoney(data.totals.budgeted, '$0')} detail="household expense targets" tone="blue" action={<Link className="text-link" href="/transactions">Review activity</Link>} />
+        <FinanceMetric label="Spent so far" value={displayMoney(data.totals.actual, '$0')} detail={`${data.totals.percentageUsed}% of planned`} tone="amber" action={<Link className="text-link" href="/transactions">Review transactions</Link>} />
+        <FinanceMetric label="Remaining" value={displayMoney(data.totals.remaining, '$0')} detail="before the month closes" tone="green" action={<Link className="text-link" href="/cash-flow">View cash flow</Link>} />
+        <FinanceMetric label="Safe to deploy" value={safe.isLoading ? 'Calculating…' : safeCalculated ? displayMoney(safe.data?.safeToDeploy, 'NOT CALCULATED') : 'NOT CALCULATED'} detail={safeCalculated ? 'Capital Governor limit' : 'Needs a plan, reserves, and verified evidence'} tone="lavender" action={safe.isError ? <button className="text-link" onClick={() => { void safe.refetch(); }} data-testid="button-retry-budget-safe-to-deploy">Try again</button> : <Link className="text-link" href="/documents">Add evidence</Link>} />
+      </div>
+
+       <section className="card card-pad page-section animate-in delay-1 budget-capital-governor" data-testid="budget-capital-governor">
+         <div className="card-title-row">
+           <div><div className="card-title">Capital Governor 2.0</div><div className="card-subtitle">Your budget now shows the protected reserve layer separately from household cash and deployable capital.</div></div>
+           <span className={`status ${capitalGovernor.data?.status === 'READY' ? '' : 'pending'}`} data-testid="budget-capital-governor-status"><ShieldCheck size={12} /> {capitalGovernor.data?.status ?? (capitalGovernor.isLoading ? 'Loading' : 'Unavailable')}</span>
+         </div>
+         {capitalGovernor.isError && <div className="budget-governor-error" role="alert"><AlertTriangle size={15} /><span>Capital Governor 2.0 could not be refreshed. No new capital decision is shown.</span><button className="text-link" onClick={() => { void capitalGovernor.refetch(); }} data-testid="button-retry-budget-capital-governor">Try again</button></div>}
+         {capitalGovernor.isLoading && <div className="budget-governor-loading" role="status"><Activity size={15} /> Confirming household cash, reserve gaps, and protected commitments…</div>}
+         {capitalGovernor.data && <div className="budget-governor-content">
+           <div className="budget-governor-metrics">
+             <div><span className="mono-label">Safe to deploy</span><strong data-testid="budget-v2-safe-to-deploy">{displayMoney(capitalGovernor.data.safeToDeploy, 'Not available')}</strong><small>{capitalGovernor.data.reasons[0] ?? 'Available after current commitments and reserve protections.'}</small></div>
+             <div><span className="mono-label">Capital surplus · base</span><strong>{displayMoney(capitalGovernor.data.householdCapitalSurplus.base, 'Not available')}</strong><small>Separate from checking balance and Safe-to-Deploy.</small></div>
+             <div><span className="mono-label">Waterfall available</span><strong>{displayMoney(capitalGovernor.data.waterfall.availableForWaterfall, 'Not available')}</strong><small>{capitalGovernor.data.waterfall.allocations.length} advisory recommendation(s).</small></div>
+           </div>
+           <div className="budget-governor-lower">
+             <div className="budget-governor-buckets">
+               <div className="budget-governor-heading"><span className="eyebrow">Reserve layer</span><strong>Fund protection before opportunity</strong></div>
+               {(capitalGovernor.data.bucketStatus ?? []).filter((bucket) => Number(bucket.gap) > 0 || bucket.protected).slice(0, 5).map((bucket) => <div className="budget-governor-bucket" key={bucket.key}><div><strong>{bucket.label}</strong><span>{bucket.protected ? 'Protected designation' : 'Funding gap'}</span></div><b>{displayMoney(bucket.gap, '$0')}</b></div>)}
+               {(capitalGovernor.data.bucketStatus ?? []).filter((bucket) => Number(bucket.gap) > 0 || bucket.protected).length === 0 && <div className="budget-governor-empty">No reserve gaps or protected bucket details were returned for this snapshot.</div>}
+             </div>
+             <div className="budget-governor-boundary"><LockKeyhole size={16} /><div><strong>Advisory only</strong><span>Waterfall recommendations do not move money, unlock Duplex Reserve, authorize Micro-Live, or change this household budget.</span></div></div>
+           </div>
+         </div>}
+       </section>
+
+      <section className="card card-pad page-section animate-in delay-1 variable-budget-panel">
+        <CardTitle title="Variable-income planning" subtitle="Verified household income sets the floor. Business deposits and projected income stay out until a draw is verified." action={<button className="btn btn-secondary" onClick={() => { void variableBudget.refetch(); }}>Refresh intelligence</button>} />
+        {variableBudget.isLoading && <div className="finance-data-banner" role="status"><div className="finance-data-banner-icon"><Activity size={16} /></div><div><strong>Building income scenarios</strong><span>Checking verified income, approved planning data, bills, reserves, and household cash.</span></div></div>}
+        {variableBudget.isError && <div className="finance-empty-state" role="alert"><strong>Variable-income intelligence is unavailable</strong><span>No variable-income totals are shown until its household sources can be confirmed.</span><button className="btn btn-secondary" onClick={() => { void variableBudget.refetch(); }}>Try again</button></div>}
+        {variableBudget.isSuccess && variableBudget.data && <>
+          <div className="finance-grid variable-budget-metrics">
+            <FinanceMetric label="Income floor" value={intelligenceIncomplete ? 'INSUFFICIENT VERIFIED HISTORY' : displayMoney(variableBudget.data.incomeProfile.incomeFloor, 'NOT ESTABLISHED')} detail={variableBudget.data.incomeProfile.confidenceStatus.replaceAll('_', ' ').toLowerCase()} tone="lavender" />
+            <FinanceMetric label="Base month" value={intelligenceIncomplete ? 'INSUFFICIENT VERIFIED HISTORY' : displayMoney(variableBudget.data.incomeProfile.baseIncome, 'NOT ESTABLISHED')} detail="recent verified median" tone="blue" />
+            <FinanceMetric label="Strong month" value={intelligenceIncomplete ? 'INSUFFICIENT VERIFIED HISTORY' : displayMoney(variableBudget.data.incomeProfile.strongMonthIncome, 'NOT ESTABLISHED')} detail="recent verified high" tone="green" />
+            <FinanceMetric label="Capital surplus at floor" value={intelligenceIncomplete ? 'NOT CALCULATED' : displayMoney(variableBudget.data.constraints.capitalSurplusAtFloor, 'NOT CALCULATED')} detail={variableBudget.data.constraints.status.replaceAll('_', ' ').toLowerCase()} tone="amber" />
+          </div>
+          <div className="variable-budget-columns">
+            <div className="finance-table">
+               <div className="finance-row"><div><strong>Operating budget cap</strong><span>Floor less mandatory, essential, and reserve needs</span></div><div className="finance-amount"><strong>{intelligenceIncomplete ? 'NOT CALCULATED' : displayMoney(variableBudget.data.constraints.operatingBudgetCap, 'NOT CALCULATED')}</strong></div></div>
+              <div className="finance-row"><div><strong>Mandatory obligations</strong><span>Approved plan and essential bills</span></div><div className="finance-amount"><strong>{displayMoney(variableBudget.data.constraints.mandatoryObligations, '$0')}</strong></div></div>
+              <div className="finance-row"><div><strong>Reserve funding</strong><span>{variableBudget.data.reserve.status.replaceAll('_', ' ').toLowerCase()}</span></div><div className="finance-amount"><strong>{displayMoney(variableBudget.data.reserve.monthlyFunding, '$0')}</strong></div></div>
+              <div className="finance-row"><div><strong>Next 30-day obligations</strong><span>{variableBudget.data.cash.coverage}x cash coverage</span></div><div className="finance-amount"><strong>{displayMoney(variableBudget.data.obligations.next30Days, '$0')}</strong></div></div>
+            </div>
+            <div className="card card-pad variable-budget-callout">
+              <span className="eyebrow">Plan health</span>
+              <strong>{variableBudget.data.constraints.status.replaceAll('_', ' ')}</strong>
+              <p>{variableBudget.data.constraints.status === 'HEALTHY' ? 'The floor scenario covers the modeled operating plan with a buffer.' : variableBudget.data.constraints.status === 'INCOMPLETE_DATA' ? 'Add verified income history and approve the current planning period before using this as a household decision input.' : 'The floor scenario needs review before discretionary spending or capital commitments expand.'}</p>
+              <span className="finance-note"><ShieldCheck size={15} /> Safe-to-Deploy remains the authoritative capital-governor result.</span>
+            </div>
+          </div>
+          <div className="variable-budget-forecast">
+            <div><span className="eyebrow">Forward cash flow</span><strong>Floor / base / strong scenarios</strong></div>
+            <div className="forecast-strip">{[30, 60, 90].map((days) => <div className="forecast-card" key={days}><span>{days} days</span>{variableBudget.data.forecast.filter((row) => row.days === days).map((row, index) => <div key={`${days}-${index}`}><small>{index === 0 ? 'Floor' : index === 1 ? 'Base' : 'Strong'}</small><strong>{displayMoney(row.endingProjectedCash, '$0')}</strong><em className={row.status !== 'HEALTHY' ? 'warning' : ''}>{row.status.replaceAll('_', ' ').toLowerCase()}</em></div>)}</div>)}</div>
+          </div>
+          <div className="variable-budget-vehicle"><div className="variable-budget-section-heading"><div><span className="eyebrow">Vehicle affordability</span><strong>Model the full monthly cost before it becomes a commitment.</strong></div></div>
+            <form className="account-form transaction-form" onSubmit={async (event) => {
+              event.preventDefault();
+              setVehicleScenarioMessage('');
+              try {
+                await createVehicleScenario.mutateAsync({ data: vehicleScenario });
+                await variableBudget.refetch();
+                setVehicleScenario({ name: '', monthlyPayment: '', insurance: '', fuel: '', maintenanceReserve: '' });
+                setVehicleScenarioMessage('Scenario saved. It is planning-only and does not authorize a purchase.');
+              } catch (error) {
+                setVehicleScenarioMessage(error instanceof Error ? error.message : 'Scenario could not be saved.');
+              }
+            }}>
+              <div className="field"><label htmlFor="variable-vehicle-name">Scenario</label><input id="variable-vehicle-name" required value={vehicleScenario.name} onChange={(event) => setVehicleScenario({ ...vehicleScenario, name: event.target.value })} placeholder="Current SUV" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-payment">Payment</label><input id="variable-vehicle-payment" required inputMode="decimal" value={vehicleScenario.monthlyPayment} onChange={(event) => setVehicleScenario({ ...vehicleScenario, monthlyPayment: event.target.value })} placeholder="0.00" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-insurance">Insurance</label><input id="variable-vehicle-insurance" required inputMode="decimal" value={vehicleScenario.insurance} onChange={(event) => setVehicleScenario({ ...vehicleScenario, insurance: event.target.value })} placeholder="0.00" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-fuel">Fuel</label><input id="variable-vehicle-fuel" required inputMode="decimal" value={vehicleScenario.fuel} onChange={(event) => setVehicleScenario({ ...vehicleScenario, fuel: event.target.value })} placeholder="0.00" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-maintenance">Maintenance reserve</label><input id="variable-vehicle-maintenance" required inputMode="decimal" value={vehicleScenario.maintenanceReserve} onChange={(event) => setVehicleScenario({ ...vehicleScenario, maintenanceReserve: event.target.value })} placeholder="0.00" /></div>
+              <div className="modal-actions"><button className="btn btn-primary" type="submit" disabled={createVehicleScenario.isPending}>{createVehicleScenario.isPending ? 'Modeling…' : 'Save scenario'}</button></div>
+            </form>
+            {vehicleScenarioMessage && <div className="form-feedback" role="status">{vehicleScenarioMessage}</div>}
+            {variableBudget.data.vehicleScenarios.length > 0 && <div className="finance-table">{variableBudget.data.vehicleScenarios.map((scenario) => <div className="finance-row" key={scenario.id}><div><strong>{scenario.name}</strong><span>{scenario.status.replaceAll('_', ' ').toLowerCase()}</span></div><div className="finance-amount"><strong>{displayMoney(scenario.totalMonthlyCost, '$0')}</strong><span>monthly total</span></div></div>)}</div>}
+          </div>
+        </>}
+      </section>
+
+      <BudgetPlanningControlCenter />
+
+      <section className="card card-pad page-section animate-in delay-2" style={{ marginTop: '24px' }}>
+        <CardTitle title="Budget performance" subtitle="Projected pace helps surface pressure before it becomes a surprise." action={<Link className="btn btn-secondary" href="/transactions"><ClipboardCheck size={14} /> Review transactions</Link>} />
+       {!hasBudgetData && <div className="finance-empty-state"><strong>No monthly budget targets yet</strong><span>Current categories have no monthly expense targets. Review transaction categories now; planning targets can be completed when household estimates are available.</span><Link className="btn btn-secondary" href="/transactions">Review categories</Link></div>}
+       <div className="finance-table">
+        {data.categories.map((category) => <div className="finance-row" key={category.id}>
+          <div><strong>{category.name}</strong><span>{category.essentialStatus === 'essential' ? 'Essential' : category.essentialStatus === 'discretionary' ? 'Flexible' : 'Mixed'}</span></div>
+          <div className="finance-bar"><b style={{ width: `${Math.min(category.percentageUsed, 100)}%` }} /></div>
+          <div className="finance-amount"><strong>{displayMoney(category.actual, '$0')}</strong><span>of {displayMoney(category.budgeted, '$0')}</span></div>
+          <span className={`status ${category.status === 'above_pace' ? 'review' : category.status === 'on_pace' ? 'pending' : ''}`}>{category.status.replace('_', ' ')}</span>
+        </div>)}
+      </div>
+       <div className="finance-note"><ShieldCheck size={16} /><span>{data.notes[0]} {data.notes[2]}</span></div>
+      </section>
+    </>}
+  </main>;
 }
 
 function ActiveBudgetPage() {

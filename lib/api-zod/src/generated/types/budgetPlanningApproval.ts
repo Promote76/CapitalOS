@@ -13,4 +13,6 @@ export interface BudgetPlanningApproval {
   status: BudgetPlanningApprovalStatus;
   version: number;
   approvedAt: Date;
+  /** @nullable */
+  supersedesPeriodId?: string | null;
 }

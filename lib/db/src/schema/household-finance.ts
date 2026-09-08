@@ -12,6 +12,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import {
   bankConnectionStatusEnum,
   bankConsentStatusEnum,
@@ -188,6 +189,7 @@ export const budgetPlanningPeriods = pgTable(
     status: budgetPlanningPeriodStatusEnum("status").notNull().default("draft"),
     version: integer("version").notNull().default(1),
     copiedFromPeriodId: uuid("copied_from_period_id").references((): AnyPgColumn => budgetPlanningPeriods.id, { onDelete: "set null" }),
+    supersedesPeriodId: uuid("supersedes_period_id").references((): AnyPgColumn => budgetPlanningPeriods.id, { onDelete: "restrict" }),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     approvedBy: uuid("approved_by").references(() => users.id, { onDelete: "set null" }),
     closedAt: timestamp("closed_at", { withTimezone: true }),
@@ -197,7 +199,7 @@ export const budgetPlanningPeriods = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => ({
-    householdMonthUnique: uniqueIndex("budget_planning_periods_household_month_unique").on(table.householdId, table.month),
+    householdMonthDraftUnique: uniqueIndex("budget_planning_periods_household_month_draft_unique").on(table.householdId, table.month).where(sql`${table.status} = 'draft'`),
     householdStatusIdx: index("budget_planning_periods_household_status_idx").on(table.householdId, table.status, table.month),
   }),
 );

@@ -1,0 +1,4 @@
+DROP INDEX "budget_planning_periods_household_month_unique";--> statement-breakpoint
+ALTER TABLE "budget_planning_periods" ADD COLUMN "supersedes_period_id" uuid;--> statement-breakpoint
+ALTER TABLE "budget_planning_periods" ADD CONSTRAINT "budget_planning_periods_supersedes_period_id_budget_planning_periods_id_fk" FOREIGN KEY ("supersedes_period_id") REFERENCES "public"."budget_planning_periods"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "budget_planning_periods_household_month_draft_unique" ON "budget_planning_periods" USING btree ("household_id","month") WHERE "budget_planning_periods"."status" = 'draft';

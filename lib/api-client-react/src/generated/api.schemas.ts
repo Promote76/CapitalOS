@@ -330,6 +330,8 @@ export interface BudgetPlanningPeriod {
   version: number;
   /** @nullable */
   copiedFromPeriodId?: string | null;
+  /** @nullable */
+  supersedesPeriodId?: string | null;
   /** @pattern ^[0-9a-fA-F-]{36}$ */
   createdBy: string;
   createdAt: string;
@@ -480,6 +482,8 @@ export interface BudgetPlanningApproval {
   status: BudgetPlanningApprovalStatus;
   version: number;
   approvedAt: string;
+  /** @nullable */
+  supersedesPeriodId?: string | null;
 }
 
 export interface BudgetPlanningReorderInput {
@@ -531,6 +535,8 @@ export interface BudgetPlanningHistoryItem {
   version: number;
   /** @nullable */
   copiedFromPeriodId?: string | null;
+  /** @nullable */
+  supersedesPeriodId?: string | null;
   /** @pattern ^[0-9a-fA-F-]{36}$ */
   createdBy: string;
   createdAt: string;
@@ -6442,4 +6448,3 @@ export const ExportDailyOpsHistoryCadence = {
   WEEK: 'WEEK',
   MONTH: 'MONTH',
 } as const;
-

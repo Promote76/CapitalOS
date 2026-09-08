@@ -2559,7 +2559,8 @@ test("weekly budget guidance is advisory, exact, and owner-accepted only", { ski
   assert.equal(guidance.categories.filter((category) => category.recommendedMonthly !== null).reduce((sum, category) => sum + Number(category.recommendedMonthly), 0), 10000);
   const housingSnapshot = period.categories.find((category) => category.name === "Housing");
   const foodSnapshot = period.categories.find((category) => category.name === "Food");
-  assert.ok(housingSnapshot && foodSnapshot);
+  const incomeSnapshot = period.categories.find((category) => category.name === "Household income");
+  assert.ok(housingSnapshot && foodSnapshot && incomeSnapshot);
   const acceptInput = { version: period.version, categoryIds: [housingSnapshot.id, foodSnapshot.id], recommendationFingerprint: guidance.fingerprint };
   for (const actor of [partner, advisor, viewer]) await assert.rejects(() => service.acceptWeeklyBudgetGuidance(actor, period.id, acceptInput, `denied-${randomUUID()}`), (error: unknown) => error instanceof Error && "code" in error && error.code === "FORBIDDEN");
   const transactionCountBefore = await db.select({ count: sql<number>`count(*)::int` }).from(financeTransactions).where(eq(financeTransactions.householdId, fixture.householdA));
@@ -2579,7 +2580,24 @@ test("weekly budget guidance is advisory, exact, and owner-accepted only", { ski
   const audits = await db.select().from(auditEvents).where(and(eq(auditEvents.entityId, period.id), eq(auditEvents.eventType, "budget_weekly_guidance_accepted")));
   assert.equal(audits.length, 1);
   assert.equal(audits[0]?.actor, fixture.userA);
+  await db.update(budgetPlanningCategorySnapshots).set({ monthlyTarget: "0.00" }).where(eq(budgetPlanningCategorySnapshots.periodId, period.id));
+  await db.update(budgetPlanningCategorySnapshots).set({ monthlyTarget: "10000.00" }).where(eq(budgetPlanningCategorySnapshots.id, incomeSnapshot.id));
+  await db.update(budgetPlanningCategorySnapshots).set({ monthlyTarget: "10000.00" }).where(eq(budgetPlanningCategorySnapshots.id, housingSnapshot.id));
+  await assert.rejects(() => service.approveBudgetPlanningPeriod(owner, period.id, accepted.version, `rent-only-${randomUUID()}`), (error: unknown) => error instanceof Error && "code" in error && error.code === "INVALID_STATE");
+  const snapshotsByName = new Map(period.categories.map((category) => [category.name, category]));
+  for (const [name, target] of [["Household income", "0.30"], ["Housing", "0.10"], ["Food", "0.10"], ["Utilities", "0.01"], ["Savings", "0.01"], ["Personal", "0.01"], ["Investments", "0.07"]] as const) {
+    const snapshot = snapshotsByName.get(name);
+    assert.ok(snapshot);
+    await db.update(budgetPlanningCategorySnapshots).set({ monthlyTarget: target }).where(eq(budgetPlanningCategorySnapshots.id, snapshot.id));
+  }
   const approval = await service.approveBudgetPlanningPeriod(owner, period.id, accepted.version, `approve-${randomUUID()}`) as { version: number };
+  await assert.rejects(() => service.createBudgetPlanningPeriod(owner, month), (error: unknown) => error instanceof Error && "code" in error && error.code === "CONFLICT");
+  const correction = await service.createSupersedingBudgetPlanningPeriod(owner, period.id, `supersede-${randomUUID()}`);
+  assert.equal(correction.status, "draft");
+  assert.equal(correction.supersedesPeriodId, period.id);
+  assert.notEqual(correction.id, period.id);
+  const [stillApproved] = await db.select().from(database.budgetPlanningPeriods).where(eq(database.budgetPlanningPeriods.id, period.id));
+  assert.equal(stillApproved.status, "approved");
   const approvedGuidance = await service.getWeeklyBudgetGuidance(owner, period.id);
   await assert.rejects(() => service.acceptWeeklyBudgetGuidance(owner, period.id, { version: accepted.version + 1, categoryIds: [housingSnapshot.id], recommendationFingerprint: approvedGuidance.fingerprint }, `approved-${randomUUID()}`), (error: unknown) => error instanceof Error && "code" in error && error.code === "CONFLICT");
   const closed = await service.closeBudgetPlanningPeriod(owner, period.id, approval.version, `close-${randomUUID()}`);

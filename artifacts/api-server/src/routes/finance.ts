@@ -46,6 +46,8 @@ import {
   ExportReadOnlyBankConnectionResponse,
   DeleteReadOnlyBankConnectionDataResponse,
   GetBudgetPlanningPeriodResponse,
+  CreateBudgetPlanningPeriodResponse,
+  CreateSupersedingBudgetPlanningPeriodResponse,
   CreateBudgetPlanningCategoryBody,
   CreateBudgetPlanningCategoryResponse,
   UpdateBudgetPlanningCategoryBody,
@@ -106,6 +108,9 @@ import {
   exportReadOnlyBankConnection,
   deleteReadOnlyBankConnectionData,
   getBudgetPlanningPeriod,
+  findBudgetPlanningPeriod,
+  createBudgetPlanningPeriod,
+  createSupersedingBudgetPlanningPeriod,
   createBudgetPlanningCategory,
   updateBudgetPlanningCategory,
   approveBudgetPlanningPeriod,
@@ -129,7 +134,12 @@ router.get("/budget", asyncRoute(async (_req, res) => {
 
 router.get("/budget-planning-periods/:month", asyncRoute(async (req, res) => {
   const month = Array.isArray(req.params.month) ? req.params.month[0] : req.params.month;
-  res.json(GetBudgetPlanningPeriodResponse.parse(await getBudgetPlanningPeriod(actorFrom(res), month)));
+  res.json(GetBudgetPlanningPeriodResponse.parse(await findBudgetPlanningPeriod(actorFrom(res), month)));
+}));
+
+router.post("/budget-planning-periods/:month", asyncRoute(async (req, res) => {
+  const month = Array.isArray(req.params.month) ? req.params.month[0] : req.params.month;
+  res.status(201).json(CreateBudgetPlanningPeriodResponse.parse(await createBudgetPlanningPeriod(actorFrom(res), month)));
 }));
 
 router.get("/budget-planning-periods/:periodId/weekly-guidance", asyncRoute(async (req, res) => {
@@ -167,6 +177,11 @@ router.post("/budget-planning-periods/:periodId/approve", asyncRoute(async (req,
   const body = ApproveBudgetPlanningPeriodBody.parse(req.body);
   const key = req.header("Idempotency-Key");
   res.json(ApproveBudgetPlanningPeriodResponse.parse(await approveBudgetPlanningPeriod(actorFrom(res), periodId, body.version, key ?? "")));
+}));
+
+router.post("/budget-planning-periods/:periodId/superseding-draft", asyncRoute(async (req, res) => {
+  const periodId = Array.isArray(req.params.periodId) ? req.params.periodId[0] : req.params.periodId;
+  res.status(201).json(CreateSupersedingBudgetPlanningPeriodResponse.parse(await createSupersedingBudgetPlanningPeriod(actorFrom(res), periodId, req.header("Idempotency-Key") ?? "")));
 }));
 
 router.post("/budget-planning-periods/:month/copy-forward", asyncRoute(async (req, res) => {

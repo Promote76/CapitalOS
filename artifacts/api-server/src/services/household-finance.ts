@@ -623,21 +623,32 @@ export function latestFinalizedPlanningPeriod<T extends { month: string; status:
     .sort((left, right) => right.month.localeCompare(left.month))[0] ?? null;
 }
 
-async function bootstrapPlanningPeriod(actor: Actor, month: string) {
+async function bootstrapPlanningPeriod(actor: Actor, month: string, supersedesPeriodId?: string) {
   const household = await householdId(actor);
   const monthDate = planningMonth(month);
-  return db.transaction((tx) => bootstrapPlanningPeriodInTransaction(tx, actor, household, monthDate));
+  return db.transaction((tx) => bootstrapPlanningPeriodInTransaction(tx, actor, household, monthDate, supersedesPeriodId));
 }
 
-async function bootstrapPlanningPeriodInTransaction(tx: any, actor: Actor, household: string, monthDate: string) {
+async function bootstrapPlanningPeriodInTransaction(tx: any, actor: Actor, household: string, monthDate: string, supersedesPeriodId?: string) {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`budget-plan:${household}:${monthDate}`}, 0))`);
-    const [existing] = await tx.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.householdId, household), eq(budgetPlanningPeriods.month, monthDate)));
-    if (existing) return { period: existing, created: false, source: "existing" as const };
+    const [existing] = await tx.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.householdId, household), eq(budgetPlanningPeriods.month, monthDate), eq(budgetPlanningPeriods.status, "draft")));
+    if (existing) {
+      if (supersedesPeriodId && existing.supersedesPeriodId !== supersedesPeriodId) throw new GovernanceError("CONFLICT", "This month already has a different draft; review it before creating another correction");
+      return { period: existing, created: false, source: "existing" as const };
+    }
     assertPermission(actor.role, "contribute");
-    const prior = await tx.select().from(budgetPlanningPeriods)
-      .where(and(eq(budgetPlanningPeriods.householdId, household), inArray(budgetPlanningPeriods.status, ["approved", "closed"]), sql`${budgetPlanningPeriods.month} < ${monthDate}`))
-      .orderBy(desc(budgetPlanningPeriods.month)).limit(1);
-    const [period] = await tx.insert(budgetPlanningPeriods).values({ householdId: household, month: monthDate, createdBy: actor.userId, copiedFromPeriodId: prior[0]?.id }).returning();
+    if (!supersedesPeriodId) {
+      const [sameMonthFinalized] = await tx.select({ id: budgetPlanningPeriods.id }).from(budgetPlanningPeriods)
+        .where(and(eq(budgetPlanningPeriods.householdId, household), eq(budgetPlanningPeriods.month, monthDate), inArray(budgetPlanningPeriods.status, ["approved", "closed"]))).limit(1);
+      if (sameMonthFinalized) throw new GovernanceError("CONFLICT", "This month already has a finalized plan; create a superseding correction draft instead");
+    }
+    const prior = supersedesPeriodId
+      ? await tx.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.id, supersedesPeriodId), eq(budgetPlanningPeriods.householdId, household), eq(budgetPlanningPeriods.month, monthDate), inArray(budgetPlanningPeriods.status, ["approved", "closed"]))).limit(1)
+      : await tx.select().from(budgetPlanningPeriods)
+        .where(and(eq(budgetPlanningPeriods.householdId, household), inArray(budgetPlanningPeriods.status, ["approved", "closed"]), sql`${budgetPlanningPeriods.month} < ${monthDate}`))
+        .orderBy(desc(budgetPlanningPeriods.month)).limit(1);
+    if (supersedesPeriodId && !prior[0]) throw new GovernanceError("INVALID_STATE", "Only an approved or closed plan for this month can be superseded");
+    const [period] = await tx.insert(budgetPlanningPeriods).values({ householdId: household, month: monthDate, createdBy: actor.userId, copiedFromPeriodId: prior[0]?.id, supersedesPeriodId: supersedesPeriodId ?? null }).returning();
     let source: "taxonomy" | "prior_finalized" | "empty" = "empty";
     if (prior[0]) {
       const sources = await tx.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, prior[0].id));
@@ -658,26 +669,54 @@ async function bootstrapPlanningPeriodInTransaction(tx: any, actor: Actor, house
     }
     await tx.insert(auditEvents).values({
       householdId: household,
-      eventType: source === "prior_finalized" ? "budget_plan_copied_forward" : "budget_plan_created",
+      eventType: supersedesPeriodId ? "budget_plan_superseding_draft_created" : source === "prior_finalized" ? "budget_plan_copied_forward" : "budget_plan_created",
       actor: actor.userId,
       entity: "budget_planning_period",
       entityId: period.id,
-      afterState: { month: monthDate.slice(0, 7), source, copiedFromPeriodId: prior[0]?.id ?? null },
-      reason: source === "prior_finalized" ? "Planning period copied from latest finalized plan" : "Planning period lazily initialized from current finance taxonomy",
+      afterState: { month: monthDate.slice(0, 7), source, copiedFromPeriodId: prior[0]?.id ?? null, supersedesPeriodId: supersedesPeriodId ?? null },
+      reason: supersedesPeriodId ? "Reviewable correction draft created without changing the approved plan" : source === "prior_finalized" ? "Planning period copied from latest finalized plan" : "Planning period created from current finance taxonomy",
     });
     return { period, created: true, source };
 }
 
-export async function getBudgetPlanningPeriod(actor: Actor, month = nowMonth()) {
+export async function findBudgetPlanningPeriod(actor: Actor, month = nowMonth()) {
   assertPermission(actor.role, "read");
-  const bootstrap = await bootstrapPlanningPeriod(actor, month);
-  const { period } = bootstrap;
+  const monthDate = planningMonth(month);
+  const [period] = await db.select().from(budgetPlanningPeriods)
+    .where(and(eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.month, monthDate)))
+    .orderBy(sql`case when ${budgetPlanningPeriods.status} = 'draft' then 0 when ${budgetPlanningPeriods.status} = 'approved' then 1 else 2 end`, desc(budgetPlanningPeriods.createdAt)).limit(1);
+  if (!period) return null;
   const categories = await db.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, period.id)).orderBy(budgetPlanningCategorySnapshots.sortOrder);
   const transactions = await db.select().from(financeTransactions).where(and(eq(financeTransactions.householdId, actor.householdId), sql`${financeTransactions.transactionDate} >= ${period.month} and ${financeTransactions.transactionDate} < (${period.month}::date + interval '1 month')::date`));
   const advisoryActual = transactions.filter((transaction) => transaction.reviewStatus === "approved" && !transaction.pending && transaction.businessTag === "household" && !isExcludedFromHouseholdSpending(transaction))
     .reduce((sum, transaction) => sum + numeric(transaction.amount), 0);
   const advisoryTarget = categories.filter((category) => !category.archived && !["income", "transfer"].includes(category.categoryType)).reduce((sum, category) => sum + numeric(category.monthlyTarget), 0);
-  return { id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, copiedFromPeriodId: period.copiedFromPeriodId, createdBy: period.createdBy, createdAt: period.createdAt, updatedAt: period.updatedAt, approvedAt: period.approvedAt, approvedBy: period.approvedBy, closedAt: period.closedAt, closedBy: period.closedBy, categories: categories.map(planningSnapshot), advisory: { projectedExpenseTarget: advisoryTarget.toFixed(2), reviewedHouseholdNetActivity: advisoryActual.toFixed(2), affectsOfficialTotals: false } };
+  return { id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, copiedFromPeriodId: period.copiedFromPeriodId, supersedesPeriodId: period.supersedesPeriodId, createdBy: period.createdBy, createdAt: period.createdAt, updatedAt: period.updatedAt, approvedAt: period.approvedAt, approvedBy: period.approvedBy, closedAt: period.closedAt, closedBy: period.closedBy, categories: categories.map(planningSnapshot), advisory: { projectedExpenseTarget: advisoryTarget.toFixed(2), reviewedHouseholdNetActivity: advisoryActual.toFixed(2), affectsOfficialTotals: false } };
+}
+
+export async function getBudgetPlanningPeriod(actor: Actor, month = nowMonth()) {
+  const existing = await findBudgetPlanningPeriod(actor, month);
+  if (existing) return existing;
+  const { period } = await bootstrapPlanningPeriod(actor, month);
+  const created = await findBudgetPlanningPeriod(actor, period.month.slice(0, 7));
+  if (!created) throw new GovernanceError("INVALID_STATE", "Budget planning period could not be loaded after creation");
+  return created;
+}
+
+export async function createBudgetPlanningPeriod(actor: Actor, month: string) {
+  const { period } = await bootstrapPlanningPeriod(actor, month);
+  return getBudgetPlanningPeriod(actor, period.month.slice(0, 7));
+}
+
+export async function createSupersedingBudgetPlanningPeriod(actor: Actor, periodId: string, idempotencyKey: string) {
+  assertPermission(actor.role, "contribute");
+  return planningIdempotency(actor, idempotencyKey, "budget_plan_supersede", async (tx) => {
+    const [approved] = await tx.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId)));
+    if (!approved) return planningNotFound("Budget planning period");
+    const { period } = await bootstrapPlanningPeriodInTransaction(tx, actor, actor.householdId, approved.month, approved.id);
+    const categories = await tx.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, period.id)).orderBy(budgetPlanningCategorySnapshots.sortOrder);
+    return { id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, copiedFromPeriodId: period.copiedFromPeriodId, supersedesPeriodId: period.supersedesPeriodId, createdBy: period.createdBy, createdAt: period.createdAt, updatedAt: period.updatedAt, approvedAt: period.approvedAt, approvedBy: period.approvedBy, closedAt: period.closedAt, closedBy: period.closedBy, categories: categories.map(planningSnapshot) };
+  });
 }
 
 async function requireDraftVersion(actor: Actor, periodId: string, version: number) {
@@ -728,11 +767,25 @@ export async function approveBudgetPlanningPeriod(actor: Actor, periodId: string
     if (currentPeriod.status !== "draft") throw new GovernanceError("CONFLICT", "Closed or approved planning periods are immutable");
     if (currentPeriod.version !== version) throw new GovernanceError("CONFLICT", "Planning period version is stale; refresh and retry");
     const categories = await tx.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, periodId));
+    const active = categories.filter((category) => !category.archived);
+    const requiredLayers = {
+      income: active.some((category) => category.categoryType === "income" && numeric(category.monthlyTarget) > 0),
+      mandatory: active.some((category) => ["fixed_expense", "debt_payment"].includes(category.categoryType) && category.essentialStatus !== "discretionary" && numeric(category.monthlyTarget) > 0),
+      essential: active.some((category) => category.categoryType === "variable_essential" && category.essentialStatus !== "discretionary" && numeric(category.monthlyTarget) > 0),
+      reserve: active.some((category) => category.categoryType === "savings" && category.essentialStatus !== "discretionary" && numeric(category.monthlyTarget) > 0),
+      discretionary: active.some((category) => category.essentialStatus === "discretionary" && numeric(category.monthlyTarget) > 0),
+      capitalGoal: active.some((category) => ["investment", "savings"].includes(category.categoryType) && /capital|invest|goal|opportunity/i.test(`${category.name} ${category.notes ?? ""}`) && numeric(category.monthlyTarget) > 0),
+    };
+    const missingLayers = Object.entries(requiredLayers).filter(([, present]) => !present).map(([layer]) => layer);
+    if (missingLayers.length) throw new GovernanceError("INVALID_STATE", `Complete every plan layer before approval. Missing: ${missingLayers.join(", ")}`);
+    const incomeTarget = active.filter((category) => category.categoryType === "income").reduce((sum, category) => sum + cents(category.monthlyTarget), 0);
+    const plannedOutflow = active.filter((category) => !["income", "transfer"].includes(category.categoryType)).reduce((sum, category) => sum + cents(category.monthlyTarget), 0);
+    if (plannedOutflow !== incomeTarget) throw new GovernanceError("INVALID_STATE", "Assign all planned income across obligations, essentials, reserves, discretionary spending, and capital goals before approval");
     requireCompleteWeeklyAllocationTemplate(categories);
     const [period] = await tx.update(budgetPlanningPeriods).set({ status: "approved", approvedAt: new Date(), approvedBy: actor.userId, version: version + 1, updatedAt: new Date() })
       .where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.status, "draft"), eq(budgetPlanningPeriods.version, version))).returning();
     if (!period) throw new GovernanceError("CONFLICT", "Planning period is stale or no longer a draft");
-    const response = { id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, approvedAt: period.approvedAt };
+    const response = { id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, approvedAt: period.approvedAt, supersedesPeriodId: period.supersedesPeriodId };
     await tx.insert(idempotencyKeys).values({ householdId: actor.householdId, key: idempotencyKey, operation: "budget_plan_approve", responseStatus: 200, responseBody: response });
     await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "budget_plan_approved", actor: actor.userId, entity: "budget_planning_period", entityId: period.id, afterState: response, reason: "Owner-approved immutable budget plan" });
     return response;
@@ -761,7 +814,7 @@ export async function copyBudgetPlanningPeriod(actor: Actor, month: string, idem
     const bootstrap = await bootstrapPlanningPeriodInTransaction(tx, actor, actor.householdId, monthDate);
     const { period } = bootstrap;
     const categories = await tx.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, period.id)).orderBy(budgetPlanningCategorySnapshots.sortOrder);
-    const response = { id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, copiedFromPeriodId: period.copiedFromPeriodId, createdBy: period.createdBy, createdAt: period.createdAt, updatedAt: period.updatedAt, approvedAt: period.approvedAt, approvedBy: period.approvedBy, closedAt: period.closedAt, closedBy: period.closedBy, categories: categories.map(planningSnapshot) };
+    const response = { id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, copiedFromPeriodId: period.copiedFromPeriodId, supersedesPeriodId: period.supersedesPeriodId, createdBy: period.createdBy, createdAt: period.createdAt, updatedAt: period.updatedAt, approvedAt: period.approvedAt, approvedBy: period.approvedBy, closedAt: period.closedAt, closedBy: period.closedBy, categories: categories.map(planningSnapshot) };
     return response;
   });
 }
@@ -797,7 +850,7 @@ export async function closeBudgetPlanningPeriod(actor: Actor, periodId: string, 
 
 export async function getBudgetPlanningHistory(actor: Actor) {
   const rows = await db.select().from(budgetPlanningPeriods).where(eq(budgetPlanningPeriods.householdId, actor.householdId)).orderBy(desc(budgetPlanningPeriods.month));
-  return rows.map((period) => ({ id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, copiedFromPeriodId: period.copiedFromPeriodId, createdBy: period.createdBy, createdAt: period.createdAt, updatedAt: period.updatedAt, approvedAt: period.approvedAt, approvedBy: period.approvedBy, closedAt: period.closedAt, closedBy: period.closedBy }));
+  return rows.map((period) => ({ id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, copiedFromPeriodId: period.copiedFromPeriodId, supersedesPeriodId: period.supersedesPeriodId, createdBy: period.createdBy, createdAt: period.createdAt, updatedAt: period.updatedAt, approvedAt: period.approvedAt, approvedBy: period.approvedBy, closedAt: period.closedAt, closedBy: period.closedBy }));
 }
 
 export async function getBudgetPlanningChangeHistory(actor: Actor, periodId: string) {

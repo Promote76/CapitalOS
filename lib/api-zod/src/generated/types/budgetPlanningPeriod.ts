@@ -16,6 +16,8 @@ export interface BudgetPlanningPeriod {
   version: number;
   /** @nullable */
   copiedFromPeriodId?: string | null;
+  /** @nullable */
+  supersedesPeriodId?: string | null;
   /** @pattern ^[0-9a-fA-F-]{36}$ */
   createdBy: string;
   createdAt: Date;

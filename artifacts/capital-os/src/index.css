@@ -3962,6 +3962,116 @@ button {
   display: flex;
   gap: 8px;
 }
+
+.budget-plan-empty {
+  min-height: 260px;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.budget-builder {
+  margin: 20px 0 24px;
+  padding: 20px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--surface-subtle), var(--surface-default));
+}
+
+.budget-builder-heading,
+.budget-builder-nav {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.budget-builder-heading h3 {
+  margin: 5px 0;
+  font-size: 18px;
+}
+
+.budget-builder-heading p,
+.budget-builder-body p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.budget-builder-steps {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(86px, 1fr));
+  gap: 6px;
+  margin: 18px 0;
+  overflow-x: auto;
+}
+
+.budget-builder-step {
+  min-width: 86px;
+  padding: 9px 7px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface-default);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.budget-builder-step span {
+  display: flex;
+  width: 22px;
+  height: 22px;
+  margin: 0 auto 5px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface-subtle);
+  font-weight: 700;
+}
+
+.budget-builder-step.active {
+  border-color: var(--color-primary);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.budget-builder-step.complete span {
+  background: var(--color-success);
+  color: white;
+}
+
+.budget-builder-body {
+  min-height: 92px;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--surface-default);
+}
+
+.budget-builder-body .btn {
+  margin-top: 12px;
+}
+
+.budget-builder-review {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.budget-builder-review div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.budget-builder-review span {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.budget-builder-nav {
+  margin-top: 14px;
+  align-items: center;
+}
 .planning-advisory-banner {
   border-color: var(--color-critical-soft);
   background: var(--surface-subtle);

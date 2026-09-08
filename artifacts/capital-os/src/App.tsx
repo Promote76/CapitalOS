@@ -248,6 +248,9 @@ const clerkPubKey = publishableKeyFromHost(
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+// Temporary browser-testing bypass. Vite strips this branch from production builds;
+// the API still owns authorization and remains unchanged.
+const TEMPORARY_DEV_AUTH_BYPASS = import.meta.env.DEV;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 function stripBase(path: string) {
@@ -451,6 +454,9 @@ function TenantGate() {
 function AuthenticatedApp() {
   const { isLoaded, isSignedIn, userId } = useAuth();
   const [location] = useLocation();
+  if (TEMPORARY_DEV_AUTH_BYPASS) {
+    return <AppContent />;
+  }
   if (!isLoaded) {
     return <div className="auth-loading">Loading your secure workspace…</div>;
   }
@@ -4136,7 +4142,7 @@ function AppContent() {
     setModal(null); setToast(`${labels[kind]} · your plan is up to date.`);
   };
   const state = dashboardDataState(dashboardQuery.data, dashboardQuery.isLoading, dashboardQuery.isError);
-  return <TooltipProvider><RoutedErrorBoundary><AppShell onAction={setModal} onFeedback={notify} menuOpen={menuOpen} setMenuOpen={setMenuOpen}><AppRouter onAction={setModal} onFeedback={notify} transactions={apiTransactions} dashboard={dashboardQuery.data} dashboardState={state} contributionsLoading={contributionsQuery.isLoading} contributionsUnavailable={contributionsQuery.isError} onRetry={() => { void dashboardQuery.refetch(); }} /></AppShell></RoutedErrorBoundary>{modal && <ActionModal kind={modal} close={() => setModal(null)} onComplete={complete} />}{toast && <div className="toast-note" role="status" data-testid="status-action-feedback">{toast}</div>}</TooltipProvider>;
+  return <TooltipProvider>{TEMPORARY_DEV_AUTH_BYPASS && <div className="operator-form-note warning" role="status" style={{ position: 'sticky', top: 0, zIndex: 100, margin: 0, borderRadius: 0, justifyContent: 'center' }}><AlertTriangle size={14} /> Temporary development-only auth bypass is active. Production authorization remains server-enforced.</div>}<RoutedErrorBoundary><AppShell onAction={setModal} onFeedback={notify} menuOpen={menuOpen} setMenuOpen={setMenuOpen}><AppRouter onAction={setModal} onFeedback={notify} transactions={apiTransactions} dashboard={dashboardQuery.data} dashboardState={state} contributionsLoading={contributionsQuery.isLoading} contributionsUnavailable={contributionsQuery.isError} onRetry={() => { void dashboardQuery.refetch(); }} /></AppShell></RoutedErrorBoundary>{modal && <ActionModal kind={modal} close={() => setModal(null)} onComplete={complete} />}{toast && <div className="toast-note" role="status" data-testid="status-action-feedback">{toast}</div>}</TooltipProvider>;
 }
 
 function App() {

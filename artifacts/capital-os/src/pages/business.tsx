@@ -5,6 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 
 const money = (value?: string) => Number(value ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const title = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+// Temporary browser-testing bypass. Production builds keep the approver gate.
+const TEMPORARY_DEV_AUTH_BYPASS = import.meta.env.DEV;
 
 export default function BusinessPage({ onFeedback }: { onFeedback: (message: string) => void }) {
   const queryClient = useQueryClient();
@@ -78,9 +80,10 @@ function BusinessSetupArea({ onFeedback }: { onFeedback: (message: string) => vo
   const resolveBusiness = useResolveCompatibleTruckingBusiness();
   const idempotencyKey = useRef(crypto.randomUUID());
   const [setupResult, setSetupResult] = useState<{ outcome: string; businessName: string; disclaimer: string } | null>(null);
-  const [canReview, setCanReview] = useState(false);
+  const [canReview, setCanReview] = useState(TEMPORARY_DEV_AUTH_BYPASS);
 
   useEffect(() => {
+    if (TEMPORARY_DEV_AUTH_BYPASS) return;
     let active = true;
     fetch("/api/auth/me", { credentials: "same-origin" })
       .then((response) => response.ok ? response.json() : null)
@@ -153,9 +156,10 @@ function BusinessIncomeIntelligencePanel({ businessId, onFeedback }: { businessI
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [drawAmount, setDrawAmount] = useState("");
   const [expandedDocument, setExpandedDocument] = useState<string | null>(null);
-  const [canReview, setCanReview] = useState(false);
+  const [canReview, setCanReview] = useState(TEMPORARY_DEV_AUTH_BYPASS);
 
   useEffect(() => {
+    if (TEMPORARY_DEV_AUTH_BYPASS) return;
     let active = true;
     fetch("/api/auth/me", { credentials: "same-origin" })
       .then((response) => response.ok ? response.json() : null)

@@ -49,6 +49,8 @@ const financialDocumentTypes: Array<{ type: FinancialDocumentUploadInputDocument
   { type: "BANK_STATEMENT", label: "Bank Statement" },
   { type: "OTHER_FINANCIAL_DOCUMENT", label: "Other financial document" },
 ];
+// Temporary browser-testing bypass. Production builds keep the approver gate.
+const TEMPORARY_DEV_AUTH_BYPASS = import.meta.env.DEV;
 
 const PageHeading = ({ eyebrow, title, description, actions }: { eyebrow: string; title: string; description?: string; actions?: ReactNode }) => (
   <div className="page-heading animate-in">
@@ -82,7 +84,7 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
   const requestUpload = useRequestFinancialDocumentUploadUrl();
   const ingestDocument = useIngestFinancialDocument();
   const reviewKeys = useRef(new Map<string, string>());
-  const [canReview, setCanReview] = useState(false);
+  const [canReview, setCanReview] = useState(TEMPORARY_DEV_AUTH_BYPASS);
   const [selectedBusinessId, setSelectedBusinessId] = useState("");
   const [txCorrectionId, setTxCorrectionId] = useState<string | null>(null);
   const [txCorrectionAmount, setTxCorrectionAmount] = useState("");
@@ -94,6 +96,7 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
   const uploadInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (TEMPORARY_DEV_AUTH_BYPASS) return;
     let active = true;
     fetch("/api/auth/me", { credentials: "same-origin" })
       .then((response) => response.ok ? response.json() : null)

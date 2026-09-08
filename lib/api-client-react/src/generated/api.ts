@@ -95,6 +95,8 @@ import type {
   CapitalRequestInput,
   CapitalWaterfallInput,
   CashFlowSummary,
+  CompatibleBusinessSetupInput,
+  CompatibleBusinessSetupResult,
   ConflictResponse,
   ContributionInput,
   ContributionScenario,
@@ -126,6 +128,7 @@ import type {
   FinancialAccount,
   FinancialAccountsSummary,
   FinancialDocument,
+  FinancialDocumentBusinessLinkInput,
   FinancialDocumentIdentityReviewInput,
   FinancialDocumentIngestInput,
   FinancialDocumentList,
@@ -13373,6 +13376,77 @@ export function useListBusinessEntities<TData = Awaited<ReturnType<typeof listBu
 
 
 
+export const getResolveCompatibleTruckingBusinessUrl = () => {
+
+
+
+
+  return `/api/business/companies/resolve-compatible`
+}
+
+/**
+ * @summary Reuse or create the canonical internal trucking accounting boundary
+ */
+export const resolveCompatibleTruckingBusiness = async (compatibleBusinessSetupInput: CompatibleBusinessSetupInput, options?: Parameters<typeof customFetch>[1]): Promise<CompatibleBusinessSetupResult> => {
+
+  return customFetch<CompatibleBusinessSetupResult>(getResolveCompatibleTruckingBusinessUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(compatibleBusinessSetupInput)
+  }
+);}
+
+
+
+
+
+export const getResolveCompatibleTruckingBusinessMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveCompatibleTruckingBusiness>>, TError,{data: BodyType<CompatibleBusinessSetupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveCompatibleTruckingBusiness>>, TError,{data: BodyType<CompatibleBusinessSetupInput>}, TContext> => {
+
+const mutationKey = ['resolveCompatibleTruckingBusiness'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveCompatibleTruckingBusiness>>, {data: BodyType<CompatibleBusinessSetupInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  resolveCompatibleTruckingBusiness(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveCompatibleTruckingBusinessMutationResult = NonNullable<Awaited<ReturnType<typeof resolveCompatibleTruckingBusiness>>>
+    export type ResolveCompatibleTruckingBusinessMutationBody = BodyType<CompatibleBusinessSetupInput>
+    export type ResolveCompatibleTruckingBusinessMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Reuse or create the canonical internal trucking accounting boundary
+ */
+export const useResolveCompatibleTruckingBusiness = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveCompatibleTruckingBusiness>>, TError,{data: BodyType<CompatibleBusinessSetupInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resolveCompatibleTruckingBusiness>>,
+        TError,
+        {data: BodyType<CompatibleBusinessSetupInput>},
+        TContext
+      > => {
+      return useMutation(getResolveCompatibleTruckingBusinessMutationOptions(options));
+    }
+
 export const getUpdateBusinessEntityUrl = (businessId: string,) => {
 
 
@@ -15180,6 +15254,78 @@ export const useReviewFinancialDocumentIdentity = <TError = ErrorType<ForbiddenR
         TContext
       > => {
       return useMutation(getReviewFinancialDocumentIdentityMutationOptions(options));
+    }
+
+export const getLinkFinancialDocumentBusinessUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/financial-documents/${documentId}/business-link`
+}
+
+/**
+ * @summary Link existing financial evidence to an approved household business boundary
+ */
+export const linkFinancialDocumentBusiness = async (documentId: string,
+    financialDocumentBusinessLinkInput: FinancialDocumentBusinessLinkInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancialDocument> => {
+
+  return customFetch<FinancialDocument>(getLinkFinancialDocumentBusinessUrl(documentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financialDocumentBusinessLinkInput)
+  }
+);}
+
+
+
+
+
+export const getLinkFinancialDocumentBusinessMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkFinancialDocumentBusiness>>, TError,{documentId: string;data: BodyType<FinancialDocumentBusinessLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkFinancialDocumentBusiness>>, TError,{documentId: string;data: BodyType<FinancialDocumentBusinessLinkInput>}, TContext> => {
+
+const mutationKey = ['linkFinancialDocumentBusiness'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkFinancialDocumentBusiness>>, {documentId: string;data: BodyType<FinancialDocumentBusinessLinkInput>}> = (props) => {
+          const {documentId,data} = props ?? {};
+
+          return  linkFinancialDocumentBusiness(documentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LinkFinancialDocumentBusinessMutationResult = NonNullable<Awaited<ReturnType<typeof linkFinancialDocumentBusiness>>>
+    export type LinkFinancialDocumentBusinessMutationBody = BodyType<FinancialDocumentBusinessLinkInput>
+    export type LinkFinancialDocumentBusinessMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Link existing financial evidence to an approved household business boundary
+ */
+export const useLinkFinancialDocumentBusiness = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkFinancialDocumentBusiness>>, TError,{documentId: string;data: BodyType<FinancialDocumentBusinessLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof linkFinancialDocumentBusiness>>,
+        TError,
+        {documentId: string;data: BodyType<FinancialDocumentBusinessLinkInput>},
+        TContext
+      > => {
+      return useMutation(getLinkFinancialDocumentBusinessMutationOptions(options));
     }
 
 export const getReviewBankStatementTransactionUrl = (transactionId: string,) => {

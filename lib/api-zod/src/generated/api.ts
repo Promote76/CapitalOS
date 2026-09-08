@@ -7209,6 +7209,40 @@ export const ListBusinessEntitiesResponse = zod.array(ListBusinessEntitiesRespon
 
 
 /**
+ * @summary Reuse or create the canonical internal trucking accounting boundary
+ */
+export const resolveCompatibleTruckingBusinessBodyIdempotencyKeyMin = 8;
+export const resolveCompatibleTruckingBusinessBodyIdempotencyKeyMax = 128;
+
+
+
+export const ResolveCompatibleTruckingBusinessBody = zod.object({
+  "businessKind": zod.enum(['INDEPENDENT_CONTRACTOR_TRUCKING']),
+  "idempotencyKey": zod.string().min(resolveCompatibleTruckingBusinessBodyIdempotencyKeyMin).max(resolveCompatibleTruckingBusinessBodyIdempotencyKeyMax)
+})
+
+export const ResolveCompatibleTruckingBusinessResponse = zod.object({
+  "business": zod.object({
+  "id": zod.string(),
+  "legalName": zod.string(),
+  "displayName": zod.string(),
+  "entityType": zod.string(),
+  "ownershipPercentage": zod.string(),
+  "taxClassification": zod.string().nullable(),
+  "industry": zod.string().nullable(),
+  "status": zod.string(),
+  "formationDate": zod.coerce.date().nullable(),
+  "state": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),
+  "outcome": zod.enum(['REUSED', 'CREATED']),
+  "disclaimer": zod.string()
+})
+
+
+/**
  * @summary Update a business profile
  */
 export const UpdateBusinessEntityParams = zod.object({
@@ -8113,6 +8147,7 @@ export const listFinancialDocumentsResponseDocumentsItemTransactionsItemCorrecti
 export const ListFinancialDocumentsResponse = zod.object({
   "documents": zod.array(zod.object({
   "id": zod.string(),
+  "businessId": zod.string().nullish(),
   "documentType": zod.string(),
   "originalDocumentType": zod.string().nullish(),
   "detectedDocumentType": zod.string().nullish(),
@@ -8275,6 +8310,7 @@ export const ingestFinancialDocumentResponseTransactionsItemCorrectionHistoryIte
 
 export const IngestFinancialDocumentResponse = zod.object({
   "id": zod.string(),
+  "businessId": zod.string().nullish(),
   "documentType": zod.string(),
   "originalDocumentType": zod.string().nullish(),
   "detectedDocumentType": zod.string().nullish(),
@@ -8398,6 +8434,7 @@ export const getFinancialDocumentResponseTransactionsItemCorrectionHistoryItemRe
 
 export const GetFinancialDocumentResponse = zod.object({
   "id": zod.string(),
+  "businessId": zod.string().nullish(),
   "documentType": zod.string(),
   "originalDocumentType": zod.string().nullish(),
   "detectedDocumentType": zod.string().nullish(),
@@ -8522,6 +8559,7 @@ export const reviewFinancialDocumentResponseTransactionsItemCorrectionHistoryIte
 
 export const ReviewFinancialDocumentResponse = zod.object({
   "id": zod.string(),
+  "businessId": zod.string().nullish(),
   "documentType": zod.string(),
   "originalDocumentType": zod.string().nullish(),
   "detectedDocumentType": zod.string().nullish(),
@@ -8650,6 +8688,7 @@ export const decideFinancialDocumentTypeResponseTransactionsItemCorrectionHistor
 
 export const DecideFinancialDocumentTypeResponse = zod.object({
   "id": zod.string(),
+  "businessId": zod.string().nullish(),
   "documentType": zod.string(),
   "originalDocumentType": zod.string().nullish(),
   "detectedDocumentType": zod.string().nullish(),
@@ -8778,6 +8817,7 @@ export const reviewFinancialDocumentIdentityResponseTransactionsItemCorrectionHi
 
 export const ReviewFinancialDocumentIdentityResponse = zod.object({
   "id": zod.string(),
+  "businessId": zod.string().nullish(),
   "documentType": zod.string(),
   "originalDocumentType": zod.string().nullish(),
   "detectedDocumentType": zod.string().nullish(),
@@ -8861,6 +8901,136 @@ export const ReviewFinancialDocumentIdentityResponse = zod.object({
   "id": zod.string(),
   "transactionId": zod.string(),
   "revision": zod.number().multipleOf(reviewFinancialDocumentIdentityResponseTransactionsItemCorrectionHistoryItemRevisionMultipleOf),
+  "previousValue": zod.record(zod.string(), zod.unknown()).nullish(),
+  "correctedValue": zod.record(zod.string(), zod.unknown()),
+  "reason": zod.string(),
+  "correctedAt": zod.coerce.date()
+}))
+})).optional()
+})
+
+
+/**
+ * @summary Link existing financial evidence to an approved household business boundary
+ */
+export const linkFinancialDocumentBusinessPathDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const LinkFinancialDocumentBusinessParams = zod.object({
+  "documentId": zod.coerce.string().regex(linkFinancialDocumentBusinessPathDocumentIdRegExp)
+})
+
+export const linkFinancialDocumentBusinessBodyBusinessIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const linkFinancialDocumentBusinessBodyReasonMax = 1000;
+
+export const linkFinancialDocumentBusinessBodyIdempotencyKeyMin = 8;
+export const linkFinancialDocumentBusinessBodyIdempotencyKeyMax = 128;
+
+
+
+export const LinkFinancialDocumentBusinessBody = zod.object({
+  "businessId": zod.string().regex(linkFinancialDocumentBusinessBodyBusinessIdRegExp),
+  "reason": zod.string().min(1).max(linkFinancialDocumentBusinessBodyReasonMax),
+  "idempotencyKey": zod.string().min(linkFinancialDocumentBusinessBodyIdempotencyKeyMin).max(linkFinancialDocumentBusinessBodyIdempotencyKeyMax)
+})
+
+export const linkFinancialDocumentBusinessResponseTransactionsItemSourcePageMultipleOf = 1;
+
+export const linkFinancialDocumentBusinessResponseTransactionsItemSourceLineMultipleOf = 1;
+
+export const linkFinancialDocumentBusinessResponseTransactionsItemCategoryCorrectionVersionMin = 0;
+export const linkFinancialDocumentBusinessResponseTransactionsItemCategoryCorrectionVersionMultipleOf = 1;
+
+export const linkFinancialDocumentBusinessResponseTransactionsItemCorrectionHistoryItemRevisionMultipleOf = 1;
+
+
+
+export const LinkFinancialDocumentBusinessResponse = zod.object({
+  "id": zod.string(),
+  "businessId": zod.string().nullish(),
+  "documentType": zod.string(),
+  "originalDocumentType": zod.string().nullish(),
+  "detectedDocumentType": zod.string().nullish(),
+  "detectionConfidence": zod.string().nullish(),
+  "detectionSignals": zod.array(zod.string()),
+  "detectionVersion": zod.string().nullish(),
+  "typeMismatchStatus": zod.string().optional(),
+  "canonicalDocumentId": zod.string().nullish(),
+  "duplicateOfDocumentId": zod.string().nullish(),
+  "supersedesDocumentId": zod.string().nullish(),
+  "supersededByDocumentId": zod.string().nullish(),
+  "versionLabel": zod.string().nullish(),
+  "identityStatus": zod.string().optional(),
+  "status": zod.string(),
+  "sourceInstitution": zod.string().nullish(),
+  "sourceFileName": zod.string(),
+  "mimeType": zod.string(),
+  "documentHash": zod.string(),
+  "sourceObjectPath": zod.string(),
+  "sourceMetadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "periodStart": zod.string().nullish(),
+  "periodEnd": zod.string().nullish(),
+  "statementDate": zod.string().nullish(),
+  "parserVersion": zod.string().nullish(),
+  "sourceRecordType": zod.string().nullish(),
+  "sourceRecordId": zod.string().nullish(),
+  "uploadedAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "reviewDecision": zod.string().nullish(),
+  "reviewReason": zod.string().nullish(),
+  "bankStatement": zod.union([zod.object({
+  "id": zod.string(),
+  "documentId": zod.string(),
+  "accountId": zod.string().nullish(),
+  "institutionName": zod.string().nullish(),
+  "accountDisplayName": zod.string().nullish(),
+  "accountMask": zod.string().nullish(),
+  "statementStart": zod.string().nullish(),
+  "statementEnd": zod.string().nullish(),
+  "openingBalance": zod.string(),
+  "closingBalance": zod.string(),
+  "totalDeposits": zod.string(),
+  "totalWithdrawals": zod.string(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date()
+}),zod.null()]).optional(),
+  "transactions": zod.array(zod.object({
+  "id": zod.string(),
+  "bankStatementDocumentId": zod.string(),
+  "postedDate": zod.string().nullish(),
+  "description": zod.string(),
+  "amount": zod.string(),
+  "direction": zod.string().nullable(),
+  "runningBalance": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "confidence": zod.string().nullable(),
+  "sourcePage": zod.number().multipleOf(linkFinancialDocumentBusinessResponseTransactionsItemSourcePageMultipleOf).nullish(),
+  "sourceLine": zod.number().multipleOf(linkFinancialDocumentBusinessResponseTransactionsItemSourceLineMultipleOf).nullable(),
+  "sourceRegion": zod.string().nullable(),
+  "parserVersion": zod.string(),
+  "evidenceFingerprint": zod.string(),
+  "reviewStatus": zod.string(),
+  "lastReviewAction": zod.union([zod.literal('APPROVE'),zod.literal('REJECT'),zod.literal('RECLASSIFY'),zod.literal('LINK_SETTLEMENT'),zod.literal('MARK_TRANSFER'),zod.literal(null)]).nullable(),
+  "originalValue": zod.record(zod.string(), zod.unknown()),
+  "correctedValue": zod.record(zod.string(), zod.unknown()).nullish(),
+  "correctionReason": zod.string().nullish(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "linkedSettlementDocumentId": zod.string().nullish(),
+  "suggestedCategoryId": zod.string().nullish(),
+  "suggestedCategoryConfidence": zod.union([zod.literal('HIGH'),zod.literal('MEDIUM'),zod.literal('LOW'),zod.literal('UNKNOWN'),zod.literal(null)]).nullish(),
+  "suggestedCategoryReason": zod.string().nullish(),
+  "suggestedCategorySource": zod.string().nullish(),
+  "selectedCategoryId": zod.string().nullish(),
+  "categoryDecisionStatus": zod.enum(['UNCLASSIFIED', 'SUGGESTED', 'USER_CONFIRMED', 'USER_CORRECTED', 'NOT_APPLICABLE_TRANSFER', 'NOT_APPLICABLE_SETTLEMENT', 'REJECTED']).optional(),
+  "categoryDecidedBy": zod.string().nullish(),
+  "categoryDecidedAt": zod.coerce.date().nullish(),
+  "categoryCorrectionVersion": zod.number().min(linkFinancialDocumentBusinessResponseTransactionsItemCategoryCorrectionVersionMin).multipleOf(linkFinancialDocumentBusinessResponseTransactionsItemCategoryCorrectionVersionMultipleOf).optional(),
+  "economicClassification": zod.enum(['HOUSEHOLD', 'BUSINESS', 'TRANSFER', 'SETTLEMENT_LINK', 'UNKNOWN']).optional(),
+  "createdAt": zod.coerce.date(),
+  "correctionHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "transactionId": zod.string(),
+  "revision": zod.number().multipleOf(linkFinancialDocumentBusinessResponseTransactionsItemCorrectionHistoryItemRevisionMultipleOf),
   "previousValue": zod.record(zod.string(), zod.unknown()).nullish(),
   "correctedValue": zod.record(zod.string(), zod.unknown()),
   "reason": zod.string(),

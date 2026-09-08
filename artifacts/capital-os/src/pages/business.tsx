@@ -1,6 +1,6 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { AlertCircle, ArrowUpRight, BriefcaseBusiness, Building2, CircleDollarSign, ClipboardCheck, FileCheck2, Landmark, LockKeyhole, Plus, RefreshCw, ShieldCheck, TrendingUp, TriangleAlert, ChevronDown, ChevronRight, Check, X } from "lucide-react";
-import { createBusinessDistribution, getGetBusinessIncomeIntelligenceQueryKey, getGetBusinessOverviewQueryKey, useCreateBusinessCashPosition, useCreateBusinessExpense, useCreateBusinessOwnerDraw, useCreateBusinessRevenue, useApproveBusinessOwnerDraw, useGetBusinessIncomeIntelligence, useGetBusinessOverview, useIngestBusinessIncomeDocument, useRequestBusinessIncomeDocumentUploadUrl, useReviewBusinessIncomeDocument, useReviewBusinessIncomeLine } from "@workspace/api-client-react";
+import { createBusinessDistribution, getGetBusinessIncomeIntelligenceQueryKey, getGetBusinessOverviewQueryKey, getListBusinessEntitiesQueryKey, useCreateBusinessCashPosition, useCreateBusinessExpense, useCreateBusinessOwnerDraw, useCreateBusinessRevenue, useApproveBusinessOwnerDraw, useGetBusinessIncomeIntelligence, useGetBusinessOverview, useIngestBusinessIncomeDocument, useRequestBusinessIncomeDocumentUploadUrl, useReviewBusinessIncomeDocument, useReviewBusinessIncomeLine, useListBusinessEntities, useResolveCompatibleTruckingBusiness } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 const money = (value?: string) => Number(value ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -60,8 +60,9 @@ export default function BusinessPage({ onFeedback }: { onFeedback: (message: str
     {form && <form className="card card-pad business-entry-form" onSubmit={submit}><div><span className="eyebrow">{title(form)}</span><h2>{form === "distribution" ? "Prepare an owner distribution" : `Record ${form}`}</h2><p>{form === "distribution" ? `Current governor limit: ${money(data.totals.safeToDistribute)}.` : "This entry stays on the business books."}</p></div><label>Amount<input autoFocus value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" /></label><label>Description<input value={description} onChange={(e) => setDescription(e.target.value)} placeholder={form === "distribution" ? "Reason for owner review" : "What was this for?"} /></label><div><button className="btn btn-primary" disabled={!amount || !description.trim()}>{form === "distribution" ? "Prepare review" : "Save record"}</button><button className="btn" type="button" onClick={() => setForm(null)}>Cancel</button></div></form>}
     <section className="business-company card card-pad">
       <div className="business-section-head"><div><span className="eyebrow">Operating companies</span><h2>{data.businesses.length} business{data.businesses.length === 1 ? "" : "es"} under management</h2></div><span className="status">{data.totals.activeBusinesses} active</span></div>
-      {data.businesses.map((business) => <article className="business-company-row" key={business.id}><div className="business-company-icon"><Building2 size={18} /></div><div><strong>{business.displayName}</strong><span>{business.legalName} · {title(business.entityType)}</span></div><div><span>Ownership</span><strong>{Number(business.ownershipPercentage).toFixed(0)}%</strong></div><div><span>Industry</span><strong>{business.industry || "Not set"}</strong></div><span className="status">{title(business.status)}</span></article>)}
+      {data.businesses.map((business) => <article className="business-company-row" key={business.id}><div className="business-company-icon"><Building2 size={18} /></div><div><strong>{business.displayName}</strong><span>{business.legalName} · Internal business record</span></div><div><span>Ownership</span><strong>{Number(business.ownershipPercentage).toFixed(0)}%</strong></div><div><span>Industry</span><strong>{business.industry || "Not set"}</strong></div><span className="status">{title(business.status)}</span></article>)}
     </section>
+    <BusinessSetupArea onFeedback={onFeedback} />
     <section className="business-ledgers">
       <div className="card card-pad"><div className="business-section-head"><div><span className="eyebrow">Income ledger</span><h2>Recent revenue</h2></div></div>{data.recentRevenue.map((row) => <div className="business-ledger-row" key={row.id}><div><strong>{row.description}</strong><span>{row.customer || title(row.category)} · {row.revenueDate}</span></div><b className="positive">+{money(row.amount)}</b></div>)}</div>
       <div className="card card-pad"><div className="business-section-head"><div><span className="eyebrow">Operating ledger</span><h2>Recent expenses</h2></div></div>{data.recentExpenses.map((row) => <div className="business-ledger-row" key={row.id}><div><strong>{row.description}</strong><span>{title(row.category)} · {row.expenseDate}</span></div><b>−{money(row.amount)}</b></div>)}</div>
@@ -69,6 +70,60 @@ export default function BusinessPage({ onFeedback }: { onFeedback: (message: str
     <section className="card card-pad business-distributions"><div className="business-section-head"><div><span className="eyebrow">Treasury bridge</span><h2>Owner distributions</h2><p>Proposals reserve capacity but do not move money.</p></div></div>{data.distributions.map((row) => <div className="business-ledger-row" key={row.id}><div><strong>{money(row.amount)} to {title(row.householdDestination)}</strong><span>{row.notes || "No note"} · {row.distributionDate}</span></div><span className={`status ${row.status === "proposed" ? "pending" : ""}`}>{title(row.status)}</span></div>)}</section>
     <BusinessIncomeIntelligencePanel businessId={businessId} onFeedback={onFeedback} />
   </main>;
+}
+
+function BusinessSetupArea({ onFeedback }: { onFeedback: (message: string) => void }) {
+  const queryClient = useQueryClient();
+  const businesses = useListBusinessEntities();
+  const resolveBusiness = useResolveCompatibleTruckingBusiness();
+  const idempotencyKey = useRef(crypto.randomUUID());
+  const [setupResult, setSetupResult] = useState<{ outcome: string; businessName: string; disclaimer: string } | null>(null);
+
+  const setup = async () => {
+    try {
+      const result = await resolveBusiness.mutateAsync({
+        data: {
+          businessKind: "INDEPENDENT_CONTRACTOR_TRUCKING",
+          idempotencyKey: idempotencyKey.current,
+        },
+      });
+      setSetupResult({
+        outcome: result.outcome,
+        businessName: result.business.displayName,
+        disclaimer: result.disclaimer,
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListBusinessEntitiesQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetBusinessOverviewQueryKey() }),
+      ]);
+      onFeedback(result.outcome === "REUSED" ? "The existing trucking business boundary was reused." : "A trucking business boundary was created and persisted.");
+      idempotencyKey.current = crypto.randomUUID();
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : "The business setup could not be completed.");
+    }
+  };
+
+  return <section className="card card-pad business-setup-area">
+    <div className="business-section-head">
+      <div>
+        <span className="eyebrow">Business setup</span>
+        <h2>Household businesses and accounting boundaries</h2>
+        <p>Use the approved independent-contractor trucking boundary when business evidence needs a home. This does not determine legal or tax status.</p>
+      </div>
+      <button className="btn btn-primary" onClick={() => void setup()} disabled={resolveBusiness.isPending}>
+        <Plus size={14} /> {resolveBusiness.isPending ? "Resolving…" : "Resolve trucking boundary"}
+      </button>
+    </div>
+    <div className="business-setup-disclaimer">
+      <LockKeyhole size={15} />
+      <span><strong>Internal accounting boundary.</strong> Capital OS keeps business books separate from household income. The server result below is the persisted record; it is not a statement about entity formation, registration, tax classification, or employer identifiers.</span>
+    </div>
+    {businesses.isLoading ? <div className="business-setup-list"><div className="business-loading-row" /><div className="business-loading-row" /></div> :
+      businesses.isError ? <div className="operations-inline-error business-setup-error"><AlertCircle size={15} /><span>Business records could not be loaded.</span><button className="btn" onClick={() => businesses.refetch()}><RefreshCw size={14} /> Retry</button></div> :
+        businesses.data?.length ? <div className="business-setup-list">{businesses.data.map((business) => <div className="business-setup-row" key={business.id}><div className="business-company-icon"><Building2 size={16} /></div><div><strong>{business.displayName}</strong><span>{business.legalName}</span></div><span className="business-setup-boundary">Available for internal linkage</span><span className="status">{title(business.status)}</span></div>)}</div> :
+          <div className="business-empty">No household business records are available yet. Resolve the approved boundary to create or reuse one.</div>}
+    {setupResult && <div className="business-setup-result"><div><span className="eyebrow">Persisted setup result</span><strong>{setupResult.outcome === "REUSED" ? "Canonical boundary reused" : "Canonical boundary created"}</strong><span>{setupResult.businessName}</span></div><p>{setupResult.disclaimer}</p></div>}
+  </section>;
 }
 
 function BusinessIncomeIntelligencePanel({ businessId, onFeedback }: { businessId?: string; onFeedback: (message: string) => void }) {

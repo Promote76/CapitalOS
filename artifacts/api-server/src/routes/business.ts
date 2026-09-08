@@ -5,6 +5,8 @@ import {
   CreateBusinessDistributionResponse,
   CreateBusinessEntityBody,
   CreateBusinessEntityResponse,
+  ResolveCompatibleTruckingBusinessBody,
+  ResolveCompatibleTruckingBusinessResponse,
   CreateBusinessExpenseBody,
   CreateBusinessExpenseResponse,
   CreateBusinessRevenueBody,
@@ -23,6 +25,7 @@ import { actorFrom } from "../middleware/request-context";
 import {
   createBusinessDistribution,
   createBusinessEntity,
+  resolveCompatibleTruckingBusiness,
   createBusinessExpense,
   createBusinessRevenue,
   getBusinessOverview,
@@ -37,6 +40,10 @@ router.get("/business/companies", asyncRoute(async (_req, res) => res.json(ListB
 router.post("/business/companies", asyncRoute(async (req, res) => {
   const body = CreateBusinessEntityBody.parse(req.body);
   res.status(201).json(CreateBusinessEntityResponse.parse(await createBusinessEntity(actorFrom(res), body)));
+}));
+router.post("/business/companies/resolve-compatible", asyncRoute(async (req, res) => {
+  const body = ResolveCompatibleTruckingBusinessBody.parse(req.body);
+  res.json(ResolveCompatibleTruckingBusinessResponse.parse(await resolveCompatibleTruckingBusiness(actorFrom(res), body)));
 }));
 router.patch("/business/companies/:businessId", asyncRoute(async (req, res) => {
   const params = UpdateBusinessEntityParams.parse(req.params);

@@ -592,6 +592,8 @@ export async function reviewFinancialDocumentIdentity(actor: Actor, documentId: 
         comparedSizeBytes: compared.sourceMetadata?.observedSizeBytes,
         documentPeriod: [document.periodStart, document.periodEnd, document.statementDate],
         comparedPeriod: [compared.periodStart, compared.periodEnd, compared.statementDate],
+           documentSourceTotals: document.sourceMetadata?.reportedTotals ?? document.sourceMetadata?.totals ?? null,
+           comparedSourceTotals: compared.sourceMetadata?.reportedTotals ?? compared.sourceMetadata?.totals ?? null,
       },
       canonicalDocumentId,
       reviewedBy: actor.userId,
@@ -617,6 +619,91 @@ export async function reviewFinancialDocumentIdentity(actor: Actor, documentId: 
       metadata: { comparedDocumentId: compared.id, classification: input.classification, canonicalDocumentId: canonicalDocumentId ?? null, sourceObjectsPreserved: true },
     });
     return response(updated);
+  });
+}
+
+export async function linkFinancialDocumentBusiness(actor: Actor, documentId: string, input: {
+  businessId: string;
+  reason: string;
+  idempotencyKey: string;
+}) {
+  assertPermission(actor.role, "approve");
+  if (!input.reason.trim()) throw new GovernanceError("INVALID_STATE", "A reason is required before linking source evidence");
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`financial-document-business-link:${actor.householdId}:${documentId}`}, 0))`);
+    const [prior] = await tx.select().from(idempotencyKeys).where(and(
+      eq(idempotencyKeys.householdId, actor.householdId),
+      eq(idempotencyKeys.key, input.idempotencyKey),
+    )).limit(1);
+    if (prior) {
+      if (prior.operation !== "financial_document_business_link" || prior.responseBody?.fingerprint !== JSON.stringify(input)) {
+        throw new GovernanceError("IDEMPOTENCY_CONFLICT", "Idempotency key was already used for a different request");
+      }
+      return prior.responseBody.response as Record<string, unknown>;
+    }
+    const [business] = await tx.select({ id: businessEntities.id }).from(businessEntities).where(and(
+      eq(businessEntities.id, input.businessId),
+      eq(businessEntities.householdId, actor.householdId),
+    )).limit(1);
+    if (!business) throw new GovernanceError("INVALID_STATE", "Business does not belong to this household");
+    const [document] = await tx.select().from(financialDocuments).where(and(
+      eq(financialDocuments.id, documentId),
+      eq(financialDocuments.householdId, actor.householdId),
+    )).limit(1);
+    if (!document) throw new GovernanceError("INVALID_STATE", "Financial document not found");
+    if (document.businessId && document.businessId !== input.businessId) {
+      throw new GovernanceError("CONFLICT", "Source evidence is already linked to a different business and cannot be replaced");
+    }
+    if (document.businessId === input.businessId) {
+      const result = response(document);
+      await tx.insert(idempotencyKeys).values({
+        householdId: actor.householdId,
+        key: input.idempotencyKey,
+        operation: "financial_document_business_link",
+        responseStatus: 200,
+        responseBody: JSON.parse(JSON.stringify({ response: result, fingerprint: JSON.stringify(input) })),
+      });
+      return result;
+    }
+    const [updated] = await tx.update(financialDocuments).set({
+      businessId: input.businessId,
+    }).where(and(eq(financialDocuments.id, documentId), eq(financialDocuments.householdId, actor.householdId))).returning();
+    if (document.sourceRecordType === "settlement_document" && document.sourceRecordId) {
+      await tx.update(settlementDocuments).set({ businessId: input.businessId }).where(and(
+        eq(settlementDocuments.id, document.sourceRecordId),
+        eq(settlementDocuments.householdId, actor.householdId),
+      ));
+    }
+    if (document.sourceRecordType === "profit_loss_document" && document.sourceRecordId) {
+      await tx.update(profitLossDocuments).set({ businessId: input.businessId }).where(and(
+        eq(profitLossDocuments.id, document.sourceRecordId),
+        eq(profitLossDocuments.householdId, actor.householdId),
+      ));
+    }
+    await tx.insert(auditEvents).values({
+      householdId: actor.householdId,
+      eventType: "financial_document_business_linked",
+      actor: actor.userId,
+      entity: "financial_document",
+      entityId: documentId,
+      reason: input.reason,
+      metadata: {
+        businessId: input.businessId,
+        sourceObjectPathPreserved: true,
+        documentHashPreserved: document.documentHash,
+        sourceFileNamePreserved: document.sourceFileName,
+        parserHistoryPreserved: true,
+      },
+    });
+    const result = response(updated);
+    await tx.insert(idempotencyKeys).values({
+      householdId: actor.householdId,
+      key: input.idempotencyKey,
+      operation: "financial_document_business_link",
+      responseStatus: 200,
+      responseBody: JSON.parse(JSON.stringify({ response: result, fingerprint: JSON.stringify(input) })),
+    });
+    return result;
   });
 }
 

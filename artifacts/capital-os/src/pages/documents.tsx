@@ -1,36 +1,42 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
+  getGetAccountingOverviewQueryKey,
+  getGetBudgetQueryKey,
+  getGetBusinessIncomeIntelligenceQueryKey,
+  getGetBusinessOverviewQueryKey,
+  getGetCapitalGovernorV2QueryKey,
+  getGetVariableBudgetIntelligenceQueryKey,
+  getListBusinessEntitiesQueryKey,
+  getListFinancialDocumentsQueryKey,
+  getListFinancialReviewQueueQueryKey,
+  getListTransactionReviewQueueQueryKey,
+  type BusinessEntity,
+  type FinancialDocument,
+  type FinancialDocumentIdentityReviewInputClassification,
+  useDecideFinancialDocumentType,
+  useLinkFinancialDocumentBusiness,
+  useListBusinessEntities,
   useListFinancialDocuments,
   useListFinancialReviewQueue,
   useReviewFinancialDocument,
+  useReviewFinancialDocumentIdentity,
   useReviewBankStatementTransaction,
-  getGetVariableBudgetIntelligenceQueryKey,
-  getGetBudgetQueryKey,
-  getListTransactionReviewQueueQueryKey,
-  getGetAccountingOverviewQueryKey,
-  getGetCapitalGovernorV2QueryKey,
-} from '@workspace/api-client-react';
-import { 
-  ClipboardList, 
-  CheckCircle2, 
-  FileText,
-  Check,
-  X,
-  ArrowRightLeft,
-  Info
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Link } from 'wouter';
-import { useRef } from 'react';
+} from "@workspace/api-client-react";
+import { AlertCircle, ArrowRightLeft, Check, CheckCircle2, ClipboardList, FileText, Info, Link2, RefreshCw, ShieldCheck, Tag, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 import {
   normalizeReviewQueueItem,
   queueItemDestination,
   queueItemDetail,
   queueItemTitle,
   type ReviewQueueItem,
-} from '@/documents-queue';
+} from "@/documents-queue";
+import { TransactionEvidenceRow } from "./TransactionEvidenceRow";
 
-import { TransactionEvidenceRow } from './TransactionEvidenceRow';
+const label = (value?: string | null) => value ? value.replaceAll("_", " ") : "Not recorded";
+const shortHash = (value: string) => value.length > 20 ? `${value.slice(0, 10)}…${value.slice(-8)}` : value;
 
 const PageHeading = ({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) => (
   <div className="page-heading animate-in">
@@ -54,161 +60,127 @@ const CardTitle = ({ title, subtitle }: { title: string; subtitle?: string }) =>
 export default function DocumentsPage({ embedded = false }: { embedded?: boolean }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: docsData, refetch: refetchDocs } = useListFinancialDocuments();
-  const { data: queueData, refetch: refetchQueue } = useListFinancialReviewQueue();
+  const docsQuery = useListFinancialDocuments();
+  const queueQuery = useListFinancialReviewQueue();
+  const businessesQuery = useListBusinessEntities();
   const reviewDoc = useReviewFinancialDocument();
   const reviewTx = useReviewBankStatementTransaction();
   const reviewKeys = useRef(new Map<string, string>());
+  const [canReview, setCanReview] = useState(false);
+  const [selectedBusinessId, setSelectedBusinessId] = useState("");
+  const [txCorrectionId, setTxCorrectionId] = useState<string | null>(null);
+  const [txCorrectionAmount, setTxCorrectionAmount] = useState("");
 
-  const documents = docsData?.documents || [];
-  const queueItems = (queueData?.items || []).map(normalizeReviewQueueItem);
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/me", { credentials: "same-origin" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => {
+        if (active) setCanReview(Boolean(payload?.memberships?.some((membership: { permissions?: string[] }) => membership.permissions?.includes("approve"))));
+      })
+      .catch(() => { if (active) setCanReview(false); });
+    return () => { active = false; };
+  }, []);
 
-  const invalidateEverything = () => {
-    refetchDocs();
-    refetchQueue();
-    queryClient.invalidateQueries({ queryKey: getGetVariableBudgetIntelligenceQueryKey() });
-    queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
-    queryClient.invalidateQueries({ queryKey: getListTransactionReviewQueueQueryKey() });
-    queryClient.invalidateQueries({ queryKey: getGetAccountingOverviewQueryKey() });
-    queryClient.invalidateQueries({ queryKey: getGetCapitalGovernorV2QueryKey() });
+  useEffect(() => {
+    const firstBusinessId = businessesQuery.data?.[0]?.id;
+    if (!selectedBusinessId && firstBusinessId) setSelectedBusinessId(firstBusinessId);
+  }, [businessesQuery.data?.[0]?.id, selectedBusinessId]);
+
+  const documents = docsQuery.data?.documents || [];
+  const queueItems = (queueQuery.data?.items || []).map(normalizeReviewQueueItem);
+  const businesses = businessesQuery.data || [];
+
+  const invalidateEverything = async () => {
+    await Promise.all([
+      docsQuery.refetch(),
+      queueQuery.refetch(),
+      queryClient.invalidateQueries({ queryKey: getListFinancialDocumentsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListFinancialReviewQueueQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListBusinessEntitiesQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetBusinessOverviewQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetBusinessIncomeIntelligenceQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetVariableBudgetIntelligenceQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListTransactionReviewQueueQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetAccountingOverviewQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetCapitalGovernorV2QueryKey() }),
+    ]);
   };
 
-  const handleDocReview = async (id: string, decision: 'VERIFIED' | 'REJECTED', reason: string) => {
+  const handleDocReview = async (id: string, decision: "VERIFIED" | "REJECTED", reason: string) => {
+    if (!canReview || !reason.trim()) return;
     try {
-      await reviewDoc.mutateAsync({
-        documentId: id,
-        data: { decision, reason }
-      });
-      toast({ title: `Document ${decision.toLowerCase()}` });
-      invalidateEverything();
-    } catch (err: any) {
-      toast({ title: 'Review failed', description: err.message, variant: 'destructive' });
+      await reviewDoc.mutateAsync({ documentId: id, data: { decision, reason: reason.trim() } });
+      toast({ title: `Document ${decision.toLowerCase()}`, description: "The persisted review is now visible in the inbox." });
+      await invalidateEverything();
+    } catch (error) {
+      toast({ title: "Review failed", description: error instanceof Error ? error.message : "The document review could not be saved.", variant: "destructive" });
     }
   };
 
-  const handleTxReview = async (
-    id: string,
-    action: 'APPROVE' | 'REJECT' | 'RECLASSIFY' | 'MARK_TRANSFER',
-    reason: string,
-    correctedValue?: Record<string, unknown>,
-  ) => {
+  const handleTxReview = async (id: string, action: "APPROVE" | "REJECT" | "RECLASSIFY" | "MARK_TRANSFER", reason: string, correctedValue?: Record<string, unknown>) => {
+    if (!canReview || !reason.trim()) return;
     const key = `${id}:${action}`;
     const idempotencyKey = reviewKeys.current.get(key) ?? crypto.randomUUID();
     reviewKeys.current.set(key, idempotencyKey);
     try {
-      await reviewTx.mutateAsync({
-        transactionId: id,
-        data: { 
-          action, 
-          reason,
-          idempotencyKey,
-          correctedValue,
-        }
-      });
-      toast({ title: `Transaction action: ${action.toLowerCase()}` });
-      invalidateEverything();
+      await reviewTx.mutateAsync({ transactionId: id, data: { action, reason: reason.trim(), idempotencyKey, correctedValue } });
+      toast({ title: `Transaction action: ${action.toLowerCase()}`, description: "The evidence review was persisted." });
+      await invalidateEverything();
       reviewKeys.current.delete(key);
-    } catch (err: any) {
-      toast({ title: 'Review failed', description: err.message, variant: 'destructive' });
+      setTxCorrectionId(null);
+      setTxCorrectionAmount("");
+    } catch (error) {
+      toast({ title: "Review failed", description: error instanceof Error ? error.message : "The transaction review could not be saved.", variant: "destructive" });
     }
   };
 
+  const selectedBusiness = businesses.find((business) => business.id === selectedBusinessId);
+
   return (
     <>
-      {!embedded && <PageHeading 
-        eyebrow="Operations" 
-        title="Financial Inbox" 
-        description="Review parsed documents and transactions. Parsed never means verified." 
-      />}
-      
+      {!embedded && <PageHeading eyebrow="Operations" title="Financial Inbox" description="Review parsed documents and transactions. Parsed never means verified." />}
       <div className="document-inbox-layout">
         <div className="grid gap-[18px]">
           <div className="card card-pad animate-in delay-1">
             <CardTitle title="Evidence integration" subtitle="Advisory impact only." />
-            <p className="text-sm text-[var(--ink-soft)]">
-              Reviewed evidence is surfaced on the Budget to inform planning forecasts and capacity analysis. Approving rows here does not automatically post transactions to the official household ledger or income balances.
-            </p>
+            <p className="text-sm text-[var(--ink-soft)]">Reviewed evidence is surfaced on the Budget to inform planning forecasts and capacity analysis. Approving rows here does not automatically post transactions to the official household ledger or income balances.</p>
+          </div>
+          <div className="card card-pad animate-in delay-1">
+            <CardTitle title="Business evidence boundary" subtitle="Link only after an approver confirms the business context." />
+            <div className="document-business-selector">
+              <label>Selected business
+                <select value={selectedBusinessId} onChange={(event) => setSelectedBusinessId(event.target.value)} disabled={!businesses.length}>
+                  <option value="">Choose a business</option>
+                  {businesses.map((business) => <option key={business.id} value={business.id}>{business.displayName}</option>)}
+                </select>
+              </label>
+              <p><ShieldCheck size={14} /> Linking evidence keeps business books separate from household income. It does not infer legal, tax, or ownership status.</p>
+            </div>
           </div>
           <div className="card card-pad animate-in delay-1">
             <CardTitle title="Credit card payment treatment" subtitle="Excluded from budget if purchases are counted." />
-            <p className="text-sm text-[var(--ink-soft)]">
-              A card payment is reviewed as a transfer when its underlying purchases are already included, preventing the same spending from being counted twice.
-            </p>
+            <p className="text-sm text-[var(--ink-soft)]">A card payment is reviewed as a transfer when its underlying purchases are already included, preventing the same spending from being counted twice.</p>
           </div>
           <div className="card card-pad page-section animate-in delay-1">
-              <CardTitle title="Review Queue" subtitle="Human confirmation only — no auto-posting and no bank writes." />
-            
-            {queueItems.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-icon"><CheckCircle2 size={20} /></div>
-                <div className="empty-title">Inbox Zero</div>
-                <p>No documents or transactions waiting for review.</p>
-              </div>
+            <CardTitle title="Review Queue" subtitle="Human confirmation only — no auto-posting and no bank writes." />
+            {!canReview && <div className="business-review-permission-note"><ShieldCheck size={14} /> Read-only queue. Approver permission is required to record a decision.</div>}
+            {queueQuery.isLoading ? <QueueSkeleton /> : queueQuery.isError ? <InlineError message="The review queue could not be loaded." onRetry={() => queueQuery.refetch()} /> : queueItems.length === 0 ? (
+              <div className="empty-state"><div className="empty-icon"><CheckCircle2 size={20} /></div><div className="empty-title">Inbox Zero</div><p>No documents or transactions waiting for review.</p></div>
             ) : (
-                <div className="document-list">
-                  {queueItems.map((item, idx) => (
-                   <div key={item?.id || idx} className="document-row" data-testid={item ? `row-queue-item-${item.id}` : `row-queue-item-${idx}`}>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <FileText size={14} className="text-[var(--ink-soft)]" />
-                         <strong>{item ? queueItemTitle(item) : 'Unsupported review item'}</strong>
-                        <span className="status pending">Needs Review</span>
-                      </div>
-                      
-                      <div className="text-xs text-[var(--ink-soft)]">
-                         {item ? queueItemDetail(item) : 'Specialized review is required. This item cannot be actioned from Documents.'}
-                      </div>
-                    </div>
-                    
-                    <div className="document-actions">
-                       <QueueItemActions item={item} handleDocReview={handleDocReview} handleTxReview={handleTxReview} />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <div className="document-list">{queueItems.map((item, idx) => <div key={item?.id || idx} className="document-row" data-testid={item ? `row-queue-item-${item.id}` : `row-queue-item-${idx}`}>
+                <div className="flex-1"><div className="flex items-center gap-2 mb-1"><FileText size={14} className="text-[var(--ink-soft)]" /><strong>{item ? queueItemTitle(item) : "Unsupported review item"}</strong><span className="status pending">Needs Review</span></div><div className="text-xs text-[var(--ink-soft)]">{item ? queueItemDetail(item) : "Specialized review is required. This item cannot be actioned from Documents."}</div></div>
+                <div className="document-actions"><QueueItemActions item={item} canReview={canReview} handleDocReview={handleDocReview} handleTxReview={handleTxReview} correctionId={txCorrectionId} setCorrectionId={setTxCorrectionId} correctionAmount={txCorrectionAmount} setCorrectionAmount={setTxCorrectionAmount} /></div>
+              </div>)}</div>
             )}
           </div>
         </div>
-
         <div className="grid gap-[18px] content-start">
           <div className="card card-pad page-section animate-in delay-2">
-            <CardTitle title="Document Library" subtitle="All uploaded financial evidence." />
-            
-            {documents.length === 0 ? (
-               <div className="text-sm text-[var(--ink-soft)] text-center py-4">No documents uploaded yet.</div>
-            ) : (
-              <div className="document-list">
-                {documents.map(doc => (
-                  <div key={doc.id} className="document-row !py-2 !items-start">
-                    <div className="min-w-0 flex-1">
-                      <strong className="truncate block" title={doc.sourceFileName}>{doc.sourceFileName}</strong>
-                      <span className="truncate block">{doc.documentType.replace(/_/g, ' ')}</span>
-                      <div className="mt-1">
-                        <span className={`status ${doc.status === 'VERIFIED' ? 'verified' : doc.status === 'REJECTED' ? 'critical' : 'pending'}`}>
-                          {doc.status}
-                        </span>
-                      </div>
-                      {doc.documentType === 'BANK_STATEMENT' && (
-                        <div className="mt-3 text-xs text-[var(--ink-soft)] bg-white/50 p-2 rounded border border-[var(--line)]">
-                          <Info size={12} className="inline mr-1 -mt-0.5" />
-                          Parsed rows require individual review. Parent verification is only available when all rows are terminal.
-                        </div>
-                      )}
-                      {doc.bankStatement && (
-                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs" data-testid={`statement-summary-${doc.id}`}>
-                          <EvidenceAmount label="Opening" value={doc.bankStatement.openingBalance} />
-                          <EvidenceAmount label="Closing" value={doc.bankStatement.closingBalance} />
-                          <EvidenceAmount label="Deposits" value={doc.bankStatement.totalDeposits} />
-                          <EvidenceAmount label="Withdrawals" value={doc.bankStatement.totalWithdrawals} />
-                        </div>
-                      )}
-                      {doc.transactions?.map((transaction) => (
-                        <TransactionEvidenceRow key={transaction.id} transaction={transaction} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+            <CardTitle title="Document Library" subtitle="All uploaded financial evidence, with provenance and identity state." />
+            {docsQuery.isLoading ? <DocumentSkeleton /> : docsQuery.isError ? <InlineError message="The document library could not be loaded." onRetry={() => docsQuery.refetch()} /> : documents.length === 0 ? <div className="text-sm text-[var(--ink-soft)] text-center py-4">No documents uploaded yet.</div> : (
+              <div className="document-list">{documents.map((doc) => <FinancialEvidenceCard key={doc.id} document={doc} documents={documents} businesses={businesses} selectedBusinessId={selectedBusinessId} selectedBusiness={selectedBusiness} canReview={canReview} onRefresh={invalidateEverything} onReview={handleDocReview} />)}</div>
             )}
           </div>
         </div>
@@ -217,44 +189,215 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
   );
 }
 
-function EvidenceAmount({ label, value }: { label: string; value: string }) {
-  return <div><span className="text-[var(--ink-soft)]">{label}</span><div className="font-medium">${value}</div></div>;
+function FinancialEvidenceCard({ document, documents, businesses, selectedBusinessId, selectedBusiness, canReview, onRefresh, onReview }: {
+  document: FinancialDocument;
+  documents: FinancialDocument[];
+  businesses: BusinessEntity[];
+  selectedBusinessId: string;
+  selectedBusiness?: BusinessEntity;
+  canReview: boolean;
+  onRefresh: () => Promise<void>;
+  onReview: (id: string, decision: "VERIFIED" | "REJECTED", reason: string) => Promise<void>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  return <article className={`financial-evidence-card ${expanded ? "is-expanded" : ""}`}>
+    <button className="financial-evidence-summary" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>
+      <span className="financial-evidence-icon"><FileText size={16} /></span>
+      <span className="financial-evidence-heading"><strong title={document.sourceFileName}>{document.sourceFileName}</strong><span>{label(document.documentType)} · {document.periodStart || document.statementDate || "Period not recorded"}{document.periodEnd ? ` to ${document.periodEnd}` : ""}</span></span>
+      <span className={`status ${document.status === "VERIFIED" ? "verified" : document.status === "REJECTED" ? "critical" : "pending"}`}>{label(document.status)}</span>
+    </button>
+    {expanded && <div className="financial-evidence-detail">
+      <div className="financial-evidence-grid">
+        <EvidenceMeta label="Business linkage" value={selectedBusiness && document.businessId === selectedBusiness.id ? selectedBusiness.displayName : document.businessId ? `Linked business · ${document.businessId.slice(0, 8)}` : "Household / unlinked"} />
+        <EvidenceMeta label="Detected type" value={label(document.detectedDocumentType)} />
+        <EvidenceMeta label="Detection confidence" value={document.detectionConfidence || "Not recorded"} />
+        <EvidenceMeta label="Period" value={document.periodStart ? `${document.periodStart}${document.periodEnd ? ` — ${document.periodEnd}` : ""}` : document.statementDate || "Not recorded"} />
+        <EvidenceMeta label="Identity status" value={label(document.identityStatus)} />
+        <EvidenceMeta label="Document hash" value={shortHash(document.documentHash)} mono />
+      </div>
+      <div className="financial-evidence-signals"><span className="eyebrow">Detection signals</span>{document.detectionSignals?.length ? document.detectionSignals.map((signal) => <span key={signal} className="evidence-signal"><Tag size={12} /> {signal}</span>) : <span className="text-sm text-[var(--ink-soft)]">No detection signals recorded.</span>}</div>
+      {document.bankStatement && <div className="mt-3 text-xs text-[var(--ink-soft)] bg-white/50 p-2 rounded border border-[var(--line)]"><Info size={12} className="inline mr-1 -mt-0.5" /> Parsed rows require individual review. Parent verification is only available when all rows are terminal.</div>}
+      {document.transactions?.map((transaction) => <TransactionEvidenceRow key={transaction.id} transaction={transaction} />)}
+       <FinancialEvidenceActions document={document} documents={documents} businesses={businesses} selectedBusinessId={selectedBusinessId} canReview={canReview} onRefresh={onRefresh} onReview={onReview} />
+    </div>}
+  </article>;
+}
+
+function FinancialEvidenceActions({ document, documents, businesses, selectedBusinessId, canReview, onRefresh, onReview }: {
+  document: FinancialDocument;
+  documents: FinancialDocument[];
+  businesses: BusinessEntity[];
+  selectedBusinessId: string;
+  canReview: boolean;
+  onRefresh: () => Promise<void>;
+  onReview: (id: string, decision: "VERIFIED" | "REJECTED", reason: string) => Promise<void>;
+}) {
+  const linkBusiness = useLinkFinancialDocumentBusiness();
+  const decideType = useDecideFinancialDocumentType();
+  const reviewIdentity = useReviewFinancialDocumentIdentity();
+  const { toast } = useToast();
+  const [reviewReason, setReviewReason] = useState("");
+  const [linkReason, setLinkReason] = useState("");
+  const [typeReason, setTypeReason] = useState("");
+  const [identityReason, setIdentityReason] = useState("");
+  const [comparisonDocumentId, setComparisonDocumentId] = useState("");
+  const [classification, setClassification] = useState<FinancialDocumentIdentityReviewInputClassification>("UNKNOWN_REVIEW_REQUIRED");
+  const [canonicalDocumentId, setCanonicalDocumentId] = useState("");
+  const typeIdempotencyKey = useRef(crypto.randomUUID());
+  const linkIdempotencyKey = useRef(crypto.randomUUID());
+  const hasCanonicalChoice = ["EXACT_DUPLICATE", "PROBABLE_DUPLICATE", "CORRECTED_VERSION"].includes(classification);
+  const comparisonDocument = documents.find((candidate) => candidate.id === comparisonDocumentId);
+  const linkedBusiness = businesses.find((business) => business.id === document.businessId);
+
+  const saveType = async () => {
+    if (!canReview || document.detectedDocumentType !== "BUSINESS_PROFIT_AND_LOSS" || !typeReason.trim()) return;
+    try {
+      await decideType.mutateAsync({ documentId: document.id, data: { action: "USE_DETECTED_TYPE", reason: typeReason.trim(), idempotencyKey: typeIdempotencyKey.current } });
+      setTypeReason("");
+      typeIdempotencyKey.current = crypto.randomUUID();
+      await onRefresh();
+      toast({ title: "Detected type accepted", description: "USE_DETECTED_TYPE was persisted for this document." });
+    } catch (error) {
+      toast({ title: "Type decision failed", description: error instanceof Error ? error.message : "The type decision could not be saved.", variant: "destructive" });
+    }
+  };
+
+  const saveLink = async () => {
+    if (!canReview || !selectedBusinessId || !linkReason.trim()) return;
+    try {
+      await linkBusiness.mutateAsync({ documentId: document.id, data: { businessId: selectedBusinessId, reason: linkReason.trim(), idempotencyKey: linkIdempotencyKey.current } });
+      setLinkReason("");
+      await onRefresh();
+      linkIdempotencyKey.current = crypto.randomUUID();
+      toast({ title: "Business link saved", description: "The document now shows its persisted business boundary." });
+    } catch (error) {
+      toast({ title: "Business link failed", description: error instanceof Error ? error.message : "The business link could not be saved.", variant: "destructive" });
+    }
+  };
+
+  const saveIdentity = async () => {
+    if (!canReview || !comparisonDocumentId || !identityReason.trim() || (hasCanonicalChoice && !canonicalDocumentId)) return;
+    try {
+      await reviewIdentity.mutateAsync({ documentId: document.id, data: { comparedDocumentId: comparisonDocumentId, classification, reason: identityReason.trim(), canonicalDocumentId: hasCanonicalChoice ? canonicalDocumentId : undefined } });
+      setIdentityReason("");
+      setComparisonDocumentId("");
+      setCanonicalDocumentId("");
+      await onRefresh();
+      toast({ title: "Identity review saved", description: "The comparison and classification are now persisted. No merge or deletion occurred." });
+    } catch (error) {
+      toast({ title: "Identity review failed", description: error instanceof Error ? error.message : "The identity review could not be saved.", variant: "destructive" });
+    }
+  };
+
+  return <div className="financial-evidence-actions">
+    {!canReview && <div className="business-review-permission-note"><ShieldCheck size={14} /> Read-only evidence view. Approver permission is required for business linkage, type, identity, and document decisions.</div>}
+    <div className="financial-action-block">
+      <div className="financial-action-title"><Link2 size={14} /><strong>Business linkage</strong><span>{document.businessId ? `Persisted: ${linkedBusiness?.displayName ?? `Business ${document.businessId.slice(0, 8)}`}` : "No business link"}</span></div>
+      {!document.businessId && <><label>Link reason<input value={linkReason} onChange={(event) => setLinkReason(event.target.value)} placeholder="Explain the business boundary match" maxLength={1000} disabled={!canReview} /></label><button className="btn btn-primary" onClick={() => void saveLink()} disabled={!canReview || !selectedBusinessId || !linkReason.trim() || linkBusiness.isPending}><Link2 size={13} /> {linkBusiness.isPending ? "Saving…" : "Link to selected business"}</button></>}
+      {document.businessId && <span className="financial-action-result">This document is already linked. No automatic relinking or merging is performed.</span>}
+    </div>
+    {document.detectedDocumentType === "BUSINESS_PROFIT_AND_LOSS" && <div className="financial-action-block">
+      <div className="financial-action-title"><Tag size={14} /><strong>Detected P&amp;L type</strong><span>Detected: BUSINESS_PROFIT_AND_LOSS</span></div>
+      <label>Required reason<input value={typeReason} onChange={(event) => setTypeReason(event.target.value)} placeholder="Explain why the detected type is accepted" maxLength={1000} disabled={!canReview} /></label>
+      <button className="btn" onClick={() => void saveType()} disabled={!canReview || !typeReason.trim() || decideType.isPending}><Check size={13} /> {decideType.isPending ? "Saving…" : "Use detected type"}</button>
+    </div>}
+    <div className="financial-action-block">
+      <div className="financial-action-title"><ClipboardList size={14} /><strong>Identity review</strong><span>Explicit comparison only; never auto-merge or delete.</span></div>
+      <div className="financial-action-form-grid">
+        <label>Comparison document<select value={comparisonDocumentId} onChange={(event) => setComparisonDocumentId(event.target.value)} disabled={!canReview}><option value="">Choose document</option>{documentIdentityOptions(document, documents).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}</select></label>
+        <label>Classification<select value={classification} onChange={(event) => setClassification(event.target.value as FinancialDocumentIdentityReviewInputClassification)} disabled={!canReview}><option value="EXACT_DUPLICATE">Exact duplicate</option><option value="PROBABLE_DUPLICATE">Probable duplicate</option><option value="DISTINCT_PERIOD">Distinct period</option><option value="DISTINCT_VERSION">Distinct version</option><option value="CORRECTED_VERSION">Corrected version</option><option value="UNKNOWN_REVIEW_REQUIRED">Unknown — review required</option></select></label>
+      </div>
+      {comparisonDocument && <IdentityComparisonEvidence document={document} comparedDocument={comparisonDocument} />}
+      {hasCanonicalChoice && <label>Canonical document<select value={canonicalDocumentId} onChange={(event) => setCanonicalDocumentId(event.target.value)} disabled={!canReview}><option value="">Choose canonical document</option>{documentIdentityOptions(document, documents).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}</select></label>}
+      <label>Required reason<textarea value={identityReason} onChange={(event) => setIdentityReason(event.target.value)} placeholder="Explain the comparison and canonical choice" maxLength={1000} disabled={!canReview} /></label>
+      <button className="btn" onClick={() => void saveIdentity()} disabled={!canReview || !comparisonDocumentId || !identityReason.trim() || (hasCanonicalChoice && !canonicalDocumentId) || reviewIdentity.isPending}><ClipboardList size={13} /> {reviewIdentity.isPending ? "Saving…" : "Record identity review"}</button>
+    </div>
+    <div className="financial-action-block">
+      <div className="financial-action-title"><ShieldCheck size={14} /><strong>Document decision</strong><span>{document.reviewDecision ? `Persisted: ${label(document.reviewDecision)}` : "No approver decision recorded"}</span></div>
+      <label>Decision reason<input value={reviewReason} onChange={(event) => setReviewReason(event.target.value)} placeholder="Explain why this evidence is verified or rejected" maxLength={1000} disabled={!canReview} /></label>
+      <div className="document-actions"><button className="btn btn-primary" onClick={() => void onReview(document.id, "VERIFIED", reviewReason)} disabled={!canReview || !reviewReason.trim()}><Check size={13} /> Verify</button><button className="btn btn-danger" onClick={() => void onReview(document.id, "REJECTED", reviewReason)} disabled={!canReview || !reviewReason.trim()}><X size={13} /> Reject</button></div>
+    </div>
+  </div>;
+}
+
+function IdentityComparisonEvidence({ document, comparedDocument }: { document: FinancialDocument; comparedDocument: FinancialDocument }) {
+  return <div className="identity-comparison-evidence">
+    <span className="eyebrow">Persisted comparison evidence</span>
+    <div className="identity-comparison-grid">
+      <div><strong>Current document</strong><span>Hash: {shortHash(document.documentHash)}</span><span>Period: {documentPeriod(document)}</span><span>Type: {label(document.documentType)} · detected {label(document.detectedDocumentType)}</span><span>Totals: {sourceTotals(document) || "Not recorded in source envelope"}</span></div>
+      <div><strong>Compared document</strong><span>Hash: {shortHash(comparedDocument.documentHash)}</span><span>Period: {documentPeriod(comparedDocument)}</span><span>Type: {label(comparedDocument.documentType)} · detected {label(comparedDocument.detectedDocumentType)}</span><span>Totals: {sourceTotals(comparedDocument) || "Not recorded in source envelope"}</span></div>
+    </div>
+    <small>Review the hashes, periods, totals, and detection signals before choosing duplicate, version, or distinct-period treatment.</small>
+  </div>;
+}
+
+function documentPeriod(document: FinancialDocument) {
+  return document.periodStart
+    ? `${document.periodStart}${document.periodEnd ? ` — ${document.periodEnd}` : ""}`
+    : document.statementDate || "Not recorded";
+}
+
+function sourceTotals(document: FinancialDocument) {
+  const metadata = document.sourceMetadata ?? {};
+  const keys = ["reportedGross", "reportedDeductions", "reportedNet", "reportedRevenue", "reportedExpenses", "reportedProfit"];
+  const values = keys
+    .filter((key) => metadata[key] !== undefined && metadata[key] !== null)
+    .map((key) => `${label(key)} ${String(metadata[key])}`);
+  return values.join(" · ");
+}
+
+function documentIdentityOptions(document: FinancialDocument, documents: FinancialDocument[]) {
+  return documents.filter((candidate) => candidate.id !== document.id).map((candidate) => ({ id: candidate.id, name: candidate.sourceFileName }));
+}
+
+function EvidenceMeta({ label: metaLabel, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return <div className="financial-meta"><span>{metaLabel}</span><strong className={mono ? "font-mono" : ""} title={value}>{value}</strong></div>;
+}
+
+function InlineError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return <div className="operations-inline-error"><AlertCircle size={15} /><span>{message}</span><button className="btn" onClick={onRetry}><RefreshCw size={14} /> Retry</button></div>;
+}
+
+function QueueSkeleton() {
+  return <div className="queue-skeleton"><div /><div /></div>;
+}
+
+function DocumentSkeleton() {
+  return <div className="queue-skeleton"><div /><div /><div /></div>;
 }
 
 function QueueItemActions({
   item,
+  canReview,
   handleDocReview,
   handleTxReview,
+  correctionId,
+  setCorrectionId,
+  correctionAmount,
+  setCorrectionAmount,
 }: {
   item: ReviewQueueItem | undefined;
-  handleDocReview: (id: string, decision: 'VERIFIED' | 'REJECTED', reason: string) => Promise<void>;
-  handleTxReview: (id: string, action: 'APPROVE' | 'REJECT' | 'RECLASSIFY' | 'MARK_TRANSFER', reason: string, correctedValue?: Record<string, unknown>) => Promise<void>;
+  canReview: boolean;
+  handleDocReview: (id: string, decision: "VERIFIED" | "REJECTED", reason: string) => Promise<void>;
+  handleTxReview: (id: string, action: "APPROVE" | "REJECT" | "RECLASSIFY" | "MARK_TRANSFER", reason: string, correctedValue?: Record<string, unknown>) => Promise<void>;
+  correctionId: string | null;
+  setCorrectionId: (id: string | null) => void;
+  correctionAmount: string;
+  setCorrectionAmount: (amount: string) => void;
 }) {
+  const [reason, setReason] = useState("");
   if (!item) return <span className="document-pending-note">Specialized review required</span>;
-
-  switch (item.type) {
-    case 'financial_document':
-      return <>
-        <button className="btn btn-primary" onClick={() => handleDocReview(item.id, 'VERIFIED', 'Looks correct')}><Check size={14} /> Verify</button>
-        <button className="btn" onClick={() => handleDocReview(item.id, 'REJECTED', 'Incorrect parsing')}><X size={14} /> Reject</button>
-      </>;
-    case 'bank_statement_transaction':
-      return <>
-        <button className="btn btn-primary" onClick={() => handleTxReview(item.id, 'APPROVE', 'Matches statement')}><Check size={14} /> Approve</button>
-        <button className="btn" onClick={() => {
-          const amount = window.prompt('Correct amount (for example, 12.34)');
-          if (amount && /^\d+\.\d{2}$/.test(amount)) {
-            void handleTxReview(item.id, 'RECLASSIFY', 'Reviewer corrected extracted amount', { amount });
-          }
-        }}>Correct amount</button>
-        <button className="btn" onClick={() => handleTxReview(item.id, 'MARK_TRANSFER', 'Internal transfer')}><ArrowRightLeft size={14} /> Mark Transfer</button>
-        <button className="btn" onClick={() => handleTxReview(item.id, 'REJECT', 'Fraud/Error')}><X size={14} /> Reject</button>
-      </>;
-    default: {
-      const destination = queueItemDestination(item);
-      return destination
-        ? <Link href={destination.href} className="btn">{destination.label}</Link>
-        : <span className="document-pending-note">Specialized review required</span>;
-    }
-  }
+  if (!canReview) return <span className="document-pending-note">Approver permission required</span>;
+  if (item.type === "financial_document") return <div className="queue-action-form"><input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Decision reason required" maxLength={1000} /><button className="btn btn-primary" onClick={() => void handleDocReview(item.id, "VERIFIED", reason)} disabled={!reason.trim()}><Check size={14} /> Verify</button><button className="btn" onClick={() => void handleDocReview(item.id, "REJECTED", reason)} disabled={!reason.trim()}><X size={14} /> Reject</button></div>;
+  if (item.type === "bank_statement_transaction") return <div className="queue-action-form">
+    <input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Review reason required" maxLength={1000} />
+    {correctionId === item.id && <input value={correctionAmount} onChange={(event) => setCorrectionAmount(event.target.value)} placeholder="Correct amount, for example 12.34" inputMode="decimal" />}
+    <button className="btn btn-primary" onClick={() => void handleTxReview(item.id, "APPROVE", reason)} disabled={!reason.trim()}><Check size={14} /> Approve</button>
+    <button className="btn" onClick={() => { setCorrectionId(correctionId === item.id ? null : item.id); setCorrectionAmount(""); }}><Tag size={14} /> Correct amount</button>
+    {correctionId === item.id && <button className="btn" onClick={() => void handleTxReview(item.id, "RECLASSIFY", reason, { amount: correctionAmount })} disabled={!reason.trim() || !/^-?\d+\.\d{2}$/.test(correctionAmount)}><Check size={14} /> Save correction</button>}
+    <button className="btn" onClick={() => void handleTxReview(item.id, "MARK_TRANSFER", reason)} disabled={!reason.trim()}><ArrowRightLeft size={14} /> Mark transfer</button>
+    <button className="btn" onClick={() => void handleTxReview(item.id, "REJECT", reason)} disabled={!reason.trim()}><X size={14} /> Reject</button>
+  </div>;
+  const destination = queueItemDestination(item);
+  return destination ? <Link href={destination.href} className="btn">{destination.label}</Link> : <span className="document-pending-note">Specialized review required</span>;
 }

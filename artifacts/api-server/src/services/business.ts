@@ -215,6 +215,102 @@ type RevenueInput = { businessId: string; revenueDate: Date; category: string; a
 type ExpenseInput = { businessId: string; expenseDate: Date; category: string; amount: string; description: string; expenseType?: string; classification?: string };
 type DistributionInput = { businessId: string; distributionDate: Date; amount: string; householdDestination?: string; notes?: string };
 
+const INTERNAL_TRUCKING_DISCLAIMER = "This is an internal Capital OS accounting boundary for an independent-contractor trucking operation. It is not evidence of an LLC, corporation, EIN, tax classification, or other legal structure.";
+
+export function isCompatibleInternalTruckingBusiness(row: Pick<typeof businessEntities.$inferSelect, "displayName" | "legalName" | "entityType" | "industry" | "notes">) {
+  const reviewedText = [row.displayName, row.legalName, row.entityType, row.industry, row.notes]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return (
+    (reviewedText.includes("trucking") || reviewedText.includes("stevens transport") || reviewedText.includes("stevens")) &&
+    (reviewedText.includes("independent contractor") || reviewedText.includes("independent_contractor") || reviewedText.includes("contractor"))
+  );
+}
+
+export async function resolveCompatibleTruckingBusiness(actor: Actor, input: {
+  businessKind: "INDEPENDENT_CONTRACTOR_TRUCKING";
+  idempotencyKey: string;
+}) {
+  assertPermission(actor.role, "approve");
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`business-compatible-setup:${actor.householdId}:${input.idempotencyKey}`}, 0))`);
+    const [prior] = await tx.select().from(idempotencyKeys).where(and(
+      eq(idempotencyKeys.householdId, actor.householdId),
+      eq(idempotencyKeys.key, input.idempotencyKey),
+    )).limit(1);
+    if (prior) {
+      if (prior.operation !== "business.compatible_trucking_setup" || prior.responseBody?.fingerprint !== JSON.stringify(input)) {
+        throw new GovernanceError("IDEMPOTENCY_CONFLICT", "Idempotency key was already used for a different request");
+      }
+      return prior.responseBody.response as Record<string, unknown>;
+    }
+
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`business-compatible-household:${actor.householdId}`}, 0))`);
+    const businesses = await tx.select().from(businessEntities).where(eq(businessEntities.householdId, actor.householdId));
+    const compatible = businesses.filter(isCompatibleInternalTruckingBusiness);
+    if (compatible.length > 1) {
+      throw new GovernanceError("CONFLICT", "More than one compatible trucking boundary exists; an approver must resolve the canonical record before continuing");
+    }
+    if (businesses.length > 0 && compatible.length === 0) {
+      throw new GovernanceError("CONFLICT", "A different business already exists for this household; review and reuse the canonical entity instead of creating another");
+    }
+
+    let business = compatible[0];
+    let outcome: "REUSED" | "CREATED" = "REUSED";
+    if (!business) {
+      outcome = "CREATED";
+      [business] = await tx.insert(businessEntities).values({
+        householdId: actor.householdId,
+        legalName: "Stevens Transport Independent Contractor Operation",
+        displayName: "Stevens Transport Independent Contractor",
+        entityType: "independent_contractor",
+        ownershipPercentage: "100.000",
+        taxClassification: null,
+        industry: "Trucking / independent contractor",
+        status: "active",
+        formationDate: null,
+        state: null,
+        notes: INTERNAL_TRUCKING_DISCLAIMER,
+        createdBy: actor.userId,
+      }).returning();
+      await tx.insert(businessReserves).values({
+        householdId: actor.householdId,
+        businessId: business.id,
+        updatedBy: actor.userId,
+      });
+      await tx.insert(auditEvents).values({
+        householdId: actor.householdId,
+        eventType: "business_compatible_boundary_created",
+        actor: actor.userId,
+        entity: "business_entity",
+        entityId: business.id,
+        reason: "Created the canonical internal trucking accounting boundary.",
+        metadata: { businessKind: input.businessKind, disclaimer: INTERNAL_TRUCKING_DISCLAIMER },
+      });
+    } else {
+      await tx.insert(auditEvents).values({
+        householdId: actor.householdId,
+        eventType: "business_compatible_boundary_reused",
+        actor: actor.userId,
+        entity: "business_entity",
+        entityId: business.id,
+        reason: "Reused the existing reviewed compatible trucking accounting boundary.",
+        metadata: { businessKind: input.businessKind, disclaimer: INTERNAL_TRUCKING_DISCLAIMER },
+      });
+    }
+    const result = { business: entityResponse(business), outcome, disclaimer: INTERNAL_TRUCKING_DISCLAIMER };
+    await tx.insert(idempotencyKeys).values({
+      householdId: actor.householdId,
+      key: input.idempotencyKey,
+      operation: "business.compatible_trucking_setup",
+      responseStatus: 200,
+      responseBody: serializeIdempotentResponse(result, input),
+    });
+    return result;
+  });
+}
+
 export async function createBusinessEntity(actor: Actor, input: BusinessEntityInput) {
   assertPermission(actor.role, "contribute");
   const ids = { householdId: actor.householdId, ownerId: actor.userId };

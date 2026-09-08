@@ -165,6 +165,8 @@ export interface BankStatementTransactionEvidence {
 
 export interface FinancialDocument {
   id: string;
+  /** @nullable */
+  businessId?: string | null;
   documentType: string;
   /** @nullable */
   originalDocumentType?: string | null;
@@ -363,6 +365,72 @@ export interface FinancialDocumentIdentityReviewInput {
   reason: string;
   /** @pattern ^[0-9a-fA-F-]{36}$ */
   canonicalDocumentId?: string;
+}
+
+export interface FinancialDocumentBusinessLinkInput {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  businessId: string;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+}
+
+export type CompatibleBusinessSetupInputBusinessKind = typeof CompatibleBusinessSetupInputBusinessKind[keyof typeof CompatibleBusinessSetupInputBusinessKind];
+
+
+export const CompatibleBusinessSetupInputBusinessKind = {
+  INDEPENDENT_CONTRACTOR_TRUCKING: 'INDEPENDENT_CONTRACTOR_TRUCKING',
+} as const;
+
+export interface CompatibleBusinessSetupInput {
+  businessKind: CompatibleBusinessSetupInputBusinessKind;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+}
+
+export type CompatibleBusinessSetupResultOutcome = typeof CompatibleBusinessSetupResultOutcome[keyof typeof CompatibleBusinessSetupResultOutcome];
+
+
+export const CompatibleBusinessSetupResultOutcome = {
+  REUSED: 'REUSED',
+  CREATED: 'CREATED',
+} as const;
+
+export interface BusinessEntity {
+  id: string;
+  legalName: string;
+  displayName: string;
+  entityType: string;
+  ownershipPercentage: string;
+  /** @nullable */
+  taxClassification: string | null;
+  /** @nullable */
+  industry: string | null;
+  status: string;
+  /** @nullable */
+  formationDate: string | null;
+  /** @nullable */
+  state: string | null;
+  /** @nullable */
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CompatibleBusinessSetupResult {
+  business: BusinessEntity;
+  outcome: CompatibleBusinessSetupResultOutcome;
+  disclaimer: string;
 }
 
 export type FinancialReviewQueueItemsItem = { [key: string]: unknown };
@@ -5158,27 +5226,6 @@ export type BusinessIncomeIntelligenceSummary = {
   verifiedHouseholdIncome: string;
   bankSyncMode: BusinessIncomeIntelligenceSummaryBankSyncMode;
 };
-
-export interface BusinessEntity {
-  id: string;
-  legalName: string;
-  displayName: string;
-  entityType: string;
-  ownershipPercentage: string;
-  /** @nullable */
-  taxClassification: string | null;
-  /** @nullable */
-  industry: string | null;
-  status: string;
-  /** @nullable */
-  formationDate: string | null;
-  /** @nullable */
-  state: string | null;
-  /** @nullable */
-  notes: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
 
 export interface BusinessIncomeIntelligence {
   asOf: string;

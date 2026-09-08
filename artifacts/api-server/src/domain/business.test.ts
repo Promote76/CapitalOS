@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { assertDistributionWithinReserve, calculateBusinessCapital } from "./business.ts";
+import { isCompatibleInternalTruckingBusiness } from "../services/business.ts";
 
 test("owner contributions and intercompany transfers are not business revenue", () => {
   const result = calculateBusinessCapital({
@@ -64,4 +65,16 @@ test("ownership percentage affects equity without adding revenue or household ca
   });
   assert.equal(result.ownedEquityCents, 300_000);
   assert.equal(result.revenueCents, 0);
+});
+
+test("compatible trucking matching requires both trucking context and contractor evidence", () => {
+  const base = {
+    legalName: "Reviewed operation",
+    entityType: "independent_contractor",
+    notes: null,
+  };
+  assert.equal(isCompatibleInternalTruckingBusiness({ ...base, displayName: "Stevens Transport", industry: "Trucking" }), true);
+  assert.equal(isCompatibleInternalTruckingBusiness({ ...base, displayName: "Stevens Transport", industry: "Logistics", notes: "Independent contractor" }), true);
+  assert.equal(isCompatibleInternalTruckingBusiness({ ...base, entityType: "corporation", displayName: "Family consulting", industry: "Consulting", notes: "Independent contractor" }), false);
+  assert.equal(isCompatibleInternalTruckingBusiness({ ...base, entityType: "corporation", displayName: "Trucking company", industry: "Freight", notes: "Corporation" }), false);
 });

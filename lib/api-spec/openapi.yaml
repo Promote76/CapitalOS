@@ -2788,6 +2788,24 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: "#/components/schemas/BusinessEntity" } }
+  /business/companies/resolve-compatible:
+    post:
+      operationId: resolveCompatibleTruckingBusiness
+      tags: [business]
+      summary: Reuse or create the canonical internal trucking accounting boundary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CompatibleBusinessSetupInput" }
+      responses:
+        "200":
+          description: Reused or created compatible business
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CompatibleBusinessSetupResult" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /business/companies/{businessId}:
     patch:
       operationId: updateBusinessEntity
@@ -3210,6 +3228,19 @@ paths:
         "200": { description: Updated identity metadata, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocument" } } } }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
+  /financial-documents/{documentId}/business-link:
+    post:
+      operationId: linkFinancialDocumentBusiness
+      tags: [household-finance]
+      summary: Link existing financial evidence to an approved household business boundary
+      parameters: [{ $ref: "#/components/parameters/FinancialDocumentId" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocumentBusinessLinkInput" } } }
+      responses:
+        "200": { description: Linked document, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocument" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /bank-statement-transactions/{transactionId}/review:
     post:
       operationId: reviewBankStatementTransaction
@@ -3445,6 +3476,7 @@ components:
       required: [id, documentType, status, sourceFileName, mimeType, documentHash, sourceObjectPath, uploadedAt, detectionSignals]
       properties:
         id: { type: string }
+        businessId: { type: [string, "null"] }
         documentType: { type: string }
         originalDocumentType: { type: [string, "null"] }
         detectedDocumentType: { type: [string, "null"] }
@@ -3541,6 +3573,26 @@ components:
         classification: { type: string, enum: [EXACT_DUPLICATE, PROBABLE_DUPLICATE, DISTINCT_PERIOD, DISTINCT_VERSION, CORRECTED_VERSION, UNKNOWN_REVIEW_REQUIRED] }
         reason: { type: string, minLength: 1, maxLength: 1000 }
         canonicalDocumentId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+    FinancialDocumentBusinessLinkInput:
+      type: object
+      required: [businessId, reason, idempotencyKey]
+      properties:
+        businessId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+    CompatibleBusinessSetupInput:
+      type: object
+      required: [businessKind, idempotencyKey]
+      properties:
+        businessKind: { type: string, enum: [INDEPENDENT_CONTRACTOR_TRUCKING] }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+    CompatibleBusinessSetupResult:
+      type: object
+      required: [business, outcome, disclaimer]
+      properties:
+        business: { $ref: "#/components/schemas/BusinessEntity" }
+        outcome: { type: string, enum: [REUSED, CREATED] }
+        disclaimer: { type: string }
     FinancialReviewQueue:
       type: object
       required: [items]

@@ -11,6 +11,8 @@ import type { FinancialDocumentSourceMetadata } from './financialDocumentSourceM
 
 export interface FinancialDocument {
   id: string;
+  /** @nullable */
+  businessId?: string | null;
   documentType: string;
   /** @nullable */
   originalDocumentType?: string | null;

@@ -175,3 +175,31 @@ Open the published Capital OS application while authenticated through the Clerk 
 ## Safety conclusion
 
 No source file, document row, hash, prior parser evidence, audit event, owner draw, verified income event, or financial transaction was deleted or mutated during this preflight.
+
+## Published-origin remediation runner
+
+The blocker-only preflight above has been replaced by a bounded, fail-closed runner:
+
+```text
+CAPITAL_OS_PUBLISHED_ORIGIN=https://<published-origin> \
+CAPITAL_OS_PRODUCTION_OPERATOR_SESSION_COOKIE='[approved Clerk session cookie]' \
+CAPITAL_OS_PRODUCTION_HOUSEHOLD_ID=d6672e8d-c193-4182-bd76-4170329e529a \
+CAPITAL_OS_PRODUCTION_DOCUMENT_IDS=c9e3f924-6977-4430-a66b-0089d66b3427,da39387c-7a42-4e9e-966b-54974bf27b76 \
+CAPITAL_OS_PRODUCTION_BUSINESS_ID=<existing-trucking-business-id> \
+node scripts/certify-production-document-remediation.mjs
+```
+
+The session must be created by the Clerk instance that owns the target household. The runner refuses localhost origins, missing sessions, household mismatches, and non-approver memberships before it can mutate anything. It never creates a business, household, document, source object, owner draw, verified-income event, or bank record.
+
+Each P&L is corrected through the authenticated `USE_DETECTED_TYPE` route with a stable, document-specific idempotency key. The runner verifies that the source hash, private object path, filename, and MIME type are preserved; that the current parser generation is `business-profit-loss-parser-v1`; that a `profit_loss_document` source record and statement period exist; and that the business-income surface returns both corrected P&Ls.
+
+The downstream read chain is recorded in redacted JSON at `docs/certification/logs/PRODUCTION_DOCUMENT_REMEDIATION_LATEST.json` by default:
+
+- authenticated Clerk identity and exact household membership
+- source preservation and parser-generation state for both documents
+- audited correction response state
+- business-income P&L identity and period rows
+- owner-draw and verified-income non-creation boundaries
+- variable-income, Budget, cash-flow Forecast, Safe-to-Deploy, and Capital Governor responses
+
+The runner exits `2` and records `BLOCKED` when a required operator/session prerequisite or explicit fail-closed downstream gate is unavailable. It exits `1` for an observed failed invariant. A run must be executed against the published origin with the approved session before this report can be changed from **BLOCKED** to **PASS**; no fabricated session, direct production SQL, or synthetic evidence is accepted.

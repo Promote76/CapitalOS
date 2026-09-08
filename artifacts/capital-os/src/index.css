@@ -3318,6 +3318,114 @@ button {
 .variable-budget-panel {
   margin-top: 24px;
 }
+.budget-capital-governor {
+  margin-top: 24px;
+  background: linear-gradient(145deg, #fbfcf8, #fff);
+}
+.budget-governor-content {
+  margin-top: 20px;
+}
+.budget-governor-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.budget-governor-metrics > div {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+.budget-governor-metrics strong {
+  color: var(--text-primary);
+  font: 600 21px var(--app-font-mono);
+}
+.budget-governor-metrics small {
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.budget-governor-lower {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+.budget-governor-heading {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+.budget-governor-heading strong {
+  font: 500 18px var(--app-font-serif);
+}
+.budget-governor-bucket {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.budget-governor-bucket > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.budget-governor-bucket strong {
+  color: var(--text-primary);
+  font-size: 11px;
+}
+.budget-governor-bucket span {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.budget-governor-bucket b {
+  color: var(--text-primary);
+  font: 600 12px var(--app-font-mono);
+}
+.budget-governor-boundary,
+.budget-governor-error,
+.budget-governor-loading {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 13px 14px;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.budget-governor-boundary {
+  align-items: center;
+  border: 1px solid #d9eee0;
+  background: #f2fbf4;
+  color: #1f7043;
+}
+.budget-governor-boundary div {
+  display: grid;
+  gap: 4px;
+}
+.budget-governor-boundary strong {
+  color: #265b3d;
+  font-size: 12px;
+}
+.budget-governor-boundary span {
+  color: #397451;
+}
+.budget-governor-error {
+  margin-top: 18px;
+  border: 1px solid #f1d48a;
+  background: #fff8e5;
+  color: #8b650d;
+}
+.budget-governor-loading {
+  margin-top: 18px;
+  background: var(--surface-soft);
+  color: var(--text-secondary);
+}
 .variable-budget-columns {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
@@ -7014,6 +7122,10 @@ body {
   }
   .treasury-hero-grid,
   .treasury-columns {
+    grid-template-columns: 1fr;
+  }
+  .budget-governor-metrics,
+  .budget-governor-lower {
     grid-template-columns: 1fr;
   }
   .treasury-v2-grid {

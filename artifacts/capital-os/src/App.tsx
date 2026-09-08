@@ -16,6 +16,7 @@ import {
   useGetCashFlow,
   useGetFinanceInsights,
   useGetSafeToDeploy,
+  useGetCapitalGovernorV2,
   useListFinancialAccounts,
   useCreateManualFinancialAccount,
   useCreateManualFinanceTransaction,
@@ -1932,6 +1933,7 @@ function BudgetPlanningControlCenter() {
 function BudgetPage() {
   const query = useGetBudget();
   const safe = useGetSafeToDeploy();
+  const capitalGovernor = useGetCapitalGovernorV2();
   const variableBudget = useGetVariableBudgetIntelligence();
   const createVehicleScenario = useCreateVehicleScenario();
   const accounts = useListFinancialAccounts();
@@ -2021,6 +2023,29 @@ function BudgetPage() {
         <FinanceMetric label="Remaining" value={displayMoney(data.totals.remaining, '$0')} detail="before the month closes" tone="green" action={<Link className="text-link" href="/cash-flow">View cash flow</Link>} />
         <FinanceMetric label="Safe to deploy" value={safe.isLoading ? 'Calculating…' : safe.isError ? 'Unavailable' : displayMoney(safe.data?.safeToDeploy, '$0')} detail={safe.isError ? 'Capital Governor could not be refreshed' : 'Capital Governor limit'} tone="lavender" action={safe.isError ? <button className="text-link" onClick={() => { void safe.refetch(); }} data-testid="button-retry-budget-safe-to-deploy">Try again</button> : <Link className="text-link" href="/cash-flow">See calculation</Link>} />
       </div>
+
+       <section className="card card-pad page-section animate-in delay-1 budget-capital-governor" data-testid="budget-capital-governor">
+         <div className="card-title-row">
+           <div><div className="card-title">Capital Governor 2.0</div><div className="card-subtitle">Your budget now shows the protected reserve layer separately from household cash and deployable capital.</div></div>
+           <span className={`status ${capitalGovernor.data?.status === 'READY' ? '' : 'pending'}`} data-testid="budget-capital-governor-status"><ShieldCheck size={12} /> {capitalGovernor.data?.status ?? (capitalGovernor.isLoading ? 'Loading' : 'Unavailable')}</span>
+         </div>
+         {capitalGovernor.isError && <div className="budget-governor-error" role="alert"><AlertTriangle size={15} /><span>Capital Governor 2.0 could not be refreshed. No new capital decision is shown.</span><button className="text-link" onClick={() => { void capitalGovernor.refetch(); }} data-testid="button-retry-budget-capital-governor">Try again</button></div>}
+         {capitalGovernor.isLoading && <div className="budget-governor-loading" role="status"><Activity size={15} /> Confirming household cash, reserve gaps, and protected commitments…</div>}
+         {capitalGovernor.data && <div className="budget-governor-content">
+           <div className="budget-governor-metrics">
+             <div><span className="mono-label">Safe to deploy</span><strong data-testid="budget-v2-safe-to-deploy">{displayMoney(capitalGovernor.data.safeToDeploy, 'Not available')}</strong><small>{capitalGovernor.data.reasons[0] ?? 'Available after current commitments and reserve protections.'}</small></div>
+             <div><span className="mono-label">Capital surplus · base</span><strong>{displayMoney(capitalGovernor.data.householdCapitalSurplus.base, 'Not available')}</strong><small>Separate from checking balance and Safe-to-Deploy.</small></div>
+             <div><span className="mono-label">Waterfall available</span><strong>{displayMoney(capitalGovernor.data.waterfall.availableForWaterfall, 'Not available')}</strong><small>{capitalGovernor.data.waterfall.allocations.length} advisory recommendation(s).</small></div>
+           </div>
+           <div className="budget-governor-lower">
+             <div className="budget-governor-buckets">
+               <div className="budget-governor-heading"><span className="eyebrow">Reserve layer</span><strong>Fund protection before opportunity</strong></div>
+               {capitalGovernor.data.bucketStatus.filter((bucket) => Number(bucket.gap) > 0 || bucket.protected).slice(0, 5).map((bucket) => <div className="budget-governor-bucket" key={bucket.key}><div><strong>{bucket.label}</strong><span>{bucket.protected ? 'Protected designation' : 'Funding gap'}</span></div><b>{displayMoney(bucket.gap, '$0')}</b></div>)}
+             </div>
+             <div className="budget-governor-boundary"><LockKeyhole size={16} /><div><strong>Advisory only</strong><span>Waterfall recommendations do not move money, unlock Duplex Reserve, authorize Micro-Live, or change this household budget.</span></div></div>
+           </div>
+         </div>}
+       </section>
 
       <section className="card card-pad page-section animate-in delay-1 variable-budget-panel">
         <CardTitle title="Variable-income planning" subtitle="Verified household income sets the floor. Business deposits and projected income stay out until a draw is verified." action={<button className="btn btn-secondary" onClick={() => { void variableBudget.refetch(); }}>Refresh intelligence</button>} />

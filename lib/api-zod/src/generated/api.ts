@@ -8412,6 +8412,470 @@ export const ListFinancialReviewQueueResponse = zod.object({
 
 
 /**
+ * @summary Preview the exact household-scoped financial evidence deletion set
+ */
+export const getFinancialEvidenceResetPreflightResponseDocumentsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseDerivedRecordsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsFinancialDocumentsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsDocumentTypeDetectionsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsTypeCorrectionsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsParserGenerationsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsIdentityReviewsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsDocumentRelationshipUpdatesMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsBankStatementDocumentsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsBankStatementTransactionsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsStatementFinancialInclusionsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsStatementFinancialReversalsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsTransactionCorrectionsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsSettlementDocumentsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsSettlementRevenueLinesMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsSettlementDeductionLinesMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsSettlementReconciliationsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsSettlementCashMatchesMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsProfitLossDocumentsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsProfitLossLinesMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsProfitLossReconciliationsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsBusinessEarningsEventsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsEconomicEventLinksMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsBusinessIncomeAnomaliesMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsStorageObjectsMin = 0;
+
+export const getFinancialEvidenceResetPreflightResponseCountsDerivedRecordsMin = 0;
+
+
+
+export const GetFinancialEvidenceResetPreflightResponse = zod.object({
+  "scope": zod.enum(['ALL', 'SINGLE']),
+  "documentId": zod.string().nullable(),
+  "canApprove": zod.boolean(),
+  "approvalExplanation": zod.string(),
+  "confirmationPhrase": zod.string(),
+  "documents": zod.number().min(getFinancialEvidenceResetPreflightResponseDocumentsMin),
+  "derivedRecords": zod.number().min(getFinancialEvidenceResetPreflightResponseDerivedRecordsMin),
+  "counts": zod.object({
+  "financialDocuments": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsFinancialDocumentsMin),
+  "documentTypeDetections": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsDocumentTypeDetectionsMin),
+  "typeCorrections": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsTypeCorrectionsMin),
+  "parserGenerations": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsParserGenerationsMin),
+  "identityReviews": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsIdentityReviewsMin),
+  "documentRelationshipUpdates": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsDocumentRelationshipUpdatesMin),
+  "bankStatementDocuments": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsBankStatementDocumentsMin),
+  "bankStatementTransactions": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsBankStatementTransactionsMin),
+  "statementFinancialInclusions": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsStatementFinancialInclusionsMin),
+  "statementFinancialReversals": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsStatementFinancialReversalsMin),
+  "transactionCorrections": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsTransactionCorrectionsMin),
+  "settlementDocuments": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsSettlementDocumentsMin),
+  "settlementRevenueLines": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsSettlementRevenueLinesMin),
+  "settlementDeductionLines": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsSettlementDeductionLinesMin),
+  "settlementReconciliations": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsSettlementReconciliationsMin),
+  "settlementCashMatches": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsSettlementCashMatchesMin),
+  "profitLossDocuments": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsProfitLossDocumentsMin),
+  "profitLossLines": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsProfitLossLinesMin),
+  "profitLossReconciliations": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsProfitLossReconciliationsMin),
+  "businessEarningsEvents": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsBusinessEarningsEventsMin),
+  "economicEventLinks": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsEconomicEventLinksMin),
+  "businessIncomeAnomalies": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsBusinessIncomeAnomaliesMin),
+  "storageObjects": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsStorageObjectsMin),
+  "derivedRecords": zod.number().min(getFinancialEvidenceResetPreflightResponseCountsDerivedRecordsMin)
+}),
+  "blockingIssues": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Delete all uploaded household financial evidence after approver confirmation
+ */
+export const resetFinancialEvidenceBodyConfirmationPhraseMax = 64;
+
+export const resetFinancialEvidenceBodyReasonMin = 8;
+export const resetFinancialEvidenceBodyReasonMax = 1000;
+
+export const resetFinancialEvidenceBodyIdempotencyKeyMin = 8;
+export const resetFinancialEvidenceBodyIdempotencyKeyMax = 128;
+
+
+
+export const ResetFinancialEvidenceBody = zod.object({
+  "confirmationPhrase": zod.string().min(1).max(resetFinancialEvidenceBodyConfirmationPhraseMax),
+  "reason": zod.string().min(resetFinancialEvidenceBodyReasonMin).max(resetFinancialEvidenceBodyReasonMax),
+  "idempotencyKey": zod.string().min(resetFinancialEvidenceBodyIdempotencyKeyMin).max(resetFinancialEvidenceBodyIdempotencyKeyMax)
+})
+
+export const resetFinancialEvidenceResponseRemovedCountsFinancialDocumentsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsDocumentTypeDetectionsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsTypeCorrectionsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsParserGenerationsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsIdentityReviewsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsDocumentRelationshipUpdatesMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsBankStatementDocumentsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsBankStatementTransactionsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsStatementFinancialInclusionsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsStatementFinancialReversalsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsTransactionCorrectionsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsSettlementDocumentsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsSettlementRevenueLinesMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsSettlementDeductionLinesMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsSettlementReconciliationsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsSettlementCashMatchesMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsProfitLossDocumentsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsProfitLossLinesMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsProfitLossReconciliationsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsBusinessEarningsEventsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsEconomicEventLinksMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsBusinessIncomeAnomaliesMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsStorageObjectsMin = 0;
+
+export const resetFinancialEvidenceResponseRemovedCountsDerivedRecordsMin = 0;
+
+export const resetFinancialEvidenceResponseVerificationFinancialDocumentsRemainingMin = 0;
+
+export const resetFinancialEvidenceResponseVerificationDocumentDetectionsRemainingMin = 0;
+
+export const resetFinancialEvidenceResponseVerificationTypeCorrectionsRemainingMin = 0;
+
+export const resetFinancialEvidenceResponseVerificationParserGenerationsRemainingMin = 0;
+
+export const resetFinancialEvidenceResponseVerificationIdentityReviewsRemainingMin = 0;
+
+export const resetFinancialEvidenceResponseVerificationSettlementSourceRecordsRemainingMin = 0;
+
+export const resetFinancialEvidenceResponseVerificationProfitLossSourceRecordsRemainingMin = 0;
+
+export const resetFinancialEvidenceResponseVerificationHouseholdLedgerTransactionsRemainingMin = 0;
+
+
+
+export const ResetFinancialEvidenceResponse = zod.object({
+  "status": zod.enum(['DELETED', 'ALREADY_COMPLETED']),
+  "scope": zod.enum(['ALL', 'SINGLE']),
+  "tombstoneId": zod.string(),
+  "removedCounts": zod.object({
+  "financialDocuments": zod.number().min(resetFinancialEvidenceResponseRemovedCountsFinancialDocumentsMin),
+  "documentTypeDetections": zod.number().min(resetFinancialEvidenceResponseRemovedCountsDocumentTypeDetectionsMin),
+  "typeCorrections": zod.number().min(resetFinancialEvidenceResponseRemovedCountsTypeCorrectionsMin),
+  "parserGenerations": zod.number().min(resetFinancialEvidenceResponseRemovedCountsParserGenerationsMin),
+  "identityReviews": zod.number().min(resetFinancialEvidenceResponseRemovedCountsIdentityReviewsMin),
+  "documentRelationshipUpdates": zod.number().min(resetFinancialEvidenceResponseRemovedCountsDocumentRelationshipUpdatesMin),
+  "bankStatementDocuments": zod.number().min(resetFinancialEvidenceResponseRemovedCountsBankStatementDocumentsMin),
+  "bankStatementTransactions": zod.number().min(resetFinancialEvidenceResponseRemovedCountsBankStatementTransactionsMin),
+  "statementFinancialInclusions": zod.number().min(resetFinancialEvidenceResponseRemovedCountsStatementFinancialInclusionsMin),
+  "statementFinancialReversals": zod.number().min(resetFinancialEvidenceResponseRemovedCountsStatementFinancialReversalsMin),
+  "transactionCorrections": zod.number().min(resetFinancialEvidenceResponseRemovedCountsTransactionCorrectionsMin),
+  "settlementDocuments": zod.number().min(resetFinancialEvidenceResponseRemovedCountsSettlementDocumentsMin),
+  "settlementRevenueLines": zod.number().min(resetFinancialEvidenceResponseRemovedCountsSettlementRevenueLinesMin),
+  "settlementDeductionLines": zod.number().min(resetFinancialEvidenceResponseRemovedCountsSettlementDeductionLinesMin),
+  "settlementReconciliations": zod.number().min(resetFinancialEvidenceResponseRemovedCountsSettlementReconciliationsMin),
+  "settlementCashMatches": zod.number().min(resetFinancialEvidenceResponseRemovedCountsSettlementCashMatchesMin),
+  "profitLossDocuments": zod.number().min(resetFinancialEvidenceResponseRemovedCountsProfitLossDocumentsMin),
+  "profitLossLines": zod.number().min(resetFinancialEvidenceResponseRemovedCountsProfitLossLinesMin),
+  "profitLossReconciliations": zod.number().min(resetFinancialEvidenceResponseRemovedCountsProfitLossReconciliationsMin),
+  "businessEarningsEvents": zod.number().min(resetFinancialEvidenceResponseRemovedCountsBusinessEarningsEventsMin),
+  "economicEventLinks": zod.number().min(resetFinancialEvidenceResponseRemovedCountsEconomicEventLinksMin),
+  "businessIncomeAnomalies": zod.number().min(resetFinancialEvidenceResponseRemovedCountsBusinessIncomeAnomaliesMin),
+  "storageObjects": zod.number().min(resetFinancialEvidenceResponseRemovedCountsStorageObjectsMin),
+  "derivedRecords": zod.number().min(resetFinancialEvidenceResponseRemovedCountsDerivedRecordsMin)
+}),
+  "verification": zod.object({
+  "financialDocumentsRemaining": zod.number().min(resetFinancialEvidenceResponseVerificationFinancialDocumentsRemainingMin),
+  "documentDetectionsRemaining": zod.number().min(resetFinancialEvidenceResponseVerificationDocumentDetectionsRemainingMin),
+  "typeCorrectionsRemaining": zod.number().min(resetFinancialEvidenceResponseVerificationTypeCorrectionsRemainingMin),
+  "parserGenerationsRemaining": zod.number().min(resetFinancialEvidenceResponseVerificationParserGenerationsRemainingMin),
+  "identityReviewsRemaining": zod.number().min(resetFinancialEvidenceResponseVerificationIdentityReviewsRemainingMin),
+  "settlementSourceRecordsRemaining": zod.number().min(resetFinancialEvidenceResponseVerificationSettlementSourceRecordsRemainingMin),
+  "profitLossSourceRecordsRemaining": zod.number().min(resetFinancialEvidenceResponseVerificationProfitLossSourceRecordsRemainingMin),
+  "householdLedgerTransactionsRemaining": zod.number().min(resetFinancialEvidenceResponseVerificationHouseholdLedgerTransactionsRemainingMin),
+  "canonicalBusinessEntityStillPresent": zod.boolean()
+}),
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Preview the exact deletion set for one financial document
+ */
+export const getFinancialDocumentDeletionPreflightPathDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const GetFinancialDocumentDeletionPreflightParams = zod.object({
+  "documentId": zod.coerce.string().regex(getFinancialDocumentDeletionPreflightPathDocumentIdRegExp)
+})
+
+export const getFinancialDocumentDeletionPreflightResponseDocumentsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseDerivedRecordsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsFinancialDocumentsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsDocumentTypeDetectionsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsTypeCorrectionsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsParserGenerationsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsIdentityReviewsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsDocumentRelationshipUpdatesMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsBankStatementDocumentsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsBankStatementTransactionsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsStatementFinancialInclusionsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsStatementFinancialReversalsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsTransactionCorrectionsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsSettlementDocumentsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsSettlementRevenueLinesMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsSettlementDeductionLinesMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsSettlementReconciliationsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsSettlementCashMatchesMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsProfitLossDocumentsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsProfitLossLinesMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsProfitLossReconciliationsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsBusinessEarningsEventsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsEconomicEventLinksMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsBusinessIncomeAnomaliesMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsStorageObjectsMin = 0;
+
+export const getFinancialDocumentDeletionPreflightResponseCountsDerivedRecordsMin = 0;
+
+
+
+export const GetFinancialDocumentDeletionPreflightResponse = zod.object({
+  "scope": zod.enum(['ALL', 'SINGLE']),
+  "documentId": zod.string().nullable(),
+  "canApprove": zod.boolean(),
+  "approvalExplanation": zod.string(),
+  "confirmationPhrase": zod.string(),
+  "documents": zod.number().min(getFinancialDocumentDeletionPreflightResponseDocumentsMin),
+  "derivedRecords": zod.number().min(getFinancialDocumentDeletionPreflightResponseDerivedRecordsMin),
+  "counts": zod.object({
+  "financialDocuments": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsFinancialDocumentsMin),
+  "documentTypeDetections": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsDocumentTypeDetectionsMin),
+  "typeCorrections": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsTypeCorrectionsMin),
+  "parserGenerations": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsParserGenerationsMin),
+  "identityReviews": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsIdentityReviewsMin),
+  "documentRelationshipUpdates": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsDocumentRelationshipUpdatesMin),
+  "bankStatementDocuments": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsBankStatementDocumentsMin),
+  "bankStatementTransactions": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsBankStatementTransactionsMin),
+  "statementFinancialInclusions": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsStatementFinancialInclusionsMin),
+  "statementFinancialReversals": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsStatementFinancialReversalsMin),
+  "transactionCorrections": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsTransactionCorrectionsMin),
+  "settlementDocuments": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsSettlementDocumentsMin),
+  "settlementRevenueLines": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsSettlementRevenueLinesMin),
+  "settlementDeductionLines": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsSettlementDeductionLinesMin),
+  "settlementReconciliations": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsSettlementReconciliationsMin),
+  "settlementCashMatches": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsSettlementCashMatchesMin),
+  "profitLossDocuments": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsProfitLossDocumentsMin),
+  "profitLossLines": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsProfitLossLinesMin),
+  "profitLossReconciliations": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsProfitLossReconciliationsMin),
+  "businessEarningsEvents": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsBusinessEarningsEventsMin),
+  "economicEventLinks": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsEconomicEventLinksMin),
+  "businessIncomeAnomalies": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsBusinessIncomeAnomaliesMin),
+  "storageObjects": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsStorageObjectsMin),
+  "derivedRecords": zod.number().min(getFinancialDocumentDeletionPreflightResponseCountsDerivedRecordsMin)
+}),
+  "blockingIssues": zod.array(zod.string())
+})
+
+
+/**
+ * @summary Delete one uploaded financial document and only its derived evidence
+ */
+export const deleteFinancialDocumentEvidencePathDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const DeleteFinancialDocumentEvidenceParams = zod.object({
+  "documentId": zod.coerce.string().regex(deleteFinancialDocumentEvidencePathDocumentIdRegExp)
+})
+
+export const deleteFinancialDocumentEvidenceBodyConfirmationPhraseMax = 64;
+
+export const deleteFinancialDocumentEvidenceBodyReasonMin = 8;
+export const deleteFinancialDocumentEvidenceBodyReasonMax = 1000;
+
+export const deleteFinancialDocumentEvidenceBodyIdempotencyKeyMin = 8;
+export const deleteFinancialDocumentEvidenceBodyIdempotencyKeyMax = 128;
+
+
+
+export const DeleteFinancialDocumentEvidenceBody = zod.object({
+  "confirmationPhrase": zod.string().min(1).max(deleteFinancialDocumentEvidenceBodyConfirmationPhraseMax),
+  "reason": zod.string().min(deleteFinancialDocumentEvidenceBodyReasonMin).max(deleteFinancialDocumentEvidenceBodyReasonMax),
+  "idempotencyKey": zod.string().min(deleteFinancialDocumentEvidenceBodyIdempotencyKeyMin).max(deleteFinancialDocumentEvidenceBodyIdempotencyKeyMax)
+})
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsFinancialDocumentsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsDocumentTypeDetectionsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsTypeCorrectionsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsParserGenerationsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsIdentityReviewsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsDocumentRelationshipUpdatesMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsBankStatementDocumentsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsBankStatementTransactionsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsStatementFinancialInclusionsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsStatementFinancialReversalsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsTransactionCorrectionsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsSettlementDocumentsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsSettlementRevenueLinesMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsSettlementDeductionLinesMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsSettlementReconciliationsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsSettlementCashMatchesMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsProfitLossDocumentsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsProfitLossLinesMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsProfitLossReconciliationsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsBusinessEarningsEventsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsEconomicEventLinksMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsBusinessIncomeAnomaliesMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsStorageObjectsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseRemovedCountsDerivedRecordsMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseVerificationFinancialDocumentsRemainingMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseVerificationDocumentDetectionsRemainingMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseVerificationTypeCorrectionsRemainingMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseVerificationParserGenerationsRemainingMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseVerificationIdentityReviewsRemainingMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseVerificationSettlementSourceRecordsRemainingMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseVerificationProfitLossSourceRecordsRemainingMin = 0;
+
+export const deleteFinancialDocumentEvidenceResponseVerificationHouseholdLedgerTransactionsRemainingMin = 0;
+
+
+
+export const DeleteFinancialDocumentEvidenceResponse = zod.object({
+  "status": zod.enum(['DELETED', 'ALREADY_COMPLETED']),
+  "scope": zod.enum(['ALL', 'SINGLE']),
+  "tombstoneId": zod.string(),
+  "removedCounts": zod.object({
+  "financialDocuments": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsFinancialDocumentsMin),
+  "documentTypeDetections": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsDocumentTypeDetectionsMin),
+  "typeCorrections": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsTypeCorrectionsMin),
+  "parserGenerations": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsParserGenerationsMin),
+  "identityReviews": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsIdentityReviewsMin),
+  "documentRelationshipUpdates": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsDocumentRelationshipUpdatesMin),
+  "bankStatementDocuments": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsBankStatementDocumentsMin),
+  "bankStatementTransactions": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsBankStatementTransactionsMin),
+  "statementFinancialInclusions": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsStatementFinancialInclusionsMin),
+  "statementFinancialReversals": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsStatementFinancialReversalsMin),
+  "transactionCorrections": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsTransactionCorrectionsMin),
+  "settlementDocuments": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsSettlementDocumentsMin),
+  "settlementRevenueLines": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsSettlementRevenueLinesMin),
+  "settlementDeductionLines": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsSettlementDeductionLinesMin),
+  "settlementReconciliations": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsSettlementReconciliationsMin),
+  "settlementCashMatches": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsSettlementCashMatchesMin),
+  "profitLossDocuments": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsProfitLossDocumentsMin),
+  "profitLossLines": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsProfitLossLinesMin),
+  "profitLossReconciliations": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsProfitLossReconciliationsMin),
+  "businessEarningsEvents": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsBusinessEarningsEventsMin),
+  "economicEventLinks": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsEconomicEventLinksMin),
+  "businessIncomeAnomalies": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsBusinessIncomeAnomaliesMin),
+  "storageObjects": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsStorageObjectsMin),
+  "derivedRecords": zod.number().min(deleteFinancialDocumentEvidenceResponseRemovedCountsDerivedRecordsMin)
+}),
+  "verification": zod.object({
+  "financialDocumentsRemaining": zod.number().min(deleteFinancialDocumentEvidenceResponseVerificationFinancialDocumentsRemainingMin),
+  "documentDetectionsRemaining": zod.number().min(deleteFinancialDocumentEvidenceResponseVerificationDocumentDetectionsRemainingMin),
+  "typeCorrectionsRemaining": zod.number().min(deleteFinancialDocumentEvidenceResponseVerificationTypeCorrectionsRemainingMin),
+  "parserGenerationsRemaining": zod.number().min(deleteFinancialDocumentEvidenceResponseVerificationParserGenerationsRemainingMin),
+  "identityReviewsRemaining": zod.number().min(deleteFinancialDocumentEvidenceResponseVerificationIdentityReviewsRemainingMin),
+  "settlementSourceRecordsRemaining": zod.number().min(deleteFinancialDocumentEvidenceResponseVerificationSettlementSourceRecordsRemainingMin),
+  "profitLossSourceRecordsRemaining": zod.number().min(deleteFinancialDocumentEvidenceResponseVerificationProfitLossSourceRecordsRemainingMin),
+  "householdLedgerTransactionsRemaining": zod.number().min(deleteFinancialDocumentEvidenceResponseVerificationHouseholdLedgerTransactionsRemainingMin),
+  "canonicalBusinessEntityStillPresent": zod.boolean()
+}),
+  "message": zod.string()
+})
+
+
+/**
  * @summary Retrieve source provenance and evidence detail
  */
 export const getFinancialDocumentPathDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');

@@ -16,16 +16,34 @@ import {
   RunFinancialDocumentTypeDetectionBody, RunFinancialDocumentTypeDetectionParams, RunFinancialDocumentTypeDetectionResponse,
   ReviewFinancialDocumentIdentityBody, ReviewFinancialDocumentIdentityParams, ReviewFinancialDocumentIdentityResponse,
   LinkFinancialDocumentBusinessBody, LinkFinancialDocumentBusinessParams, LinkFinancialDocumentBusinessResponse,
+  DeleteFinancialDocumentEvidenceBody, DeleteFinancialDocumentEvidenceParams, DeleteFinancialDocumentEvidenceResponse,
+  GetFinancialDocumentDeletionPreflightParams, GetFinancialDocumentDeletionPreflightResponse,
+  GetFinancialEvidenceResetPreflightResponse, ResetFinancialEvidenceBody, ResetFinancialEvidenceResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
 import { decideBankStatementTransactionCategory, decideFinancialDocumentType, getBankStatementTransactionInclusion, getFinancialDocument, importBankStatementTransaction, ingestFinancialDocument, linkBankStatementTransaction, linkFinancialDocumentBusiness, listFinancialDocuments, listFinancialReviewQueue, previewBankStatementTransactionMatch, reconcileBankStatementTransactionInclusion, requestFinancialDocumentUploadUrl, reverseBankStatementTransactionImport, reviewBankStatementTransaction, reviewFinancialDocument, reviewFinancialDocumentIdentity, runFinancialDocumentTypeDetection, unlinkBankStatementTransaction } from "../services/financial-documents";
+import { deleteFinancialDocumentEvidence, getFinancialDocumentDeletionPreflight, getFinancialEvidenceResetPreflight, resetFinancialEvidence } from "../services/financial-evidence-deletion";
 
 const router: IRouter = Router();
 router.get("/financial-documents", asyncRoute(async (_req, res) => res.json(ListFinancialDocumentsResponse.parse(await listFinancialDocuments(actorFrom(res))))));
 router.post("/financial-documents/upload-url", asyncRoute(async (req, res) => res.json(RequestFinancialDocumentUploadUrlResponse.parse(await requestFinancialDocumentUploadUrl(actorFrom(res), RequestFinancialDocumentUploadUrlBody.parse(req.body))))));
 router.post("/financial-documents/ingest", asyncRoute(async (req, res) => res.status(201).json(IngestFinancialDocumentResponse.parse(await ingestFinancialDocument(actorFrom(res), IngestFinancialDocumentBody.parse(req.body))))));
 router.get("/financial-documents/review-queue", asyncRoute(async (_req, res) => res.json(ListFinancialReviewQueueResponse.parse(await listFinancialReviewQueue(actorFrom(res))))));
+router.get("/financial-documents/deletion-preflight", asyncRoute(async (_req, res) => {
+  res.json(GetFinancialEvidenceResetPreflightResponse.parse(await getFinancialEvidenceResetPreflight(actorFrom(res))));
+}));
+router.post("/financial-documents/reset", asyncRoute(async (req, res) => {
+  res.json(ResetFinancialEvidenceResponse.parse(await resetFinancialEvidence(actorFrom(res), ResetFinancialEvidenceBody.parse(req.body))));
+}));
+router.get("/financial-documents/:documentId/deletion-preflight", asyncRoute(async (req, res) => {
+  const { documentId } = GetFinancialDocumentDeletionPreflightParams.parse(req.params);
+  res.json(GetFinancialDocumentDeletionPreflightResponse.parse(await getFinancialDocumentDeletionPreflight(actorFrom(res), documentId)));
+}));
+router.post("/financial-documents/:documentId/delete-evidence", asyncRoute(async (req, res) => {
+  const { documentId } = DeleteFinancialDocumentEvidenceParams.parse(req.params);
+  res.json(DeleteFinancialDocumentEvidenceResponse.parse(await deleteFinancialDocumentEvidence(actorFrom(res), documentId, DeleteFinancialDocumentEvidenceBody.parse(req.body))));
+}));
 router.get("/financial-documents/:documentId", asyncRoute(async (req, res) => { const { documentId } = GetFinancialDocumentParams.parse(req.params); res.json(GetFinancialDocumentResponse.parse(await getFinancialDocument(actorFrom(res), documentId))); }));
 router.post("/financial-documents/:documentId/review", asyncRoute(async (req, res) => { const { documentId } = GetFinancialDocumentParams.parse(req.params); res.json(ReviewFinancialDocumentResponse.parse(await reviewFinancialDocument(actorFrom(res), documentId, ReviewFinancialDocumentBody.parse(req.body)))); }));
 router.post("/financial-documents/:documentId/detect-type", asyncRoute(async (req, res) => {

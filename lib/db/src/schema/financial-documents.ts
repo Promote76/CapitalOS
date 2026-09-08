@@ -129,6 +129,36 @@ export const financialDocumentIdentityReviews = pgTable("financial_document_iden
   pairUnique: uniqueIndex("financial_document_identity_reviews_pair_unique").on(table.householdId, table.documentId, table.comparedDocumentId),
 }));
 
+/**
+ * Immutable metadata-only record of an authorized evidence deletion. This
+ * table is intentionally independent of financialDocuments so document
+ * cascades cannot erase the destructive-action history.
+ */
+export const financialEvidenceDeletionTombstones = pgTable("financial_evidence_deletion_tombstones", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id").notNull().references(() => households.id),
+  actor: uuid("actor").notNull().references(() => users.id),
+  scope: text("scope").notNull(),
+  reason: text("reason").notNull(),
+  confirmationPhrase: text("confirmation_phrase").notNull(),
+  idempotencyKey: text("idempotency_key").notNull(),
+  requestFingerprint: text("request_fingerprint").notNull(),
+  deletedDocuments: jsonb("deleted_documents").$type<Array<{
+    id: string;
+    originalFileName: string;
+    sha256: string;
+    uploadedAt: string;
+    documentType: string;
+  }>>().notNull().default([]),
+  removedCounts: jsonb("removed_counts").$type<Record<string, number>>().notNull().default({}),
+  postResetVerification: jsonb("post_reset_verification").$type<Record<string, number | boolean>>().notNull().default({}),
+  storageObjectCount: integer("storage_object_count").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  householdCreatedIdx: index("financial_evidence_deletion_tombstones_household_created_idx").on(table.householdId, table.createdAt),
+  householdIdempotencyUnique: uniqueIndex("financial_evidence_deletion_tombstones_household_idempotency_unique").on(table.householdId, table.idempotencyKey),
+}));
+
 export const bankStatementDocuments = pgTable("bank_statement_documents", {
   id: uuid("id").defaultRandom().primaryKey(),
   householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
@@ -272,6 +302,7 @@ export type FinancialDocumentTypeDetection = typeof financialDocumentTypeDetecti
 export type FinancialDocumentTypeCorrection = typeof financialDocumentTypeCorrections.$inferSelect;
 export type FinancialDocumentParseGeneration = typeof financialDocumentParseGenerations.$inferSelect;
 export type FinancialDocumentIdentityReview = typeof financialDocumentIdentityReviews.$inferSelect;
+export type FinancialEvidenceDeletionTombstone = typeof financialEvidenceDeletionTombstones.$inferSelect;
 export type BankStatementDocument = typeof bankStatementDocuments.$inferSelect;
 export type BankStatementTransaction = typeof bankStatementTransactions.$inferSelect;
 export type BankStatementTransactionCorrection = typeof bankStatementTransactionCorrections.$inferSelect;

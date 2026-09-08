@@ -137,6 +137,9 @@ import type {
   FinancialDocumentTypeDetectionInput,
   FinancialDocumentUploadInput,
   FinancialDocumentUploadTarget,
+  FinancialEvidenceDeletionInput,
+  FinancialEvidenceDeletionPreflight,
+  FinancialEvidenceDeletionResult,
   FinancialReviewQueue,
   FinancingCreditProfile,
   FinancingCreditProfileUpdate,
@@ -14963,6 +14966,303 @@ export function useListFinancialReviewQueue<TData = Awaited<ReturnType<typeof li
 
 
 
+
+export const getGetFinancialEvidenceResetPreflightUrl = () => {
+
+
+
+
+  return `/api/financial-documents/deletion-preflight`
+}
+
+/**
+ * @summary Preview the exact household-scoped financial evidence deletion set
+ */
+export const getFinancialEvidenceResetPreflight = async ( options?: Parameters<typeof customFetch>[1]): Promise<FinancialEvidenceDeletionPreflight> => {
+
+  return customFetch<FinancialEvidenceDeletionPreflight>(getGetFinancialEvidenceResetPreflightUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFinancialEvidenceResetPreflightQueryKey = () => {
+    return [
+    `/api/financial-documents/deletion-preflight`
+    ] as const;
+    }
+
+
+export const getGetFinancialEvidenceResetPreflightQueryOptions = <TData = Awaited<ReturnType<typeof getFinancialEvidenceResetPreflight>>, TError = ErrorType<ForbiddenResponse | ConflictResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinancialEvidenceResetPreflight>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFinancialEvidenceResetPreflightQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFinancialEvidenceResetPreflight>>> = ({ signal }) => getFinancialEvidenceResetPreflight({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFinancialEvidenceResetPreflight>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFinancialEvidenceResetPreflightQueryResult = NonNullable<Awaited<ReturnType<typeof getFinancialEvidenceResetPreflight>>>
+export type GetFinancialEvidenceResetPreflightQueryError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+
+/**
+ * @summary Preview the exact household-scoped financial evidence deletion set
+ */
+
+export function useGetFinancialEvidenceResetPreflight<TData = Awaited<ReturnType<typeof getFinancialEvidenceResetPreflight>>, TError = ErrorType<ForbiddenResponse | ConflictResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinancialEvidenceResetPreflight>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFinancialEvidenceResetPreflightQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getResetFinancialEvidenceUrl = () => {
+
+
+
+
+  return `/api/financial-documents/reset`
+}
+
+/**
+ * @summary Delete all uploaded household financial evidence after approver confirmation
+ */
+export const resetFinancialEvidence = async (financialEvidenceDeletionInput: FinancialEvidenceDeletionInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancialEvidenceDeletionResult> => {
+
+  return customFetch<FinancialEvidenceDeletionResult>(getResetFinancialEvidenceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financialEvidenceDeletionInput)
+  }
+);}
+
+
+
+
+
+export const getResetFinancialEvidenceMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetFinancialEvidence>>, TError,{data: BodyType<FinancialEvidenceDeletionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetFinancialEvidence>>, TError,{data: BodyType<FinancialEvidenceDeletionInput>}, TContext> => {
+
+const mutationKey = ['resetFinancialEvidence'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetFinancialEvidence>>, {data: BodyType<FinancialEvidenceDeletionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  resetFinancialEvidence(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetFinancialEvidenceMutationResult = NonNullable<Awaited<ReturnType<typeof resetFinancialEvidence>>>
+    export type ResetFinancialEvidenceMutationBody = BodyType<FinancialEvidenceDeletionInput>
+    export type ResetFinancialEvidenceMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Delete all uploaded household financial evidence after approver confirmation
+ */
+export const useResetFinancialEvidence = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetFinancialEvidence>>, TError,{data: BodyType<FinancialEvidenceDeletionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resetFinancialEvidence>>,
+        TError,
+        {data: BodyType<FinancialEvidenceDeletionInput>},
+        TContext
+      > => {
+      return useMutation(getResetFinancialEvidenceMutationOptions(options));
+    }
+
+export const getGetFinancialDocumentDeletionPreflightUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/financial-documents/${documentId}/deletion-preflight`
+}
+
+/**
+ * @summary Preview the exact deletion set for one financial document
+ */
+export const getFinancialDocumentDeletionPreflight = async (documentId: string, options?: Parameters<typeof customFetch>[1]): Promise<FinancialEvidenceDeletionPreflight> => {
+
+  return customFetch<FinancialEvidenceDeletionPreflight>(getGetFinancialDocumentDeletionPreflightUrl(documentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFinancialDocumentDeletionPreflightQueryKey = (documentId: string,) => {
+    return [
+    `/api/financial-documents/${documentId}/deletion-preflight`
+    ] as const;
+    }
+
+
+export const getGetFinancialDocumentDeletionPreflightQueryOptions = <TData = Awaited<ReturnType<typeof getFinancialDocumentDeletionPreflight>>, TError = ErrorType<ForbiddenResponse | ConflictResponse>>(documentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinancialDocumentDeletionPreflight>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFinancialDocumentDeletionPreflightQueryKey(documentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFinancialDocumentDeletionPreflight>>> = ({ signal }) => getFinancialDocumentDeletionPreflight(documentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: documentId !== null && documentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFinancialDocumentDeletionPreflight>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFinancialDocumentDeletionPreflightQueryResult = NonNullable<Awaited<ReturnType<typeof getFinancialDocumentDeletionPreflight>>>
+export type GetFinancialDocumentDeletionPreflightQueryError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+
+/**
+ * @summary Preview the exact deletion set for one financial document
+ */
+
+export function useGetFinancialDocumentDeletionPreflight<TData = Awaited<ReturnType<typeof getFinancialDocumentDeletionPreflight>>, TError = ErrorType<ForbiddenResponse | ConflictResponse>>(
+ documentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinancialDocumentDeletionPreflight>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFinancialDocumentDeletionPreflightQueryOptions(documentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeleteFinancialDocumentEvidenceUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/financial-documents/${documentId}/delete-evidence`
+}
+
+/**
+ * @summary Delete one uploaded financial document and only its derived evidence
+ */
+export const deleteFinancialDocumentEvidence = async (documentId: string,
+    financialEvidenceDeletionInput: FinancialEvidenceDeletionInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancialEvidenceDeletionResult> => {
+
+  return customFetch<FinancialEvidenceDeletionResult>(getDeleteFinancialDocumentEvidenceUrl(documentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financialEvidenceDeletionInput)
+  }
+);}
+
+
+
+
+
+export const getDeleteFinancialDocumentEvidenceMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteFinancialDocumentEvidence>>, TError,{documentId: string;data: BodyType<FinancialEvidenceDeletionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteFinancialDocumentEvidence>>, TError,{documentId: string;data: BodyType<FinancialEvidenceDeletionInput>}, TContext> => {
+
+const mutationKey = ['deleteFinancialDocumentEvidence'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteFinancialDocumentEvidence>>, {documentId: string;data: BodyType<FinancialEvidenceDeletionInput>}> = (props) => {
+          const {documentId,data} = props ?? {};
+
+          return  deleteFinancialDocumentEvidence(documentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteFinancialDocumentEvidenceMutationResult = NonNullable<Awaited<ReturnType<typeof deleteFinancialDocumentEvidence>>>
+    export type DeleteFinancialDocumentEvidenceMutationBody = BodyType<FinancialEvidenceDeletionInput>
+    export type DeleteFinancialDocumentEvidenceMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Delete one uploaded financial document and only its derived evidence
+ */
+export const useDeleteFinancialDocumentEvidence = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteFinancialDocumentEvidence>>, TError,{documentId: string;data: BodyType<FinancialEvidenceDeletionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteFinancialDocumentEvidence>>,
+        TError,
+        {documentId: string;data: BodyType<FinancialEvidenceDeletionInput>},
+        TContext
+      > => {
+      return useMutation(getDeleteFinancialDocumentEvidenceMutationOptions(options));
+    }
 
 export const getGetFinancialDocumentUrl = (documentId: string,) => {
 

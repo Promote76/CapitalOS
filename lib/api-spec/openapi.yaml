@@ -3183,6 +3183,50 @@ paths:
       summary: List cross-source financial evidence requiring review
       responses:
         "200": { description: Review queue, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialReviewQueue" } } } }
+  /financial-documents/deletion-preflight:
+    get:
+      operationId: getFinancialEvidenceResetPreflight
+      tags: [household-finance]
+      summary: Preview the exact household-scoped financial evidence deletion set
+      responses:
+        "200": { description: Reset preflight, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialEvidenceDeletionPreflight" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /financial-documents/reset:
+    post:
+      operationId: resetFinancialEvidence
+      tags: [household-finance]
+      summary: Delete all uploaded household financial evidence after approver confirmation
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/FinancialEvidenceDeletionInput" } } }
+      responses:
+        "200": { description: Financial evidence reset result, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialEvidenceDeletionResult" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /financial-documents/{documentId}/deletion-preflight:
+    get:
+      operationId: getFinancialDocumentDeletionPreflight
+      tags: [household-finance]
+      summary: Preview the exact deletion set for one financial document
+      parameters: [{ $ref: "#/components/parameters/FinancialDocumentId" }]
+      responses:
+        "200": { description: Document deletion preflight, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialEvidenceDeletionPreflight" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /financial-documents/{documentId}/delete-evidence:
+    post:
+      operationId: deleteFinancialDocumentEvidence
+      tags: [household-finance]
+      summary: Delete one uploaded financial document and only its derived evidence
+      parameters: [{ $ref: "#/components/parameters/FinancialDocumentId" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/FinancialEvidenceDeletionInput" } } }
+      responses:
+        "200": { description: Financial document evidence deletion result, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialEvidenceDeletionResult" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /financial-documents/{documentId}:
     get:
       operationId: getFinancialDocument
@@ -3531,6 +3575,77 @@ components:
       type: object
       required: [documents]
       properties: { documents: { type: array, items: { $ref: "#/components/schemas/FinancialDocument" } } }
+    FinancialEvidenceRemovalCounts:
+      type: object
+      required: [financialDocuments, documentTypeDetections, typeCorrections, parserGenerations, identityReviews, documentRelationshipUpdates, bankStatementDocuments, bankStatementTransactions, statementFinancialInclusions, statementFinancialReversals, transactionCorrections, settlementDocuments, settlementRevenueLines, settlementDeductionLines, settlementReconciliations, settlementCashMatches, profitLossDocuments, profitLossLines, profitLossReconciliations, businessEarningsEvents, economicEventLinks, businessIncomeAnomalies, storageObjects, derivedRecords]
+      properties:
+        financialDocuments: { type: number, minimum: 0 }
+        documentTypeDetections: { type: number, minimum: 0 }
+        typeCorrections: { type: number, minimum: 0 }
+        parserGenerations: { type: number, minimum: 0 }
+        identityReviews: { type: number, minimum: 0 }
+        documentRelationshipUpdates: { type: number, minimum: 0 }
+        bankStatementDocuments: { type: number, minimum: 0 }
+        bankStatementTransactions: { type: number, minimum: 0 }
+        statementFinancialInclusions: { type: number, minimum: 0 }
+        statementFinancialReversals: { type: number, minimum: 0 }
+        transactionCorrections: { type: number, minimum: 0 }
+        settlementDocuments: { type: number, minimum: 0 }
+        settlementRevenueLines: { type: number, minimum: 0 }
+        settlementDeductionLines: { type: number, minimum: 0 }
+        settlementReconciliations: { type: number, minimum: 0 }
+        settlementCashMatches: { type: number, minimum: 0 }
+        profitLossDocuments: { type: number, minimum: 0 }
+        profitLossLines: { type: number, minimum: 0 }
+        profitLossReconciliations: { type: number, minimum: 0 }
+        businessEarningsEvents: { type: number, minimum: 0 }
+        economicEventLinks: { type: number, minimum: 0 }
+        businessIncomeAnomalies: { type: number, minimum: 0 }
+        storageObjects: { type: number, minimum: 0 }
+        derivedRecords: { type: number, minimum: 0 }
+    FinancialEvidenceDeletionPreflight:
+      type: object
+      required: [scope, documentId, canApprove, approvalExplanation, confirmationPhrase, documents, derivedRecords, counts, blockingIssues]
+      properties:
+        scope: { type: string, enum: [ALL, SINGLE] }
+        documentId: { type: [string, "null"] }
+        canApprove: { type: boolean }
+        approvalExplanation: { type: string }
+        confirmationPhrase: { type: string }
+        documents: { type: number, minimum: 0 }
+        derivedRecords: { type: number, minimum: 0 }
+        counts: { $ref: "#/components/schemas/FinancialEvidenceRemovalCounts" }
+        blockingIssues: { type: array, items: { type: string } }
+    FinancialEvidenceDeletionInput:
+      type: object
+      required: [confirmationPhrase, reason, idempotencyKey]
+      properties:
+        confirmationPhrase: { type: string, minLength: 1, maxLength: 64 }
+        reason: { type: string, minLength: 8, maxLength: 1000 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+    FinancialEvidencePostResetVerification:
+      type: object
+      required: [financialDocumentsRemaining, documentDetectionsRemaining, typeCorrectionsRemaining, parserGenerationsRemaining, identityReviewsRemaining, settlementSourceRecordsRemaining, profitLossSourceRecordsRemaining, householdLedgerTransactionsRemaining, canonicalBusinessEntityStillPresent]
+      properties:
+        financialDocumentsRemaining: { type: number, minimum: 0 }
+        documentDetectionsRemaining: { type: number, minimum: 0 }
+        typeCorrectionsRemaining: { type: number, minimum: 0 }
+        parserGenerationsRemaining: { type: number, minimum: 0 }
+        identityReviewsRemaining: { type: number, minimum: 0 }
+        settlementSourceRecordsRemaining: { type: number, minimum: 0 }
+        profitLossSourceRecordsRemaining: { type: number, minimum: 0 }
+        householdLedgerTransactionsRemaining: { type: number, minimum: 0 }
+        canonicalBusinessEntityStillPresent: { type: boolean }
+    FinancialEvidenceDeletionResult:
+      type: object
+      required: [status, scope, tombstoneId, removedCounts, verification, message]
+      properties:
+        status: { type: string, enum: [DELETED, ALREADY_COMPLETED] }
+        scope: { type: string, enum: [ALL, SINGLE] }
+        tombstoneId: { type: string }
+        removedCounts: { $ref: "#/components/schemas/FinancialEvidenceRemovalCounts" }
+        verification: { $ref: "#/components/schemas/FinancialEvidencePostResetVerification" }
+        message: { type: string }
     FinancialDocumentUploadInput:
       type: object
       required: [name, size, contentType, documentType]

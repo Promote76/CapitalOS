@@ -14,3 +14,9 @@ Idempotent response bodies persisted in JSONB may replay timestamp fields as ISO
 **Why:** The database round trip is part of the idempotency contract, so runtime object identity is not stable even when the API response is equivalent.
 
 **How to apply:** When adding financial-document mutations that persist response bodies for replay, verify the business/state invariants and let generated response schemas normalize date-like values at the route boundary.
+
+Irreversible object deletion must be driven by a durable, retryable operation recorded before the first object is removed. Persist per-object progress, reconcile confirmed absence only under that prior authorization, and finalize the originally authorized source set independently of unrelated additions.
+
+**Why:** PostgreSQL and object storage cannot commit atomically. A timeout after an applied object DELETE, a process crash before progress persistence, or unrelated household activity during retry can otherwise leave live evidence pointing at missing source files.
+
+**How to apply:** Preflight every source first; archive intent and progress synchronously; make retries use the original fingerprint and source reservation; prove protected IDs were not removed while allowing unrelated additions; create the immutable completion tombstone only after database cleanup verifies.

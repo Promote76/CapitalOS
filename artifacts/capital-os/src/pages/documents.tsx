@@ -6,6 +6,8 @@ import {
   getGetBusinessIncomeIntelligenceQueryKey,
   getGetBusinessOverviewQueryKey,
   getGetCapitalGovernorV2QueryKey,
+  getGetFinancialEvidenceResetPreflightQueryKey,
+  getGetFinancialDocumentDeletionPreflightQueryKey,
   getGetVariableBudgetIntelligenceQueryKey,
   getListBusinessEntitiesQueryKey,
   getListFinancialDocumentsQueryKey,
@@ -16,20 +18,26 @@ import {
   type FinancialDocumentUploadInputContentType,
   type FinancialDocumentUploadInputDocumentType,
   type FinancialDocumentIdentityReviewInputClassification,
+  type FinancialEvidenceDeletionPreflight,
+  type FinancialEvidenceDeletionResult,
+  useDeleteFinancialDocumentEvidence,
   useDecideFinancialDocumentType,
   useIngestFinancialDocument,
+  useGetFinancialDocumentDeletionPreflight,
+  useGetFinancialEvidenceResetPreflight,
   useLinkFinancialDocumentBusiness,
   useListBusinessEntities,
   useListFinancialAccounts,
   useListFinancialDocuments,
   useListFinancialReviewQueue,
   useRequestFinancialDocumentUploadUrl,
+  useResetFinancialEvidence,
   useReviewFinancialDocument,
   useReviewFinancialDocumentIdentity,
   useReviewBankStatementTransaction,
   useRunFinancialDocumentTypeDetection,
 } from "@workspace/api-client-react";
-import { AlertCircle, ArrowRightLeft, Check, CheckCircle2, ClipboardList, FilePlus2, FileText, Info, Link2, RefreshCw, ShieldCheck, Tag, X } from "lucide-react";
+import { AlertCircle, ArrowRightLeft, Check, CheckCircle2, ClipboardList, FilePlus2, FileText, Info, Link2, RefreshCw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import {
@@ -51,6 +59,7 @@ const financialDocumentTypes: Array<{ type: FinancialDocumentUploadInputDocument
 ];
 // Temporary browser-testing bypass. Production builds keep the approver gate.
 const TEMPORARY_DEV_AUTH_BYPASS = import.meta.env.DEV;
+const deletionOperationStorageKey = (documentId?: string | null) => `capital-os:financial-evidence-deletion:${documentId || "all"}`;
 
 const PageHeading = ({ eyebrow, title, description, actions }: { eyebrow: string; title: string; description?: string; actions?: ReactNode }) => (
   <div className="page-heading animate-in">
@@ -83,6 +92,21 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
   const reviewTx = useReviewBankStatementTransaction();
   const requestUpload = useRequestFinancialDocumentUploadUrl();
   const ingestDocument = useIngestFinancialDocument();
+  const resetPreflightQuery = useGetFinancialEvidenceResetPreflight();
+  const [deletionDocument, setDeletionDocument] = useState<FinancialDocument | null>(null);
+  const [deletionModalOpen, setDeletionModalOpen] = useState(false);
+  const singleDeletionPreflightQuery = useGetFinancialDocumentDeletionPreflight(deletionDocument?.id ?? "", {
+    query: {
+      enabled: deletionModalOpen && Boolean(deletionDocument),
+      queryKey: getGetFinancialDocumentDeletionPreflightQueryKey(deletionDocument?.id ?? ""),
+    },
+  });
+  const resetEvidence = useResetFinancialEvidence();
+  const deleteDocumentEvidence = useDeleteFinancialDocumentEvidence();
+  const [deletionReason, setDeletionReason] = useState("");
+  const [deletionConfirmation, setDeletionConfirmation] = useState("");
+  const [deletionResult, setDeletionResult] = useState<FinancialEvidenceDeletionResult | null>(null);
+  const deletionIdempotencyKey = useRef<string>(crypto.randomUUID());
   const reviewKeys = useRef(new Map<string, string>());
   const [canReview, setCanReview] = useState(TEMPORARY_DEV_AUTH_BYPASS);
   const [selectedBusinessId, setSelectedBusinessId] = useState("");
@@ -130,7 +154,55 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
       queryClient.invalidateQueries({ queryKey: getListTransactionReviewQueueQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGetAccountingOverviewQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGetCapitalGovernorV2QueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetFinancialEvidenceResetPreflightQueryKey() }),
     ]);
+  };
+
+  const openDeletion = (document: FinancialDocument | null) => {
+    const saved = sessionStorage.getItem(deletionOperationStorageKey(document?.id));
+    const pending = saved ? JSON.parse(saved) as { reason: string; confirmationPhrase: string; idempotencyKey: string } : null;
+    setDeletionDocument(document);
+    setDeletionReason(pending?.reason ?? "");
+    setDeletionConfirmation(pending?.confirmationPhrase ?? "");
+    deletionIdempotencyKey.current = pending?.idempotencyKey ?? crypto.randomUUID();
+    setDeletionModalOpen(true);
+  };
+
+  const closeDeletion = () => {
+    if (resetEvidence.isPending || deleteDocumentEvidence.isPending) return;
+    setDeletionModalOpen(false);
+    setDeletionDocument(null);
+  };
+
+  const submitDeletion = async () => {
+    const preflight = deletionDocument ? singleDeletionPreflightQuery.data : resetPreflightQuery.data;
+    if (!preflight || !preflight.canApprove || preflight.blockingIssues.length ||
+      deletionConfirmation !== preflight.confirmationPhrase || deletionReason.trim().length < 8) return;
+    try {
+      const data = {
+        confirmationPhrase: deletionConfirmation,
+        reason: deletionReason.trim(),
+        idempotencyKey: deletionIdempotencyKey.current,
+      };
+      const storageKey = deletionOperationStorageKey(deletionDocument?.id);
+      sessionStorage.setItem(storageKey, JSON.stringify(data));
+      const result = deletionDocument
+        ? await deleteDocumentEvidence.mutateAsync({ documentId: deletionDocument.id, data })
+        : await resetEvidence.mutateAsync({ data });
+      setDeletionResult(result);
+      sessionStorage.removeItem(storageKey);
+      setDeletionModalOpen(false);
+      setDeletionDocument(null);
+      await invalidateEverything();
+      toast({ title: result.scope === "ALL" ? "Financial evidence reset complete" : "Financial evidence deleted", description: result.message });
+    } catch (error) {
+      const pending = JSON.parse(sessionStorage.getItem(deletionOperationStorageKey(deletionDocument?.id)) ?? "null") as { reason?: string; confirmationPhrase?: string } | null;
+      if (pending) {
+        setDeletionReason(pending.reason ?? deletionReason);
+        setDeletionConfirmation(pending.confirmationPhrase ?? deletionConfirmation);
+      }
+      toast({ title: "Deletion did not complete", description: error instanceof Error ? error.message : "No evidence was deleted.", variant: "destructive" });
+    }
   };
 
   const handleDocReview = async (id: string, decision: "VERIFIED" | "REJECTED", reason: string) => {
@@ -213,7 +285,7 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
 
   return (
     <>
-      {!embedded && <PageHeading eyebrow="Operations" title="Financial Inbox" description="Upload preserved source evidence, then review its content type, identity, and downstream use." actions={<button className="btn btn-primary" onClick={() => uploadInputRef.current?.click()}><FilePlus2 size={15} /> Choose file</button>} />}
+      {!embedded && <PageHeading eyebrow="Operations" title="Financial Inbox" description="Upload preserved source evidence, then review its content type, identity, and downstream use." actions={<><button className="btn btn-primary" onClick={() => uploadInputRef.current?.click()}><FilePlus2 size={15} /> Choose file</button><button className="btn btn-danger" onClick={() => openDeletion(null)} disabled={resetPreflightQuery.isLoading || !resetPreflightQuery.data?.canApprove} title={resetPreflightQuery.data?.approvalExplanation}><Trash2 size={15} /> Reset all evidence</button></>} />}
       {!embedded && <section className="card card-pad page-section animate-in" data-testid="financial-document-upload">
         <CardTitle title="Upload financial evidence" subtitle="PDF, CSV, or XLSX · up to 50 MB. The original source object and hash are preserved." />
         <div className="financial-upload-grid">
@@ -226,6 +298,14 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
         {uploadMessage && <div className="form-feedback success" role="status">{uploadMessage}</div>}
         {uploadError && <div className="form-feedback error" role="alert">{uploadError}</div>}
       </section>}
+      {!embedded && <section className="financial-reset-boundary animate-in" data-testid="financial-evidence-reset-boundary">
+        <div><TriangleAlert size={17} /><div><strong>Destructive evidence controls</strong><span>Reset removes private uploads and document-derived review artifacts only. Ledger transactions, accounts, budgets, income authority, business entities, treasury, property, strategy, trading, memberships, and authentication are preserved.</span></div></div>
+        <div>
+          <button className="btn btn-danger" onClick={() => openDeletion(null)} disabled={resetPreflightQuery.isLoading || !resetPreflightQuery.data?.canApprove}><Trash2 size={14} /> Reset all financial evidence</button>
+          <small>{resetPreflightQuery.isLoading ? "Calculating exact household-scoped counts…" : resetPreflightQuery.data?.approvalExplanation ?? "Preflight is unavailable."}</small>
+        </div>
+      </section>}
+      {deletionResult && <PostResetVerification result={deletionResult} onDismiss={() => setDeletionResult(null)} />}
       <div className="document-inbox-layout">
         <div className="grid gap-[18px]">
           <div className="card card-pad animate-in delay-1">
@@ -265,16 +345,28 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
           <div className="card card-pad page-section animate-in delay-2">
             <CardTitle title="Document Library" subtitle="All uploaded financial evidence, with provenance and identity state." />
             {docsQuery.isLoading ? <DocumentSkeleton /> : docsQuery.isError ? <InlineError message="The document library could not be loaded." onRetry={() => docsQuery.refetch()} /> : documents.length === 0 ? <div className="text-sm text-[var(--ink-soft)] text-center py-4">No documents uploaded yet.</div> : (
-              <div className="document-list">{documents.map((doc) => <FinancialEvidenceCard key={doc.id} document={doc} documents={documents} businesses={businesses} selectedBusinessId={selectedBusinessId} selectedBusiness={selectedBusiness} canReview={canReview} onRefresh={invalidateEverything} onReview={handleDocReview} />)}</div>
+              <div className="document-list">{documents.map((doc) => <FinancialEvidenceCard key={doc.id} document={doc} documents={documents} businesses={businesses} selectedBusinessId={selectedBusinessId} selectedBusiness={selectedBusiness} canReview={canReview} onRefresh={invalidateEverything} onReview={handleDocReview} onDelete={() => openDeletion(doc)} />)}</div>
             )}
           </div>
         </div>
       </div>
+      {deletionModalOpen && <EvidenceDeletionModal
+        document={deletionDocument}
+        preflight={deletionDocument ? singleDeletionPreflightQuery.data : resetPreflightQuery.data}
+        loading={deletionDocument ? singleDeletionPreflightQuery.isLoading : resetPreflightQuery.isLoading}
+        reason={deletionReason}
+        confirmation={deletionConfirmation}
+        pending={resetEvidence.isPending || deleteDocumentEvidence.isPending}
+        onReasonChange={setDeletionReason}
+        onConfirmationChange={setDeletionConfirmation}
+        onClose={closeDeletion}
+        onConfirm={() => void submitDeletion()}
+      />}
     </>
   );
 }
 
-function FinancialEvidenceCard({ document, documents, businesses, selectedBusinessId, selectedBusiness, canReview, onRefresh, onReview }: {
+function FinancialEvidenceCard({ document, documents, businesses, selectedBusinessId, selectedBusiness, canReview, onRefresh, onReview, onDelete }: {
   document: FinancialDocument;
   documents: FinancialDocument[];
   businesses: BusinessEntity[];
@@ -283,6 +375,7 @@ function FinancialEvidenceCard({ document, documents, businesses, selectedBusine
   canReview: boolean;
   onRefresh: () => Promise<void>;
   onReview: (id: string, decision: "VERIFIED" | "REJECTED", reason: string) => Promise<void>;
+  onDelete: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   return <article className={`financial-evidence-card ${expanded ? "is-expanded" : ""}`}>
@@ -304,12 +397,12 @@ function FinancialEvidenceCard({ document, documents, businesses, selectedBusine
       <div className="financial-evidence-signals"><span className="eyebrow">Detection signals</span>{document.detectionSignals?.length ? document.detectionSignals.map((signal) => <span key={signal} className="evidence-signal"><Tag size={12} /> {signal}</span>) : <span className="text-sm text-[var(--ink-soft)]">No detection signals recorded.</span>}</div>
       {document.bankStatement && <div className="mt-3 text-xs text-[var(--ink-soft)] bg-white/50 p-2 rounded border border-[var(--line)]"><Info size={12} className="inline mr-1 -mt-0.5" /> Parsed rows require individual review. Parent verification is only available when all rows are terminal.</div>}
       {document.transactions?.map((transaction) => <TransactionEvidenceRow key={transaction.id} transaction={transaction} />)}
-       <FinancialEvidenceActions document={document} documents={documents} businesses={businesses} selectedBusinessId={selectedBusinessId} canReview={canReview} onRefresh={onRefresh} onReview={onReview} />
+       <FinancialEvidenceActions document={document} documents={documents} businesses={businesses} selectedBusinessId={selectedBusinessId} canReview={canReview} onRefresh={onRefresh} onReview={onReview} onDelete={onDelete} />
     </div>}
   </article>;
 }
 
-function FinancialEvidenceActions({ document, documents, businesses, selectedBusinessId, canReview, onRefresh, onReview }: {
+function FinancialEvidenceActions({ document, documents, businesses, selectedBusinessId, canReview, onRefresh, onReview, onDelete }: {
   document: FinancialDocument;
   documents: FinancialDocument[];
   businesses: BusinessEntity[];
@@ -317,6 +410,7 @@ function FinancialEvidenceActions({ document, documents, businesses, selectedBus
   canReview: boolean;
   onRefresh: () => Promise<void>;
   onReview: (id: string, decision: "VERIFIED" | "REJECTED", reason: string) => Promise<void>;
+  onDelete: () => void;
 }) {
   const linkBusiness = useLinkFinancialDocumentBusiness();
   const decideType = useDecideFinancialDocumentType();
@@ -425,7 +519,85 @@ function FinancialEvidenceActions({ document, documents, businesses, selectedBus
       <label>Decision reason<input value={reviewReason} onChange={(event) => setReviewReason(event.target.value)} placeholder="Explain why this evidence is verified or rejected" maxLength={1000} disabled={!canReview} /></label>
       <div className="document-actions"><button className="btn btn-primary" onClick={() => void onReview(document.id, "VERIFIED", reviewReason)} disabled={!canReview || !reviewReason.trim()}><Check size={13} /> Verify</button><button className="btn btn-danger" onClick={() => void onReview(document.id, "REJECTED", reviewReason)} disabled={!canReview || !reviewReason.trim()}><X size={13} /> Reject</button></div>
     </div>
+    <div className="financial-action-block financial-delete-action">
+      <div className="financial-action-title"><Trash2 size={14} /><strong>Delete uploaded evidence</strong><span>Irreversible. Derived document records are removed; ledger and business state are preserved.</span></div>
+      <button className="btn btn-danger" onClick={onDelete} disabled={!canReview}><Trash2 size={13} /> Delete this document</button>
+    </div>
   </div>;
+}
+
+function EvidenceDeletionModal({
+  document,
+  preflight,
+  loading,
+  reason,
+  confirmation,
+  pending,
+  onReasonChange,
+  onConfirmationChange,
+  onClose,
+  onConfirm,
+}: {
+  document: FinancialDocument | null;
+  preflight?: FinancialEvidenceDeletionPreflight;
+  loading: boolean;
+  reason: string;
+  confirmation: string;
+  pending: boolean;
+  onReasonChange: (value: string) => void;
+  onConfirmationChange: (value: string) => void;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const canSubmit = Boolean(preflight?.canApprove) && !preflight?.blockingIssues.length &&
+    confirmation === preflight?.confirmationPhrase && reason.trim().length >= 8 && !pending;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <section className="modal financial-deletion-modal" role="dialog" aria-modal="true" aria-labelledby="financial-deletion-title">
+      <div className="modal-header">
+        <div><span className="eyebrow">Irreversible deletion</span><h2 id="financial-deletion-title">{document ? "Delete this financial document?" : "Reset all financial evidence?"}</h2><p>{document ? document.sourceFileName : "Every private financial upload in this household and its solely derived evidence will be removed."}</p></div>
+        <button className="btn" onClick={onClose} aria-label="Close deletion dialog"><X size={15} /></button>
+      </div>
+      {loading || !preflight ? <div className="queue-skeleton"><div /><div /><div /></div> : <>
+        <div className="deletion-warning"><TriangleAlert size={18} /><div><strong>This cannot be undone.</strong><span>Official ledger transactions, accounts, budgets, planning periods, verified income, owner draws, business entities, reserves, treasury, property, strategy, trading, identity, permissions, and authentication are outside this deletion.</span></div></div>
+        <DeletionCounts preflight={preflight} />
+        {!preflight.canApprove && <div className="business-review-permission-note"><ShieldCheck size={14} /> {preflight.approvalExplanation}</div>}
+        {preflight.blockingIssues.length > 0 && <div className="operations-inline-error"><AlertCircle size={15} /><span>{preflight.blockingIssues.join(" ")}</span></div>}
+        <div className="modal-form">
+          <div className="field"><label>Required reason</label><textarea value={reason} onChange={(event) => onReasonChange(event.target.value)} maxLength={1000} placeholder="Explain why this evidence must be permanently removed" disabled={!preflight.canApprove || pending} /></div>
+          <div className="field"><label>Type {preflight.confirmationPhrase} exactly</label><input value={confirmation} onChange={(event) => onConfirmationChange(event.target.value)} autoComplete="off" disabled={!preflight.canApprove || pending} /></div>
+          <div className="modal-actions"><button className="btn" onClick={onClose} disabled={pending}>Cancel</button><button className="btn btn-danger destructive-confirm" onClick={onConfirm} disabled={!canSubmit}><Trash2 size={14} /> {pending ? "Deleting…" : document ? "Delete evidence permanently" : "Reset evidence permanently"}</button></div>
+        </div>
+      </>}
+    </section>
+  </div>;
+}
+
+function DeletionCounts({ preflight }: { preflight: FinancialEvidenceDeletionPreflight }) {
+  const counts = preflight.counts;
+  const items = [
+    ["Financial documents", counts.financialDocuments],
+    ["Settlement sources", counts.settlementDocuments],
+    ["P&L sources", counts.profitLossDocuments],
+    ["Bank statement rows", counts.bankStatementTransactions],
+    ["Review / derived records", counts.derivedRecords],
+    ["Private source objects", counts.storageObjects],
+  ];
+  return <div className="deletion-counts" aria-label="Deletion preflight counts">{items.map(([itemLabel, count]) => <div key={itemLabel}><span>{itemLabel}</span><strong>{count}</strong></div>)}</div>;
+}
+
+function PostResetVerification({ result, onDismiss }: { result: FinancialEvidenceDeletionResult; onDismiss: () => void }) {
+  const verification = result.verification;
+  return <section className="card card-pad financial-reset-result animate-in" role="status">
+    <div className="financial-reset-result-head"><CheckCircle2 size={18} /><div><strong>{result.scope === "ALL" ? "Financial evidence reset verified" : "Document deletion verified"}</strong><span>{result.message}</span></div><button className="btn" onClick={onDismiss}>Dismiss</button></div>
+    <div className="deletion-counts">
+      <div><span>Documents remaining</span><strong>{verification.financialDocumentsRemaining}</strong></div>
+      <div><span>Settlement sources remaining</span><strong>{verification.settlementSourceRecordsRemaining}</strong></div>
+      <div><span>P&amp;L sources remaining</span><strong>{verification.profitLossSourceRecordsRemaining}</strong></div>
+      <div><span>Ledger transactions preserved</span><strong>{verification.householdLedgerTransactionsRemaining}</strong></div>
+      <div><span>Business entity preserved</span><strong>{verification.canonicalBusinessEntityStillPresent ? "Yes" : "No"}</strong></div>
+      <div><span>Deletion audit ID</span><strong className="font-mono">{result.tombstoneId.slice(0, 8)}…</strong></div>
+    </div>
+  </section>;
 }
 
 function IdentityComparisonEvidence({ document, comparedDocument }: { document: FinancialDocument; comparedDocument: FinancialDocument }) {

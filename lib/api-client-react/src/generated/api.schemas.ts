@@ -224,6 +224,143 @@ export interface FinancialDocumentList {
   documents: FinancialDocument[];
 }
 
+export interface FinancialEvidenceRemovalCounts {
+  /** @minimum 0 */
+  financialDocuments: number;
+  /** @minimum 0 */
+  documentTypeDetections: number;
+  /** @minimum 0 */
+  typeCorrections: number;
+  /** @minimum 0 */
+  parserGenerations: number;
+  /** @minimum 0 */
+  identityReviews: number;
+  /** @minimum 0 */
+  documentRelationshipUpdates: number;
+  /** @minimum 0 */
+  bankStatementDocuments: number;
+  /** @minimum 0 */
+  bankStatementTransactions: number;
+  /** @minimum 0 */
+  statementFinancialInclusions: number;
+  /** @minimum 0 */
+  statementFinancialReversals: number;
+  /** @minimum 0 */
+  transactionCorrections: number;
+  /** @minimum 0 */
+  settlementDocuments: number;
+  /** @minimum 0 */
+  settlementRevenueLines: number;
+  /** @minimum 0 */
+  settlementDeductionLines: number;
+  /** @minimum 0 */
+  settlementReconciliations: number;
+  /** @minimum 0 */
+  settlementCashMatches: number;
+  /** @minimum 0 */
+  profitLossDocuments: number;
+  /** @minimum 0 */
+  profitLossLines: number;
+  /** @minimum 0 */
+  profitLossReconciliations: number;
+  /** @minimum 0 */
+  businessEarningsEvents: number;
+  /** @minimum 0 */
+  economicEventLinks: number;
+  /** @minimum 0 */
+  businessIncomeAnomalies: number;
+  /** @minimum 0 */
+  storageObjects: number;
+  /** @minimum 0 */
+  derivedRecords: number;
+}
+
+export type FinancialEvidenceDeletionPreflightScope = typeof FinancialEvidenceDeletionPreflightScope[keyof typeof FinancialEvidenceDeletionPreflightScope];
+
+
+export const FinancialEvidenceDeletionPreflightScope = {
+  ALL: 'ALL',
+  SINGLE: 'SINGLE',
+} as const;
+
+export interface FinancialEvidenceDeletionPreflight {
+  scope: FinancialEvidenceDeletionPreflightScope;
+  /** @nullable */
+  documentId: string | null;
+  canApprove: boolean;
+  approvalExplanation: string;
+  confirmationPhrase: string;
+  /** @minimum 0 */
+  documents: number;
+  /** @minimum 0 */
+  derivedRecords: number;
+  counts: FinancialEvidenceRemovalCounts;
+  blockingIssues: string[];
+}
+
+export interface FinancialEvidenceDeletionInput {
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  confirmationPhrase: string;
+  /**
+     * @minLength 8
+     * @maxLength 1000
+     */
+  reason: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+}
+
+export interface FinancialEvidencePostResetVerification {
+  /** @minimum 0 */
+  financialDocumentsRemaining: number;
+  /** @minimum 0 */
+  documentDetectionsRemaining: number;
+  /** @minimum 0 */
+  typeCorrectionsRemaining: number;
+  /** @minimum 0 */
+  parserGenerationsRemaining: number;
+  /** @minimum 0 */
+  identityReviewsRemaining: number;
+  /** @minimum 0 */
+  settlementSourceRecordsRemaining: number;
+  /** @minimum 0 */
+  profitLossSourceRecordsRemaining: number;
+  /** @minimum 0 */
+  householdLedgerTransactionsRemaining: number;
+  canonicalBusinessEntityStillPresent: boolean;
+}
+
+export type FinancialEvidenceDeletionResultStatus = typeof FinancialEvidenceDeletionResultStatus[keyof typeof FinancialEvidenceDeletionResultStatus];
+
+
+export const FinancialEvidenceDeletionResultStatus = {
+  DELETED: 'DELETED',
+  ALREADY_COMPLETED: 'ALREADY_COMPLETED',
+} as const;
+
+export type FinancialEvidenceDeletionResultScope = typeof FinancialEvidenceDeletionResultScope[keyof typeof FinancialEvidenceDeletionResultScope];
+
+
+export const FinancialEvidenceDeletionResultScope = {
+  ALL: 'ALL',
+  SINGLE: 'SINGLE',
+} as const;
+
+export interface FinancialEvidenceDeletionResult {
+  status: FinancialEvidenceDeletionResultStatus;
+  scope: FinancialEvidenceDeletionResultScope;
+  tombstoneId: string;
+  removedCounts: FinancialEvidenceRemovalCounts;
+  verification: FinancialEvidencePostResetVerification;
+  message: string;
+}
+
 export type FinancialDocumentUploadInputContentType = typeof FinancialDocumentUploadInputContentType[keyof typeof FinancialDocumentUploadInputContentType];
 
 

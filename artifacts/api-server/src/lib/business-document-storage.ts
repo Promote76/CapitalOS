@@ -18,7 +18,7 @@ function parseObjectPath(path: string) {
 async function signObjectUrl(input: {
   bucketName: string;
   objectName: string;
-  method: "GET" | "PUT";
+  method: "GET" | "PUT" | "DELETE";
 }) {
   const response = await fetch(`${SIDECAR_ENDPOINT}/object-storage/signed-object-url`, {
     method: "POST",
@@ -119,4 +119,39 @@ export async function downloadBusinessDocument(objectPath: string, limits?: { ma
     bytes,
     sha256: createHash("sha256").update(bytes).digest("hex"),
   };
+}
+
+function storedObjectTarget(objectPath: string) {
+  assertPrivateObjectPath(objectPath);
+  const privateDir = process.env.PRIVATE_OBJECT_DIR;
+  if (!privateDir) throw new Error("Managed object storage is not configured");
+  const relativePath = objectPath.replace(/^\/objects\//, "");
+  return parseObjectPath(`${privateDir.replace(/\/$/, "")}/${relativePath}`);
+}
+
+export async function businessDocumentObjectExists(objectPath: string) {
+  const target = storedObjectTarget(objectPath);
+  const signedURL = await signObjectUrl({ ...target, method: "GET" });
+  const response = await fetch(signedURL, {
+    headers: { Range: "bytes=0-0" },
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (response.status === 404) return false;
+  if (!response.ok) throw new Error(`Managed document preflight failed (${response.status})`);
+  await response.body?.cancel();
+  return true;
+}
+
+export async function assertBusinessDocumentObjectExists(objectPath: string) {
+  if (!await businessDocumentObjectExists(objectPath)) throw new Error("Managed document preflight failed (404)");
+}
+
+export async function deleteBusinessDocumentObject(objectPath: string) {
+  const target = storedObjectTarget(objectPath);
+  const signedURL = await signObjectUrl({ ...target, method: "DELETE" });
+  const response = await fetch(signedURL, {
+    method: "DELETE",
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) throw new Error(`Managed document deletion failed (${response.status})`);
 }

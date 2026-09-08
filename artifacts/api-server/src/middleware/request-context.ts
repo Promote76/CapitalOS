@@ -34,6 +34,8 @@ function requiresRecentAuthentication(req: Request) {
     path.startsWith("/micro-live/") ||
     path.startsWith("/execution-control/") ||
     path.startsWith("/financial-transactions/") ||
+    path === "/financial-documents/reset" ||
+    /^\/financial-documents\/[0-9a-fA-F-]{36}\/delete-evidence$/.test(path) ||
     /^\/budget-planning-periods\/[0-9a-fA-F-]{36}\/(approve|close)$/.test(path) ||
     path.startsWith("/financing") ||
     path.startsWith("/family-office/proposals/") ||

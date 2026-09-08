@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { Link } from 'wouter';
 import {
   useGetBudgetPlanningPeriod,
   useGetVariableBudgetIntelligence,
@@ -18,7 +19,8 @@ import {
   TrendingUp,
   Wallet,
   CalendarDays,
-  Target
+  Target,
+  FileText
 } from 'lucide-react';
 
 const PageHeading = ({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) => (
@@ -52,11 +54,93 @@ function displayMoney(value: string | number | undefined | null, fallback: strin
   return Number.isFinite(num) ? `$${Math.round(num).toLocaleString('en-US')}` : fallback;
 }
 
+function formatPeriod(period: any) {
+  if (!period) return 'Unknown';
+  if (typeof period === 'string') return period;
+  if (period.start && period.end) return `${period.start} to ${period.end}`;
+  if (period.start) return `From ${period.start}`;
+  if (period.end) return `Until ${period.end}`;
+  return 'Unknown';
+}
+
+function SectionEvidence() {
+  const { data: intelligence } = useGetVariableBudgetIntelligence({
+    asOf: new Date().toISOString().split('T')[0],
+  });
+
+  const ev = intelligence?.documentEvidence;
+
+  return (
+    <div className="card card-pad page-section animate-in delay-1" data-testid="card-evidence">
+      <div className="card-title-row">
+        <div>
+          <div className="card-title">Verifiable Evidence</div>
+          <div className="card-subtitle">Source data for variable intelligence.</div>
+        </div>
+        {ev && (
+          <span className={`status ${ev.readinessStatus === 'REVIEWED_EVIDENCE_AVAILABLE' ? 'verified' : ev.readinessStatus === 'NO_UPLOADED_EVIDENCE' ? 'critical' : 'pending'}`}>
+            {ev.readinessStatus.replace(/_/g, ' ')}
+          </span>
+        )}
+      </div>
+
+      {!ev ? (
+        <div className="empty-state">
+           <div className="empty-icon"><FileText size={20} /></div>
+           <div className="empty-title">Awaiting Source Data</div>
+           <p>Upload bank statements to build verifiable intelligence.</p>
+           <Link href="/documents" className="btn btn-primary mt-3"><FileText size={14} /> Go to Documents</Link>
+        </div>
+      ) : (
+        <div className="evidence-summary">
+          <div className="grid grid-cols-2 gap-4 text-sm mb-4 border-b border-[var(--line)] pb-4 mt-2">
+            <div>
+              <span className="mono-label block mb-1">Documents</span>
+              <div className="flex items-center justify-between">
+                <span>{ev.reviewedDocumentCount ?? 0} reviewed / {ev.pendingDocumentCount ?? 0} pending</span>
+                {(ev.pendingDocumentCount ?? 0) > 0 && <Link href="/documents" className="text-xs font-semibold text-[var(--ink)] hover:underline">Review &rarr;</Link>}
+              </div>
+            </div>
+            <div>
+              <span className="mono-label block mb-1">Rows</span>
+              <div className="flex items-center justify-between">
+                <span>{ev.reviewedRowCount ?? 0} reviewed / {ev.pendingRowCount ?? 0} pending</span>
+                {(ev.pendingRowCount ?? 0) > 0 && <Link href="/documents" className="text-xs font-semibold text-[var(--ink)] hover:underline">Review &rarr;</Link>}
+              </div>
+            </div>
+            <div>
+              <span className="mono-label block mb-1">Latest Statement</span>
+              <div>{formatPeriod(ev.latestStatementPeriod)} <span className="text-[var(--ink-soft)] text-xs">({ev.latestStatementDate || 'Unknown'})</span></div>
+            </div>
+            <div>
+              <span className="mono-label block mb-1">Cash Flow from Reviewed</span>
+              <div>Deposits: <strong className="text-[var(--ink)]">{displayMoney(ev.reviewedDeposits, '$0')}</strong></div>
+              <div>Withdrawals: <strong className="text-[var(--ink)]">{displayMoney(ev.reviewedWithdrawals, '$0')}</strong></div>
+            </div>
+          </div>
+
+          <div className="text-xs text-[var(--ink-soft)] mb-4 flex flex-wrap gap-x-4 gap-y-1">
+            <span>Exclusions: <strong>{ev.excludedTransferCount ?? 0} transfers</strong>, <strong>{ev.linkedSettlementDepositCount ?? 0} settlements</strong></span>
+            {ev.explanation && <span>&middot; {ev.explanation}</span>}
+          </div>
+
+          <div className="bg-[#fff8e9] border border-[#e3ded1] rounded-md p-3 text-xs text-[#9b6b18] flex items-start gap-2">
+            <Info size={14} className="mt-0.5 shrink-0" />
+            <div>
+              <strong>Advisory only:</strong> This reviewed evidence supports planning review and readiness checks, but <em>does not change forecast math or official household totals.</em>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SectionForecast() {
   const { data: household } = useGetHousehold();
   const { data: intelligence } = useGetVariableBudgetIntelligence({
     asOf: new Date().toISOString().split('T')[0],
-  }, { query: { enabled: true, queryKey: ['budgetIntelligence'] } });
+  });
 
   const forecasts = intelligence?.forecast || [];
 
@@ -166,7 +250,7 @@ function SectionSafeToDeploy() {
                   </div>
                 ))}
               </div>
-              <div className="governor-meta mt-4 pt-4 border-t">
+              <div className="governor-meta mt-4 pt-4 border-t border-[var(--line)]">
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div>
                     <strong className="block text-[var(--ink)]">Double Subtraction</strong>
@@ -338,6 +422,7 @@ export default function BudgetPage({ embedded = false }: { embedded?: boolean })
       
       <div className="dashboard-grid">
         <div className="grid gap-[18px]">
+          <SectionEvidence />
           <SectionForecast />
           <SectionVehicleAffordability />
         </div>

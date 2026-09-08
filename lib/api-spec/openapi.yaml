@@ -3402,7 +3402,7 @@ components:
         settlementDocumentId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
     BankStatementTransactionEvidence:
       type: object
-      required: [id, bankStatementDocumentId, description, amount, direction, confidence, sourceLine, sourceRegion, parserVersion, evidenceFingerprint, reviewStatus, originalValue, correctionHistory, createdAt]
+      required: [id, bankStatementDocumentId, description, amount, direction, confidence, sourceLine, sourceRegion, parserVersion, evidenceFingerprint, reviewStatus, lastReviewAction, originalValue, correctionHistory, createdAt]
       properties:
         id: { type: string }
         bankStatementDocumentId: { type: string }
@@ -3419,6 +3419,7 @@ components:
         parserVersion: { type: string }
         evidenceFingerprint: { type: string }
         reviewStatus: { type: string }
+        lastReviewAction: { type: [string, "null"], enum: [APPROVE, REJECT, RECLASSIFY, LINK_SETTLEMENT, MARK_TRANSFER, null] }
         originalValue: { type: object, additionalProperties: true }
         correctedValue: { type: [object, "null"], additionalProperties: true }
         correctionReason: { type: [string, "null"] }
@@ -7785,18 +7786,45 @@ components:
         status: { type: string }
     VariableBudgetIntelligence:
       type: object
-      required: [asOf, source, incomeProfile, constraints, obligations, reserve, cash, forecast, vehicleScenarios]
+      required: [asOf, source, incomeProfile, documentEvidence, constraints, obligations, reserve, cash, forecast, vehicleScenarios]
       properties:
         asOf: { type: string }
         source:
           type: object
-          required: [verifiedIncomeEventCount, approvedBudgetPeriod, incomeAuthority, planningStatus]
+          required: [verifiedIncomeEventCount, approvedBudgetPeriod, incomeAuthority, planningStatus, forecastReadiness, pendingDocumentEvidence]
           properties:
             verifiedIncomeEventCount: { type: number }
             approvedBudgetPeriod: { type: ["string", "null"] }
             incomeAuthority: { type: string }
             planningStatus: { type: string }
+            forecastReadiness: { type: string }
+            pendingDocumentEvidence: { type: boolean }
         incomeProfile: { $ref: "#/components/schemas/VariableIncomeProfile" }
+        documentEvidence:
+          type: object
+          description: Household-scoped uploaded-document evidence summary. Advisory only; never an accounting, income, balance, ledger, or money-movement authority.
+          required: [documentCount, statementCount, reviewedDocumentCount, pendingDocumentCount, reviewedRowCount, pendingRowCount, reviewedDeposits, reviewedWithdrawals, excludedTransferCount, linkedSettlementDepositCount, latestStatementPeriod, latestStatementDate, readinessStatus, sourceDocumentIds, affectsOfficialTotals, explanation]
+          properties:
+            documentCount: { type: number }
+            statementCount: { type: number }
+            reviewedDocumentCount: { type: number }
+            pendingDocumentCount: { type: number }
+            reviewedRowCount: { type: number }
+            pendingRowCount: { type: number }
+            reviewedDeposits: { type: string, description: Exact decimal advisory total. }
+            reviewedWithdrawals: { type: string, description: Exact decimal advisory total. }
+            excludedTransferCount: { type: number }
+            linkedSettlementDepositCount: { type: number }
+            latestStatementPeriod:
+              type: ["object", "null"]
+              properties:
+                start: { type: ["string", "null"] }
+                end: { type: ["string", "null"] }
+            latestStatementDate: { type: ["string", "null"] }
+            readinessStatus: { type: string, enum: [NO_UPLOADED_EVIDENCE, PENDING_REVIEW, REVIEWED_EVIDENCE_AVAILABLE] }
+            sourceDocumentIds: { type: array, items: { type: string } }
+            affectsOfficialTotals: { type: boolean, enum: [false] }
+            explanation: { type: string }
         constraints: { $ref: "#/components/schemas/VariableBudgetConstraintSet" }
         obligations:
           type: object

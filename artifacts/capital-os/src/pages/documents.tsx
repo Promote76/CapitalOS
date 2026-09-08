@@ -1,8 +1,10 @@
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useListFinancialDocuments,
   useListFinancialReviewQueue,
   useReviewFinancialDocument,
   useReviewBankStatementTransaction,
+  getGetVariableBudgetIntelligenceQueryKey,
 } from '@workspace/api-client-react';
 import { 
   ClipboardList, 
@@ -10,7 +12,8 @@ import {
   FileText,
   Check,
   X,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Info
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'wouter';
@@ -44,6 +47,7 @@ const CardTitle = ({ title, subtitle }: { title: string; subtitle?: string }) =>
 
 export default function DocumentsPage({ embedded = false }: { embedded?: boolean }) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data: docsData, refetch: refetchDocs } = useListFinancialDocuments();
   const { data: queueData, refetch: refetchQueue } = useListFinancialReviewQueue();
   const reviewDoc = useReviewFinancialDocument();
@@ -62,6 +66,7 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
       toast({ title: `Document ${decision.toLowerCase()}` });
       refetchDocs();
       refetchQueue();
+      queryClient.invalidateQueries({ queryKey: getGetVariableBudgetIntelligenceQueryKey() });
     } catch (err: any) {
       toast({ title: 'Review failed', description: err.message, variant: 'destructive' });
     }
@@ -89,6 +94,7 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
       toast({ title: `Transaction action: ${action.toLowerCase()}` });
       refetchQueue();
       refetchDocs();
+      queryClient.invalidateQueries({ queryKey: getGetVariableBudgetIntelligenceQueryKey() });
       reviewKeys.current.delete(key);
     } catch (err: any) {
       toast({ title: 'Review failed', description: err.message, variant: 'destructive' });
@@ -105,6 +111,12 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
       
       <div className="document-inbox-layout">
         <div className="grid gap-[18px]">
+          <div className="card card-pad animate-in delay-1">
+            <CardTitle title="Evidence integration" subtitle="Advisory impact only." />
+            <p className="text-sm text-[var(--ink-soft)]">
+              Reviewed evidence is surfaced on the Budget to inform planning forecasts and capacity analysis. Approving rows here does not automatically post transactions to the official household ledger or income balances.
+            </p>
+          </div>
           <div className="card card-pad animate-in delay-1">
             <CardTitle title="Credit card payment treatment" subtitle="Excluded from budget if purchases are counted." />
             <p className="text-sm text-[var(--ink-soft)]">
@@ -164,6 +176,12 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
                           {doc.status}
                         </span>
                       </div>
+                      {doc.documentType === 'BANK_STATEMENT' && (
+                        <div className="mt-3 text-xs text-[var(--ink-soft)] bg-white/50 p-2 rounded border border-[var(--line)]">
+                          <Info size={12} className="inline mr-1 -mt-0.5" />
+                          Parsed rows require individual review. Parent verification is only available when all rows are terminal.
+                        </div>
+                      )}
                       {doc.bankStatement && (
                         <div className="mt-3 grid grid-cols-2 gap-2 text-xs" data-testid={`statement-summary-${doc.id}`}>
                           <EvidenceAmount label="Opening" value={doc.bankStatement.openingBalance} />
@@ -178,14 +196,26 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
                             <strong>{transaction.description}</strong>
                             <span>{transaction.direction === 'withdrawal' ? '−' : '+'}${transaction.amount}</span>
                           </div>
-                          <div className="mt-1 text-[var(--ink-soft)]">
-                            {transaction.postedDate ?? 'Date unavailable'} · {transaction.sourcePage ? `page ${transaction.sourcePage}, ` : ''}line {transaction.sourceLine ?? 'unknown'} · {transaction.parserVersion}
+                          <div className="mt-1.5 flex items-center justify-between text-[var(--ink-soft)]">
+                            <div>
+                              {transaction.postedDate ?? 'Date unavailable'} · {transaction.sourcePage ? `page ${transaction.sourcePage}, ` : ''}line {transaction.sourceLine ?? 'unknown'} · {transaction.parserVersion}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`status ${['APPROVED', 'VERIFIED'].includes(transaction.reviewStatus) ? 'verified' : ['REJECTED', 'FAILED'].includes(transaction.reviewStatus) ? 'critical' : 'pending'}`}>
+                                {transaction.reviewStatus}
+                              </span>
+                              {transaction.lastReviewAction && (
+                                <span className="text-[9px] uppercase tracking-wider font-mono border border-[var(--line)] px-1.5 py-0.5 rounded text-[var(--ink)] bg-[var(--paper)]">
+                                  {transaction.lastReviewAction.replace(/_/g, ' ')}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className="mt-1 text-[var(--ink-soft)]">
+                          <div className="mt-1.5 text-[var(--ink-soft)] opacity-70">
                             Original: {JSON.stringify(transaction.originalValue)}
                           </div>
-                          {transaction.correctionHistory.length > 0 && (
-                            <div className="mt-1 text-[var(--ink-soft)]">
+                          {transaction.correctionHistory && transaction.correctionHistory.length > 0 && (
+                            <div className="mt-1 text-[var(--ink-soft)] opacity-70">
                               {transaction.correctionHistory.length} correction{transaction.correctionHistory.length === 1 ? '' : 's'} preserved
                             </div>
                           )}

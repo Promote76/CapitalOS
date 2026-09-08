@@ -11,6 +11,9 @@ import {
   variableIncomeProfiles,
   verifiedHouseholdIncomeEvents,
   householdVehicleScenarios,
+  financialDocuments,
+  bankStatementDocuments,
+  bankStatementTransactions,
 } from "@workspace/db/schema";
 import type { Actor } from "./capital-os";
 import { assertPermission, GovernanceError } from "../domain/governance";
@@ -23,6 +26,7 @@ import {
 } from "../domain/variable-income";
 import { centsToMoney, parseMoneyToCents } from "../domain/finance";
 import { auditEvents } from "@workspace/db/schema";
+import { summarizeDocumentEvidence } from "../domain/document-evidence";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const money = (value: string | number | null | undefined) => centsToMoney(parseMoneyToCents(String(value ?? "0")));
@@ -81,7 +85,7 @@ function vehicleResponse(row: typeof householdVehicleScenarios.$inferSelect) {
 export async function getVariableBudgetIntelligence(actor: Actor, asOf = today()) {
   assertPermission(actor.role, "read");
   const monthStart = `${asOf.slice(0, 7)}-01`;
-  const [events, bills, upcoming, accounts, reserveRows, goalsRows, periods, vehicles] = await Promise.all([
+  const [events, bills, upcoming, accounts, reserveRows, goalsRows, periods, vehicles, documents, statements, statementRows] = await Promise.all([
     db.select().from(verifiedHouseholdIncomeEvents)
       .where(and(eq(verifiedHouseholdIncomeEvents.householdId, actor.householdId), eq(verifiedHouseholdIncomeEvents.verificationStatus, "verified")))
       .orderBy(desc(verifiedHouseholdIncomeEvents.incomeDate)),
@@ -92,7 +96,18 @@ export async function getVariableBudgetIntelligence(actor: Actor, asOf = today()
     db.select().from(goals).where(eq(goals.householdId, actor.householdId)),
     db.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.month, monthStart), sql`${budgetPlanningPeriods.status} in ('approved', 'closed')`)).limit(1),
     db.select().from(householdVehicleScenarios).where(and(eq(householdVehicleScenarios.householdId, actor.householdId), eq(householdVehicleScenarios.active, true))).orderBy(desc(householdVehicleScenarios.createdAt)),
+    db.select({ id: financialDocuments.id, status: financialDocuments.status }).from(financialDocuments).where(eq(financialDocuments.householdId, actor.householdId)),
+    db.select({ id: bankStatementDocuments.id, documentId: bankStatementDocuments.documentId, status: bankStatementDocuments.status, statementStart: bankStatementDocuments.statementStart, statementEnd: bankStatementDocuments.statementEnd, createdAt: bankStatementDocuments.createdAt })
+      .from(bankStatementDocuments).where(eq(bankStatementDocuments.householdId, actor.householdId)),
+    // Read each child with both parent states in the same query: a concurrent
+    // parent rejection cannot leave an eligible child projection behind.
+    db.select({ bankStatementDocumentId: bankStatementTransactions.bankStatementDocumentId, parentDocumentStatus: financialDocuments.status, parentStatementStatus: bankStatementDocuments.status, amount: bankStatementTransactions.amount, correctedValue: bankStatementTransactions.correctedValue, direction: bankStatementTransactions.direction, reviewStatus: bankStatementTransactions.reviewStatus, lastReviewAction: bankStatementTransactions.lastReviewAction })
+      .from(bankStatementTransactions)
+      .innerJoin(bankStatementDocuments, and(eq(bankStatementDocuments.id, bankStatementTransactions.bankStatementDocumentId), eq(bankStatementDocuments.householdId, actor.householdId)))
+      .innerJoin(financialDocuments, and(eq(financialDocuments.id, bankStatementDocuments.documentId), eq(financialDocuments.householdId, actor.householdId)))
+      .where(eq(bankStatementTransactions.householdId, actor.householdId)),
   ]);
+  const documentEvidence = summarizeDocumentEvidence(documents, statements, statementRows);
   const [period] = periods;
   const profile = calculateVariableIncomeProfile(events.map((event) => ({
     incomeDate: event.incomeDate,
@@ -163,8 +178,10 @@ export async function getVariableBudgetIntelligence(actor: Actor, asOf = today()
       incomeAuthority: "VerifiedHouseholdIncomeEvent",
       planningStatus: period ? "APPROVED_PLAN" : "INCOMPLETE_DATA",
       forecastReadiness: forecastComplete ? "READY" : "INCOMPLETE",
+      pendingDocumentEvidence: documentEvidence.pendingDocumentCount > 0 || documentEvidence.pendingRowCount > 0,
     },
     incomeProfile: profileResponse(profile, asOf),
+    documentEvidence,
     constraints,
     obligations: {
       next7Days: money(obligationsFor(7)),

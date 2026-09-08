@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateCapitalGovernorV2 } from "./capital-governor";
+import { calculateCapitalGovernorV2, hasUnresolvedUploadedStatement } from "./capital-governor";
+
+test("rejected uploaded statements are terminal while unresolved evidence blocks readiness", () => {
+  assert.equal(hasUnresolvedUploadedStatement("REJECTED", "document_evidence_rejected", true), false);
+  assert.equal(hasUnresolvedUploadedStatement("NEEDS_REVIEW", null, true), true);
+  assert.equal(hasUnresolvedUploadedStatement("NEEDS_REVIEW", "document_evidence_pending_review", false), true);
+  assert.equal(hasUnresolvedUploadedStatement("VERIFIED", "document_evidence_verified", false), false);
+});
 
 function input(overrides: Partial<Parameters<typeof calculateCapitalGovernorV2>[0]> = {}) {
   return {

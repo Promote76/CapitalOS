@@ -43,3 +43,27 @@ cannot express same-household ownership. The review transaction
 queries the settlement by both ID and household before mutation, rejects missing,
 foreign, and rejected records, and keeps a safe not-found response so a UUID
 cannot disclose another household's settlement.
+
+## Review and planning consumption boundary
+
+Each row records its explicit last review action (`APPROVE`, `REJECT`,
+`RECLASSIFY`, `LINK_SETTLEMENT`, or `MARK_TRANSFER`); a generic resolved status
+never implies that it is income or cash. A statement header cannot be verified
+while parser errors exist or any extracted child remains unreviewed. Rejecting a
+statement rejects only its still-pending children and retains prior reviewer
+history.
+
+Variable Budget Intelligence exposes household-scoped document evidence as an
+advisory summary. Its reviewed deposit and withdrawal totals include only
+resolved `APPROVE` and `RECLASSIFY` rows, and exclude transfers, linked
+settlements, pending rows, and rejected rows. The summary identifies source
+*document IDs* only and explicitly reports `affectsOfficialTotals: false`.
+It cannot update verified household income, account balances, finance
+transactions, accounting cash flow, a ledger, or money movement. Accounting's
+tax-document count similarly reports reviewed evidence only and changes no
+accounting balance or cash-flow calculation.
+
+Capital Governor never consumes statement totals as cash. When uploaded
+statement rows remain pending, that existing evidence is reflected solely as an
+`UNRECONCILED` data-readiness condition; no upload is required when no such
+evidence exists.

@@ -9,6 +9,18 @@ export const CAPITAL_WATERFALL_BUCKETS = [
   "INVESTMENT_CAPITAL",
 ] as const;
 
+export function hasUnresolvedUploadedStatement(
+  documentStatus: string,
+  headerStatus: string | null,
+  hasParserErrors: boolean,
+) {
+  const parent = documentStatus.toUpperCase();
+  if (parent === "REJECTED") return false;
+  if (!headerStatus) return true;
+  const header = headerStatus.toUpperCase();
+  return hasParserErrors || parent !== "VERIFIED" || !header.includes("VERIFIED");
+}
+
 export type CapitalWaterfallBucket = typeof CAPITAL_WATERFALL_BUCKETS[number];
 export type CapitalGovernorStatus =
   | "READY"

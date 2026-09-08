@@ -225,6 +225,13 @@
       "when": 1788837687513,
       "tag": "0031_fresh_speed",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1788839537910,
+      "tag": "0032_safe_manta",
+      "breakpoints": true
     }
   ]
 }

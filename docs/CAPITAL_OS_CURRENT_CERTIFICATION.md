@@ -6,9 +6,9 @@
 **Current decision:** **READY FOR CONTROLLED INTERNAL USE ONLY — PUBLIC PRODUCTION NOT CERTIFIED**
 
 This is the single current certification document. The Financial Planning
-Completion replay passed all 40 FPC gates, the 197-test API suite, generated
+Completion replay passed all 40 FPC gates, the 200-test API suite, generated
 artifact freshness, and authenticated Budget/Documents/Treasury browser
-certification. Source-derived and certified route inventories both contain 199
+certification. Source-derived and certified route inventories both contain 201
 route/method pairs. See
 `docs/certification/FINANCIAL_PLANNING_COMPLETION_2026-09-08.md`,
 `docs/certification/CURRENT_SURFACE_CERTIFICATION_2026-09-07.md`, and
@@ -98,6 +98,10 @@ introduced during this certification.
   through a locked, idempotent, actor-attributed write. Acceptance changes neither
   source transactions nor official Budget totals; separate period approval remains
   required.
+- Reviewed bank-statement rows now appear in Budget as household-scoped advisory
+  evidence. Corrected amounts are cent-exact; transfers, settlement-linked deposits,
+  rejected parents, and pending rows are excluded. Uploaded evidence cannot change
+  forecast math, verified income, balances, ledger entries, or deployable capital.
 - Weekly allocation templates are versioned with each planning period, must cover
   every active allocating category, and must total exactly 100.00% before approval.
   Approved and closed periods preserve the exact reviewed percentages.

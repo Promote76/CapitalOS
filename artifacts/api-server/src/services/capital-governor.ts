@@ -13,6 +13,9 @@ import {
   financeBills,
   financeTransactions,
   financialAccounts,
+  bankStatementTransactions,
+  bankStatementDocuments,
+  financialDocuments,
   goals,
   idempotencyKeys,
   protectedCapitalRegistry,
@@ -25,7 +28,7 @@ import {
 import { db } from "@workspace/db";
 import { assertPermission, GovernanceError } from "../domain/governance";
 import { centsToMoney, parseMoneyToCents } from "../domain/finance";
-import { calculateCapitalGovernorV2, CAPITAL_WATERFALL_BUCKETS, type CapitalGovernorInput, type CapitalWaterfallBucket } from "../domain/capital-governor";
+import { calculateCapitalGovernorV2, CAPITAL_WATERFALL_BUCKETS, hasUnresolvedUploadedStatement, type CapitalGovernorInput, type CapitalWaterfallBucket } from "../domain/capital-governor";
 import { calculateVariableIncomeProfile } from "../domain/variable-income";
 import type { Actor } from "./capital-os";
 import { ensureTenantCore } from "./seed";
@@ -60,7 +63,7 @@ export async function buildCapitalGovernorInput(actor: Actor, asOf = today()): P
   assertPermission(actor.role, "read");
   const ids = await ensureTenantCore(actor.householdId, actor.userId);
   const monthStart = `${asOf.slice(0, 7)}-01`;
-  const [accounts, bills, upcoming, emergencyRows, goalsRows, periods, incomeEvents, transactions, treasury, treasuryPolicyRows, governorPolicyRows, encumbrances, protectedEntries, riskRows, businessCashRows] = await Promise.all([
+  const [accounts, bills, upcoming, emergencyRows, goalsRows, periods, incomeEvents, transactions, treasury, treasuryPolicyRows, governorPolicyRows, encumbrances, protectedEntries, riskRows, businessCashRows, statementEvidenceRows, statementDocuments, bankEvidenceDocuments] = await Promise.all([
     db.select().from(financialAccounts).where(eq(financialAccounts.householdId, ids.householdId)),
     db.select().from(financeBills).where(and(eq(financeBills.householdId, ids.householdId), eq(financeBills.active, true))),
     db.select().from(upcomingExpenses).where(and(eq(upcomingExpenses.householdId, ids.householdId), eq(upcomingExpenses.active, true))),
@@ -76,6 +79,12 @@ export async function buildCapitalGovernorInput(actor: Actor, asOf = today()): P
     db.select().from(protectedCapitalRegistry).where(and(eq(protectedCapitalRegistry.householdId, ids.householdId), eq(protectedCapitalRegistry.locked, 1))),
     db.select({ protectedCapitalLocked: riskStates.protectedCapitalLocked }).from(riskStates).where(and(eq(riskStates.id, ids.riskStateId), eq(riskStates.householdId, ids.householdId))).limit(1),
     db.select().from(businessCashPositions).where(eq(businessCashPositions.householdId, ids.householdId)),
+    db.select({ reviewStatus: bankStatementTransactions.reviewStatus }).from(bankStatementTransactions)
+      .where(eq(bankStatementTransactions.householdId, ids.householdId)),
+    db.select({ documentId: bankStatementDocuments.documentId, status: bankStatementDocuments.status }).from(bankStatementDocuments)
+      .where(eq(bankStatementDocuments.householdId, ids.householdId)),
+    db.select({ id: financialDocuments.id, status: financialDocuments.status, sourceMetadata: financialDocuments.sourceMetadata }).from(financialDocuments)
+      .where(and(eq(financialDocuments.householdId, ids.householdId), eq(financialDocuments.documentType, "BANK_STATEMENT"))),
   ]);
   const [period] = periods;
   const [emergency] = emergencyRows;
@@ -129,9 +138,18 @@ export async function buildCapitalGovernorInput(actor: Actor, asOf = today()): P
   const sourceDates = accounts.map((account) => account.lastSuccessfulSync ?? account.lastSync).filter(Boolean).map((value) => new Date(value as Date).toISOString().slice(0, 10));
   const freshnessDays = sourceDates.length ? Math.max(...sourceDates.map((date) => daysBetween(date, asOf))) : null;
   const hasUnreviewedTransactions = transactions.some((transaction) => transaction.reviewStatus !== "approved" && transaction.dataSource !== "manual");
+  // Evidence is never added to cash. Pending uploaded evidence is only a
+  // conservative readiness signal when it actually exists.
+  const hasPendingStatementEvidence = statementEvidenceRows.some((row) => !["RESOLVED", "REJECTED"].includes(row.reviewStatus.toUpperCase()));
+  const statementHeadersByDocument = new Map(statementDocuments.map((statement) => [statement.documentId, statement]));
+  const hasUnresolvedStatementDocument = bankEvidenceDocuments.some((document) => {
+    const header = statementHeadersByDocument.get(document.id);
+    const parserErrors = Array.isArray(document.sourceMetadata?.parserErrors) && document.sourceMetadata.parserErrors.length > 0;
+    return hasUnresolvedUploadedStatement(document.status, header?.status ?? null, parserErrors);
+  });
   const dataReadiness: CapitalGovernorInput["dataReadiness"] = !period || profile.recentMonthCount < 3
     ? "INCOMPLETE_DATA"
-    : unreconciledCashCents > 0 || hasUnreviewedTransactions
+    : unreconciledCashCents > 0 || hasUnreviewedTransactions || hasPendingStatementEvidence || hasUnresolvedStatementDocument
       ? "UNRECONCILED"
       : freshnessDays !== null && freshnessDays > 30
         ? "STALE"

@@ -180,10 +180,19 @@ export async function reviewBankStatementTransaction(actor: Actor, transactionId
       if (!settlement) throw new GovernanceError("INVALID_STATE", "Settlement document not found");
       if (settlement.verificationStatus === "rejected") throw new GovernanceError("INVALID_STATE", "Rejected settlement documents cannot be linked");
     }
-    const statuses = { APPROVE: "RESOLVED", REJECT: "REJECTED", RECLASSIFY: "NEEDS_USER", LINK_SETTLEMENT: "RESOLVED", MARK_TRANSFER: "RESOLVED" } as const;
+    if (input.correctedValue && "amount" in input.correctedValue) {
+      const amount = input.correctedValue.amount;
+      if (typeof amount !== "string" || !/^-?\d+(?:\.\d{1,2})?$/.test(amount.trim())) {
+        throw new GovernanceError("INVALID_STATE", "Corrected amount must be a decimal value with at most two places");
+      }
+    }
+    // Every action is recorded explicitly. In particular, a resolved row is not
+    // necessarily an approved economic observation (it may be a transfer/link).
+    const statuses = { APPROVE: "RESOLVED", REJECT: "REJECTED", RECLASSIFY: "RESOLVED", LINK_SETTLEMENT: "RESOLVED", MARK_TRANSFER: "RESOLVED" } as const;
     const correction = input.correctedValue ?? null;
     const [updated] = await tx.update(bankStatementTransactions).set({
       reviewStatus: statuses[input.action], reviewedBy: actor.userId, reviewedAt: new Date(),
+      lastReviewAction: input.action,
       correctedValue: correction ?? row.correctedValue, correctionReason: correction ? input.reason : row.correctionReason,
       linkedSettlementDocumentId: input.settlementDocumentId,
     }).where(and(eq(bankStatementTransactions.id, transactionId), eq(bankStatementTransactions.householdId, actor.householdId))).returning();
@@ -235,12 +244,59 @@ export async function getFinancialDocument(actor: Actor, documentId: string) {
 
 export async function reviewFinancialDocument(actor: Actor, documentId: string, input: { decision: "VERIFIED" | "REJECTED" | "NEEDS_REVIEW"; reason: string }) {
   assertPermission(actor.role, "approve");
-  const [document] = await db.update(financialDocuments).set({
-    status: input.decision, reviewDecision: input.decision, reviewReason: input.reason, reviewedBy: actor.userId, reviewedAt: new Date(),
-  }).where(and(eq(financialDocuments.id, documentId), eq(financialDocuments.householdId, actor.householdId))).returning();
-  if (!document) throw new GovernanceError("INVALID_STATE", "Financial document not found");
-  await db.insert(auditEvents).values({ householdId: actor.householdId, eventType: "financial_document_reviewed", actor: actor.userId, entity: "financial_document", entityId: document.id, reason: input.reason, metadata: { decision: input.decision } });
-  return getFinancialDocument(actor, document.id);
+  return db.transaction(async (tx) => {
+    // Serialize header and child review changes so verification cannot race an
+    // outstanding child review.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`financial-document-review:${actor.householdId}:${documentId}`}, 0))`);
+    const [existing] = await tx.select().from(financialDocuments).where(and(
+      eq(financialDocuments.id, documentId),
+      eq(financialDocuments.householdId, actor.householdId),
+    )).limit(1);
+    if (!existing) throw new GovernanceError("INVALID_STATE", "Financial document not found");
+    const [statement] = await tx.select().from(bankStatementDocuments).where(and(
+      eq(bankStatementDocuments.documentId, documentId),
+      eq(bankStatementDocuments.householdId, actor.householdId),
+    )).limit(1);
+    if (statement && input.decision === "VERIFIED") {
+      const metadata = existing.sourceMetadata ?? {};
+      const parserErrors = Array.isArray(metadata.parserErrors) ? metadata.parserErrors : [];
+      const children = await tx.select({ reviewStatus: bankStatementTransactions.reviewStatus }).from(bankStatementTransactions).where(and(
+        eq(bankStatementTransactions.householdId, actor.householdId),
+        eq(bankStatementTransactions.bankStatementDocumentId, statement.id),
+      ));
+      if (parserErrors.length || children.some((child) => !["RESOLVED", "REJECTED"].includes(child.reviewStatus.toUpperCase()))) {
+        throw new GovernanceError("INVALID_STATE", "Bank statement cannot be verified until parsing errors and every child row are reviewed");
+      }
+    }
+    if (statement && input.decision === "REJECTED") {
+      // Preserve terminal review history; only unresolved evidence is cascaded.
+      await tx.update(bankStatementTransactions).set({
+        reviewStatus: "REJECTED",
+        lastReviewAction: "REJECT",
+        reviewedBy: actor.userId,
+        reviewedAt: new Date(),
+      }).where(and(
+        eq(bankStatementTransactions.householdId, actor.householdId),
+        eq(bankStatementTransactions.bankStatementDocumentId, statement.id),
+        sql`upper(${bankStatementTransactions.reviewStatus}) not in ('RESOLVED', 'REJECTED')`,
+      ));
+      await tx.update(bankStatementDocuments).set({ status: "document_evidence_rejected" }).where(and(
+        eq(bankStatementDocuments.id, statement.id),
+        eq(bankStatementDocuments.householdId, actor.householdId),
+      ));
+    } else if (statement && input.decision === "VERIFIED") {
+      await tx.update(bankStatementDocuments).set({ status: "document_evidence_verified" }).where(and(
+        eq(bankStatementDocuments.id, statement.id),
+        eq(bankStatementDocuments.householdId, actor.householdId),
+      ));
+    }
+    const [document] = await tx.update(financialDocuments).set({
+      status: input.decision, reviewDecision: input.decision, reviewReason: input.reason, reviewedBy: actor.userId, reviewedAt: new Date(),
+    }).where(and(eq(financialDocuments.id, documentId), eq(financialDocuments.householdId, actor.householdId))).returning();
+    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "financial_document_reviewed", actor: actor.userId, entity: "financial_document", entityId: document.id, reason: input.reason, metadata: { decision: input.decision, bankStatement: Boolean(statement) } });
+    const refreshedStatement = statement ? (await tx.select().from(bankStatementDocuments).where(eq(bankStatementDocuments.id, statement.id)).limit(1))[0] : undefined;
+    return response(document, refreshedStatement, refreshedStatement ? await statementTransactions(tx, refreshedStatement.id, actor.householdId) : []);
+  });
 }
 
 export async function listFinancialReviewQueue(actor: Actor) {

@@ -8,6 +8,7 @@
 import type { VariableBudgetConstraintSet } from './variableBudgetConstraintSet';
 import type { VariableBudgetForecast } from './variableBudgetForecast';
 import type { VariableBudgetIntelligenceCash } from './variableBudgetIntelligenceCash';
+import type { VariableBudgetIntelligenceDocumentEvidence } from './variableBudgetIntelligenceDocumentEvidence';
 import type { VariableBudgetIntelligenceObligations } from './variableBudgetIntelligenceObligations';
 import type { VariableBudgetIntelligenceReserve } from './variableBudgetIntelligenceReserve';
 import type { VariableBudgetIntelligenceSource } from './variableBudgetIntelligenceSource';
@@ -18,6 +19,8 @@ export interface VariableBudgetIntelligence {
   asOf: string;
   source: VariableBudgetIntelligenceSource;
   incomeProfile: VariableIncomeProfile;
+  /** Household-scoped uploaded-document evidence summary. Advisory only; never an accounting, income, balance, ledger, or money-movement authority. */
+  documentEvidence: VariableBudgetIntelligenceDocumentEvidence;
   constraints: VariableBudgetConstraintSet;
   obligations: VariableBudgetIntelligenceObligations;
   reserve: VariableBudgetIntelligenceReserve;

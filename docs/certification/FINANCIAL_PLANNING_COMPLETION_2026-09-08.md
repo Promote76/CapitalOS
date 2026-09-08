@@ -10,10 +10,11 @@ The Financial Planning Completion sprint is complete for controlled internal use
 Capital OS remains advisory and non-executing.
 
 - FPC gates: **40 PASS / 0 PARTIAL / 0 FAIL**
-- Authoritative API inventory: **199 route/method pairs**
-- Certified API inventory: **199 route/method pairs**
-- API suite: **197 tests / 160 passed / 37 intentionally skipped / 0 failed**
+- Authoritative API inventory: **201 route/method pairs**
+- Certified API inventory: **201 route/method pairs**
+- API suite: **200 tests / 162 passed / 38 intentionally skipped / 0 failed**
 - Cross-tenant statement-to-settlement linkage fixture: **1 passed / 0 failed**
+- Bank-statement parent/child review fixture: **1 passed / 0 failed**
 - Documents queue discriminator tests: **2 passed / 0 failed**
 - Authenticated Capital Governor browser journey: **PASS**
 - API and Capital OS typechecks: **PASS**
@@ -32,6 +33,9 @@ Capital OS remains advisory and non-executing.
   and escrow-sensitive classifications require human review.
 - Statement transaction review, rejection, reclassification, settlement linking,
   and transfer marking without automatic ledger posting.
+- Budget advisory evidence summaries for reviewed statement rows, with corrected
+  exact-cent amounts and explicit transfer, settlement, rejected, and pending
+  exclusions. These summaries do not change forecast math or official totals.
 - Central review queue covering document, statement, settlement variance,
   settlement cash match, P&L mismatch, advance, escrow, income-verification,
   and pending budget evidence.
@@ -78,5 +82,5 @@ pnpm --filter @workspace/api-server run test:capital-governor-browser
 
 The authenticated browser journey certified tenant-scoped Treasury,
 fail-closed/ready/conservative Capital Governor states, Budget financial
-foundation, Financial Inbox upload boundaries, capital-surplus separation,
-advisory-only behavior, no money movement, and retry recovery.
+foundation and uploaded-evidence advisory boundary, Financial Inbox upload
+boundaries, capital-surplus separation, no money movement, and retry recovery.

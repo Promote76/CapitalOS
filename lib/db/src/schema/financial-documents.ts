@@ -83,6 +83,8 @@ export const bankStatementTransactions = pgTable("bank_statement_transactions", 
   correctedValue: jsonb("corrected_value").$type<Record<string, unknown>>(),
   correctionReason: text("correction_reason"),
   reviewStatus: text("review_status").notNull().default("document_evidence_pending_review"),
+  // Explicit reviewer disposition; generic reviewStatus alone must not imply economic treatment.
+  lastReviewAction: text("last_review_action"),
   reviewedBy: uuid("reviewed_by").references(() => users.id),
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
   linkedSettlementDocumentId: uuid("linked_settlement_document_id").references(() => settlementDocuments.id, { onDelete: "set null" }),

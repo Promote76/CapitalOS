@@ -5,14 +5,46 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { BankStatementTransactionCorrection } from './bankStatementTransactionCorrection';
 import type { BankStatementTransactionEvidenceCorrectedValue } from './bankStatementTransactionEvidenceCorrectedValue';
+import type { BankStatementTransactionEvidenceLastReviewAction } from './bankStatementTransactionEvidenceLastReviewAction';
 import type { BankStatementTransactionEvidenceOriginalValue } from './bankStatementTransactionEvidenceOriginalValue';
 
 export interface BankStatementTransactionEvidence {
   id: string;
+  bankStatementDocumentId: string;
+  /** @nullable */
+  postedDate?: string | null;
   description: string;
+  amount: string;
+  /** @nullable */
+  direction: string | null;
+  /** @nullable */
+  runningBalance?: string | null;
+  /** @nullable */
+  reference?: string | null;
+  /** @nullable */
+  confidence: string | null;
+  /** @nullable */
+  sourcePage?: number | null;
+  /** @nullable */
+  sourceLine: number | null;
+  /** @nullable */
+  sourceRegion: string | null;
+  parserVersion: string;
+  evidenceFingerprint: string;
   reviewStatus: string;
+  /** @nullable */
+  lastReviewAction: BankStatementTransactionEvidenceLastReviewAction;
   originalValue: BankStatementTransactionEvidenceOriginalValue;
   /** @nullable */
   correctedValue?: BankStatementTransactionEvidenceCorrectedValue;
+  /** @nullable */
+  correctionReason?: string | null;
+  /** @nullable */
+  reviewedAt?: Date | null;
+  /** @nullable */
+  linkedSettlementDocumentId?: string | null;
+  createdAt: Date;
+  correctionHistory: BankStatementTransactionCorrection[];
 }

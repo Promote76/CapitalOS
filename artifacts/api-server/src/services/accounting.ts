@@ -1,5 +1,5 @@
 import { and, desc, eq, sql } from "drizzle-orm";
-import { db, financeCategories, financeSnapshots, financeTransactions, financialAccounts, ledgerEntries, ledgerTransactions } from "@workspace/db";
+import { db, financeCategories, financeSnapshots, financeTransactions, financialAccounts, financialDocuments, ledgerEntries, ledgerTransactions } from "@workspace/db";
 import { canViewFinancialBalance } from "../domain/household-finance";
 import { calculateNetWorth, calculateNetWorthAttribution, ledgerDebitsEqualCredits, reconcileCrossViewTotals, summarizeReviewedCashFlow } from "../domain/accounting";
 import type { Actor } from "./capital-os";
@@ -23,7 +23,7 @@ function categoryName(category: { id: string; name: string } | undefined) {
 
 export async function getAccountingOverview(actor: Actor) {
   const householdId = actor.householdId;
-  const [accountRows, transactions, categories, snapshots, ledgerRows] = await Promise.all([
+  const [accountRows, transactions, categories, snapshots, ledgerRows, reviewedDocuments] = await Promise.all([
     db.select().from(financialAccounts).where(eq(financialAccounts.householdId, householdId)),
     db.select().from(financeTransactions).where(eq(financeTransactions.householdId, householdId)),
     db.select({ id: financeCategories.id, name: financeCategories.name, categoryType: financeCategories.categoryType }).from(financeCategories).where(eq(financeCategories.householdId, householdId)),
@@ -35,6 +35,10 @@ export async function getAccountingOverview(actor: Actor) {
          eq(ledgerTransactions.householdId, householdId),
          sql`coalesce(${ledgerTransactions.metadata}->>'executionOnly', 'false') <> 'true'`,
        )),
+    db.select({ id: financialDocuments.id }).from(financialDocuments).where(and(
+      eq(financialDocuments.householdId, householdId),
+      sql`upper(${financialDocuments.status}) = 'VERIFIED'`,
+    )),
   ]);
 
   const visibleRows = accountRows.filter((account) => account.includedInNetWorth && canViewFinancialBalance(actor.role, account.protected));
@@ -237,7 +241,7 @@ export async function getAccountingOverview(actor: Actor) {
     },
     taxYear: {
       year: Number(period.slice(0, 4)),
-      documentsCollected: 0,
+       documentsCollected: reviewedDocuments.length,
       missingDocuments: ["Broker statement", "Mortgage interest statement", "Bank interest statement"],
        realizedGainsLosses: NOT_AVAILABLE,
       reviewStatus: "SUPPORT_ONLY",

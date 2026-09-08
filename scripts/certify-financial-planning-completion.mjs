@@ -6,7 +6,7 @@ const evidence = (file, pattern) =>
 const gates = [
   ["Financial Document Inbox", "PASS", [["lib/db/src/schema/financial-documents.ts", /financialDocuments/], ["artifacts/capital-os/src/pages/documents.tsx", /Financial Inbox/]]],
   ["Mobile Upload", "PASS", [["artifacts/capital-os/src/App.tsx", /Choose file/], ["artifacts/capital-os/src/App.tsx", /onDrop=/], ["artifacts/capital-os/src/index.css", /@media/]]],
-  ["Document Hash Idempotency", "PASS", [["lib/db/src/schema/financial-documents.ts", /householdHashUnique/], ["artifacts/api-server/src/services/financial-documents.ts", /DOCUMENT ALREADY EXISTS/]]],
+  ["Document Hash Idempotency", "PASS", [["lib/db/src/schema/financial-documents.ts", /householdHashUnique/], ["artifacts/api-server/src/services/financial-documents.ts", /financial-document-ingest:\$\{actor\.householdId\}:\$\{sha256\}/]]],
   ["Source Provenance", "PASS", [["lib/db/src/schema/financial-documents.ts", /sourceMetadata/], ["lib/db/src/schema/financial-documents.ts", /originalValue/], ["lib/db/src/schema/financial-documents.ts", /sourceLine/], ["artifacts/api-server/src/services/financial-documents.ts", /correctionReason/]]],
   ["Settlement Parsing", "PASS", [["artifacts/api-server/src/services/business-document-parser.ts", /parseBusinessPdf/]]],
   ["Settlement Math", "PASS", [["artifacts/api-server/src/domain/business-income.ts", /reconcileSettlementMath/]]],

@@ -236,6 +236,10 @@ test("authenticated Treasury certifies Safe-to-Deploy 2.0 readiness states and r
     await expect(foundation).toContainText("Needs classification");
     await expect(foundation).toContainText("Insufficient verified history");
     await expect(foundation.getByRole("link", { name: "Upload bank statement" })).toBeVisible();
+    const documentEvidence = page.getByTestId("card-evidence");
+    await expect(documentEvidence).toBeVisible();
+    await expect(documentEvidence).toContainText("Advisory only");
+    await expect(documentEvidence).toContainText("does not change forecast math or official household totals");
     const budgetPanel = page.getByTestId("budget-capital-governor");
     await expect(budgetPanel).toBeVisible();
     await expect(budgetPanel).toContainText("Capital Governor 2.0");

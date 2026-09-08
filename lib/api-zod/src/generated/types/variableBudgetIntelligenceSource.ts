@@ -12,4 +12,6 @@ export type VariableBudgetIntelligenceSource = {
   approvedBudgetPeriod: string | null;
   incomeAuthority: string;
   planningStatus: string;
+  forecastReadiness: string;
+  pendingDocumentEvidence: boolean;
 };

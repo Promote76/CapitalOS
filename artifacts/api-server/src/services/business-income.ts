@@ -641,7 +641,7 @@ export async function approveOwnerDrawProposal(actor: Actor, proposalId: string,
     if (!proposal) throw new GovernanceError("INVALID_STATE", "Owner draw proposal not found");
     if (proposal.status !== "eligible") throw new GovernanceError("CONFLICT", "Owner draw proposal is no longer eligible for approval");
     const approvedCents = verifiedIncomeFromApprovedDraw({
-      proposalStatus: proposal.status,
+      proposalStatus: "approved",
       approvedAmount: input.approvedAmount,
       requestedAmount: proposal.amount,
       blockedReasons: proposal.blockedReasons,

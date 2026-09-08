@@ -1,0 +1,1175 @@
+CAPITAL OS — MANAGED PRODUCTION SCHEMA + P&L REMEDIATION COMPLETION
+
+SURGICAL RELEASE PROMPT
+
+APPLY MIGRATION 0037 → CORRECT TWO P&Ls → REBUILD BUSINESS INCOME → TRACE VERIFIED INCOME
+
+MISSION
+
+Complete the currently BLOCKED production financial-document remediation.
+
+DO NOT build additional product features.
+
+The application code already contains:
+
+- document-to-Budget bridge
+- document type detection
+- type mismatch review
+- audited type correction
+- parser-generation history
+- duplicate/version review
+- downstream superseded-parse exclusion
+- source provenance controls
+
+The remaining blocker is production schema/data readiness.
+
+Current known state:
+
+DOCUMENT-TO-BUDGET BRIDGE:
+PASS 30/30
+
+DOCUMENT TYPE INTEGRITY CODE:
+IMPLEMENTED
+
+PRIVATE STORAGE:
+VERIFIED
+
+KNOWN MISCLASSIFIED DOCUMENTS:
+
+FUQC P&L (2).pdf
+currently recorded as STEVENS_SETTLEMENT
+
+FUQC P&L (3).pdf
+currently recorded as STEVENS_SETTLEMENT
+
+CONTENT DETECTION:
+HIGH-CONFIDENCE BUSINESS_PROFIT_AND_LOSS for both
+
+PRODUCTION CORRECTION:
+BLOCKED
+
+ROOT BLOCKER:
+managed production database does not yet contain migration:
+
+0037_zippy_plazm.sql
+
+Additional preflight finding:
+
+no matching current business-income source rows were available for
+downstream rebuild.
+
+This sprint must resolve those conditions honestly.
+
+No simulated production evidence.
+
+No destructive file operations.
+
+No money movement.
+
+No ACH.
+
+No bank writes.
+
+No brokerage execution.
+
+No Micro-Live.
+
+==================================================
+
+1. DO NOT MUTATE PRODUCTION BEFORE SCHEMA PARITY
+   ==================================================
+
+First inspect:
+
+source migration inventory
+
+managed production migration inventory
+
+production schema
+
+Do not attempt either P&L type correction until required production
+schema exists.
+
+Required migration:
+
+0037_zippy_plazm.sql
+
+==================================================
+2. VERIFY MIGRATION CONTENT
+
+Before applying:
+
+inspect migration 0037_zippy_plazm.sql.
+
+Document:
+
+tables created
+
+columns created
+
+indexes created
+
+constraints created
+
+foreign keys
+
+enum changes
+
+default values
+
+backfill behavior
+
+locking implications
+
+whether migration is additive/destructive
+
+whether rollback is practical
+
+Do not edit the migration merely to make production accept it unless
+there is a real defect.
+
+==================================================
+3. MANAGED PUBLISH ONLY
+
+Apply migration through the normal managed Capital OS/Replit
+Publish production migration path.
+
+DO NOT:
+
+run ad-hoc schema changes manually against production
+
+modify production schema through arbitrary SQL console commands
+
+mark migration applied without execution
+
+edit migration-history tables to fake parity
+
+run destructive reset
+
+drop production tables
+
+==================================================
+4. PRE-MIGRATION SAFETY CHECK
+
+Before Publish verify:
+
+current production database reachable
+
+current migration version
+
+migration 0037 pending
+
+no unexpected earlier migration gaps
+
+application source HEAD identified
+
+production release/deployment identified
+
+current route inventory recorded
+
+==================================================
+5. APPLY MIGRATION
+
+Execute normal managed Publish.
+
+Migration must complete successfully.
+
+Capture:
+
+migration identifier
+
+start timestamp
+
+finish timestamp
+
+managed release/deployment identifier
+
+source HEAD
+
+result
+
+==================================================
+6. POST-MIGRATION SCHEMA VERIFICATION
+
+Do not assume Publish success means schema correctness.
+
+Verify production contains every schema element required by:
+
+FinancialDocumentTypeDetection
+
+FinancialDocumentTypeCorrection
+
+parser-generation history
+
+duplicate/version review
+
+canonical-document relationships
+
+superseded parse state
+
+downstream source reconciliation
+
+Use read-only schema introspection.
+
+==================================================
+7. MIGRATION PARITY STATUS
+
+Return:
+
+SOURCE MIGRATIONS:
+<n>
+
+PRODUCTION MIGRATIONS:
+<n>
+
+LATEST SOURCE MIGRATION:
+0037_zippy_plazm.sql or newer
+
+LATEST PRODUCTION MIGRATION:
+<name>
+
+SCHEMA PARITY:
+PASS / FAIL
+
+If FAIL:
+
+STOP.
+
+Do not correct documents.
+
+==================================================
+8. RE-RUN PRODUCTION REMEDIATION PREFLIGHT
+
+After schema parity:
+
+re-read the two production document records.
+
+FUQC P&L (2).pdf
+
+FUQC P&L (3).pdf
+
+For each verify:
+
+document ID
+
+household ID
+
+private App Storage path
+
+stored hash
+
+object existence
+
+recorded type
+
+current parser generation
+
+downstream links
+
+content detection result
+
+==================================================
+9. HASH INTEGRITY
+
+Verify stored SHA-256 against source object.
+
+Expected:
+
+MATCH.
+
+If mismatch:
+
+STOP that document.
+
+Return:
+
+SOURCE_HASH_MISMATCH
+
+Do not repair automatically.
+
+==================================================
+10. CONTENT TYPE CONFIRMATION
+
+Run current deterministic content detector.
+
+Expected for both known records:
+
+BUSINESS_PROFIT_AND_LOSS
+
+confidence:
+
+HIGH
+
+Record structural detection evidence.
+
+Filename alone remains insufficient.
+
+==================================================
+11. AUTHORIZED TYPE CORRECTION — P&L (2)
+
+If all checks pass:
+
+create audited FinancialDocumentTypeCorrection.
+
+Document:
+
+FUQC P&L (2).pdf
+
+Original:
+STEVENS_SETTLEMENT
+
+Corrected:
+BUSINESS_PROFIT_AND_LOSS
+
+Reason:
+
+confirmed historical intake misclassification; high-confidence
+content-based detection; authorized production remediation.
+
+Apply through existing server-authorized correction workflow.
+
+Do not bypass API/service authorization.
+
+==================================================
+12. AUTHORIZED TYPE CORRECTION — P&L (3)
+
+Repeat independently for:
+
+FUQC P&L (3).pdf
+
+Do not batch-assume successful correction from first document.
+
+==================================================
+13. PRESERVE SOURCE OBJECTS
+
+Required after correction:
+
+same private object
+
+same source hash
+
+same original upload record/provenance
+
+historical original type retained in correction history
+
+No physical source file deletion.
+
+==================================================
+14. PARSER GENERATIONS
+
+For each corrected document:
+
+old settlement parser generation
+→ SUPERSEDED_BY_TYPE_CORRECTION
+
+new P&L parser generation
+→ CURRENT
+
+Old generation remains auditable.
+
+Only CURRENT generation may feed authoritative calculations.
+
+==================================================
+15. REPARSE BOTH AS P&L
+
+Run current P&L parser against both corrected source objects.
+
+Produce:
+
+ProfitLossDocument
+
+ProfitLossLine[]
+
+periodStart
+
+periodEnd
+
+accountingBasis
+
+totalIncome
+
+totalExpenses
+
+netIncome
+
+parser version
+
+source provenance
+
+==================================================
+16. PARSE QUALITY
+
+For each P&L verify:
+
+period recognized
+
+income recognized
+
+expenses recognized
+
+net income recognized
+
+arithmetic consistency
+
+source lines/pages available
+
+No silent zero values for failed extraction.
+
+Use:
+
+PARSE_REVIEW_REQUIRED
+
+when ambiguous.
+
+==================================================
+17. BUSINESS-INCOME SOURCE ROW GAP
+
+The preflight reported:
+
+NO MATCHING BUSINESS-INCOME SOURCE ROWS TO REBUILD.
+
+Investigate precisely why.
+
+Possible legitimate explanations include:
+
+A. previous wrong settlement parse never produced eligible business source rows
+
+B. old source rows were superseded/excluded
+
+C. P&L ingestion did not yet create corresponding reconciliation rows
+
+D. current business entity linkage is missing
+
+E. source period linkage is missing
+
+F. parser output exists but downstream ingestion was never run
+
+Do not guess.
+
+Return the exact cause.
+
+==================================================
+18. DO NOT FABRICATE SOURCE ROWS
+
+If source rows are absent:
+
+create/rebuild them only through normal deterministic ingestion from
+the corrected/current parser output.
+
+Do NOT create artificial ledger rows solely to make certification
+pass.
+
+Every business-income event must trace to real source evidence.
+
+==================================================
+19. BUSINESS ENTITY LINKAGE
+
+Verify both corrected P&Ls belong to the correct existing trucking
+BusinessEntity.
+
+Do not create a duplicate trucking business merely because source
+linkage is missing.
+
+If no valid business entity exists:
+
+STOP downstream rebuild and report exact user action.
+
+==================================================
+20. P&L IS RECONCILIATION EVIDENCE
+
+P&L totals do not become additional independent revenue.
+
+Do not calculate:
+
+Stevens settlement revenue
++
+P&L total income
+
+as business income.
+
+P&L remains an accounting/reconciliation view.
+
+==================================================
+21. CANONICAL DOCUMENT REVIEW
+
+Re-evaluate the known document groups after correction:
+
+000001.PDF
+
+000001 (1).PDF
+
+000001 (2).PDF
+
+000001 (3).PDF
+
+000001 (5).PDF
+
+000001-9.pdf
+
+and:
+
+FUQC P&L.pdf
+
+FUQC P&L (1).pdf
+
+FUQC P&L (2).pdf
+
+FUQC P&L (3).pdf
+
+Use:
+
+hash
+
+period
+
+document content
+
+key totals
+
+settlement date
+
+parser signatures
+
+Do not use filename alone.
+
+==================================================
+22. DOCUMENT IDENTITY STATUS
+
+For every record assign:
+
+CANONICAL
+
+EXACT_DUPLICATE
+
+PROBABLE_DUPLICATE
+
+DISTINCT_PERIOD
+
+DISTINCT_VERSION
+
+CORRECTED_VERSION
+
+REVIEW_REQUIRED
+
+No automatic deletion.
+
+==================================================
+23. P&L PERIOD PROTECTION
+
+Explicitly identify each canonical P&L reporting period.
+
+Examples:
+
+Jan–Jun
+
+Jan–Jul
+
+etc.
+
+Never add overlapping cumulative P&Ls.
+
+==================================================
+24. CURRENT AUTHORITATIVE SETTLEMENT SET
+
+Identify canonical Stevens settlement records.
+
+For each show:
+
+settlement date
+
+gross revenue
+
+deductions
+
+net settlement
+
+miles
+
+parser generation
+
+math reconciliation
+
+identity status
+
+==================================================
+25. REBUILD BUSINESS SOURCE CHAIN
+
+Using current authoritative sources only:
+
+Stevens settlements
+↓
+Settlement lines
+↓
+BusinessEarningsEvents
+↓
+P&L reconciliation
+
+Rebuild or reconcile deterministically.
+
+No duplicate event creation.
+
+==================================================
+26. BUSINESS EARNINGS EVENT TYPES
+
+Preserve correct types:
+
+OPERATING_REVENUE
+
+OPERATING_EXPENSE
+
+BALANCE_SHEET_MOVEMENT
+
+ADVANCE
+
+ADVANCE_RECOVERY
+
+REIMBURSEMENT
+
+ESCROW
+
+TRANSFER
+
+ADJUSTMENT
+
+UNKNOWN_REVIEW_REQUIRED
+
+==================================================
+27. P&L RECONCILIATION
+
+For each compatible period compare:
+
+Capital OS recognized business revenue
+
+P&L reported income
+
+variance
+
+Capital OS recognized expenses
+
+P&L reported expenses
+
+variance
+
+Capital OS net business income
+
+P&L reported net income
+
+variance
+
+==================================================
+28. P&L RECONCILIATION STATUS
+
+Use:
+
+MATCHED
+
+IMMATERIAL_VARIANCE
+
+REVIEW_REQUIRED
+
+PERIOD_MISMATCH
+
+INCOMPLETE_SOURCE_COVERAGE
+
+Do not force mismatched reporting periods to reconcile.
+
+==================================================
+29. BUSINESS INCOME READINESS
+
+Return exact:
+
+READY_FOR_OWNER_DRAW
+
+or blocker:
+
+SOURCE_ROWS_MISSING
+
+P_AND_L_REVIEW_REQUIRED
+
+SETTLEMENT_REVIEW_REQUIRED
+
+DUPLICATE_REVIEW_REQUIRED
+
+PERIOD_RECONCILIATION_REQUIRED
+
+BUSINESS_ENTITY_LINK_REQUIRED
+
+==================================================
+30. TRACE THE CURRENT $1,735
+
+MANDATORY.
+
+Locate every production record currently contributing to the
+Budget UI value approximately:
+
+$1,735
+
+that has been labeled:
+
+Verified Income.
+
+Return:
+
+record type
+
+record ID
+
+amount
+
+date
+
+household ID
+
+source type
+
+source document if any
+
+verification state
+
+review state
+
+ownerDrawId if any
+
+VerifiedHouseholdIncomeEvent ID if any
+
+==================================================
+31. DETERMINE WHETHER $1,735 IS ACTUALLY VERIFIED
+
+Authoritative test:
+
+Does the full $1,735 derive from valid:
+
+VerifiedHouseholdIncomeEvent
+
+records?
+
+Return:
+
+YES
+
+or:
+
+NO.
+
+If NO:
+
+do not leave the UI labeled:
+
+VERIFIED INCOME.
+
+Identify the proper classification:
+
+OBSERVED INFLOW
+
+REVIEWED INCOME TRANSACTION
+
+OWNER DRAW CANDIDATE
+
+UNVERIFIED HOUSEHOLD INCOME
+
+or equivalent.
+
+==================================================
+32. OWNER DRAW RECONCILIATION
+
+After Business Income readiness:
+
+calculate:
+
+business cash supported by evidence
+
+required business reserves
+
+unreconciled business items
+
+maximum eligible owner draw
+
+existing approved owner draws
+
+existing posted owner draws
+
+Do not automatically approve new owner draws.
+
+==================================================
+33. HISTORICAL DATA RULE
+
+Settlements and P&Ls may prove historical business earnings.
+
+They do NOT by themselves prove historical household owner draws.
+
+Never fabricate historical household-income events.
+
+==================================================
+34. VERIFIED HOUSEHOLD INCOME
+
+Only valid:
+
+VerifiedHouseholdIncomeEvent
+
+records count toward authoritative household verified income.
+
+For each current event produce:
+
+amount
+
+effective date
+
+owner draw source
+
+business source
+
+document/source provenance
+
+==================================================
+35. VARIABLE-INCOME PROFILE REBUILD
+
+From valid VerifiedHouseholdIncomeEvents only calculate:
+
+Current Month
+
+Trailing 4 Weeks
+
+Trailing 8 Weeks
+
+Trailing 13 Weeks
+
+Trailing 3 Months
+
+Trailing 6 Months
+
+Income Floor
+
+Base Month
+
+Strong Month
+
+==================================================
+36. INSUFFICIENT HISTORY
+
+If verified household-income history remains insufficient after
+production remediation:
+
+this is not a defect.
+
+Return:
+
+VERIFIED INCOME HISTORY:
+INSUFFICIENT
+
+INCOME FLOOR:
+NOT ESTABLISHED
+
+Provide support for:
+
+USER-APPROVED TEMPORARY PLANNING FLOOR
+
+Do not create fake historical owner draws.
+
+==================================================
+37. BUDGET REFRESH
+
+Invalidate/refetch after remediation:
+
+Household Financial Foundation
+
+Verified Income display
+
+Variable-Income Planning
+
+Weekly Guidance
+
+Draft Budget
+
+Official Budget
+
+Budget Performance
+
+Source Coverage
+
+==================================================
+38. FORECAST REFRESH
+
+Re-run:
+
+7-day
+
+14-day
+
+30-day
+
+60-day
+
+90-day
+
+Floor/Base/Strong.
+
+If required authoritative inputs remain incomplete:
+
+keep:
+
+INSUFFICIENT_DATA
+
+and return exact missing input.
+
+==================================================
+39. CAPITAL GOVERNOR REFRESH
+
+Recalculate readiness after all upstream corrections.
+
+P&L totals alone must never increase:
+
+Safe-to-Deploy.
+
+Business cash remains separate until valid owner-draw treatment.
+
+==================================================
+40. VERIFY MONEY UNIT CONTRACT
+
+As part of downstream regression confirm:
+
+7800 cents
+→ $78.00
+
+not:
+
+$7,800.
+
+Do not reopen the prior unit defect.
+
+==================================================
+41. DOCUMENT-TO-BUDGET BRIDGE REGRESSION
+
+Re-run:
+
+CAPITAL_OS_RUN_INTEGRATION=1
+CAPITAL_OS_RUN_BROWSER=1
+pnpm run certify:document-budget-bridge
+
+Required:
+
+DBB 30/30.
+
+No regression accepted.
+
+==================================================
+42. PRODUCTION REMEDIATION CERTIFICATION
+
+Create/run:
+
+CAPITAL_OS_RUN_INTEGRATION=1
+CAPITAL_OS_RUN_BROWSER=1
+pnpm run certify:production-document-remediation
+
+Required:
+
+PDR-01 through PDR-30.
+
+==================================================
+43. BLOCKED IS VALID
+
+If any production condition still prevents completion:
+
+return:
+
+BLOCKED
+
+Do not simulate.
+
+Examples:
+
+managed migration failed
+
+authorization missing
+
+source object unavailable
+
+hash mismatch
+
+business entity missing
+
+P&L parser ambiguous
+
+production schema still mismatched
+
+==================================================
+44. DO NOT DIRECTLY DELETE SOURCE DATA
+
+No direct deletion of:
+
+private App Storage PDFs
+
+financial document rows
+
+parser history
+
+audit records
+
+duplicate source objects
+
+==================================================
+45. FINAL REPORT
+
+Return exactly:
+
+CURRENT HEAD:
+<hash>
+
+MANAGED PRODUCTION RELEASE:
+<id>
+
+MIGRATION 0037_zippy_plazm.sql:
+APPLIED / ALREADY_APPLIED / FAILED / BLOCKED
+
+SOURCE MIGRATION HEAD:
+<name>
+
+PRODUCTION MIGRATION HEAD:
+<name>
+
+SCHEMA PARITY:
+PASS / FAIL
+
+PRODUCTION DOCUMENT REMEDIATION:
+PASS / PARTIAL / BLOCKED / FAIL
+
+PDR:
+<n>/30
+
+DOCUMENT-TO-BUDGET BRIDGE:
+PASS <n>/30 / REGRESSED
+
+FUQC P&L (2).pdf:
+CORRECTED / BLOCKED / REVIEW_REQUIRED
+
+FUQC P&L (3).pdf:
+CORRECTED / BLOCKED / REVIEW_REQUIRED
+
+SOURCE HASH P&L 2:
+MATCH / FAIL
+
+SOURCE HASH P&L 3:
+MATCH / FAIL
+
+CURRENT TYPE P&L 2:
+<type>
+
+CURRENT TYPE P&L 3:
+<type>
+
+OLD SETTLEMENT PARSES:
+SUPERSEDED / OPEN
+
+NEW P&L PARSES:
+<n>
+
+BUSINESS-INCOME SOURCE ROW GAP ROOT CAUSE:
+<exact cause>
+
+BUSINESS-INCOME SOURCE ROWS REBUILT:
+<n>
+
+SETTLEMENT DOCUMENTS:
+<n>
+
+CANONICAL SETTLEMENTS:
+<n>
+
+EXACT SETTLEMENT DUPLICATES:
+<n>
+
+P&L DOCUMENTS:
+<n>
+
+CANONICAL P&Ls:
+<n>
+
+EXACT P&L DUPLICATES:
+<n>
+
+P&L VERSIONS:
+<n>
+
+P&L PERIODS:
+<period list>
+
+P&L OVERLAP PROTECTION:
+PASS / FAIL
+
+P&L RECONCILIATION:
+PASS / PARTIAL / BLOCKED
+
+BUSINESS INCOME READINESS:
+<status>
+
+CURRENT $1,735 SOURCE:
+<exact records>
+
+CURRENT $1,735 IS VERIFIED HOUSEHOLD INCOME:
+YES / NO
+
+CURRENT VERIFIED HOUSEHOLD INCOME:
+$<amount or unavailable>
+
+VERIFIED INCOME EVENT COUNT:
+<n>
+
+VERIFIED INCOME PROVENANCE:
+<exact chains>
+
+OWNER DRAW STATUS:
+<status>
+
+VERIFIED INCOME HISTORY:
+SUFFICIENT / INSUFFICIENT
+
+INCOME FLOOR:
+$<amount> / USER_APPROVED / NOT ESTABLISHED
+
+BASE MONTH:
+$<amount or not established>
+
+STRONG MONTH:
+$<amount or not established>
+
+BUDGET INCOME READINESS:
+PASS / PARTIAL / BLOCKED
+
+MONEY UNIT CONTRACT:
+PASS / FAIL
+
+FORECAST:
+PASS / PARTIAL / BLOCKED
+
+SAFE-TO-DEPLOY:
+$<amount> / NOT CALCULATED
+
+CAPITAL GOVERNOR:
+PASS / PARTIAL / BLOCKED
+
+LIVE WELLS FARGO:
+NOT CONFIGURED
+
+SOURCE OBJECTS DELETED:
+0
+
+REAL MONEY MOVED:
+$0
+
+GROK AUTHORITY:
+ADVISORY ONLY
+
+MICRO-LIVE:
+DISABLED
+
+CURRENT ROUTE COUNT:
+<n>
+
+CERTIFIED ROUTE COUNT:
+<n>
+
+USER ACTION REQUIRED:
+<exact action or NONE>
+
+NEXT PHASE:
+IF PDR 30/30 —
+FINAL FINANCIAL FOUNDATION CONSISTENCY CERTIFICATION

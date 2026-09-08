@@ -67,6 +67,7 @@ test("business cash is excluded and the exclusion is explainable", () => {
   assert.ok(result.reasonCodes.includes("BUSINESS_CASH_EXCLUDED"));
   assert.equal(result.safeToDeploy, "650.00");
   assert.equal(result.controls.businessCashExcluded, true);
+  assert.equal(result.components.find((component) => component.key === "business_cash")?.subtractionGroup, "OUTSIDE_HOUSEHOLD_CALCULATION");
 });
 
 test("protected Duplex Reserve remains locked", () => {
@@ -87,6 +88,8 @@ test("forecast shortfall blocks deployment", () => {
   assert.equal(result.status, "SHORTFALL_RISK");
   assert.equal(result.safeToDeploy, "0.00");
   assert.ok(result.reasonCodes.includes("DATA_READY") === false);
+  assert.equal(result.rawSafeToDeploy, "650.00");
+  assert.equal(result.components.find((component) => component.key === "forecast_shortfall")?.subtractionGroup, "DEPLOYMENT_GATES_NOT_SUBTRACTED");
 });
 
 test("stale or incomplete evidence fails closed", () => {

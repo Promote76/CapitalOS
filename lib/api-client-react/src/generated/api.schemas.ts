@@ -6489,20 +6489,30 @@ export interface VehicleScenarioInput {
      * @maxLength 120
      */
   name: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   vehiclePrice?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   downPayment?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   loanAmount?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,4})?$ */
   estimatedApr?: string;
-  /** @minimum 0 */
+  /** @minimum 1 */
   loanTermMonths?: number;
   /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   monthlyPayment?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   insurance: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   fuel: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   maintenanceReserve: string;
-  registrationReserve?: string;
-  parkingTolls?: string;
-  otherMonthlyCost?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  registrationReserve: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  parkingTolls: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  otherMonthlyCost: string;
   /** @maxLength 1000 */
   notes?: string;
 }
@@ -6525,13 +6535,17 @@ export type VehicleScenarioHorizonImpact = {
 export interface VehicleScenario {
   id: string;
   name: string;
-  vehiclePrice: string;
-  downPayment: string;
-  loanAmount: string;
-  estimatedApr: string;
-  loanTermMonths: string;
   /** @nullable */
-  monthlyPayment: string | null;
+  vehiclePrice: string | null;
+  /** @nullable */
+  downPayment: string | null;
+  /** @nullable */
+  loanAmount: string | null;
+  /** @nullable */
+  estimatedApr: string | null;
+  /** @nullable */
+  loanTermMonths: string | null;
+  monthlyPayment: string;
   paymentSource: VehicleScenarioPaymentSource;
   insurance: string;
   fuel: string;
@@ -6553,6 +6567,8 @@ export interface VehicleScenario {
   planningOnly: boolean;
   liabilityCreated: boolean;
   status: string;
+  missingInputs: string[];
+  explanation: string;
   /** @nullable */
   notes?: string | null;
   active?: boolean;
@@ -6604,6 +6620,7 @@ export const VariableBudgetForecastPressure = {
   INCOMPLETE: 'INCOMPLETE',
 } as const;
 
+export type VariableBudgetForecastCalculationRowsItemOperation = typeof VariableBudgetForecastCalculationRowsItemOperation[keyof typeof VariableBudgetForecastCalculationRowsItemOperation];
 export interface VariableBudgetForecast {
   days: number;
   scenario: VariableBudgetForecastScenario;
@@ -6618,7 +6635,7 @@ export interface VariableBudgetForecast {
   endingCash: string;
   shortfall: string;
   pressure: VariableBudgetForecastPressure;
-  explanation?: string;
+  explanation: string;
   obligations?: string;
   essentialSpending?: string;
   reserveContributions?: string;
@@ -6626,6 +6643,8 @@ export interface VariableBudgetForecast {
   endingProjectedCash?: string;
   bufferShortfall?: string;
   status: string;
+  calculationRows: VariableBudgetForecastCalculationRowsItem[];
+  missingInputs: string[];
 }
 
 export type VariableBudgetIntelligenceSource = {
@@ -6727,7 +6746,7 @@ export interface VariableBudgetIntelligence {
   reserve: VariableBudgetIntelligenceReserve;
   cash: VariableBudgetIntelligenceCash;
   forecast: VariableBudgetForecast[];
-  forecastExplanation?: string;
+  forecastExplanation: string;
   vehicleScenarios: VehicleScenario[];
 }
 
@@ -6887,3 +6906,16 @@ export const ExportDailyOpsHistoryCadence = {
   MONTH: 'MONTH',
 } as const;
 
+
+export type VariableBudgetForecastCalculationRowsItem = {
+  key: string;
+  label: string;
+  operation: VariableBudgetForecastCalculationRowsItemOperation;
+  amount: string;
+  source: string;
+};
+
+export const VariableBudgetForecastCalculationRowsItemOperation = {
+  ADD: 'ADD',
+  SUBTRACT: 'SUBTRACT',
+} as const;

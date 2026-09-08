@@ -377,28 +377,38 @@ function SectionVehicleAffordability() {
 
   const createScenario = useCreateVehicleScenario();
   const [scenario, setScenario] = useState<any>(null);
+  const [error, setError] = useState('');
 
   const calculate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    if (!formData.monthlyPayment && !(formData.vehiclePrice && formData.downPayment && formData.estimatedApr && formData.loanTermMonths)) {
+      setError('Enter a monthly payment, or complete price, down payment, APR, and term.');
+      return;
+    }
     const data = {
       name: "New Vehicle Scenario",
-      vehiclePrice: formData.vehiclePrice || "0",
-      downPayment: formData.downPayment || "0",
-      loanAmount: formData.loanAmount || "0",
-      estimatedApr: formData.estimatedApr || "0",
-      loanTermMonths: formData.loanTermMonths ? parseInt(formData.loanTermMonths, 10) : 60,
-      monthlyPayment: formData.monthlyPayment || "0",
-      insurance: formData.insurance || "0",
-      fuel: formData.fuel || "0",
-      maintenanceReserve: formData.maintenanceReserve || "0",
-      registrationReserve: formData.registrationReserve || "0",
-      parkingTolls: formData.parkingTolls || "0",
-      otherMonthlyCost: formData.otherMonthlyCost || "0",
+      ...(formData.vehiclePrice ? { vehiclePrice: formData.vehiclePrice } : {}),
+      ...(formData.downPayment ? { downPayment: formData.downPayment } : {}),
+      ...(formData.loanAmount ? { loanAmount: formData.loanAmount } : {}),
+      ...(formData.estimatedApr ? { estimatedApr: formData.estimatedApr } : {}),
+      ...(formData.loanTermMonths ? { loanTermMonths: parseInt(formData.loanTermMonths, 10) } : {}),
+      ...(formData.monthlyPayment ? { monthlyPayment: formData.monthlyPayment } : {}),
+      insurance: formData.insurance,
+      fuel: formData.fuel,
+      maintenanceReserve: formData.maintenanceReserve,
+      registrationReserve: formData.registrationReserve,
+      parkingTolls: formData.parkingTolls,
+      otherMonthlyCost: formData.otherMonthlyCost,
     };
     
     // Use the real mutation
-    const result = await createScenario.mutateAsync({ data });
-    setScenario(result);
+    try {
+      const result = await createScenario.mutateAsync({ data });
+      setScenario(result);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Scenario could not be calculated.');
+    }
   };
 
   return (
@@ -419,17 +429,18 @@ function SectionVehicleAffordability() {
 
           <div className="form-group-title mt-4">Operating Costs (Monthly)</div>
           <div className="grid-3">
-            <label>Insurance <input type="number" value={formData.insurance} onChange={e => setFormData({...formData, insurance: e.target.value})} /></label>
-            <label>Fuel <input type="number" value={formData.fuel} onChange={e => setFormData({...formData, fuel: e.target.value})} /></label>
-            <label>Maintenance <input type="number" value={formData.maintenanceReserve} onChange={e => setFormData({...formData, maintenanceReserve: e.target.value})} /></label>
-            <label>Registration <input type="number" value={formData.registrationReserve} onChange={e => setFormData({...formData, registrationReserve: e.target.value})} /></label>
-            <label>Parking <input type="number" value={formData.parkingTolls} onChange={e => setFormData({...formData, parkingTolls: e.target.value})} /></label>
-            <label>Other <input type="number" value={formData.otherMonthlyCost} onChange={e => setFormData({...formData, otherMonthlyCost: e.target.value})} /></label>
+            <label>Insurance <input required type="number" value={formData.insurance} onChange={e => setFormData({...formData, insurance: e.target.value})} /></label>
+            <label>Fuel <input required type="number" value={formData.fuel} onChange={e => setFormData({...formData, fuel: e.target.value})} /></label>
+            <label>Maintenance <input required type="number" value={formData.maintenanceReserve} onChange={e => setFormData({...formData, maintenanceReserve: e.target.value})} /></label>
+            <label>Registration <input required type="number" value={formData.registrationReserve} onChange={e => setFormData({...formData, registrationReserve: e.target.value})} /></label>
+            <label>Parking & Tolls <input required type="number" value={formData.parkingTolls} onChange={e => setFormData({...formData, parkingTolls: e.target.value})} /></label>
+            <label>Other <input required type="number" value={formData.otherMonthlyCost} onChange={e => setFormData({...formData, otherMonthlyCost: e.target.value})} /></label>
           </div>
 
           <button type="submit" className="btn btn-primary mt-4 w-full" disabled={createScenario.isPending}>
             {createScenario.isPending ? 'Calculating...' : 'Run Scenario'}
           </button>
+          {error && <div className="form-feedback error" role="alert">{error}</div>}
         </form>
 
         {scenario && (
@@ -454,7 +465,13 @@ function SectionVehicleAffordability() {
             </div>
 
             <div className="impacts mt-6">
-              <div className="mono-label mb-2">Impact Analysis</div>
+              <div className="mono-label mb-2">Complete monthly ownership cost</div>
+              {[
+                ['Payment', scenario.monthlyPayment], ['Insurance', scenario.insurance], ['Fuel', scenario.fuel],
+                ['Maintenance reserve', scenario.maintenanceReserve], ['Registration reserve', scenario.registrationReserve],
+                ['Parking & tolls', scenario.parkingTolls], ['Other monthly cost', scenario.otherMonthlyCost],
+              ].map(([label, value]) => <div className="impact-row" key={label}><span>{label}</span><strong>{displayMoney(value, 'NOT CALCULATED')}</strong></div>)}
+              <div className="mono-label mb-2 mt-4">Impact Analysis</div>
               <div className="impact-row">
                 <span>Capital Surplus Impact</span>
                 <strong>{displayMoney(scenario.capitalSurplusImpact, '-')}</strong>
@@ -483,7 +500,7 @@ function SectionVehicleAffordability() {
             </div>
 
             <p className="text-xs text-[var(--ink-soft)] mt-4">
-              <Info size={12} className="inline mr-1" /> Planning only. No liability created.
+              <Info size={12} className="inline mr-1" /> {scenario.explanation} Planning only. No liability created.
             </p>
           </div>
         )}

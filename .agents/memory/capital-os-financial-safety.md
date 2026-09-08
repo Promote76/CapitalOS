@@ -16,3 +16,9 @@ Approval flows that create verified financial records must validate the post-app
 **Why:** An eligible owner draw can be rejected or create an unsafe record if a guard receives the pre-approval status instead of the state being committed.
 
 **How to apply:** When an approval endpoint bridges business evidence into household income, validate amount, blocked reasons, and the intended approved state before inserting the verified record.
+
+Forecast shortfall may block capital deployment, but it must not also be subtracted from Safe-to-Deploy when its underlying obligations and reserve needs already appear as calculation rows. Every monetary deduction needs disjoint, row-level source provenance; source overlap fails closed.
+
+**Why:** Treating a derived forecast shortfall as both a gate and a deduction double-counts the same household pressure and can make the capital limit look more conservative than the evidence supports.
+
+**How to apply:** Keep deployment gates in a non-subtractive group, detect repeated source references across monetary deduction groups, and render missing required inputs as NOT CALCULATED rather than zero.

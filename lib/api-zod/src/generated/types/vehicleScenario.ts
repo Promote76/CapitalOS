@@ -11,13 +11,17 @@ import type { VehicleScenarioPaymentSource } from './vehicleScenarioPaymentSourc
 export interface VehicleScenario {
   id: string;
   name: string;
-  vehiclePrice: string;
-  downPayment: string;
-  loanAmount: string;
-  estimatedApr: string;
-  loanTermMonths: string;
   /** @nullable */
-  monthlyPayment: string | null;
+  vehiclePrice: string | null;
+  /** @nullable */
+  downPayment: string | null;
+  /** @nullable */
+  loanAmount: string | null;
+  /** @nullable */
+  estimatedApr: string | null;
+  /** @nullable */
+  loanTermMonths: string | null;
+  monthlyPayment: string;
   paymentSource: VehicleScenarioPaymentSource;
   insurance: string;
   fuel: string;
@@ -39,6 +43,8 @@ export interface VehicleScenario {
   planningOnly: boolean;
   liabilityCreated: boolean;
   status: string;
+  missingInputs: string[];
+  explanation: string;
   /** @nullable */
   notes?: string | null;
   active?: boolean;

@@ -193,8 +193,8 @@ export function calculateVehicleAffordability(input: {
     })()
     : null;
   const payment = input.monthlyPayment === undefined ? derivedPayment : cents(input.monthlyPayment);
-  const ownershipInputs = [payment, input.insurance, input.fuel, input.maintenanceReserve, input.registrationReserve, input.parkingTolls, input.otherMonthlyCost];
-  const completeOwnership = ownershipInputs.every((value) => value !== undefined && value !== null);
+  const recurringInputs = [input.insurance, input.fuel, input.maintenanceReserve, input.registrationReserve, input.parkingTolls, input.otherMonthlyCost];
+  const completeOwnership = payment !== null && recurringInputs.every((value) => value !== undefined && value !== null);
   const total = [
     payment ?? 0,
     input.insurance,
@@ -204,16 +204,29 @@ export function calculateVehicleAffordability(input: {
     input.parkingTolls,
     input.otherMonthlyCost,
   ].reduce<number>((sum, value) => sum + cents(value), 0);
-  const floor = cents(input.incomeFloor);
-  const operating = cents(input.currentOperatingBudget);
-  const surplus = cents(input.currentCapitalSurplus);
-  const currentVehicleOperatingCost = cents(input.currentVehicleOperatingCost);
-  const cashBuffer = cents(input.cashBuffer);
-  const emergencyReserveGap = cents(input.emergencyReserveGap);
-  const duplexContribution = cents(input.duplexContribution);
+  const usableMoney = (value: string | undefined) => value !== undefined && value !== "NOT_CALCULATED";
+  const floor = usableMoney(input.incomeFloor) ? cents(input.incomeFloor) : 0;
+  const operating = usableMoney(input.currentOperatingBudget) ? cents(input.currentOperatingBudget) : 0;
+  const surplus = usableMoney(input.currentCapitalSurplus) ? cents(input.currentCapitalSurplus) : 0;
+  const currentVehicleOperatingCost = usableMoney(input.currentVehicleOperatingCost) ? cents(input.currentVehicleOperatingCost) : 0;
+  const cashBuffer = usableMoney(input.cashBuffer) ? cents(input.cashBuffer) : 0;
+  const emergencyReserveGap = usableMoney(input.emergencyReserveGap) ? cents(input.emergencyReserveGap) : 0;
+  const duplexContribution = usableMoney(input.duplexContribution) ? cents(input.duplexContribution) : 0;
   const newOperatingBudget = operating + total;
   const newFloorSurplus = floor - newOperatingBudget;
-  const completePlanning = completeOwnership && input.incomeFloor !== undefined && input.currentOperatingBudget !== undefined && input.currentCapitalSurplus !== undefined;
+  const missingInputs = [
+    ...(payment === null ? ["monthlyPayment or complete price/down-payment/APR/term financing inputs"] : []),
+    ...(["insurance", "fuel", "maintenanceReserve", "registrationReserve", "parkingTolls", "otherMonthlyCost"] as const)
+      .filter((key) => input[key] === undefined),
+    ...(!usableMoney(input.incomeFloor) ? ["verified income floor"] : []),
+    ...(!usableMoney(input.currentOperatingBudget) ? ["current operating budget"] : []),
+    ...(!usableMoney(input.currentCapitalSurplus) ? ["current capital surplus"] : []),
+    ...(!usableMoney(input.currentVehicleOperatingCost) ? ["current vehicle operating cost"] : []),
+    ...(!usableMoney(input.cashBuffer) ? ["household cash buffer"] : []),
+    ...(!usableMoney(input.emergencyReserveGap) ? ["emergency reserve gap"] : []),
+    ...(!usableMoney(input.duplexContribution) ? ["Duplex contribution"] : []),
+  ];
+  const completePlanning = completeOwnership && missingInputs.length === 0;
   const status = !completePlanning
     ? "INSUFFICIENT_DATA"
     : newFloorSurplus < 0
@@ -229,20 +242,30 @@ export function calculateVehicleAffordability(input: {
     loanAmount: loan === null ? null : centsToMoney(loan),
     monthlyPayment: payment === null ? "NOT_CALCULATED" : centsToMoney(payment),
     paymentSource: input.monthlyPayment !== undefined ? "USER_PROVIDED" : derivedPayment !== null ? "DERIVED_FROM_APR_TERM" : "NOT_CALCULATED",
-    totalMonthlyCost: centsToMoney(total),
+    insurance: input.insurance === undefined ? "NOT_CALCULATED" : centsToMoney(cents(input.insurance)),
+    fuel: input.fuel === undefined ? "NOT_CALCULATED" : centsToMoney(cents(input.fuel)),
+    maintenanceReserve: input.maintenanceReserve === undefined ? "NOT_CALCULATED" : centsToMoney(cents(input.maintenanceReserve)),
+    registrationReserve: input.registrationReserve === undefined ? "NOT_CALCULATED" : centsToMoney(cents(input.registrationReserve)),
+    parkingTolls: input.parkingTolls === undefined ? "NOT_CALCULATED" : centsToMoney(cents(input.parkingTolls)),
+    otherMonthlyCost: input.otherMonthlyCost === undefined ? "NOT_CALCULATED" : centsToMoney(cents(input.otherMonthlyCost)),
+    totalMonthlyCost: completeOwnership ? centsToMoney(total) : "NOT_CALCULATED",
     currentOperatingCost: centsToMoney(currentVehicleOperatingCost),
-    newOperatingCost: centsToMoney(currentVehicleOperatingCost + total),
-    newOperatingBudget: centsToMoney(newOperatingBudget),
-    newFloorSurplus: centsToMoney(newFloorSurplus),
-    capitalSurplusImpact: centsToMoney(Math.max(0, total - Math.max(surplus, 0))),
-    cashBufferImpact: centsToMoney(Math.max(0, total - Math.max(0, newFloorSurplus))),
-    emergencyReserveImpact: centsToMoney(Math.max(0, total - Math.max(0, newFloorSurplus - emergencyReserveGap))),
-    duplexContributionImpact: centsToMoney(Math.min(Math.max(0, total), duplexContribution)),
+    newOperatingCost: completePlanning ? centsToMoney(currentVehicleOperatingCost + total) : "NOT_CALCULATED",
+    newOperatingBudget: completePlanning ? centsToMoney(newOperatingBudget) : "NOT_CALCULATED",
+    newFloorSurplus: completePlanning ? centsToMoney(newFloorSurplus) : "NOT_CALCULATED",
+    capitalSurplusImpact: completePlanning ? centsToMoney(Math.max(0, total - Math.max(surplus, 0))) : "NOT_CALCULATED",
+    cashBufferImpact: completePlanning ? centsToMoney(Math.max(0, total - Math.max(0, newFloorSurplus))) : "NOT_CALCULATED",
+    emergencyReserveImpact: completePlanning ? centsToMoney(Math.max(0, total - Math.max(0, newFloorSurplus - emergencyReserveGap))) : "NOT_CALCULATED",
+    duplexContributionImpact: completePlanning ? centsToMoney(Math.min(Math.max(0, total), duplexContribution)) : "NOT_CALCULATED",
     horizonImpact: {
-      days30: centsToMoney(total),
-      days60: centsToMoney(total * 2),
-      days90: centsToMoney(total * 3),
+      days30: completeOwnership ? centsToMoney(total) : "NOT_CALCULATED",
+      days60: completeOwnership ? centsToMoney(total * 2) : "NOT_CALCULATED",
+      days90: completeOwnership ? centsToMoney(total * 3) : "NOT_CALCULATED",
     },
+    missingInputs,
+    explanation: completePlanning
+      ? "The scenario includes financing and every recurring ownership cost, then measures the result against the verified income floor, cash buffer, emergency reserve gap, and protected Duplex contribution."
+      : `NOT CALCULATED: ${missingInputs.join(", ")} must be provided or established.`,
     status,
     planningOnly: true,
     liabilityCreated: false,
@@ -261,19 +284,51 @@ export function buildVariableCashFlowForecast(input: {
   days: number;
   scenario?: "FLOOR" | "BASE" | "STRONG";
   requiredInputsComplete?: boolean;
+  missingEvidence?: string[];
 }) {
   const required = [input.scenarioIncome, input.openingCash, input.obligations, input.essentialSpending, input.reserveContributions, input.approvedCapitalContributions];
   const complete = input.requiredInputsComplete ?? required.every((value) => value !== undefined && value !== null);
-  if (!complete) return {
+  if (!complete) {
+    const missingInputs = [...new Set([
+      ...(input.missingEvidence ?? []),
+      ...(input.scenarioIncome === undefined ? ["verified scenario income"] : []),
+      ...(input.openingCash === undefined ? ["opening household cash"] : []),
+      ...(input.obligations === undefined ? ["dated obligations"] : []),
+      ...(input.essentialSpending === undefined ? ["approved essential spending"] : []),
+      ...(input.reserveContributions === undefined ? ["reserve contribution"] : []),
+      ...(input.approvedCapitalContributions === undefined ? ["approved capital contribution"] : []),
+    ])];
+    return {
     days: input.days, scenario: input.scenario ?? "BASE", status: "INSUFFICIENT_DATA", pressure: "INCOMPLETE",
     openingCash: "NOT_CALCULATED", income: "NOT_CALCULATED", mandatoryOutflows: "NOT_CALCULATED", essentialAllowance: "NOT_CALCULATED", reserveFunding: "NOT_CALCULATED",
     discretionaryAllowance: "NOT_CALCULATED", capitalContributions: "NOT_CALCULATED", endingCash: "NOT_CALCULATED", shortfall: "NOT_CALCULATED",
-    explanation: "Required verified income, household cash, approved plan, or reserve inputs are incomplete.",
-  };
+    bufferShortfall: "NOT_CALCULATED",
+    calculationRows: [
+      { key: "opening_cash", label: "Opening household cash", operation: "ADD", amount: "NOT_CALCULATED", source: "included household cash accounts" },
+      { key: "scenario_income", label: `${input.scenario ?? "BASE"} verified income`, operation: "ADD", amount: "NOT_CALCULATED", source: "verified income profile prorated to window" },
+      { key: "mandatory_outflows", label: "Dated mandatory outflows", operation: "SUBTRACT", amount: "NOT_CALCULATED", source: "bills and required upcoming expenses" },
+      { key: "essential_allowance", label: "Essential spending allowance", operation: "SUBTRACT", amount: "NOT_CALCULATED", source: "approved budget plan" },
+      { key: "reserve_funding", label: "Reserve funding", operation: "SUBTRACT", amount: "NOT_CALCULATED", source: "emergency reserve policy" },
+      { key: "discretionary_allowance", label: "Discretionary allowance", operation: "SUBTRACT", amount: "NOT_CALCULATED", source: "approved budget plan" },
+      { key: "capital_contributions", label: "Approved capital contributions", operation: "SUBTRACT", amount: "NOT_CALCULATED", source: "active household goals" },
+    ],
+    missingInputs,
+    explanation: `NOT CALCULATED: ${missingInputs.join(", ")} must be established before this forecast is reliable.`,
+    };
+  }
   const discretionary = cents(input.discretionaryAllowance);
   const ending = cents(input.openingCash) + cents(input.scenarioIncome) - cents(input.obligations) - cents(input.essentialSpending) - cents(input.reserveContributions) - discretionary - cents(input.approvedCapitalContributions);
   const buffer = cents(input.cashBuffer);
   const status = ending < 0 ? "SHORTFALL" : ending < buffer ? "SHORTFALL_RISK" : ending < buffer * 1.25 ? "TIGHT" : "HEALTHY";
+  const calculationRows = [
+    { key: "opening_cash", label: "Opening household cash", operation: "ADD", amount: centsToMoney(cents(input.openingCash)), source: "included household cash accounts" },
+    { key: "scenario_income", label: `${input.scenario ?? "BASE"} verified income`, operation: "ADD", amount: centsToMoney(cents(input.scenarioIncome)), source: "verified income profile prorated to window" },
+    { key: "mandatory_outflows", label: "Dated mandatory outflows", operation: "SUBTRACT", amount: centsToMoney(cents(input.obligations)), source: "bills and required upcoming expenses" },
+    { key: "essential_allowance", label: "Essential spending allowance", operation: "SUBTRACT", amount: centsToMoney(cents(input.essentialSpending)), source: "approved budget plan" },
+    { key: "reserve_funding", label: "Reserve funding", operation: "SUBTRACT", amount: centsToMoney(cents(input.reserveContributions)), source: "emergency reserve policy" },
+    { key: "discretionary_allowance", label: "Discretionary allowance", operation: "SUBTRACT", amount: centsToMoney(discretionary), source: "approved budget plan" },
+    { key: "capital_contributions", label: "Approved capital contributions", operation: "SUBTRACT", amount: centsToMoney(cents(input.approvedCapitalContributions)), source: "active household goals" },
+  ];
   return {
     days: input.days,
     scenario: input.scenario ?? "BASE",
@@ -295,5 +350,8 @@ export function buildVariableCashFlowForecast(input: {
     bufferShortfall: centsToMoney(Math.max(0, buffer - ending)),
     status,
     pressure: status === "HEALTHY" ? "LOW" : status === "TIGHT" ? "MODERATE" : status === "SHORTFALL_RISK" ? "HIGH" : "CRITICAL",
+    calculationRows,
+    missingInputs: [],
+    explanation: `${input.scenario ?? "BASE"} ending cash equals opening cash plus prorated verified income, less each listed outflow once. The cash-buffer test determines pressure but is not subtracted from ending cash.`,
   };
 }

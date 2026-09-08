@@ -62,9 +62,14 @@ test("vehicle scenario includes full ownership cost and detects goal impact", ()
     registrationReserve: "0.00",
     parkingTolls: "0.00",
     otherMonthlyCost: "0.00",
+    currentVehicleOperatingCost: "0.00",
+    cashBuffer: "0.00",
+    emergencyReserveGap: "0.00",
+    duplexContribution: "0.00",
   });
   assert.equal(result.totalMonthlyCost, "925.00");
   assert.equal(result.status, "CAPITAL_GOAL_IMPACT");
+  assert.equal(result.missingInputs.length, 0);
 });
 
 test("cash-flow forecast fails closed into shortfall risk below buffer", () => {
@@ -88,7 +93,84 @@ test("forecast emits all five windows and fails closed without planning inputs",
     assert.equal(result.status, "INSUFFICIENT_DATA");
     assert.equal(result.endingCash, "NOT_CALCULATED");
     assert.equal(result.pressure, "INCOMPLETE");
+    assert.match(result.explanation, /NOT CALCULATED/);
   }
+});
+
+test("vehicle scenario never turns missing recurring costs into meaningful zeroes", () => {
+  const result = calculateVehicleAffordability({
+    incomeFloor: "3000.00",
+    currentOperatingBudget: "1800.00",
+    currentCapitalSurplus: "500.00",
+    monthlyPayment: "400.00",
+    insurance: "300.00",
+    fuel: "150.00",
+    maintenanceReserve: "75.00",
+  });
+  assert.equal(result.status, "INSUFFICIENT_DATA");
+  assert.equal(result.totalMonthlyCost, "NOT_CALCULATED");
+  assert.equal(result.newFloorSurplus, "NOT_CALCULATED");
+  assert.ok(result.missingInputs.includes("registrationReserve"));
+});
+
+test("vehicle scenario fails closed when emergency reserve evidence is unavailable", () => {
+  const result = calculateVehicleAffordability({
+    incomeFloor: "3000.00",
+    currentOperatingBudget: "1800.00",
+    currentCapitalSurplus: "1200.00",
+    monthlyPayment: "400.00",
+    insurance: "150.00",
+    fuel: "100.00",
+    maintenanceReserve: "50.00",
+    registrationReserve: "25.00",
+    parkingTolls: "0.00",
+    otherMonthlyCost: "0.00",
+    currentVehicleOperatingCost: "0.00",
+    cashBuffer: "800.00",
+    emergencyReserveGap: "NOT_CALCULATED",
+    duplexContribution: "400.00",
+  });
+  assert.equal(result.status, "INSUFFICIENT_DATA");
+  assert.equal(result.emergencyReserveImpact, "NOT_CALCULATED");
+  assert.ok(result.missingInputs.includes("emergency reserve gap"));
+});
+
+test("forecast exposes every input exactly once in its calculation rows", () => {
+  const result = buildVariableCashFlowForecast({
+    scenario: "FLOOR",
+    scenarioIncome: "700.00",
+    openingCash: "1600.00",
+    obligations: "300.00",
+    essentialSpending: "200.00",
+    reserveContributions: "100.00",
+    discretionaryAllowance: "50.00",
+    approvedCapitalContributions: "75.00",
+    cashBuffer: "600.00",
+    days: 7,
+  });
+  assert.deepEqual(result.calculationRows.map((row) => row.key), [
+    "opening_cash", "scenario_income", "mandatory_outflows", "essential_allowance",
+    "reserve_funding", "discretionary_allowance", "capital_contributions",
+  ]);
+  assert.equal(result.endingCash, "1575.00");
+});
+
+test("incomplete forecast names readiness evidence even when numeric placeholders are supplied", () => {
+  const result = buildVariableCashFlowForecast({
+    scenario: "FLOOR",
+    scenarioIncome: "0.00",
+    openingCash: "0.00",
+    obligations: "0.00",
+    essentialSpending: "0.00",
+    reserveContributions: "0.00",
+    approvedCapitalContributions: "0.00",
+    days: 7,
+    requiredInputsComplete: false,
+    missingEvidence: ["approved budget plan", "adequate verified income history", "configured emergency reserve"],
+  });
+  assert.deepEqual(result.missingInputs, ["approved budget plan", "adequate verified income history", "configured emergency reserve"]);
+  assert.equal(result.calculationRows.length, 7);
+  assert.match(result.explanation, /approved budget plan/);
 });
 
 test("money regression values remain exact cents through constraints and vehicle output", () => {
@@ -107,6 +189,7 @@ test("money regression values remain exact cents through constraints and vehicle
     vehiclePrice: "900.00", downPayment: "78.00", estimatedApr: "0", loanTermMonths: 1,
     insurance: "0.00", fuel: "0.00", maintenanceReserve: "0.00", registrationReserve: "0.00",
     parkingTolls: "0.00", otherMonthlyCost: "0.00",
+    currentVehicleOperatingCost: "0.00", cashBuffer: "0.00", emergencyReserveGap: "0.00", duplexContribution: "0.00",
   });
   assert.equal(vehicle.loanAmount, "822.00");
   assert.equal(vehicle.monthlyPayment, "822.00");

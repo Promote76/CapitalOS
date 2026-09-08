@@ -105,6 +105,10 @@ export async function buildCapitalGovernorInput(actor: Actor, asOf = today()): P
     + upcoming
       .filter((expense) => expense.required && expense.expectedDate >= asOf && expense.expectedDate <= addDays(asOf, 30))
       .reduce((sum, expense) => sum + Math.max(0, cents(expense.estimatedAmount) - cents(expense.fundedAmount)), 0);
+  const obligationProvenance = [
+    ...bills.filter((bill) => bill.essential && bill.dueDate >= asOf && bill.dueDate <= addDays(asOf, 30)).map((bill) => `finance_bill:${bill.id}`),
+    ...upcoming.filter((expense) => expense.required && expense.expectedDate >= asOf && expense.expectedDate <= addDays(asOf, 30)).map((expense) => `upcoming_expense:${expense.id}`),
+  ];
   const reserveMonthlyCents = emergency?.targetMonths ? Math.ceil(Math.max(0, cents(emergency.essentialMonthlyExpenses) * emergency.targetMonths - cents(emergency.currentAmount)) / emergency.targetMonths) : 0;
   const operatingBufferCents = policy.householdCashBufferCents || Math.ceil((mandatoryMonthlyCents + essentialMonthlyCents) * 14 / 30);
   const householdAccounts = accounts.filter((account) => !account.businessEntityId);
@@ -113,12 +117,19 @@ export async function buildCapitalGovernorInput(actor: Actor, asOf = today()): P
   const availableBankCashCents = liquidAccounts.reduce((sum, account) => sum + cents(account.availableBalance ?? account.currentBalance), 0);
   const businessCashCents = accounts.filter((account) => Boolean(account.businessEntityId)).reduce((sum, account) => sum + cents(account.currentBalance), 0)
     + businessCashRows.reduce((sum, row) => sum + cents(row.bankCash), 0);
-  const unclassifiedCashCents = householdAccounts.filter((account) => !account.includedInBudget).reduce((sum, account) => sum + cents(account.currentBalance), 0);
-  const unreconciledCashCents = householdAccounts.filter((account) => account.connectionStatus === "error").reduce((sum, account) => sum + cents(account.currentBalance), 0);
+  const unclassifiedCashCents = liquidAccounts.filter((account) => !account.includedInBudget).reduce((sum, account) => sum + cents(account.currentBalance), 0);
+  const unreconciledCashCents = liquidAccounts.filter((account) => account.connectionStatus === "error").reduce((sum, account) => sum + cents(account.currentBalance), 0);
   const pendingCashCents = 0;
+  const accountProvenance = liquidAccounts.map((account) => `financial_account:${account.id}`);
+  const unclassifiedProvenance = liquidAccounts.filter((account) => !account.includedInBudget).map((account) => `financial_account:${account.id}`);
+  const unreconciledProvenance = liquidAccounts.filter((account) => account.connectionStatus === "error").map((account) => `financial_account:${account.id}`);
+  const businessProvenance = [
+    ...accounts.filter((account) => Boolean(account.businessEntityId)).map((account) => `financial_account:${account.id}`),
+    ...businessCashRows.map((row) => `business_cash_position:${row.id}`),
+  ];
   const reserveGaps: CapitalGovernorInput["reserveGaps"] = [];
   const emergencyTargetCents = cents(emergency?.essentialMonthlyExpenses) * (emergency?.targetMonths ?? 0);
-  reserveGaps.push({ bucket: "EMERGENCY_RESERVE", amountCents: Math.max(0, emergencyTargetCents - cents(emergency?.currentAmount)), provenance: ["emergency_reserves"] });
+  reserveGaps.push({ bucket: "EMERGENCY_RESERVE", amountCents: Math.max(0, emergencyTargetCents - cents(emergency?.currentAmount)), provenance: emergency ? [`emergency_reserve:${emergency.id}`] : ["emergency_reserve:not_configured"] });
   const bucketFor = (name: string) => treasury.find((bucket) => bucket.name.toLowerCase().includes(name.toLowerCase()));
   const vehicle = bucketFor("vehicle");
   const annual = bucketFor("annual");
@@ -155,6 +166,30 @@ export async function buildCapitalGovernorInput(actor: Actor, asOf = today()): P
         ? "STALE"
         : "READY";
   const duplex = treasury.find((bucket) => bucket.bucketType === "PROTECTED_GOAL" || bucket.bucketType === "PROPERTY");
+  const reserveProvenance = reserveGaps.flatMap((gap) => gap.provenance);
+  const protectedCommitmentProvenance = goalsRows.filter((goal) => goal.status !== "completed").map((goal) => `goal:${goal.id}`);
+  const encumbranceProvenance = encumbrances.map((row) => `capital_encumbrance:${row.id}`);
+  const operatingBufferProvenance = governorPolicy
+    ? [`capital_governor_policy:${governorPolicy.id}`]
+    : treasuryPolicy
+      ? [`treasury_policy:${treasuryPolicy.id}`]
+      : categories.length
+        ? categories.map((category) => `budget_category_snapshot:${category.id}`)
+        : ["derived_operating_buffer:approved_budget_required"];
+  const forecastProvenance = incomeEvents.map((event) => `verified_income_event:${event.id}`);
+  const monetarySourceGroups = [
+    ...(unclassifiedCashCents > 0 ? [unclassifiedProvenance] : []),
+    ...(unreconciledCashCents > 0 ? [unreconciledProvenance] : []),
+    ...(next30DayObligationsCents > 0 ? [obligationProvenance] : []),
+    ...(operatingBufferCents > 0 ? [operatingBufferProvenance] : []),
+    ...(reserveGaps.some((gap) => gap.amountCents > 0) ? [reserveProvenance] : []),
+    ...(protectedCommitmentsCents > 0 ? [protectedCommitmentProvenance] : []),
+    ...(encumbrancesCents > 0 ? [encumbranceProvenance] : []),
+  ];
+  const seenSources = new Set<string>();
+  const duplicateSubtractionDetected = monetarySourceGroups.some((group) =>
+    group.some((reference) => seenSources.has(reference) || !seenSources.add(reference)),
+  );
   const buckets = [
     ...liquidAccounts.map((account) => ({
       key: account.protected ? "PROTECTED_ACCOUNT" : "HOUSEHOLD_OPERATING_CASH",
@@ -196,8 +231,8 @@ export async function buildCapitalGovernorInput(actor: Actor, asOf = today()): P
     capitalGovernorLocked: riskRows[0]?.protectedCapitalLocked ?? false,
     dataReadiness,
     freshnessDays,
-    duplicateSubtractionDetected: false,
-    obligationsAreDisjoint: true,
+    duplicateSubtractionDetected,
+    obligationsAreDisjoint: !duplicateSubtractionDetected,
     incomeFloorCents: profile.incomeFloorCents,
     baseIncomeCents: profile.baseIncomeCents,
     strongIncomeCents: profile.strongMonthIncomeCents,
@@ -207,6 +242,19 @@ export async function buildCapitalGovernorInput(actor: Actor, asOf = today()): P
     buckets,
     waterfallOrder: policy.waterfall,
     maximumInvestmentPercent: policy.maximumInvestmentPercent,
+    componentProvenance: {
+      accountCash: accountProvenance,
+      unclassifiedCash: unclassifiedProvenance,
+      pendingCash: [],
+      unreconciledCash: unreconciledProvenance,
+      businessCash: businessProvenance,
+      next30DayObligations: obligationProvenance,
+      operatingBuffer: operatingBufferProvenance,
+      reserveGaps: reserveProvenance,
+      protectedCommitments: protectedCommitmentProvenance,
+      encumbrances: encumbranceProvenance,
+      forecastShortfall: forecastProvenance,
+    },
   };
 }
 
@@ -220,12 +268,7 @@ export async function getCapitalGovernorV2(actor: Actor, asOf = today()) {
     policyVersion: input.policyVersion,
     fingerprint,
     dataReadiness: input.dataReadiness,
-    sourceProvenance: {
-      householdCash: "household_financial_accounts",
-      verifiedIncome: "verified_household_income_events",
-      obligations: ["finance_bills", "upcoming_expenses"],
-      protectedCapital: "protected_capital_registry",
-    },
+     sourceProvenance: input.componentProvenance,
     input: input as unknown as Record<string, unknown>,
     result: result as unknown as Record<string, unknown>,
   }).returning({ id: capitalGovernorInputSnapshots.id });

@@ -71,6 +71,19 @@ export type CapitalGovernorInput = {
   buckets: CapitalBucketInput[];
   waterfallOrder?: CapitalWaterfallBucket[];
   maximumInvestmentPercent: number;
+  componentProvenance?: {
+    accountCash: string[];
+    unclassifiedCash: string[];
+    pendingCash: string[];
+    unreconciledCash: string[];
+    businessCash: string[];
+    next30DayObligations: string[];
+    operatingBuffer: string[];
+    reserveGaps: string[];
+    protectedCommitments: string[];
+    encumbrances: string[];
+    forecastShortfall: string[];
+  };
 };
 
 const cents = (value: string | number | null | undefined) =>
@@ -133,7 +146,6 @@ export function calculateCapitalGovernorV2(input: CapitalGovernorInput) {
     reserveGaps: reserveGapCents,
     protectedCommitments: clampMoney(input.protectedCommitmentsCents),
     encumbrances: clampMoney(input.encumbrancesCents),
-    forecastShortfall: clampMoney(input.forecastShortfallCents),
   };
   const rawCents = eligibleCashCents - Object.values(deductions).reduce((sum, value) => sum + value, 0);
   const safeCents = statusFor(input, rawCents, reasons) === "READY" || statusFor(input, rawCents, reasons) === "CONSERVATIVE"
@@ -180,19 +192,25 @@ export function calculateCapitalGovernorV2(input: CapitalGovernorInput) {
     };
   });
 
+  const provenance = input.componentProvenance;
   const components = [
-    { key: "eligible_household_cash", label: "Eligible household cash", amount: centsToMoney(eligibleCashCents), sign: "add", provenance: ["household_financial_accounts"] },
-    { key: "next_30_day_obligations", label: "Next 30-day obligations", amount: centsToMoney(deductions.next30DayObligations), sign: "subtract", provenance: ["finance_bills", "upcoming_expenses"] },
-    { key: "operating_buffer", label: "Household operating buffer", amount: centsToMoney(deductions.operatingBuffer), sign: "subtract", provenance: ["variable_income_profile", "approved_budget"] },
-    { key: "reserve_gaps", label: "Reserve funding gaps", amount: centsToMoney(deductions.reserveGaps), sign: "subtract", provenance: input.reserveGaps.flatMap((gap) => gap.provenance) },
-    { key: "protected_commitments", label: "Protected commitments", amount: centsToMoney(deductions.protectedCommitments), sign: "subtract", provenance: ["goals", "protected_capital_registry"] },
-    { key: "encumbrances", label: "Capital encumbrances", amount: centsToMoney(deductions.encumbrances), sign: "subtract", provenance: ["capital_encumbrances"] },
-    { key: "forecast_shortfall", label: "Forecast shortfall", amount: centsToMoney(deductions.forecastShortfall), sign: "subtract", provenance: ["variable_budget_forecast"] },
+    { key: "account_cash", label: "Household account cash", amount: centsToMoney(accountCashCents), sign: "add", provenance: provenance?.accountCash ?? ["household_financial_accounts"] },
+    { key: "unclassified_cash", label: "Unclassified cash excluded", amount: centsToMoney(input.unclassifiedCashCents), sign: "subtract", provenance: provenance?.unclassifiedCash ?? ["household_financial_accounts:unclassified"] },
+    { key: "pending_cash", label: "Pending cash excluded", amount: centsToMoney(input.pendingCashCents), sign: "subtract", provenance: provenance?.pendingCash ?? ["household_financial_accounts:pending"] },
+    { key: "unreconciled_cash", label: "Unreconciled cash excluded", amount: centsToMoney(input.unreconciledCashCents), sign: "subtract", provenance: provenance?.unreconciledCash ?? ["household_financial_accounts:unreconciled"] },
+    { key: "eligible_household_cash", label: "Eligible household cash subtotal", amount: centsToMoney(eligibleCashCents), sign: "subtotal", provenance: provenance?.accountCash ?? ["household_financial_accounts"] },
+    { key: "business_cash", label: "Business cash excluded before household calculation", amount: centsToMoney(input.businessCashCents), sign: "excluded", provenance: provenance?.businessCash ?? ["business_cash_positions"] },
+    { key: "next_30_day_obligations", label: "Next 30-day obligations", amount: centsToMoney(deductions.next30DayObligations), sign: "subtract", provenance: provenance?.next30DayObligations ?? ["finance_bills", "upcoming_expenses"] },
+    { key: "operating_buffer", label: "Household operating buffer", amount: centsToMoney(deductions.operatingBuffer), sign: "subtract", provenance: provenance?.operatingBuffer ?? ["variable_income_profile", "approved_budget"] },
+    { key: "reserve_gaps", label: "Reserve funding gaps", amount: centsToMoney(deductions.reserveGaps), sign: "subtract", provenance: provenance?.reserveGaps ?? input.reserveGaps.flatMap((gap) => gap.provenance) },
+    { key: "protected_commitments", label: "Protected commitments", amount: centsToMoney(deductions.protectedCommitments), sign: "subtract", provenance: provenance?.protectedCommitments ?? ["goals", "protected_capital_registry"] },
+    { key: "encumbrances", label: "Capital encumbrances", amount: centsToMoney(deductions.encumbrances), sign: "subtract", provenance: provenance?.encumbrances ?? ["capital_encumbrances"] },
+    { key: "forecast_shortfall", label: "Forecast shortfall deployment gate", amount: centsToMoney(input.forecastShortfallCents), sign: "gate", provenance: provenance?.forecastShortfall ?? ["variable_budget_forecast"] },
   ].map((component) => ({
     ...component,
     amount: amountCalculated ? component.amount : null,
     sourceReferences: component.provenance.map((reference) => ({ reference, sourceType: reference.split(":")[0] })),
-    subtractionGroup: component.sign === "subtract" ? "SAFE_TO_DEPLOY_DEDUCTIONS" : "ELIGIBLE_CASH",
+    subtractionGroup: component.sign === "subtract" ? "SAFE_TO_DEPLOY_DEDUCTIONS" : component.sign === "gate" ? "DEPLOYMENT_GATES_NOT_SUBTRACTED" : component.sign === "excluded" ? "OUTSIDE_HOUSEHOLD_CALCULATION" : "ELIGIBLE_CASH",
   }));
 
   return {
@@ -215,11 +233,11 @@ export function calculateCapitalGovernorV2(input: CapitalGovernorInput) {
     calculation: {
       amountCalculated,
       blockedStatus: amountCalculated ? null : "BLOCKED_DATA_INCOMPLETE",
-      requiredComponents: ["eligible_household_cash", "next_30_day_obligations", "operating_buffer", "reserve_gaps", "protected_commitments", "encumbrances", "forecast_shortfall"],
+      requiredComponents: ["account_cash", "unclassified_cash", "pending_cash", "unreconciled_cash", "eligible_household_cash", "business_cash", "next_30_day_obligations", "operating_buffer", "reserve_gaps", "protected_commitments", "encumbrances", "forecast_shortfall"],
       doubleSubtraction: {
         detected: input.duplicateSubtractionDetected,
         obligationsAreDisjoint: input.obligationsAreDisjoint,
-        method: "Each deduction is assigned once to SAFE_TO_DEPLOY_DEDUCTIONS; duplicate or non-disjoint inputs fail closed.",
+        method: "Each monetary source is assigned to one SAFE_TO_DEPLOY_DEDUCTIONS row. Forecast shortfall is a deployment gate, not another subtraction; duplicate or non-disjoint deduction sources fail closed.",
       },
     },
     reasonCodes: [...new Set(reasonCodes)],

@@ -554,6 +554,8 @@ export * from './upcomingExpenseUpdateInputPriority';
 export * from './updateBuyBoxInput';
 export * from './variableBudgetConstraintSet';
 export * from './variableBudgetForecast';
+export * from './variableBudgetForecastCalculationRowsItem';
+export * from './variableBudgetForecastCalculationRowsItemOperation';
 export * from './variableBudgetForecastPressure';
 export * from './variableBudgetForecastScenario';
 export * from './variableBudgetIntelligence';

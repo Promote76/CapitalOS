@@ -2220,7 +2220,7 @@ function _DuplicateActiveBudgetPage() {
               event.preventDefault();
               setVehicleScenarioMessage('');
               try {
-                await createVehicleScenario.mutateAsync({ data: vehicleScenario });
+                await createVehicleScenario.mutateAsync({ data: { ...vehicleScenario, registrationReserve: '0.00', parkingTolls: '0.00', otherMonthlyCost: '0.00' } });
                 await variableBudget.refetch();
                 setVehicleScenario({ name: '', monthlyPayment: '', insurance: '', fuel: '', maintenanceReserve: '' });
                 setVehicleScenarioMessage('Scenario saved. It is planning-only and does not authorize a purchase.');
@@ -2280,12 +2280,22 @@ function ActiveBudgetPage() {
   const [transactionError, setTransactionError] = useState('');
   const [vehicleScenario, setVehicleScenario] = useState({
     name: '',
+    vehiclePrice: '',
+    downPayment: '',
+    loanAmount: '',
+    estimatedApr: '',
+    loanTermMonths: '',
     monthlyPayment: '',
     insurance: '',
     fuel: '',
     maintenanceReserve: '',
+    registrationReserve: '',
+    parkingTolls: '',
+    otherMonthlyCost: '',
   });
   const [vehicleScenarioMessage, setVehicleScenarioMessage] = useState('');
+  const [vehicleScenarioError, setVehicleScenarioError] = useState('');
+  const [governorCalculationOpen, setGovernorCalculationOpen] = useState(false);
   useEffect(() => {
     if (!transaction.accountId && accounts.data?.accounts[0]) {
       setTransaction((current) => ({ ...current, accountId: accounts.data.accounts[0].id }));
@@ -2387,6 +2397,17 @@ function ActiveBudgetPage() {
              </div>
              <div className="budget-governor-boundary"><LockKeyhole size={16} /><div><strong>Advisory only</strong><span>Waterfall recommendations do not move money, unlock Duplex Reserve, authorize Micro-Live, or change this household budget.</span></div></div>
            </div>
+            <button className="btn btn-secondary" type="button" onClick={() => setGovernorCalculationOpen((open) => !open)} aria-expanded={governorCalculationOpen}>
+              {governorCalculationOpen ? 'Hide complete calculation' : 'Open complete calculation'}
+            </button>
+            {governorCalculationOpen && <div className="finance-table" data-testid="budget-safe-to-deploy-calculation">
+              {capitalGovernor.data.components.map((component) => <div className="finance-row" key={component.key}>
+                <div><strong>{component.label}</strong><span>{component.subtractionGroup} · {(component.sourceReferences ?? []).map((source) => `${source.sourceType}: ${source.reference}`).join(', ') || 'Source not established'}</span></div>
+                <div className="finance-amount"><strong>{component.sign === 'subtract' ? '− ' : component.sign === 'add' ? '+ ' : ''}{displayMoney(component.amount ?? undefined, 'NOT CALCULATED')}</strong><span>{component.sign.replaceAll('_', ' ').toLowerCase()}</span></div>
+              </div>)}
+              <div className="finance-note"><ShieldCheck size={16} /><span>{capitalGovernor.data.calculation.doubleSubtraction.method}</span></div>
+              <div className="finance-note"><ShieldCheck size={16} /><span>Raw result: {displayMoney(capitalGovernor.data.rawSafeToDeploy, 'NOT CALCULATED')} · Readiness: {capitalGovernor.data.dataReadiness.status} · Required rows: {capitalGovernor.data.calculation.requiredComponents.join(', ')}</span></div>
+            </div>}
          </div>}
        </section>
 
@@ -2416,31 +2437,59 @@ function ActiveBudgetPage() {
             </div>
           </div>
           <div className="variable-budget-forecast">
-            <div><span className="eyebrow">Forward cash flow</span><strong>Floor / base / strong scenarios</strong></div>
-            <div className="forecast-strip">{[30, 60, 90].map((days) => <div className="forecast-card" key={days}><span>{days} days</span>{variableBudget.data.forecast.filter((row) => row.days === days).map((row, index) => <div key={`${days}-${index}`}><small>{index === 0 ? 'Floor' : index === 1 ? 'Base' : 'Strong'}</small><strong>{displayMoney(row.endingProjectedCash, '$0')}</strong><em className={row.status !== 'HEALTHY' ? 'warning' : ''}>{row.status.replaceAll('_', ' ').toLowerCase()}</em></div>)}</div>)}</div>
+            <div><span className="eyebrow">Forward cash flow</span><strong>Floor / base / strong scenarios</strong><p>{variableBudget.data.forecastExplanation}</p></div>
+            <div className="forecast-strip">{[7, 14, 30, 60, 90].map((days) => <div className="forecast-card" key={days}><span>{days} days</span>{variableBudget.data.forecast.filter((row) => row.days === days).map((row) => <details key={`${days}-${row.scenario}`}><summary><small>{row.scenario}</small><strong>{displayMoney(row.endingProjectedCash, 'NOT CALCULATED')}</strong><em className={row.status !== 'HEALTHY' ? 'warning' : ''}>{row.status.replaceAll('_', ' ').toLowerCase()}</em></summary><div>{row.calculationRows.length ? row.calculationRows.map((item) => <small key={item.key}>{item.operation === 'SUBTRACT' ? '−' : '+'} {item.label}: {displayMoney(item.amount, 'NOT CALCULATED')} · {item.source}</small>) : <small>{row.explanation}</small>}<small>Buffer shortfall: {displayMoney(row.bufferShortfall, 'NOT CALCULATED')}</small></div></details>)}</div>)}</div>
           </div>
           <div className="variable-budget-vehicle"><div className="variable-budget-section-heading"><div><span className="eyebrow">Vehicle affordability</span><strong>Model the full monthly cost before it becomes a commitment.</strong></div></div>
             <form className="account-form transaction-form" onSubmit={async (event) => {
               event.preventDefault();
               setVehicleScenarioMessage('');
+              setVehicleScenarioError('');
               try {
-                await createVehicleScenario.mutateAsync({ data: vehicleScenario });
+                if (!vehicleScenario.monthlyPayment && !(vehicleScenario.vehiclePrice && vehicleScenario.downPayment && vehicleScenario.estimatedApr && vehicleScenario.loanTermMonths)) {
+                  setVehicleScenarioError('Enter a monthly payment, or complete price, down payment, APR, and term so the payment can be calculated.');
+                  return;
+                }
+                await createVehicleScenario.mutateAsync({ data: {
+                  name: vehicleScenario.name,
+                  insurance: vehicleScenario.insurance,
+                  fuel: vehicleScenario.fuel,
+                  maintenanceReserve: vehicleScenario.maintenanceReserve,
+                  registrationReserve: vehicleScenario.registrationReserve,
+                  parkingTolls: vehicleScenario.parkingTolls,
+                  otherMonthlyCost: vehicleScenario.otherMonthlyCost,
+                  ...(vehicleScenario.vehiclePrice ? { vehiclePrice: vehicleScenario.vehiclePrice } : {}),
+                  ...(vehicleScenario.downPayment ? { downPayment: vehicleScenario.downPayment } : {}),
+                  ...(vehicleScenario.loanAmount ? { loanAmount: vehicleScenario.loanAmount } : {}),
+                  ...(vehicleScenario.estimatedApr ? { estimatedApr: vehicleScenario.estimatedApr } : {}),
+                  ...(vehicleScenario.loanTermMonths ? { loanTermMonths: Number(vehicleScenario.loanTermMonths) } : {}),
+                  ...(vehicleScenario.monthlyPayment ? { monthlyPayment: vehicleScenario.monthlyPayment } : {}),
+                } });
                 await variableBudget.refetch();
-                setVehicleScenario({ name: '', monthlyPayment: '', insurance: '', fuel: '', maintenanceReserve: '' });
+                setVehicleScenario({ name: '', vehiclePrice: '', downPayment: '', loanAmount: '', estimatedApr: '', loanTermMonths: '', monthlyPayment: '', insurance: '', fuel: '', maintenanceReserve: '', registrationReserve: '', parkingTolls: '', otherMonthlyCost: '' });
                 setVehicleScenarioMessage('Scenario saved. It is planning-only and does not authorize a purchase.');
               } catch (error) {
-                setVehicleScenarioMessage(error instanceof Error ? error.message : 'Scenario could not be saved.');
+                setVehicleScenarioError(error instanceof Error ? error.message : 'Scenario could not be saved.');
               }
             }}>
               <div className="field"><label htmlFor="variable-vehicle-name">Scenario</label><input id="variable-vehicle-name" required value={vehicleScenario.name} onChange={(event) => setVehicleScenario({ ...vehicleScenario, name: event.target.value })} placeholder="Current SUV" /></div>
-              <div className="field"><label htmlFor="variable-vehicle-payment">Payment</label><input id="variable-vehicle-payment" required inputMode="decimal" value={vehicleScenario.monthlyPayment} onChange={(event) => setVehicleScenario({ ...vehicleScenario, monthlyPayment: event.target.value })} placeholder="0.00" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-price">Price</label><input id="variable-vehicle-price" inputMode="decimal" value={vehicleScenario.vehiclePrice} onChange={(event) => setVehicleScenario({ ...vehicleScenario, vehiclePrice: event.target.value })} placeholder="0.00" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-down">Down payment</label><input id="variable-vehicle-down" inputMode="decimal" value={vehicleScenario.downPayment} onChange={(event) => setVehicleScenario({ ...vehicleScenario, downPayment: event.target.value })} placeholder="0.00" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-loan">Loan amount</label><input id="variable-vehicle-loan" inputMode="decimal" value={vehicleScenario.loanAmount} onChange={(event) => setVehicleScenario({ ...vehicleScenario, loanAmount: event.target.value })} placeholder="Derived if blank" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-apr">APR</label><input id="variable-vehicle-apr" inputMode="decimal" value={vehicleScenario.estimatedApr} onChange={(event) => setVehicleScenario({ ...vehicleScenario, estimatedApr: event.target.value })} placeholder="0.0000" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-term">Term in months</label><input id="variable-vehicle-term" inputMode="numeric" value={vehicleScenario.loanTermMonths} onChange={(event) => setVehicleScenario({ ...vehicleScenario, loanTermMonths: event.target.value })} placeholder="60" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-payment">Payment</label><input id="variable-vehicle-payment" inputMode="decimal" value={vehicleScenario.monthlyPayment} onChange={(event) => setVehicleScenario({ ...vehicleScenario, monthlyPayment: event.target.value })} placeholder="Override or enter directly" /></div>
               <div className="field"><label htmlFor="variable-vehicle-insurance">Insurance</label><input id="variable-vehicle-insurance" required inputMode="decimal" value={vehicleScenario.insurance} onChange={(event) => setVehicleScenario({ ...vehicleScenario, insurance: event.target.value })} placeholder="0.00" /></div>
               <div className="field"><label htmlFor="variable-vehicle-fuel">Fuel</label><input id="variable-vehicle-fuel" required inputMode="decimal" value={vehicleScenario.fuel} onChange={(event) => setVehicleScenario({ ...vehicleScenario, fuel: event.target.value })} placeholder="0.00" /></div>
               <div className="field"><label htmlFor="variable-vehicle-maintenance">Maintenance reserve</label><input id="variable-vehicle-maintenance" required inputMode="decimal" value={vehicleScenario.maintenanceReserve} onChange={(event) => setVehicleScenario({ ...vehicleScenario, maintenanceReserve: event.target.value })} placeholder="0.00" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-registration">Registration reserve</label><input id="variable-vehicle-registration" required inputMode="decimal" value={vehicleScenario.registrationReserve} onChange={(event) => setVehicleScenario({ ...vehicleScenario, registrationReserve: event.target.value })} placeholder="0.00" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-parking">Parking &amp; tolls</label><input id="variable-vehicle-parking" required inputMode="decimal" value={vehicleScenario.parkingTolls} onChange={(event) => setVehicleScenario({ ...vehicleScenario, parkingTolls: event.target.value })} placeholder="0.00" /></div>
+              <div className="field"><label htmlFor="variable-vehicle-other">Other monthly cost</label><input id="variable-vehicle-other" required inputMode="decimal" value={vehicleScenario.otherMonthlyCost} onChange={(event) => setVehicleScenario({ ...vehicleScenario, otherMonthlyCost: event.target.value })} placeholder="0.00" /></div>
               <div className="modal-actions"><button className="btn btn-primary" type="submit" disabled={createVehicleScenario.isPending}>{createVehicleScenario.isPending ? 'Modeling…' : 'Save scenario'}</button></div>
             </form>
             {vehicleScenarioMessage && <div className="form-feedback" role="status">{vehicleScenarioMessage}</div>}
-            {variableBudget.data.vehicleScenarios.length > 0 && <div className="finance-table">{variableBudget.data.vehicleScenarios.map((scenario) => <div className="finance-row" key={scenario.id}><div><strong>{scenario.name}</strong><span>{scenario.status.replaceAll('_', ' ').toLowerCase()}</span></div><div className="finance-amount"><strong>{displayMoney(scenario.totalMonthlyCost, '$0')}</strong><span>monthly total</span></div></div>)}</div>}
+            {vehicleScenarioError && <div className="form-feedback error" role="alert">{vehicleScenarioError}</div>}
+            {variableBudget.data.vehicleScenarios.length > 0 && <div className="finance-table">{variableBudget.data.vehicleScenarios.map((scenario) => <div className="finance-row" key={scenario.id}><div><strong>{scenario.name}</strong><span>{scenario.status.replaceAll('_', ' ').toLowerCase()} · Payment {displayMoney(scenario.monthlyPayment, 'NOT CALCULATED')} ({scenario.paymentSource.replaceAll('_', ' ').toLowerCase()}) · Insurance {displayMoney(scenario.insurance, 'NOT CALCULATED')} · Fuel {displayMoney(scenario.fuel, 'NOT CALCULATED')} · Maintenance {displayMoney(scenario.maintenanceReserve, 'NOT CALCULATED')} · Registration {displayMoney(scenario.registrationReserve, 'NOT CALCULATED')} · Parking/tolls {displayMoney(scenario.parkingTolls, 'NOT CALCULATED')} · Other {displayMoney(scenario.otherMonthlyCost, 'NOT CALCULATED')}</span><small>Cash buffer impact {displayMoney(scenario.cashBufferImpact, 'NOT CALCULATED')} · Emergency reserve impact {displayMoney(scenario.emergencyReserveImpact, 'NOT CALCULATED')} · Duplex contribution impact {displayMoney(scenario.duplexContributionImpact, 'NOT CALCULATED')}</small><small>{scenario.explanation}</small>{scenario.missingInputs.length > 0 && <small>Missing inputs: {scenario.missingInputs.join(' · ')}</small>}</div><div className="finance-amount"><strong>{displayMoney(scenario.totalMonthlyCost, 'NOT CALCULATED')}</strong><span>monthly total · 90 days {displayMoney(scenario.horizonImpact.days90, 'NOT CALCULATED')}</span></div></div>)}</div>}
           </div>
         </>}
       </section>

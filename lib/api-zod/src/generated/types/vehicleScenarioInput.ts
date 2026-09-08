@@ -12,20 +12,30 @@ export interface VehicleScenarioInput {
      * @maxLength 120
      */
   name: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   vehiclePrice?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   downPayment?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   loanAmount?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,4})?$ */
   estimatedApr?: string;
-  /** @minimum 0 */
+  /** @minimum 1 */
   loanTermMonths?: number;
   /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   monthlyPayment?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   insurance: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   fuel: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   maintenanceReserve: string;
-  registrationReserve?: string;
-  parkingTolls?: string;
-  otherMonthlyCost?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  registrationReserve: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  parkingTolls: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  otherMonthlyCost: string;
   /** @maxLength 1000 */
   notes?: string;
 }

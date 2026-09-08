@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { VariableBudgetForecastCalculationRowsItem } from './variableBudgetForecastCalculationRowsItem';
 import type { VariableBudgetForecastPressure } from './variableBudgetForecastPressure';
 import type { VariableBudgetForecastScenario } from './variableBudgetForecastScenario';
 
@@ -22,7 +23,7 @@ export interface VariableBudgetForecast {
   endingCash: string;
   shortfall: string;
   pressure: VariableBudgetForecastPressure;
-  explanation?: string;
+  explanation: string;
   obligations?: string;
   essentialSpending?: string;
   reserveContributions?: string;
@@ -30,4 +31,6 @@ export interface VariableBudgetForecast {
   endingProjectedCash?: string;
   bufferShortfall?: string;
   status: string;
+  calculationRows: VariableBudgetForecastCalculationRowsItem[];
+  missingInputs: string[];
 }

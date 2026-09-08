@@ -61,24 +61,51 @@ function profileResponse(profile: ReturnType<typeof calculateVariableIncomeProfi
   };
 }
 
-function vehicleResponse(row: typeof householdVehicleScenarios.$inferSelect) {
-  const { householdId: _householdId, createdBy: _createdBy, ...response } = row;
+export function vehicleResponse(row: typeof householdVehicleScenarios.$inferSelect) {
+  const { householdId: _householdId, createdBy: _createdBy, missingInputs: persistedMissingInputs, ...response } = row;
+  const totalMonthlyCost = response.totalMonthlyCost ?? "NOT_CALCULATED";
+  const missingInputs = [...new Set([
+    ...(persistedMissingInputs ?? []),
+    ...(response.monthlyPayment === null ? ["monthly payment or complete financing inputs"] : []),
+    ...([
+      ["registrationReserve", response.registrationReserve],
+      ["parkingTolls", response.parkingTolls],
+      ["otherMonthlyCost", response.otherMonthlyCost],
+    ] as const).filter(([, value]) => value === null).map(([key]) => key),
+  ])];
   return {
     ...response,
+    vehiclePrice: response.vehiclePrice,
+    downPayment: response.downPayment,
+    loanAmount: response.loanAmount,
+    estimatedApr: response.estimatedApr,
+    loanTermMonths: response.loanTermMonths,
+    monthlyPayment: response.monthlyPayment ?? "NOT_CALCULATED",
+    registrationReserve: response.registrationReserve ?? "NOT_CALCULATED",
+    parkingTolls: response.parkingTolls ?? "NOT_CALCULATED",
+    otherMonthlyCost: response.otherMonthlyCost ?? "NOT_CALCULATED",
+    totalMonthlyCost,
+    newOperatingCost: response.newOperatingCost ?? "NOT_CALCULATED",
+    newOperatingBudget: response.newOperatingBudget ?? "NOT_CALCULATED",
+    newFloorSurplus: response.newFloorSurplus ?? "NOT_CALCULATED",
+    capitalSurplusImpact: response.capitalSurplusImpact ?? "NOT_CALCULATED",
+    cashBufferImpact: response.cashBufferImpact ?? "NOT_CALCULATED",
+    emergencyReserveImpact: response.emergencyReserveImpact ?? "NOT_CALCULATED",
+    duplexContributionImpact: response.duplexContributionImpact ?? "NOT_CALCULATED",
     paymentSource: response.paymentSource as "USER_PROVIDED" | "DERIVED_FROM_APR_TERM" | "NOT_CALCULATED",
     currentOperatingCost: response.currentOperatingCost,
-    newOperatingCost: response.newOperatingCost,
-    cashBufferImpact: response.cashBufferImpact,
-    emergencyReserveImpact: response.emergencyReserveImpact,
-    duplexContributionImpact: response.duplexContributionImpact,
     horizonImpact: {
-      days30: response.totalMonthlyCost,
-      days60: centsToMoney(cents(response.totalMonthlyCost) * 2),
-      days90: centsToMoney(cents(response.totalMonthlyCost) * 3),
+      days30: totalMonthlyCost,
+      days60: response.totalMonthlyCost === null ? "NOT_CALCULATED" : centsToMoney(cents(response.totalMonthlyCost) * 2),
+      days90: response.totalMonthlyCost === null ? "NOT_CALCULATED" : centsToMoney(cents(response.totalMonthlyCost) * 3),
     },
     planningOnly: true,
     liabilityCreated: false,
     status: response.affordabilityStatus,
+    missingInputs,
+    explanation: missingInputs.length
+      ? `NOT CALCULATED: ${missingInputs.join(", ")} must be provided.`
+      : "The persisted scenario includes financing and all recurring ownership costs. Reserve and Duplex impacts remain planning-only.",
   };
 }
 
@@ -152,6 +179,11 @@ export async function getVariableBudgetIntelligence(actor: Actor, asOf = today()
     next30DayObligations: centsToMoney(next30),
   });
   const forecastComplete = Boolean(period && currentCash >= 0 && profile.confidenceStatus !== "INSUFFICIENT_HISTORY" && reserveConfigured);
+  const forecastMissingEvidence = [
+    ...(!period ? ["approved budget plan"] : []),
+    ...(profile.confidenceStatus === "INSUFFICIENT_HISTORY" ? ["adequate verified income history"] : []),
+    ...(!reserveConfigured ? ["configured emergency reserve"] : []),
+  ];
   const forecast = [7, 14, 30, 60, 90].flatMap((days) => ([
     ["FLOOR", profile.incomeFloorCents],
     ["BASE", profile.baseIncomeCents],
@@ -168,6 +200,7 @@ export async function getVariableBudgetIntelligence(actor: Actor, asOf = today()
     cashBuffer: centsToMoney(cashBuffer),
     days,
     requiredInputsComplete: forecastComplete,
+    missingEvidence: forecastMissingEvidence,
   })));
   const scenariosIdentical = profile.incomeFloorCents === profile.baseIncomeCents && profile.baseIncomeCents === profile.strongMonthIncomeCents;
   return {
@@ -294,15 +327,22 @@ export async function createVehicleScenario(actor: Actor, input: {
   const intelligence = await getVariableBudgetIntelligence(actor);
   const affordability = calculateVehicleAffordability({
     incomeFloor: intelligence.incomeProfile.incomeFloor,
-    currentOperatingBudget: intelligence.constraints.operatingBudgetCap ?? undefined,
+    currentOperatingBudget: intelligence.constraints.status === "INCOMPLETE_DATA"
+      ? undefined
+      : centsToMoney(
+        cents(intelligence.constraints.mandatoryObligations)
+        + cents(intelligence.constraints.essentialVariableCosts)
+        + cents(intelligence.constraints.reserveRequirements)
+        + cents(intelligence.constraints.discretionarySpending),
+      ),
     currentCapitalSurplus: intelligence.constraints.capitalSurplusAtFloor,
     monthlyPayment: input.monthlyPayment,
     insurance: input.insurance,
     fuel: input.fuel,
     maintenanceReserve: input.maintenanceReserve,
-    registrationReserve: input.registrationReserve ?? "0.00",
-    parkingTolls: input.parkingTolls ?? "0.00",
-    otherMonthlyCost: input.otherMonthlyCost ?? "0.00",
+    registrationReserve: input.registrationReserve,
+    parkingTolls: input.parkingTolls,
+    otherMonthlyCost: input.otherMonthlyCost,
     vehiclePrice: input.vehiclePrice,
     downPayment: input.downPayment,
     loanAmount: input.loanAmount,
@@ -310,31 +350,35 @@ export async function createVehicleScenario(actor: Actor, input: {
     loanTermMonths: input.loanTermMonths,
     currentVehicleOperatingCost: "0.00",
     cashBuffer: intelligence.cash.buffer,
-    emergencyReserveGap: intelligence.reserve.fundingGap === "NOT_CALCULATED" ? undefined : intelligence.reserve.fundingGap,
+    emergencyReserveGap: intelligence.reserve.fundingGap,
     duplexContribution: intelligence.constraints.capitalGoals,
   });
   const [row] = await db.insert(householdVehicleScenarios).values({
     householdId: actor.householdId,
     name: input.name,
-    vehiclePrice: money(input.vehiclePrice),
-    downPayment: money(input.downPayment),
-    loanAmount: affordability.loanAmount ?? money(input.loanAmount),
-    estimatedApr: input.estimatedApr ?? "0",
-    loanTermMonths: String(input.loanTermMonths ?? 0),
-    monthlyPayment: affordability.monthlyPayment ?? money(input.monthlyPayment),
+    vehiclePrice: input.vehiclePrice === undefined ? null : money(input.vehiclePrice),
+    downPayment: input.downPayment === undefined ? null : money(input.downPayment),
+    loanAmount: affordability.loanAmount,
+    estimatedApr: input.estimatedApr ?? null,
+    loanTermMonths: input.loanTermMonths === undefined ? null : String(input.loanTermMonths),
+    monthlyPayment: affordability.monthlyPayment === "NOT_CALCULATED" ? null : affordability.monthlyPayment,
     paymentSource: affordability.paymentSource,
     insurance: money(input.insurance),
     fuel: money(input.fuel),
     maintenanceReserve: money(input.maintenanceReserve),
-    registrationReserve: money(input.registrationReserve),
-    parkingTolls: money(input.parkingTolls),
-    otherMonthlyCost: money(input.otherMonthlyCost),
-    totalMonthlyCost: affordability.totalMonthlyCost,
+    registrationReserve: input.registrationReserve === undefined ? null : money(input.registrationReserve),
+    parkingTolls: input.parkingTolls === undefined ? null : money(input.parkingTolls),
+    otherMonthlyCost: input.otherMonthlyCost === undefined ? null : money(input.otherMonthlyCost),
+    totalMonthlyCost: affordability.totalMonthlyCost === "NOT_CALCULATED" ? null : affordability.totalMonthlyCost,
     currentOperatingCost: affordability.currentOperatingCost,
-    newOperatingCost: affordability.newOperatingCost,
-    cashBufferImpact: affordability.cashBufferImpact,
-    emergencyReserveImpact: affordability.emergencyReserveImpact,
-    duplexContributionImpact: affordability.duplexContributionImpact,
+    newOperatingCost: affordability.newOperatingCost === "NOT_CALCULATED" ? null : affordability.newOperatingCost,
+    newOperatingBudget: affordability.newOperatingBudget === "NOT_CALCULATED" ? null : affordability.newOperatingBudget,
+    newFloorSurplus: affordability.newFloorSurplus === "NOT_CALCULATED" ? null : affordability.newFloorSurplus,
+    capitalSurplusImpact: affordability.capitalSurplusImpact === "NOT_CALCULATED" ? null : affordability.capitalSurplusImpact,
+    missingInputs: affordability.missingInputs,
+    cashBufferImpact: affordability.cashBufferImpact === "NOT_CALCULATED" ? null : affordability.cashBufferImpact,
+    emergencyReserveImpact: affordability.emergencyReserveImpact === "NOT_CALCULATED" ? null : affordability.emergencyReserveImpact,
+    duplexContributionImpact: affordability.duplexContributionImpact === "NOT_CALCULATED" ? null : affordability.duplexContributionImpact,
     affordabilityStatus: affordability.status,
     notes: input.notes,
     createdBy: actor.userId,

@@ -7893,34 +7893,34 @@ components:
         updatedAt: { type: string, format: date-time }
     VehicleScenarioInput:
       type: object
-      required: [name, insurance, fuel, maintenanceReserve]
+      required: [name, insurance, fuel, maintenanceReserve, registrationReserve, parkingTolls, otherMonthlyCost]
       properties:
         name: { type: string, minLength: 1, maxLength: 120 }
-        vehiclePrice: { type: string }
-        downPayment: { type: string }
-        loanAmount: { type: string }
-        estimatedApr: { type: string }
-        loanTermMonths: { type: number, minimum: 0 }
+        vehiclePrice: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        downPayment: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        loanAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        estimatedApr: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,4})?$" }
+        loanTermMonths: { type: number, minimum: 1 }
         monthlyPayment: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
-        insurance: { type: string }
-        fuel: { type: string }
-        maintenanceReserve: { type: string }
-        registrationReserve: { type: string }
-        parkingTolls: { type: string }
-        otherMonthlyCost: { type: string }
+        insurance: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        fuel: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        maintenanceReserve: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        registrationReserve: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        parkingTolls: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        otherMonthlyCost: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
         notes: { type: string, maxLength: 1000 }
     VehicleScenario:
       type: object
-      required: [id, name, vehiclePrice, downPayment, loanAmount, estimatedApr, loanTermMonths, monthlyPayment, paymentSource, insurance, fuel, maintenanceReserve, registrationReserve, parkingTolls, otherMonthlyCost, totalMonthlyCost, currentOperatingCost, newOperatingCost, affordabilityStatus, newOperatingBudget, newFloorSurplus, capitalSurplusImpact, cashBufferImpact, emergencyReserveImpact, duplexContributionImpact, horizonImpact, planningOnly, liabilityCreated, status]
+      required: [id, name, vehiclePrice, downPayment, loanAmount, estimatedApr, loanTermMonths, monthlyPayment, paymentSource, insurance, fuel, maintenanceReserve, registrationReserve, parkingTolls, otherMonthlyCost, totalMonthlyCost, currentOperatingCost, newOperatingCost, affordabilityStatus, newOperatingBudget, newFloorSurplus, capitalSurplusImpact, cashBufferImpact, emergencyReserveImpact, duplexContributionImpact, horizonImpact, missingInputs, explanation, planningOnly, liabilityCreated, status]
       properties:
         id: { type: string }
         name: { type: string }
-        vehiclePrice: { type: string }
-        downPayment: { type: string }
-        loanAmount: { type: string }
-        estimatedApr: { type: string }
-        loanTermMonths: { type: string }
-        monthlyPayment: { type: ["string", "null"] }
+        vehiclePrice: { type: ["string", "null"] }
+        downPayment: { type: ["string", "null"] }
+        loanAmount: { type: ["string", "null"] }
+        estimatedApr: { type: ["string", "null"] }
+        loanTermMonths: { type: ["string", "null"] }
+        monthlyPayment: { type: string }
         paymentSource: { type: string, enum: [USER_PROVIDED, DERIVED_FROM_APR_TERM, NOT_CALCULATED] }
         insurance: { type: string }
         fuel: { type: string }
@@ -7948,6 +7948,8 @@ components:
         planningOnly: { type: boolean }
         liabilityCreated: { type: boolean }
         status: { type: string }
+        missingInputs: { type: array, items: { type: string } }
+        explanation: { type: string }
         notes: { type: ["string", "null"] }
         active: { type: boolean }
         createdAt: { type: string, format: date-time }
@@ -7979,7 +7981,7 @@ components:
         status: { type: string }
     VariableBudgetForecast:
       type: object
-      required: [days, scenario, openingCash, income, mandatoryOutflows, essentialAllowance, reserveFunding, discretionaryAllowance, capitalContributions, endingCash, shortfall, pressure, status]
+      required: [days, scenario, openingCash, income, mandatoryOutflows, essentialAllowance, reserveFunding, discretionaryAllowance, capitalContributions, endingCash, shortfall, pressure, status, calculationRows, missingInputs, explanation]
       properties:
         days: { type: number }
         scenario: { type: string, enum: [FLOOR, BASE, STRONG] }
@@ -8002,9 +8004,21 @@ components:
         endingProjectedCash: { type: string }
         bufferShortfall: { type: string }
         status: { type: string }
+        calculationRows:
+          type: array
+          items:
+            type: object
+            required: [key, label, operation, amount, source]
+            properties:
+              key: { type: string }
+              label: { type: string }
+              operation: { type: string, enum: [ADD, SUBTRACT] }
+              amount: { type: string }
+              source: { type: string }
+        missingInputs: { type: array, items: { type: string } }
     VariableBudgetIntelligence:
       type: object
-      required: [asOf, source, incomeProfile, documentEvidence, constraints, obligations, reserve, cash, forecast, vehicleScenarios]
+      required: [asOf, source, incomeProfile, documentEvidence, constraints, obligations, reserve, cash, forecast, forecastExplanation, vehicleScenarios]
       properties:
         asOf: { type: string }
         source:

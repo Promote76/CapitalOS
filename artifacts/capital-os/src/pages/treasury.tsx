@@ -107,7 +107,7 @@ function TreasuryOverview({ snapshot }: { snapshot: TreasurySnapshot }) {
         <TreasuryMetric title="Safe to deploy" value={money(snapshot.totals.safeToDeploy)} detail={`${snapshot.health.deployability}/100 deployability`} tone="lavender" />
       </section>
 
-      <section className="card card-pad page-section">
+      <section className="card card-pad page-section" data-testid="capital-governor-v2-panel">
         <div className="card-title-row">
           <div><div className="card-title">Safe-to-Deploy 2.0</div><div className="card-subtitle">The Capital Governor separates physical cash, protected designations, reserve gaps, and household capital surplus.</div></div>
           <span className={`status ${governor?.status === "READY" ? "" : "pending"}`}><ShieldCheck size={12} /> {governor?.status ?? (governorQuery.isLoading ? "Loading" : "Unavailable")}</span>

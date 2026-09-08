@@ -166,6 +166,27 @@ export interface BankStatementTransactionEvidence {
 export interface FinancialDocument {
   id: string;
   documentType: string;
+  /** @nullable */
+  originalDocumentType?: string | null;
+  /** @nullable */
+  detectedDocumentType?: string | null;
+  /** @nullable */
+  detectionConfidence?: string | null;
+  detectionSignals: string[];
+  /** @nullable */
+  detectionVersion?: string | null;
+  typeMismatchStatus?: string;
+  /** @nullable */
+  canonicalDocumentId?: string | null;
+  /** @nullable */
+  duplicateOfDocumentId?: string | null;
+  /** @nullable */
+  supersedesDocumentId?: string | null;
+  /** @nullable */
+  supersededByDocumentId?: string | null;
+  /** @nullable */
+  versionLabel?: string | null;
+  identityStatus?: string;
   status: string;
   /** @nullable */
   sourceInstitution?: string | null;
@@ -295,6 +316,53 @@ export interface FinancialDocumentReviewInput {
      * @maxLength 1000
      */
   reason: string;
+}
+
+export type FinancialDocumentTypeDecisionInputAction = typeof FinancialDocumentTypeDecisionInputAction[keyof typeof FinancialDocumentTypeDecisionInputAction];
+
+
+export const FinancialDocumentTypeDecisionInputAction = {
+  USE_DETECTED_TYPE: 'USE_DETECTED_TYPE',
+  KEEP_SELECTED_TYPE: 'KEEP_SELECTED_TYPE',
+} as const;
+
+export interface FinancialDocumentTypeDecisionInput {
+  action: FinancialDocumentTypeDecisionInputAction;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+}
+
+export type FinancialDocumentIdentityReviewInputClassification = typeof FinancialDocumentIdentityReviewInputClassification[keyof typeof FinancialDocumentIdentityReviewInputClassification];
+
+
+export const FinancialDocumentIdentityReviewInputClassification = {
+  EXACT_DUPLICATE: 'EXACT_DUPLICATE',
+  PROBABLE_DUPLICATE: 'PROBABLE_DUPLICATE',
+  DISTINCT_PERIOD: 'DISTINCT_PERIOD',
+  DISTINCT_VERSION: 'DISTINCT_VERSION',
+  CORRECTED_VERSION: 'CORRECTED_VERSION',
+  UNKNOWN_REVIEW_REQUIRED: 'UNKNOWN_REVIEW_REQUIRED',
+} as const;
+
+export interface FinancialDocumentIdentityReviewInput {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  comparedDocumentId: string;
+  classification: FinancialDocumentIdentityReviewInputClassification;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  canonicalDocumentId?: string;
 }
 
 export type FinancialReviewQueueItemsItem = { [key: string]: unknown };

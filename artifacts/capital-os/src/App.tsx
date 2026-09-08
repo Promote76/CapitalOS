@@ -159,6 +159,7 @@ import {
   useListFinancialDocuments,
   useRequestFinancialDocumentUploadUrl,
   useIngestFinancialDocument,
+  useDecideFinancialDocumentType,
   useListFinancialReviewQueue,
   getListFinancialDocumentsQueryKey,
   getListFinancialReviewQueueQueryKey,
@@ -3063,6 +3064,7 @@ function FinancialDocumentInboxPage() {
   const accounts = useListFinancialAccounts();
   const requestUpload = useRequestFinancialDocumentUploadUrl();
   const ingest = useIngestFinancialDocument();
+  const decideType = useDecideFinancialDocumentType();
   const [location] = useLocation();
   const initialType = new URLSearchParams(location.split('?')[1]).get('type');
   const selectedInitial = financialDocumentTypes.some((item) => item.type === initialType) ? initialType as FinancialDocumentUploadInputDocumentType : 'STEVENS_SETTLEMENT';
@@ -3117,6 +3119,30 @@ function FinancialDocumentInboxPage() {
       setError(/duplicate|already exists|conflict/i.test(detail) ? 'DOCUMENT ALREADY EXISTS — this evidence was not imported twice.' : detail);
     }
   };
+  const decideDocumentType = async (documentId: string, action: 'USE_DETECTED_TYPE' | 'KEEP_SELECTED_TYPE') => {
+    const reason = window.prompt(action === 'USE_DETECTED_TYPE'
+      ? 'Why should this document be reclassified using the detected type?'
+      : 'Why should the selected upload type be kept despite the content mismatch?');
+    if (!reason?.trim()) return;
+    setError('');
+    try {
+      await decideType.mutateAsync({
+        documentId,
+        data: { action, reason: reason.trim(), idempotencyKey: crypto.randomUUID() },
+      });
+      await refresh();
+      setMessage(action === 'USE_DETECTED_TYPE' ? 'Document reclassified and queued for parser review.' : 'Selected type override recorded for review.');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'The document type decision could not be saved.');
+    }
+  };
+  const typeLabel = (type: string | null | undefined) => ({
+    STEVENS_SETTLEMENT: 'Stevens Settlement',
+    BUSINESS_PROFIT_AND_LOSS: 'Profit & Loss',
+    BANK_STATEMENT: 'Bank Statement',
+    INCOME_VERIFICATION: 'Income Verification',
+    '1099': '1099',
+  }[type || ''] || 'Financial Document');
   const pending = queue.data?.items.length ?? documents.data?.documents.filter((item) => ['NEEDS_REVIEW', 'PARSED', 'PARSING', 'UPLOADED'].includes(item.status)).length ?? 0;
   return <main className="content">
     <PageHeading eyebrow="Documents / financial inbox" title={<>Financial evidence,<br /><em>ready for review.</em></>} description="Upload source records first. Capital OS stores evidence and never writes to a bank." actions={<button className="btn btn-primary" onClick={() => inputRef.current?.click()}><FilePlus2 size={15} /> Choose file</button>} />
@@ -3148,7 +3174,27 @@ function FinancialDocumentInboxPage() {
       {documents.isLoading && <div className="finance-empty-state"><strong>Loading financial evidence</strong></div>}
       {documents.isError && <div className="finance-empty-state" role="alert"><strong>Financial evidence is temporarily unavailable</strong><button className="btn btn-secondary" onClick={() => void documents.refetch()}>Try again</button></div>}
       {documents.isSuccess && documents.data.documents.length === 0 && <div className="finance-empty-state"><strong>No financial documents yet</strong><span>Add a settlement, P&amp;L, or bank statement to begin the reviewable evidence trail.</span></div>}
-      <div className="document-list">{documents.data?.documents.map((document) => <div className="document-row" key={document.id}><div><strong>{document.sourceFileName}</strong><span>{document.sourceInstitution || 'Source institution not supplied'} · {document.statementDate || document.periodEnd || document.periodStart || displayDate(document.uploadedAt, 'uploaded today')}</span></div><div><span className={`status ${['NEEDS_REVIEW', 'PARSE_FAILED', 'DUPLICATE'].includes(document.status) ? 'review' : document.status === 'VERIFIED' || document.status === 'RECONCILED' ? '' : 'pending'}`}>{document.status.replaceAll('_', ' ')}</span>{document.documentType === 'BANK_STATEMENT' && <small className="document-pending-note">Statement evidence · pending review</small>}</div></div>)}</div>
+       <div className="document-list">{documents.data?.documents.map((document) => <div className="document-row" key={document.id}>
+         <div className="min-w-0 flex-1">
+           <strong>{document.sourceFileName}</strong>
+           <span>{document.sourceInstitution || 'Source institution not supplied'} · {document.statementDate || document.periodEnd || document.periodStart || displayDate(document.uploadedAt, 'uploaded today')}</span>
+           <div className="mt-2 flex flex-wrap gap-2 items-center">
+             <span className="status">{typeLabel(document.documentType)}</span>
+             {document.originalDocumentType && document.originalDocumentType !== document.documentType && <small className="document-pending-note">Corrected from {typeLabel(document.originalDocumentType)}</small>}
+           </div>
+           {document.typeMismatchStatus === 'OPEN' && document.detectedDocumentType && <div className="mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm" role="alert">
+             <strong>Document type issue</strong>
+             <div>Recorded: {typeLabel(document.documentType)} · Detected: {typeLabel(document.detectedDocumentType)} · Confidence: {document.detectionConfidence || 'review required'}</div>
+             {document.detectionSignals?.length > 0 && <div className="text-xs mt-1">Signals: {document.detectionSignals.join(', ')}</div>}
+             <div className="document-actions mt-2">
+               <button className="btn btn-primary" type="button" disabled={decideType.isPending} onClick={() => void decideDocumentType(document.id, 'USE_DETECTED_TYPE')}>Use detected type</button>
+               <button className="btn" type="button" disabled={decideType.isPending} onClick={() => void decideDocumentType(document.id, 'KEEP_SELECTED_TYPE')}>Keep recorded type</button>
+             </div>
+           </div>}
+           {document.typeMismatchStatus === 'CORRECTED' && <small className="document-pending-note">Audited type correction applied; parser review remains required.</small>}
+         </div>
+         <div><span className={`status ${['NEEDS_REVIEW', 'TYPE_REVIEW_REQUIRED', 'PARSE_FAILED', 'DUPLICATE'].includes(document.status) ? 'review' : document.status === 'VERIFIED' || document.status === 'RECONCILED' ? '' : 'pending'}`}>{document.status.replaceAll('_', ' ')}</span>{document.documentType === 'BANK_STATEMENT' && <small className="document-pending-note">Statement evidence · pending review</small>}</div>
+       </div>)}</div>
     </section>
   </main>;
 }

@@ -12,10 +12,12 @@ import {
   ReverseBankStatementTransactionImportBody, ReverseBankStatementTransactionImportHeader, ReverseBankStatementTransactionImportParams, ReverseBankStatementTransactionImportResponse,
   GetBankStatementTransactionInclusionParams, GetBankStatementTransactionInclusionResponse,
   ReconcileBankStatementTransactionInclusionBody, ReconcileBankStatementTransactionInclusionHeader, ReconcileBankStatementTransactionInclusionParams, ReconcileBankStatementTransactionInclusionResponse,
+  DecideFinancialDocumentTypeBody, DecideFinancialDocumentTypeParams, DecideFinancialDocumentTypeResponse,
+  ReviewFinancialDocumentIdentityBody, ReviewFinancialDocumentIdentityParams, ReviewFinancialDocumentIdentityResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
-import { decideBankStatementTransactionCategory, getBankStatementTransactionInclusion, getFinancialDocument, importBankStatementTransaction, ingestFinancialDocument, linkBankStatementTransaction, listFinancialDocuments, listFinancialReviewQueue, previewBankStatementTransactionMatch, reconcileBankStatementTransactionInclusion, requestFinancialDocumentUploadUrl, reverseBankStatementTransactionImport, reviewBankStatementTransaction, reviewFinancialDocument, unlinkBankStatementTransaction } from "../services/financial-documents";
+import { decideBankStatementTransactionCategory, decideFinancialDocumentType, getBankStatementTransactionInclusion, getFinancialDocument, importBankStatementTransaction, ingestFinancialDocument, linkBankStatementTransaction, listFinancialDocuments, listFinancialReviewQueue, previewBankStatementTransactionMatch, reconcileBankStatementTransactionInclusion, requestFinancialDocumentUploadUrl, reverseBankStatementTransactionImport, reviewBankStatementTransaction, reviewFinancialDocument, reviewFinancialDocumentIdentity, unlinkBankStatementTransaction } from "../services/financial-documents";
 
 const router: IRouter = Router();
 router.get("/financial-documents", asyncRoute(async (_req, res) => res.json(ListFinancialDocumentsResponse.parse(await listFinancialDocuments(actorFrom(res))))));
@@ -24,6 +26,14 @@ router.post("/financial-documents/ingest", asyncRoute(async (req, res) => res.st
 router.get("/financial-documents/review-queue", asyncRoute(async (_req, res) => res.json(ListFinancialReviewQueueResponse.parse(await listFinancialReviewQueue(actorFrom(res))))));
 router.get("/financial-documents/:documentId", asyncRoute(async (req, res) => { const { documentId } = GetFinancialDocumentParams.parse(req.params); res.json(GetFinancialDocumentResponse.parse(await getFinancialDocument(actorFrom(res), documentId))); }));
 router.post("/financial-documents/:documentId/review", asyncRoute(async (req, res) => { const { documentId } = GetFinancialDocumentParams.parse(req.params); res.json(ReviewFinancialDocumentResponse.parse(await reviewFinancialDocument(actorFrom(res), documentId, ReviewFinancialDocumentBody.parse(req.body)))); }));
+router.post("/financial-documents/:documentId/type-decision", asyncRoute(async (req, res) => {
+  const { documentId } = DecideFinancialDocumentTypeParams.parse(req.params);
+  res.json(DecideFinancialDocumentTypeResponse.parse(await decideFinancialDocumentType(actorFrom(res), documentId, DecideFinancialDocumentTypeBody.parse(req.body))));
+}));
+router.post("/financial-documents/:documentId/identity-review", asyncRoute(async (req, res) => {
+  const { documentId } = ReviewFinancialDocumentIdentityParams.parse(req.params);
+  res.json(ReviewFinancialDocumentIdentityResponse.parse(await reviewFinancialDocumentIdentity(actorFrom(res), documentId, ReviewFinancialDocumentIdentityBody.parse(req.body))));
+}));
 router.post("/bank-statement-transactions/:transactionId/review", asyncRoute(async (req, res) => {
   const { transactionId } = ReviewBankStatementTransactionParams.parse(req.params);
   res.json(ReviewBankStatementTransactionResponse.parse(await reviewBankStatementTransaction(actorFrom(res), transactionId, ReviewBankStatementTransactionBody.parse(req.body))));

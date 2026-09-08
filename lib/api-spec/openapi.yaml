@@ -3184,6 +3184,32 @@ paths:
         content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocumentReviewInput" } } }
       responses:
         "200": { description: Reviewed document, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocument" } } } }
+  /financial-documents/{documentId}/type-decision:
+    post:
+      operationId: decideFinancialDocumentType
+      tags: [household-finance]
+      summary: Keep or apply a human-reviewed financial document type decision
+      parameters: [{ $ref: "#/components/parameters/FinancialDocumentId" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocumentTypeDecisionInput" } } }
+      responses:
+        "200": { description: Applied or recorded type decision, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocument" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /financial-documents/{documentId}/identity-review:
+    post:
+      operationId: reviewFinancialDocumentIdentity
+      tags: [household-finance]
+      summary: Record an explicit duplicate or document-version review
+      parameters: [{ $ref: "#/components/parameters/FinancialDocumentId" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocumentIdentityReviewInput" } } }
+      responses:
+        "200": { description: Updated identity metadata, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocument" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /bank-statement-transactions/{transactionId}/review:
     post:
       operationId: reviewBankStatementTransaction
@@ -3416,10 +3442,22 @@ components:
   schemas:
     FinancialDocument:
       type: object
-      required: [id, documentType, status, sourceFileName, mimeType, documentHash, sourceObjectPath, uploadedAt]
+      required: [id, documentType, status, sourceFileName, mimeType, documentHash, sourceObjectPath, uploadedAt, detectionSignals]
       properties:
         id: { type: string }
         documentType: { type: string }
+        originalDocumentType: { type: [string, "null"] }
+        detectedDocumentType: { type: [string, "null"] }
+        detectionConfidence: { type: [string, "null"] }
+        detectionSignals: { type: array, items: { type: string } }
+        detectionVersion: { type: [string, "null"] }
+        typeMismatchStatus: { type: string }
+        canonicalDocumentId: { type: [string, "null"] }
+        duplicateOfDocumentId: { type: [string, "null"] }
+        supersedesDocumentId: { type: [string, "null"] }
+        supersededByDocumentId: { type: [string, "null"] }
+        versionLabel: { type: [string, "null"] }
+        identityStatus: { type: string }
         status: { type: string }
         sourceInstitution: { type: [string, "null"] }
         sourceFileName: { type: string }
@@ -3488,6 +3526,21 @@ components:
       properties:
         decision: { type: string, enum: [VERIFIED, REJECTED, NEEDS_REVIEW] }
         reason: { type: string, minLength: 1, maxLength: 1000 }
+    FinancialDocumentTypeDecisionInput:
+      type: object
+      required: [action, reason, idempotencyKey]
+      properties:
+        action: { type: string, enum: [USE_DETECTED_TYPE, KEEP_SELECTED_TYPE] }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+    FinancialDocumentIdentityReviewInput:
+      type: object
+      required: [comparedDocumentId, classification, reason]
+      properties:
+        comparedDocumentId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        classification: { type: string, enum: [EXACT_DUPLICATE, PROBABLE_DUPLICATE, DISTINCT_PERIOD, DISTINCT_VERSION, CORRECTED_VERSION, UNKNOWN_REVIEW_REQUIRED] }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+        canonicalDocumentId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
     FinancialReviewQueue:
       type: object
       required: [items]

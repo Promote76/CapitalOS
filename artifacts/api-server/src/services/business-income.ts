@@ -75,7 +75,7 @@ function hideHousehold<T extends { householdId: string; createdBy?: string | nul
 export async function getBusinessIncomeIntelligence(actor: Actor) {
   const businesses = await db.select().from(businessEntities).where(eq(businessEntities.householdId, actor.householdId)).orderBy(businessEntities.displayName);
   const [settlements, mathRows, settlementRevenue, settlementDeductions, pnlDocuments, pnlLines, pnlRuns, cashPositions, ownerDraws, verifiedIncome, anomalies] = await Promise.all([
-    db.select().from(settlementDocuments).where(eq(settlementDocuments.householdId, actor.householdId)).orderBy(desc(settlementDocuments.statementPeriodEnd)).limit(30),
+     db.select().from(settlementDocuments).where(and(eq(settlementDocuments.householdId, actor.householdId), ne(settlementDocuments.verificationStatus, "superseded"))).orderBy(desc(settlementDocuments.statementPeriodEnd)).limit(30),
     db.select().from(settlementMathReconciliations).where(eq(settlementMathReconciliations.householdId, actor.householdId)),
     db.select().from(settlementRevenueLines).where(eq(settlementRevenueLines.householdId, actor.householdId)),
     db.select().from(settlementDeductionLines).where(eq(settlementDeductionLines.householdId, actor.householdId)),
@@ -800,6 +800,7 @@ export async function reconcileBusinessIncomePeriod(actor: Actor, input: {
     db.select().from(settlementDocuments).where(and(
       eq(settlementDocuments.householdId, actor.householdId),
       eq(settlementDocuments.businessId, input.businessId),
+      ne(settlementDocuments.verificationStatus, "superseded"),
       gte(settlementDocuments.statementPeriodStart, statementPeriodStart),
       lte(settlementDocuments.statementPeriodEnd, statementPeriodEnd),
     )),
@@ -814,7 +815,7 @@ export async function reconcileBusinessIncomePeriod(actor: Actor, input: {
       eq(profitLossDocuments.businessId, input.businessId),
       eq(profitLossDocuments.statementPeriodStart, statementPeriodStart),
       eq(profitLossDocuments.statementPeriodEnd, statementPeriodEnd),
-    )).limit(1),
+    )),
     db.select().from(settlementRevenueLines).where(eq(settlementRevenueLines.householdId, actor.householdId)),
     db.select().from(settlementDeductionLines).where(eq(settlementDeductionLines.householdId, actor.householdId)),
     db.select().from(profitLossLines).where(eq(profitLossLines.householdId, actor.householdId)),
@@ -829,14 +830,17 @@ export async function reconcileBusinessIncomePeriod(actor: Actor, input: {
   });
   const settlementIds = new Set(settlements.map((settlement) => settlement.id));
   const pnlIds = new Set(pnl.map((document) => document.id));
-  const reviewBlocked = settlements.some((document) => document.verificationStatus !== "verified") ||
+  const reviewBlocked = pnl.length > 1 ||
+    settlements.some((document) => document.verificationStatus !== "verified") ||
     pnl.some((document) => document.verificationStatus !== "verified") ||
     settlementRevenue.some((line) => settlementIds.has(line.settlementDocumentId) && line.reviewStatus !== "approved") ||
     settlementDeductions.some((line) => settlementIds.has(line.settlementDocumentId) && line.reviewStatus !== "approved") ||
     pnlLines.some((line) => pnlIds.has(line.profitLossDocumentId) && line.reviewStatus !== "approved");
   const reconciliationStatus = reviewBlocked ? "needs_review" : result.status;
   const reconciliationReason = reviewBlocked
-    ? "Extracted business line items and source decisions must be reviewed before period reconciliation."
+    ? pnl.length > 1
+      ? "Multiple P&L reports cover the requested period; explicit duplicate/version review is required before reconciliation."
+      : "Extracted business line items and source decisions must be reviewed before period reconciliation."
     : result.reason;
   const [run] = await db.insert(profitLossReconciliationRuns).values({
     householdId: actor.householdId,

@@ -20,6 +20,18 @@ export const financialDocuments = pgTable("financial_documents", {
   householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
   businessId: uuid("business_id").references(() => businessEntities.id, { onDelete: "set null" }),
   documentType: text("document_type").notNull(),
+  originalDocumentType: text("original_document_type"),
+  detectedDocumentType: text("detected_document_type"),
+  detectionConfidence: text("detection_confidence"),
+  detectionSignals: jsonb("detection_signals").$type<string[]>().notNull().default([]),
+  detectionVersion: text("detection_version"),
+  typeMismatchStatus: text("type_mismatch_status").notNull().default("NONE"),
+  canonicalDocumentId: uuid("canonical_document_id"),
+  duplicateOfDocumentId: uuid("duplicate_of_document_id"),
+  supersedesDocumentId: uuid("supersedes_document_id"),
+  supersededByDocumentId: uuid("superseded_by_document_id"),
+  versionLabel: text("version_label"),
+  identityStatus: text("identity_status").notNull().default("UNREVIEWED"),
   status: text("status").notNull().default("uploaded"),
   sourceInstitution: text("source_institution"),
   sourceFileName: text("source_file_name").notNull(),
@@ -44,6 +56,77 @@ export const financialDocuments = pgTable("financial_documents", {
   householdUploadedIdx: index("financial_documents_household_uploaded_idx").on(table.householdId, table.uploadedAt),
   householdStatusIdx: index("financial_documents_household_status_idx").on(table.householdId, table.status),
   householdHashUnique: uniqueIndex("financial_documents_household_hash_unique").on(table.householdId, table.documentHash),
+}));
+
+/** Immutable detector observations. A new observation is written instead of mutating prior evidence. */
+export const financialDocumentTypeDetections = pgTable("financial_document_type_detections", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+  financialDocumentId: uuid("financial_document_id").notNull().references(() => financialDocuments.id, { onDelete: "cascade" }),
+  selectedDocumentType: text("selected_document_type").notNull(),
+  detectedDocumentType: text("detected_document_type").notNull(),
+  confidence: text("confidence").notNull(),
+  signals: jsonb("signals").$type<string[]>().notNull().default([]),
+  conflictsWithSelectedType: boolean("conflicts_with_selected_type").notNull().default(false),
+  detectionVersion: text("detection_version").notNull(),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  householdDocumentIdx: index("financial_document_type_detections_household_document_idx").on(table.householdId, table.financialDocumentId),
+}));
+
+/** Human-attributed type changes. The original document and every parse generation remain intact. */
+export const financialDocumentTypeCorrections = pgTable("financial_document_type_corrections", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+  financialDocumentId: uuid("financial_document_id").notNull().references(() => financialDocuments.id, { onDelete: "cascade" }),
+  originalDocumentType: text("original_document_type").notNull(),
+  correctedDocumentType: text("corrected_document_type").notNull(),
+  reason: text("reason").notNull(),
+  detectionEvidence: jsonb("detection_evidence").$type<Record<string, unknown>>().notNull().default({}),
+  requestedBy: uuid("requested_by").notNull().references(() => users.id),
+  approvedBy: uuid("approved_by").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  appliedAt: timestamp("applied_at", { withTimezone: true }),
+  status: text("status").notNull().default("READY_FOR_REVIEW"),
+  idempotencyKey: text("idempotency_key"),
+}, (table) => ({
+  householdDocumentIdx: index("financial_document_type_corrections_household_document_idx").on(table.householdId, table.financialDocumentId),
+  idempotencyUnique: uniqueIndex("financial_document_type_corrections_idempotency_unique").on(table.householdId, table.idempotencyKey),
+}));
+
+/** Parser generations are append-only; only one CURRENT generation may feed derived calculations. */
+export const financialDocumentParseGenerations = pgTable("financial_document_parse_generations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+  financialDocumentId: uuid("financial_document_id").notNull().references(() => financialDocuments.id, { onDelete: "cascade" }),
+  documentType: text("document_type").notNull(),
+  parserVersion: text("parser_version").notNull(),
+  status: text("status").notNull().default("CURRENT"),
+  extractionStatus: text("extraction_status"),
+  sourceRecordType: text("source_record_type"),
+  sourceRecordId: uuid("source_record_id"),
+  evidence: jsonb("evidence").$type<Record<string, unknown>>().notNull().default({}),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  householdDocumentIdx: index("financial_document_parse_generations_household_document_idx").on(table.householdId, table.financialDocumentId),
+  currentGenerationIdx: index("financial_document_parse_generations_current_idx").on(table.householdId, table.status),
+}));
+
+/** Explicit comparison decisions for similar-looking files; never inferred from filename alone. */
+export const financialDocumentIdentityReviews = pgTable("financial_document_identity_reviews", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+  documentId: uuid("document_id").notNull().references(() => financialDocuments.id, { onDelete: "cascade" }),
+  comparedDocumentId: uuid("compared_document_id").notNull().references(() => financialDocuments.id, { onDelete: "cascade" }),
+  classification: text("classification").notNull(),
+  evidence: jsonb("evidence").$type<Record<string, unknown>>().notNull().default({}),
+  canonicalDocumentId: uuid("canonical_document_id"),
+  reviewedBy: uuid("reviewed_by").notNull().references(() => users.id),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  pairUnique: uniqueIndex("financial_document_identity_reviews_pair_unique").on(table.householdId, table.documentId, table.comparedDocumentId),
 }));
 
 export const bankStatementDocuments = pgTable("bank_statement_documents", {
@@ -185,6 +268,10 @@ export const bankStatementTransactionCorrections = pgTable("bank_statement_trans
 }));
 
 export type FinancialDocument = typeof financialDocuments.$inferSelect;
+export type FinancialDocumentTypeDetection = typeof financialDocumentTypeDetections.$inferSelect;
+export type FinancialDocumentTypeCorrection = typeof financialDocumentTypeCorrections.$inferSelect;
+export type FinancialDocumentParseGeneration = typeof financialDocumentParseGenerations.$inferSelect;
+export type FinancialDocumentIdentityReview = typeof financialDocumentIdentityReviews.$inferSelect;
 export type BankStatementDocument = typeof bankStatementDocuments.$inferSelect;
 export type BankStatementTransaction = typeof bankStatementTransactions.$inferSelect;
 export type BankStatementTransactionCorrection = typeof bankStatementTransactionCorrections.$inferSelect;

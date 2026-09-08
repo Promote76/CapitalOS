@@ -1,8 +1,10 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
-  auditEvents, bankStatementDocuments, bankStatementTransactionCorrections, bankStatementTransactions, financialDocuments, idempotencyKeys,
-  businessAdvances, businessEntities, businessEscrowMovements, financeTransactions, financialAccounts, profitLossDocuments, profitLossReconciliationRuns,
+  auditEvents, bankStatementDocuments, bankStatementTransactionCorrections, bankStatementTransactions, financialDocuments,
+  financialDocumentIdentityReviews, financialDocumentParseGenerations, financialDocumentTypeCorrections, financialDocumentTypeDetections, idempotencyKeys,
+  businessAdvances, businessEntities, businessEscrowMovements, businessEarningsEvents, financeTransactions, financialAccounts, profitLossDocuments, profitLossReconciliationRuns,
+  profitLossLines, businessIncomeAnomalies,
   settlementCashMatches, settlementDocuments, settlementMathReconciliations, settlementDeductionLines, verifiedHouseholdIncomeEvents,
   financeCategories, statementFinancialInclusions, statementFinancialReversals,
 } from "@workspace/db/schema";
@@ -11,13 +13,16 @@ import { assertPermission, GovernanceError } from "../domain/governance";
 import { assertDocumentUploadGrant, assertPrivateObjectPath, createDocumentUploadGrant, downloadBusinessDocument, requestBusinessDocumentUpload } from "../lib/business-document-storage";
 import { BANK_STATEMENT_PARSER_VERSION, parseBankStatement } from "./bank-statement-parser";
 import { statementRowFingerprint, suggestStatementCategory } from "../domain/document-budget-bridge";
+import { detectFinancialDocumentType, FINANCIAL_DOCUMENT_DETECTION_VERSION, type SupportedFinancialDocumentType } from "./financial-document-type-detector";
+import { parseBusinessPdf } from "./business-document-parser";
 
 const acceptedTypes = new Set([
   "STEVENS_SETTLEMENT", "BUSINESS_PROFIT_AND_LOSS", "BANK_STATEMENT", "1099",
   "INCOME_VERIFICATION", "INSURANCE_DOCUMENT", "AUTO_LOAN_DOCUMENT",
   "BUSINESS_LEASE_DOCUMENT", "OTHER_FINANCIAL_DOCUMENT",
 ]);
-const reviewableStatuses = new Set(["UPLOADED", "PARSING", "PARSED", "NEEDS_REVIEW"]);
+const reviewableStatuses = new Set(["UPLOADED", "PARSING", "PARSED", "NEEDS_REVIEW", "TYPE_REVIEW_REQUIRED"]);
+const today = () => new Date().toISOString().slice(0, 10);
 
 type Correction = typeof bankStatementTransactionCorrections.$inferSelect;
 type StatementTransaction = typeof bankStatementTransactions.$inferSelect & { correctionHistory: Correction[] };
@@ -81,12 +86,22 @@ export async function ingestFinancialDocument(actor: Actor, input: {
     expectedBytes: input.sourceSizeBytes,
     expectedContentType: input.contentType,
   });
+  const detection = await detectFinancialDocumentType(bytes, input.sourceFileName, input.documentType as SupportedFinancialDocumentType);
   return db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`financial-document-ingest:${actor.householdId}:${sha256}`}, 0))`);
     const [existing] = await tx.select().from(financialDocuments).where(and(
       eq(financialDocuments.householdId, actor.householdId), eq(financialDocuments.documentHash, sha256),
     )).limit(1);
     if (existing) {
+      await tx.insert(auditEvents).values({
+        householdId: actor.householdId,
+        eventType: "financial_document_duplicate_upload",
+        actor: actor.userId,
+        entity: "financial_document",
+        entityId: existing.id,
+        reason: "The same household source hash was already recorded; no second evidence record was created.",
+        metadata: { documentHash: sha256, selectedDocumentType: input.documentType },
+      });
       const [statement] = await tx.select().from(bankStatementDocuments).where(and(
         eq(bankStatementDocuments.documentId, existing.id),
         eq(bankStatementDocuments.householdId, actor.householdId),
@@ -109,11 +124,39 @@ export async function ingestFinancialDocument(actor: Actor, input: {
     }
     const [document] = await tx.insert(financialDocuments).values({
       householdId: actor.householdId, businessId: input.businessId, documentType: input.documentType,
+      originalDocumentType: input.documentType,
+      detectedDocumentType: detection.detectedType,
+      detectionConfidence: detection.confidence,
+      detectionSignals: detection.signals,
+      detectionVersion: detection.detectionVersion,
+      typeMismatchStatus: detection.conflictsWithSelectedType ? "OPEN" : "NONE",
       // No parser has claimed this evidence; it is explicitly awaiting human review.
-      status: "UPLOADED", sourceInstitution: input.sourceInstitution, sourceFileName: input.sourceFileName,
+      status: detection.conflictsWithSelectedType ? "TYPE_REVIEW_REQUIRED" : "UPLOADED",
+      sourceInstitution: input.sourceInstitution, sourceFileName: input.sourceFileName,
       mimeType: input.contentType, sourceObjectPath: input.sourceObjectPath, documentHash: sha256,
       sourceMetadata: { declaredSizeBytes: input.sourceSizeBytes, observedSizeBytes: bytes.length, ingestion: "metadata_only" },
       uploadedBy: actor.userId,
+    }).returning();
+    await tx.insert(financialDocumentTypeDetections).values({
+      householdId: actor.householdId,
+      financialDocumentId: document.id,
+      selectedDocumentType: input.documentType,
+      detectedDocumentType: detection.detectedType,
+      confidence: detection.confidence,
+      signals: detection.signals,
+      conflictsWithSelectedType: detection.conflictsWithSelectedType,
+      detectionVersion: detection.detectionVersion,
+      createdBy: actor.userId,
+    });
+    const [initialGeneration] = await tx.insert(financialDocumentParseGenerations).values({
+      householdId: actor.householdId,
+      financialDocumentId: document.id,
+      documentType: input.documentType,
+      parserVersion: FINANCIAL_DOCUMENT_DETECTION_VERSION,
+      status: "CURRENT",
+      extractionStatus: detection.conflictsWithSelectedType ? "TYPE_REVIEW_REQUIRED" : "NOT_STARTED",
+      evidence: { authoritative: false, detectionSignals: detection.signals },
+      createdBy: actor.userId,
     }).returning();
     let bankStatement: typeof bankStatementDocuments.$inferSelect | undefined;
     let transactions: StatementTransaction[] = [];
@@ -133,6 +176,13 @@ export async function ingestFinancialDocument(actor: Actor, input: {
         status: parseable ? "NEEDS_REVIEW" : "NEEDS_REVIEW",
         sourceMetadata: { declaredSizeBytes: input.sourceSizeBytes, observedSizeBytes: bytes.length, parserVersion: BANK_STATEMENT_PARSER_VERSION, parserErrors: parsed.errors },
       }).where(eq(financialDocuments.id, document.id));
+      await tx.update(financialDocumentParseGenerations).set({
+        parserVersion: BANK_STATEMENT_PARSER_VERSION,
+        extractionStatus: parseable ? "complete" : "failed",
+        sourceRecordType: "bank_statement_document",
+        sourceRecordId: bankStatement?.id,
+        evidence: { authoritative: !detection.conflictsWithSelectedType, parserErrors: parsed.errors },
+      }).where(eq(financialDocumentParseGenerations.id, initialGeneration.id));
       [bankStatement] = await tx.insert(bankStatementDocuments).values({
         householdId: actor.householdId, documentId: document.id, accountId: input.accountId,
         institutionName: input.sourceInstitution, accountDisplayName: input.accountDisplayName, accountMask: input.accountMask,
@@ -167,10 +217,245 @@ export async function ingestFinancialDocument(actor: Actor, input: {
       householdId: actor.householdId, eventType: "financial_document_ingested", actor: actor.userId,
       entity: "financial_document", entityId: document.id,
       reason: "Financial evidence recorded; no ledger entry or bank write was made.",
-      metadata: { documentType: input.documentType, documentHash: sha256, bankStatement: Boolean(bankStatement) },
+      metadata: {
+        documentType: input.documentType,
+        documentHash: sha256,
+        bankStatement: Boolean(bankStatement),
+        detectedDocumentType: detection.detectedType,
+        detectionConfidence: detection.confidence,
+        typeMismatch: detection.conflictsWithSelectedType,
+      },
     });
     const [updatedDocument] = await tx.select().from(financialDocuments).where(eq(financialDocuments.id, document.id));
     return response(updatedDocument, bankStatement, transactions);
+  });
+}
+
+type FinancialDocumentTypeDecision = "USE_DETECTED_TYPE" | "KEEP_SELECTED_TYPE";
+
+async function getFinancialDocumentForTypeAction(actor: Actor, documentId: string) {
+  const [document] = await db.select().from(financialDocuments).where(and(
+    eq(financialDocuments.id, documentId),
+    eq(financialDocuments.householdId, actor.householdId),
+  )).limit(1);
+  if (!document) throw new GovernanceError("INVALID_STATE", "Financial document not found");
+  return document;
+}
+
+/**
+ * Reclassifies one source object without deleting or rewriting the original
+ * upload. Derived rows are created in the same transaction as the correction
+ * so a failed parse cannot become current authority.
+ */
+export async function decideFinancialDocumentType(actor: Actor, documentId: string, input: {
+  action: FinancialDocumentTypeDecision;
+  reason: string;
+  idempotencyKey: string;
+}) {
+  assertPermission(actor.role, "approve");
+  if (!input.reason.trim()) throw new GovernanceError("INVALID_STATE", "A reason is required for a document type decision");
+  const existingDocument = await getFinancialDocumentForTypeAction(actor, documentId);
+  if (input.action === "KEEP_SELECTED_TYPE") {
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`financial-document-type:${actor.householdId}:${documentId}`}, 0))`);
+      const [prior] = await tx.select().from(financialDocumentTypeCorrections).where(and(
+        eq(financialDocumentTypeCorrections.householdId, actor.householdId),
+        eq(financialDocumentTypeCorrections.idempotencyKey, input.idempotencyKey),
+      )).limit(1);
+      if (prior) {
+        const [same] = await tx.select().from(financialDocuments).where(eq(financialDocuments.id, documentId)).limit(1);
+        return response(same);
+      }
+      await tx.insert(financialDocumentTypeCorrections).values({
+        householdId: actor.householdId,
+        financialDocumentId: documentId,
+        originalDocumentType: existingDocument.originalDocumentType ?? existingDocument.documentType,
+        correctedDocumentType: existingDocument.documentType,
+        reason: input.reason,
+        detectionEvidence: {
+          detectedDocumentType: existingDocument.detectedDocumentType,
+          confidence: existingDocument.detectionConfidence,
+          signals: existingDocument.detectionSignals,
+          decision: input.action,
+        },
+        requestedBy: actor.userId,
+        approvedBy: actor.userId,
+        appliedAt: new Date(),
+        status: "REJECTED",
+        idempotencyKey: input.idempotencyKey,
+      });
+      const [updated] = await tx.update(financialDocuments).set({
+        typeMismatchStatus: "OVERRIDDEN",
+        status: "NEEDS_REVIEW",
+        reviewReason: input.reason,
+        reviewedBy: actor.userId,
+        reviewedAt: new Date(),
+      }).where(and(eq(financialDocuments.id, documentId), eq(financialDocuments.householdId, actor.householdId))).returning();
+      await tx.insert(auditEvents).values({
+        householdId: actor.householdId,
+        eventType: "financial_document_type_override",
+        actor: actor.userId,
+        entity: "financial_document",
+        entityId: documentId,
+        reason: input.reason,
+        metadata: { selectedDocumentType: existingDocument.documentType, detectedDocumentType: existingDocument.detectedDocumentType, confidence: existingDocument.detectionConfidence },
+      });
+      return response(updated);
+    });
+  }
+
+  const correctedType = existingDocument.detectedDocumentType;
+  if (!correctedType || !acceptedTypes.has(correctedType) || correctedType === existingDocument.documentType) {
+    throw new GovernanceError("INVALID_STATE", "There is no different detected type available to apply");
+  }
+  if (correctedType !== "BUSINESS_PROFIT_AND_LOSS") {
+    throw new GovernanceError("INVALID_STATE", "This correction path currently supports reprocessing a detected P&L; other types remain in human review");
+  }
+  assertPrivateObjectPath(existingDocument.sourceObjectPath);
+  const declaredSizeBytes = existingDocument.sourceMetadata?.declaredSizeBytes;
+  if (typeof declaredSizeBytes !== "number") throw new GovernanceError("INVALID_STATE", "The original upload size is unavailable; re-upload is required before reprocessing");
+  const { bytes, sha256 } = await downloadBusinessDocument(existingDocument.sourceObjectPath, {
+    maxBytes: 50 * 1024 * 1024,
+    expectedBytes: declaredSizeBytes,
+    expectedContentType: existingDocument.mimeType,
+  });
+  const parsed = await parseBusinessPdf(bytes, "profit_loss");
+  if (!existingDocument.businessId) throw new GovernanceError("INVALID_STATE", "A business is required before a P&L can become authoritative");
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`financial-document-type:${actor.householdId}:${documentId}`}, 0))`);
+    const [prior] = await tx.select().from(financialDocumentTypeCorrections).where(and(
+      eq(financialDocumentTypeCorrections.householdId, actor.householdId),
+      eq(financialDocumentTypeCorrections.idempotencyKey, input.idempotencyKey),
+    )).limit(1);
+    if (prior) {
+      const [same] = await tx.select().from(financialDocuments).where(eq(financialDocuments.id, documentId)).limit(1);
+      return response(same);
+    }
+    const [document] = await tx.select().from(financialDocuments).where(and(
+      eq(financialDocuments.id, documentId),
+      eq(financialDocuments.householdId, actor.householdId),
+    )).limit(1);
+    if (!document) throw new GovernanceError("INVALID_STATE", "Financial document not found");
+    const originalType = document.originalDocumentType ?? document.documentType;
+    const businessId = document.businessId;
+    if (!businessId) throw new GovernanceError("INVALID_STATE", "A business is required before a P&L can become authoritative");
+    await tx.update(financialDocumentParseGenerations).set({ status: "SUPERSEDED_BY_TYPE_CORRECTION" }).where(and(
+      eq(financialDocumentParseGenerations.householdId, actor.householdId),
+      eq(financialDocumentParseGenerations.financialDocumentId, documentId),
+      eq(financialDocumentParseGenerations.status, "CURRENT"),
+    ));
+    if (document.sourceRecordType === "settlement_document" && document.sourceRecordId) {
+      await tx.update(settlementDocuments).set({
+        verificationStatus: "superseded",
+        reviewReason: "Superseded by an audited financial document type correction.",
+      }).where(and(eq(settlementDocuments.id, document.sourceRecordId), eq(settlementDocuments.householdId, actor.householdId)));
+      await tx.update(settlementMathReconciliations).set({ status: "superseded", reason: "Settlement parse superseded by document type correction." }).where(and(
+        eq(settlementMathReconciliations.settlementDocumentId, document.sourceRecordId),
+        eq(settlementMathReconciliations.householdId, actor.householdId),
+      ));
+      await tx.update(businessEarningsEvents).set({ classification: "superseded" }).where(and(
+        eq(businessEarningsEvents.householdId, actor.householdId),
+        eq(businessEarningsEvents.settlementDocumentId, document.sourceRecordId),
+      ));
+    }
+    const [existingPnl] = await tx.select().from(profitLossDocuments).where(and(
+      eq(profitLossDocuments.householdId, actor.householdId),
+      eq(profitLossDocuments.sourceSha256, sha256),
+    )).limit(1);
+    let pnl = existingPnl;
+    if (!pnl) {
+      const revenue = parsed.revenue ?? "0.00";
+      const expenses = parsed.expenses ?? "0.00";
+      const profit = parsed.profit ?? "0.00";
+      [pnl] = await tx.insert(profitLossDocuments).values({
+        householdId: actor.householdId,
+        businessId,
+        statementPeriodStart: parsed.statementPeriodStart ?? today(),
+        statementPeriodEnd: parsed.statementPeriodEnd ?? parsed.statementPeriodStart ?? today(),
+        sourceFileName: document.sourceFileName,
+        sourceObjectPath: document.sourceObjectPath,
+        sourceSha256: sha256,
+        sourceKind: "object_storage",
+        sourceContentType: document.mimeType,
+        sourceSizeBytes: bytes.length,
+        sourcePageCount: parsed.pageCount ?? undefined,
+        extractionStatus: parsed.extractionStatus,
+        extractionReason: parsed.reason,
+        verificationStatus: "needs_review",
+        reportedRevenue: revenue,
+        reportedExpenses: expenses,
+        reportedProfit: profit,
+        status: "needs_review",
+        createdBy: actor.userId,
+      }).returning();
+      if (parsed.lines.length) {
+        await tx.insert(profitLossLines).values(parsed.lines.map((line, index) => ({
+          householdId: actor.householdId,
+          profitLossDocumentId: pnl.id,
+          lineNumber: index + 1,
+          description: line.description,
+          category: line.lineType === "expense" ? "operating" : "revenue",
+          lineType: line.lineType,
+          amount: line.amount,
+          sourcePage: line.sourcePage,
+          reviewStatus: "needs_review",
+        })));
+      }
+    }
+    const [generation] = await tx.insert(financialDocumentParseGenerations).values({
+      householdId: actor.householdId,
+      financialDocumentId: documentId,
+      documentType: correctedType,
+      parserVersion: "business-profit-loss-parser-v1",
+      status: "CURRENT",
+      extractionStatus: parsed.extractionStatus,
+      sourceRecordType: "profit_loss_document",
+      sourceRecordId: pnl.id,
+      evidence: { authoritative: true, reason: parsed.reason, sha256 },
+      createdBy: actor.userId,
+    }).returning();
+    const [updated] = await tx.update(financialDocuments).set({
+      documentType: correctedType,
+      originalDocumentType: originalType,
+      sourceRecordType: "profit_loss_document",
+      sourceRecordId: pnl.id,
+      parserVersion: generation.parserVersion,
+      status: "PARSED",
+      typeMismatchStatus: "CORRECTED",
+      sourceMetadata: { ...document.sourceMetadata, reprocessedAt: new Date().toISOString(), reprocessReason: input.reason },
+    }).where(and(eq(financialDocuments.id, documentId), eq(financialDocuments.householdId, actor.householdId))).returning();
+    const [correction] = await tx.insert(financialDocumentTypeCorrections).values({
+      householdId: actor.householdId,
+      financialDocumentId: documentId,
+      originalDocumentType: originalType,
+      correctedDocumentType: correctedType,
+      reason: input.reason,
+      detectionEvidence: { detectedDocumentType: document.detectedDocumentType, confidence: document.detectionConfidence, signals: document.detectionSignals },
+      requestedBy: actor.userId,
+      approvedBy: actor.userId,
+      appliedAt: new Date(),
+      status: "APPLIED",
+      idempotencyKey: input.idempotencyKey,
+    }).returning();
+    await tx.insert(businessIncomeAnomalies).values({
+      householdId: actor.householdId,
+      businessId,
+      anomalyType: "source_type_correction_review",
+      severity: "warning",
+      relatedEntityType: "profit_loss_document",
+      relatedEntityId: pnl.id,
+      message: parsed.reason,
+    });
+    await tx.insert(auditEvents).values({
+      householdId: actor.householdId,
+      eventType: "financial_document_type_corrected",
+      actor: actor.userId,
+      entity: "financial_document",
+      entityId: documentId,
+      reason: input.reason,
+      metadata: { correctionId: correction.id, originalDocumentType: originalType, correctedDocumentType: correctedType, parserGenerationId: generation.id, profitLossDocumentId: pnl.id, oldParseSuperseded: true },
+    });
+    return response(updated);
   });
 }
 
@@ -275,6 +560,64 @@ export async function getFinancialDocument(actor: Actor, documentId: string) {
   const [statement] = await db.select().from(bankStatementDocuments).where(and(eq(bankStatementDocuments.documentId, document.id), eq(bankStatementDocuments.householdId, actor.householdId))).limit(1);
   const transactions = statement ? await statementTransactions(db, statement.id, actor.householdId) : [];
   return response(document, statement, transactions);
+}
+
+export async function reviewFinancialDocumentIdentity(actor: Actor, documentId: string, input: {
+  comparedDocumentId: string;
+  classification: "EXACT_DUPLICATE" | "PROBABLE_DUPLICATE" | "DISTINCT_PERIOD" | "DISTINCT_VERSION" | "CORRECTED_VERSION" | "UNKNOWN_REVIEW_REQUIRED";
+  reason: string;
+  canonicalDocumentId?: string;
+}) {
+  assertPermission(actor.role, "approve");
+  if (!input.reason.trim()) throw new GovernanceError("INVALID_STATE", "A reason is required for identity review");
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`financial-document-identity:${actor.householdId}:${documentId}:${input.comparedDocumentId}`}, 0))`);
+    const [document] = await tx.select().from(financialDocuments).where(and(eq(financialDocuments.id, documentId), eq(financialDocuments.householdId, actor.householdId))).limit(1);
+    const [compared] = await tx.select().from(financialDocuments).where(and(eq(financialDocuments.id, input.comparedDocumentId), eq(financialDocuments.householdId, actor.householdId))).limit(1);
+    if (!document || !compared) throw new GovernanceError("INVALID_STATE", "Both identity-review documents must belong to this household");
+    const canonicalDocumentId = input.canonicalDocumentId ?? (input.classification.includes("DUPLICATE") ? document.id : undefined);
+    if (canonicalDocumentId && canonicalDocumentId !== document.id && canonicalDocumentId !== compared.id) {
+      throw new GovernanceError("INVALID_STATE", "Canonical document must be one of the reviewed documents");
+    }
+    await tx.insert(financialDocumentIdentityReviews).values({
+      householdId: actor.householdId,
+      documentId,
+      comparedDocumentId: compared.id,
+      classification: input.classification,
+      evidence: {
+        reason: input.reason,
+        documentHash: document.documentHash,
+        comparedDocumentHash: compared.documentHash,
+        documentSizeBytes: document.sourceMetadata?.observedSizeBytes,
+        comparedSizeBytes: compared.sourceMetadata?.observedSizeBytes,
+        documentPeriod: [document.periodStart, document.periodEnd, document.statementDate],
+        comparedPeriod: [compared.periodStart, compared.periodEnd, compared.statementDate],
+      },
+      canonicalDocumentId,
+      reviewedBy: actor.userId,
+    }).onConflictDoUpdate({
+      target: [financialDocumentIdentityReviews.householdId, financialDocumentIdentityReviews.documentId, financialDocumentIdentityReviews.comparedDocumentId],
+      set: { classification: input.classification, evidence: { reason: input.reason }, canonicalDocumentId, reviewedBy: actor.userId, reviewedAt: new Date() },
+    });
+    const isDuplicate = input.classification === "EXACT_DUPLICATE" || input.classification === "PROBABLE_DUPLICATE";
+    const nextStatus = isDuplicate ? "DUPLICATE_REFERENCE" : input.classification === "UNKNOWN_REVIEW_REQUIRED" ? "REVIEW_REQUIRED" : "REVIEWED";
+    const [updated] = await tx.update(financialDocuments).set({
+      identityStatus: nextStatus,
+      canonicalDocumentId: canonicalDocumentId ?? document.canonicalDocumentId,
+      duplicateOfDocumentId: isDuplicate && canonicalDocumentId && canonicalDocumentId !== document.id ? canonicalDocumentId : document.duplicateOfDocumentId,
+      versionLabel: input.classification === "DISTINCT_VERSION" || input.classification === "CORRECTED_VERSION" ? input.classification : document.versionLabel,
+    }).where(and(eq(financialDocuments.id, document.id), eq(financialDocuments.householdId, actor.householdId))).returning();
+    await tx.insert(auditEvents).values({
+      householdId: actor.householdId,
+      eventType: "financial_document_identity_reviewed",
+      actor: actor.userId,
+      entity: "financial_document",
+      entityId: document.id,
+      reason: input.reason,
+      metadata: { comparedDocumentId: compared.id, classification: input.classification, canonicalDocumentId: canonicalDocumentId ?? null, sourceObjectsPreserved: true },
+    });
+    return response(updated);
+  });
 }
 
 export async function reviewFinancialDocument(actor: Actor, documentId: string, input: { decision: "VERIFIED" | "REJECTED" | "NEEDS_REVIEW"; reason: string }) {

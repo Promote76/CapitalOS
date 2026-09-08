@@ -12,6 +12,27 @@ import type { FinancialDocumentSourceMetadata } from './financialDocumentSourceM
 export interface FinancialDocument {
   id: string;
   documentType: string;
+  /** @nullable */
+  originalDocumentType?: string | null;
+  /** @nullable */
+  detectedDocumentType?: string | null;
+  /** @nullable */
+  detectionConfidence?: string | null;
+  detectionSignals: string[];
+  /** @nullable */
+  detectionVersion?: string | null;
+  typeMismatchStatus?: string;
+  /** @nullable */
+  canonicalDocumentId?: string | null;
+  /** @nullable */
+  duplicateOfDocumentId?: string | null;
+  /** @nullable */
+  supersedesDocumentId?: string | null;
+  /** @nullable */
+  supersededByDocumentId?: string | null;
+  /** @nullable */
+  versionLabel?: string | null;
+  identityStatus?: string;
   status: string;
   /** @nullable */
   sourceInstitution?: string | null;

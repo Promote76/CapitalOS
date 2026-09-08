@@ -126,9 +126,11 @@ import type {
   FinancialAccount,
   FinancialAccountsSummary,
   FinancialDocument,
+  FinancialDocumentIdentityReviewInput,
   FinancialDocumentIngestInput,
   FinancialDocumentList,
   FinancialDocumentReviewInput,
+  FinancialDocumentTypeDecisionInput,
   FinancialDocumentUploadInput,
   FinancialDocumentUploadTarget,
   FinancialReviewQueue,
@@ -15034,6 +15036,150 @@ export const useReviewFinancialDocument = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getReviewFinancialDocumentMutationOptions(options));
+    }
+
+export const getDecideFinancialDocumentTypeUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/financial-documents/${documentId}/type-decision`
+}
+
+/**
+ * @summary Keep or apply a human-reviewed financial document type decision
+ */
+export const decideFinancialDocumentType = async (documentId: string,
+    financialDocumentTypeDecisionInput: FinancialDocumentTypeDecisionInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancialDocument> => {
+
+  return customFetch<FinancialDocument>(getDecideFinancialDocumentTypeUrl(documentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financialDocumentTypeDecisionInput)
+  }
+);}
+
+
+
+
+
+export const getDecideFinancialDocumentTypeMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideFinancialDocumentType>>, TError,{documentId: string;data: BodyType<FinancialDocumentTypeDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideFinancialDocumentType>>, TError,{documentId: string;data: BodyType<FinancialDocumentTypeDecisionInput>}, TContext> => {
+
+const mutationKey = ['decideFinancialDocumentType'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideFinancialDocumentType>>, {documentId: string;data: BodyType<FinancialDocumentTypeDecisionInput>}> = (props) => {
+          const {documentId,data} = props ?? {};
+
+          return  decideFinancialDocumentType(documentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecideFinancialDocumentTypeMutationResult = NonNullable<Awaited<ReturnType<typeof decideFinancialDocumentType>>>
+    export type DecideFinancialDocumentTypeMutationBody = BodyType<FinancialDocumentTypeDecisionInput>
+    export type DecideFinancialDocumentTypeMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Keep or apply a human-reviewed financial document type decision
+ */
+export const useDecideFinancialDocumentType = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideFinancialDocumentType>>, TError,{documentId: string;data: BodyType<FinancialDocumentTypeDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof decideFinancialDocumentType>>,
+        TError,
+        {documentId: string;data: BodyType<FinancialDocumentTypeDecisionInput>},
+        TContext
+      > => {
+      return useMutation(getDecideFinancialDocumentTypeMutationOptions(options));
+    }
+
+export const getReviewFinancialDocumentIdentityUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/financial-documents/${documentId}/identity-review`
+}
+
+/**
+ * @summary Record an explicit duplicate or document-version review
+ */
+export const reviewFinancialDocumentIdentity = async (documentId: string,
+    financialDocumentIdentityReviewInput: FinancialDocumentIdentityReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancialDocument> => {
+
+  return customFetch<FinancialDocument>(getReviewFinancialDocumentIdentityUrl(documentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financialDocumentIdentityReviewInput)
+  }
+);}
+
+
+
+
+
+export const getReviewFinancialDocumentIdentityMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewFinancialDocumentIdentity>>, TError,{documentId: string;data: BodyType<FinancialDocumentIdentityReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewFinancialDocumentIdentity>>, TError,{documentId: string;data: BodyType<FinancialDocumentIdentityReviewInput>}, TContext> => {
+
+const mutationKey = ['reviewFinancialDocumentIdentity'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewFinancialDocumentIdentity>>, {documentId: string;data: BodyType<FinancialDocumentIdentityReviewInput>}> = (props) => {
+          const {documentId,data} = props ?? {};
+
+          return  reviewFinancialDocumentIdentity(documentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewFinancialDocumentIdentityMutationResult = NonNullable<Awaited<ReturnType<typeof reviewFinancialDocumentIdentity>>>
+    export type ReviewFinancialDocumentIdentityMutationBody = BodyType<FinancialDocumentIdentityReviewInput>
+    export type ReviewFinancialDocumentIdentityMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Record an explicit duplicate or document-version review
+ */
+export const useReviewFinancialDocumentIdentity = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewFinancialDocumentIdentity>>, TError,{documentId: string;data: BodyType<FinancialDocumentIdentityReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewFinancialDocumentIdentity>>,
+        TError,
+        {documentId: string;data: BodyType<FinancialDocumentIdentityReviewInput>},
+        TContext
+      > => {
+      return useMutation(getReviewFinancialDocumentIdentityMutationOptions(options));
     }
 
 export const getReviewBankStatementTransactionUrl = (transactionId: string,) => {

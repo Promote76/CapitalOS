@@ -8114,6 +8114,18 @@ export const ListFinancialDocumentsResponse = zod.object({
   "documents": zod.array(zod.object({
   "id": zod.string(),
   "documentType": zod.string(),
+  "originalDocumentType": zod.string().nullish(),
+  "detectedDocumentType": zod.string().nullish(),
+  "detectionConfidence": zod.string().nullish(),
+  "detectionSignals": zod.array(zod.string()),
+  "detectionVersion": zod.string().nullish(),
+  "typeMismatchStatus": zod.string().optional(),
+  "canonicalDocumentId": zod.string().nullish(),
+  "duplicateOfDocumentId": zod.string().nullish(),
+  "supersedesDocumentId": zod.string().nullish(),
+  "supersededByDocumentId": zod.string().nullish(),
+  "versionLabel": zod.string().nullish(),
+  "identityStatus": zod.string().optional(),
   "status": zod.string(),
   "sourceInstitution": zod.string().nullish(),
   "sourceFileName": zod.string(),
@@ -8264,6 +8276,18 @@ export const ingestFinancialDocumentResponseTransactionsItemCorrectionHistoryIte
 export const IngestFinancialDocumentResponse = zod.object({
   "id": zod.string(),
   "documentType": zod.string(),
+  "originalDocumentType": zod.string().nullish(),
+  "detectedDocumentType": zod.string().nullish(),
+  "detectionConfidence": zod.string().nullish(),
+  "detectionSignals": zod.array(zod.string()),
+  "detectionVersion": zod.string().nullish(),
+  "typeMismatchStatus": zod.string().optional(),
+  "canonicalDocumentId": zod.string().nullish(),
+  "duplicateOfDocumentId": zod.string().nullish(),
+  "supersedesDocumentId": zod.string().nullish(),
+  "supersededByDocumentId": zod.string().nullish(),
+  "versionLabel": zod.string().nullish(),
+  "identityStatus": zod.string().optional(),
   "status": zod.string(),
   "sourceInstitution": zod.string().nullish(),
   "sourceFileName": zod.string(),
@@ -8375,6 +8399,18 @@ export const getFinancialDocumentResponseTransactionsItemCorrectionHistoryItemRe
 export const GetFinancialDocumentResponse = zod.object({
   "id": zod.string(),
   "documentType": zod.string(),
+  "originalDocumentType": zod.string().nullish(),
+  "detectedDocumentType": zod.string().nullish(),
+  "detectionConfidence": zod.string().nullish(),
+  "detectionSignals": zod.array(zod.string()),
+  "detectionVersion": zod.string().nullish(),
+  "typeMismatchStatus": zod.string().optional(),
+  "canonicalDocumentId": zod.string().nullish(),
+  "duplicateOfDocumentId": zod.string().nullish(),
+  "supersedesDocumentId": zod.string().nullish(),
+  "supersededByDocumentId": zod.string().nullish(),
+  "versionLabel": zod.string().nullish(),
+  "identityStatus": zod.string().optional(),
   "status": zod.string(),
   "sourceInstitution": zod.string().nullish(),
   "sourceFileName": zod.string(),
@@ -8487,6 +8523,18 @@ export const reviewFinancialDocumentResponseTransactionsItemCorrectionHistoryIte
 export const ReviewFinancialDocumentResponse = zod.object({
   "id": zod.string(),
   "documentType": zod.string(),
+  "originalDocumentType": zod.string().nullish(),
+  "detectedDocumentType": zod.string().nullish(),
+  "detectionConfidence": zod.string().nullish(),
+  "detectionSignals": zod.array(zod.string()),
+  "detectionVersion": zod.string().nullish(),
+  "typeMismatchStatus": zod.string().optional(),
+  "canonicalDocumentId": zod.string().nullish(),
+  "duplicateOfDocumentId": zod.string().nullish(),
+  "supersedesDocumentId": zod.string().nullish(),
+  "supersededByDocumentId": zod.string().nullish(),
+  "versionLabel": zod.string().nullish(),
+  "identityStatus": zod.string().optional(),
   "status": zod.string(),
   "sourceInstitution": zod.string().nullish(),
   "sourceFileName": zod.string(),
@@ -8557,6 +8605,262 @@ export const ReviewFinancialDocumentResponse = zod.object({
   "id": zod.string(),
   "transactionId": zod.string(),
   "revision": zod.number().multipleOf(reviewFinancialDocumentResponseTransactionsItemCorrectionHistoryItemRevisionMultipleOf),
+  "previousValue": zod.record(zod.string(), zod.unknown()).nullish(),
+  "correctedValue": zod.record(zod.string(), zod.unknown()),
+  "reason": zod.string(),
+  "correctedAt": zod.coerce.date()
+}))
+})).optional()
+})
+
+
+/**
+ * @summary Keep or apply a human-reviewed financial document type decision
+ */
+export const decideFinancialDocumentTypePathDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const DecideFinancialDocumentTypeParams = zod.object({
+  "documentId": zod.coerce.string().regex(decideFinancialDocumentTypePathDocumentIdRegExp)
+})
+
+export const decideFinancialDocumentTypeBodyReasonMax = 1000;
+
+export const decideFinancialDocumentTypeBodyIdempotencyKeyMin = 8;
+export const decideFinancialDocumentTypeBodyIdempotencyKeyMax = 128;
+
+
+
+export const DecideFinancialDocumentTypeBody = zod.object({
+  "action": zod.enum(['USE_DETECTED_TYPE', 'KEEP_SELECTED_TYPE']),
+  "reason": zod.string().min(1).max(decideFinancialDocumentTypeBodyReasonMax),
+  "idempotencyKey": zod.string().min(decideFinancialDocumentTypeBodyIdempotencyKeyMin).max(decideFinancialDocumentTypeBodyIdempotencyKeyMax)
+})
+
+export const decideFinancialDocumentTypeResponseTransactionsItemSourcePageMultipleOf = 1;
+
+export const decideFinancialDocumentTypeResponseTransactionsItemSourceLineMultipleOf = 1;
+
+export const decideFinancialDocumentTypeResponseTransactionsItemCategoryCorrectionVersionMin = 0;
+export const decideFinancialDocumentTypeResponseTransactionsItemCategoryCorrectionVersionMultipleOf = 1;
+
+export const decideFinancialDocumentTypeResponseTransactionsItemCorrectionHistoryItemRevisionMultipleOf = 1;
+
+
+
+export const DecideFinancialDocumentTypeResponse = zod.object({
+  "id": zod.string(),
+  "documentType": zod.string(),
+  "originalDocumentType": zod.string().nullish(),
+  "detectedDocumentType": zod.string().nullish(),
+  "detectionConfidence": zod.string().nullish(),
+  "detectionSignals": zod.array(zod.string()),
+  "detectionVersion": zod.string().nullish(),
+  "typeMismatchStatus": zod.string().optional(),
+  "canonicalDocumentId": zod.string().nullish(),
+  "duplicateOfDocumentId": zod.string().nullish(),
+  "supersedesDocumentId": zod.string().nullish(),
+  "supersededByDocumentId": zod.string().nullish(),
+  "versionLabel": zod.string().nullish(),
+  "identityStatus": zod.string().optional(),
+  "status": zod.string(),
+  "sourceInstitution": zod.string().nullish(),
+  "sourceFileName": zod.string(),
+  "mimeType": zod.string(),
+  "documentHash": zod.string(),
+  "sourceObjectPath": zod.string(),
+  "sourceMetadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "periodStart": zod.string().nullish(),
+  "periodEnd": zod.string().nullish(),
+  "statementDate": zod.string().nullish(),
+  "parserVersion": zod.string().nullish(),
+  "sourceRecordType": zod.string().nullish(),
+  "sourceRecordId": zod.string().nullish(),
+  "uploadedAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "reviewDecision": zod.string().nullish(),
+  "reviewReason": zod.string().nullish(),
+  "bankStatement": zod.union([zod.object({
+  "id": zod.string(),
+  "documentId": zod.string(),
+  "accountId": zod.string().nullish(),
+  "institutionName": zod.string().nullish(),
+  "accountDisplayName": zod.string().nullish(),
+  "accountMask": zod.string().nullish(),
+  "statementStart": zod.string().nullish(),
+  "statementEnd": zod.string().nullish(),
+  "openingBalance": zod.string(),
+  "closingBalance": zod.string(),
+  "totalDeposits": zod.string(),
+  "totalWithdrawals": zod.string(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date()
+}),zod.null()]).optional(),
+  "transactions": zod.array(zod.object({
+  "id": zod.string(),
+  "bankStatementDocumentId": zod.string(),
+  "postedDate": zod.string().nullish(),
+  "description": zod.string(),
+  "amount": zod.string(),
+  "direction": zod.string().nullable(),
+  "runningBalance": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "confidence": zod.string().nullable(),
+  "sourcePage": zod.number().multipleOf(decideFinancialDocumentTypeResponseTransactionsItemSourcePageMultipleOf).nullish(),
+  "sourceLine": zod.number().multipleOf(decideFinancialDocumentTypeResponseTransactionsItemSourceLineMultipleOf).nullable(),
+  "sourceRegion": zod.string().nullable(),
+  "parserVersion": zod.string(),
+  "evidenceFingerprint": zod.string(),
+  "reviewStatus": zod.string(),
+  "lastReviewAction": zod.union([zod.literal('APPROVE'),zod.literal('REJECT'),zod.literal('RECLASSIFY'),zod.literal('LINK_SETTLEMENT'),zod.literal('MARK_TRANSFER'),zod.literal(null)]).nullable(),
+  "originalValue": zod.record(zod.string(), zod.unknown()),
+  "correctedValue": zod.record(zod.string(), zod.unknown()).nullish(),
+  "correctionReason": zod.string().nullish(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "linkedSettlementDocumentId": zod.string().nullish(),
+  "suggestedCategoryId": zod.string().nullish(),
+  "suggestedCategoryConfidence": zod.union([zod.literal('HIGH'),zod.literal('MEDIUM'),zod.literal('LOW'),zod.literal('UNKNOWN'),zod.literal(null)]).nullish(),
+  "suggestedCategoryReason": zod.string().nullish(),
+  "suggestedCategorySource": zod.string().nullish(),
+  "selectedCategoryId": zod.string().nullish(),
+  "categoryDecisionStatus": zod.enum(['UNCLASSIFIED', 'SUGGESTED', 'USER_CONFIRMED', 'USER_CORRECTED', 'NOT_APPLICABLE_TRANSFER', 'NOT_APPLICABLE_SETTLEMENT', 'REJECTED']).optional(),
+  "categoryDecidedBy": zod.string().nullish(),
+  "categoryDecidedAt": zod.coerce.date().nullish(),
+  "categoryCorrectionVersion": zod.number().min(decideFinancialDocumentTypeResponseTransactionsItemCategoryCorrectionVersionMin).multipleOf(decideFinancialDocumentTypeResponseTransactionsItemCategoryCorrectionVersionMultipleOf).optional(),
+  "economicClassification": zod.enum(['HOUSEHOLD', 'BUSINESS', 'TRANSFER', 'SETTLEMENT_LINK', 'UNKNOWN']).optional(),
+  "createdAt": zod.coerce.date(),
+  "correctionHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "transactionId": zod.string(),
+  "revision": zod.number().multipleOf(decideFinancialDocumentTypeResponseTransactionsItemCorrectionHistoryItemRevisionMultipleOf),
+  "previousValue": zod.record(zod.string(), zod.unknown()).nullish(),
+  "correctedValue": zod.record(zod.string(), zod.unknown()),
+  "reason": zod.string(),
+  "correctedAt": zod.coerce.date()
+}))
+})).optional()
+})
+
+
+/**
+ * @summary Record an explicit duplicate or document-version review
+ */
+export const reviewFinancialDocumentIdentityPathDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ReviewFinancialDocumentIdentityParams = zod.object({
+  "documentId": zod.coerce.string().regex(reviewFinancialDocumentIdentityPathDocumentIdRegExp)
+})
+
+export const reviewFinancialDocumentIdentityBodyComparedDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reviewFinancialDocumentIdentityBodyReasonMax = 1000;
+
+export const reviewFinancialDocumentIdentityBodyCanonicalDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ReviewFinancialDocumentIdentityBody = zod.object({
+  "comparedDocumentId": zod.string().regex(reviewFinancialDocumentIdentityBodyComparedDocumentIdRegExp),
+  "classification": zod.enum(['EXACT_DUPLICATE', 'PROBABLE_DUPLICATE', 'DISTINCT_PERIOD', 'DISTINCT_VERSION', 'CORRECTED_VERSION', 'UNKNOWN_REVIEW_REQUIRED']),
+  "reason": zod.string().min(1).max(reviewFinancialDocumentIdentityBodyReasonMax),
+  "canonicalDocumentId": zod.string().regex(reviewFinancialDocumentIdentityBodyCanonicalDocumentIdRegExp).optional()
+})
+
+export const reviewFinancialDocumentIdentityResponseTransactionsItemSourcePageMultipleOf = 1;
+
+export const reviewFinancialDocumentIdentityResponseTransactionsItemSourceLineMultipleOf = 1;
+
+export const reviewFinancialDocumentIdentityResponseTransactionsItemCategoryCorrectionVersionMin = 0;
+export const reviewFinancialDocumentIdentityResponseTransactionsItemCategoryCorrectionVersionMultipleOf = 1;
+
+export const reviewFinancialDocumentIdentityResponseTransactionsItemCorrectionHistoryItemRevisionMultipleOf = 1;
+
+
+
+export const ReviewFinancialDocumentIdentityResponse = zod.object({
+  "id": zod.string(),
+  "documentType": zod.string(),
+  "originalDocumentType": zod.string().nullish(),
+  "detectedDocumentType": zod.string().nullish(),
+  "detectionConfidence": zod.string().nullish(),
+  "detectionSignals": zod.array(zod.string()),
+  "detectionVersion": zod.string().nullish(),
+  "typeMismatchStatus": zod.string().optional(),
+  "canonicalDocumentId": zod.string().nullish(),
+  "duplicateOfDocumentId": zod.string().nullish(),
+  "supersedesDocumentId": zod.string().nullish(),
+  "supersededByDocumentId": zod.string().nullish(),
+  "versionLabel": zod.string().nullish(),
+  "identityStatus": zod.string().optional(),
+  "status": zod.string(),
+  "sourceInstitution": zod.string().nullish(),
+  "sourceFileName": zod.string(),
+  "mimeType": zod.string(),
+  "documentHash": zod.string(),
+  "sourceObjectPath": zod.string(),
+  "sourceMetadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "periodStart": zod.string().nullish(),
+  "periodEnd": zod.string().nullish(),
+  "statementDate": zod.string().nullish(),
+  "parserVersion": zod.string().nullish(),
+  "sourceRecordType": zod.string().nullish(),
+  "sourceRecordId": zod.string().nullish(),
+  "uploadedAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "reviewDecision": zod.string().nullish(),
+  "reviewReason": zod.string().nullish(),
+  "bankStatement": zod.union([zod.object({
+  "id": zod.string(),
+  "documentId": zod.string(),
+  "accountId": zod.string().nullish(),
+  "institutionName": zod.string().nullish(),
+  "accountDisplayName": zod.string().nullish(),
+  "accountMask": zod.string().nullish(),
+  "statementStart": zod.string().nullish(),
+  "statementEnd": zod.string().nullish(),
+  "openingBalance": zod.string(),
+  "closingBalance": zod.string(),
+  "totalDeposits": zod.string(),
+  "totalWithdrawals": zod.string(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date()
+}),zod.null()]).optional(),
+  "transactions": zod.array(zod.object({
+  "id": zod.string(),
+  "bankStatementDocumentId": zod.string(),
+  "postedDate": zod.string().nullish(),
+  "description": zod.string(),
+  "amount": zod.string(),
+  "direction": zod.string().nullable(),
+  "runningBalance": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "confidence": zod.string().nullable(),
+  "sourcePage": zod.number().multipleOf(reviewFinancialDocumentIdentityResponseTransactionsItemSourcePageMultipleOf).nullish(),
+  "sourceLine": zod.number().multipleOf(reviewFinancialDocumentIdentityResponseTransactionsItemSourceLineMultipleOf).nullable(),
+  "sourceRegion": zod.string().nullable(),
+  "parserVersion": zod.string(),
+  "evidenceFingerprint": zod.string(),
+  "reviewStatus": zod.string(),
+  "lastReviewAction": zod.union([zod.literal('APPROVE'),zod.literal('REJECT'),zod.literal('RECLASSIFY'),zod.literal('LINK_SETTLEMENT'),zod.literal('MARK_TRANSFER'),zod.literal(null)]).nullable(),
+  "originalValue": zod.record(zod.string(), zod.unknown()),
+  "correctedValue": zod.record(zod.string(), zod.unknown()).nullish(),
+  "correctionReason": zod.string().nullish(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "linkedSettlementDocumentId": zod.string().nullish(),
+  "suggestedCategoryId": zod.string().nullish(),
+  "suggestedCategoryConfidence": zod.union([zod.literal('HIGH'),zod.literal('MEDIUM'),zod.literal('LOW'),zod.literal('UNKNOWN'),zod.literal(null)]).nullish(),
+  "suggestedCategoryReason": zod.string().nullish(),
+  "suggestedCategorySource": zod.string().nullish(),
+  "selectedCategoryId": zod.string().nullish(),
+  "categoryDecisionStatus": zod.enum(['UNCLASSIFIED', 'SUGGESTED', 'USER_CONFIRMED', 'USER_CORRECTED', 'NOT_APPLICABLE_TRANSFER', 'NOT_APPLICABLE_SETTLEMENT', 'REJECTED']).optional(),
+  "categoryDecidedBy": zod.string().nullish(),
+  "categoryDecidedAt": zod.coerce.date().nullish(),
+  "categoryCorrectionVersion": zod.number().min(reviewFinancialDocumentIdentityResponseTransactionsItemCategoryCorrectionVersionMin).multipleOf(reviewFinancialDocumentIdentityResponseTransactionsItemCategoryCorrectionVersionMultipleOf).optional(),
+  "economicClassification": zod.enum(['HOUSEHOLD', 'BUSINESS', 'TRANSFER', 'SETTLEMENT_LINK', 'UNKNOWN']).optional(),
+  "createdAt": zod.coerce.date(),
+  "correctionHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "transactionId": zod.string(),
+  "revision": zod.number().multipleOf(reviewFinancialDocumentIdentityResponseTransactionsItemCorrectionHistoryItemRevisionMultipleOf),
   "previousValue": zod.record(zod.string(), zod.unknown()).nullish(),
   "correctedValue": zod.record(zod.string(), zod.unknown()),
   "reason": zod.string(),

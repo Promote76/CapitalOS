@@ -47,6 +47,43 @@ export const BankStatementTransactionEvidenceLastReviewAction = {
 /**
  * @nullable
  */
+export type BankStatementTransactionEvidenceSuggestedCategoryConfidence = typeof BankStatementTransactionEvidenceSuggestedCategoryConfidence[keyof typeof BankStatementTransactionEvidenceSuggestedCategoryConfidence] | null;
+
+
+export const BankStatementTransactionEvidenceSuggestedCategoryConfidence = {
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type BankStatementTransactionEvidenceCategoryDecisionStatus = typeof BankStatementTransactionEvidenceCategoryDecisionStatus[keyof typeof BankStatementTransactionEvidenceCategoryDecisionStatus];
+
+
+export const BankStatementTransactionEvidenceCategoryDecisionStatus = {
+  UNCLASSIFIED: 'UNCLASSIFIED',
+  SUGGESTED: 'SUGGESTED',
+  USER_CONFIRMED: 'USER_CONFIRMED',
+  USER_CORRECTED: 'USER_CORRECTED',
+  NOT_APPLICABLE_TRANSFER: 'NOT_APPLICABLE_TRANSFER',
+  NOT_APPLICABLE_SETTLEMENT: 'NOT_APPLICABLE_SETTLEMENT',
+  REJECTED: 'REJECTED',
+} as const;
+
+export type BankStatementTransactionEvidenceEconomicClassification = typeof BankStatementTransactionEvidenceEconomicClassification[keyof typeof BankStatementTransactionEvidenceEconomicClassification];
+
+
+export const BankStatementTransactionEvidenceEconomicClassification = {
+  HOUSEHOLD: 'HOUSEHOLD',
+  BUSINESS: 'BUSINESS',
+  TRANSFER: 'TRANSFER',
+  SETTLEMENT_LINK: 'SETTLEMENT_LINK',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+/**
+ * @nullable
+ */
 export type BankStatementTransactionCorrectionPreviousValue = { [key: string]: unknown } | null;
 
 export type BankStatementTransactionCorrectionCorrectedValue = { [key: string]: unknown };
@@ -104,6 +141,24 @@ export interface BankStatementTransactionEvidence {
   reviewedAt?: string | null;
   /** @nullable */
   linkedSettlementDocumentId?: string | null;
+  /** @nullable */
+  suggestedCategoryId?: string | null;
+  /** @nullable */
+  suggestedCategoryConfidence?: BankStatementTransactionEvidenceSuggestedCategoryConfidence;
+  /** @nullable */
+  suggestedCategoryReason?: string | null;
+  /** @nullable */
+  suggestedCategorySource?: string | null;
+  /** @nullable */
+  selectedCategoryId?: string | null;
+  categoryDecisionStatus?: BankStatementTransactionEvidenceCategoryDecisionStatus;
+  /** @nullable */
+  categoryDecidedBy?: string | null;
+  /** @nullable */
+  categoryDecidedAt?: string | null;
+  /** @minimum 0 */
+  categoryCorrectionVersion?: number;
+  economicClassification?: BankStatementTransactionEvidenceEconomicClassification;
   createdAt: string;
   correctionHistory: BankStatementTransactionCorrection[];
 }
@@ -276,6 +331,253 @@ export interface BankStatementTransactionReviewInput {
   correctedValue?: BankStatementTransactionReviewInputCorrectedValue;
   /** @pattern ^[0-9a-fA-F-]{36}$ */
   settlementDocumentId?: string;
+}
+
+export type StatementCategoryDecisionInputStatus = typeof StatementCategoryDecisionInputStatus[keyof typeof StatementCategoryDecisionInputStatus];
+
+
+export const StatementCategoryDecisionInputStatus = {
+  USER_CONFIRMED: 'USER_CONFIRMED',
+  USER_CORRECTED: 'USER_CORRECTED',
+  NOT_APPLICABLE_TRANSFER: 'NOT_APPLICABLE_TRANSFER',
+  NOT_APPLICABLE_SETTLEMENT: 'NOT_APPLICABLE_SETTLEMENT',
+  REJECTED: 'REJECTED',
+} as const;
+
+export type StatementCategoryDecisionInputEconomicClassification = typeof StatementCategoryDecisionInputEconomicClassification[keyof typeof StatementCategoryDecisionInputEconomicClassification];
+
+
+export const StatementCategoryDecisionInputEconomicClassification = {
+  HOUSEHOLD: 'HOUSEHOLD',
+  BUSINESS: 'BUSINESS',
+  TRANSFER: 'TRANSFER',
+  SETTLEMENT_LINK: 'SETTLEMENT_LINK',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export interface StatementCategoryDecisionInput {
+  status: StatementCategoryDecisionInputStatus;
+  /**
+     * @nullable
+     * @pattern ^[0-9a-fA-F-]{36}$
+     */
+  categoryId?: string | null;
+  economicClassification: StatementCategoryDecisionInputEconomicClassification;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+}
+
+export type StatementMatchCandidateConfidence = typeof StatementMatchCandidateConfidence[keyof typeof StatementMatchCandidateConfidence];
+
+
+export const StatementMatchCandidateConfidence = {
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW',
+} as const;
+
+export interface StatementMatchCandidate {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  financeTransactionId: string;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  accountId?: string;
+  transactionDate: string;
+  /** @pattern ^-?[0-9]+\.[0-9]{2}$ */
+  amount: string;
+  description: string;
+  /** @nullable */
+  merchant?: string | null;
+  /** @nullable */
+  categoryId?: string | null;
+  confidence: StatementMatchCandidateConfidence;
+  reasons: string[];
+}
+
+export type StatementMatchPreviewOutcome = typeof StatementMatchPreviewOutcome[keyof typeof StatementMatchPreviewOutcome];
+
+
+export const StatementMatchPreviewOutcome = {
+  NO_MATCH: 'NO_MATCH',
+  ONE_HIGH_CONFIDENCE_MATCH: 'ONE_HIGH_CONFIDENCE_MATCH',
+  MULTIPLE_CANDIDATES: 'MULTIPLE_CANDIDATES',
+  EXACT_ALREADY_LINKED: 'EXACT_ALREADY_LINKED',
+  KNOWN_DUPLICATE: 'KNOWN_DUPLICATE',
+} as const;
+
+export interface StatementMatchPreview {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  statementRowId: string;
+  outcome: StatementMatchPreviewOutcome;
+  candidates: StatementMatchCandidate[];
+  canImportAsNew: boolean;
+  requiresHumanDecision: boolean;
+  /** @nullable */
+  existingInclusionId?: string | null;
+}
+
+export type StatementFinancialImportInputExpectedMatchOutcome = typeof StatementFinancialImportInputExpectedMatchOutcome[keyof typeof StatementFinancialImportInputExpectedMatchOutcome];
+
+
+export const StatementFinancialImportInputExpectedMatchOutcome = {
+  NO_MATCH: 'NO_MATCH',
+  MULTIPLE_CANDIDATES: 'MULTIPLE_CANDIDATES',
+} as const;
+
+export interface StatementFinancialImportInput {
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+  expectedMatchOutcome?: StatementFinancialImportInputExpectedMatchOutcome;
+}
+
+export interface StatementFinancialLinkInput {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  financeTransactionId: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+}
+
+export interface StatementFinancialReversalInput {
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+}
+
+export interface StatementFinancialReconciliationInput {
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+}
+
+export type StatementFinancialInclusionStatus = typeof StatementFinancialInclusionStatus[keyof typeof StatementFinancialInclusionStatus];
+
+
+export const StatementFinancialInclusionStatus = {
+  NOT_REVIEWED: 'NOT_REVIEWED',
+  READY_FOR_INCLUSION_REVIEW: 'READY_FOR_INCLUSION_REVIEW',
+  MATCH_CANDIDATE: 'MATCH_CANDIDATE',
+  DUPLICATE_REVIEW_REQUIRED: 'DUPLICATE_REVIEW_REQUIRED',
+  READY_TO_IMPORT: 'READY_TO_IMPORT',
+  LINKED_EXISTING: 'LINKED_EXISTING',
+  IMPORTED_NEW: 'IMPORTED_NEW',
+  EXCLUDED_TRANSFER: 'EXCLUDED_TRANSFER',
+  EXCLUDED_SETTLEMENT: 'EXCLUDED_SETTLEMENT',
+  EXCLUDED_DUPLICATE: 'EXCLUDED_DUPLICATE',
+  REVERSED: 'REVERSED',
+  REJECTED: 'REJECTED',
+} as const;
+
+/**
+ * @nullable
+ */
+export type StatementFinancialInclusionMismatchCode = typeof StatementFinancialInclusionMismatchCode[keyof typeof StatementFinancialInclusionMismatchCode] | null;
+
+
+export const StatementFinancialInclusionMismatchCode = {
+  SOURCE_OFFICIAL_MISMATCH: 'SOURCE_OFFICIAL_MISMATCH',
+} as const;
+
+export type StatementFinancialInclusionReconciliationStatus = typeof StatementFinancialInclusionReconciliationStatus[keyof typeof StatementFinancialInclusionReconciliationStatus];
+
+
+export const StatementFinancialInclusionReconciliationStatus = {
+  NOT_REQUIRED: 'NOT_REQUIRED',
+  REQUIRED: 'REQUIRED',
+  RESOLVED: 'RESOLVED',
+} as const;
+
+export interface StatementFinancialInclusion {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  statementDocumentId: string;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  statementRowId: string;
+  /** @minLength 1 */
+  statementRowFingerprint: string;
+  evidenceDecision: string;
+  /** @nullable */
+  categoryId?: string | null;
+  inclusionDecision: string;
+  /** @nullable */
+  matchedFinanceTransactionId?: string | null;
+  /** @nullable */
+  createdFinanceTransactionId?: string | null;
+  duplicateStatus: string;
+  transferStatus: string;
+  settlementLinkStatus: string;
+  /** @nullable */
+  approvedBy?: string | null;
+  /** @nullable */
+  approvedAt?: string | null;
+  /** @nullable */
+  reversedBy?: string | null;
+  /** @nullable */
+  reversedAt?: string | null;
+  status: StatementFinancialInclusionStatus;
+  reviewRequired: boolean;
+  /** @nullable */
+  mismatchCode?: StatementFinancialInclusionMismatchCode;
+  reconciliationStatus: StatementFinancialInclusionReconciliationStatus;
+  /** @nullable */
+  reconciledBy?: string | null;
+  /** @nullable */
+  reconciledAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type StatementFinancialReversalPreviousState = { [key: string]: unknown };
+
+export type StatementFinancialReversalNewState = { [key: string]: unknown };
+
+export interface StatementFinancialReversal {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  inclusionId: string;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  statementRowId: string;
+  /** @nullable */
+  financeTransactionId?: string | null;
+  previousState: StatementFinancialReversalPreviousState;
+  newState: StatementFinancialReversalNewState;
+  reason: string;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  actor: string;
+  timestamp: string;
+}
+
+export interface StatementFinancialReversalResult {
+  inclusion: StatementFinancialInclusion;
+  reversal: StatementFinancialReversal;
 }
 
 export interface BudgetPlanningVersionInput {
@@ -3002,6 +3304,9 @@ export type BudgetSummaryCategoriesItem = {
   essentialStatus: string;
   budgeted: string;
   actual: string;
+  pendingEvidence: string;
+  sourceCoverage: string;
+  noTarget: boolean;
   variance: string;
   percentageUsed: number;
   projectedMonthEnd: string;
@@ -3011,6 +3316,7 @@ export type BudgetSummaryCategoriesItem = {
 export type BudgetSummaryTotals = {
   budgeted: string;
   actual: string;
+  pendingEvidence: string;
   remaining: string;
   percentageUsed: number;
 };

@@ -1,0 +1,2 @@
+ALTER TABLE "finance_transactions" ADD CONSTRAINT "finance_transactions_source_document_id_financial_documents_id_fk" FOREIGN KEY ("source_document_id") REFERENCES "public"."financial_documents"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "finance_transactions" ADD CONSTRAINT "finance_transactions_source_statement_row_id_bank_statement_transactions_id_fk" FOREIGN KEY ("source_statement_row_id") REFERENCES "public"."bank_statement_transactions"("id") ON DELETE set null ON UPDATE no action;

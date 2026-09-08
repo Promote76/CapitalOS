@@ -34,3 +34,4 @@
 - [Capital Governor certification](capital-governor-certification.md) — refresh all tenant-route evidence markers before certifying additive Safe-to-Deploy routes.
 - [PDF evidence extraction](capital-os-pdf-evidence.md) — normalize pdftotext form-feed output before counting pages or attributing extracted lines to source pages.
 - [Uploaded statement utilization](capital-os-uploaded-statement-utilization.md) — reviewed rows may inform advisory review, but parent state and exclusions prevent uploads from becoming financial authority.
+- [HTTP idempotency header casing](http-idempotency-header-casing.md) — normalize Node’s lowercase request headers before validating OpenAPI schemas that retain display casing.

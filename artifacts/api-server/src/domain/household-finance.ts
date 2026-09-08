@@ -47,6 +47,9 @@ export type BudgetPerformance = {
   essentialStatus: string;
   budgeted: string;
   actual: string;
+  pendingEvidence: string;
+  sourceCoverage: string;
+  noTarget: boolean;
   variance: string;
   percentageUsed: number;
   projectedMonthEnd: string;
@@ -131,6 +134,9 @@ export function calculateBudgetPerformance(
         essentialStatus: category.essentialStatus,
         budgeted: centsToMoney(budgeted),
         actual: centsToMoney(actual),
+        pendingEvidence: "0.00",
+        sourceCoverage: "0 official, 0 pending",
+        noTarget: budgeted === 0,
         variance: centsToMoney(variance),
         percentageUsed,
         projectedMonthEnd: centsToMoney(projectedCents),

@@ -3267,6 +3267,9 @@ export const GetBudgetResponse = zod.object({
   "essentialStatus": zod.string(),
   "budgeted": zod.string(),
   "actual": zod.string(),
+  "pendingEvidence": zod.string(),
+  "sourceCoverage": zod.string(),
+  "noTarget": zod.boolean(),
   "variance": zod.string(),
   "percentageUsed": zod.number(),
   "projectedMonthEnd": zod.string(),
@@ -3275,6 +3278,7 @@ export const GetBudgetResponse = zod.object({
   "totals": zod.object({
   "budgeted": zod.string(),
   "actual": zod.string(),
+  "pendingEvidence": zod.string(),
   "remaining": zod.string(),
   "percentageUsed": zod.number()
 }),
@@ -8078,6 +8082,9 @@ export const listFinancialDocumentsResponseDocumentsItemTransactionsItemSourcePa
 
 export const listFinancialDocumentsResponseDocumentsItemTransactionsItemSourceLineMultipleOf = 1;
 
+export const listFinancialDocumentsResponseDocumentsItemTransactionsItemCategoryCorrectionVersionMin = 0;
+export const listFinancialDocumentsResponseDocumentsItemTransactionsItemCategoryCorrectionVersionMultipleOf = 1;
+
 export const listFinancialDocumentsResponseDocumentsItemTransactionsItemCorrectionHistoryItemRevisionMultipleOf = 1;
 
 
@@ -8141,6 +8148,16 @@ export const ListFinancialDocumentsResponse = zod.object({
   "correctionReason": zod.string().nullish(),
   "reviewedAt": zod.coerce.date().nullish(),
   "linkedSettlementDocumentId": zod.string().nullish(),
+  "suggestedCategoryId": zod.string().nullish(),
+  "suggestedCategoryConfidence": zod.union([zod.literal('HIGH'),zod.literal('MEDIUM'),zod.literal('LOW'),zod.literal('UNKNOWN'),zod.literal(null)]).nullish(),
+  "suggestedCategoryReason": zod.string().nullish(),
+  "suggestedCategorySource": zod.string().nullish(),
+  "selectedCategoryId": zod.string().nullish(),
+  "categoryDecisionStatus": zod.enum(['UNCLASSIFIED', 'SUGGESTED', 'USER_CONFIRMED', 'USER_CORRECTED', 'NOT_APPLICABLE_TRANSFER', 'NOT_APPLICABLE_SETTLEMENT', 'REJECTED']).optional(),
+  "categoryDecidedBy": zod.string().nullish(),
+  "categoryDecidedAt": zod.coerce.date().nullish(),
+  "categoryCorrectionVersion": zod.number().min(listFinancialDocumentsResponseDocumentsItemTransactionsItemCategoryCorrectionVersionMin).multipleOf(listFinancialDocumentsResponseDocumentsItemTransactionsItemCategoryCorrectionVersionMultipleOf).optional(),
+  "economicClassification": zod.enum(['HOUSEHOLD', 'BUSINESS', 'TRANSFER', 'SETTLEMENT_LINK', 'UNKNOWN']).optional(),
   "createdAt": zod.coerce.date(),
   "correctionHistory": zod.array(zod.object({
   "id": zod.string(),
@@ -8216,6 +8233,9 @@ export const ingestFinancialDocumentResponseTransactionsItemSourcePageMultipleOf
 
 export const ingestFinancialDocumentResponseTransactionsItemSourceLineMultipleOf = 1;
 
+export const ingestFinancialDocumentResponseTransactionsItemCategoryCorrectionVersionMin = 0;
+export const ingestFinancialDocumentResponseTransactionsItemCategoryCorrectionVersionMultipleOf = 1;
+
 export const ingestFinancialDocumentResponseTransactionsItemCorrectionHistoryItemRevisionMultipleOf = 1;
 
 
@@ -8278,6 +8298,16 @@ export const IngestFinancialDocumentResponse = zod.object({
   "correctionReason": zod.string().nullish(),
   "reviewedAt": zod.coerce.date().nullish(),
   "linkedSettlementDocumentId": zod.string().nullish(),
+  "suggestedCategoryId": zod.string().nullish(),
+  "suggestedCategoryConfidence": zod.union([zod.literal('HIGH'),zod.literal('MEDIUM'),zod.literal('LOW'),zod.literal('UNKNOWN'),zod.literal(null)]).nullish(),
+  "suggestedCategoryReason": zod.string().nullish(),
+  "suggestedCategorySource": zod.string().nullish(),
+  "selectedCategoryId": zod.string().nullish(),
+  "categoryDecisionStatus": zod.enum(['UNCLASSIFIED', 'SUGGESTED', 'USER_CONFIRMED', 'USER_CORRECTED', 'NOT_APPLICABLE_TRANSFER', 'NOT_APPLICABLE_SETTLEMENT', 'REJECTED']).optional(),
+  "categoryDecidedBy": zod.string().nullish(),
+  "categoryDecidedAt": zod.coerce.date().nullish(),
+  "categoryCorrectionVersion": zod.number().min(ingestFinancialDocumentResponseTransactionsItemCategoryCorrectionVersionMin).multipleOf(ingestFinancialDocumentResponseTransactionsItemCategoryCorrectionVersionMultipleOf).optional(),
+  "economicClassification": zod.enum(['HOUSEHOLD', 'BUSINESS', 'TRANSFER', 'SETTLEMENT_LINK', 'UNKNOWN']).optional(),
   "createdAt": zod.coerce.date(),
   "correctionHistory": zod.array(zod.object({
   "id": zod.string(),
@@ -8313,6 +8343,9 @@ export const GetFinancialDocumentParams = zod.object({
 export const getFinancialDocumentResponseTransactionsItemSourcePageMultipleOf = 1;
 
 export const getFinancialDocumentResponseTransactionsItemSourceLineMultipleOf = 1;
+
+export const getFinancialDocumentResponseTransactionsItemCategoryCorrectionVersionMin = 0;
+export const getFinancialDocumentResponseTransactionsItemCategoryCorrectionVersionMultipleOf = 1;
 
 export const getFinancialDocumentResponseTransactionsItemCorrectionHistoryItemRevisionMultipleOf = 1;
 
@@ -8376,6 +8409,16 @@ export const GetFinancialDocumentResponse = zod.object({
   "correctionReason": zod.string().nullish(),
   "reviewedAt": zod.coerce.date().nullish(),
   "linkedSettlementDocumentId": zod.string().nullish(),
+  "suggestedCategoryId": zod.string().nullish(),
+  "suggestedCategoryConfidence": zod.union([zod.literal('HIGH'),zod.literal('MEDIUM'),zod.literal('LOW'),zod.literal('UNKNOWN'),zod.literal(null)]).nullish(),
+  "suggestedCategoryReason": zod.string().nullish(),
+  "suggestedCategorySource": zod.string().nullish(),
+  "selectedCategoryId": zod.string().nullish(),
+  "categoryDecisionStatus": zod.enum(['UNCLASSIFIED', 'SUGGESTED', 'USER_CONFIRMED', 'USER_CORRECTED', 'NOT_APPLICABLE_TRANSFER', 'NOT_APPLICABLE_SETTLEMENT', 'REJECTED']).optional(),
+  "categoryDecidedBy": zod.string().nullish(),
+  "categoryDecidedAt": zod.coerce.date().nullish(),
+  "categoryCorrectionVersion": zod.number().min(getFinancialDocumentResponseTransactionsItemCategoryCorrectionVersionMin).multipleOf(getFinancialDocumentResponseTransactionsItemCategoryCorrectionVersionMultipleOf).optional(),
+  "economicClassification": zod.enum(['HOUSEHOLD', 'BUSINESS', 'TRANSFER', 'SETTLEMENT_LINK', 'UNKNOWN']).optional(),
   "createdAt": zod.coerce.date(),
   "correctionHistory": zod.array(zod.object({
   "id": zod.string(),
@@ -8412,6 +8455,9 @@ export const ReviewFinancialDocumentBody = zod.object({
 export const reviewFinancialDocumentResponseTransactionsItemSourcePageMultipleOf = 1;
 
 export const reviewFinancialDocumentResponseTransactionsItemSourceLineMultipleOf = 1;
+
+export const reviewFinancialDocumentResponseTransactionsItemCategoryCorrectionVersionMin = 0;
+export const reviewFinancialDocumentResponseTransactionsItemCategoryCorrectionVersionMultipleOf = 1;
 
 export const reviewFinancialDocumentResponseTransactionsItemCorrectionHistoryItemRevisionMultipleOf = 1;
 
@@ -8475,6 +8521,16 @@ export const ReviewFinancialDocumentResponse = zod.object({
   "correctionReason": zod.string().nullish(),
   "reviewedAt": zod.coerce.date().nullish(),
   "linkedSettlementDocumentId": zod.string().nullish(),
+  "suggestedCategoryId": zod.string().nullish(),
+  "suggestedCategoryConfidence": zod.union([zod.literal('HIGH'),zod.literal('MEDIUM'),zod.literal('LOW'),zod.literal('UNKNOWN'),zod.literal(null)]).nullish(),
+  "suggestedCategoryReason": zod.string().nullish(),
+  "suggestedCategorySource": zod.string().nullish(),
+  "selectedCategoryId": zod.string().nullish(),
+  "categoryDecisionStatus": zod.enum(['UNCLASSIFIED', 'SUGGESTED', 'USER_CONFIRMED', 'USER_CORRECTED', 'NOT_APPLICABLE_TRANSFER', 'NOT_APPLICABLE_SETTLEMENT', 'REJECTED']).optional(),
+  "categoryDecidedBy": zod.string().nullish(),
+  "categoryDecidedAt": zod.coerce.date().nullish(),
+  "categoryCorrectionVersion": zod.number().min(reviewFinancialDocumentResponseTransactionsItemCategoryCorrectionVersionMin).multipleOf(reviewFinancialDocumentResponseTransactionsItemCategoryCorrectionVersionMultipleOf).optional(),
+  "economicClassification": zod.enum(['HOUSEHOLD', 'BUSINESS', 'TRANSFER', 'SETTLEMENT_LINK', 'UNKNOWN']).optional(),
   "createdAt": zod.coerce.date(),
   "correctionHistory": zod.array(zod.object({
   "id": zod.string(),
@@ -8519,6 +8575,9 @@ export const reviewBankStatementTransactionResponseSourcePageMultipleOf = 1;
 
 export const reviewBankStatementTransactionResponseSourceLineMultipleOf = 1;
 
+export const reviewBankStatementTransactionResponseCategoryCorrectionVersionMin = 0;
+export const reviewBankStatementTransactionResponseCategoryCorrectionVersionMultipleOf = 1;
+
 export const reviewBankStatementTransactionResponseCorrectionHistoryItemRevisionMultipleOf = 1;
 
 
@@ -8545,6 +8604,16 @@ export const ReviewBankStatementTransactionResponse = zod.object({
   "correctionReason": zod.string().nullish(),
   "reviewedAt": zod.coerce.date().nullish(),
   "linkedSettlementDocumentId": zod.string().nullish(),
+  "suggestedCategoryId": zod.string().nullish(),
+  "suggestedCategoryConfidence": zod.union([zod.literal('HIGH'),zod.literal('MEDIUM'),zod.literal('LOW'),zod.literal('UNKNOWN'),zod.literal(null)]).nullish(),
+  "suggestedCategoryReason": zod.string().nullish(),
+  "suggestedCategorySource": zod.string().nullish(),
+  "selectedCategoryId": zod.string().nullish(),
+  "categoryDecisionStatus": zod.enum(['UNCLASSIFIED', 'SUGGESTED', 'USER_CONFIRMED', 'USER_CORRECTED', 'NOT_APPLICABLE_TRANSFER', 'NOT_APPLICABLE_SETTLEMENT', 'REJECTED']).optional(),
+  "categoryDecidedBy": zod.string().nullish(),
+  "categoryDecidedAt": zod.coerce.date().nullish(),
+  "categoryCorrectionVersion": zod.number().min(reviewBankStatementTransactionResponseCategoryCorrectionVersionMin).multipleOf(reviewBankStatementTransactionResponseCategoryCorrectionVersionMultipleOf).optional(),
+  "economicClassification": zod.enum(['HOUSEHOLD', 'BUSINESS', 'TRANSFER', 'SETTLEMENT_LINK', 'UNKNOWN']).optional(),
   "createdAt": zod.coerce.date(),
   "correctionHistory": zod.array(zod.object({
   "id": zod.string(),
@@ -8555,6 +8624,524 @@ export const ReviewBankStatementTransactionResponse = zod.object({
   "reason": zod.string(),
   "correctedAt": zod.coerce.date()
 }))
+})
+
+
+/**
+ * @summary Record a human category decision without posting financial activity
+ */
+export const decideBankStatementTransactionCategoryPathTransactionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const DecideBankStatementTransactionCategoryParams = zod.object({
+  "transactionId": zod.coerce.string().regex(decideBankStatementTransactionCategoryPathTransactionIdRegExp)
+})
+
+export const decideBankStatementTransactionCategoryBodyCategoryIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const decideBankStatementTransactionCategoryBodyReasonMax = 1000;
+
+export const decideBankStatementTransactionCategoryBodyIdempotencyKeyMin = 8;
+export const decideBankStatementTransactionCategoryBodyIdempotencyKeyMax = 128;
+
+
+
+export const DecideBankStatementTransactionCategoryBody = zod.object({
+  "status": zod.enum(['USER_CONFIRMED', 'USER_CORRECTED', 'NOT_APPLICABLE_TRANSFER', 'NOT_APPLICABLE_SETTLEMENT', 'REJECTED']),
+  "categoryId": zod.string().regex(decideBankStatementTransactionCategoryBodyCategoryIdRegExp).nullish(),
+  "economicClassification": zod.enum(['HOUSEHOLD', 'BUSINESS', 'TRANSFER', 'SETTLEMENT_LINK', 'UNKNOWN']),
+  "reason": zod.string().min(1).max(decideBankStatementTransactionCategoryBodyReasonMax),
+  "idempotencyKey": zod.string().min(decideBankStatementTransactionCategoryBodyIdempotencyKeyMin).max(decideBankStatementTransactionCategoryBodyIdempotencyKeyMax)
+})
+
+export const decideBankStatementTransactionCategoryResponseSourcePageMultipleOf = 1;
+
+export const decideBankStatementTransactionCategoryResponseSourceLineMultipleOf = 1;
+
+export const decideBankStatementTransactionCategoryResponseCategoryCorrectionVersionMin = 0;
+export const decideBankStatementTransactionCategoryResponseCategoryCorrectionVersionMultipleOf = 1;
+
+export const decideBankStatementTransactionCategoryResponseCorrectionHistoryItemRevisionMultipleOf = 1;
+
+
+
+export const DecideBankStatementTransactionCategoryResponse = zod.object({
+  "id": zod.string(),
+  "bankStatementDocumentId": zod.string(),
+  "postedDate": zod.string().nullish(),
+  "description": zod.string(),
+  "amount": zod.string(),
+  "direction": zod.string().nullable(),
+  "runningBalance": zod.string().nullish(),
+  "reference": zod.string().nullish(),
+  "confidence": zod.string().nullable(),
+  "sourcePage": zod.number().multipleOf(decideBankStatementTransactionCategoryResponseSourcePageMultipleOf).nullish(),
+  "sourceLine": zod.number().multipleOf(decideBankStatementTransactionCategoryResponseSourceLineMultipleOf).nullable(),
+  "sourceRegion": zod.string().nullable(),
+  "parserVersion": zod.string(),
+  "evidenceFingerprint": zod.string(),
+  "reviewStatus": zod.string(),
+  "lastReviewAction": zod.union([zod.literal('APPROVE'),zod.literal('REJECT'),zod.literal('RECLASSIFY'),zod.literal('LINK_SETTLEMENT'),zod.literal('MARK_TRANSFER'),zod.literal(null)]).nullable(),
+  "originalValue": zod.record(zod.string(), zod.unknown()),
+  "correctedValue": zod.record(zod.string(), zod.unknown()).nullish(),
+  "correctionReason": zod.string().nullish(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "linkedSettlementDocumentId": zod.string().nullish(),
+  "suggestedCategoryId": zod.string().nullish(),
+  "suggestedCategoryConfidence": zod.union([zod.literal('HIGH'),zod.literal('MEDIUM'),zod.literal('LOW'),zod.literal('UNKNOWN'),zod.literal(null)]).nullish(),
+  "suggestedCategoryReason": zod.string().nullish(),
+  "suggestedCategorySource": zod.string().nullish(),
+  "selectedCategoryId": zod.string().nullish(),
+  "categoryDecisionStatus": zod.enum(['UNCLASSIFIED', 'SUGGESTED', 'USER_CONFIRMED', 'USER_CORRECTED', 'NOT_APPLICABLE_TRANSFER', 'NOT_APPLICABLE_SETTLEMENT', 'REJECTED']).optional(),
+  "categoryDecidedBy": zod.string().nullish(),
+  "categoryDecidedAt": zod.coerce.date().nullish(),
+  "categoryCorrectionVersion": zod.number().min(decideBankStatementTransactionCategoryResponseCategoryCorrectionVersionMin).multipleOf(decideBankStatementTransactionCategoryResponseCategoryCorrectionVersionMultipleOf).optional(),
+  "economicClassification": zod.enum(['HOUSEHOLD', 'BUSINESS', 'TRANSFER', 'SETTLEMENT_LINK', 'UNKNOWN']).optional(),
+  "createdAt": zod.coerce.date(),
+  "correctionHistory": zod.array(zod.object({
+  "id": zod.string(),
+  "transactionId": zod.string(),
+  "revision": zod.number().multipleOf(decideBankStatementTransactionCategoryResponseCorrectionHistoryItemRevisionMultipleOf),
+  "previousValue": zod.record(zod.string(), zod.unknown()).nullish(),
+  "correctedValue": zod.record(zod.string(), zod.unknown()),
+  "reason": zod.string(),
+  "correctedAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Get the durable current inclusion and reconciliation state for statement evidence
+ */
+export const getBankStatementTransactionInclusionPathTransactionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const GetBankStatementTransactionInclusionParams = zod.object({
+  "transactionId": zod.coerce.string().regex(getBankStatementTransactionInclusionPathTransactionIdRegExp)
+})
+
+export const getBankStatementTransactionInclusionResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const getBankStatementTransactionInclusionResponseStatementDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const getBankStatementTransactionInclusionResponseStatementRowIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+
+export const GetBankStatementTransactionInclusionResponse = zod.object({
+  "id": zod.string().regex(getBankStatementTransactionInclusionResponseIdRegExp),
+  "statementDocumentId": zod.string().regex(getBankStatementTransactionInclusionResponseStatementDocumentIdRegExp),
+  "statementRowId": zod.string().regex(getBankStatementTransactionInclusionResponseStatementRowIdRegExp),
+  "statementRowFingerprint": zod.string().min(1),
+  "evidenceDecision": zod.string(),
+  "categoryId": zod.string().nullish(),
+  "inclusionDecision": zod.string(),
+  "matchedFinanceTransactionId": zod.string().nullish(),
+  "createdFinanceTransactionId": zod.string().nullish(),
+  "duplicateStatus": zod.string(),
+  "transferStatus": zod.string(),
+  "settlementLinkStatus": zod.string(),
+  "approvedBy": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "reversedBy": zod.string().nullish(),
+  "reversedAt": zod.coerce.date().nullish(),
+  "status": zod.enum(['NOT_REVIEWED', 'READY_FOR_INCLUSION_REVIEW', 'MATCH_CANDIDATE', 'DUPLICATE_REVIEW_REQUIRED', 'READY_TO_IMPORT', 'LINKED_EXISTING', 'IMPORTED_NEW', 'EXCLUDED_TRANSFER', 'EXCLUDED_SETTLEMENT', 'EXCLUDED_DUPLICATE', 'REVERSED', 'REJECTED']),
+  "reviewRequired": zod.boolean(),
+  "mismatchCode": zod.union([zod.literal('SOURCE_OFFICIAL_MISMATCH'),zod.literal(null)]).nullish(),
+  "reconciliationStatus": zod.enum(['NOT_REQUIRED', 'REQUIRED', 'RESOLVED']),
+  "reconciledBy": zod.string().nullish(),
+  "reconciledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Explicitly resolve a source-to-official mismatch without mutating source or official transaction
+ */
+export const reconcileBankStatementTransactionInclusionPathTransactionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ReconcileBankStatementTransactionInclusionParams = zod.object({
+  "transactionId": zod.coerce.string().regex(reconcileBankStatementTransactionInclusionPathTransactionIdRegExp)
+})
+
+export const reconcileBankStatementTransactionInclusionHeaderIdempotencyKeyMin = 8;
+export const reconcileBankStatementTransactionInclusionHeaderIdempotencyKeyMax = 128;
+
+
+
+export const ReconcileBankStatementTransactionInclusionHeader = zod.object({
+  "Idempotency-Key": zod.string().min(reconcileBankStatementTransactionInclusionHeaderIdempotencyKeyMin).max(reconcileBankStatementTransactionInclusionHeaderIdempotencyKeyMax)
+})
+
+export const reconcileBankStatementTransactionInclusionBodyReasonMax = 1000;
+
+export const reconcileBankStatementTransactionInclusionBodyIdempotencyKeyMin = 8;
+export const reconcileBankStatementTransactionInclusionBodyIdempotencyKeyMax = 128;
+
+
+
+export const ReconcileBankStatementTransactionInclusionBody = zod.object({
+  "reason": zod.string().min(1).max(reconcileBankStatementTransactionInclusionBodyReasonMax),
+  "idempotencyKey": zod.string().min(reconcileBankStatementTransactionInclusionBodyIdempotencyKeyMin).max(reconcileBankStatementTransactionInclusionBodyIdempotencyKeyMax)
+})
+
+export const reconcileBankStatementTransactionInclusionResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reconcileBankStatementTransactionInclusionResponseStatementDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reconcileBankStatementTransactionInclusionResponseStatementRowIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+
+export const ReconcileBankStatementTransactionInclusionResponse = zod.object({
+  "id": zod.string().regex(reconcileBankStatementTransactionInclusionResponseIdRegExp),
+  "statementDocumentId": zod.string().regex(reconcileBankStatementTransactionInclusionResponseStatementDocumentIdRegExp),
+  "statementRowId": zod.string().regex(reconcileBankStatementTransactionInclusionResponseStatementRowIdRegExp),
+  "statementRowFingerprint": zod.string().min(1),
+  "evidenceDecision": zod.string(),
+  "categoryId": zod.string().nullish(),
+  "inclusionDecision": zod.string(),
+  "matchedFinanceTransactionId": zod.string().nullish(),
+  "createdFinanceTransactionId": zod.string().nullish(),
+  "duplicateStatus": zod.string(),
+  "transferStatus": zod.string(),
+  "settlementLinkStatus": zod.string(),
+  "approvedBy": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "reversedBy": zod.string().nullish(),
+  "reversedAt": zod.coerce.date().nullish(),
+  "status": zod.enum(['NOT_REVIEWED', 'READY_FOR_INCLUSION_REVIEW', 'MATCH_CANDIDATE', 'DUPLICATE_REVIEW_REQUIRED', 'READY_TO_IMPORT', 'LINKED_EXISTING', 'IMPORTED_NEW', 'EXCLUDED_TRANSFER', 'EXCLUDED_SETTLEMENT', 'EXCLUDED_DUPLICATE', 'REVERSED', 'REJECTED']),
+  "reviewRequired": zod.boolean(),
+  "mismatchCode": zod.union([zod.literal('SOURCE_OFFICIAL_MISMATCH'),zod.literal(null)]).nullish(),
+  "reconciliationStatus": zod.enum(['NOT_REQUIRED', 'REQUIRED', 'RESOLVED']),
+  "reconciledBy": zod.string().nullish(),
+  "reconciledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Preview household-scoped duplicate and existing-transaction matches before inclusion
+ */
+export const previewBankStatementTransactionMatchPathTransactionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const PreviewBankStatementTransactionMatchParams = zod.object({
+  "transactionId": zod.coerce.string().regex(previewBankStatementTransactionMatchPathTransactionIdRegExp)
+})
+
+export const previewBankStatementTransactionMatchResponseStatementRowIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const previewBankStatementTransactionMatchResponseCandidatesItemFinanceTransactionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const previewBankStatementTransactionMatchResponseCandidatesItemAccountIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const previewBankStatementTransactionMatchResponseCandidatesItemAmountRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
+
+
+export const PreviewBankStatementTransactionMatchResponse = zod.object({
+  "statementRowId": zod.string().regex(previewBankStatementTransactionMatchResponseStatementRowIdRegExp),
+  "outcome": zod.enum(['NO_MATCH', 'ONE_HIGH_CONFIDENCE_MATCH', 'MULTIPLE_CANDIDATES', 'EXACT_ALREADY_LINKED', 'KNOWN_DUPLICATE']),
+  "candidates": zod.array(zod.object({
+  "financeTransactionId": zod.string().regex(previewBankStatementTransactionMatchResponseCandidatesItemFinanceTransactionIdRegExp),
+  "accountId": zod.string().regex(previewBankStatementTransactionMatchResponseCandidatesItemAccountIdRegExp).optional(),
+  "transactionDate": zod.coerce.date(),
+  "amount": zod.string().regex(previewBankStatementTransactionMatchResponseCandidatesItemAmountRegExp),
+  "description": zod.string(),
+  "merchant": zod.string().nullish(),
+  "categoryId": zod.string().nullish(),
+  "confidence": zod.enum(['HIGH', 'MEDIUM', 'LOW']),
+  "reasons": zod.array(zod.string())
+})),
+  "canImportAsNew": zod.boolean(),
+  "requiresHumanDecision": zod.boolean(),
+  "existingInclusionId": zod.string().nullish()
+})
+
+
+/**
+ * @summary Explicitly import one eligible reviewed row as one official transaction
+ */
+export const importBankStatementTransactionPathTransactionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ImportBankStatementTransactionParams = zod.object({
+  "transactionId": zod.coerce.string().regex(importBankStatementTransactionPathTransactionIdRegExp)
+})
+
+export const importBankStatementTransactionHeaderIdempotencyKeyMin = 8;
+export const importBankStatementTransactionHeaderIdempotencyKeyMax = 128;
+
+
+
+export const ImportBankStatementTransactionHeader = zod.object({
+  "Idempotency-Key": zod.string().min(importBankStatementTransactionHeaderIdempotencyKeyMin).max(importBankStatementTransactionHeaderIdempotencyKeyMax)
+})
+
+export const importBankStatementTransactionBodyIdempotencyKeyMin = 8;
+export const importBankStatementTransactionBodyIdempotencyKeyMax = 128;
+
+
+
+export const ImportBankStatementTransactionBody = zod.object({
+  "idempotencyKey": zod.string().min(importBankStatementTransactionBodyIdempotencyKeyMin).max(importBankStatementTransactionBodyIdempotencyKeyMax),
+  "expectedMatchOutcome": zod.enum(['NO_MATCH', 'MULTIPLE_CANDIDATES']).optional()
+})
+
+export const importBankStatementTransactionResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const importBankStatementTransactionResponseStatementDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const importBankStatementTransactionResponseStatementRowIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+
+export const ImportBankStatementTransactionResponse = zod.object({
+  "id": zod.string().regex(importBankStatementTransactionResponseIdRegExp),
+  "statementDocumentId": zod.string().regex(importBankStatementTransactionResponseStatementDocumentIdRegExp),
+  "statementRowId": zod.string().regex(importBankStatementTransactionResponseStatementRowIdRegExp),
+  "statementRowFingerprint": zod.string().min(1),
+  "evidenceDecision": zod.string(),
+  "categoryId": zod.string().nullish(),
+  "inclusionDecision": zod.string(),
+  "matchedFinanceTransactionId": zod.string().nullish(),
+  "createdFinanceTransactionId": zod.string().nullish(),
+  "duplicateStatus": zod.string(),
+  "transferStatus": zod.string(),
+  "settlementLinkStatus": zod.string(),
+  "approvedBy": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "reversedBy": zod.string().nullish(),
+  "reversedAt": zod.coerce.date().nullish(),
+  "status": zod.enum(['NOT_REVIEWED', 'READY_FOR_INCLUSION_REVIEW', 'MATCH_CANDIDATE', 'DUPLICATE_REVIEW_REQUIRED', 'READY_TO_IMPORT', 'LINKED_EXISTING', 'IMPORTED_NEW', 'EXCLUDED_TRANSFER', 'EXCLUDED_SETTLEMENT', 'EXCLUDED_DUPLICATE', 'REVERSED', 'REJECTED']),
+  "reviewRequired": zod.boolean(),
+  "mismatchCode": zod.union([zod.literal('SOURCE_OFFICIAL_MISMATCH'),zod.literal(null)]).nullish(),
+  "reconciliationStatus": zod.enum(['NOT_REQUIRED', 'REQUIRED', 'RESOLVED']),
+  "reconciledBy": zod.string().nullish(),
+  "reconciledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Explicitly link evidence to one existing household transaction without creating another
+ */
+export const linkBankStatementTransactionPathTransactionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const LinkBankStatementTransactionParams = zod.object({
+  "transactionId": zod.coerce.string().regex(linkBankStatementTransactionPathTransactionIdRegExp)
+})
+
+export const linkBankStatementTransactionHeaderIdempotencyKeyMin = 8;
+export const linkBankStatementTransactionHeaderIdempotencyKeyMax = 128;
+
+
+
+export const LinkBankStatementTransactionHeader = zod.object({
+  "Idempotency-Key": zod.string().min(linkBankStatementTransactionHeaderIdempotencyKeyMin).max(linkBankStatementTransactionHeaderIdempotencyKeyMax)
+})
+
+export const linkBankStatementTransactionBodyFinanceTransactionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const linkBankStatementTransactionBodyIdempotencyKeyMin = 8;
+export const linkBankStatementTransactionBodyIdempotencyKeyMax = 128;
+
+
+
+export const LinkBankStatementTransactionBody = zod.object({
+  "financeTransactionId": zod.string().regex(linkBankStatementTransactionBodyFinanceTransactionIdRegExp),
+  "idempotencyKey": zod.string().min(linkBankStatementTransactionBodyIdempotencyKeyMin).max(linkBankStatementTransactionBodyIdempotencyKeyMax)
+})
+
+export const linkBankStatementTransactionResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const linkBankStatementTransactionResponseStatementDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const linkBankStatementTransactionResponseStatementRowIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+
+export const LinkBankStatementTransactionResponse = zod.object({
+  "id": zod.string().regex(linkBankStatementTransactionResponseIdRegExp),
+  "statementDocumentId": zod.string().regex(linkBankStatementTransactionResponseStatementDocumentIdRegExp),
+  "statementRowId": zod.string().regex(linkBankStatementTransactionResponseStatementRowIdRegExp),
+  "statementRowFingerprint": zod.string().min(1),
+  "evidenceDecision": zod.string(),
+  "categoryId": zod.string().nullish(),
+  "inclusionDecision": zod.string(),
+  "matchedFinanceTransactionId": zod.string().nullish(),
+  "createdFinanceTransactionId": zod.string().nullish(),
+  "duplicateStatus": zod.string(),
+  "transferStatus": zod.string(),
+  "settlementLinkStatus": zod.string(),
+  "approvedBy": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "reversedBy": zod.string().nullish(),
+  "reversedAt": zod.coerce.date().nullish(),
+  "status": zod.enum(['NOT_REVIEWED', 'READY_FOR_INCLUSION_REVIEW', 'MATCH_CANDIDATE', 'DUPLICATE_REVIEW_REQUIRED', 'READY_TO_IMPORT', 'LINKED_EXISTING', 'IMPORTED_NEW', 'EXCLUDED_TRANSFER', 'EXCLUDED_SETTLEMENT', 'EXCLUDED_DUPLICATE', 'REVERSED', 'REJECTED']),
+  "reviewRequired": zod.boolean(),
+  "mismatchCode": zod.union([zod.literal('SOURCE_OFFICIAL_MISMATCH'),zod.literal(null)]).nullish(),
+  "reconciliationStatus": zod.enum(['NOT_REQUIRED', 'REQUIRED', 'RESOLVED']),
+  "reconciledBy": zod.string().nullish(),
+  "reconciledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Explicitly unlink a statement row while preserving an append-only reversal record
+ */
+export const unlinkBankStatementTransactionPathTransactionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const UnlinkBankStatementTransactionParams = zod.object({
+  "transactionId": zod.coerce.string().regex(unlinkBankStatementTransactionPathTransactionIdRegExp)
+})
+
+export const unlinkBankStatementTransactionHeaderIdempotencyKeyMin = 8;
+export const unlinkBankStatementTransactionHeaderIdempotencyKeyMax = 128;
+
+
+
+export const UnlinkBankStatementTransactionHeader = zod.object({
+  "Idempotency-Key": zod.string().min(unlinkBankStatementTransactionHeaderIdempotencyKeyMin).max(unlinkBankStatementTransactionHeaderIdempotencyKeyMax)
+})
+
+export const unlinkBankStatementTransactionBodyReasonMax = 1000;
+
+export const unlinkBankStatementTransactionBodyIdempotencyKeyMin = 8;
+export const unlinkBankStatementTransactionBodyIdempotencyKeyMax = 128;
+
+
+
+export const UnlinkBankStatementTransactionBody = zod.object({
+  "reason": zod.string().min(1).max(unlinkBankStatementTransactionBodyReasonMax),
+  "idempotencyKey": zod.string().min(unlinkBankStatementTransactionBodyIdempotencyKeyMin).max(unlinkBankStatementTransactionBodyIdempotencyKeyMax)
+})
+
+export const unlinkBankStatementTransactionResponseInclusionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const unlinkBankStatementTransactionResponseInclusionStatementDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const unlinkBankStatementTransactionResponseInclusionStatementRowIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+export const unlinkBankStatementTransactionResponseReversalIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const unlinkBankStatementTransactionResponseReversalInclusionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const unlinkBankStatementTransactionResponseReversalStatementRowIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const unlinkBankStatementTransactionResponseReversalActorRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const UnlinkBankStatementTransactionResponse = zod.object({
+  "inclusion": zod.object({
+  "id": zod.string().regex(unlinkBankStatementTransactionResponseInclusionIdRegExp),
+  "statementDocumentId": zod.string().regex(unlinkBankStatementTransactionResponseInclusionStatementDocumentIdRegExp),
+  "statementRowId": zod.string().regex(unlinkBankStatementTransactionResponseInclusionStatementRowIdRegExp),
+  "statementRowFingerprint": zod.string().min(1),
+  "evidenceDecision": zod.string(),
+  "categoryId": zod.string().nullish(),
+  "inclusionDecision": zod.string(),
+  "matchedFinanceTransactionId": zod.string().nullish(),
+  "createdFinanceTransactionId": zod.string().nullish(),
+  "duplicateStatus": zod.string(),
+  "transferStatus": zod.string(),
+  "settlementLinkStatus": zod.string(),
+  "approvedBy": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "reversedBy": zod.string().nullish(),
+  "reversedAt": zod.coerce.date().nullish(),
+  "status": zod.enum(['NOT_REVIEWED', 'READY_FOR_INCLUSION_REVIEW', 'MATCH_CANDIDATE', 'DUPLICATE_REVIEW_REQUIRED', 'READY_TO_IMPORT', 'LINKED_EXISTING', 'IMPORTED_NEW', 'EXCLUDED_TRANSFER', 'EXCLUDED_SETTLEMENT', 'EXCLUDED_DUPLICATE', 'REVERSED', 'REJECTED']),
+  "reviewRequired": zod.boolean(),
+  "mismatchCode": zod.union([zod.literal('SOURCE_OFFICIAL_MISMATCH'),zod.literal(null)]).nullish(),
+  "reconciliationStatus": zod.enum(['NOT_REQUIRED', 'REQUIRED', 'RESOLVED']),
+  "reconciledBy": zod.string().nullish(),
+  "reconciledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),
+  "reversal": zod.object({
+  "id": zod.string().regex(unlinkBankStatementTransactionResponseReversalIdRegExp),
+  "inclusionId": zod.string().regex(unlinkBankStatementTransactionResponseReversalInclusionIdRegExp),
+  "statementRowId": zod.string().regex(unlinkBankStatementTransactionResponseReversalStatementRowIdRegExp),
+  "financeTransactionId": zod.string().nullish(),
+  "previousState": zod.record(zod.string(), zod.unknown()),
+  "newState": zod.record(zod.string(), zod.unknown()),
+  "reason": zod.string(),
+  "actor": zod.string().regex(unlinkBankStatementTransactionResponseReversalActorRegExp),
+  "timestamp": zod.coerce.date()
+})
+})
+
+
+/**
+ * @summary Explicitly reverse a previous statement import without deleting source evidence
+ */
+export const reverseBankStatementTransactionImportPathTransactionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ReverseBankStatementTransactionImportParams = zod.object({
+  "transactionId": zod.coerce.string().regex(reverseBankStatementTransactionImportPathTransactionIdRegExp)
+})
+
+export const reverseBankStatementTransactionImportHeaderIdempotencyKeyMin = 8;
+export const reverseBankStatementTransactionImportHeaderIdempotencyKeyMax = 128;
+
+
+
+export const ReverseBankStatementTransactionImportHeader = zod.object({
+  "Idempotency-Key": zod.string().min(reverseBankStatementTransactionImportHeaderIdempotencyKeyMin).max(reverseBankStatementTransactionImportHeaderIdempotencyKeyMax)
+})
+
+export const reverseBankStatementTransactionImportBodyReasonMax = 1000;
+
+export const reverseBankStatementTransactionImportBodyIdempotencyKeyMin = 8;
+export const reverseBankStatementTransactionImportBodyIdempotencyKeyMax = 128;
+
+
+
+export const ReverseBankStatementTransactionImportBody = zod.object({
+  "reason": zod.string().min(1).max(reverseBankStatementTransactionImportBodyReasonMax),
+  "idempotencyKey": zod.string().min(reverseBankStatementTransactionImportBodyIdempotencyKeyMin).max(reverseBankStatementTransactionImportBodyIdempotencyKeyMax)
+})
+
+export const reverseBankStatementTransactionImportResponseInclusionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reverseBankStatementTransactionImportResponseInclusionStatementDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reverseBankStatementTransactionImportResponseInclusionStatementRowIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+export const reverseBankStatementTransactionImportResponseReversalIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reverseBankStatementTransactionImportResponseReversalInclusionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reverseBankStatementTransactionImportResponseReversalStatementRowIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reverseBankStatementTransactionImportResponseReversalActorRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ReverseBankStatementTransactionImportResponse = zod.object({
+  "inclusion": zod.object({
+  "id": zod.string().regex(reverseBankStatementTransactionImportResponseInclusionIdRegExp),
+  "statementDocumentId": zod.string().regex(reverseBankStatementTransactionImportResponseInclusionStatementDocumentIdRegExp),
+  "statementRowId": zod.string().regex(reverseBankStatementTransactionImportResponseInclusionStatementRowIdRegExp),
+  "statementRowFingerprint": zod.string().min(1),
+  "evidenceDecision": zod.string(),
+  "categoryId": zod.string().nullish(),
+  "inclusionDecision": zod.string(),
+  "matchedFinanceTransactionId": zod.string().nullish(),
+  "createdFinanceTransactionId": zod.string().nullish(),
+  "duplicateStatus": zod.string(),
+  "transferStatus": zod.string(),
+  "settlementLinkStatus": zod.string(),
+  "approvedBy": zod.string().nullish(),
+  "approvedAt": zod.coerce.date().nullish(),
+  "reversedBy": zod.string().nullish(),
+  "reversedAt": zod.coerce.date().nullish(),
+  "status": zod.enum(['NOT_REVIEWED', 'READY_FOR_INCLUSION_REVIEW', 'MATCH_CANDIDATE', 'DUPLICATE_REVIEW_REQUIRED', 'READY_TO_IMPORT', 'LINKED_EXISTING', 'IMPORTED_NEW', 'EXCLUDED_TRANSFER', 'EXCLUDED_SETTLEMENT', 'EXCLUDED_DUPLICATE', 'REVERSED', 'REJECTED']),
+  "reviewRequired": zod.boolean(),
+  "mismatchCode": zod.union([zod.literal('SOURCE_OFFICIAL_MISMATCH'),zod.literal(null)]).nullish(),
+  "reconciliationStatus": zod.enum(['NOT_REQUIRED', 'REQUIRED', 'RESOLVED']),
+  "reconciledBy": zod.string().nullish(),
+  "reconciledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}),
+  "reversal": zod.object({
+  "id": zod.string().regex(reverseBankStatementTransactionImportResponseReversalIdRegExp),
+  "inclusionId": zod.string().regex(reverseBankStatementTransactionImportResponseReversalInclusionIdRegExp),
+  "statementRowId": zod.string().regex(reverseBankStatementTransactionImportResponseReversalStatementRowIdRegExp),
+  "financeTransactionId": zod.string().nullish(),
+  "previousState": zod.record(zod.string(), zod.unknown()),
+  "newState": zod.record(zod.string(), zod.unknown()),
+  "reason": zod.string(),
+  "actor": zod.string().regex(reverseBankStatementTransactionImportResponseReversalActorRegExp),
+  "timestamp": zod.coerce.date()
+})
 })
 
 

@@ -3199,6 +3199,107 @@ paths:
         content: { application/json: { schema: { $ref: "#/components/schemas/BankStatementTransactionReviewInput" } } }
       responses:
         "200": { description: Reviewed evidence row, content: { application/json: { schema: { $ref: "#/components/schemas/BankStatementTransactionEvidence" } } } }
+  /bank-statement-transactions/{transactionId}/category-decision:
+    post:
+      operationId: decideBankStatementTransactionCategory
+      tags: [household-finance]
+      summary: Record a human category decision without posting financial activity
+      parameters: [{ $ref: "#/components/parameters/FinancialTransactionId" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/StatementCategoryDecisionInput" } } }
+      responses:
+        "200": { description: Updated statement evidence row, content: { application/json: { schema: { $ref: "#/components/schemas/BankStatementTransactionEvidence" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /bank-statement-transactions/{transactionId}/inclusion:
+    get:
+      operationId: getBankStatementTransactionInclusion
+      tags: [household-finance]
+      summary: Get the durable current inclusion and reconciliation state for statement evidence
+      parameters: [{ $ref: "#/components/parameters/FinancialTransactionId" }]
+      responses:
+        "200": { description: Current inclusion state, content: { application/json: { schema: { $ref: "#/components/schemas/StatementFinancialInclusion" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /bank-statement-transactions/{transactionId}/inclusion/reconcile:
+    post:
+      operationId: reconcileBankStatementTransactionInclusion
+      tags: [household-finance]
+      summary: Explicitly resolve a source-to-official mismatch without mutating source or official transaction
+      parameters: [{ $ref: "#/components/parameters/FinancialTransactionId" }, { $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/StatementFinancialReconciliationInput" } } }
+      responses:
+        "200": { description: Reconciled inclusion, content: { application/json: { schema: { $ref: "#/components/schemas/StatementFinancialInclusion" } } } }
+  /bank-statement-transactions/{transactionId}/match-preview:
+    post:
+      operationId: previewBankStatementTransactionMatch
+      tags: [household-finance]
+      summary: Preview household-scoped duplicate and existing-transaction matches before inclusion
+      parameters: [{ $ref: "#/components/parameters/FinancialTransactionId" }]
+      responses:
+        "200": { description: Match preview, content: { application/json: { schema: { $ref: "#/components/schemas/StatementMatchPreview" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /bank-statement-transactions/{transactionId}/import:
+    post:
+      operationId: importBankStatementTransaction
+      tags: [household-finance]
+      summary: Explicitly import one eligible reviewed row as one official transaction
+      parameters: [{ $ref: "#/components/parameters/FinancialTransactionId" }, { $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/StatementFinancialImportInput" } } }
+      responses:
+        "200": { description: Existing idempotent import result, content: { application/json: { schema: { $ref: "#/components/schemas/StatementFinancialInclusion" } } } }
+        "201": { description: Imported official transaction, content: { application/json: { schema: { $ref: "#/components/schemas/StatementFinancialInclusion" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /bank-statement-transactions/{transactionId}/link:
+    post:
+      operationId: linkBankStatementTransaction
+      tags: [household-finance]
+      summary: Explicitly link evidence to one existing household transaction without creating another
+      parameters: [{ $ref: "#/components/parameters/FinancialTransactionId" }, { $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/StatementFinancialLinkInput" } } }
+      responses:
+        "200": { description: Linked financial inclusion, content: { application/json: { schema: { $ref: "#/components/schemas/StatementFinancialInclusion" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /bank-statement-transactions/{transactionId}/unlink:
+    post:
+      operationId: unlinkBankStatementTransaction
+      tags: [household-finance]
+      summary: Explicitly unlink a statement row while preserving an append-only reversal record
+      parameters: [{ $ref: "#/components/parameters/FinancialTransactionId" }, { $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/StatementFinancialReversalInput" } } }
+      responses:
+        "200": { description: Unlinked inclusion and reversal record, content: { application/json: { schema: { $ref: "#/components/schemas/StatementFinancialReversalResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /bank-statement-transactions/{transactionId}/reverse:
+    post:
+      operationId: reverseBankStatementTransactionImport
+      tags: [household-finance]
+      summary: Explicitly reverse a previous statement import without deleting source evidence
+      parameters: [{ $ref: "#/components/parameters/FinancialTransactionId" }, { $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/StatementFinancialReversalInput" } } }
+      responses:
+        "200": { description: Reversed inclusion and reversal record, content: { application/json: { schema: { $ref: "#/components/schemas/StatementFinancialReversalResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
 components:
   securitySchemes:
     clerkSession:
@@ -3425,6 +3526,16 @@ components:
         correctionReason: { type: [string, "null"] }
         reviewedAt: { type: [string, "null"], format: date-time }
         linkedSettlementDocumentId: { type: [string, "null"] }
+        suggestedCategoryId: { type: [string, "null"] }
+        suggestedCategoryConfidence: { type: [string, "null"], enum: [HIGH, MEDIUM, LOW, UNKNOWN, null] }
+        suggestedCategoryReason: { type: [string, "null"] }
+        suggestedCategorySource: { type: [string, "null"] }
+        selectedCategoryId: { type: [string, "null"] }
+        categoryDecisionStatus: { type: string, enum: [UNCLASSIFIED, SUGGESTED, USER_CONFIRMED, USER_CORRECTED, NOT_APPLICABLE_TRANSFER, NOT_APPLICABLE_SETTLEMENT, REJECTED] }
+        categoryDecidedBy: { type: [string, "null"] }
+        categoryDecidedAt: { type: [string, "null"], format: date-time }
+        categoryCorrectionVersion: { type: number, minimum: 0, multipleOf: 1 }
+        economicClassification: { type: string, enum: [HOUSEHOLD, BUSINESS, TRANSFER, SETTLEMENT_LINK, UNKNOWN] }
         createdAt: { type: string, format: date-time }
         correctionHistory:
           type: array
@@ -3440,6 +3551,109 @@ components:
         correctedValue: { type: object, additionalProperties: true }
         reason: { type: string }
         correctedAt: { type: string, format: date-time }
+    StatementCategoryDecisionInput:
+      type: object
+      required: [status, economicClassification, reason, idempotencyKey]
+      properties:
+        status: { type: string, enum: [USER_CONFIRMED, USER_CORRECTED, NOT_APPLICABLE_TRANSFER, NOT_APPLICABLE_SETTLEMENT, REJECTED] }
+        categoryId: { type: [string, "null"], pattern: "^[0-9a-fA-F-]{36}$" }
+        economicClassification: { type: string, enum: [HOUSEHOLD, BUSINESS, TRANSFER, SETTLEMENT_LINK, UNKNOWN] }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+    StatementMatchCandidate:
+      type: object
+      required: [financeTransactionId, transactionDate, amount, description, confidence, reasons]
+      properties:
+        financeTransactionId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        accountId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        transactionDate: { type: string, format: date }
+        amount: { type: string, pattern: "^-?[0-9]+\\.[0-9]{2}$" }
+        description: { type: string }
+        merchant: { type: [string, "null"] }
+        categoryId: { type: [string, "null"] }
+        confidence: { type: string, enum: [HIGH, MEDIUM, LOW] }
+        reasons: { type: array, items: { type: string } }
+    StatementMatchPreview:
+      type: object
+      required: [statementRowId, outcome, candidates, canImportAsNew, requiresHumanDecision]
+      properties:
+        statementRowId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        outcome: { type: string, enum: [NO_MATCH, ONE_HIGH_CONFIDENCE_MATCH, MULTIPLE_CANDIDATES, EXACT_ALREADY_LINKED, KNOWN_DUPLICATE] }
+        candidates: { type: array, items: { $ref: "#/components/schemas/StatementMatchCandidate" } }
+        canImportAsNew: { type: boolean }
+        requiresHumanDecision: { type: boolean }
+        existingInclusionId: { type: [string, "null"] }
+    StatementFinancialImportInput:
+      type: object
+      required: [idempotencyKey]
+      properties:
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+        expectedMatchOutcome: { type: string, enum: [NO_MATCH, MULTIPLE_CANDIDATES] }
+    StatementFinancialLinkInput:
+      type: object
+      required: [financeTransactionId, idempotencyKey]
+      properties:
+        financeTransactionId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+    StatementFinancialReversalInput:
+      type: object
+      required: [reason, idempotencyKey]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+    StatementFinancialReconciliationInput:
+      type: object
+      required: [reason, idempotencyKey]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+    StatementFinancialInclusion:
+      type: object
+      required: [id, statementDocumentId, statementRowId, statementRowFingerprint, evidenceDecision, inclusionDecision, duplicateStatus, transferStatus, settlementLinkStatus, status, reviewRequired, reconciliationStatus, createdAt, updatedAt]
+      properties:
+        id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        statementDocumentId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        statementRowId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        statementRowFingerprint: { type: string, minLength: 1 }
+        evidenceDecision: { type: string }
+        categoryId: { type: [string, "null"] }
+        inclusionDecision: { type: string }
+        matchedFinanceTransactionId: { type: [string, "null"] }
+        createdFinanceTransactionId: { type: [string, "null"] }
+        duplicateStatus: { type: string }
+        transferStatus: { type: string }
+        settlementLinkStatus: { type: string }
+        approvedBy: { type: [string, "null"] }
+        approvedAt: { type: [string, "null"], format: date-time }
+        reversedBy: { type: [string, "null"] }
+        reversedAt: { type: [string, "null"], format: date-time }
+        status: { type: string, enum: [NOT_REVIEWED, READY_FOR_INCLUSION_REVIEW, MATCH_CANDIDATE, DUPLICATE_REVIEW_REQUIRED, READY_TO_IMPORT, LINKED_EXISTING, IMPORTED_NEW, EXCLUDED_TRANSFER, EXCLUDED_SETTLEMENT, EXCLUDED_DUPLICATE, REVERSED, REJECTED] }
+        reviewRequired: { type: boolean }
+        mismatchCode: { type: [string, "null"], enum: [SOURCE_OFFICIAL_MISMATCH, null] }
+        reconciliationStatus: { type: string, enum: [NOT_REQUIRED, REQUIRED, RESOLVED] }
+        reconciledBy: { type: [string, "null"] }
+        reconciledAt: { type: [string, "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    StatementFinancialReversal:
+      type: object
+      required: [id, inclusionId, statementRowId, previousState, newState, reason, actor, timestamp]
+      properties:
+        id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        inclusionId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        statementRowId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        financeTransactionId: { type: [string, "null"] }
+        previousState: { type: object, additionalProperties: true }
+        newState: { type: object, additionalProperties: true }
+        reason: { type: string }
+        actor: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        timestamp: { type: string, format: date-time }
+    StatementFinancialReversalResult:
+      type: object
+      required: [inclusion, reversal]
+      properties:
+        inclusion: { $ref: "#/components/schemas/StatementFinancialInclusion" }
+        reversal: { $ref: "#/components/schemas/StatementFinancialReversal" }
     BankStatementEvidence:
       type: object
       required: [id, documentId, openingBalance, closingBalance, totalDeposits, totalWithdrawals, status, createdAt]
@@ -5573,7 +5787,7 @@ components:
           type: array
           items:
             type: object
-            required: [id, name, categoryType, essentialStatus, budgeted, actual, variance, percentageUsed, projectedMonthEnd, status]
+            required: [id, name, categoryType, essentialStatus, budgeted, actual, pendingEvidence, sourceCoverage, noTarget, variance, percentageUsed, projectedMonthEnd, status]
             properties:
               id: { type: string }
               name: { type: string }
@@ -5581,16 +5795,20 @@ components:
               essentialStatus: { type: string }
               budgeted: { type: string }
               actual: { type: string }
+              pendingEvidence: { type: string }
+              sourceCoverage: { type: string }
+              noTarget: { type: boolean }
               variance: { type: string }
               percentageUsed: { type: number }
               projectedMonthEnd: { type: string }
               status: { type: string }
         totals:
           type: object
-          required: [budgeted, actual, remaining, percentageUsed]
+          required: [budgeted, actual, pendingEvidence, remaining, percentageUsed]
           properties:
             budgeted: { type: string }
             actual: { type: string }
+            pendingEvidence: { type: string }
             remaining: { type: string }
             percentageUsed: { type: number }
         notes:

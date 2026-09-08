@@ -3155,6 +3155,8 @@ function reviewSourceLabel(source: string) {
   if (source === 'manual') return 'Manual entry';
   if (source === 'csv_import') return 'CSV import';
   if (source === 'plaid') return 'Plaid';
+  if (source === 'STATEMENT_IMPORT' || source === 'statement_import' || source === 'bank_statement_import') return 'Statement Import';
+  if (source === 'STATEMENT_LINK' || source === 'statement_link' || source === 'bank_statement_link') return 'Linked Statement';
   return humanize(source, 'Unknown source');
 }
 

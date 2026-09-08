@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link } from 'wouter';
 import {
+  useGetBudget,
   useGetBudgetPlanningPeriod,
   useGetVariableBudgetIntelligence,
   useCreateVehicleScenario,
@@ -277,6 +278,87 @@ function SectionSafeToDeploy() {
 }
 
 
+function SectionBudget() {
+  const { data: budget } = useGetBudget();
+
+  if (!budget) return null;
+
+  return (
+    <div className="card card-pad page-section animate-in delay-1" data-testid="card-budget">
+      <div className="card-title-row">
+        <div>
+          <div className="card-title">Operating Budget ({budget.month})</div>
+          <div className="card-subtitle">Official targets and performance.</div>
+        </div>
+        <span className="status verified">{budget.totals.percentageUsed}% Used</span>
+      </div>
+
+      <div className="mt-4 hidden md:block border border-[var(--line)] rounded-md overflow-hidden bg-white">
+        <table className="w-full text-xs text-left">
+          <thead className="bg-[var(--paper)] text-[var(--ink-soft)] uppercase tracking-wider text-[10px]">
+            <tr>
+              <th className="p-3 font-medium">Category</th>
+              <th className="p-3 font-medium text-right">Target</th>
+              <th className="p-3 font-medium text-right">Actual</th>
+              <th className="p-3 font-medium text-right text-[var(--marigold)]">Pending</th>
+              <th className="p-3 font-medium text-right">Remaining / variance</th>
+              <th className="p-3 font-medium">Source coverage</th>
+              <th className="p-3 font-medium text-center">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--line)]">
+            {budget.categories.map((c) => (
+              <tr key={c.id} data-testid={`budget-category-desktop-${c.id}`}>
+                <td className="p-3">
+                  <strong className="block text-[13px]">{c.name}</strong>
+                  <span className="text-[var(--ink-soft)]">{c.categoryType.replace(/_/g, ' ')}</span>
+                </td>
+                <td className="p-3 text-right">
+                  {c.noTarget ? <span className="text-[var(--ink-soft)] italic">No Target</span> : <strong>${c.budgeted}</strong>}
+                </td>
+                <td className="p-3 text-right font-medium">${c.actual}</td>
+                <td className="p-3 text-right text-[var(--marigold)] font-medium">${c.pendingEvidence}</td>
+                <td className="p-3 text-right">
+                  {c.noTarget ? '-' : <span className={c.variance.startsWith('-') ? 'text-red-700' : 'text-[var(--ink)]'}>${c.variance}</span>}
+                </td>
+                <td className="p-3 text-[var(--ink-soft)]">{c.sourceCoverage}</td>
+                <td className="p-3 text-center">
+                  <span className={`status ${c.status === 'under_pace' ? 'verified' : c.status === 'on_pace' ? 'pending' : 'critical'}`}>
+                    {c.status.replace(/_/g, ' ')}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="mt-4 grid gap-3 md:hidden">
+        {budget.categories.map((c) => (
+          <div key={c.id} className="rounded-md border border-[var(--line)] bg-white p-3" data-testid={`budget-category-mobile-${c.id}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <strong className="block text-[13px]">{c.name}</strong>
+                <span className="text-[var(--ink-soft)] text-[11px]">{c.categoryType.replace(/_/g, ' ')}</span>
+              </div>
+              <span className={`status ${c.status === 'under_pace' ? 'verified' : c.status === 'on_pace' ? 'pending' : 'critical'}`}>
+                {c.status.replace(/_/g, ' ')}
+              </span>
+            </div>
+            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+              <div><dt className="text-[var(--ink-soft)]">Planned target</dt><dd className="font-semibold">{c.noTarget ? 'NO TARGET' : `$${c.budgeted}`}</dd></div>
+              <div><dt className="text-[var(--ink-soft)]">Official actual</dt><dd className="font-semibold">${c.actual}</dd></div>
+              <div><dt className="text-[var(--ink-soft)]">Pending evidence</dt><dd className="font-semibold text-[var(--marigold)]">${c.pendingEvidence}</dd></div>
+              <div><dt className="text-[var(--ink-soft)]">Remaining / variance</dt><dd className="font-semibold">{c.noTarget ? '—' : `$${c.variance}`}</dd></div>
+              <div className="col-span-2"><dt className="text-[var(--ink-soft)]">Source coverage</dt><dd>{c.sourceCoverage}</dd></div>
+            </dl>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+
 function SectionVehicleAffordability() {
   const [formData, setFormData] = useState({
     vehiclePrice: '',
@@ -422,6 +504,7 @@ export default function BudgetPage({ embedded = false }: { embedded?: boolean })
       
       <div className="dashboard-grid">
         <div className="grid gap-[18px]">
+          <SectionBudget />
           <SectionEvidence />
           <SectionForecast />
           <SectionVehicleAffordability />

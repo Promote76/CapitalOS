@@ -231,6 +231,14 @@ import type {
   ShadowIntentInput,
   ShadowPortfolio,
   ShadowPortfolioInput,
+  StatementCategoryDecisionInput,
+  StatementFinancialImportInput,
+  StatementFinancialInclusion,
+  StatementFinancialLinkInput,
+  StatementFinancialReconciliationInput,
+  StatementFinancialReversalInput,
+  StatementFinancialReversalResult,
+  StatementMatchPreview,
   StrategyAllocationInput,
   StrategyGraduationReview,
   StrategyLabExperiment,
@@ -15098,5 +15106,585 @@ export const useReviewBankStatementTransaction = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getReviewBankStatementTransactionMutationOptions(options));
+    }
+
+export const getDecideBankStatementTransactionCategoryUrl = (transactionId: string,) => {
+
+
+
+
+  return `/api/bank-statement-transactions/${transactionId}/category-decision`
+}
+
+/**
+ * @summary Record a human category decision without posting financial activity
+ */
+export const decideBankStatementTransactionCategory = async (transactionId: string,
+    statementCategoryDecisionInput: StatementCategoryDecisionInput, options?: Parameters<typeof customFetch>[1]): Promise<BankStatementTransactionEvidence> => {
+
+  return customFetch<BankStatementTransactionEvidence>(getDecideBankStatementTransactionCategoryUrl(transactionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(statementCategoryDecisionInput)
+  }
+);}
+
+
+
+
+
+export const getDecideBankStatementTransactionCategoryMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideBankStatementTransactionCategory>>, TError,{transactionId: string;data: BodyType<StatementCategoryDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideBankStatementTransactionCategory>>, TError,{transactionId: string;data: BodyType<StatementCategoryDecisionInput>}, TContext> => {
+
+const mutationKey = ['decideBankStatementTransactionCategory'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideBankStatementTransactionCategory>>, {transactionId: string;data: BodyType<StatementCategoryDecisionInput>}> = (props) => {
+          const {transactionId,data} = props ?? {};
+
+          return  decideBankStatementTransactionCategory(transactionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecideBankStatementTransactionCategoryMutationResult = NonNullable<Awaited<ReturnType<typeof decideBankStatementTransactionCategory>>>
+    export type DecideBankStatementTransactionCategoryMutationBody = BodyType<StatementCategoryDecisionInput>
+    export type DecideBankStatementTransactionCategoryMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Record a human category decision without posting financial activity
+ */
+export const useDecideBankStatementTransactionCategory = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideBankStatementTransactionCategory>>, TError,{transactionId: string;data: BodyType<StatementCategoryDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof decideBankStatementTransactionCategory>>,
+        TError,
+        {transactionId: string;data: BodyType<StatementCategoryDecisionInput>},
+        TContext
+      > => {
+      return useMutation(getDecideBankStatementTransactionCategoryMutationOptions(options));
+    }
+
+export const getGetBankStatementTransactionInclusionUrl = (transactionId: string,) => {
+
+
+
+
+  return `/api/bank-statement-transactions/${transactionId}/inclusion`
+}
+
+/**
+ * @summary Get the durable current inclusion and reconciliation state for statement evidence
+ */
+export const getBankStatementTransactionInclusion = async (transactionId: string, options?: Parameters<typeof customFetch>[1]): Promise<StatementFinancialInclusion> => {
+
+  return customFetch<StatementFinancialInclusion>(getGetBankStatementTransactionInclusionUrl(transactionId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBankStatementTransactionInclusionQueryKey = (transactionId: string,) => {
+    return [
+    `/api/bank-statement-transactions/${transactionId}/inclusion`
+    ] as const;
+    }
+
+
+export const getGetBankStatementTransactionInclusionQueryOptions = <TData = Awaited<ReturnType<typeof getBankStatementTransactionInclusion>>, TError = ErrorType<NotFoundResponse>>(transactionId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBankStatementTransactionInclusion>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBankStatementTransactionInclusionQueryKey(transactionId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBankStatementTransactionInclusion>>> = ({ signal }) => getBankStatementTransactionInclusion(transactionId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: transactionId !== null && transactionId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBankStatementTransactionInclusion>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBankStatementTransactionInclusionQueryResult = NonNullable<Awaited<ReturnType<typeof getBankStatementTransactionInclusion>>>
+export type GetBankStatementTransactionInclusionQueryError = ErrorType<NotFoundResponse>
+
+
+/**
+ * @summary Get the durable current inclusion and reconciliation state for statement evidence
+ */
+
+export function useGetBankStatementTransactionInclusion<TData = Awaited<ReturnType<typeof getBankStatementTransactionInclusion>>, TError = ErrorType<NotFoundResponse>>(
+ transactionId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBankStatementTransactionInclusion>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBankStatementTransactionInclusionQueryOptions(transactionId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReconcileBankStatementTransactionInclusionUrl = (transactionId: string,) => {
+
+
+
+
+  return `/api/bank-statement-transactions/${transactionId}/inclusion/reconcile`
+}
+
+/**
+ * @summary Explicitly resolve a source-to-official mismatch without mutating source or official transaction
+ */
+export const reconcileBankStatementTransactionInclusion = async (transactionId: string,
+    statementFinancialReconciliationInput: StatementFinancialReconciliationInput, options?: Parameters<typeof customFetch>[1]): Promise<StatementFinancialInclusion> => {
+
+  return customFetch<StatementFinancialInclusion>(getReconcileBankStatementTransactionInclusionUrl(transactionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(statementFinancialReconciliationInput)
+  }
+);}
+
+
+
+
+
+export const getReconcileBankStatementTransactionInclusionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileBankStatementTransactionInclusion>>, TError,{transactionId: string;data: BodyType<StatementFinancialReconciliationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reconcileBankStatementTransactionInclusion>>, TError,{transactionId: string;data: BodyType<StatementFinancialReconciliationInput>}, TContext> => {
+
+const mutationKey = ['reconcileBankStatementTransactionInclusion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileBankStatementTransactionInclusion>>, {transactionId: string;data: BodyType<StatementFinancialReconciliationInput>}> = (props) => {
+          const {transactionId,data} = props ?? {};
+
+          return  reconcileBankStatementTransactionInclusion(transactionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReconcileBankStatementTransactionInclusionMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileBankStatementTransactionInclusion>>>
+    export type ReconcileBankStatementTransactionInclusionMutationBody = BodyType<StatementFinancialReconciliationInput>
+    export type ReconcileBankStatementTransactionInclusionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Explicitly resolve a source-to-official mismatch without mutating source or official transaction
+ */
+export const useReconcileBankStatementTransactionInclusion = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileBankStatementTransactionInclusion>>, TError,{transactionId: string;data: BodyType<StatementFinancialReconciliationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reconcileBankStatementTransactionInclusion>>,
+        TError,
+        {transactionId: string;data: BodyType<StatementFinancialReconciliationInput>},
+        TContext
+      > => {
+      return useMutation(getReconcileBankStatementTransactionInclusionMutationOptions(options));
+    }
+
+export const getPreviewBankStatementTransactionMatchUrl = (transactionId: string,) => {
+
+
+
+
+  return `/api/bank-statement-transactions/${transactionId}/match-preview`
+}
+
+/**
+ * @summary Preview household-scoped duplicate and existing-transaction matches before inclusion
+ */
+export const previewBankStatementTransactionMatch = async (transactionId: string, options?: Parameters<typeof customFetch>[1]): Promise<StatementMatchPreview> => {
+
+  return customFetch<StatementMatchPreview>(getPreviewBankStatementTransactionMatchUrl(transactionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPreviewBankStatementTransactionMatchMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewBankStatementTransactionMatch>>, TError,{transactionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewBankStatementTransactionMatch>>, TError,{transactionId: string}, TContext> => {
+
+const mutationKey = ['previewBankStatementTransactionMatch'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewBankStatementTransactionMatch>>, {transactionId: string}> = (props) => {
+          const {transactionId} = props ?? {};
+
+          return  previewBankStatementTransactionMatch(transactionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewBankStatementTransactionMatchMutationResult = NonNullable<Awaited<ReturnType<typeof previewBankStatementTransactionMatch>>>
+
+    export type PreviewBankStatementTransactionMatchMutationError = ErrorType<BadRequestResponse | ForbiddenResponse>
+
+    /**
+ * @summary Preview household-scoped duplicate and existing-transaction matches before inclusion
+ */
+export const usePreviewBankStatementTransactionMatch = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewBankStatementTransactionMatch>>, TError,{transactionId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewBankStatementTransactionMatch>>,
+        TError,
+        {transactionId: string},
+        TContext
+      > => {
+      return useMutation(getPreviewBankStatementTransactionMatchMutationOptions(options));
+    }
+
+export const getImportBankStatementTransactionUrl = (transactionId: string,) => {
+
+
+
+
+  return `/api/bank-statement-transactions/${transactionId}/import`
+}
+
+/**
+ * @summary Explicitly import one eligible reviewed row as one official transaction
+ */
+export const importBankStatementTransaction = async (transactionId: string,
+    statementFinancialImportInput: StatementFinancialImportInput, options?: Parameters<typeof customFetch>[1]): Promise<StatementFinancialInclusion> => {
+
+  return customFetch<StatementFinancialInclusion>(getImportBankStatementTransactionUrl(transactionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(statementFinancialImportInput)
+  }
+);}
+
+
+
+
+
+export const getImportBankStatementTransactionMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importBankStatementTransaction>>, TError,{transactionId: string;data: BodyType<StatementFinancialImportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importBankStatementTransaction>>, TError,{transactionId: string;data: BodyType<StatementFinancialImportInput>}, TContext> => {
+
+const mutationKey = ['importBankStatementTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importBankStatementTransaction>>, {transactionId: string;data: BodyType<StatementFinancialImportInput>}> = (props) => {
+          const {transactionId,data} = props ?? {};
+
+          return  importBankStatementTransaction(transactionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportBankStatementTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof importBankStatementTransaction>>>
+    export type ImportBankStatementTransactionMutationBody = BodyType<StatementFinancialImportInput>
+    export type ImportBankStatementTransactionMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Explicitly import one eligible reviewed row as one official transaction
+ */
+export const useImportBankStatementTransaction = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importBankStatementTransaction>>, TError,{transactionId: string;data: BodyType<StatementFinancialImportInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof importBankStatementTransaction>>,
+        TError,
+        {transactionId: string;data: BodyType<StatementFinancialImportInput>},
+        TContext
+      > => {
+      return useMutation(getImportBankStatementTransactionMutationOptions(options));
+    }
+
+export const getLinkBankStatementTransactionUrl = (transactionId: string,) => {
+
+
+
+
+  return `/api/bank-statement-transactions/${transactionId}/link`
+}
+
+/**
+ * @summary Explicitly link evidence to one existing household transaction without creating another
+ */
+export const linkBankStatementTransaction = async (transactionId: string,
+    statementFinancialLinkInput: StatementFinancialLinkInput, options?: Parameters<typeof customFetch>[1]): Promise<StatementFinancialInclusion> => {
+
+  return customFetch<StatementFinancialInclusion>(getLinkBankStatementTransactionUrl(transactionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(statementFinancialLinkInput)
+  }
+);}
+
+
+
+
+
+export const getLinkBankStatementTransactionMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkBankStatementTransaction>>, TError,{transactionId: string;data: BodyType<StatementFinancialLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkBankStatementTransaction>>, TError,{transactionId: string;data: BodyType<StatementFinancialLinkInput>}, TContext> => {
+
+const mutationKey = ['linkBankStatementTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkBankStatementTransaction>>, {transactionId: string;data: BodyType<StatementFinancialLinkInput>}> = (props) => {
+          const {transactionId,data} = props ?? {};
+
+          return  linkBankStatementTransaction(transactionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LinkBankStatementTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof linkBankStatementTransaction>>>
+    export type LinkBankStatementTransactionMutationBody = BodyType<StatementFinancialLinkInput>
+    export type LinkBankStatementTransactionMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Explicitly link evidence to one existing household transaction without creating another
+ */
+export const useLinkBankStatementTransaction = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkBankStatementTransaction>>, TError,{transactionId: string;data: BodyType<StatementFinancialLinkInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof linkBankStatementTransaction>>,
+        TError,
+        {transactionId: string;data: BodyType<StatementFinancialLinkInput>},
+        TContext
+      > => {
+      return useMutation(getLinkBankStatementTransactionMutationOptions(options));
+    }
+
+export const getUnlinkBankStatementTransactionUrl = (transactionId: string,) => {
+
+
+
+
+  return `/api/bank-statement-transactions/${transactionId}/unlink`
+}
+
+/**
+ * @summary Explicitly unlink a statement row while preserving an append-only reversal record
+ */
+export const unlinkBankStatementTransaction = async (transactionId: string,
+    statementFinancialReversalInput: StatementFinancialReversalInput, options?: Parameters<typeof customFetch>[1]): Promise<StatementFinancialReversalResult> => {
+
+  return customFetch<StatementFinancialReversalResult>(getUnlinkBankStatementTransactionUrl(transactionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(statementFinancialReversalInput)
+  }
+);}
+
+
+
+
+
+export const getUnlinkBankStatementTransactionMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkBankStatementTransaction>>, TError,{transactionId: string;data: BodyType<StatementFinancialReversalInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unlinkBankStatementTransaction>>, TError,{transactionId: string;data: BodyType<StatementFinancialReversalInput>}, TContext> => {
+
+const mutationKey = ['unlinkBankStatementTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unlinkBankStatementTransaction>>, {transactionId: string;data: BodyType<StatementFinancialReversalInput>}> = (props) => {
+          const {transactionId,data} = props ?? {};
+
+          return  unlinkBankStatementTransaction(transactionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnlinkBankStatementTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof unlinkBankStatementTransaction>>>
+    export type UnlinkBankStatementTransactionMutationBody = BodyType<StatementFinancialReversalInput>
+    export type UnlinkBankStatementTransactionMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Explicitly unlink a statement row while preserving an append-only reversal record
+ */
+export const useUnlinkBankStatementTransaction = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unlinkBankStatementTransaction>>, TError,{transactionId: string;data: BodyType<StatementFinancialReversalInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof unlinkBankStatementTransaction>>,
+        TError,
+        {transactionId: string;data: BodyType<StatementFinancialReversalInput>},
+        TContext
+      > => {
+      return useMutation(getUnlinkBankStatementTransactionMutationOptions(options));
+    }
+
+export const getReverseBankStatementTransactionImportUrl = (transactionId: string,) => {
+
+
+
+
+  return `/api/bank-statement-transactions/${transactionId}/reverse`
+}
+
+/**
+ * @summary Explicitly reverse a previous statement import without deleting source evidence
+ */
+export const reverseBankStatementTransactionImport = async (transactionId: string,
+    statementFinancialReversalInput: StatementFinancialReversalInput, options?: Parameters<typeof customFetch>[1]): Promise<StatementFinancialReversalResult> => {
+
+  return customFetch<StatementFinancialReversalResult>(getReverseBankStatementTransactionImportUrl(transactionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(statementFinancialReversalInput)
+  }
+);}
+
+
+
+
+
+export const getReverseBankStatementTransactionImportMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reverseBankStatementTransactionImport>>, TError,{transactionId: string;data: BodyType<StatementFinancialReversalInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reverseBankStatementTransactionImport>>, TError,{transactionId: string;data: BodyType<StatementFinancialReversalInput>}, TContext> => {
+
+const mutationKey = ['reverseBankStatementTransactionImport'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reverseBankStatementTransactionImport>>, {transactionId: string;data: BodyType<StatementFinancialReversalInput>}> = (props) => {
+          const {transactionId,data} = props ?? {};
+
+          return  reverseBankStatementTransactionImport(transactionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReverseBankStatementTransactionImportMutationResult = NonNullable<Awaited<ReturnType<typeof reverseBankStatementTransactionImport>>>
+    export type ReverseBankStatementTransactionImportMutationBody = BodyType<StatementFinancialReversalInput>
+    export type ReverseBankStatementTransactionImportMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Explicitly reverse a previous statement import without deleting source evidence
+ */
+export const useReverseBankStatementTransactionImport = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reverseBankStatementTransactionImport>>, TError,{transactionId: string;data: BodyType<StatementFinancialReversalInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reverseBankStatementTransactionImport>>,
+        TError,
+        {transactionId: string;data: BodyType<StatementFinancialReversalInput>},
+        TContext
+      > => {
+      return useMutation(getReverseBankStatementTransactionImportMutationOptions(options));
     }
 

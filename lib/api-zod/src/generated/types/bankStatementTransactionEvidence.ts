@@ -6,9 +6,12 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { BankStatementTransactionCorrection } from './bankStatementTransactionCorrection';
+import type { BankStatementTransactionEvidenceCategoryDecisionStatus } from './bankStatementTransactionEvidenceCategoryDecisionStatus';
 import type { BankStatementTransactionEvidenceCorrectedValue } from './bankStatementTransactionEvidenceCorrectedValue';
+import type { BankStatementTransactionEvidenceEconomicClassification } from './bankStatementTransactionEvidenceEconomicClassification';
 import type { BankStatementTransactionEvidenceLastReviewAction } from './bankStatementTransactionEvidenceLastReviewAction';
 import type { BankStatementTransactionEvidenceOriginalValue } from './bankStatementTransactionEvidenceOriginalValue';
+import type { BankStatementTransactionEvidenceSuggestedCategoryConfidence } from './bankStatementTransactionEvidenceSuggestedCategoryConfidence';
 
 export interface BankStatementTransactionEvidence {
   id: string;
@@ -45,6 +48,24 @@ export interface BankStatementTransactionEvidence {
   reviewedAt?: Date | null;
   /** @nullable */
   linkedSettlementDocumentId?: string | null;
+  /** @nullable */
+  suggestedCategoryId?: string | null;
+  /** @nullable */
+  suggestedCategoryConfidence?: BankStatementTransactionEvidenceSuggestedCategoryConfidence;
+  /** @nullable */
+  suggestedCategoryReason?: string | null;
+  /** @nullable */
+  suggestedCategorySource?: string | null;
+  /** @nullable */
+  selectedCategoryId?: string | null;
+  categoryDecisionStatus?: BankStatementTransactionEvidenceCategoryDecisionStatus;
+  /** @nullable */
+  categoryDecidedBy?: string | null;
+  /** @nullable */
+  categoryDecidedAt?: Date | null;
+  /** @minimum 0 */
+  categoryCorrectionVersion?: number;
+  economicClassification?: BankStatementTransactionEvidenceEconomicClassification;
   createdAt: Date;
   correctionHistory: BankStatementTransactionCorrection[];
 }

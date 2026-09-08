@@ -31,6 +31,7 @@ import {
 } from "./enums.ts";
 import { households, users } from "./households.ts";
 import { businessEntities } from "./business.ts";
+import { bankStatementTransactions, financialDocuments } from "./financial-documents.ts";
 
 const money = (name: string) => numeric(name, { precision: 18, scale: 2 }).notNull().default("0");
 
@@ -251,6 +252,11 @@ export const financeTransactions = pgTable(
     excludedFromBudget: boolean("excluded_from_budget").notNull().default(false),
     pending: boolean("pending").notNull().default(false),
     transferGroupId: text("transfer_group_id"),
+    sourceDocumentId: uuid("source_document_id").references((): AnyPgColumn => financialDocuments.id, { onDelete: "set null" }),
+    sourceStatementRowId: uuid("source_statement_row_id").references((): AnyPgColumn => bankStatementTransactions.id, { onDelete: "set null" }),
+    statementRowFingerprint: text("statement_row_fingerprint"),
+    importedBy: uuid("imported_by").references(() => users.id, { onDelete: "set null" }),
+    importedAt: timestamp("imported_at", { withTimezone: true }),
     metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -258,6 +264,7 @@ export const financeTransactions = pgTable(
   (table) => ({
     householdDateIdx: index("finance_transactions_household_date_idx").on(table.householdId, table.transactionDate),
     externalUnique: uniqueIndex("finance_transactions_account_external_unique").on(table.accountId, table.externalId),
+    householdStatementFingerprintUnique: uniqueIndex("finance_transactions_household_statement_row_fingerprint_unique").on(table.householdId, table.statementRowFingerprint),
   }),
 );
 

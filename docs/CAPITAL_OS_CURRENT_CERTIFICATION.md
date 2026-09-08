@@ -6,11 +6,12 @@
 **Current decision:** **READY FOR CONTROLLED INTERNAL USE ONLY — PUBLIC PRODUCTION NOT CERTIFIED**
 
 This is the single current certification document. The Financial Planning
-Completion replay passed all 40 FPC gates, the 200-test API suite, generated
-artifact freshness, and authenticated Budget/Documents/Treasury browser
-certification. Source-derived and certified route inventories both contain 201
-route/method pairs. See
+Completion replay passed all 40 FPC gates, and the Document-to-Budget Bridge
+passed all 30 DBB gates with an executed PostgreSQL fixture and authenticated
+browser journey. Generated artifact freshness passes, and source-derived and
+certified route inventories both contain 209 route/method pairs. See
 `docs/certification/FINANCIAL_PLANNING_COMPLETION_2026-09-08.md`,
+`docs/certification/DOCUMENT_BUDGET_BRIDGE_CERTIFICATION_2026-09-08.md`,
 `docs/certification/CURRENT_SURFACE_CERTIFICATION_2026-09-07.md`, and
 `docs/PRODUCTION_CANDIDATE_EVIDENCE_INDEX.md`.
 
@@ -102,6 +103,12 @@ introduced during this certification.
   evidence. Corrected amounts are cent-exact; transfers, settlement-linked deposits,
   rejected parents, and pending rows are excluded. Uploaded evidence cannot change
   forecast math, verified income, balances, ledger entries, or deployable capital.
+- Reviewed statement evidence now has a separate, explicit financial-inclusion
+  workflow. A human category decision and deterministic match preview precede
+  import or provenance-only linking; ambiguous matches and excluded economic
+  classifications fail closed. Imports are tenant-scoped, idempotent, atomic,
+  auditable, reversible, and populate official Budget actuals without changing
+  approved targets or creating verified-income events.
 - Weekly allocation templates are versioned with each planning period, must cover
   every active allocating category, and must total exactly 100.00% before approval.
   Approved and closed periods preserve the exact reviewed percentages.
@@ -138,6 +145,7 @@ introduced during this certification.
 | Evidence                                       | Result                                                                                                                                                  | Runtime reference                                                                                                                                                             |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Generated finance artifacts                    | PASS                                                                                                                                                    | `pnpm run check:generated-finance-artifacts`                                                                                                                                  |
+| Document-to-Budget Bridge                      | PASS — DBB-01 through DBB-30, including executed database and authenticated browser fixtures                                                            | `pnpm run certify:document-budget-bridge`; `docs/certification/DOCUMENT_BUDGET_BRIDGE_CERTIFICATION_2026-09-08.md`                                                           |
 | Generated-artifact failure/recovery regression | PASS                                                                                                                                                    | `pnpm run test:generated-finance-artifacts`                                                                                                                                   |
 | Workspace/API typechecks                       | PASS                                                                                                                                                    | `pnpm run typecheck`, API typecheck                                                                                                                                           |
 | OpenAPI route/method parity                    | PASS                                                                                                                                                    | `scripts/check-api-contract.mjs`; 170 route/method combinations                                                                                                               |

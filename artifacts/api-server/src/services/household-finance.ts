@@ -15,6 +15,10 @@ import {
   financeCategories,
   financeSnapshots,
   financeTransactions,
+bankStatementTransactions,
+bankStatementDocuments,
+financialDocuments,
+statementFinancialInclusions,
   financialAccounts,
   goals,
   incomeSources,
@@ -987,18 +991,66 @@ export async function getBudget(actor?: Actor) {
     period.daysElapsed,
     period.daysInMonth,
   );
-  const totals = performance.reduce((result, category) => {
+const pendingRows = await db.select({
+    amount: bankStatementTransactions.amount,
+    correctedValue: bankStatementTransactions.correctedValue,
+    categoryId: bankStatementTransactions.selectedCategoryId,
+    status: statementFinancialInclusions.status
+  })
+    .from(bankStatementTransactions)
+    .innerJoin(bankStatementDocuments, eq(bankStatementDocuments.id, bankStatementTransactions.bankStatementDocumentId))
+    .innerJoin(financialDocuments, eq(financialDocuments.id, bankStatementDocuments.documentId))
+    .leftJoin(statementFinancialInclusions, eq(statementFinancialInclusions.statementRowId, bankStatementTransactions.id))
+    .where(and(
+      eq(financialDocuments.householdId, data.id),
+      eq(bankStatementDocuments.householdId, data.id),
+      eq(bankStatementTransactions.householdId, data.id),
+      sql`${bankStatementTransactions.postedDate} >= ${period.start}::date`,
+      sql`${bankStatementTransactions.postedDate} <= ${period.end}::date`,
+      eq(financialDocuments.status, "VERIFIED"),
+      inArray(bankStatementTransactions.lastReviewAction, ["APPROVE", "RECLASSIFY"]),
+      eq(bankStatementTransactions.economicClassification, "HOUSEHOLD")
+    ));
+
+  const sourceCoverageMap = new Map<string, { officialCount: number, pendingCount: number, pendingAmount: number }>();
+  for (const row of pendingRows) {
+    if (!row.categoryId) continue;
+    const stats = sourceCoverageMap.get(row.categoryId) ?? { officialCount: 0, pendingCount: 0, pendingAmount: 0 };
+    if (row.status === "IMPORTED_NEW" || row.status === "LINKED_EXISTING") {
+      stats.officialCount++;
+    } else if (row.status !== "EXCLUDED_TRANSFER" && row.status !== "EXCLUDED_SETTLEMENT" && row.status !== "EXCLUDED_DUPLICATE" && row.status !== "REJECTED") {
+      stats.pendingCount++;
+      const val = row.correctedValue ? (row.correctedValue as any).amount : row.amount;
+      stats.pendingAmount += cents(val as string);
+    }
+    sourceCoverageMap.set(row.categoryId, stats);
+  }
+
+  const performanceWithCoverage = performance.map((c) => {
+    const stats = sourceCoverageMap.get(c.id) ?? { officialCount: 0, pendingCount: 0, pendingAmount: 0 };
+    const actualPending = Math.max(0, c.categoryType === "income" ? stats.pendingAmount : -stats.pendingAmount);
+    return {
+      ...c,
+      pendingEvidence: (actualPending / 100).toFixed(2),
+      sourceCoverage: `${stats.officialCount} official, ${stats.pendingCount} pending`
+    };
+  });
+
+  const totals = performanceWithCoverage.reduce((result, category) => {
     if (category.categoryType === "income" || category.categoryType === "transfer") return result;
     result.budgeted += numeric(category.budgeted);
     result.actual += numeric(category.actual);
+    result.pendingEvidence += numeric(category.pendingEvidence);
     return result;
-  }, { budgeted: 0, actual: 0 });
+  }, { budgeted: 0, actual: 0, pendingEvidence: 0 });
+
   return {
     month: period.label,
-    categories: performance,
+    categories: performanceWithCoverage,
     totals: {
       budgeted: totals.budgeted.toFixed(2),
       actual: totals.actual.toFixed(2),
+      pendingEvidence: totals.pendingEvidence.toFixed(2),
       remaining: (totals.budgeted - totals.actual).toFixed(2),
       percentageUsed: totals.budgeted === 0 ? 0 : Number(((totals.actual / totals.budgeted) * 100).toFixed(1)),
     },

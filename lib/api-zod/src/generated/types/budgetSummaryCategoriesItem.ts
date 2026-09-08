@@ -13,6 +13,9 @@ export type BudgetSummaryCategoriesItem = {
   essentialStatus: string;
   budgeted: string;
   actual: string;
+  pendingEvidence: string;
+  sourceCoverage: string;
+  noTarget: boolean;
   variance: string;
   percentageUsed: number;
   projectedMonthEnd: string;

@@ -9,6 +9,7 @@
 export type BudgetSummaryTotals = {
   budgeted: string;
   actual: string;
+  pendingEvidence: string;
   remaining: string;
   percentageUsed: number;
 };

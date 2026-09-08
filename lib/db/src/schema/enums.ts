@@ -173,9 +173,46 @@ export const financeDataSourceEnum = pgEnum("finance_data_source", [
   "plaid",
   "manual",
   "csv_import",
+  "bank_statement_import",
   "capital_os_ledger",
   "user_entered",
   "calculated",
+]);
+
+/** Human decision lifecycle for an uploaded bank-statement row's category. */
+export const statementCategoryDecisionStatusEnum = pgEnum("statement_category_decision_status", [
+  "UNCLASSIFIED",
+  "SUGGESTED",
+  "USER_CONFIRMED",
+  "USER_CORRECTED",
+  "NOT_APPLICABLE_TRANSFER",
+  "NOT_APPLICABLE_SETTLEMENT",
+  "REJECTED",
+]);
+
+/** Economic boundary assigned before statement evidence can be financially included. */
+export const statementEconomicClassificationEnum = pgEnum("statement_economic_classification", [
+  "HOUSEHOLD",
+  "BUSINESS",
+  "TRANSFER",
+  "SETTLEMENT_LINK",
+  "UNKNOWN",
+]);
+
+/** Explicit financial-inclusion lifecycle, deliberately separate from evidence review. */
+export const statementFinancialInclusionStatusEnum = pgEnum("statement_financial_inclusion_status", [
+  "NOT_REVIEWED",
+  "READY_FOR_INCLUSION_REVIEW",
+  "MATCH_CANDIDATE",
+  "DUPLICATE_REVIEW_REQUIRED",
+  "READY_TO_IMPORT",
+  "LINKED_EXISTING",
+  "IMPORTED_NEW",
+  "EXCLUDED_TRANSFER",
+  "EXCLUDED_SETTLEMENT",
+  "EXCLUDED_DUPLICATE",
+  "REVERSED",
+  "REJECTED",
 ]);
 
 export const budgetCategoryTypeEnum = pgEnum("budget_category_type", [

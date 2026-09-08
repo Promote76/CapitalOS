@@ -5,6 +5,10 @@ import {
   useReviewFinancialDocument,
   useReviewBankStatementTransaction,
   getGetVariableBudgetIntelligenceQueryKey,
+  getGetBudgetQueryKey,
+  getListTransactionReviewQueueQueryKey,
+  getGetAccountingOverviewQueryKey,
+  getGetCapitalGovernorV2QueryKey,
 } from '@workspace/api-client-react';
 import { 
   ClipboardList, 
@@ -25,6 +29,8 @@ import {
   queueItemTitle,
   type ReviewQueueItem,
 } from '@/documents-queue';
+
+import { TransactionEvidenceRow } from './TransactionEvidenceRow';
 
 const PageHeading = ({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) => (
   <div className="page-heading animate-in">
@@ -57,6 +63,16 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
   const documents = docsData?.documents || [];
   const queueItems = (queueData?.items || []).map(normalizeReviewQueueItem);
 
+  const invalidateEverything = () => {
+    refetchDocs();
+    refetchQueue();
+    queryClient.invalidateQueries({ queryKey: getGetVariableBudgetIntelligenceQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListTransactionReviewQueueQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetAccountingOverviewQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetCapitalGovernorV2QueryKey() });
+  };
+
   const handleDocReview = async (id: string, decision: 'VERIFIED' | 'REJECTED', reason: string) => {
     try {
       await reviewDoc.mutateAsync({
@@ -64,9 +80,7 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
         data: { decision, reason }
       });
       toast({ title: `Document ${decision.toLowerCase()}` });
-      refetchDocs();
-      refetchQueue();
-      queryClient.invalidateQueries({ queryKey: getGetVariableBudgetIntelligenceQueryKey() });
+      invalidateEverything();
     } catch (err: any) {
       toast({ title: 'Review failed', description: err.message, variant: 'destructive' });
     }
@@ -92,9 +106,7 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
         }
       });
       toast({ title: `Transaction action: ${action.toLowerCase()}` });
-      refetchQueue();
-      refetchDocs();
-      queryClient.invalidateQueries({ queryKey: getGetVariableBudgetIntelligenceQueryKey() });
+      invalidateEverything();
       reviewKeys.current.delete(key);
     } catch (err: any) {
       toast({ title: 'Review failed', description: err.message, variant: 'destructive' });
@@ -191,35 +203,7 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
                         </div>
                       )}
                       {doc.transactions?.map((transaction) => (
-                        <div key={transaction.id} className="mt-3 rounded-md border border-[var(--line)] p-3 text-xs" data-testid={`statement-transaction-${transaction.id}`}>
-                          <div className="flex items-center justify-between gap-3">
-                            <strong>{transaction.description}</strong>
-                            <span>{transaction.direction === 'withdrawal' ? '−' : '+'}${transaction.amount}</span>
-                          </div>
-                          <div className="mt-1.5 flex items-center justify-between text-[var(--ink-soft)]">
-                            <div>
-                              {transaction.postedDate ?? 'Date unavailable'} · {transaction.sourcePage ? `page ${transaction.sourcePage}, ` : ''}line {transaction.sourceLine ?? 'unknown'} · {transaction.parserVersion}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`status ${['APPROVED', 'VERIFIED'].includes(transaction.reviewStatus) ? 'verified' : ['REJECTED', 'FAILED'].includes(transaction.reviewStatus) ? 'critical' : 'pending'}`}>
-                                {transaction.reviewStatus}
-                              </span>
-                              {transaction.lastReviewAction && (
-                                <span className="text-[9px] uppercase tracking-wider font-mono border border-[var(--line)] px-1.5 py-0.5 rounded text-[var(--ink)] bg-[var(--paper)]">
-                                  {transaction.lastReviewAction.replace(/_/g, ' ')}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="mt-1.5 text-[var(--ink-soft)] opacity-70">
-                            Original: {JSON.stringify(transaction.originalValue)}
-                          </div>
-                          {transaction.correctionHistory && transaction.correctionHistory.length > 0 && (
-                            <div className="mt-1 text-[var(--ink-soft)] opacity-70">
-                              {transaction.correctionHistory.length} correction{transaction.correctionHistory.length === 1 ? '' : 's'} preserved
-                            </div>
-                          )}
-                        </div>
+                        <TransactionEvidenceRow key={transaction.id} transaction={transaction} />
                       ))}
                     </div>
                   </div>

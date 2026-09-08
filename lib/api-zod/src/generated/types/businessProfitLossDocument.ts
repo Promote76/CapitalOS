@@ -5,6 +5,8 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { BusinessProfitLossDocumentReviewDecision } from './businessProfitLossDocumentReviewDecision';
+import type { BusinessProfitLossLine } from './businessProfitLossLine';
 
 export interface BusinessProfitLossDocument {
   id: string;
@@ -28,9 +30,18 @@ export interface BusinessProfitLossDocument {
   /** @nullable */
   extractionReason: string | null;
   verificationStatus: string;
+  /** @nullable */
+  reviewDecision: BusinessProfitLossDocumentReviewDecision;
+  /** @nullable */
+  reviewReason: string | null;
+  /** @nullable */
+  reviewedBy: string | null;
+  /** @nullable */
+  reviewedAt: Date | null;
   reportedRevenue: string;
   reportedExpenses: string;
   reportedProfit: string;
   status: string;
   createdAt: Date;
+  lines: BusinessProfitLossLine[];
 }

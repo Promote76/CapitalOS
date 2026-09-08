@@ -1,6 +1,6 @@
-import { FormEvent, useState } from "react";
-import { AlertCircle, ArrowUpRight, BriefcaseBusiness, Building2, CircleDollarSign, ClipboardCheck, FileCheck2, Landmark, LockKeyhole, Plus, RefreshCw, ShieldCheck, TrendingUp, TriangleAlert } from "lucide-react";
-import { createBusinessDistribution, getGetBusinessIncomeIntelligenceQueryKey, getGetBusinessOverviewQueryKey, useCreateBusinessCashPosition, useCreateBusinessExpense, useCreateBusinessOwnerDraw, useCreateBusinessRevenue, useApproveBusinessOwnerDraw, useGetBusinessIncomeIntelligence, useGetBusinessOverview, useIngestBusinessIncomeDocument, useRequestBusinessIncomeDocumentUploadUrl } from "@workspace/api-client-react";
+import { FormEvent, useEffect, useState } from "react";
+import { AlertCircle, ArrowUpRight, BriefcaseBusiness, Building2, CircleDollarSign, ClipboardCheck, FileCheck2, Landmark, LockKeyhole, Plus, RefreshCw, ShieldCheck, TrendingUp, TriangleAlert, ChevronDown, ChevronRight, Check, X } from "lucide-react";
+import { createBusinessDistribution, getGetBusinessIncomeIntelligenceQueryKey, getGetBusinessOverviewQueryKey, useCreateBusinessCashPosition, useCreateBusinessExpense, useCreateBusinessOwnerDraw, useCreateBusinessRevenue, useApproveBusinessOwnerDraw, useGetBusinessIncomeIntelligence, useGetBusinessOverview, useIngestBusinessIncomeDocument, useRequestBusinessIncomeDocumentUploadUrl, useReviewBusinessIncomeDocument, useReviewBusinessIncomeLine } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 const money = (value?: string) => Number(value ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -84,6 +84,20 @@ function BusinessIncomeIntelligencePanel({ businessId, onFeedback }: { businessI
   const [documentType, setDocumentType] = useState<"settlement" | "profit_loss">("settlement");
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [drawAmount, setDrawAmount] = useState("");
+  const [expandedDocument, setExpandedDocument] = useState<string | null>(null);
+  const [canReview, setCanReview] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/me", { credentials: "same-origin" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => {
+        if (!active) return;
+        setCanReview(Boolean(payload?.memberships?.[0]?.permissions?.includes("approve")));
+      })
+      .catch(() => { if (active) setCanReview(false); });
+    return () => { active = false; };
+  }, []);
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: getGetBusinessIncomeIntelligenceQueryKey() });
@@ -187,10 +201,88 @@ function BusinessIncomeIntelligencePanel({ businessId, onFeedback }: { businessI
        <div><button className="btn btn-primary" disabled={!sourceFile || requestUpload.isPending || ingestDocument.isPending}>{requestUpload.isPending || ingestDocument.isPending ? "Processing…" : "Upload and parse"}</button><button className="btn" type="button" onClick={() => { setSettlementOpen(false); setSourceFile(null); }}>Cancel</button></div>
     </form>}
     <div className="business-intelligence-columns">
-      <div className="card card-pad"><div className="business-section-head"><div><span className="eyebrow">Settlement review</span><h3>Recent source documents</h3></div></div>{data.settlements.length === 0 ? <p className="business-empty">No settlement evidence recorded yet.</p> : data.settlements.slice(0, 5).map((row) => <div className="business-intelligence-row" key={row.id}><div><strong>{money(row.reportedNet)} net · {row.statementPeriodStart} to {row.statementPeriodEnd}</strong><span>{row.sourceFileName || row.sourceKind.replaceAll("_", " ")} · extraction {title(row.extractionStatus)} · {row.mathReason}</span></div><span className={`status ${row.mathStatus === "reconciled" && row.verificationStatus === "verified" ? "" : "pending"}`}>{row.verificationStatus === "verified" ? "Verified" : "Needs review"}</span></div>)}</div>
-      <div className="card card-pad"><div className="business-section-head"><div><span className="eyebrow">P&amp;L review</span><h3>Recent profit &amp; loss sources</h3></div></div>{data.profitLossDocuments.length === 0 ? <p className="business-empty">No P&amp;L evidence recorded yet.</p> : data.profitLossDocuments.slice(0, 5).map((row) => <div className="business-intelligence-row" key={row.id}><div><strong>{money(row.reportedProfit)} profit · {row.statementPeriodStart} to {row.statementPeriodEnd}</strong><span>{row.sourceFileName || row.sourceKind.replaceAll("_", " ")} · extraction {title(row.extractionStatus)} · {row.extractionReason || "Awaiting review"}</span></div><span className={`status ${row.verificationStatus === "verified" ? "" : "pending"}`}>{row.verificationStatus === "verified" ? "Verified" : "Needs review"}</span></div>)}</div>
+      <div className="card card-pad"><div className="business-section-head"><div><span className="eyebrow">Settlement review</span><h3>Recent source documents</h3></div></div>{data.settlements.length === 0 ? <p className="business-empty">No settlement evidence recorded yet.</p> : data.settlements.slice(0, 5).map((row) => <IncomeDocumentCard key={row.id} documentType="settlement" document={row} anomalies={data.anomalies.filter((anomaly) => anomaly.relatedEntityId === row.id)} expanded={expandedDocument === row.id} onToggle={() => setExpandedDocument(expandedDocument === row.id ? null : row.id)} canReview={canReview} onFeedback={onFeedback} onRefresh={refresh} />)}</div>
+      <div className="card card-pad"><div className="business-section-head"><div><span className="eyebrow">P&amp;L review</span><h3>Recent profit &amp; loss sources</h3></div></div>{data.profitLossDocuments.length === 0 ? <p className="business-empty">No P&amp;L evidence recorded yet.</p> : data.profitLossDocuments.slice(0, 5).map((row) => <IncomeDocumentCard key={row.id} documentType="profit_loss" document={row} anomalies={data.anomalies.filter((anomaly) => anomaly.relatedEntityId === row.id)} expanded={expandedDocument === row.id} onToggle={() => setExpandedDocument(expandedDocument === row.id ? null : row.id)} canReview={canReview} onFeedback={onFeedback} onRefresh={refresh} />)}</div>
       <div className="card card-pad"><div className="business-section-head"><div><span className="eyebrow">Owner draw bridge</span><h3>Human approval required</h3></div></div><form className="business-draw-form" onSubmit={submitDraw}><input required inputMode="decimal" value={drawAmount} onChange={(event) => setDrawAmount(event.target.value)} placeholder="Amount to review" /><button className="btn" disabled={proposeDraw.isPending}><ShieldCheck size={14} /> Prepare review</button></form>{data.ownerDraws.length === 0 ? <p className="business-empty">No owner draw proposals yet.</p> : data.ownerDraws.slice(0, 5).map((draw) => <div className="business-intelligence-row" key={draw.id}><div><strong>{money(draw.amount)} · {title(draw.status)}</strong><span>{draw.blockedReasons[0] || "Eligible after review"} · {draw.proposalDate}</span></div>{draw.status === "eligible" && <button className="text-link" onClick={() => void approve(draw.id, draw.eligibleAmount)} disabled={approveDraw.isPending}>Approve</button>}</div>)}</div>
     </div>
     {data.anomalies.length > 0 && <div className="business-anomaly-list"><div><TriangleAlert size={15} /><strong>Review blockers</strong></div>{data.anomalies.slice(0, 4).map((anomaly) => <span key={anomaly.id}>{anomaly.message}</span>)}</div>}
   </section>;
+}
+
+type ReviewLine = {
+  id: string;
+  description: string;
+  amount: string;
+  sourcePage: number | null;
+  reviewStatus: string;
+  reviewReason: string | null;
+};
+
+function IncomeDocumentCard({ documentType, document, anomalies, expanded, canReview, onToggle, onFeedback, onRefresh }: {
+  documentType: "settlement" | "profit_loss";
+  document: any;
+  anomalies: Array<{ id: string; message: string; severity: string }>;
+  expanded: boolean;
+  canReview: boolean;
+  onToggle: () => void;
+  onFeedback: (message: string) => void;
+  onRefresh: () => Promise<void>;
+}) {
+  const lines: ReviewLine[] = documentType === "settlement"
+    ? [...document.revenueLines, ...document.deductionLines]
+    : document.lines;
+  const needsReview = lines.some((line) => line.reviewStatus !== "approved") || document.verificationStatus !== "verified";
+  return <article className={`business-document ${expanded ? "is-expanded" : ""}`}>
+    <button className="business-document-summary" onClick={onToggle} aria-expanded={expanded}>
+      <span className="business-document-chevron">{expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</span>
+      <span className="business-document-title"><strong>{documentType === "settlement" ? `${money(document.reportedNet)} net` : `${money(document.reportedProfit)} profit`} · {document.statementPeriodStart} to {document.statementPeriodEnd}</strong><span>{document.sourceFileName || document.sourceKind.replaceAll("_", " ")} · {lines.length} extracted line{lines.length === 1 ? "" : "s"} · {document.sourcePageCount ?? "?"} page{document.sourcePageCount === 1 ? "" : "s"}</span></span>
+      <span className={`status ${needsReview ? "pending" : ""}`}>{document.verificationStatus === "verified" ? "Verified" : "Needs review"}</span>
+    </button>
+    {expanded && <div className="business-document-detail">
+      <div className="business-document-context"><span>{document.extractionReason || document.mathReason || "Extracted source evidence."}</span>{documentType === "settlement" && <span>Math: {document.mathReason}</span>}{anomalies.map((anomaly) => <span className="business-document-anomaly" key={anomaly.id}><TriangleAlert size={13} /> {anomaly.message}</span>)}</div>
+      <DocumentReviewActions document={document} canReview={canReview} onFeedback={onFeedback} onRefresh={onRefresh} />
+      <div className="business-line-list">
+        {lines.length === 0 ? <p className="business-empty">No line items were extracted. The document remains blocked until an authorized reviewer resolves the source.</p> : lines.map((line) => <ExtractedLineReview key={line.id} documentId={document.id} line={line} canReview={canReview} onFeedback={onFeedback} onRefresh={onRefresh} />)}
+      </div>
+    </div>}
+  </article>;
+}
+
+function DocumentReviewActions({ document, canReview, onFeedback, onRefresh }: { document: any; canReview: boolean; onFeedback: (message: string) => void; onRefresh: () => Promise<void> }) {
+  const review = useReviewBusinessIncomeDocument();
+  const [reason, setReason] = useState("");
+  const submit = async (decision: "approved" | "rejected") => {
+    if (!reason.trim()) return;
+    try {
+      const result = await review.mutateAsync({ documentId: document.id, data: { decision, reason: reason.trim() } });
+      await onRefresh();
+      setReason("");
+      onFeedback(result.verificationStatus === "verified" ? "Document reviewed and reconciliation is now verified." : "Document review recorded; the source remains blocked pending reconciliation.");
+    } catch (error) { onFeedback(error instanceof Error ? error.message : "The document review could not be saved."); }
+  };
+  if (!canReview) return <div className="business-review-permission-note">Read-only evidence view. An authorized reviewer with approval permission must record the decision.</div>;
+  return <div className="business-document-review">
+    <label>Reviewer decision note<input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Explain why this source is approved or rejected" maxLength={1000} /></label>
+    <div><button className="btn btn-primary" onClick={() => void submit("approved")} disabled={!reason.trim() || review.isPending}><Check size={13} /> Approve document</button><button className="btn btn-danger" onClick={() => void submit("rejected")} disabled={!reason.trim() || review.isPending}><X size={13} /> Reject document</button></div>
+  </div>;
+}
+
+function ExtractedLineReview({ documentId, line, canReview, onFeedback, onRefresh }: { documentId: string; line: ReviewLine; canReview: boolean; onFeedback: (message: string) => void; onRefresh: () => Promise<void> }) {
+  const review = useReviewBusinessIncomeLine();
+  const [description, setDescription] = useState(line.description);
+  const [amount, setAmount] = useState(line.amount);
+  const [reason, setReason] = useState(line.reviewReason ?? "");
+  const submit = async (decision: "approved" | "rejected") => {
+    if (!reason.trim()) return;
+    try {
+      await review.mutateAsync({ documentId, lineId: line.id, data: { decision, reason: reason.trim(), correctedDescription: description.trim() !== line.description ? description.trim() : undefined, correctedAmount: amount !== line.amount ? amount : undefined } });
+      await onRefresh();
+      onFeedback(decision === "approved" ? "Line item correction and review saved." : "Line item marked as conflicting; owner-draw authorization remains blocked.");
+    } catch (error) { onFeedback(error instanceof Error ? error.message : "The line-item review could not be saved."); }
+  };
+  return <div className="business-line-item">
+    <div className="business-line-item-header"><span>Page {line.sourcePage ?? "unknown"}</span><span className={`status ${line.reviewStatus === "approved" ? "" : "pending"}`}>{title(line.reviewStatus)}</span></div>
+    <div className="business-line-item-fields"><label>Description<input readOnly={!canReview} value={description} onChange={(event) => setDescription(event.target.value)} /></label><label>Amount<input readOnly={!canReview} inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} /></label></div>
+    {canReview ? <div className="business-line-item-actions"><input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Review note required" maxLength={1000} /><button className="text-link" onClick={() => void submit("approved")} disabled={!reason.trim() || review.isPending}><Check size={13} /> Approve</button><button className="text-link business-reject-link" onClick={() => void submit("rejected")} disabled={!reason.trim() || review.isPending}><X size={13} /> Conflict</button></div> : <span className="business-read-only-line">Review controls are available to authorized approvers.</span>}
+  </div>;
 }

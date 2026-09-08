@@ -5,6 +5,9 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { BusinessSettlementDeductionLine } from './businessSettlementDeductionLine';
+import type { BusinessSettlementDocumentReviewDecision } from './businessSettlementDocumentReviewDecision';
+import type { BusinessSettlementRevenueLine } from './businessSettlementRevenueLine';
 
 export interface BusinessSettlementDocument {
   id: string;
@@ -31,8 +34,16 @@ export interface BusinessSettlementDocument {
   sourcePageCount?: number | null;
   extractionStatus: string;
   /** @nullable */
-  extractionReason?: string | null;
+  extractionReason: string | null;
   verificationStatus: string;
+  /** @nullable */
+  reviewDecision: BusinessSettlementDocumentReviewDecision;
+  /** @nullable */
+  reviewReason: string | null;
+  /** @nullable */
+  reviewedBy: string | null;
+  /** @nullable */
+  reviewedAt: Date | null;
   reportedGross: string;
   reportedDeductions: string;
   reportedNet: string;
@@ -46,4 +57,6 @@ export interface BusinessSettlementDocument {
   mathStatus: string;
   mathReason: string;
   calculatedNet: string;
+  revenueLines: BusinessSettlementRevenueLine[];
+  deductionLines: BusinessSettlementDeductionLine[];
 }

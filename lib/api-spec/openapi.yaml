@@ -2917,6 +2917,58 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
+  /business/income/documents/{documentId}/review:
+    post:
+      operationId: reviewBusinessIncomeDocument
+      tags: [business]
+      summary: Record an authorized review decision for an extracted business document
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessIncomeDocumentReviewInput" }
+      responses:
+        "200":
+          description: Document review result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessIncomeReviewResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /business/income/documents/{documentId}/lines/{lineId}/review:
+    post:
+      operationId: reviewBusinessIncomeLine
+      tags: [business]
+      summary: Record an authorized review decision and optional correction for an extracted line item
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema: { type: string }
+        - name: lineId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessIncomeLineReviewInput" }
+      responses:
+        "200":
+          description: Line review result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessIncomeReviewResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /business/income/settlements:
     post:
       operationId: createBusinessSettlement
@@ -6091,7 +6143,7 @@ components:
           items: { $ref: "#/components/schemas/SettlementDeductionLineInput" }
     BusinessSettlementDocument:
       type: object
-      required: [id, businessId, sourceKind, documentType, provider, statementPeriodStart, statementPeriodEnd, paidDate, sourceFileName, sourceObjectPath, sourceSha256, extractionStatus, verificationStatus, reportedGross, reportedDeductions, reportedNet, notes, correctedFromId, sourceVersion, createdAt, updatedAt, mathStatus, mathReason, calculatedNet]
+      required: [id, businessId, sourceKind, documentType, provider, statementPeriodStart, statementPeriodEnd, paidDate, sourceFileName, sourceObjectPath, sourceSha256, extractionStatus, extractionReason, verificationStatus, reviewDecision, reviewReason, reviewedBy, reviewedAt, reportedGross, reportedDeductions, reportedNet, notes, correctedFromId, sourceVersion, createdAt, updatedAt, mathStatus, mathReason, calculatedNet, revenueLines, deductionLines]
       properties:
         id: { type: string }
         businessId: { type: string }
@@ -6110,6 +6162,10 @@ components:
         extractionStatus: { type: string }
         extractionReason: { type: ["string", "null"] }
         verificationStatus: { type: string }
+        reviewDecision: { type: ["string", "null"], enum: [approved, rejected, null] }
+        reviewReason: { type: ["string", "null"] }
+        reviewedBy: { type: ["string", "null"] }
+        reviewedAt: { type: ["string", "null"], format: date-time }
         reportedGross: { type: string }
         reportedDeductions: { type: string }
         reportedNet: { type: string }
@@ -6121,6 +6177,47 @@ components:
         mathStatus: { type: string }
         mathReason: { type: string }
         calculatedNet: { type: string }
+        revenueLines: { type: array, items: { $ref: "#/components/schemas/BusinessSettlementRevenueLine" } }
+        deductionLines: { type: array, items: { $ref: "#/components/schemas/BusinessSettlementDeductionLine" } }
+    BusinessSettlementRevenueLine:
+      type: object
+      required: [id, lineNumber, description, category, quantity, unitAmount, amount, serviceDate, sourcePage, reviewStatus, reviewDecision, reviewReason, reviewedBy, reviewedAt, createdAt]
+      properties:
+        id: { type: string }
+        lineNumber: { type: number }
+        description: { type: string }
+        category: { type: string }
+        quantity: { type: ["string", "null"] }
+        unitAmount: { type: ["string", "null"] }
+        amount: { type: string }
+        serviceDate: { type: ["string", "null"], format: date }
+        sourcePage: { type: ["number", "null"] }
+        reviewStatus: { type: string, enum: [needs_review, approved, rejected] }
+        reviewDecision: { type: ["string", "null"], enum: [approved, rejected, null] }
+        reviewReason: { type: ["string", "null"] }
+        reviewedBy: { type: ["string", "null"] }
+        reviewedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    BusinessSettlementDeductionLine:
+      type: object
+      required: [id, lineNumber, description, category, amount, taxDeduction, passThrough, ownerDraw, reimbursement, sourcePage, reviewStatus, reviewDecision, reviewReason, reviewedBy, reviewedAt, createdAt]
+      properties:
+        id: { type: string }
+        lineNumber: { type: number }
+        description: { type: string }
+        category: { type: string }
+        amount: { type: string }
+        taxDeduction: { type: boolean }
+        passThrough: { type: boolean }
+        ownerDraw: { type: boolean }
+        reimbursement: { type: boolean }
+        sourcePage: { type: ["number", "null"] }
+        reviewStatus: { type: string, enum: [needs_review, approved, rejected] }
+        reviewDecision: { type: ["string", "null"], enum: [approved, rejected, null] }
+        reviewReason: { type: ["string", "null"] }
+        reviewedBy: { type: ["string", "null"] }
+        reviewedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
     ProfitLossLineInput:
       type: object
       required: [description, amount]
@@ -6148,7 +6245,7 @@ components:
           items: { $ref: "#/components/schemas/ProfitLossLineInput" }
     BusinessProfitLossDocument:
       type: object
-      required: [id, businessId, sourceKind, statementPeriodStart, statementPeriodEnd, sourceFileName, sourceObjectPath, sourceSha256, sourceContentType, sourceSizeBytes, sourcePageCount, extractionStatus, extractionReason, verificationStatus, reportedRevenue, reportedExpenses, reportedProfit, status, createdAt]
+      required: [id, businessId, sourceKind, statementPeriodStart, statementPeriodEnd, sourceFileName, sourceObjectPath, sourceSha256, sourceContentType, sourceSizeBytes, sourcePageCount, extractionStatus, extractionReason, verificationStatus, reviewDecision, reviewReason, reviewedBy, reviewedAt, reportedRevenue, reportedExpenses, reportedProfit, status, createdAt, lines]
       properties:
         id: { type: string }
         businessId: { type: string }
@@ -6164,10 +6261,32 @@ components:
         extractionStatus: { type: string }
         extractionReason: { type: ["string", "null"] }
         verificationStatus: { type: string }
+        reviewDecision: { type: ["string", "null"], enum: [approved, rejected, null] }
+        reviewReason: { type: ["string", "null"] }
+        reviewedBy: { type: ["string", "null"] }
+        reviewedAt: { type: ["string", "null"], format: date-time }
         reportedRevenue: { type: string }
         reportedExpenses: { type: string }
         reportedProfit: { type: string }
         status: { type: string }
+        createdAt: { type: string, format: date-time }
+        lines: { type: array, items: { $ref: "#/components/schemas/BusinessProfitLossLine" } }
+    BusinessProfitLossLine:
+      type: object
+      required: [id, lineNumber, description, category, lineType, amount, sourcePage, reviewStatus, reviewDecision, reviewReason, reviewedBy, reviewedAt, createdAt]
+      properties:
+        id: { type: string }
+        lineNumber: { type: number }
+        description: { type: string }
+        category: { type: string }
+        lineType: { type: string }
+        amount: { type: string }
+        sourcePage: { type: ["number", "null"] }
+        reviewStatus: { type: string, enum: [needs_review, approved, rejected] }
+        reviewDecision: { type: ["string", "null"], enum: [approved, rejected, null] }
+        reviewReason: { type: ["string", "null"] }
+        reviewedBy: { type: ["string", "null"] }
+        reviewedAt: { type: ["string", "null"], format: date-time }
         createdAt: { type: string, format: date-time }
     BusinessIncomeDocumentUploadInput:
       type: object
@@ -6206,6 +6325,42 @@ components:
         extractionStatus: { type: string }
         verificationStatus: { type: string }
         message: { type: string }
+    BusinessIncomeDocumentReviewInput:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: { type: string, enum: [approved, rejected] }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    BusinessIncomeLineReviewInput:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: { type: string, enum: [approved, rejected] }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+        correctedDescription: { type: string, minLength: 1, maxLength: 300 }
+        correctedAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+    BusinessIncomeDocumentReviewParams:
+      type: object
+      required: [documentId]
+      properties:
+        documentId: { type: string }
+    BusinessIncomeLineReviewParams:
+      type: object
+      required: [documentId, lineId]
+      properties:
+        documentId: { type: string }
+        lineId: { type: string }
+    BusinessIncomeReviewResult:
+      type: object
+      required: [documentType, documentId, decision, verificationStatus, reviewedLineCount, conflictingLineCount, reason]
+      properties:
+        documentType: { type: string, enum: [settlement, profit_loss] }
+        documentId: { type: string }
+        decision: { type: string, enum: [approved, rejected] }
+        verificationStatus: { type: string }
+        reviewedLineCount: { type: number }
+        conflictingLineCount: { type: number }
+        reason: { type: string }
     BusinessIncomePeriodReconciliationInput:
       type: object
       required: [businessId, statementPeriodStart, statementPeriodEnd]

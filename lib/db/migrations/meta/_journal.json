@@ -176,6 +176,13 @@
       "when": 1788829801977,
       "tag": "0024_sudden_thunderbird",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1788830675010,
+      "tag": "0025_futuristic_goblin_queen",
+      "breakpoints": true
     }
   ]
 }

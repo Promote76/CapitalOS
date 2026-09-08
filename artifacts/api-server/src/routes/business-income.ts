@@ -11,6 +11,12 @@ import {
   CreateBusinessProfitLossResponse,
   CreateBusinessSettlementBody,
   CreateBusinessSettlementResponse,
+  ReviewBusinessIncomeDocumentBody,
+  ReviewBusinessIncomeDocumentParams,
+  ReviewBusinessIncomeDocumentResponse,
+  ReviewBusinessIncomeLineBody,
+  ReviewBusinessIncomeLineParams,
+  ReviewBusinessIncomeLineResponse,
   IngestBusinessIncomeDocumentBody,
   IngestBusinessIncomeDocumentResponse,
   RequestBusinessIncomeDocumentUploadUrlBody,
@@ -34,6 +40,8 @@ import {
   reconcileBusinessIncomePeriod,
   ingestBusinessIncomeDocument,
   requestBusinessIncomeDocumentUploadUrl,
+  reviewBusinessIncomeDocument,
+  reviewBusinessIncomeLineItem,
 } from "../services/business-income";
 
 const router: IRouter = Router();
@@ -50,6 +58,18 @@ router.post("/business/income/documents/upload-url", asyncRoute(async (req, res)
 router.post("/business/income/documents/ingest", asyncRoute(async (req, res) => {
   const body = IngestBusinessIncomeDocumentBody.parse(req.body);
   res.status(201).json(IngestBusinessIncomeDocumentResponse.parse(await ingestBusinessIncomeDocument(actorFrom(res), body)));
+}));
+
+router.post("/business/income/documents/:documentId/review", asyncRoute(async (req, res) => {
+  const params = ReviewBusinessIncomeDocumentParams.parse(req.params);
+  const body = ReviewBusinessIncomeDocumentBody.parse(req.body);
+  res.json(ReviewBusinessIncomeDocumentResponse.parse(await reviewBusinessIncomeDocument(actorFrom(res), params.documentId, body)));
+}));
+
+router.post("/business/income/documents/:documentId/lines/:lineId/review", asyncRoute(async (req, res) => {
+  const params = ReviewBusinessIncomeLineParams.parse(req.params);
+  const body = ReviewBusinessIncomeLineBody.parse(req.body);
+  res.json(ReviewBusinessIncomeLineResponse.parse(await reviewBusinessIncomeLineItem(actorFrom(res), params.documentId, params.lineId, body)));
 }));
 
 router.post("/business/income/settlements", asyncRoute(async (req, res) => {

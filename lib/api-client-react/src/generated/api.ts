@@ -66,11 +66,14 @@ import type {
   BusinessExpenseInput,
   BusinessIncomeDocumentIngestInput,
   BusinessIncomeDocumentIngestResult,
+  BusinessIncomeDocumentReviewInput,
   BusinessIncomeDocumentUpload,
   BusinessIncomeDocumentUploadInput,
   BusinessIncomeIntelligence,
+  BusinessIncomeLineReviewInput,
   BusinessIncomePeriodReconciliation,
   BusinessIncomePeriodReconciliationInput,
+  BusinessIncomeReviewResult,
   BusinessOverview,
   BusinessOwnerDraw,
   BusinessOwnerDrawApprovalInput,
@@ -13783,6 +13786,152 @@ export const useIngestBusinessIncomeDocument = <TError = ErrorType<BadRequestRes
         TContext
       > => {
       return useMutation(getIngestBusinessIncomeDocumentMutationOptions(options));
+    }
+
+export const getReviewBusinessIncomeDocumentUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/business/income/documents/${documentId}/review`
+}
+
+/**
+ * @summary Record an authorized review decision for an extracted business document
+ */
+export const reviewBusinessIncomeDocument = async (documentId: string,
+    businessIncomeDocumentReviewInput: BusinessIncomeDocumentReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<BusinessIncomeReviewResult> => {
+
+  return customFetch<BusinessIncomeReviewResult>(getReviewBusinessIncomeDocumentUrl(documentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(businessIncomeDocumentReviewInput)
+  }
+);}
+
+
+
+
+
+export const getReviewBusinessIncomeDocumentMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewBusinessIncomeDocument>>, TError,{documentId: string;data: BodyType<BusinessIncomeDocumentReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewBusinessIncomeDocument>>, TError,{documentId: string;data: BodyType<BusinessIncomeDocumentReviewInput>}, TContext> => {
+
+const mutationKey = ['reviewBusinessIncomeDocument'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewBusinessIncomeDocument>>, {documentId: string;data: BodyType<BusinessIncomeDocumentReviewInput>}> = (props) => {
+          const {documentId,data} = props ?? {};
+
+          return  reviewBusinessIncomeDocument(documentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewBusinessIncomeDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof reviewBusinessIncomeDocument>>>
+    export type ReviewBusinessIncomeDocumentMutationBody = BodyType<BusinessIncomeDocumentReviewInput>
+    export type ReviewBusinessIncomeDocumentMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Record an authorized review decision for an extracted business document
+ */
+export const useReviewBusinessIncomeDocument = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewBusinessIncomeDocument>>, TError,{documentId: string;data: BodyType<BusinessIncomeDocumentReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewBusinessIncomeDocument>>,
+        TError,
+        {documentId: string;data: BodyType<BusinessIncomeDocumentReviewInput>},
+        TContext
+      > => {
+      return useMutation(getReviewBusinessIncomeDocumentMutationOptions(options));
+    }
+
+export const getReviewBusinessIncomeLineUrl = (documentId: string,
+    lineId: string,) => {
+
+
+
+
+  return `/api/business/income/documents/${documentId}/lines/${lineId}/review`
+}
+
+/**
+ * @summary Record an authorized review decision and optional correction for an extracted line item
+ */
+export const reviewBusinessIncomeLine = async (documentId: string,
+    lineId: string,
+    businessIncomeLineReviewInput: BusinessIncomeLineReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<BusinessIncomeReviewResult> => {
+
+  return customFetch<BusinessIncomeReviewResult>(getReviewBusinessIncomeLineUrl(documentId,lineId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(businessIncomeLineReviewInput)
+  }
+);}
+
+
+
+
+
+export const getReviewBusinessIncomeLineMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewBusinessIncomeLine>>, TError,{documentId: string;lineId: string;data: BodyType<BusinessIncomeLineReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewBusinessIncomeLine>>, TError,{documentId: string;lineId: string;data: BodyType<BusinessIncomeLineReviewInput>}, TContext> => {
+
+const mutationKey = ['reviewBusinessIncomeLine'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewBusinessIncomeLine>>, {documentId: string;lineId: string;data: BodyType<BusinessIncomeLineReviewInput>}> = (props) => {
+          const {documentId,lineId,data} = props ?? {};
+
+          return  reviewBusinessIncomeLine(documentId,lineId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewBusinessIncomeLineMutationResult = NonNullable<Awaited<ReturnType<typeof reviewBusinessIncomeLine>>>
+    export type ReviewBusinessIncomeLineMutationBody = BodyType<BusinessIncomeLineReviewInput>
+    export type ReviewBusinessIncomeLineMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Record an authorized review decision and optional correction for an extracted line item
+ */
+export const useReviewBusinessIncomeLine = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewBusinessIncomeLine>>, TError,{documentId: string;lineId: string;data: BodyType<BusinessIncomeLineReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewBusinessIncomeLine>>,
+        TError,
+        {documentId: string;lineId: string;data: BodyType<BusinessIncomeLineReviewInput>},
+        TContext
+      > => {
+      return useMutation(getReviewBusinessIncomeLineMutationOptions(options));
     }
 
 export const getCreateBusinessSettlementUrl = () => {

@@ -3781,6 +3781,107 @@ export interface SettlementDocumentInput {
   deductionLines: SettlementDeductionLineInput[];
 }
 
+/**
+ * @nullable
+ */
+export type BusinessSettlementDocumentReviewDecision = typeof BusinessSettlementDocumentReviewDecision[keyof typeof BusinessSettlementDocumentReviewDecision] | null;
+
+
+export const BusinessSettlementDocumentReviewDecision = {
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export type BusinessSettlementRevenueLineReviewStatus = typeof BusinessSettlementRevenueLineReviewStatus[keyof typeof BusinessSettlementRevenueLineReviewStatus];
+
+
+export const BusinessSettlementRevenueLineReviewStatus = {
+  needs_review: 'needs_review',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+/**
+ * @nullable
+ */
+export type BusinessSettlementRevenueLineReviewDecision = typeof BusinessSettlementRevenueLineReviewDecision[keyof typeof BusinessSettlementRevenueLineReviewDecision] | null;
+
+
+export const BusinessSettlementRevenueLineReviewDecision = {
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface BusinessSettlementRevenueLine {
+  id: string;
+  lineNumber: number;
+  description: string;
+  category: string;
+  /** @nullable */
+  quantity: string | null;
+  /** @nullable */
+  unitAmount: string | null;
+  amount: string;
+  /** @nullable */
+  serviceDate: string | null;
+  /** @nullable */
+  sourcePage: number | null;
+  reviewStatus: BusinessSettlementRevenueLineReviewStatus;
+  /** @nullable */
+  reviewDecision: BusinessSettlementRevenueLineReviewDecision;
+  /** @nullable */
+  reviewReason: string | null;
+  /** @nullable */
+  reviewedBy: string | null;
+  /** @nullable */
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export type BusinessSettlementDeductionLineReviewStatus = typeof BusinessSettlementDeductionLineReviewStatus[keyof typeof BusinessSettlementDeductionLineReviewStatus];
+
+
+export const BusinessSettlementDeductionLineReviewStatus = {
+  needs_review: 'needs_review',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+/**
+ * @nullable
+ */
+export type BusinessSettlementDeductionLineReviewDecision = typeof BusinessSettlementDeductionLineReviewDecision[keyof typeof BusinessSettlementDeductionLineReviewDecision] | null;
+
+
+export const BusinessSettlementDeductionLineReviewDecision = {
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface BusinessSettlementDeductionLine {
+  id: string;
+  lineNumber: number;
+  description: string;
+  category: string;
+  amount: string;
+  taxDeduction: boolean;
+  passThrough: boolean;
+  ownerDraw: boolean;
+  reimbursement: boolean;
+  /** @nullable */
+  sourcePage: number | null;
+  reviewStatus: BusinessSettlementDeductionLineReviewStatus;
+  /** @nullable */
+  reviewDecision: BusinessSettlementDeductionLineReviewDecision;
+  /** @nullable */
+  reviewReason: string | null;
+  /** @nullable */
+  reviewedBy: string | null;
+  /** @nullable */
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
 export interface BusinessSettlementDocument {
   id: string;
   businessId: string;
@@ -3806,8 +3907,16 @@ export interface BusinessSettlementDocument {
   sourcePageCount?: number | null;
   extractionStatus: string;
   /** @nullable */
-  extractionReason?: string | null;
+  extractionReason: string | null;
   verificationStatus: string;
+  /** @nullable */
+  reviewDecision: BusinessSettlementDocumentReviewDecision;
+  /** @nullable */
+  reviewReason: string | null;
+  /** @nullable */
+  reviewedBy: string | null;
+  /** @nullable */
+  reviewedAt: string | null;
   reportedGross: string;
   reportedDeductions: string;
   reportedNet: string;
@@ -3821,6 +3930,8 @@ export interface BusinessSettlementDocument {
   mathStatus: string;
   mathReason: string;
   calculatedNet: string;
+  revenueLines: BusinessSettlementRevenueLine[];
+  deductionLines: BusinessSettlementDeductionLine[];
 }
 
 export interface ProfitLossLineInput {
@@ -3857,6 +3968,58 @@ export interface ProfitLossDocumentInput {
   lines: ProfitLossLineInput[];
 }
 
+/**
+ * @nullable
+ */
+export type BusinessProfitLossDocumentReviewDecision = typeof BusinessProfitLossDocumentReviewDecision[keyof typeof BusinessProfitLossDocumentReviewDecision] | null;
+
+
+export const BusinessProfitLossDocumentReviewDecision = {
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export type BusinessProfitLossLineReviewStatus = typeof BusinessProfitLossLineReviewStatus[keyof typeof BusinessProfitLossLineReviewStatus];
+
+
+export const BusinessProfitLossLineReviewStatus = {
+  needs_review: 'needs_review',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+/**
+ * @nullable
+ */
+export type BusinessProfitLossLineReviewDecision = typeof BusinessProfitLossLineReviewDecision[keyof typeof BusinessProfitLossLineReviewDecision] | null;
+
+
+export const BusinessProfitLossLineReviewDecision = {
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface BusinessProfitLossLine {
+  id: string;
+  lineNumber: number;
+  description: string;
+  category: string;
+  lineType: string;
+  amount: string;
+  /** @nullable */
+  sourcePage: number | null;
+  reviewStatus: BusinessProfitLossLineReviewStatus;
+  /** @nullable */
+  reviewDecision: BusinessProfitLossLineReviewDecision;
+  /** @nullable */
+  reviewReason: string | null;
+  /** @nullable */
+  reviewedBy: string | null;
+  /** @nullable */
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
 export interface BusinessProfitLossDocument {
   id: string;
   businessId: string;
@@ -3879,11 +4042,20 @@ export interface BusinessProfitLossDocument {
   /** @nullable */
   extractionReason: string | null;
   verificationStatus: string;
+  /** @nullable */
+  reviewDecision: BusinessProfitLossDocumentReviewDecision;
+  /** @nullable */
+  reviewReason: string | null;
+  /** @nullable */
+  reviewedBy: string | null;
+  /** @nullable */
+  reviewedAt: string | null;
   reportedRevenue: string;
   reportedExpenses: string;
   reportedProfit: string;
   status: string;
   createdAt: string;
+  lines: BusinessProfitLossLine[];
 }
 
 export type BusinessIncomeDocumentUploadInputContentType = typeof BusinessIncomeDocumentUploadInputContentType[keyof typeof BusinessIncomeDocumentUploadInputContentType];
@@ -3980,6 +4152,82 @@ export interface BusinessIncomeDocumentIngestResult {
   extractionStatus: string;
   verificationStatus: string;
   message: string;
+}
+
+export type BusinessIncomeDocumentReviewInputDecision = typeof BusinessIncomeDocumentReviewInputDecision[keyof typeof BusinessIncomeDocumentReviewInputDecision];
+
+
+export const BusinessIncomeDocumentReviewInputDecision = {
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface BusinessIncomeDocumentReviewInput {
+  decision: BusinessIncomeDocumentReviewInputDecision;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+}
+
+export type BusinessIncomeLineReviewInputDecision = typeof BusinessIncomeLineReviewInputDecision[keyof typeof BusinessIncomeLineReviewInputDecision];
+
+
+export const BusinessIncomeLineReviewInputDecision = {
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface BusinessIncomeLineReviewInput {
+  decision: BusinessIncomeLineReviewInputDecision;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  correctedDescription?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  correctedAmount?: string;
+}
+
+export interface BusinessIncomeDocumentReviewParams {
+  documentId: string;
+}
+
+export interface BusinessIncomeLineReviewParams {
+  documentId: string;
+  lineId: string;
+}
+
+export type BusinessIncomeReviewResultDocumentType = typeof BusinessIncomeReviewResultDocumentType[keyof typeof BusinessIncomeReviewResultDocumentType];
+
+
+export const BusinessIncomeReviewResultDocumentType = {
+  settlement: 'settlement',
+  profit_loss: 'profit_loss',
+} as const;
+
+export type BusinessIncomeReviewResultDecision = typeof BusinessIncomeReviewResultDecision[keyof typeof BusinessIncomeReviewResultDecision];
+
+
+export const BusinessIncomeReviewResultDecision = {
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface BusinessIncomeReviewResult {
+  documentType: BusinessIncomeReviewResultDocumentType;
+  documentId: string;
+  decision: BusinessIncomeReviewResultDecision;
+  verificationStatus: string;
+  reviewedLineCount: number;
+  conflictingLineCount: number;
+  reason: string;
 }
 
 export interface BusinessIncomePeriodReconciliationInput {

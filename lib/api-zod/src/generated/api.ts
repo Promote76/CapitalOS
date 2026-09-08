@@ -7191,8 +7191,12 @@ export const GetBusinessIncomeIntelligenceResponse = zod.object({
   "sourceSizeBytes": zod.number().nullish(),
   "sourcePageCount": zod.number().nullish(),
   "extractionStatus": zod.string(),
-  "extractionReason": zod.string().nullish(),
+  "extractionReason": zod.string().nullable(),
   "verificationStatus": zod.string(),
+  "reviewDecision": zod.union([zod.literal('approved'),zod.literal('rejected'),zod.literal(null)]).nullable(),
+  "reviewReason": zod.string().nullable(),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
   "reportedGross": zod.string(),
   "reportedDeductions": zod.string(),
   "reportedNet": zod.string(),
@@ -7203,7 +7207,42 @@ export const GetBusinessIncomeIntelligenceResponse = zod.object({
   "updatedAt": zod.coerce.date(),
   "mathStatus": zod.string(),
   "mathReason": zod.string(),
-  "calculatedNet": zod.string()
+  "calculatedNet": zod.string(),
+  "revenueLines": zod.array(zod.object({
+  "id": zod.string(),
+  "lineNumber": zod.number(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.string().nullable(),
+  "unitAmount": zod.string().nullable(),
+  "amount": zod.string(),
+  "serviceDate": zod.coerce.date().nullable(),
+  "sourcePage": zod.number().nullable(),
+  "reviewStatus": zod.enum(['needs_review', 'approved', 'rejected']),
+  "reviewDecision": zod.union([zod.literal('approved'),zod.literal('rejected'),zod.literal(null)]).nullable(),
+  "reviewReason": zod.string().nullable(),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})),
+  "deductionLines": zod.array(zod.object({
+  "id": zod.string(),
+  "lineNumber": zod.number(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "amount": zod.string(),
+  "taxDeduction": zod.boolean(),
+  "passThrough": zod.boolean(),
+  "ownerDraw": zod.boolean(),
+  "reimbursement": zod.boolean(),
+  "sourcePage": zod.number().nullable(),
+  "reviewStatus": zod.enum(['needs_review', 'approved', 'rejected']),
+  "reviewDecision": zod.union([zod.literal('approved'),zod.literal('rejected'),zod.literal(null)]).nullable(),
+  "reviewReason": zod.string().nullable(),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+}))
 })),
   "profitLossDocuments": zod.array(zod.object({
   "id": zod.string(),
@@ -7220,11 +7259,30 @@ export const GetBusinessIncomeIntelligenceResponse = zod.object({
   "extractionStatus": zod.string(),
   "extractionReason": zod.string().nullable(),
   "verificationStatus": zod.string(),
+  "reviewDecision": zod.union([zod.literal('approved'),zod.literal('rejected'),zod.literal(null)]).nullable(),
+  "reviewReason": zod.string().nullable(),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
   "reportedRevenue": zod.string(),
   "reportedExpenses": zod.string(),
   "reportedProfit": zod.string(),
   "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "lines": zod.array(zod.object({
+  "id": zod.string(),
+  "lineNumber": zod.number(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "lineType": zod.string(),
+  "amount": zod.string(),
+  "sourcePage": zod.number().nullable(),
+  "reviewStatus": zod.enum(['needs_review', 'approved', 'rejected']),
+  "reviewDecision": zod.union([zod.literal('approved'),zod.literal('rejected'),zod.literal(null)]).nullable(),
+  "reviewReason": zod.string().nullable(),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date()
+}))
 })),
   "reconciliationRuns": zod.array(zod.object({
   "id": zod.string(),
@@ -7351,6 +7409,66 @@ export const IngestBusinessIncomeDocumentResponse = zod.object({
 
 
 /**
+ * @summary Record an authorized review decision for an extracted business document
+ */
+export const ReviewBusinessIncomeDocumentParams = zod.object({
+  "documentId": zod.coerce.string()
+})
+
+export const reviewBusinessIncomeDocumentBodyReasonMax = 1000;
+
+
+
+export const ReviewBusinessIncomeDocumentBody = zod.object({
+  "decision": zod.enum(['approved', 'rejected']),
+  "reason": zod.string().min(1).max(reviewBusinessIncomeDocumentBodyReasonMax)
+})
+
+export const ReviewBusinessIncomeDocumentResponse = zod.object({
+  "documentType": zod.enum(['settlement', 'profit_loss']),
+  "documentId": zod.string(),
+  "decision": zod.enum(['approved', 'rejected']),
+  "verificationStatus": zod.string(),
+  "reviewedLineCount": zod.number(),
+  "conflictingLineCount": zod.number(),
+  "reason": zod.string()
+})
+
+
+/**
+ * @summary Record an authorized review decision and optional correction for an extracted line item
+ */
+export const ReviewBusinessIncomeLineParams = zod.object({
+  "documentId": zod.coerce.string(),
+  "lineId": zod.coerce.string()
+})
+
+export const reviewBusinessIncomeLineBodyReasonMax = 1000;
+
+export const reviewBusinessIncomeLineBodyCorrectedDescriptionMax = 300;
+
+export const reviewBusinessIncomeLineBodyCorrectedAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+
+
+export const ReviewBusinessIncomeLineBody = zod.object({
+  "decision": zod.enum(['approved', 'rejected']),
+  "reason": zod.string().min(1).max(reviewBusinessIncomeLineBodyReasonMax),
+  "correctedDescription": zod.string().min(1).max(reviewBusinessIncomeLineBodyCorrectedDescriptionMax).optional(),
+  "correctedAmount": zod.string().regex(reviewBusinessIncomeLineBodyCorrectedAmountRegExp).optional()
+})
+
+export const ReviewBusinessIncomeLineResponse = zod.object({
+  "documentType": zod.enum(['settlement', 'profit_loss']),
+  "documentId": zod.string(),
+  "decision": zod.enum(['approved', 'rejected']),
+  "verificationStatus": zod.string(),
+  "reviewedLineCount": zod.number(),
+  "conflictingLineCount": zod.number(),
+  "reason": zod.string()
+})
+
+
+/**
  * @summary Record an immutable settlement source and reconcile its exact-cent math
  */
 export const createBusinessSettlementBodyProviderMax = 80;
@@ -7432,8 +7550,12 @@ export const CreateBusinessSettlementResponse = zod.object({
   "sourceSizeBytes": zod.number().nullish(),
   "sourcePageCount": zod.number().nullish(),
   "extractionStatus": zod.string(),
-  "extractionReason": zod.string().nullish(),
+  "extractionReason": zod.string().nullable(),
   "verificationStatus": zod.string(),
+  "reviewDecision": zod.union([zod.literal('approved'),zod.literal('rejected'),zod.literal(null)]).nullable(),
+  "reviewReason": zod.string().nullable(),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
   "reportedGross": zod.string(),
   "reportedDeductions": zod.string(),
   "reportedNet": zod.string(),
@@ -7444,7 +7566,42 @@ export const CreateBusinessSettlementResponse = zod.object({
   "updatedAt": zod.coerce.date(),
   "mathStatus": zod.string(),
   "mathReason": zod.string(),
-  "calculatedNet": zod.string()
+  "calculatedNet": zod.string(),
+  "revenueLines": zod.array(zod.object({
+  "id": zod.string(),
+  "lineNumber": zod.number(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.string().nullable(),
+  "unitAmount": zod.string().nullable(),
+  "amount": zod.string(),
+  "serviceDate": zod.coerce.date().nullable(),
+  "sourcePage": zod.number().nullable(),
+  "reviewStatus": zod.enum(['needs_review', 'approved', 'rejected']),
+  "reviewDecision": zod.union([zod.literal('approved'),zod.literal('rejected'),zod.literal(null)]).nullable(),
+  "reviewReason": zod.string().nullable(),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})),
+  "deductionLines": zod.array(zod.object({
+  "id": zod.string(),
+  "lineNumber": zod.number(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "amount": zod.string(),
+  "taxDeduction": zod.boolean(),
+  "passThrough": zod.boolean(),
+  "ownerDraw": zod.boolean(),
+  "reimbursement": zod.boolean(),
+  "sourcePage": zod.number().nullable(),
+  "reviewStatus": zod.enum(['needs_review', 'approved', 'rejected']),
+  "reviewDecision": zod.union([zod.literal('approved'),zod.literal('rejected'),zod.literal(null)]).nullable(),
+  "reviewReason": zod.string().nullable(),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+}))
 })
 
 
@@ -7502,11 +7659,30 @@ export const CreateBusinessProfitLossResponse = zod.object({
   "extractionStatus": zod.string(),
   "extractionReason": zod.string().nullable(),
   "verificationStatus": zod.string(),
+  "reviewDecision": zod.union([zod.literal('approved'),zod.literal('rejected'),zod.literal(null)]).nullable(),
+  "reviewReason": zod.string().nullable(),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
   "reportedRevenue": zod.string(),
   "reportedExpenses": zod.string(),
   "reportedProfit": zod.string(),
   "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "lines": zod.array(zod.object({
+  "id": zod.string(),
+  "lineNumber": zod.number(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "lineType": zod.string(),
+  "amount": zod.string(),
+  "sourcePage": zod.number().nullable(),
+  "reviewStatus": zod.enum(['needs_review', 'approved', 'rejected']),
+  "reviewDecision": zod.union([zod.literal('approved'),zod.literal('rejected'),zod.literal(null)]).nullable(),
+  "reviewReason": zod.string().nullable(),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date()
+}))
 })
 
 

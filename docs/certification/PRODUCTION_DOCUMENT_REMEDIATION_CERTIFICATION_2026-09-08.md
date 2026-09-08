@@ -46,7 +46,7 @@ The detector found P&L headings, income/revenue totals, expense totals, net inco
 
 ```text
 CURRENT HEAD:
-503cd69
+e780a5c
 
 MANAGED PRODUCTION RELEASE:
 f4d91104-18a6-4853-8e94-a6dfe27b1c61

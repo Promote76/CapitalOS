@@ -1,0 +1,39 @@
+{
+  "runner": "certify-production-document-remediation",
+  "version": "2026-09-08.published-origin.v1",
+  "observedAt": "2026-09-08T12:20:37.587Z",
+  "origin": "[missing]",
+  "household": "d6672e…529a",
+  "dryRun": false,
+  "documents": [],
+  "downstream": {},
+  "checks": [
+    {
+      "id": "PDR-00-origin",
+      "status": "FAIL",
+      "detail": "A published HTTPS origin is required."
+    },
+    {
+      "id": "PDR-00-session",
+      "status": "FAIL",
+      "detail": "A pre-approved Clerk operator session cookie is required."
+    },
+    {
+      "id": "PDR-00-household",
+      "status": "PASS",
+      "detail": "A target household UUID is required."
+    },
+    {
+      "id": "PDR-00-documents",
+      "status": "PASS",
+      "detail": "Exactly two target document UUIDs are required."
+    },
+    {
+      "id": "PDR-00-business",
+      "status": "FAIL",
+      "detail": "The exact existing BusinessEntity UUID is required; the runner never creates one."
+    }
+  ],
+  "result": "BLOCKED",
+  "error": "PRODUCTION_CLERK_OPERATOR_SESSION_REQUIRED"
+}

@@ -21,7 +21,8 @@
     "certify:schwab-read-only": "node scripts/certify-schwab-read-only.mjs",
     "certify:migrations": "node scripts/certify-migrations.mjs",
     "certify:internal-reliability": "node scripts/certify-internal-reliability.mjs",
-    "certify:variable-budget": "node scripts/certify-variable-budget.mjs"
+    "certify:variable-budget": "node scripts/certify-variable-budget.mjs",
+    "certify:capital-governor-v2": "node scripts/certify-capital-governor-v2.mjs"
   },
   "private": true,
   "dependencies": {

@@ -3271,6 +3271,105 @@ export interface SafeToDeploy {
   breakdown: SafeToDeployBreakdown;
 }
 
+export type CapitalWaterfallInputScenario = typeof CapitalWaterfallInputScenario[keyof typeof CapitalWaterfallInputScenario];
+
+
+export const CapitalWaterfallInputScenario = {
+  floor: 'floor',
+  base: 'base',
+  strong: 'strong',
+} as const;
+
+export interface CapitalWaterfallInput {
+  asOf?: string;
+  scenario?: CapitalWaterfallInputScenario;
+}
+
+export type CapitalGovernorV2HouseholdCapitalSurplus = {
+  floor: string;
+  base: string;
+  strong: string;
+  source: string;
+};
+
+export type CapitalGovernorV2DataReadiness = {
+  status: string;
+  /** @nullable */
+  freshnessDays: number | null;
+  failClosed: boolean;
+};
+
+export type CapitalGovernorV2ComponentsItem = {
+  key: string;
+  label: string;
+  amount: string;
+  sign: string;
+  provenance: string[];
+};
+
+export type CapitalGovernorV2BucketStatusItem = {
+  key: string;
+  label: string;
+  current: string;
+  target: string;
+  gap: string;
+  protected: boolean;
+  liquid: boolean;
+  physicalAccountIds: string[];
+  provenance: string[];
+};
+
+export type CapitalGovernorV2WaterfallAllocationsItem = {
+  bucket: string;
+  amount: string;
+  amountCents: number;
+  recommendedOnly: boolean;
+  physicalMovementAuthorized: boolean;
+  provenance: string[];
+};
+
+export type CapitalGovernorV2WaterfallScenarioBehavior = {
+  floor: string;
+  base: string;
+  strong: string;
+};
+
+export type CapitalGovernorV2Waterfall = {
+  availableForWaterfall: string;
+  unallocatedAfterRecommendations: string;
+  allocations: CapitalGovernorV2WaterfallAllocationsItem[];
+  scenarioBehavior: CapitalGovernorV2WaterfallScenarioBehavior;
+};
+
+export type CapitalGovernorV2Controls = {
+  protectedDuplexReserveLocked: boolean;
+  businessCashExcluded: boolean;
+  moneyMovementAuthorized: boolean;
+  microLiveAuthorized: boolean;
+  strategyLabAuthority: boolean;
+  manualOverride: boolean;
+};
+
+export interface CapitalGovernorV2 {
+  version: string;
+  asOf: string;
+  status: string;
+  safeToDeploy: string;
+  rawSafeToDeploy: string;
+  /** @nullable */
+  inputSnapshotId?: string | null;
+  /** @nullable */
+  waterfallRunId?: string | null;
+  reasonCodes: string[];
+  reasons: string[];
+  householdCapitalSurplus: CapitalGovernorV2HouseholdCapitalSurplus;
+  dataReadiness: CapitalGovernorV2DataReadiness;
+  components: CapitalGovernorV2ComponentsItem[];
+  bucketStatus: CapitalGovernorV2BucketStatusItem[];
+  waterfall: CapitalGovernorV2Waterfall;
+  controls: CapitalGovernorV2Controls;
+}
+
 export type FinanceInsightsInsightsItem = {
   type: string;
   title: string;
@@ -3788,6 +3887,101 @@ export interface BusinessProfitLossDocument {
 }
 
 export type BusinessIncomeDocumentUploadInputContentType = typeof BusinessIncomeDocumentUploadInputContentType[keyof typeof BusinessIncomeDocumentUploadInputContentType];
+
+
+export const BusinessIncomeDocumentUploadInputContentType = {
+  'application/pdf': 'application/pdf',
+} as const;
+
+export type BusinessIncomeDocumentUploadInputDocumentType = typeof BusinessIncomeDocumentUploadInputDocumentType[keyof typeof BusinessIncomeDocumentUploadInputDocumentType];
+
+
+export const BusinessIncomeDocumentUploadInputDocumentType = {
+  settlement: 'settlement',
+  profit_loss: 'profit_loss',
+} as const;
+
+export interface BusinessIncomeDocumentUploadInput {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+  /**
+     * @minimum 1
+     * @maximum 10485760
+     */
+  size: number;
+  contentType: BusinessIncomeDocumentUploadInputContentType;
+  documentType: BusinessIncomeDocumentUploadInputDocumentType;
+}
+
+export type BusinessIncomeDocumentUploadDocumentType = typeof BusinessIncomeDocumentUploadDocumentType[keyof typeof BusinessIncomeDocumentUploadDocumentType];
+
+
+export const BusinessIncomeDocumentUploadDocumentType = {
+  settlement: 'settlement',
+  profit_loss: 'profit_loss',
+} as const;
+
+export interface BusinessIncomeDocumentUpload {
+  uploadURL: string;
+  objectPath: string;
+  name: string;
+  size: number;
+  contentType: string;
+  documentType: BusinessIncomeDocumentUploadDocumentType;
+}
+
+export type BusinessIncomeDocumentIngestInputDocumentType = typeof BusinessIncomeDocumentIngestInputDocumentType[keyof typeof BusinessIncomeDocumentIngestInputDocumentType];
+
+
+export const BusinessIncomeDocumentIngestInputDocumentType = {
+  settlement: 'settlement',
+  profit_loss: 'profit_loss',
+} as const;
+
+export type BusinessIncomeDocumentIngestInputContentType = typeof BusinessIncomeDocumentIngestInputContentType[keyof typeof BusinessIncomeDocumentIngestInputContentType];
+
+
+export const BusinessIncomeDocumentIngestInputContentType = {
+  'application/pdf': 'application/pdf',
+} as const;
+
+export interface BusinessIncomeDocumentIngestInput {
+  businessId: string;
+  documentType: BusinessIncomeDocumentIngestInputDocumentType;
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  sourceFileName: string;
+  /** @pattern ^/objects/uploads/[0-9a-fA-F-]{36}$ */
+  sourceObjectPath: string;
+  contentType: BusinessIncomeDocumentIngestInputContentType;
+  /**
+     * @minimum 1
+     * @maximum 10485760
+     */
+  sourceSizeBytes: number;
+}
+
+export type BusinessIncomeDocumentIngestResultDocumentType = typeof BusinessIncomeDocumentIngestResultDocumentType[keyof typeof BusinessIncomeDocumentIngestResultDocumentType];
+
+
+export const BusinessIncomeDocumentIngestResultDocumentType = {
+  settlement: 'settlement',
+  profit_loss: 'profit_loss',
+} as const;
+
+export interface BusinessIncomeDocumentIngestResult {
+  documentType: BusinessIncomeDocumentIngestResultDocumentType;
+  documentId: string;
+  extractionStatus: string;
+  verificationStatus: string;
+  message: string;
+}
+
 export interface BusinessIncomePeriodReconciliationInput {
   businessId: string;
   statementPeriodStart: string;
@@ -5524,6 +5718,10 @@ export type ListTransactionReviewQueueParams = {
 periodId?: string;
 };
 
+export type GetCapitalGovernorV2Params = {
+asOf?: string;
+};
+
 export type GetVariableBudgetIntelligenceParams = {
 /**
  * @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
@@ -5620,91 +5818,3 @@ export const ExportDailyOpsHistoryCadence = {
   MONTH: 'MONTH',
 } as const;
 
-
-export const BusinessIncomeDocumentIngestResultDocumentType = {
-  settlement: 'settlement',
-  profit_loss: 'profit_loss',
-} as const;
-
-export interface BusinessIncomeDocumentUpload {
-  uploadURL: string;
-  objectPath: string;
-  name: string;
-  size: number;
-  contentType: string;
-  documentType: BusinessIncomeDocumentUploadDocumentType;
-}
-
-export interface BusinessIncomeDocumentIngestResult {
-  documentType: BusinessIncomeDocumentIngestResultDocumentType;
-  documentId: string;
-  extractionStatus: string;
-  verificationStatus: string;
-  message: string;
-}
-
-export const BusinessIncomeDocumentUploadInputDocumentType = {
-  settlement: 'settlement',
-  profit_loss: 'profit_loss',
-} as const;
-
-export interface BusinessIncomeDocumentIngestInput {
-  businessId: string;
-  documentType: BusinessIncomeDocumentIngestInputDocumentType;
-  /**
-     * @minLength 1
-     * @maxLength 255
-     */
-  sourceFileName: string;
-  /** @pattern ^/objects/uploads/[0-9a-fA-F-]{36}$ */
-  sourceObjectPath: string;
-  contentType: BusinessIncomeDocumentIngestInputContentType;
-  /**
-     * @minimum 1
-     * @maximum 10485760
-     */
-  sourceSizeBytes: number;
-}
-
-export const BusinessIncomeDocumentIngestInputDocumentType = {
-  settlement: 'settlement',
-  profit_loss: 'profit_loss',
-} as const;
-
-export const BusinessIncomeDocumentIngestInputContentType = {
-  'application/pdf': 'application/pdf',
-} as const;
-
-export type BusinessIncomeDocumentUploadDocumentType = typeof BusinessIncomeDocumentUploadDocumentType[keyof typeof BusinessIncomeDocumentUploadDocumentType];
-
-export type BusinessIncomeDocumentIngestResultDocumentType = typeof BusinessIncomeDocumentIngestResultDocumentType[keyof typeof BusinessIncomeDocumentIngestResultDocumentType];
-
-export type BusinessIncomeDocumentUploadInputDocumentType = typeof BusinessIncomeDocumentUploadInputDocumentType[keyof typeof BusinessIncomeDocumentUploadInputDocumentType];
-
-export const BusinessIncomeDocumentUploadDocumentType = {
-  settlement: 'settlement',
-  profit_loss: 'profit_loss',
-} as const;
-
-export type BusinessIncomeDocumentIngestInputDocumentType = typeof BusinessIncomeDocumentIngestInputDocumentType[keyof typeof BusinessIncomeDocumentIngestInputDocumentType];
-
-export type BusinessIncomeDocumentIngestInputContentType = typeof BusinessIncomeDocumentIngestInputContentType[keyof typeof BusinessIncomeDocumentIngestInputContentType];
-
-export const BusinessIncomeDocumentUploadInputContentType = {
-  'application/pdf': 'application/pdf',
-} as const;
-
-export interface BusinessIncomeDocumentUploadInput {
-  /**
-     * @minLength 1
-     * @maxLength 255
-     */
-  name: string;
-  /**
-     * @minimum 1
-     * @maximum 10485760
-     */
-  size: number;
-  contentType: BusinessIncomeDocumentUploadInputContentType;
-  documentType: BusinessIncomeDocumentUploadInputDocumentType;
-}

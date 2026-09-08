@@ -6377,6 +6377,42 @@ body {
 .treasury-metric .metric-detail {
   max-width: 190px;
 }
+.treasury-v2-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+.treasury-v2-grid > div {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 9px;
+  background: var(--surface-soft);
+}
+.treasury-v2-grid strong {
+  color: var(--text-primary);
+  font: 600 20px var(--app-font-mono);
+}
+.treasury-v2-grid small {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.treasury-v2-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 13px;
+}
+.treasury-v2-reasons span {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #fff8e5;
+  color: #8b650d;
+  font-size: 10px;
+}
 .treasury-hero-grid,
 .treasury-columns {
   display: grid;
@@ -6827,6 +6863,9 @@ body {
   }
   .treasury-hero-grid,
   .treasury-columns {
+    grid-template-columns: 1fr;
+  }
+  .treasury-v2-grid {
     grid-template-columns: 1fr;
   }
   .treasury-bucket-header {

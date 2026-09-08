@@ -14,8 +14,10 @@ import {
 } from "lucide-react";
 import {
   createCapitalRequest,
+  useGetCapitalGovernorV2,
   useGetTreasury,
   type CapitalRequestInput,
+  type CapitalGovernorV2,
   type TreasurySnapshot,
 } from "@workspace/api-client-react";
 
@@ -94,6 +96,8 @@ function BucketRow({ bucket }: { bucket: TreasurySnapshot["buckets"][number] }) 
 }
 
 function TreasuryOverview({ snapshot }: { snapshot: TreasurySnapshot }) {
+  const governorQuery = useGetCapitalGovernorV2();
+  const governor = governorQuery.data as CapitalGovernorV2 | undefined;
   return (
     <>
       <section className="treasury-metric-grid animate-in delay-1">
@@ -101,6 +105,20 @@ function TreasuryOverview({ snapshot }: { snapshot: TreasurySnapshot }) {
         <TreasuryMetric title="Liquid reserve" value={money(snapshot.totals.liquidReserve)} detail={`${snapshot.health.liquidityCoverage.toFixed(1)} months essential coverage`} tone="blue" />
         <TreasuryMetric title="Duplex capital" value={money(snapshot.totals.duplexCapital)} detail={`${percent(snapshot.health.duplexProgressPercent)} of reserve target`} tone="green" />
         <TreasuryMetric title="Safe to deploy" value={money(snapshot.totals.safeToDeploy)} detail={`${snapshot.health.deployability}/100 deployability`} tone="lavender" />
+      </section>
+
+      <section className="card card-pad page-section">
+        <div className="card-title-row">
+          <div><div className="card-title">Safe-to-Deploy 2.0</div><div className="card-subtitle">The Capital Governor separates physical cash, protected designations, reserve gaps, and household capital surplus.</div></div>
+          <span className={`status ${governor?.status === "READY" ? "" : "pending"}`}><ShieldCheck size={12} /> {governor?.status ?? (governorQuery.isLoading ? "Loading" : "Unavailable")}</span>
+        </div>
+        {governorQuery.isError && <div className="treasury-inline-error"><AlertTriangle size={14} /> V2 evidence is unavailable. The legacy Safe-to-Deploy authority remains unchanged. <button className="text-link" onClick={() => { void governorQuery.refetch(); }}>Retry</button></div>}
+        {governor && <div className="treasury-v2-grid">
+          <div><span className="mono-label">V2 safe to deploy</span><strong>{money(governor.safeToDeploy)}</strong><small>{governor.dataReadiness.status} · {governor.reasons[0] ?? "All current controls are satisfied."}</small></div>
+          <div><span className="mono-label">Household capital surplus</span><strong>{money(governor.householdCapitalSurplus.base)}</strong><small>Floor {money(governor.householdCapitalSurplus.floor)} · strong {money(governor.householdCapitalSurplus.strong)}</small></div>
+          <div><span className="mono-label">Recommended waterfall</span><strong>{money(governor.waterfall.availableForWaterfall)}</strong><small>{governor.waterfall.allocations.length} advisory allocation(s) · no movement authorized</small></div>
+        </div>}
+        {governor && <div className="treasury-v2-reasons">{governor.components.filter((component) => Number(component.amount) > 0).slice(0, 5).map((component) => <span key={component.key}>{component.sign === "subtract" ? "−" : "+"} {component.label}: {money(component.amount)}</span>)}</div>}
       </section>
 
       <section className="treasury-hero-grid page-section">

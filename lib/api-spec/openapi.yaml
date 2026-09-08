@@ -1683,6 +1683,40 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SafeToDeploy" }
+  /capital-governor/v2:
+    get:
+      operationId: getCapitalGovernorV2
+      tags: [household-finance]
+      summary: Get the explainable Safe-to-Deploy 2.0 result
+      parameters:
+        - name: asOf
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: Capital Governor V2 result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CapitalGovernorV2" }
+  /capital-governor/v2/waterfall:
+    post:
+      operationId: runCapitalWaterfall
+      tags: [household-finance]
+      summary: Create an advisory Capital Waterfall run
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CapitalWaterfallInput"
+      responses:
+        "201":
+          description: Advisory waterfall run
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CapitalGovernorV2" }
   /finance-insights:
     get:
       operationId: getFinanceInsights
@@ -5542,6 +5576,112 @@ components:
             knownUpcomingExpenses: { type: string }
             requiredSafetyBuffer: { type: string }
             maximumDeployableAmount: { type: string }
+    CapitalWaterfallInput:
+      type: object
+      properties:
+        asOf: { type: string, format: date }
+        scenario: { type: string, enum: [floor, base, strong] }
+    CapitalGovernorV2:
+      type: object
+      required: [version, asOf, status, safeToDeploy, rawSafeToDeploy, householdCapitalSurplus, dataReadiness, reasonCodes, reasons, components, bucketStatus, waterfall, controls]
+      properties:
+        version: { type: string }
+        asOf: { type: string, format: date }
+        status: { type: string }
+        safeToDeploy: { type: string }
+        rawSafeToDeploy: { type: string }
+        inputSnapshotId: { type: ["string", "null"] }
+        waterfallRunId: { type: ["string", "null"] }
+        reasonCodes:
+          type: array
+          items: { type: string }
+        reasons:
+          type: array
+          items: { type: string }
+        householdCapitalSurplus:
+          type: object
+          required: [floor, base, strong, source]
+          properties:
+            floor: { type: string }
+            base: { type: string }
+            strong: { type: string }
+            source: { type: string }
+        dataReadiness:
+          type: object
+          required: [status, freshnessDays, failClosed]
+          properties:
+            status: { type: string }
+            freshnessDays: { type: ["number", "null"] }
+            failClosed: { type: boolean }
+        components:
+          type: array
+          items:
+            type: object
+            required: [key, label, amount, sign, provenance]
+            properties:
+              key: { type: string }
+              label: { type: string }
+              amount: { type: string }
+              sign: { type: string }
+              provenance:
+                type: array
+                items: { type: string }
+        bucketStatus:
+          type: array
+          items:
+            type: object
+            required: [key, label, current, target, gap, protected, liquid, physicalAccountIds, provenance]
+            properties:
+              key: { type: string }
+              label: { type: string }
+              current: { type: string }
+              target: { type: string }
+              gap: { type: string }
+              protected: { type: boolean }
+              liquid: { type: boolean }
+              physicalAccountIds:
+                type: array
+                items: { type: string }
+              provenance:
+                type: array
+                items: { type: string }
+        waterfall:
+          type: object
+          required: [availableForWaterfall, unallocatedAfterRecommendations, allocations, scenarioBehavior]
+          properties:
+            availableForWaterfall: { type: string }
+            unallocatedAfterRecommendations: { type: string }
+            allocations:
+              type: array
+              items:
+                type: object
+                required: [bucket, amount, amountCents, recommendedOnly, physicalMovementAuthorized, provenance]
+                properties:
+                  bucket: { type: string }
+                  amount: { type: string }
+                  amountCents: { type: number }
+                  recommendedOnly: { type: boolean }
+                  physicalMovementAuthorized: { type: boolean }
+                  provenance:
+                    type: array
+                    items: { type: string }
+            scenarioBehavior:
+              type: object
+              required: [floor, base, strong]
+              properties:
+                floor: { type: string }
+                base: { type: string }
+                strong: { type: string }
+        controls:
+          type: object
+          required: [protectedDuplexReserveLocked, businessCashExcluded, moneyMovementAuthorized, microLiveAuthorized, strategyLabAuthority, manualOverride]
+          properties:
+            protectedDuplexReserveLocked: { type: boolean }
+            businessCashExcluded: { type: boolean }
+            moneyMovementAuthorized: { type: boolean }
+            microLiveAuthorized: { type: boolean }
+            strategyLabAuthority: { type: boolean }
+            manualOverride: { type: boolean }
     FinanceInsights:
       type: object
       required: [insights, subscriptions, anomalyCount]

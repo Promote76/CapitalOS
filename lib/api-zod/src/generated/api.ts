@@ -342,12 +342,14 @@ export const createContributionHeaderIdempotencyKeyMin = 8;
 export const createContributionHeaderIdempotencyKeyMax = 128;
 
 
+
 export const CreateContributionHeader = zod.object({
   "Idempotency-Key": zod.string().min(createContributionHeaderIdempotencyKeyMin).max(createContributionHeaderIdempotencyKeyMax)
 })
 
 export const createContributionBodyAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const createContributionBodyNoteMax = 500;
+
 
 
 export const CreateContributionBody = zod.object({
@@ -373,12 +375,14 @@ export const createTransferHeaderIdempotencyKeyMin = 8;
 export const createTransferHeaderIdempotencyKeyMax = 128;
 
 
+
 export const CreateTransferHeader = zod.object({
   "Idempotency-Key": zod.string().min(createTransferHeaderIdempotencyKeyMin).max(createTransferHeaderIdempotencyKeyMax)
 })
 
 export const createTransferBodyAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const createTransferBodyNoteMax = 500;
+
 
 
 export const CreateTransferBody = zod.object({
@@ -504,6 +508,7 @@ export const GetPropertiesResponse = zod.object({
  * @summary Add a private property research note
  */
 export const addPropertyNoteBodyBodyMax = 2000;
+
 
 
 export const AddPropertyNoteBody = zod.object({
@@ -1236,11 +1241,13 @@ export const requestExecutionStopHeaderIdempotencyKeyMin = 8;
 export const requestExecutionStopHeaderIdempotencyKeyMax = 128;
 
 
+
 export const RequestExecutionStopHeader = zod.object({
   "Idempotency-Key": zod.string().min(requestExecutionStopHeaderIdempotencyKeyMin).max(requestExecutionStopHeaderIdempotencyKeyMax)
 })
 
 export const requestExecutionStopBodyReasonMax = 500;
+
 
 
 export const RequestExecutionStopBody = zod.object({
@@ -1271,11 +1278,13 @@ export const requestExecutionSafeModeHeaderIdempotencyKeyMin = 8;
 export const requestExecutionSafeModeHeaderIdempotencyKeyMax = 128;
 
 
+
 export const RequestExecutionSafeModeHeader = zod.object({
   "Idempotency-Key": zod.string().min(requestExecutionSafeModeHeaderIdempotencyKeyMin).max(requestExecutionSafeModeHeaderIdempotencyKeyMax)
 })
 
 export const requestExecutionSafeModeBodyReasonMax = 500;
+
 
 
 export const RequestExecutionSafeModeBody = zod.object({
@@ -1306,11 +1315,13 @@ export const requestExecutionEvacuateHeaderIdempotencyKeyMin = 8;
 export const requestExecutionEvacuateHeaderIdempotencyKeyMax = 128;
 
 
+
 export const RequestExecutionEvacuateHeader = zod.object({
   "Idempotency-Key": zod.string().min(requestExecutionEvacuateHeaderIdempotencyKeyMin).max(requestExecutionEvacuateHeaderIdempotencyKeyMax)
 })
 
 export const requestExecutionEvacuateBodyReasonMax = 500;
+
 
 
 export const RequestExecutionEvacuateBody = zod.object({
@@ -1341,11 +1352,13 @@ export const recoverExecutionControlHeaderIdempotencyKeyMin = 8;
 export const recoverExecutionControlHeaderIdempotencyKeyMax = 128;
 
 
+
 export const RecoverExecutionControlHeader = zod.object({
   "Idempotency-Key": zod.string().min(recoverExecutionControlHeaderIdempotencyKeyMin).max(recoverExecutionControlHeaderIdempotencyKeyMax)
 })
 
 export const recoverExecutionControlBodyReasonMax = 500;
+
 
 
 export const RecoverExecutionControlBody = zod.object({
@@ -1428,6 +1441,8 @@ export const ApproveMicroLiveVenueParams = zod.object({
 export const approveMicroLiveVenueBodyCredentialsReferenceRegExp = new RegExp('^secret://capital-os/venues/[A-Za-z0-9_-]{8,128}$');
 
 
+
+
 export const ApproveMicroLiveVenueBody = zod.object({
   "credentialsReference": zod.string().regex(approveMicroLiveVenueBodyCredentialsReferenceRegExp),
   "jurisdictionConfirmed": zod.boolean(),
@@ -1507,6 +1522,7 @@ export const submitMicroLiveOrderHeaderIdempotencyKeyMin = 8;
 export const submitMicroLiveOrderHeaderIdempotencyKeyMax = 128;
 
 
+
 export const SubmitMicroLiveOrderHeader = zod.object({
   "Idempotency-Key": zod.string().min(submitMicroLiveOrderHeaderIdempotencyKeyMin).max(submitMicroLiveOrderHeaderIdempotencyKeyMax)
 })
@@ -1526,6 +1542,7 @@ export const submitMicroLiveOrderBodyReferencePriceBpsExclusiveMin = 0;
 export const submitMicroLiveOrderBodyPriceBpsExclusiveMin = 0;
 
 export const submitMicroLiveOrderBodyMarketDataAgeMsMin = 0;
+
 
 
 export const SubmitMicroLiveOrderBody = zod.object({
@@ -1713,6 +1730,7 @@ export const createMicroLiveIncidentReviewBodyReactivationRequirementsMax = 20;
 export const createMicroLiveIncidentReviewBodyNotesMax = 2000;
 
 
+
 export const CreateMicroLiveIncidentReviewBody = zod.object({
   "rootCause": zod.string().min(1).max(createMicroLiveIncidentReviewBodyRootCauseMax),
   "capitalImpact": zod.string().regex(createMicroLiveIncidentReviewBodyCapitalImpactRegExp),
@@ -1830,6 +1848,7 @@ export const createResearchStrategyBodyDescriptionMax = 1000;
 export const createResearchStrategyBodyHypothesisMax = 2000;
 
 
+
 export const CreateResearchStrategyBody = zod.object({
   "name": zod.string().min(1).max(createResearchStrategyBodyNameMax),
   "strategyType": zod.string().min(1).max(createResearchStrategyBodyStrategyTypeMax),
@@ -1864,6 +1883,7 @@ export const createStrategyVersionBodyReasonMax = 500;
 export const createStrategyVersionBodyLogicChangesMax = 2000;
 
 
+
 export const CreateStrategyVersionBody = zod.object({
   "version": zod.string().min(1).max(createStrategyVersionBodyVersionMax),
   "reason": zod.string().min(1).max(createStrategyVersionBodyReasonMax),
@@ -1889,6 +1909,8 @@ export const CreateStrategyVersionResponse = zod.object({
 export const runStrategyExperimentBodyNameMax = 160;
 
 export const runStrategyExperimentBodyDatasetVersionMax = 120;
+
+
 
 
 export const RunStrategyExperimentBody = zod.object({
@@ -1994,6 +2016,7 @@ export const createResearchJournalEntryBodyTitleMax = 160;
 export const createResearchJournalEntryBodyBodyMax = 3000;
 
 
+
 export const CreateResearchJournalEntryBody = zod.object({
   "strategyId": zod.string(),
   "entryType": zod.string().min(1).max(createResearchJournalEntryBodyEntryTypeMax),
@@ -2064,6 +2087,7 @@ export const allocateStrategyHeaderIdempotencyKeyMin = 8;
 export const allocateStrategyHeaderIdempotencyKeyMax = 128;
 
 
+
 export const AllocateStrategyHeader = zod.object({
   "Idempotency-Key": zod.string().min(allocateStrategyHeaderIdempotencyKeyMin).max(allocateStrategyHeaderIdempotencyKeyMax)
 })
@@ -2109,6 +2133,7 @@ export const GetRiskResponse = zod.object({
  * @summary Activate the human-confirmed emergency stop
  */
 export const activateEmergencyStopBodyReasonMax = 500;
+
 
 
 export const ActivateEmergencyStopBody = zod.object({
@@ -2160,6 +2185,7 @@ export const DecideRecommendationParams = zod.object({
 })
 
 export const decideRecommendationBodyReasonMax = 500;
+
 
 
 export const DecideRecommendationBody = zod.object({
@@ -2356,6 +2382,7 @@ export const RunIntelligenceScenarioResponse = zod.object({
 export const recordIntelligenceFeedbackBodyNoteMax = 500;
 
 
+
 export const RecordIntelligenceFeedbackBody = zod.object({
   "recommendationId": zod.string(),
   "feedback": zod.enum(['helpful', 'not_helpful', 'implemented', 'dismissed']),
@@ -2408,6 +2435,7 @@ export const getFamilyOfficeResponseSummaryOutcomesWithAttributionMin = 0;
 
 export const getFamilyOfficeResponseSummaryConfidenceCalibrationMin = 0;
 export const getFamilyOfficeResponseSummaryConfidenceCalibrationMax = 100;
+
 
 
 export const GetFamilyOfficeResponse = zod.object({
@@ -2937,6 +2965,7 @@ export const createFamilyOfficeResearchBodyScopeMax = 120;
 export const createFamilyOfficeResearchBodyPromptMax = 4000;
 
 
+
 export const CreateFamilyOfficeResearchBody = zod.object({
   "analyst": zod.string().max(createFamilyOfficeResearchBodyAnalystMax).optional(),
   "scope": zod.string().min(1).max(createFamilyOfficeResearchBodyScopeMax),
@@ -2944,6 +2973,7 @@ export const CreateFamilyOfficeResearchBody = zod.object({
 })
 
 export const createFamilyOfficeResearchResponseRunSourceMarkersMax = 3;
+
 
 
 export const CreateFamilyOfficeResearchResponse = zod.object({
@@ -2995,6 +3025,7 @@ export const DecideFamilyOfficeProposalParams = zod.object({
 export const decideFamilyOfficeProposalBodyReasonMax = 500;
 
 
+
 export const DecideFamilyOfficeProposalBody = zod.object({
   "decision": zod.enum(['watch', 'reject', 'request_more_research', 'approve_shadow']),
   "reason": zod.string().min(1).max(decideFamilyOfficeProposalBodyReasonMax)
@@ -3030,6 +3061,7 @@ export const createShadowPortfolioBodyBenchmarkMax = 120;
 export const createShadowPortfolioBodyStrategyMax = 500;
 
 
+
 export const CreateShadowPortfolioBody = zod.object({
   "name": zod.string().min(1).max(createShadowPortfolioBodyNameMax),
   "benchmark": zod.string().max(createShadowPortfolioBodyBenchmarkMax).optional(),
@@ -3061,6 +3093,7 @@ export const createShadowIntentBodyHypotheticalNotionalRegExp = new RegExp('^[0-
 export const createShadowIntentBodyReferencePriceExclusiveMin = 0;
 
 export const createShadowIntentBodyTimeHorizonMax = 120;
+
 
 
 export const CreateShadowIntentBody = zod.object({
@@ -3116,6 +3149,7 @@ export const createTaxLienCandidateBodyEstimatedPropertyValueRegExp = new RegExp
 export const createTaxLienCandidateBodyHouseholdSafeToDeployRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const createTaxLienCandidateBodyRequiredReserveFloorRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const createTaxLienCandidateBodyNotesMax = 2000;
+
 
 
 export const CreateTaxLienCandidateBody = zod.object({
@@ -3379,6 +3413,7 @@ export const ImportFinancialAccountCsvParams = zod.object({
 export const importFinancialAccountCsvBodyCsvMax = 100000;
 
 
+
 export const ImportFinancialAccountCsvBody = zod.object({
   "csv": zod.string().min(1).max(importFinancialAccountCsvBodyCsvMax)
 })
@@ -3449,6 +3484,7 @@ export const ReviewFinancialTransactionParams = zod.object({
 
 export const reviewFinancialTransactionBodyCategoryIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const reviewFinancialTransactionBodyNoteMax = 500;
+
 
 
 export const ReviewFinancialTransactionBody = zod.object({
@@ -3972,6 +4008,164 @@ export const GetSafeToDeployResponse = zod.object({
 
 
 /**
+ * @summary Get the explainable Safe-to-Deploy 2.0 result
+ */
+export const GetCapitalGovernorV2QueryParams = zod.object({
+  "asOf": zod.date().optional()
+})
+
+export const GetCapitalGovernorV2Response = zod.object({
+  "version": zod.string(),
+  "asOf": zod.coerce.date(),
+  "status": zod.string(),
+  "safeToDeploy": zod.string(),
+  "rawSafeToDeploy": zod.string(),
+  "inputSnapshotId": zod.string().nullish(),
+  "waterfallRunId": zod.string().nullish(),
+  "reasonCodes": zod.array(zod.string()),
+  "reasons": zod.array(zod.string()),
+  "householdCapitalSurplus": zod.object({
+  "floor": zod.string(),
+  "base": zod.string(),
+  "strong": zod.string(),
+  "source": zod.string()
+}),
+  "dataReadiness": zod.object({
+  "status": zod.string(),
+  "freshnessDays": zod.number().nullable(),
+  "failClosed": zod.boolean()
+}),
+  "components": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "amount": zod.string(),
+  "sign": zod.string(),
+  "provenance": zod.array(zod.string())
+})),
+  "bucketStatus": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "current": zod.string(),
+  "target": zod.string(),
+  "gap": zod.string(),
+  "protected": zod.boolean(),
+  "liquid": zod.boolean(),
+  "physicalAccountIds": zod.array(zod.string()),
+  "provenance": zod.array(zod.string())
+})),
+  "waterfall": zod.object({
+  "availableForWaterfall": zod.string(),
+  "unallocatedAfterRecommendations": zod.string(),
+  "allocations": zod.array(zod.object({
+  "bucket": zod.string(),
+  "amount": zod.string(),
+  "amountCents": zod.number(),
+  "recommendedOnly": zod.boolean(),
+  "physicalMovementAuthorized": zod.boolean(),
+  "provenance": zod.array(zod.string())
+})),
+  "scenarioBehavior": zod.object({
+  "floor": zod.string(),
+  "base": zod.string(),
+  "strong": zod.string()
+})
+}),
+  "controls": zod.object({
+  "protectedDuplexReserveLocked": zod.boolean(),
+  "businessCashExcluded": zod.boolean(),
+  "moneyMovementAuthorized": zod.boolean(),
+  "microLiveAuthorized": zod.boolean(),
+  "strategyLabAuthority": zod.boolean(),
+  "manualOverride": zod.boolean()
+})
+})
+
+
+/**
+ * @summary Create an advisory Capital Waterfall run
+ */
+export const runCapitalWaterfallHeaderIdempotencyKeyMin = 8;
+export const runCapitalWaterfallHeaderIdempotencyKeyMax = 128;
+
+
+
+export const RunCapitalWaterfallHeader = zod.object({
+  "Idempotency-Key": zod.string().min(runCapitalWaterfallHeaderIdempotencyKeyMin).max(runCapitalWaterfallHeaderIdempotencyKeyMax)
+})
+
+export const RunCapitalWaterfallBody = zod.object({
+  "asOf": zod.coerce.date().optional(),
+  "scenario": zod.enum(['floor', 'base', 'strong']).optional()
+})
+
+export const RunCapitalWaterfallResponse = zod.object({
+  "version": zod.string(),
+  "asOf": zod.coerce.date(),
+  "status": zod.string(),
+  "safeToDeploy": zod.string(),
+  "rawSafeToDeploy": zod.string(),
+  "inputSnapshotId": zod.string().nullish(),
+  "waterfallRunId": zod.string().nullish(),
+  "reasonCodes": zod.array(zod.string()),
+  "reasons": zod.array(zod.string()),
+  "householdCapitalSurplus": zod.object({
+  "floor": zod.string(),
+  "base": zod.string(),
+  "strong": zod.string(),
+  "source": zod.string()
+}),
+  "dataReadiness": zod.object({
+  "status": zod.string(),
+  "freshnessDays": zod.number().nullable(),
+  "failClosed": zod.boolean()
+}),
+  "components": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "amount": zod.string(),
+  "sign": zod.string(),
+  "provenance": zod.array(zod.string())
+})),
+  "bucketStatus": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "current": zod.string(),
+  "target": zod.string(),
+  "gap": zod.string(),
+  "protected": zod.boolean(),
+  "liquid": zod.boolean(),
+  "physicalAccountIds": zod.array(zod.string()),
+  "provenance": zod.array(zod.string())
+})),
+  "waterfall": zod.object({
+  "availableForWaterfall": zod.string(),
+  "unallocatedAfterRecommendations": zod.string(),
+  "allocations": zod.array(zod.object({
+  "bucket": zod.string(),
+  "amount": zod.string(),
+  "amountCents": zod.number(),
+  "recommendedOnly": zod.boolean(),
+  "physicalMovementAuthorized": zod.boolean(),
+  "provenance": zod.array(zod.string())
+})),
+  "scenarioBehavior": zod.object({
+  "floor": zod.string(),
+  "base": zod.string(),
+  "strong": zod.string()
+})
+}),
+  "controls": zod.object({
+  "protectedDuplexReserveLocked": zod.boolean(),
+  "businessCashExcluded": zod.boolean(),
+  "moneyMovementAuthorized": zod.boolean(),
+  "microLiveAuthorized": zod.boolean(),
+  "strategyLabAuthority": zod.boolean(),
+  "manualOverride": zod.boolean()
+})
+})
+
+
+/**
  * @summary Get advisory household finance insights
  */
 export const GetFinanceInsightsResponse = zod.object({
@@ -4034,6 +4228,7 @@ export const getBudgetPlanningPeriodResponseClosedByRegExp = new RegExp('^[0-9a-
 export const getBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMin = 0;
 export const getBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMax = 10000;
 export const getBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMultipleOf = 1;
+
 
 
 export const GetBudgetPlanningPeriodResponse = zod.object({
@@ -4132,6 +4327,8 @@ export const updateWeeklyBudgetAllocationsBodyAllocationsItemBasisPointsMax = 10
 export const updateWeeklyBudgetAllocationsBodyAllocationsItemBasisPointsMultipleOf = 1;
 
 
+
+
 export const UpdateWeeklyBudgetAllocationsBody = zod.object({
   "version": zod.number().min(1).multipleOf(updateWeeklyBudgetAllocationsBodyVersionMultipleOf),
   "allocations": zod.array(zod.object({
@@ -4145,6 +4342,7 @@ export const updateWeeklyBudgetAllocationsResponseVersionMultipleOf = 1;
 export const updateWeeklyBudgetAllocationsResponseAllocationsMinOne = 0;
 export const updateWeeklyBudgetAllocationsResponseAllocationsMaxOne = 10000;
 export const updateWeeklyBudgetAllocationsResponseAllocationsMultipleOfOne = 1;
+
 
 
 export const UpdateWeeklyBudgetAllocationsResponse = zod.object({
@@ -4168,6 +4366,7 @@ export const createBudgetPlanningCategoryBodyNameMax = 160;
 export const createBudgetPlanningCategoryBodyNotesMax = 2000;
 
 
+
 export const CreateBudgetPlanningCategoryBody = zod.object({
   "version": zod.number().min(1),
   "name": zod.string().min(1).max(createBudgetPlanningCategoryBodyNameMax),
@@ -4181,6 +4380,7 @@ export const CreateBudgetPlanningCategoryBody = zod.object({
 export const createBudgetPlanningCategoryResponseOneAllocationBasisPointsMin = 0;
 export const createBudgetPlanningCategoryResponseOneAllocationBasisPointsMax = 10000;
 export const createBudgetPlanningCategoryResponseOneAllocationBasisPointsMultipleOf = 1;
+
 
 
 export const CreateBudgetPlanningCategoryResponse = zod.object({
@@ -4211,9 +4411,14 @@ export const acceptWeeklyBudgetGuidanceHeaderIdempotencyKeyMin = 8;
 export const acceptWeeklyBudgetGuidanceHeaderIdempotencyKeyMax = 128;
 
 
+
 export const AcceptWeeklyBudgetGuidanceHeader = zod.object({
   "Idempotency-Key": zod.string().min(acceptWeeklyBudgetGuidanceHeaderIdempotencyKeyMin).max(acceptWeeklyBudgetGuidanceHeaderIdempotencyKeyMax)
 })
+
+
+
+
 
 
 export const AcceptWeeklyBudgetGuidanceBody = zod.object({
@@ -4248,6 +4453,7 @@ export const updateBudgetPlanningCategoryBodyNameMax = 160;
 export const updateBudgetPlanningCategoryBodyNotesMax = 2000;
 
 
+
 export const UpdateBudgetPlanningCategoryBody = zod.object({
   "version": zod.number().min(1),
   "name": zod.string().min(1).max(updateBudgetPlanningCategoryBodyNameMax).optional(),
@@ -4262,6 +4468,7 @@ export const UpdateBudgetPlanningCategoryBody = zod.object({
 export const updateBudgetPlanningCategoryResponseOneAllocationBasisPointsMin = 0;
 export const updateBudgetPlanningCategoryResponseOneAllocationBasisPointsMax = 10000;
 export const updateBudgetPlanningCategoryResponseOneAllocationBasisPointsMultipleOf = 1;
+
 
 
 export const UpdateBudgetPlanningCategoryResponse = zod.object({
@@ -4292,9 +4499,12 @@ export const approveBudgetPlanningPeriodHeaderIdempotencyKeyMin = 8;
 export const approveBudgetPlanningPeriodHeaderIdempotencyKeyMax = 128;
 
 
+
 export const ApproveBudgetPlanningPeriodHeader = zod.object({
   "Idempotency-Key": zod.string().min(approveBudgetPlanningPeriodHeaderIdempotencyKeyMin).max(approveBudgetPlanningPeriodHeaderIdempotencyKeyMax)
 })
+
+
 
 
 export const ApproveBudgetPlanningPeriodBody = zod.object({
@@ -4321,6 +4531,7 @@ export const copyBudgetPlanningPeriodHeaderIdempotencyKeyMin = 8;
 export const copyBudgetPlanningPeriodHeaderIdempotencyKeyMax = 128;
 
 
+
 export const CopyBudgetPlanningPeriodHeader = zod.object({
   "Idempotency-Key": zod.string().min(copyBudgetPlanningPeriodHeaderIdempotencyKeyMin).max(copyBudgetPlanningPeriodHeaderIdempotencyKeyMax)
 })
@@ -4331,6 +4542,7 @@ export const copyBudgetPlanningPeriodResponseClosedByRegExp = new RegExp('^[0-9a
 export const copyBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMin = 0;
 export const copyBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMax = 10000;
 export const copyBudgetPlanningPeriodResponseCategoriesItemAllocationBasisPointsMultipleOf = 1;
+
 
 
 export const CopyBudgetPlanningPeriodResponse = zod.object({
@@ -4375,6 +4587,9 @@ export const ReorderBudgetPlanningCategoriesParams = zod.object({
 })
 
 
+
+
+
 export const ReorderBudgetPlanningCategoriesBody = zod.object({
   "version": zod.number().min(1),
   "categoryIds": zod.array(zod.string()).min(1)
@@ -4397,9 +4612,12 @@ export const closeBudgetPlanningPeriodHeaderIdempotencyKeyMin = 8;
 export const closeBudgetPlanningPeriodHeaderIdempotencyKeyMax = 128;
 
 
+
 export const CloseBudgetPlanningPeriodHeader = zod.object({
   "Idempotency-Key": zod.string().min(closeBudgetPlanningPeriodHeaderIdempotencyKeyMin).max(closeBudgetPlanningPeriodHeaderIdempotencyKeyMax)
 })
+
+
 
 
 export const CloseBudgetPlanningPeriodBody = zod.object({
@@ -4408,6 +4626,7 @@ export const CloseBudgetPlanningPeriodBody = zod.object({
 
 export const closeBudgetPlanningPeriodResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const closeBudgetPlanningPeriodResponseMonthRegExp = new RegExp('^[0-9]{4}-(0[1-9]|1[0-2])$');
+
 
 
 export const CloseBudgetPlanningPeriodResponse = zod.object({
@@ -4481,6 +4700,7 @@ export const getBudgetPlanningComparisonResponseMonthBudgetedRegExp = new RegExp
 export const getBudgetPlanningComparisonResponseQuarterBudgetedRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
 export const getBudgetPlanningComparisonResponseYearBudgetedRegExp = new RegExp('^-?[0-9]+\\.[0-9]{2}$');
 export const getBudgetPlanningComparisonResponseApprovedPeriodCountMin = 0;
+
 
 
 export const GetBudgetPlanningComparisonResponse = zod.object({
@@ -4755,6 +4975,7 @@ export const createVehicleScenarioBodyLoanTermMonthsMin = 0;
 export const createVehicleScenarioBodyNotesMax = 1000;
 
 
+
 export const CreateVehicleScenarioBody = zod.object({
   "name": zod.string().min(1).max(createVehicleScenarioBodyNameMax),
   "vehiclePrice": zod.string().optional(),
@@ -4823,6 +5044,7 @@ export const GetBankingStatusResponse = zod.object({
 export const receiveReadOnlyBankWebhookPathProviderMax = 80;
 
 
+
 export const ReceiveReadOnlyBankWebhookParams = zod.object({
   "provider": zod.coerce.string().min(1).max(receiveReadOnlyBankWebhookPathProviderMax)
 })
@@ -4871,6 +5093,7 @@ export const createReadOnlyBankConnectionBodyInstitutionNameMax = 160;
 export const createReadOnlyBankConnectionBodyProviderConnectionRefMax = 240;
 
 
+
 export const CreateReadOnlyBankConnectionBody = zod.object({
   "provider": zod.string().min(1).max(createReadOnlyBankConnectionBodyProviderMax),
   "institutionName": zod.string().min(1).max(createReadOnlyBankConnectionBodyInstitutionNameMax),
@@ -4909,6 +5132,7 @@ export const LinkReadOnlyBankAccountParams = zod.object({
 
 export const linkReadOnlyBankAccountBodyAccountIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const linkReadOnlyBankAccountBodyProviderAccountRefMax = 240;
+
 
 
 export const LinkReadOnlyBankAccountBody = zod.object({
@@ -5168,6 +5392,7 @@ export const createCapitalRequestHeaderIdempotencyKeyMin = 8;
 export const createCapitalRequestHeaderIdempotencyKeyMax = 128;
 
 
+
 export const CreateCapitalRequestHeader = zod.object({
   "Idempotency-Key": zod.string().min(createCapitalRequestHeaderIdempotencyKeyMin).max(createCapitalRequestHeaderIdempotencyKeyMax)
 })
@@ -5186,6 +5411,7 @@ export const createCapitalRequestBodyLiquidityRequirementMax = 120;
 export const createCapitalRequestBodyCurrentAllocationRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const createCapitalRequestBodyRequestedNewAllocationRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const createCapitalRequestBodyEvidenceMax = 10;
+
 
 
 export const CreateCapitalRequestBody = zod.object({
@@ -5231,6 +5457,7 @@ export const DecideCapitalRequestParams = zod.object({
 
 export const decideCapitalRequestBodyApprovedAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const decideCapitalRequestBodyReasonMax = 1000;
+
 
 
 export const DecideCapitalRequestBody = zod.object({
@@ -5414,6 +5641,7 @@ export const getFinancingSnapshotResponseCreditProfileScoreMin = 300;
 export const getFinancingSnapshotResponseCreditProfileScoreMax = 850;
 
 
+
 export const GetFinancingSnapshotResponse = zod.object({
   "policy": zod.object({
   "mode": zod.string(),
@@ -5521,6 +5749,7 @@ export const createFinancingLiabilityHeaderIdempotencyKeyMin = 8;
 export const createFinancingLiabilityHeaderIdempotencyKeyMax = 128;
 
 
+
 export const CreateFinancingLiabilityHeader = zod.object({
   "Idempotency-Key": zod.string().min(createFinancingLiabilityHeaderIdempotencyKeyMin).max(createFinancingLiabilityHeaderIdempotencyKeyMax)
 })
@@ -5531,6 +5760,7 @@ export const createFinancingLiabilityBodyInterestRateMax = 100;
 
 
 export const createFinancingLiabilityBodyRemainingTermMonthsMin = 0;
+
 
 
 export const CreateFinancingLiabilityBody = zod.object({
@@ -5574,12 +5804,14 @@ export const updateFinancingCreditProfileHeaderIdempotencyKeyMin = 8;
 export const updateFinancingCreditProfileHeaderIdempotencyKeyMax = 128;
 
 
+
 export const UpdateFinancingCreditProfileHeader = zod.object({
   "Idempotency-Key": zod.string().min(updateFinancingCreditProfileHeaderIdempotencyKeyMin).max(updateFinancingCreditProfileHeaderIdempotencyKeyMax)
 })
 
 export const updateFinancingCreditProfileBodyScoreMin = 300;
 export const updateFinancingCreditProfileBodyScoreMax = 850;
+
 
 
 export const UpdateFinancingCreditProfileBody = zod.object({
@@ -5594,6 +5826,7 @@ export const UpdateFinancingCreditProfileBody = zod.object({
 
 export const updateFinancingCreditProfileResponseScoreMin = 300;
 export const updateFinancingCreditProfileResponseScoreMax = 850;
+
 
 
 export const UpdateFinancingCreditProfileResponse = zod.object({
@@ -5618,6 +5851,7 @@ export const createFinancingScenarioHeaderIdempotencyKeyMin = 8;
 export const createFinancingScenarioHeaderIdempotencyKeyMax = 128;
 
 
+
 export const CreateFinancingScenarioHeader = zod.object({
   "Idempotency-Key": zod.string().min(createFinancingScenarioHeaderIdempotencyKeyMin).max(createFinancingScenarioHeaderIdempotencyKeyMax)
 })
@@ -5630,6 +5864,7 @@ export const createFinancingScenarioBodyInterestRateMin = 0;
 export const createFinancingScenarioBodyInterestRateMax = 100;
 
 export const createFinancingScenarioBodyTermYearsMax = 50;
+
 
 
 export const CreateFinancingScenarioBody = zod.object({
@@ -5674,6 +5909,7 @@ export const createFinancingOfferHeaderIdempotencyKeyMin = 8;
 export const createFinancingOfferHeaderIdempotencyKeyMax = 128;
 
 
+
 export const CreateFinancingOfferHeader = zod.object({
   "Idempotency-Key": zod.string().min(createFinancingOfferHeaderIdempotencyKeyMin).max(createFinancingOfferHeaderIdempotencyKeyMax)
 })
@@ -5682,6 +5918,7 @@ export const createFinancingOfferBodyInterestRateMin = 0;
 export const createFinancingOfferBodyInterestRateMax = 100;
 
 export const createFinancingOfferBodyTermYearsMax = 50;
+
 
 
 export const CreateFinancingOfferBody = zod.object({
@@ -5732,6 +5969,7 @@ export const createFinancingPipelineEventHeaderIdempotencyKeyMin = 8;
 export const createFinancingPipelineEventHeaderIdempotencyKeyMax = 128;
 
 
+
 export const CreateFinancingPipelineEventHeader = zod.object({
   "Idempotency-Key": zod.string().min(createFinancingPipelineEventHeaderIdempotencyKeyMin).max(createFinancingPipelineEventHeaderIdempotencyKeyMax)
 })
@@ -5761,6 +5999,7 @@ export const UpdateFinancingDocumentParams = zod.object({
 
 export const updateFinancingDocumentHeaderIdempotencyKeyMin = 8;
 export const updateFinancingDocumentHeaderIdempotencyKeyMax = 128;
+
 
 
 export const UpdateFinancingDocumentHeader = zod.object({
@@ -5819,6 +6058,7 @@ export const getOperationsOverviewResponseHealthAutomationFailuresMin = 0;
 export const getOperationsOverviewResponseAlertsItemOccurrenceCountMin = 0;
 
 export const getOperationsOverviewResponseAutomationsItemPriorityMin = 0;
+
 
 
 export const GetOperationsOverviewResponse = zod.object({
@@ -5926,6 +6166,8 @@ export const GetOperationsOverviewResponse = zod.object({
 export const listOperationsJobsResponseAttemptsMin = 0;
 
 
+
+
 export const ListOperationsJobsResponseItem = zod.object({
   "id": zod.string(),
   "householdId": zod.string(),
@@ -5979,6 +6221,7 @@ export const getOperationsJobMetricsResponseJobRetryCountMin = 0;
 export const getOperationsJobMetricsResponseRecoveredJobCountMin = 0;
 
 
+
 export const GetOperationsJobMetricsResponse = zod.object({
   "queueDepth": zod.number().min(getOperationsJobMetricsResponseQueueDepthMin),
   "oldestPendingJobAgeMs": zod.number().min(getOperationsJobMetricsResponseOldestPendingJobAgeMsMin),
@@ -6003,6 +6246,8 @@ export const ReprocessOperationsJobParams = zod.object({
 })
 
 export const reprocessOperationsJobResponseAttemptsMin = 0;
+
+
 
 
 export const ReprocessOperationsJobResponse = zod.object({
@@ -6077,6 +6322,7 @@ export const getOperationsSchedulerMetricsResponseMissedScheduleCountMin = 0;
 export const getOperationsSchedulerMetricsResponseScheduleRecoveryCountMin = 0;
 
 
+
 export const GetOperationsSchedulerMetricsResponse = zod.object({
   "schedulerHeartbeat": zod.coerce.date().nullable(),
   "schedulerLeader": zod.boolean(),
@@ -6101,6 +6347,7 @@ export const AcquireOperationsSchedulerLeadershipResponse = zod.object({
  * @summary Recover due persistent scheduler definitions
  */
 export const recoverMissedOperationsSchedulesResponseRecoveredMin = 0;
+
 
 
 export const RecoverMissedOperationsSchedulesResponse = zod.object({
@@ -6139,6 +6386,7 @@ export const createOperationsTaskBodyTitleMax = 160;
 export const createOperationsTaskBodyDescriptionMax = 1000;
 
 export const createOperationsTaskBodyDomainMax = 40;
+
 
 
 export const CreateOperationsTaskBody = zod.object({
@@ -6289,6 +6537,7 @@ export const createDailyOpsJournalEntryBodyRelatedEntityTypeMax = 80;
 export const createDailyOpsJournalEntryBodyRelatedEntityIdMax = 160;
 
 
+
 export const CreateDailyOpsJournalEntryBody = zod.object({
   "entryType": zod.enum(['DECISION', 'HANDOFF', 'CLOSEOUT']),
   "title": zod.string().min(1).max(createDailyOpsJournalEntryBodyTitleMax),
@@ -6322,11 +6571,13 @@ export const recordGuidedRunActionHeaderIdempotencyKeyMin = 8;
 export const recordGuidedRunActionHeaderIdempotencyKeyMax = 128;
 
 
+
 export const RecordGuidedRunActionHeader = zod.object({
   "Idempotency-Key": zod.string().min(recordGuidedRunActionHeaderIdempotencyKeyMin).max(recordGuidedRunActionHeaderIdempotencyKeyMax)
 })
 
 export const recordGuidedRunActionBodyReasonMax = 1000;
+
 
 
 export const RecordGuidedRunActionBody = zod.object({
@@ -6405,6 +6656,7 @@ export const DecideOperationsApprovalParams = zod.object({
 export const decideOperationsApprovalBodyReasonMax = 1000;
 
 
+
 export const DecideOperationsApprovalBody = zod.object({
   "decision": zod.enum(['APPROVED', 'REJECTED', 'DEFERRED']),
   "reason": zod.string().min(1).max(decideOperationsApprovalBodyReasonMax)
@@ -6434,6 +6686,7 @@ export const DecideOperationsApprovalResponse = zod.object({
  * @summary List active household operations alerts
  */
 export const listOperationsAlertsResponseOccurrenceCountMin = 0;
+
 
 
 export const ListOperationsAlertsResponseItem = zod.object({
@@ -6466,6 +6719,7 @@ export const UpdateOperationsAlertBody = zod.object({
 export const updateOperationsAlertResponseOccurrenceCountMin = 0;
 
 
+
 export const UpdateOperationsAlertResponse = zod.object({
   "id": zod.string(),
   "alertKey": zod.string(),
@@ -6485,6 +6739,7 @@ export const UpdateOperationsAlertResponse = zod.object({
  * @summary List safe household automation rules
  */
 export const listOperationsAutomationsResponsePriorityMin = 0;
+
 
 
 export const ListOperationsAutomationsResponseItem = zod.object({
@@ -6580,6 +6835,7 @@ export const getBusinessOverviewResponseHealthMin = 0;
 export const getBusinessOverviewResponseHealthMax = 100;
 
 
+
 export const GetBusinessOverviewResponse = zod.object({
   "asOf": zod.coerce.date(),
   "totals": zod.object({
@@ -6662,6 +6918,7 @@ export const createBusinessEntityBodyOwnershipPercentageRegExp = new RegExp('^[0
 export const createBusinessEntityBodyNotesMax = 1000;
 
 
+
 export const CreateBusinessEntityBody = zod.object({
   "legalName": zod.string().min(1).max(createBusinessEntityBodyLegalNameMax),
   "displayName": zod.string().min(1).max(createBusinessEntityBodyDisplayNameMax),
@@ -6728,6 +6985,7 @@ export const updateBusinessEntityBodyOwnershipPercentageRegExp = new RegExp('^[0
 export const updateBusinessEntityBodyNotesMax = 1000;
 
 
+
 export const UpdateBusinessEntityBody = zod.object({
   "displayName": zod.string().min(1).max(updateBusinessEntityBodyDisplayNameMax).optional(),
   "entityType": zod.string().min(1).max(updateBusinessEntityBodyEntityTypeMax).optional(),
@@ -6766,6 +7024,7 @@ export const createBusinessRevenueBodyAmountRegExp = new RegExp('^[0-9]+(\\.[0-9
 export const createBusinessRevenueBodyDescriptionMax = 500;
 
 
+
 export const CreateBusinessRevenueBody = zod.object({
   "businessId": zod.string(),
   "revenueDate": zod.coerce.date(),
@@ -6798,6 +7057,7 @@ export const createBusinessExpenseBodyAmountRegExp = new RegExp('^[0-9]+(\\.[0-9
 export const createBusinessExpenseBodyDescriptionMax = 500;
 
 
+
 export const CreateBusinessExpenseBody = zod.object({
   "businessId": zod.string(),
   "expenseDate": zod.coerce.date(),
@@ -6828,12 +7088,14 @@ export const createBusinessDistributionHeaderIdempotencyKeyMin = 8;
 export const createBusinessDistributionHeaderIdempotencyKeyMax = 128;
 
 
+
 export const CreateBusinessDistributionHeader = zod.object({
   "Idempotency-Key": zod.string().min(createBusinessDistributionHeaderIdempotencyKeyMin).max(createBusinessDistributionHeaderIdempotencyKeyMax)
 })
 
 export const createBusinessDistributionBodyAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const createBusinessDistributionBodyNotesMax = 500;
+
 
 
 export const CreateBusinessDistributionBody = zod.object({
@@ -7033,10 +7295,61 @@ export const GetBusinessIncomeIntelligenceResponse = zod.object({
 }))
 })
 
+
 /**
  * @summary Request a managed object-storage upload URL for a business source PDF
  */
 export const requestBusinessIncomeDocumentUploadUrlBodyNameMax = 255;
+
+export const requestBusinessIncomeDocumentUploadUrlBodySizeMax = 10485760;
+
+
+
+export const RequestBusinessIncomeDocumentUploadUrlBody = zod.object({
+  "name": zod.string().min(1).max(requestBusinessIncomeDocumentUploadUrlBodyNameMax),
+  "size": zod.number().min(1).max(requestBusinessIncomeDocumentUploadUrlBodySizeMax),
+  "contentType": zod.enum(['application/pdf']),
+  "documentType": zod.enum(['settlement', 'profit_loss'])
+})
+
+export const RequestBusinessIncomeDocumentUploadUrlResponse = zod.object({
+  "uploadURL": zod.string(),
+  "objectPath": zod.string(),
+  "name": zod.string(),
+  "size": zod.number(),
+  "contentType": zod.string(),
+  "documentType": zod.enum(['settlement', 'profit_loss'])
+})
+
+
+/**
+ * @summary Parse a stored settlement or P&L PDF into reviewable source records
+ */
+export const ingestBusinessIncomeDocumentBodySourceFileNameMax = 255;
+
+export const ingestBusinessIncomeDocumentBodySourceObjectPathRegExp = new RegExp('^/objects/uploads/[0-9a-fA-F-]{36}$');
+export const ingestBusinessIncomeDocumentBodySourceSizeBytesMax = 10485760;
+
+
+
+export const IngestBusinessIncomeDocumentBody = zod.object({
+  "businessId": zod.string(),
+  "documentType": zod.enum(['settlement', 'profit_loss']),
+  "sourceFileName": zod.string().min(1).max(ingestBusinessIncomeDocumentBodySourceFileNameMax),
+  "sourceObjectPath": zod.string().regex(ingestBusinessIncomeDocumentBodySourceObjectPathRegExp),
+  "contentType": zod.enum(['application/pdf']),
+  "sourceSizeBytes": zod.number().min(1).max(ingestBusinessIncomeDocumentBodySourceSizeBytesMax)
+})
+
+export const IngestBusinessIncomeDocumentResponse = zod.object({
+  "documentType": zod.enum(['settlement', 'profit_loss']),
+  "documentId": zod.string(),
+  "extractionStatus": zod.string(),
+  "verificationStatus": zod.string(),
+  "message": zod.string()
+})
+
+
 /**
  * @summary Record an immutable settlement source and reconcile its exact-cent math
  */
@@ -7066,6 +7379,7 @@ export const createBusinessSettlementBodyDeductionLinesItemDescriptionMax = 300;
 export const createBusinessSettlementBodyDeductionLinesItemCategoryMax = 60;
 
 export const createBusinessSettlementBodyDeductionLinesItemAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+
 
 
 export const CreateBusinessSettlementBody = zod.object({
@@ -7152,6 +7466,7 @@ export const createBusinessProfitLossBodyLinesItemCategoryMax = 60;
 export const createBusinessProfitLossBodyLinesItemLineTypeMax = 30;
 
 export const createBusinessProfitLossBodyLinesItemAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+
 
 
 export const CreateBusinessProfitLossBody = zod.object({
@@ -7280,6 +7595,7 @@ export const createBusinessOwnerDrawBodyAmountRegExp = new RegExp('^[0-9]+(\\.[0
 export const createBusinessOwnerDrawBodyNotesMax = 500;
 
 
+
 export const CreateBusinessOwnerDrawBody = zod.object({
   "businessId": zod.string(),
   "proposalDate": zod.coerce.date(),
@@ -7311,6 +7627,7 @@ export const ApproveBusinessOwnerDrawParams = zod.object({
 
 export const approveBusinessOwnerDrawBodyApprovedAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const approveBusinessOwnerDrawBodyNotesMax = 500;
+
 
 
 export const ApproveBusinessOwnerDrawBody = zod.object({
@@ -7345,46 +7662,3 @@ export const ApproveBusinessOwnerDrawResponse = zod.object({
 })
 
 
-export const ingestBusinessIncomeDocumentBodySourceObjectPathRegExp = new RegExp('^/objects/uploads/[0-9a-fA-F-]{36}$');
-
-export const ingestBusinessIncomeDocumentBodySourceSizeBytesMax = 10485760;
-
-export const IngestBusinessIncomeDocumentBody = zod.object({
-  "businessId": zod.string(),
-  "documentType": zod.enum(['settlement', 'profit_loss']),
-  "sourceFileName": zod.string().min(1).max(ingestBusinessIncomeDocumentBodySourceFileNameMax),
-  "sourceObjectPath": zod.string().regex(ingestBusinessIncomeDocumentBodySourceObjectPathRegExp),
-  "contentType": zod.enum(['application/pdf']),
-  "sourceSizeBytes": zod.number().min(1).max(ingestBusinessIncomeDocumentBodySourceSizeBytesMax)
-})
-
-export const IngestBusinessIncomeDocumentResponse = zod.object({
-  "documentType": zod.enum(['settlement', 'profit_loss']),
-  "documentId": zod.string(),
-  "extractionStatus": zod.string(),
-  "verificationStatus": zod.string(),
-  "message": zod.string()
-})
-
-export const RequestBusinessIncomeDocumentUploadUrlResponse = zod.object({
-  "uploadURL": zod.string(),
-  "objectPath": zod.string(),
-  "name": zod.string(),
-  "size": zod.number(),
-  "contentType": zod.string(),
-  "documentType": zod.enum(['settlement', 'profit_loss'])
-})
-
-export const requestBusinessIncomeDocumentUploadUrlBodySizeMax = 10485760;
-
-/**
- * @summary Parse a stored settlement or P&L PDF into reviewable source records
- */
-export const ingestBusinessIncomeDocumentBodySourceFileNameMax = 255;
-
-export const RequestBusinessIncomeDocumentUploadUrlBody = zod.object({
-  "name": zod.string().min(1).max(requestBusinessIncomeDocumentUploadUrlBodyNameMax),
-  "size": zod.number().min(1).max(requestBusinessIncomeDocumentUploadUrlBodySizeMax),
-  "contentType": zod.enum(['application/pdf']),
-  "documentType": zod.enum(['settlement', 'profit_loss'])
-})

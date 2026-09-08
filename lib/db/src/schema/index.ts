@@ -14,3 +14,4 @@ export * from "./variable-income.ts";
 export * from "./financing.ts";
 export * from "./reliability.ts";
 export * from "./family-office.ts";
+export * from "./capital-governor.ts";

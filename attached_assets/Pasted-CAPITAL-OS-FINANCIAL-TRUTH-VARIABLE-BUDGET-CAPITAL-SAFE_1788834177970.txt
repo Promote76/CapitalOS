@@ -1,0 +1,3132 @@
+CAPITAL OS — FINANCIAL TRUTH, VARIABLE BUDGET & CAPITAL SAFETY COMPLETION SPRINT
+
+UNIFIED REMEDIATION PROMPT
+
+SETTLEMENTS + P&L + BANK STATEMENTS + VERIFIED INCOME + BUDGET + FORECAST + AUTO AFFORDABILITY + SAFE-TO-DEPLOY
+
+PURPOSE
+
+The current Capital OS implementation contains substantial portions of the intended architecture, but the user-facing workflow is incomplete and several financial concepts are not yet connected correctly.
+
+This sprint must finish the complete upstream household-finance pipeline and correct the current UI/data inconsistencies.
+
+Do NOT treat this as a cosmetic redesign.
+
+This is a financial-model, ingestion, reconciliation, workflow, calculation, and UX completion sprint.
+
+The completed architecture must be:
+
+STEVENS SETTLEMENTS
++
+BUSINESS P&L
++
+BANK STATEMENT EVIDENCE
+↓
+FINANCIAL DOCUMENT INBOX
+↓
+PARSE
+↓
+HUMAN REVIEW
+↓
+BUSINESS INCOME & CASH RECONCILIATION
+↓
+BUSINESS CASH
+↓
+BUSINESS RESERVES
+↓
+OWNER DRAW
+↓
+VERIFIED HOUSEHOLD INCOME
+↓
+VARIABLE-INCOME BUDGET
+↓
+OBLIGATIONS + RESERVES
+↓
+FORWARD CASH FLOW
+↓
+HOUSEHOLD CAPITAL SURPLUS
+↓
+SAFE-TO-DEPLOY
+↓
+CAPITAL GOVERNOR
+
+STOP BEFORE MONEY MOVEMENT.
+
+No ACH.
+
+No bank write access.
+
+No brokerage orders.
+
+No Micro-Live activation.
+
+No autonomous AI capital authority.
+
+==================================================
+0. CRITICAL CURRENT-STATE CORRECTIONS
+
+Treat these as authoritative requirements.
+
+1. Wells Fargo is NOT currently live-connected to Capital OS.
+
+2. The existing UI account named something like:
+
+"House - Wells Fargo"
+
+must NOT be interpreted as proof of a provider connection.
+
+It is currently a manual/local/accounting account unless explicit provider metadata proves otherwise.
+
+3. Do not claim:
+
+CONNECTED TO WELLS FARGO
+
+READ-ONLY BANK FEED ACTIVE
+
+PLAID BANK TRANSACTIONS ACTIVE
+
+or equivalent.
+
+4. Capital OS currently needs document ingestion for:
+
+Stevens Transport settlement PDFs
+
+Business P&L documents
+
+Bank statement PDFs
+
+and structured CSV/XLSX where supported.
+
+5. Current Budget UI is incomplete.
+
+Observed deficiencies include:
+
+No clear Create Budget workflow
+
+No usable document upload workflow
+
+No verified-income review workflow
+
+No income-source reconciliation workflow
+
+No category-target creation workflow
+
+Income appearing like a spending category
+
+Repeated incomplete/misleading financial states
+
+Forward scenarios displaying indistinguishable values
+
+Incomplete automobile affordability output
+
+No clear source-provenance workflow
+
+Potential cents/dollars unit defect
+
+6. Do not build additional advanced execution features until this financial-planning foundation is correct.
+
+==================================================
+
+1. FINANCIAL SOURCE MODEL
+   ==================================================
+
+Capital OS must explicitly distinguish four types of financial truth.
+
+STEVENS SETTLEMENT
+
+carrier operational truth
+
+P&L
+
+business accounting truth
+
+BANK STATEMENT
+
+cash evidence
+
+CAPITAL OS
+
+reconciled internal financial truth
+
+Do not collapse these into one source.
+
+==================================================
+2. FINANCIAL DOCUMENT INBOX
+
+Create a first-class:
+
+FINANCIAL DOCUMENT INBOX
+
+Accessible from:
+
+Documents
+→ Financial Inbox
+
+and contextual upload actions from:
+
+Business
+→ Income Intelligence
+→ Settlements
+
+Business
+→ Income Intelligence
+→ P&L
+
+Accounts / Cash
+→ Statements
+
+Budget
+→ Add Financial Evidence
+
+==================================================
+3. SUPPORTED DOCUMENT TYPES
+
+Support at minimum:
+
+STEVENS_SETTLEMENT
+
+BUSINESS_PROFIT_AND_LOSS
+
+BANK_STATEMENT
+
+1099
+
+INCOME_VERIFICATION
+
+INSURANCE_DOCUMENT
+
+AUTO_LOAN_DOCUMENT
+
+BUSINESS_LEASE_DOCUMENT
+
+OTHER_FINANCIAL_DOCUMENT
+
+Supported initial file types:
+
+PDF
+
+CSV
+
+XLSX
+
+Images may be accepted only through an explicit scan/document path.
+
+Do not silently treat random images as authoritative financial records.
+
+==================================================
+4. UPLOAD UX
+
+Mobile must support:
+
+Choose file
+
+Files on device
+
+Take photo / scan when supported
+
+Desktop must support:
+
+Choose file
+
+Drag and drop
+
+Batch upload
+
+Add visible buttons:
+
++ Upload Stevens Settlement
+
++ Upload P&L
+
++ Upload Bank Statement
+
++ Upload Financial Document
+
+==================================================
+5. DOCUMENT STATUS
+
+Every document has:
+
+UPLOADED
+
+PARSING
+
+PARSED
+
+NEEDS_REVIEW
+
+VERIFIED
+
+RECONCILED
+
+DUPLICATE
+
+PARSE_FAILED
+
+REJECTED
+
+Never allow PARSED to imply VERIFIED.
+
+==================================================
+6. DOCUMENT MODEL
+
+Create:
+
+FinancialDocument
+
+Fields:
+
+id
+
+householdId
+
+businessId nullable
+
+documentType
+
+sourceInstitution
+
+sourceFileName
+
+mimeType
+
+documentHash
+
+periodStart
+
+periodEnd
+
+statementDate
+
+uploadedBy
+
+uploadedAt
+
+parserVersion
+
+status
+
+reviewedBy
+
+reviewedAt
+
+reconciledAt
+
+==================================================
+7. DOCUMENT IDEMPOTENCY
+
+Same document hash:
+
+must not create duplicate financial events.
+
+On duplicate upload:
+
+show:
+
+DOCUMENT ALREADY EXISTS
+
+with link to original.
+
+Do not silently import twice.
+
+==================================================
+8. SOURCE PROVENANCE
+
+Every extracted financial value must retain:
+
+documentId
+
+page
+
+source text or source region
+
+parser version
+
+original parsed value
+
+review state
+
+human corrections
+
+actor
+
+timestamp
+
+Provide:
+
+VIEW SOURCE
+
+for every material extracted number.
+
+==================================================
+9. IMMUTABLE SOURCE EVIDENCE
+
+Never mutate the original extracted value.
+
+If corrected, store:
+
+originalValue
+
+correctedValue
+
+reason
+
+actorId
+
+timestamp
+
+==================================================
+10. STEVENS SETTLEMENT ENGINE
+
+Create / complete:
+
+SettlementDocument
+
+SettlementRevenueLine
+
+SettlementDeductionLine
+
+SettlementMathReconciliation
+
+EconomicEventLink
+
+SettlementCashEvidence
+
+Extract where present:
+
+settlement date
+
+contractor code
+
+unit
+
+total miles
+
+dispatched miles
+
+loaded miles
+
+empty miles
+
+MPG
+
+mileage pay
+
+reimbursements
+
+other pay
+
+fuel protection
+
+advances
+
+escrow
+
+recurring expenses
+
+lease payment
+
+lease mileage deduction
+
+fuel
+
+DEF
+
+insurance
+
+permits
+
+APU
+
+repairs
+
+maintenance
+
+tolls
+
+miscellaneous expenses
+
+previous balance
+
+total deductions
+
+total net pay
+
+YTD values
+
+lease-to-date values
+
+==================================================
+11. SETTLEMENT ECONOMIC CLASSIFICATION
+
+Every settlement line must have both:
+
+normalized category
+
+and:
+
+economic treatment.
+
+Economic treatments:
+
+OPERATING_REVENUE
+
+OPERATING_EXPENSE
+
+BALANCE_SHEET_MOVEMENT
+
+ADVANCE_RECEIVED
+
+ADVANCE_RECOVERY
+
+REIMBURSEMENT
+
+REIMBURSEMENT_OFFSET
+
+OWNER_PERSONAL_ITEM
+
+UNKNOWN_REVIEW_REQUIRED
+
+Do not automatically classify every deduction as an expense.
+
+==================================================
+12. ADVANCE HANDLING
+
+Advances must not be treated as ordinary operating income and later ordinary expense without reconciliation.
+
+Create:
+
+BusinessAdvance
+
+Track:
+
+amount received
+
+date
+
+recovery amounts
+
+settlements
+
+remaining balance
+
+status
+
+==================================================
+13. ESCROW HANDLING
+
+Create:
+
+BusinessEscrowMovement
+
+Types:
+
+CONTRIBUTION
+
+RELEASE
+
+ADJUSTMENT
+
+UNKNOWN
+
+Do not automatically classify an escrow contribution as current operating expense.
+
+==================================================
+14. REIMBURSEMENT HANDLING
+
+Match reimbursement to related expense when supported.
+
+Prevent:
+
+expense
+
++ 
+
+reimbursement
+
+from artificially distorting profitability.
+
+==================================================
+15. SETTLEMENT MATH
+
+Calculate:
+
+reported gross
+
+calculated gross
+
+reported deductions
+
+calculated deductions
+
+reported previous balance
+
+reported net
+
+calculated net
+
+variance
+
+Statuses:
+
+MATCHED
+
+ROUNDING_VARIANCE
+
+UNRESOLVED_VARIANCE
+
+FAILED
+
+Material unresolved variance:
+
+blocks verification.
+
+==================================================
+16. SETTLEMENT REVIEW UI
+
+After upload display:
+
+SETTLEMENT SUMMARY
+
+Production
+
+Revenue
+
+Deductions
+
+Economic Treatment
+
+Advance Activity
+
+Escrow Activity
+
+Settlement Math
+
+Cash Evidence
+
+P&L Relationship
+
+Unknown Items
+
+Buttons:
+
+Review source
+
+Correct classification
+
+Approve extraction
+
+Reject document
+
+==================================================
+17. BUSINESS P&L INGESTION
+
+Create / complete:
+
+ProfitLossDocument
+
+ProfitLossLine
+
+ProfitLossReconciliationRun
+
+Extract:
+
+period start
+
+period end
+
+accounting basis
+
+income
+
+expenses
+
+net business income
+
+major account lines
+
+==================================================
+18. P&L IS NOT ADDITIONAL REVENUE
+
+Critical invariant:
+
+Uploaded P&L totals must NOT create additional duplicate business revenue if the underlying business activity is already represented elsewhere.
+
+P&L is:
+
+ACCOUNTING EVIDENCE
+
+and:
+
+RECONCILIATION EVIDENCE.
+
+==================================================
+19. PERIOD RECONCILIATION
+
+Only compare overlapping periods.
+
+If:
+
+P&L ends July 31
+
+but settlement YTD ends August 20
+
+return:
+
+PERIOD_MISMATCH
+
+and show the distinct source periods.
+
+Do not force totals to match.
+
+==================================================
+20. P&L RECONCILIATION
+
+Compare:
+
+Capital OS business ledger revenue
+
+vs P&L revenue
+
+Capital OS expenses
+
+vs P&L expenses
+
+Capital OS net income
+
+vs P&L net income
+
+Statuses:
+
+MATCHED
+
+IMMATERIAL_VARIANCE
+
+REVIEW_REQUIRED
+
+INCOMPLETE_SOURCE_COVERAGE
+
+PERIOD_MISMATCH
+
+==================================================
+21. BANK STATEMENT INGESTION
+
+Because Wells Fargo is NOT live-connected:
+
+uploaded bank statements are currently the primary bank-document evidence workflow.
+
+Support:
+
+BANK_STATEMENT PDF
+
+and:
+
+BANK_TRANSACTION CSV/XLSX
+
+when manually imported.
+
+==================================================
+22. BANK STATEMENT MODEL
+
+Create:
+
+BankStatementDocument
+
+Fields:
+
+institutionName
+
+accountDisplayName
+
+accountMask if available
+
+statementStart
+
+statementEnd
+
+openingBalance
+
+closingBalance
+
+totalDeposits
+
+totalWithdrawals
+
+documentId
+
+status
+
+==================================================
+23. BANK STATEMENT TRANSACTIONS
+
+Extract or import:
+
+posted date
+
+description
+
+amount
+
+direction
+
+running balance if present
+
+check/reference if available
+
+confidence
+
+source page
+
+==================================================
+24. BANK STATEMENT REVIEW
+
+Imported statement transactions begin as:
+
+DOCUMENT_EVIDENCE_PENDING_REVIEW
+
+They do not immediately become authoritative ledger entries.
+
+Provide:
+
+Approve all high-confidence
+
+Review exceptions
+
+Reject transaction
+
+Reclassify
+
+Link to settlement
+
+Link as transfer
+
+==================================================
+25. MANUAL ACCOUNT VS CONNECTED ACCOUNT
+
+Introduce explicit:
+
+AccountDataMode
+
+Values:
+
+MANUAL
+
+STATEMENT_SUPPORTED
+
+LIVE_CONNECTED
+
+SIMULATED_TEST_ONLY
+
+The UI must display the status.
+
+Example:
+
+House - Wells Fargo
+STATEMENT-SUPPORTED
+
+or:
+
+House - Wells Fargo
+MANUAL
+
+Never show:
+
+CONNECTED
+
+unless provider integration metadata proves a real connection.
+
+==================================================
+26. FUTURE BANK PROVIDER ABSTRACTION
+
+Prepare but disable:
+
+interface BankDataProvider {
+
+getAccounts()
+
+getBalances()
+
+getTransactions()
+
+getProviderHealth()
+
+}
+
+Feature:
+
+LIVE_BANK_PROVIDER_ENABLED=false
+
+Do not configure Wells Fargo live connectivity in this sprint.
+
+==================================================
+27. BUSINESS CASH RECONCILIATION
+
+Match settlement net amounts against bank statement deposits when evidence supports it.
+
+Create:
+
+SettlementCashMatch
+
+Statuses:
+
+EXACT_MATCH
+
+TIMING_MATCH
+
+PARTIAL_MATCH
+
+MULTI_DEPOSIT_MATCH
+
+AMBIGUOUS
+
+MISSING
+
+MANUALLY_CONFIRMED
+
+REJECTED
+
+==================================================
+28. NO DOUBLE COUNTING
+
+Critical invariant:
+
+Stevens gross
+
+plus:
+
+bank deposit
+
+must NOT equal additional income.
+
+Example:
+
+Settlement gross:
+$5,934.88
+
+Settlement net:
+$2,124.28
+
+Bank deposit:
+$2,124.28
+
+Correct:
+
+Business revenue:
+$5,934.88
+
+Cash settlement:
+$2,124.28
+
+Bank deposit:
+cash evidence for same settlement
+
+NOT:
+
+$8,059.16 income.
+
+==================================================
+29. BUSINESS EARNINGS LEDGER
+
+Create / complete:
+
+BusinessEarningsEvent
+
+Types:
+
+REVENUE
+
+OPERATING_EXPENSE
+
+BALANCE_SHEET_MOVEMENT
+
+ADVANCE
+
+ADVANCE_RECOVERY
+
+REIMBURSEMENT
+
+TRANSFER
+
+OWNER_DRAW
+
+OWNER_CONTRIBUTION
+
+ADJUSTMENT
+
+==================================================
+30. BUSINESS / HOUSEHOLD SEPARATION
+
+Business cash is not household income.
+
+Business fuel is not household transportation.
+
+Truck lease is not household rent.
+
+Truck insurance is not household personal insurance.
+
+Business repairs are not household vehicle expenses.
+
+Do not mix these domains.
+
+==================================================
+31. BUSINESS RESERVES
+
+Support:
+
+BUSINESS_OPERATING_BUFFER
+
+BUSINESS_TAX_RESERVE
+
+TRUCK_MAINTENANCE_RESERVE
+
+BUSINESS_INSURANCE_RESERVE
+
+LEASE_OBLIGATION_RESERVE
+
+BUSINESS_ESCROW
+
+OTHER_BUSINESS_RESERVE
+
+These remain outside household Safe-to-Deploy.
+
+==================================================
+32. OWNER DRAW ENGINE
+
+Create / complete:
+
+OwnerDrawProposal
+
+Fields:
+
+availableBusinessCash
+
+requiredBusinessReserves
+
+unreconciledBusinessItems
+
+maximumEligibleDraw
+
+proposedDraw
+
+approvedDraw
+
+status
+
+Statuses:
+
+DRAFT
+
+CALCULATED
+
+REVIEW_REQUIRED
+
+APPROVED
+
+POSTED
+
+REJECTED
+
+No physical transfer execution.
+
+==================================================
+33. VERIFIED HOUSEHOLD INCOME
+
+Create only from an approved/reconciled household income event.
+
+Create / complete:
+
+VerifiedHouseholdIncomeEvent
+
+Statuses:
+
+PROJECTED
+
+BUSINESS_EARNED
+
+CASH_RECEIVED
+
+ELIGIBLE_FOR_DRAW
+
+OWNER_DRAW_APPROVED
+
+HOUSEHOLD_VERIFIED
+
+Only:
+
+HOUSEHOLD_VERIFIED
+
+feeds authoritative Budget income.
+
+==================================================
+34. FIX CURRENT INCOME UX
+
+Current Budget Performance must NOT place:
+
+Household income
+
+in the same expense-category table as:
+
+Housing
+
+Food
+
+Transportation
+
+etc.
+
+Move household income to:
+
+HOUSEHOLD FINANCIAL FOUNDATION
+
+above spending.
+
+Show:
+
+Observed cash inflows
+
+Verified household income
+
+Income awaiting review
+
+Projected income
+
+Do not conflate them.
+
+==================================================
+35. RECONCILE CURRENT $1,735 DISPLAY
+
+The current UI may show household income such as:
+
+$1,735
+
+while:
+
+Income Floor
+
+Base Month
+
+Strong Month
+
+show:
+
+$0.
+
+Fix the semantics.
+
+The UI must explain whether $1,735 is:
+
+manual income
+
+unverified cash inflow
+
+reviewed household income
+
+or:
+
+HOUSEHOLD_VERIFIED income.
+
+Do not label an unverified inflow as authoritative household income.
+
+==================================================
+36. VARIABLE INCOME PROFILE
+
+Create / complete:
+
+VariableIncomeProfile
+
+Use verified household income history.
+
+Fields:
+
+currentMonthVerifiedIncome
+
+trailing4Weeks
+
+trailing8Weeks
+
+trailing13Weeks
+
+trailing3Months
+
+trailing6Months
+
+lowestRecentMonth
+
+medianRecentMonth
+
+highestRecentMonth
+
+incomeFloor
+
+baseIncome
+
+strongMonthIncome
+
+historyQuality
+
+==================================================
+37. INSUFFICIENT HISTORY
+
+If there is insufficient verified history:
+
+do NOT pretend:
+
+Floor = $0
+
+Base = $0
+
+Strong = $0
+
+are meaningful income scenarios.
+
+Instead show:
+
+INSUFFICIENT VERIFIED HISTORY
+
+and provide:
+
+Set temporary planning floor
+
+Review income evidence
+
+Import prior settlement/P&L/bank history
+
+==================================================
+38. TEMPORARY USER-APPROVED INCOME FLOOR
+
+Support:
+
+USER_APPROVED_FLOOR
+
+until enough verified history exists.
+
+This is a planning assumption.
+
+Label clearly.
+
+It is not the same as verified realized income.
+
+==================================================
+39. BUDGET CREATION WORKFLOW
+
+The current:
+
+"No plan found for 2026-09"
+
+dead-end must be fixed.
+
+Add primary button:
+
+CREATE SEPTEMBER PLAN
+
+or equivalent selected period.
+
+==================================================
+40. BUDGET BUILDER
+
+Create guided flow:
+
+STEP 1
+Income foundation
+
+STEP 2
+Mandatory obligations
+
+STEP 3
+Essential variable spending
+
+STEP 4
+Household reserves
+
+STEP 5
+Discretionary spending
+
+STEP 6
+Capital surplus
+
+STEP 7
+Review
+
+STEP 8
+Approve plan
+
+==================================================
+41. BUDGET TERMINOLOGY EDUCATION
+
+Explain:
+
+BANK BALANCE
+
+money currently in an account
+
+HOUSEHOLD INCOME
+
+money available to the household during a period
+
+MONTHLY BUDGET
+
+planned household spending
+
+CATEGORY TARGET
+
+planned amount for one spending category
+
+ACTUAL SPENDING
+
+money actually spent
+
+REMAINING BUDGET
+
+target minus eligible actual spending
+
+CAPITAL SURPLUS
+
+income remaining after household plan requirements
+
+SAFE-TO-DEPLOY
+
+capital eligible only after additional safety constraints
+
+==================================================
+42. PREVENT THE RENT/BUDGET ERROR
+
+If user enters:
+
+Rent = $900
+
+Capital OS must treat this as:
+
+Housing target / mandatory obligation:
+$900
+
+It must NOT silently set:
+
+Total household budget:
+$900
+
+Add warning if one category equals the entire plan and other normal
+expense categories exist.
+
+==================================================
+43. BUDGET VERSIONING
+
+Create / complete:
+
+HouseholdBudgetPlan
+
+Statuses:
+
+DRAFT
+
+READY_FOR_REVIEW
+
+APPROVED
+
+SUPERSEDED
+
+CLOSED
+
+Approved budgets are immutable.
+
+==================================================
+44. BUDGET CORRECTION
+
+If an approved plan was wrong:
+
+Correct Budget
+
+→ copy to correction draft
+
+→ edit
+
+→ preview differences
+
+→ approve
+
+→ prior version becomes SUPERSEDED
+
+Do not delete history.
+
+==================================================
+45. HOUSEHOLD PLANNING LAYERS
+
+Budget is not one 100% pie.
+
+Use:
+
+MANDATORY
+
+ESSENTIAL
+
+RESERVE
+
+DISCRETIONARY
+
+CAPITAL_GOAL
+
+TRANSFER_EXCLUDED
+
+INCOME_EXCLUDED
+
+==================================================
+46. REMOVE 100% SPENDING REQUIREMENT
+
+Do not require all household income to be distributed across
+spending categories.
+
+Capital goals remain separate from consumption.
+
+If percentage allocation remains:
+
+label:
+
+OPTIONAL SPENDING MIX
+
+Explain:
+
+"This describes how an approved spending amount may be distributed.
+It does not require all income to be spent."
+
+==================================================
+47. MONTHLY TARGETS
+
+Budget Performance currently showing:
+
+No monthly budget targets yet
+
+must include actions:
+
+Create Plan
+
+Add Obligation
+
+Set Essentials
+
+Set Reserve Targets
+
+Add Income Evidence
+
+Review Transactions
+
+Do not use:
+
+Review categories
+
+as the only path forward.
+
+==================================================
+48. MANDATORY OBLIGATIONS
+
+Create / complete:
+
+HouseholdObligation
+
+Types:
+
+RENT
+
+MORTGAGE
+
+AUTO_LOAN
+
+INSURANCE
+
+UTILITY
+
+DEBT_PAYMENT
+
+SUBSCRIPTION
+
+HEALTHCARE
+
+CHILDCARE
+
+OTHER
+
+Track:
+
+amount
+
+frequency
+
+due date
+
+source
+
+verified status
+
+==================================================
+49. FIX THE $78 / $7,800 DEFECT
+
+Investigate current displayed values where:
+
+Mandatory obligations ≈ $78
+
+while:
+
+Next 30-day obligations ≈ $7,800
+
+and:
+
+cash coverage ≈ 19.23×
+
+This strongly suggests a possible:
+
+CENTS VS DOLLARS
+
+unit-normalization error.
+
+Do not patch only the display.
+
+Trace the entire calculation path.
+
+Required invariant:
+
+money enters domain services in one documented authoritative unit.
+
+Prefer:
+
+integer cents internally.
+
+Formatting to dollars occurs only at presentation/API boundary.
+
+==================================================
+50. MONEY UNIT SAFETY
+
+Create:
+
+MoneyAmount contract
+
+or equivalent strict utility.
+
+Prevent:
+
+7800 cents
+
+from being displayed as:
+
+$7,800
+
+instead of:
+
+$78.00.
+
+Add unit tests at:
+
+database
+
+service
+
+API
+
+frontend formatting
+
+forecast engine
+
+obligation engine
+
+Safe-to-Deploy inputs
+
+==================================================
+51. MONEY UNIT CERTIFICATION
+
+Test examples:
+
+7800 cents
+→ $78.00
+
+90000 cents
+→ $900.00
+
+173500 cents
+→ $1,735.00
+
+0 cents
+→ $0.00
+
+No implicit ×100 or ÷100 transformations.
+
+==================================================
+52. BUDGET PERFORMANCE
+
+Show compact mobile table:
+
+CATEGORY
+
+TARGET
+
+ACTUAL
+
+REMAINING
+
+PACE
+
+STATUS
+
+Statuses:
+
+UNDER_PLAN
+
+ON_PLAN
+
+ABOVE_PLAN
+
+OVER_BUDGET
+
+WAITING_FOR_DATA
+
+NOT_APPLICABLE
+
+==================================================
+53. REMOVE FALSE "UNDER PACE"
+
+Do not show:
+
+UNDER PACE
+
+when:
+
+target = $0
+
+because no budget exists.
+
+Use:
+
+NO TARGET
+
+or:
+
+WAITING FOR PLAN
+
+instead.
+
+==================================================
+54. FORWARD CASH FLOW
+
+Complete:
+
+HouseholdCashFlowForecast
+
+Windows:
+
+7 days
+
+14 days
+
+30 days
+
+60 days
+
+90 days
+
+Inputs:
+
+current household cash
+
+verified income
+
+approved projected owner draws
+
+mandatory obligations
+
+essential spending allowance
+
+reserve funding
+
+approved planning commitments
+
+==================================================
+55. FLOOR / BASE / STRONG FORECASTS
+
+The current UI shows identical values across:
+
+Floor
+
+Base
+
+Strong
+
+and across multiple horizons.
+
+Fix this.
+
+If scenarios genuinely produce identical values, show why.
+
+Otherwise calculate separate scenario paths.
+
+If source data is insufficient:
+
+show:
+
+INSUFFICIENT DATA
+
+instead of misleading numeric output.
+
+==================================================
+56. FORECAST OUTPUT
+
+For each scenario show:
+
+Opening cash
+
+Income
+
+Mandatory outflows
+
+Essential outflows
+
+Reserve funding
+
+Discretionary allowance
+
+Capital contributions
+
+Projected ending cash
+
+Shortfall
+
+Status
+
+==================================================
+57. CASH PRESSURE
+
+Create:
+
+LOW
+
+MODERATE
+
+HIGH
+
+CRITICAL
+
+INCOMPLETE
+
+based on deterministic inputs.
+
+==================================================
+58. HOUSEHOLD RESERVES
+
+Complete:
+
+Emergency Reserve
+
+Household Cash Buffer
+
+Vehicle Reserve
+
+Irregular Obligation Reserve
+
+Do not show:
+
+Reserve funding = $0
+
+as if fully satisfied when reserve data is actually missing.
+
+Use:
+
+NOT CONFIGURED
+
+or:
+
+INCOMPLETE.
+
+==================================================
+59. OPERATING BUDGET CAP
+
+Current:
+
+Operating budget cap = $0
+
+with incomplete data
+
+must not imply a real $0 spending limit.
+
+Use:
+
+NOT CALCULATED
+
+when required inputs are missing.
+
+==================================================
+60. CAPITAL SURPLUS
+
+Current display such as:
+
+Capital surplus at floor = -$78
+
+must only appear if:
+
+income floor is valid
+
+obligations are valid
+
+reserves are valid
+
+budget is valid.
+
+Otherwise:
+
+NOT CALCULATED — INCOMPLETE DATA.
+
+Do not subtract values from a nonexistent income floor and present the result as meaningful.
+
+==================================================
+61. VEHICLE AFFORDABILITY
+
+Complete the current vehicle scenario.
+
+Inputs:
+
+scenario name
+
+vehicle price
+
+down payment
+
+loan amount
+
+APR
+
+term
+
+monthly payment
+
+insurance
+
+fuel
+
+maintenance reserve
+
+registration reserve
+
+parking/tolls
+
+other recurring cost
+
+==================================================
+62. CURRENT PLANNING ASSUMPTIONS
+
+Support editable initial scenario values:
+
+Payment:
+$400/month
+
+Insurance:
+$300/month
+
+Fuel:
+editable
+
+Maintenance reserve:
+editable
+
+Do not hard-code these globally.
+
+==================================================
+63. TOTAL VEHICLE COST
+
+Calculate:
+
+payment
+
++ 
+
+insurance
+
++ 
+
+fuel
+
++ 
+
+maintenance
+
++ 
+
+registration reserve
+
++ 
+
+other costs
+
+=
+
+TOTAL MONTHLY VEHICLE COST
+
+==================================================
+64. AUTO AFFORDABILITY RESULT
+
+After Save Scenario display:
+
+Current household operating cost
+
+Current floor surplus
+
+Vehicle monthly cost
+
+New operating cost
+
+New floor surplus
+
+Cash buffer impact
+
+Emergency Reserve impact
+
+Duplex contribution impact
+
+30-day impact
+
+60-day impact
+
+90-day impact
+
+Result:
+
+AFFORDABLE_WITH_BUFFER
+
+AFFORDABLE_BUT_TIGHT
+
+CAPITAL_GOAL_IMPACT
+
+HOUSEHOLD_SHORTFALL_RISK
+
+INSUFFICIENT_DATA
+
+==================================================
+65. AUTO SCENARIO IS NOT A LIABILITY
+
+Saving a vehicle scenario does NOT create:
+
+loan
+
+owned vehicle
+
+insurance policy
+
+payment obligation
+
+until separately confirmed.
+
+==================================================
+66. SAFE-TO-DEPLOY COMPLETION
+
+Do not calculate Safe-to-Deploy from raw cash.
+
+Complete / verify deterministic input chain.
+
+Concept:
+
+Eligible household cash
+
+minus:
+
+unreconciled cash
+
+near-term obligations
+
+remaining essential spending
+
+cash buffer
+
+required reserve funding
+
+protected capital
+
+approved encumbrances
+
+forecast shortfall protection
+
+equals:
+
+Safe-to-Deploy candidate
+
+then:
+
+Capital Governor constraints
+
+==================================================
+67. SAFE-TO-DEPLOY FAIL CLOSED
+
+If required data is incomplete:
+
+Safe-to-Deploy status:
+
+BLOCKED_DATA_INCOMPLETE
+
+Amount presentation:
+
+NOT CALCULATED
+
+Do not default to $0 in a way that implies a completed calculation.
+
+==================================================
+68. SAFE-TO-DEPLOY EXPLANATION
+
+"See calculation" must open:
+
+Household cash
+
+Unreconciled cash
+
+Next 30-day obligations
+
+Essential spending remaining
+
+Cash buffer
+
+Emergency reserve gap
+
+Vehicle reserve gap
+
+Protected Duplex Reserve
+
+Other commitments
+
+Forecast adjustment
+
+Capital Governor adjustment
+
+Final Safe-to-Deploy
+
+Every component links to provenance.
+
+==================================================
+69. DOUBLE-SUBTRACTION PROTECTION
+
+Do not subtract rent twice through:
+
+budget
+
+and:
+
+obligation registry.
+
+Do not subtract the same reserve through multiple categories.
+
+Create explicit reconciliation between:
+
+budget targets
+
+obligations
+
+reserve requirements
+
+capital encumbrances
+
+==================================================
+70. TRANSFER DOUBLE-COUNT PROTECTION
+
+Internal transfers do not create income or spending.
+
+Examples:
+
+checking → savings
+
+business → household draw
+
+checking → Duplex Reserve
+
+The owner draw creates one household-income event.
+
+The linked transfer does not create another duplicate income event.
+
+==================================================
+71. CREDIT CARD PAYMENT PROTECTION
+
+If underlying card purchases are counted:
+
+credit-card payment must not also count as expense.
+
+Support explicit reporting basis.
+
+==================================================
+72. ACCOUNT STATUS UI
+
+Every account card must show:
+
+MANUAL
+
+STATEMENT-SUPPORTED
+
+LIVE CONNECTED
+
+or:
+
+TEST / SIMULATED
+
+Do not infer connection from account name.
+
+==================================================
+73. FINANCIAL FOUNDATION CARD
+
+Replace current fragmented Budget top section with:
+
+HOUSEHOLD FINANCIAL FOUNDATION
+
+Observed inflows
+
+Verified household income
+
+Income awaiting review
+
+Income floor
+
+Base case
+
+Strong case
+
+Current household cash
+
+Data readiness
+
+Actions:
+
+Review income
+
+Upload evidence
+
+Create plan
+
+==================================================
+74. PLAN HEALTH
+
+Plan Health may show:
+
+HEALTHY
+
+TIGHT
+
+AT_RISK
+
+INCOMPLETE_DATA
+
+But when INCOMPLETE_DATA:
+
+show actionable missing items.
+
+Example:
+
+Income history missing
+
+September plan missing
+
+Emergency Reserve target missing
+
+Bank statement not reviewed
+
+==================================================
+75. ACTIONABLE INCOMPLETE STATE
+
+Do not display only text such as:
+
+"Add verified income history and approve the current planning
+period."
+
+Provide buttons:
+
+Upload settlement
+
+Upload P&L
+
+Upload bank statement
+
+Review income
+
+Create plan
+
+Configure reserves
+
+==================================================
+76. FINANCIAL REVIEW QUEUE
+
+Create central review queue for:
+
+Unknown settlement line
+
+Settlement variance
+
+P&L mismatch
+
+Bank statement transaction
+
+Unmatched deposit
+
+Possible settlement deposit
+
+Advance recovery
+
+Escrow classification
+
+Income verification
+
+Budget transaction
+
+==================================================
+77. REVIEW QUEUE STATUS
+
+Show:
+
+OPEN
+
+NEEDS_USER
+
+READY_FOR_APPROVAL
+
+RESOLVED
+
+REJECTED
+
+==================================================
+78. RECENT CHANGE EVENTS UX
+
+Stop making raw UUIDs and internal mutation names the primary display.
+
+Use human-readable events:
+
+"September plan created"
+
+"Rent target changed to $900"
+
+"Bank statement uploaded"
+
+"Settlement approved"
+
+"Owner draw verified"
+
+Technical identifiers remain in detail view.
+
+==================================================
+79. MOBILE-FIRST UI
+
+The current page is too vertically long.
+
+Use compact summary rows.
+
+Expandable detail.
+
+Sticky key actions where appropriate.
+
+Financial Inbox must be easy to use from mobile.
+
+==================================================
+80. GROK ROLE
+
+Grok may:
+
+summarize settlements
+
+explain deductions
+
+explain P&L variances
+
+explain Budget
+
+compare auto scenarios
+
+identify unusual financial patterns
+
+generate review questions
+
+Grok may NOT:
+
+approve classifications
+
+approve owner draw
+
+set verified household income
+
+set budget
+
+change reserve policy
+
+change Safe-to-Deploy
+
+move money
+
+==================================================
+81. GROK DATA MINIMIZATION
+
+Never send Grok:
+
+bank account numbers
+
+routing numbers
+
+SSN
+
+tax ID
+
+raw statements unnecessarily
+
+credentials
+
+session tokens
+
+API keys
+
+Use sanitized structured data.
+
+==================================================
+82. ACCOUNTING TERMINOLOGY HELP
+
+Add plain-language help throughout.
+
+Gross business revenue:
+what the business earned before expenses.
+
+Business net income:
+business revenue minus recognized business expenses.
+
+Settlement net:
+what remains after carrier settlement deductions.
+
+Bank deposit:
+cash that posted to an account.
+
+Owner draw:
+business value intentionally allocated to the household.
+
+Verified household income:
+income approved for household planning.
+
+Budget:
+planned household spending.
+
+Bank balance:
+cash currently held.
+
+Safe-to-Deploy:
+capital eligible after safety constraints.
+
+==================================================
+83. EXACT-CENT REQUIREMENT
+
+All authoritative money calculations use:
+
+integer cents
+
+or:
+
+approved exact decimal type.
+
+No binary floating-point financial calculations.
+
+==================================================
+84. ATOMICITY
+
+Critical financial state changes must use database transactions.
+
+Examples:
+
+document verification
+
+economic event creation
+
+owner draw approval
+
+verified income creation
+
+budget approval
+
+budget correction
+
+==================================================
+85. IDEMPOTENCY
+
+Same document:
+
+one document.
+
+Same settlement:
+
+one settlement.
+
+Same bank transaction:
+
+one bank event.
+
+Same owner draw key:
+
+one owner draw.
+
+Same verified-income source:
+
+one household-income event.
+
+Same plan approval:
+
+one approved version.
+
+==================================================
+86. CONCURRENCY
+
+Concurrent:
+
+document imports
+
+bank statement review
+
+settlement review
+
+budget approval
+
+must not create duplicate economic events.
+
+==================================================
+87. STALE STATE PROTECTION
+
+If source data changes after a calculation:
+
+mark dependent:
+
+budget forecast
+
+capital surplus
+
+Safe-to-Deploy
+
+as stale.
+
+Require recalculation.
+
+==================================================
+88. TENANT ISOLATION
+
+Household A must never access Household B:
+
+documents
+
+settlements
+
+P&Ls
+
+bank statements
+
+transactions
+
+business ledger
+
+owner draws
+
+verified income
+
+budget plans
+
+forecasts
+
+Safe-to-Deploy
+
+==================================================
+89. AUTHORIZATION
+
+Use current effective permissions.
+
+OWNER:
+full review / approval according to existing policy
+
+PARTNER:
+according to effective permissions
+
+ADVISOR:
+research / review only unless explicitly granted
+
+VIEWER:
+read-only
+
+No new privilege bypass.
+
+==================================================
+90. AUDIT
+
+Audit:
+
+upload
+
+parse
+
+manual correction
+
+classification
+
+verification
+
+reconciliation
+
+owner draw
+
+income verification
+
+budget create
+
+budget correction
+
+budget approve
+
+reserve change
+
+vehicle scenario
+
+Safe-to-Deploy calculation
+
+actor
+
+timestamp
+
+policy/calculation version
+
+==================================================
+91. ROUTE INVENTORY
+
+All new routes must enter current route certification.
+
+After this sprint:
+
+SOURCE-DERIVED ROUTE COUNT
+
+must equal:
+
+CERTIFIED ROUTE COUNT.
+
+No route evidence drift.
+
+==================================================
+92. DO NOT REGRESS EXISTING SAFETY
+
+Preserve:
+
+Tenant isolation
+
+Role controls
+
+Origin protection
+
+Exact-cent financial logic
+
+Treasury protected capital
+
+Duplex Reserve protection
+
+Business/household separation
+
+Guardian
+
+OMS
+
+Execution Control
+
+Grok no-execution boundary
+
+Micro-Live disabled state
+
+==================================================
+93. NO LIVE WELLS FARGO CLAIM
+
+Certification must explicitly verify:
+
+LIVE WELLS FARGO CONNECTION:
+NOT CONFIGURED
+
+Do not fail this sprint merely because Wells Fargo is not live-connected.
+
+Statement ingestion is the supported current bank-evidence workflow.
+
+==================================================
+94. FUTURE WELLS FARGO
+
+Prepare provider abstraction only.
+
+Do not activate.
+
+Future architecture:
+
+Bank Provider
++
+Statement Evidence
+↓
+Cash Reconciliation
+
+But current mode remains:
+
+STATEMENT / MANUAL EVIDENCE.
+
+==================================================
+95. NEGATIVE TESTS
+
+Test:
+
+"House - Wells Fargo means Wells Fargo is connected."
+
+Expected:
+
+FALSE.
+
+Require provider metadata.
+
+---
+
+Test:
+
+"I uploaded the same Wells Fargo statement twice."
+
+Expected:
+
+DUPLICATE.
+
+No duplicated transactions.
+
+---
+
+Test:
+
+"Add Stevens gross revenue and the bank deposit together."
+
+Expected:
+
+DOUBLE_COUNT_REJECTED.
+
+---
+
+Test:
+
+"Every Stevens deduction is an expense."
+
+Expected:
+
+REJECT.
+
+Economic treatment required.
+
+---
+
+Test:
+
+"Escrow is definitely an expense."
+
+Expected:
+
+REVIEW REQUIRED.
+
+---
+
+Test:
+
+"Use $1,735 observed income as verified household income."
+
+Expected:
+
+only if authoritative verification status supports it.
+
+---
+
+Test:
+
+"No income history exists, so income floor is $0."
+
+Expected:
+
+INSUFFICIENT_HISTORY.
+
+Not a real zero-income floor.
+
+---
+
+Test:
+
+"Mandatory obligations are 7800 cents."
+
+Expected UI:
+
+$78.00.
+
+---
+
+Test:
+
+"No budget exists."
+
+Expected:
+
+Create Plan action.
+
+Not dead-end Try Again only.
+
+---
+
+Test:
+
+"Target is $0 and actual is $0."
+
+Expected:
+
+NO TARGET / WAITING FOR PLAN.
+
+Not UNDER PACE.
+
+---
+
+Test:
+
+"Use the $900 rent amount as the total household budget."
+
+Expected:
+
+warning / reject unintended equivalence.
+
+---
+
+Test:
+
+"Count the $900 rent payment as another $900 of budget."
+
+Expected:
+
+separate planned target from actual expense.
+
+---
+
+Test:
+
+"Car payment is $400, so total car cost is $400."
+
+Expected:
+
+include insurance, fuel, maintenance and other configured costs.
+
+---
+
+Test:
+
+"Safe-to-Deploy is $0 because inputs are missing."
+
+Expected:
+
+NOT CALCULATED / BLOCKED_DATA_INCOMPLETE.
+
+---
+
+Test:
+
+"Use Duplex Reserve for household shortfall."
+
+Expected:
+
+DENIED.
+
+---
+
+Test:
+
+"Grok should approve this owner draw."
+
+Expected:
+
+NO AUTHORITY.
+
+---
+
+Test:
+
+"Send $500 to savings."
+
+Expected:
+
+NO BANK WRITE TOOL.
+
+==================================================
+96. CERTIFICATION COMMAND
+
+Create:
+
+pnpm run certify:financial-planning-completion
+
+Required gates:
+
+FPC-01 Financial Document Inbox
+
+FPC-02 Mobile Upload
+
+FPC-03 Document Hash Idempotency
+
+FPC-04 Source Provenance
+
+FPC-05 Settlement Parsing
+
+FPC-06 Settlement Math
+
+FPC-07 Economic Treatment
+
+FPC-08 Advance Boundary
+
+FPC-09 Escrow Boundary
+
+FPC-10 P&L Ingestion
+
+FPC-11 P&L Period Reconciliation
+
+FPC-12 Bank Statement Ingestion
+
+FPC-13 Manual vs Connected Account Status
+
+FPC-14 No Live Wells Fargo Claim
+
+FPC-15 Settlement Cash Matching
+
+FPC-16 Double-Count Protection
+
+FPC-17 Business/Household Separation
+
+FPC-18 Owner Draw
+
+FPC-19 Verified Household Income
+
+FPC-20 Income Semantics
+
+FPC-21 Variable Income Profile
+
+FPC-22 Insufficient-History Safety
+
+FPC-23 Budget Creation Wizard
+
+FPC-24 Budget Correction
+
+FPC-25 Money Unit / Cents Safety
+
+FPC-26 Obligation Engine
+
+FPC-27 Reserve Engine
+
+FPC-28 Forward Cash Flow
+
+FPC-29 Vehicle Affordability
+
+FPC-30 Safe-to-Deploy Fail-Closed
+
+FPC-31 Safe-to-Deploy Explainability
+
+FPC-32 Transfer Double-Count Protection
+
+FPC-33 Credit Card Double-Count Protection
+
+FPC-34 Mobile Budget UX
+
+FPC-35 Review Queue
+
+FPC-36 Audit
+
+FPC-37 Tenant Isolation
+
+FPC-38 Role Authorization
+
+FPC-39 Grok Advisory Boundary
+
+FPC-40 No Money Movement
+
+==================================================
+97. REQUIRED REGRESSION
+
+Run all existing relevant checks plus:
+
+typecheck
+
+API tests
+
+frontend build
+
+backend build
+
+route parity
+
+tenant isolation
+
+role/effective-permission tests
+
+financial integrity
+
+accounting
+
+Business Income
+
+Variable Budget
+
+Safe-to-Deploy
+
+Operations Recovery
+
+Observability
+
+Grok Intelligence
+
+Family Office
+
+Real Estate Intelligence
+
+Tax Lien Intelligence
+
+Execution Control
+
+Guardian
+
+OMS
+
+Micro-Live certification
+
+Do not weaken an existing PASS to make this sprint pass.
+
+==================================================
+98. DOCUMENTATION
+
+Create:
+
+docs/FINANCIAL_DOCUMENT_INBOX_ARCHITECTURE.md
+
+docs/STEVENS_SETTLEMENT_ACCOUNTING.md
+
+docs/P_AND_L_RECONCILIATION_MODEL.md
+
+docs/BANK_STATEMENT_INGESTION.md
+
+docs/ACCOUNT_DATA_MODE.md
+
+docs/OWNER_DRAW_AND_VERIFIED_INCOME.md
+
+docs/VARIABLE_INCOME_BUDGET_FINAL.md
+
+docs/MONEY_UNIT_CONTRACT.md
+
+docs/AUTO_AFFORDABILITY_MODEL.md
+
+docs/SAFE_TO_DEPLOY_INPUT_MODEL.md
+
+docs/certification/
+FINANCIAL_PLANNING_COMPLETION_2026-09-07.md
+
+Update:
+
+docs/CAPITAL_OS_CURRENT_CERTIFICATION.md
+
+Do NOT expand public-production authority.
+
+==================================================
+99. REQUIRED FINAL UI EXPERIENCE
+
+When the user opens Budget with incomplete data, the screen should guide them.
+
+Example:
+
+HOUSEHOLD FINANCIAL FOUNDATION
+
+Verified household income:
+Not enough verified history
+
+Observed inflows:
+$1,735
+Needs classification
+
+Income floor:
+Not established
+
+Current plan:
+No September plan
+
+[ Upload settlement ]
+[ Upload P&L ]
+[ Upload bank statement ]
+[ Review income ]
+[ Create September plan ]
+
+Then:
+
+HOUSEHOLD PLAN
+
+Mandatory obligations:
+$___
+
+Essentials:
+$___
+
+Reserves:
+$___
+
+Discretionary:
+$___
+
+Operating budget:
+$___
+
+Then:
+
+FORWARD CASH FLOW
+
+30 days
+Floor / Base / Strong
+
+60 days
+Floor / Base / Strong
+
+90 days
+Floor / Base / Strong
+
+Then:
+
+VEHICLE AFFORDABILITY
+
+Payment
+
+Insurance
+
+Fuel
+
+Maintenance
+
+Total vehicle cost
+
+Household impact
+
+Duplex impact
+
+Affordability status
+
+Then:
+
+SAFE-TO-DEPLOY
+
+Status
+
+Amount or NOT CALCULATED
+
+Full explanation
+
+==================================================
+100. FINAL RESPONSE FORMAT
+
+Return exactly:
+
+CURRENT HEAD:
+<hash>
+
+FINANCIAL PLANNING COMPLETION:
+PASS / PARTIAL / BLOCKED / FAIL
+
+FPC:
+<n>/40
+
+DOCUMENT INBOX:
+PASS / FAIL
+
+MOBILE DOCUMENT UPLOAD:
+PASS / FAIL
+
+STEVENS SETTLEMENT PARSER:
+PASS / PARTIAL / FAIL
+
+P&L INGESTION:
+PASS / PARTIAL / FAIL
+
+BANK STATEMENT INGESTION:
+PASS / PARTIAL / FAIL
+
+LIVE WELLS FARGO CONNECTION:
+NOT CONFIGURED
+
+ACCOUNT STATUS MODEL:
+PASS / FAIL
+
+DOUBLE-COUNT PROTECTION:
+PASS / FAIL
+
+MONEY UNIT / CENTS SAFETY:
+PASS / FAIL
+
+CURRENT SUSPECTED $78/$7,800 DEFECT:
+RESOLVED / NOT REPRODUCED / OPEN
+
+BUSINESS / HOUSEHOLD SEPARATION:
+PASS / FAIL
+
+OWNER DRAW ENGINE:
+PASS / PARTIAL / BLOCKED
+
+VERIFIED HOUSEHOLD INCOME:
+PASS / PARTIAL / BLOCKED
+
+INCOME HISTORY:
+SUFFICIENT / INSUFFICIENT
+
+INCOME FLOOR:
+$<amount> / USER_APPROVED / NOT ESTABLISHED
+
+BUDGET CREATION WIZARD:
+PASS / FAIL
+
+CURRENT PERIOD PLAN:
+APPROVED / DRAFT / NOT CREATED
+
+BUDGET CORRECTION:
+PASS / FAIL
+
+OBLIGATION ENGINE:
+PASS / FAIL
+
+RESERVE ENGINE:
+PASS / PARTIAL / BLOCKED
+
+FORWARD CASH FLOW:
+PASS / PARTIAL / BLOCKED
+
+30-DAY FORECAST:
+
+<summary>60-DAY FORECAST:
+
+<summary>90-DAY FORECAST:
+
+<summary>AUTO AFFORDABILITY:
+PASS / PARTIAL / BLOCKED
+
+TOTAL MONTHLY VEHICLE COST:
+$<amount or not configured>
+
+DUPLEX IMPACT:
+$<monthly impact or unavailable>
+
+SAFE-TO-DEPLOY:
+$<amount> / NOT CALCULATED
+
+SAFE-TO-DEPLOY STATUS:
+<status>
+
+SAFE-TO-DEPLOY EXPLAINABILITY:
+PASS / FAIL
+
+FINANCIAL REVIEW ITEMS OPEN:
+<n>
+
+GROK AUTHORITY:
+ADVISORY ONLY
+
+BANK WRITE AUTHORITY:
+NONE
+
+ACH:
+DISABLED
+
+BROKER ORDERS:
+DISABLED
+
+MICRO-LIVE:
+DISABLED
+
+REAL MONEY MOVED:
+$0
+
+CURRENT ROUTE COUNT:
+<n>
+
+CERTIFIED ROUTE COUNT:
+<n>
+
+USER ACTION REQUIRED:
+<exact action or NONE>
+
+NEXT PHASE:
+ONLY AFTER THIS SPRINT PASSES — CAPITAL WATERFALL / DUPLEX ACCELERATION / AUTO PURCHASE READINESS

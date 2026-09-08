@@ -172,6 +172,19 @@ test("authenticated Treasury certifies Safe-to-Deploy 2.0 readiness states and r
     const fixture = await setupCapitalGovernorBrowserFixture(disposableUser.id, disposableEmail);
     expect(fixture.householdId).toBeTruthy();
 
+    governorResponse = readyState;
+    await page.goto("/budget");
+    await expect(page.getByRole("heading", { name: /Give every dollar/i })).toBeVisible();
+    const budgetPanel = page.getByTestId("budget-capital-governor");
+    await expect(budgetPanel).toBeVisible();
+    await expect(budgetPanel).toContainText("Capital Governor 2.0");
+    await expect(budgetPanel).toContainText("Safe to deploy");
+    await expect(budgetPanel).toContainText("Capital surplus · base");
+    await expect(budgetPanel).toContainText("Waterfall available");
+    await expect(budgetPanel).toContainText("Advisory only");
+    await expect(budgetPanel).toContainText("do not move money");
+
+    governorResponse = undefined;
     await page.goto("/treasury");
     await expect(page.getByRole("heading", { name: /Every dollar with a job/i })).toBeVisible();
     const panel = page.getByTestId("capital-governor-v2-panel");

@@ -2040,7 +2040,8 @@ function BudgetPage() {
            <div className="budget-governor-lower">
              <div className="budget-governor-buckets">
                <div className="budget-governor-heading"><span className="eyebrow">Reserve layer</span><strong>Fund protection before opportunity</strong></div>
-               {capitalGovernor.data.bucketStatus.filter((bucket) => Number(bucket.gap) > 0 || bucket.protected).slice(0, 5).map((bucket) => <div className="budget-governor-bucket" key={bucket.key}><div><strong>{bucket.label}</strong><span>{bucket.protected ? 'Protected designation' : 'Funding gap'}</span></div><b>{displayMoney(bucket.gap, '$0')}</b></div>)}
+               {(capitalGovernor.data.bucketStatus ?? []).filter((bucket) => Number(bucket.gap) > 0 || bucket.protected).slice(0, 5).map((bucket) => <div className="budget-governor-bucket" key={bucket.key}><div><strong>{bucket.label}</strong><span>{bucket.protected ? 'Protected designation' : 'Funding gap'}</span></div><b>{displayMoney(bucket.gap, '$0')}</b></div>)}
+               {(capitalGovernor.data.bucketStatus ?? []).filter((bucket) => Number(bucket.gap) > 0 || bucket.protected).length === 0 && <div className="budget-governor-empty">No reserve gaps or protected bucket details were returned for this snapshot.</div>}
              </div>
              <div className="budget-governor-boundary"><LockKeyhole size={16} /><div><strong>Advisory only</strong><span>Waterfall recommendations do not move money, unlock Duplex Reserve, authorize Micro-Live, or change this household budget.</span></div></div>
            </div>

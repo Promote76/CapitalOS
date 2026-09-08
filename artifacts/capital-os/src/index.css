@@ -3387,6 +3387,13 @@ button {
   color: var(--text-primary);
   font: 600 12px var(--app-font-mono);
 }
+.budget-governor-empty {
+  padding: 13px 0;
+  border-top: 1px solid var(--line);
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
 .budget-governor-boundary,
 .budget-governor-error,
 .budget-governor-loading {

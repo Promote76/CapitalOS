@@ -3060,6 +3060,7 @@ const financialDocumentTypes: Array<{ type: FinancialDocumentUploadInputDocument
 function FinancialDocumentInboxPage() {
   const documents = useListFinancialDocuments();
   const queue = useListFinancialReviewQueue();
+  const accounts = useListFinancialAccounts();
   const requestUpload = useRequestFinancialDocumentUploadUrl();
   const ingest = useIngestFinancialDocument();
   const [location] = useLocation();
@@ -3067,6 +3068,7 @@ function FinancialDocumentInboxPage() {
   const selectedInitial = financialDocumentTypes.some((item) => item.type === initialType) ? initialType as FinancialDocumentUploadInputDocumentType : 'STEVENS_SETTLEMENT';
   const [documentType, setDocumentType] = useState<FinancialDocumentUploadInputDocumentType>(selectedInitial);
   const [file, setFile] = useState<File | null>(null);
+  const [accountId, setAccountId] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -3096,7 +3098,19 @@ function FinancialDocumentInboxPage() {
       const target = await requestUpload.mutateAsync({ data: { name: file.name, size: file.size, contentType, documentType } });
       const stored = await fetch(target.uploadURL, { method: 'PUT', headers: { 'Content-Type': target.contentType }, body: file });
       if (!stored.ok) throw new Error('The file could not be uploaded to App Storage.');
-      await ingest.mutateAsync({ data: { documentType, sourceFileName: file.name, sourceObjectPath: target.objectPath, contentType: target.contentType, sourceSizeBytes: file.size, uploadGrant: target.uploadGrant, sourceInstitution: selected.institution || undefined } });
+      if (documentType === 'BANK_STATEMENT' && !accountId) throw new Error('Choose the household account shown on this statement.');
+      const account = accounts.data?.accounts.find((item) => item.id === accountId);
+      await ingest.mutateAsync({ data: {
+        documentType,
+        sourceFileName: file.name,
+        sourceObjectPath: target.objectPath,
+        contentType: target.contentType,
+        sourceSizeBytes: file.size,
+        uploadGrant: target.uploadGrant,
+        sourceInstitution: account?.institution || selected.institution || undefined,
+        accountId: documentType === 'BANK_STATEMENT' ? accountId : undefined,
+        accountDisplayName: account?.nickname,
+      } });
       await refresh(); setMessage('Evidence uploaded. It will remain separate from planning totals until reviewed.'); setFile(null);
     } catch (cause) {
       const detail = cause instanceof Error ? cause.message : 'The financial document could not be ingested.';
@@ -3111,6 +3125,14 @@ function FinancialDocumentInboxPage() {
       <section className="card card-pad" data-testid="financial-document-upload">
         <CardTitle title="Upload financial evidence" subtitle="PDF, CSV, or XLSX · up to 50 MB. Drag a file here on desktop or choose a file on your device." />
         <div className="document-actions">{financialDocumentTypes.map((item) => <button type="button" className={`btn ${documentType === item.type ? 'btn-primary' : ''}`} key={item.type} onClick={() => choose(item.type)}>{item.label}</button>)}</div>
+        {documentType === 'BANK_STATEMENT' && <div className="field">
+          <label htmlFor="financial-document-account">Statement account</label>
+          <select id="financial-document-account" value={accountId} onChange={(event) => setAccountId(event.target.value)}>
+            <option value="">Choose a household account</option>
+            {accounts.data?.accounts.map((account) => <option key={account.id} value={account.id}>{account.nickname} · {account.institution}</option>)}
+          </select>
+          <span className="table-secondary">Required so duplicate, sign, and account checks can fail closed before inclusion.</span>
+        </div>}
         <div className="document-dropzone" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); setFile(event.dataTransfer.files[0] ?? null); setError(''); }}>
           <FileText size={22} /><strong>{file ? file.name : `Ready for ${selected.label.replace('Upload ', '')}`}</strong><span>{file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : 'Drop a file here, or use Choose file.'}</span>
           <button type="button" className="btn" onClick={() => inputRef.current?.click()}>Choose file</button>

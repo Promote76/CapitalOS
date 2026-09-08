@@ -10,7 +10,7 @@ import type { Actor } from "./capital-os";
 import { assertPermission, GovernanceError } from "../domain/governance";
 import { assertDocumentUploadGrant, assertPrivateObjectPath, createDocumentUploadGrant, downloadBusinessDocument, requestBusinessDocumentUpload } from "../lib/business-document-storage";
 import { BANK_STATEMENT_PARSER_VERSION, parseBankStatement } from "./bank-statement-parser";
-import { statementRowFingerprint } from "../domain/document-budget-bridge";
+import { statementRowFingerprint, suggestStatementCategory } from "../domain/document-budget-bridge";
 
 const acceptedTypes = new Set([
   "STEVENS_SETTLEMENT", "BUSINESS_PROFIT_AND_LOSS", "BANK_STATEMENT", "1099",
@@ -120,6 +120,14 @@ export async function ingestFinancialDocument(actor: Actor, input: {
     if (input.documentType === "BANK_STATEMENT") {
       const parsed = await parseBankStatement(bytes, input.contentType);
       const parseable = parsed.errors.length === 0;
+      const categoryCandidates = await tx.select({
+        id: financeCategories.id,
+        name: financeCategories.name,
+        categoryType: financeCategories.categoryType,
+      }).from(financeCategories).where(and(
+        eq(financeCategories.householdId, actor.householdId),
+        eq(financeCategories.active, true),
+      ));
       await tx.update(financialDocuments).set({
         parserVersion: BANK_STATEMENT_PARSER_VERSION,
         status: parseable ? "NEEDS_REVIEW" : "NEEDS_REVIEW",
@@ -134,14 +142,22 @@ export async function ingestFinancialDocument(actor: Actor, input: {
         status: "document_evidence_pending_review",
       }).returning();
       if (parseable && parsed.rows.length) {
-        const inserted = await tx.insert(bankStatementTransactions).values(parsed.rows.map((row) => ({
-          householdId: actor.householdId, bankStatementDocumentId: bankStatement!.id, postedDate: row.postedDate,
-          description: row.description, amount: row.amount, direction: row.direction, runningBalance: row.runningBalance,
-          reference: row.reference, sourcePage: row.sourcePage, confidence: "0.95",
-          sourceLine: row.sourceLine, sourceRegion: row.sourceRegion, parserVersion: BANK_STATEMENT_PARSER_VERSION,
-          evidenceFingerprint: row.evidenceFingerprint, originalValue: row.originalValue,
-          reviewStatus: "document_evidence_pending_review",
-        }))).onConflictDoNothing({
+        const inserted = await tx.insert(bankStatementTransactions).values(parsed.rows.map((row) => {
+          const suggestion = suggestStatementCategory(row.description, row.direction, categoryCandidates);
+          return {
+            householdId: actor.householdId, bankStatementDocumentId: bankStatement!.id, postedDate: row.postedDate,
+            description: row.description, amount: row.amount, direction: row.direction, runningBalance: row.runningBalance,
+            reference: row.reference, sourcePage: row.sourcePage, confidence: "0.95",
+            sourceLine: row.sourceLine, sourceRegion: row.sourceRegion, parserVersion: BANK_STATEMENT_PARSER_VERSION,
+            evidenceFingerprint: row.evidenceFingerprint, originalValue: row.originalValue,
+            reviewStatus: "document_evidence_pending_review",
+            suggestedCategoryId: suggestion?.categoryId,
+            suggestedCategoryConfidence: suggestion?.confidence,
+            suggestedCategoryReason: suggestion?.reason,
+            suggestedCategorySource: suggestion ? "HOUSEHOLD_CATEGORY_NAME_V1" : undefined,
+            categoryDecisionStatus: suggestion ? "SUGGESTED" as const : "UNCLASSIFIED" as const,
+          };
+        })).onConflictDoNothing({
           target: [bankStatementTransactions.householdId, bankStatementTransactions.evidenceFingerprint],
         }).returning();
         transactions = inserted.map((row) => ({ ...row, correctionHistory: [] }));
@@ -455,6 +471,7 @@ export async function decideBankStatementTransactionCategory(actor: Actor, trans
       if (!input.categoryId || !["USER_CONFIRMED", "USER_CORRECTED"].includes(input.status)) throw new GovernanceError("INVALID_STATE", "Household inclusion requires an explicit category decision");
       const [category] = await tx.select().from(financeCategories).where(and(eq(financeCategories.id, input.categoryId), eq(financeCategories.householdId, actor.householdId), eq(financeCategories.active, true))).limit(1);
       if (!category) throw new GovernanceError("INVALID_STATE", "Category must be active and belong to this household");
+      if (category.categoryType === "transfer") throw new GovernanceError("INVALID_STATE", "Transfer categories require the explicit transfer exclusion decision");
     } else if (input.categoryId) throw new GovernanceError("INVALID_STATE", "Non-household evidence cannot receive a household category");
     const [updated] = await tx.update(bankStatementTransactions).set({ selectedCategoryId: input.categoryId ?? null, categoryDecisionStatus: input.status, economicClassification: input.economicClassification, categoryDecidedBy: actor.userId, categoryDecidedAt: new Date(), categoryCorrectionVersion: row.categoryCorrectionVersion + 1 }).where(eq(bankStatementTransactions.id, row.id)).returning();
     const result = { ...updated, correctionHistory: [] };

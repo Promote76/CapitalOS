@@ -2,23 +2,24 @@
 
 **Date:** 2026-09-08  
 **Area:** Financial Documents, Budget, Accounting, Forecasts, and Capital Governor  
-**Overall assessment:** **SAFE BUT FUNCTIONALLY INCOMPLETE**
+**Overall assessment:** **IMPLEMENTED — RELEASE STATUS DETERMINED BY CURRENT CERTIFICATION**
+
+> **Post-implementation update (2026-09-08):** This report originally documented the gap that led to the document-to-Budget bridge work. That gap has now been implemented. The historical analysis below is retained as the design and safety rationale; statements written in the present tense about the bridge being absent describe the pre-implementation baseline, not the current product.
 
 ## Executive conclusion
 
-The current implementation safely ingests and reviews uploaded bank statements, but it does **not** complete the expected workflow of using reviewed statement transactions to fill corresponding Budget categories.
+The implementation now provides a controlled, human-approved bridge from reviewed bank-statement evidence to categorized official household transactions and Budget actuals.
 
-Today, reviewed uploads produce a separate advisory evidence summary. They do not:
+Reviewed uploads still produce a separate advisory evidence summary and do not become official activity merely through evidence approval. A separate category decision and explicit link-or-import action now:
 
-- assign transactions to Budget categories;
-- create observed spending or income by category;
-- match an uploaded row to an existing financial transaction;
-- populate monthly category actuals;
-- recommend a category mapping;
-- alter planned category targets; or
-- become official Accounting activity.
+- records a household-scoped category suggestion, confidence, and rationale;
+- lets the reviewer confirm or change the category independently of parsed-evidence approval;
+- previews household-scoped matches before creation;
+- links one existing transaction or creates exactly one new transaction;
+- populates monthly category actuals from eligible official transactions; and
+- preserves planned targets and all financial-authority boundaries.
 
-This means the implementation is correct as an evidence-isolation layer, but incomplete as a document-to-budget workflow.
+Transfers, settlement-linked rows, ambiguous duplicates, invalid signs, foreign accounts or categories, and out-of-policy dates fail closed. Corrections, unlinking, import reversals, source provenance, and audit history remain explicit.
 
 ## What the user reasonably expects
 
@@ -33,7 +34,7 @@ A complete workflow should allow a family to:
 7. Compare actual category activity with the approved monthly plan.
 8. Preserve source-document, source-line, correction, reviewer, and audit provenance.
 
-The current implementation stops after step 2 and shows aggregate evidence instead of completing steps 3–8.
+The current implementation completes steps 3–8 through explicit category-decision and financial-inclusion actions. Evidence approval alone still stops safely before official activity.
 
 ## Current end-to-end behavior
 
@@ -93,17 +94,17 @@ Official monthly Budget categories are stored separately in planning periods and
 
 Category actuals and weekly guidance are derived from eligible, reviewed household `financeTransactions`, not from uploaded bank-statement evidence rows.
 
-There is currently no persisted category assignment on an uploaded statement row and no bridge that creates or links an approved `financeTransaction`.
+Persisted suggestion and reviewer-selected category fields now connect an eligible uploaded row to an explicit financial inclusion record, which either links one existing `financeTransaction` or creates exactly one new one.
 
-**Status:** Incomplete.
+**Status:** Implemented. Imported or linked eligible transactions contribute to observed actuals; planning snapshots remain unchanged.
 
 ### 5. Accounting
 
 Accounting now counts reviewed household documents, but its balances, cash flow, income, expenses, and category totals continue to use official accounts and financial transactions.
 
-Uploaded statement amounts do not enter Accounting.
+Uploaded evidence alone does not enter Accounting. An explicitly linked or imported official transaction enters Accounting under the same reviewed-transaction rules as other official activity.
 
-**Status:** Safe and internally consistent, but it cannot show category activity from uploaded statements until an explicit import/link workflow exists.
+**Status:** Implemented with explicit import/link authority and retained evidence isolation.
 
 ### 6. Forecasts and variable income
 
@@ -130,9 +131,9 @@ Capital Governor uses uploaded documents only as a readiness signal:
 
 **Status:** Complete as a risk boundary.
 
-## Where the workflow disconnects
+## Implemented workflow bridge
 
-The missing bridge is:
+The implemented bridge is:
 
 ```text
 Uploaded statement row
@@ -145,14 +146,14 @@ Uploaded statement row
   → weekly guidance, Accounting, and forecast refresh
 ```
 
-At present, `RECLASSIFY` means “correct the reviewed evidence.” It does not mean “assign this row to an official Budget category.”
+`RECLASSIFY` continues to mean “correct the reviewed evidence.” Category confirmation remains a separate decision, and financial inclusion remains a further explicit action.
 
-The system therefore has two disconnected transaction models:
+The system retains two deliberately separate transaction models:
 
 1. **Bank-statement evidence rows** — source-faithful, reviewable, and advisory.
 2. **Household financial transactions** — categorized, official planning and Accounting inputs.
 
-No controlled conversion or linkage exists between them.
+A controlled inclusion record now links them without erasing their separate authority and provenance.
 
 ## Required corrected implementation
 
@@ -282,17 +283,19 @@ The document-to-budget workflow should not be considered complete until all of t
 
 ## Current certification summary
 
-The current implementation has passed its existing evidence-safety tests, typechecks, API contract checks, generated-artifact checks, database fixtures, and authenticated Budget certification.
+The current release result is generated by:
 
-Those checks certify that the advisory evidence boundary works safely. They do **not** certify document-to-category population because that workflow does not yet exist.
+`CAPITAL_OS_RUN_INTEGRATION=1 CAPITAL_OS_RUN_BROWSER=1 pnpm run certify:document-budget-bridge`
+
+The command requires focused domain tests, API and web typechecks, API-contract parity, generated-finance-artifact freshness, the real database integration fixture, and the authenticated browser journey. Skipped database or browser evidence is reported as **BLOCKED**, never as a pass. Current generated evidence is stored under `docs/certification/`.
 
 ## Final decision
 
 **Evidence ingestion and review:** COMPLETE  
 **Advisory Budget evidence summary:** COMPLETE  
 **Risk and authority isolation:** COMPLETE  
-**Automatic category population:** NOT IMPLEMENTED  
-**Human-approved category utilization:** NOT IMPLEMENTED  
-**Uploaded-document-to-Budget workflow:** INCOMPLETE
+**Automatic category population:** INTENTIONALLY DISALLOWED
+**Human-approved category utilization:** IMPLEMENTED
+**Uploaded-document-to-Budget workflow:** IMPLEMENTED; RELEASE STATUS REQUIRES A CURRENT NON-BLOCKED CERTIFICATION
 
-The recommended correction is not to make uploads automatically authoritative. It is to add a controlled, human-approved bridge from reviewed evidence to categorized official transactions so Budget actuals reflect the uploaded statement without silently changing the family's plan.
+The implemented correction does not make uploads automatically authoritative. It adds the controlled, human-approved bridge described in this report so Budget actuals can reflect reviewed statement activity without silently changing the family's plan.

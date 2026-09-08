@@ -58,7 +58,7 @@ const rowUi = "artifacts/capital-os/src/pages/TransactionEvidenceRow.tsx";
 const documentsUi = "artifacts/capital-os/src/pages/documents.tsx";
 
 const definitions = [
-  ["DBB-01", "Category Suggestion", [[schema, /suggestedCategoryId/], [domainTest, /explicit human-decision states/]], false],
+  ["DBB-01", "Category Suggestion", [[schema, /suggestedCategoryId/], [service, /suggestStatementCategory/], [domainTest, /household candidates/]], false],
   ["DBB-02", "Category Household Scope", [[service, /Category must be active and belong to this household/], [integrationTest, /foreign category/]], true],
   ["DBB-03", "Evidence vs Inclusion Separation", [[service, /reviewFinancialDocument/], [integrationTest, /deliberately separate from financial inclusion/]], true],
   ["DBB-04", "Match Before Create", [[service, /previewBankStatementTransactionMatch/], [service, /ONE_HIGH_CONFIDENCE_MATCH/]], true],
@@ -87,7 +87,7 @@ const definitions = [
   ["DBB-27", "Atomicity", [[service, /db\.transaction/], [integrationTest, /rolls back the official row/]], true],
   ["DBB-28", "Concurrency", [[service, /pg_advisory_xact_lock/], [schema, /householdRowUnique/], [integrationTest, /Simultaneous first import/]], true],
   ["DBB-29", "Audit", [[service, /statement_financial_imported/], [service, /statement_financial_reversed/], [integrationTest, /auditEvents/]], true],
-  ["DBB-30", "Authenticated Browser Journey", [[rowUi, /Confirm import as new/], [rowUi, /Link evidence only/], [rowUi, /Reverse import/]], "browser"],
+  ["DBB-30", "Authenticated Browser Journey", [[rowUi, /Confirm import as new/], [rowUi, /Link evidence only/], [rowUi, /Reverse import/], ["artifacts/api-server/src/browser/document-budget-bridge-certification.spec.ts", /setInputFiles/]], "browser"],
 ];
 
 function tail(output) {

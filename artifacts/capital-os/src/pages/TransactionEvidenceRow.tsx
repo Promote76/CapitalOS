@@ -53,7 +53,9 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
   const reconcileTx = useReconcileBankStatementTransactionInclusion({ request: { headers: { 'Idempotency-Key': reconcileKey } } });
 
   const [matchPreviewData, setMatchPreviewData] = useState<{outcome: string, candidates: StatementMatchCandidate[]} | null>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState(transaction.selectedCategoryId ?? '');
+  const [selectedCategoryId, setSelectedCategoryId] = useState(
+    transaction.selectedCategoryId ?? transaction.suggestedCategoryId ?? '',
+  );
   const [localDecision, setLocalDecision] = useState(transaction.categoryDecisionStatus ?? null);
 
   const invalidateEverything = () => {
@@ -69,12 +71,17 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
 
   const onDecideCategory = async (economicClassification: 'HOUSEHOLD' | 'BUSINESS' | 'TRANSFER' | 'SETTLEMENT_LINK' | 'UNKNOWN') => {
     try {
-      if (economicClassification === 'HOUSEHOLD' && !selectedCategoryId) {
+      const selectedCategoryIsVisible = (budget?.categories ?? []).some(
+        (category) => category.id === selectedCategoryId && category.categoryType !== 'transfer',
+      );
+      if (economicClassification === 'HOUSEHOLD' && (!selectedCategoryId || !selectedCategoryIsVisible)) {
         toast({ title: 'Choose a Budget category first', variant: 'destructive' });
         return;
       }
       const status = economicClassification === 'HOUSEHOLD'
-        ? (transaction.selectedCategoryId ? 'USER_CORRECTED' : 'USER_CONFIRMED')
+        ? (transaction.suggestedCategoryId && selectedCategoryId === transaction.suggestedCategoryId
+          ? 'USER_CONFIRMED'
+          : 'USER_CORRECTED')
         : economicClassification === 'TRANSFER'
           ? 'NOT_APPLICABLE_TRANSFER'
           : economicClassification === 'SETTLEMENT_LINK'
@@ -193,6 +200,8 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
   const householdDecision = ['USER_CONFIRMED', 'USER_CORRECTED'].includes(localDecision ?? '');
   const activeInclusion = inclusion && inclusion.status !== 'REVERSED' ? inclusion : undefined;
   const effectiveAmount = ((transaction.correctedValue as { amount?: string } | null)?.amount ?? transaction.amount);
+  const visibleCategories = (budget?.categories ?? []).filter((category) => category.categoryType !== 'transfer');
+  const selectedCategoryIsVisible = visibleCategories.some((category) => category.id === selectedCategoryId);
 
   return (
     <div className="mt-3 rounded-md border border-[var(--line)] p-3 text-xs" data-testid={`statement-transaction-${transaction.id}`}>
@@ -227,26 +236,32 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
           <div className="flex flex-col gap-3">
             <div className="grid gap-2 sm:grid-cols-[minmax(12rem,1fr)_auto]">
               <select
-                value={selectedCategoryId}
+                value={selectedCategoryIsVisible ? selectedCategoryId : ''}
                 onChange={(event) => setSelectedCategoryId(event.target.value)}
                 className="input"
                 aria-label={`Budget category for ${transaction.description}`}
                 data-testid={`select-statement-category-${transaction.id}`}
               >
                 <option value="">Choose Budget category</option>
-                {(budget?.categories ?? []).filter((category) => category.categoryType !== 'transfer').map((category) => (
+                {visibleCategories.map((category) => (
                   <option key={category.id} value={category.id}>{category.name}</option>
                 ))}
               </select>
               <button
                 className="btn btn-primary !h-9 !text-[11px]"
                 onClick={() => onDecideCategory('HOUSEHOLD')}
-                disabled={!selectedCategoryId || decideCategory.isPending}
+                disabled={!selectedCategoryId || !selectedCategoryIsVisible || decideCategory.isPending}
                 data-testid={`button-confirm-statement-category-${transaction.id}`}
               >
                 <Check size={12}/> Confirm household category
               </button>
             </div>
+            {transaction.suggestedCategoryId && (
+              <p className="text-[var(--ink-soft)]" data-testid={`statement-category-suggestion-${transaction.id}`}>
+                Suggested with {transaction.suggestedCategoryConfidence?.toLowerCase() ?? 'unknown'} confidence
+                {transaction.suggestedCategoryReason ? ` — ${transaction.suggestedCategoryReason}` : ''}. A reviewer must still confirm or change it.
+              </p>
+            )}
             <div className="flex gap-2 flex-wrap">
               <button className="btn !h-8 !text-[11px]" onClick={() => onDecideCategory('TRANSFER')} data-testid={`button-exclude-statement-transfer-${transaction.id}`}><ArrowRightLeft size={12}/> Transfer</button>
               <button className="btn !h-8 !text-[11px]" onClick={() => onDecideCategory('SETTLEMENT_LINK')} data-testid={`button-exclude-statement-settlement-${transaction.id}`}><LinkIcon size={12}/> Settlement-linked</button>

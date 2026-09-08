@@ -6621,6 +6621,21 @@ export const VariableBudgetForecastPressure = {
 } as const;
 
 export type VariableBudgetForecastCalculationRowsItemOperation = typeof VariableBudgetForecastCalculationRowsItemOperation[keyof typeof VariableBudgetForecastCalculationRowsItemOperation];
+
+
+export const VariableBudgetForecastCalculationRowsItemOperation = {
+  ADD: 'ADD',
+  SUBTRACT: 'SUBTRACT',
+} as const;
+
+export type VariableBudgetForecastCalculationRowsItem = {
+  key: string;
+  label: string;
+  operation: VariableBudgetForecastCalculationRowsItemOperation;
+  amount: string;
+  source: string;
+};
+
 export interface VariableBudgetForecast {
   days: number;
   scenario: VariableBudgetForecastScenario;
@@ -6906,16 +6921,3 @@ export const ExportDailyOpsHistoryCadence = {
   MONTH: 'MONTH',
 } as const;
 
-
-export type VariableBudgetForecastCalculationRowsItem = {
-  key: string;
-  label: string;
-  operation: VariableBudgetForecastCalculationRowsItemOperation;
-  amount: string;
-  source: string;
-};
-
-export const VariableBudgetForecastCalculationRowsItemOperation = {
-  ADD: 'ADD',
-  SUBTRACT: 'SUBTRACT',
-} as const;

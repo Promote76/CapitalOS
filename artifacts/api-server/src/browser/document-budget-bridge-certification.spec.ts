@@ -2,7 +2,15 @@ import { expect, test } from "@playwright/test";
 import { clerkClient } from "@clerk/express";
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { auditEvents, db, financeTransactions, statementFinancialReversals } from "@workspace/db";
+import {
+  auditEvents,
+  bankStatementDocuments,
+  bankStatementTransactions,
+  db,
+  financeTransactions,
+  financialDocuments,
+  statementFinancialReversals,
+} from "@workspace/db";
 import { cleanupDocumentBudgetBridgeBrowserFixture, setupDocumentBudgetBridgeBrowserFixture } from "../integration/document-budget-bridge-browser-fixture.ts";
 
 test("authenticated document evidence becomes an official Budget actual only by explicit bridge decisions", async ({ page }) => {
@@ -12,7 +20,7 @@ test("authenticated document evidence becomes an official Budget actual only by 
   if (!local || !domain) throw new Error("BROWSER_TEST_EMAIL must be valid");
   const runId = randomUUID();
   const disposableEmail = `${local}+dbb-${runId.slice(0, 8)}@${domain}`;
-    const month = new Date().toISOString().slice(0, 7);
+  const month = new Date().toISOString().slice(0, 7);
   let clerkUserId: string | undefined;
   try {
     const user = await clerkClient.users.createUser({ emailAddress: [disposableEmail], firstName: "Bridge", lastName: "certification", skipPasswordRequirement: true });
@@ -33,28 +41,66 @@ test("authenticated document evidence becomes an official Budget actual only by 
       return { status: response.status, body: await response.json() };
     }) as { status: number; body: { incomeStatement: { totalExpenses: string } } };
     expect(accountingBefore.status).toBe(200);
-    await page.goto("/documents");
-    const rent = page.getByTestId(`statement-transaction-${fixture.rows.rent}`);
+    const uploadName = `bridge-upload-${runId}.csv`;
+    const uploadDescription = `Bridge Housing ${runId}`;
+    await page.goto("/documents?type=BANK_STATEMENT");
+    await page.getByLabel("Statement account").selectOption(fixture.accountId);
+    await page.locator('[data-testid="financial-document-upload"] input[type="file"]').setInputFiles({
+      name: uploadName,
+      mimeType: "text/csv",
+      buffer: Buffer.from(`Date,Description,Amount\n${month}-15,\"${uploadDescription}\",-900.00\n`),
+    });
+    await page.getByRole("button", { name: "Upload and ingest" }).click();
+    await expect(page.getByRole("status")).toContainText("Evidence uploaded");
+    const [uploadedDocument] = await db.select().from(financialDocuments).where(and(
+      eq(financialDocuments.householdId, fixture.householdId),
+      eq(financialDocuments.sourceFileName, uploadName),
+    )).limit(1);
+    expect(uploadedDocument).toBeTruthy();
+    const [uploadedStatement] = await db.select().from(bankStatementDocuments).where(and(
+      eq(bankStatementDocuments.householdId, fixture.householdId),
+      eq(bankStatementDocuments.documentId, uploadedDocument.id),
+    )).limit(1);
+    expect(uploadedStatement.accountId).toBe(fixture.accountId);
+    const [uploadedRent] = await db.select().from(bankStatementTransactions).where(and(
+      eq(bankStatementTransactions.householdId, fixture.householdId),
+      eq(bankStatementTransactions.bankStatementDocumentId, uploadedStatement.id),
+    )).limit(1);
+    expect(uploadedRent).toMatchObject({
+      description: uploadDescription,
+      amount: "-900.00",
+      suggestedCategoryId: fixture.categoryId,
+      suggestedCategoryConfidence: "HIGH",
+      categoryDecisionStatus: "SUGGESTED",
+    });
+    await page.getByTestId(`row-queue-item-${uploadedRent.id}`).getByRole("button", { name: "Approve" }).click();
+    await page.getByTestId(`row-queue-item-${uploadedDocument.id}`).getByRole("button", { name: "Verify" }).click();
+    const rent = page.getByTestId(`statement-transaction-${uploadedRent.id}`);
     await expect(rent).toContainText("Evidence: RESOLVED");
-    await page.getByTestId(`select-statement-category-${fixture.rows.rent}`).selectOption(fixture.categoryId);
-    await page.getByTestId(`button-confirm-statement-category-${fixture.rows.rent}`).click();
-    await page.getByTestId(`button-preview-statement-match-${fixture.rows.rent}`).click();
-    await expect(page.getByTestId(`statement-match-result-${fixture.rows.rent}`)).toContainText("NO MATCH");
-    await expect(page.getByTestId(`statement-match-result-${fixture.rows.rent}`)).toContainText("changes actuals, not the planned target");
-    await page.getByTestId(`button-import-statement-row-${fixture.rows.rent}`).click();
+    await expect(page.getByTestId(`select-statement-category-${uploadedRent.id}`)).toHaveValue(fixture.categoryId);
+    await expect(page.getByTestId(`statement-category-suggestion-${uploadedRent.id}`)).toContainText("high confidence");
+    await page.getByTestId(`button-confirm-statement-category-${uploadedRent.id}`).click();
+    await expect(page.getByTestId(`text-statement-category-decision-${uploadedRent.id}`)).toContainText("USER CONFIRMED");
+    const [confirmedRent] = await db.select().from(bankStatementTransactions).where(eq(bankStatementTransactions.id, uploadedRent.id));
+    expect(confirmedRent.categoryDecisionStatus).toBe("USER_CONFIRMED");
+    expect(confirmedRent.selectedCategoryId).toBe(fixture.categoryId);
+    await page.getByTestId(`button-preview-statement-match-${uploadedRent.id}`).click();
+    await expect(page.getByTestId(`statement-match-result-${uploadedRent.id}`)).toContainText("NO MATCH");
+    await expect(page.getByTestId(`statement-match-result-${uploadedRent.id}`)).toContainText("changes actuals, not the planned target");
+    await page.getByTestId(`button-import-statement-row-${uploadedRent.id}`).click();
     await expect(rent).toContainText("Inclusion: IMPORTED NEW");
     const importedRows = await db.select().from(financeTransactions).where(and(
       eq(financeTransactions.householdId, fixture.householdId),
-      eq(financeTransactions.sourceStatementRowId, fixture.rows.rent),
+      eq(financeTransactions.sourceStatementRowId, uploadedRent.id),
     ));
     expect(importedRows).toHaveLength(1);
     expect(importedRows[0]).toMatchObject({
       amount: "-900.00", categoryId: fixture.categoryId, dataSource: "bank_statement_import",
-      sourceDocumentId: fixture.documentId, sourceStatementRowId: fixture.rows.rent,
+      sourceDocumentId: uploadedDocument.id, sourceStatementRowId: uploadedRent.id,
     });
     // An imported row no longer exposes an import action; its durable source
     // fingerprint also ensures a browser replay cannot create another row.
-    await expect(page.getByTestId(`button-import-statement-row-${fixture.rows.rent}`)).toHaveCount(0);
+    await expect(page.getByTestId(`button-import-statement-row-${uploadedRent.id}`)).toHaveCount(0);
 
     await page.goto(`/budget?month=${month}`);
     const budgetRow = page.getByTestId(`budget-category-desktop-${fixture.categoryId}`);
@@ -96,9 +142,9 @@ test("authenticated document evidence becomes an official Budget actual only by 
       const browser = globalThis as unknown as { document: { documentElement: { scrollWidth: number } }; innerWidth: number };
       return browser.document.documentElement.scrollWidth <= browser.innerWidth;
     })).toBe(true);
-    await page.getByTestId(`button-reverse-statement-import-${fixture.rows.rent}`).click();
+    await page.getByTestId(`button-reverse-statement-import-${uploadedRent.id}`).click();
     await expect(rent).toContainText("Financial inclusion was reversed");
-    expect(await db.select().from(statementFinancialReversals).where(eq(statementFinancialReversals.statementRowId, fixture.rows.rent))).toHaveLength(1);
+    expect(await db.select().from(statementFinancialReversals).where(eq(statementFinancialReversals.statementRowId, uploadedRent.id))).toHaveLength(1);
     expect(await db.select().from(auditEvents).where(eq(auditEvents.householdId, fixture.householdId))).not.toHaveLength(0);
     await page.goto(`/budget?month=${month}`);
     await expect(budgetRow).toContainText("$0.00");

@@ -56,7 +56,6 @@ export async function setupDocumentBudgetBridgeBrowserFixture(externalAuthId: st
       reviewStatus: "RESOLVED", lastReviewAction: "APPROVE", reviewedBy: identity.userId, reviewedAt: new Date(),
       suggestedCategoryId: housing.id, suggestedCategoryConfidence: "HIGH", suggestedCategoryReason: "Fixture housing merchant",
     }).returning())[0];
-    const rent = await row("rent", `Bridge Rent ${runId}`, "-900.00");
     const transfer = await row("transfer", `Bridge transfer ${runId}`, "-50.00");
     const settlement = await row("settlement", `Bridge settlement deposit ${runId}`, "100.00");
     const oneMatch = await row("one-match", `Bridge one match ${runId}`, "-72.00");
@@ -71,7 +70,7 @@ export async function setupDocumentBudgetBridgeBrowserFixture(externalAuthId: st
       standard(ambiguous.description, "-33.00"), standard(ambiguous.description, "-33.00"),
     ]);
     return { householdId: identity.householdId, accountId: account.id, categoryId: housing.id, matchCategoryId: matchReview.id, documentId: document.id, month, rows: {
-      rent: rent.id, transfer: transfer.id, settlement: settlement.id, oneMatch: oneMatch.id, ambiguous: ambiguous.id,
+      transfer: transfer.id, settlement: settlement.id, oneMatch: oneMatch.id, ambiguous: ambiguous.id,
     }, existingTransactionId: existing.id };
   });
 }

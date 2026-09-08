@@ -24,7 +24,8 @@ test("document-to-budget bridge only includes explicitly approved household evid
     const [account] = await db.insert(financialAccounts).values({ householdId: household.id, institution: "Fixture Bank", nickname: `Bridge ${label}`, accountType: "checking", currentBalance: "0.00", connectionStatus: "manual", dataSource: "manual" }).returning();
     const [housing] = await db.insert(financeCategories).values({ householdId: household.id, name: `Housing ${suffix}`, categoryType: "fixed_expense", essentialStatus: "essential", monthlyTarget: "900.00" }).returning();
     const [food] = await db.insert(financeCategories).values({ householdId: household.id, name: `Food ${suffix}`, categoryType: "variable_essential", essentialStatus: "essential", monthlyTarget: "300.00" }).returning();
-    return { user, household, account, housing, food, actor: { userId: user.id, householdId: household.id, role: "owner" as const, source: "test-database" as const } };
+    const [transferCategory] = await db.insert(financeCategories).values({ householdId: household.id, name: `Credit card payment ${suffix}`, categoryType: "transfer", essentialStatus: "mixed", monthlyTarget: "0.00" }).returning();
+    return { user, household, account, housing, food, transferCategory, actor: { userId: user.id, householdId: household.id, role: "owner" as const, source: "test-database" as const } };
   };
 
   try {
@@ -70,6 +71,9 @@ test("document-to-budget bridge only includes explicitly approved household evid
     await assert.rejects(() => bridge.decideBankStatementTransactionCategory(primary.actor, rent.id, {
       status: "USER_CORRECTED", categoryId: foreign.housing.id, economicClassification: "HOUSEHOLD", reason: "foreign category", idempotencyKey: randomUUID(),
     }), /Category must be active and belong to this household/);
+    await assert.rejects(() => bridge.decideBankStatementTransactionCategory(primary.actor, transfer.id, {
+      status: "USER_CONFIRMED", categoryId: primary.transferCategory.id, economicClassification: "HOUSEHOLD", reason: "must use transfer exclusion", idempotencyKey: randomUUID(),
+    }), /explicit transfer exclusion decision/);
     const noMatch = await bridge.previewBankStatementTransactionMatch(primary.actor, rent.id);
     assert.equal(noMatch.outcome, "NO_MATCH");
 

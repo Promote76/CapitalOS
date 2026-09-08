@@ -147,7 +147,7 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
             ) : (
                 <div className="document-list">
                   {queueItems.map((item, idx) => (
-                   <div key={item?.id || idx} className="document-row" data-testid={`row-queue-item-${idx}`}>
+                   <div key={item?.id || idx} className="document-row" data-testid={item ? `row-queue-item-${item.id}` : `row-queue-item-${idx}`}>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <FileText size={14} className="text-[var(--ink-soft)]" />

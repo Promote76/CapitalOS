@@ -5,6 +5,7 @@ import {
   statementCategoryDecisionStatuses,
   statementFinancialInclusionStatuses,
   statementRowFingerprint,
+  suggestStatementCategory,
 } from "./document-budget-bridge.ts";
 
 test("statement bridge status vocabularies preserve the explicit human-decision states", () => {
@@ -39,4 +40,26 @@ test("statement row fingerprints are normalized, household-scoped, and not amoun
   assert.notEqual(fingerprint, statementRowFingerprint({ ...base, householdId: "household-b" }));
   assert.notEqual(fingerprint, statementRowFingerprint({ ...base, description: "Different merchant" }));
   assert.notEqual(fingerprint, statementRowFingerprint({ ...base, signedAmount: "-901.00" }));
+});
+
+test("statement category suggestions use only supplied household candidates and preserve reviewer uncertainty", () => {
+  const candidates = [
+    { id: "income", name: "Household income", categoryType: "income" },
+    { id: "housing", name: "Bridge Housing", categoryType: "fixed_expense" },
+    { id: "food", name: "Food", categoryType: "variable_expense" },
+    { id: "transfer", name: "Credit card payment", categoryType: "transfer" },
+  ];
+  assert.deepEqual(
+    suggestStatementCategory("Bridge Housing monthly payment", "withdrawal", candidates),
+    {
+      categoryId: "housing",
+      confidence: "HIGH",
+      reason: 'Statement description contains the household category name "Bridge Housing".',
+    },
+  );
+  assert.equal(suggestStatementCategory("Payroll", "deposit", candidates)?.categoryId, "income");
+  assert.equal(suggestStatementCategory("Unknown merchant", "withdrawal", candidates)?.confidence, "LOW");
+  assert.notEqual(suggestStatementCategory("Credit card payment", "withdrawal", candidates)?.categoryId, "transfer");
+  assert.equal(suggestStatementCategory("Credit card payment", "withdrawal", [candidates[0], candidates[3]]), null);
+  assert.equal(suggestStatementCategory("Payroll", "deposit", candidates.filter((item) => item.id !== "income")), null);
 });

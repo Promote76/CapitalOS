@@ -9,6 +9,7 @@ export * from "./execution-control.ts";
 export * from "./treasury.ts";
 export * from "./operations.ts";
 export * from "./business.ts";
+export * from "./business-income.ts";
 export * from "./financing.ts";
 export * from "./reliability.ts";
 export * from "./family-office.ts";

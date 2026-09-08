@@ -3619,6 +3619,302 @@ export interface AccountingOverview {
   accounts: AccountingAccount[];
 }
 
+export interface SettlementRevenueLineInput {
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  description: string;
+  /** @maxLength 60 */
+  category?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  amount: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,4})?$ */
+  quantity?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  unitAmount?: string;
+  serviceDate?: string;
+  /** @minimum 1 */
+  sourcePage?: number;
+}
+
+export interface SettlementDeductionLineInput {
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  description: string;
+  /** @maxLength 60 */
+  category?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  amount: string;
+  taxDeduction?: boolean;
+  passThrough?: boolean;
+  ownerDraw?: boolean;
+  reimbursement?: boolean;
+  /** @minimum 1 */
+  sourcePage?: number;
+}
+
+export interface SettlementDocumentInput {
+  businessId: string;
+  statementPeriodStart: string;
+  statementPeriodEnd: string;
+  paidDate?: string;
+  /** @maxLength 80 */
+  provider?: string;
+  /** @maxLength 255 */
+  sourceFileName?: string;
+  /** @maxLength 500 */
+  sourceObjectPath?: string;
+  /** @pattern ^[a-fA-F0-9]{64}$ */
+  sourceSha256?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  reportedGross?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  reportedDeductions?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  reportedNet?: string;
+  /** @maxLength 1000 */
+  notes?: string;
+  /** @minItems 1 */
+  revenueLines: SettlementRevenueLineInput[];
+  deductionLines: SettlementDeductionLineInput[];
+}
+
+export interface BusinessSettlementDocument {
+  id: string;
+  businessId: string;
+  sourceKind: string;
+  documentType: string;
+  /** @nullable */
+  provider: string | null;
+  statementPeriodStart: string;
+  statementPeriodEnd: string;
+  /** @nullable */
+  paidDate: string | null;
+  /** @nullable */
+  sourceFileName: string | null;
+  /** @nullable */
+  sourceObjectPath: string | null;
+  /** @nullable */
+  sourceSha256: string | null;
+  extractionStatus: string;
+  verificationStatus: string;
+  reportedGross: string;
+  reportedDeductions: string;
+  reportedNet: string;
+  /** @nullable */
+  notes: string | null;
+  /** @nullable */
+  correctedFromId: string | null;
+  sourceVersion: number;
+  createdAt: string;
+  updatedAt: string;
+  mathStatus: string;
+  mathReason: string;
+  calculatedNet: string;
+}
+
+export interface ProfitLossLineInput {
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
+  description: string;
+  /** @maxLength 60 */
+  category?: string;
+  /** @maxLength 30 */
+  lineType?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  amount: string;
+}
+
+export interface ProfitLossDocumentInput {
+  businessId: string;
+  statementPeriodStart: string;
+  statementPeriodEnd: string;
+  /** @maxLength 255 */
+  sourceFileName?: string;
+  /** @maxLength 500 */
+  sourceObjectPath?: string;
+  /** @pattern ^[a-fA-F0-9]{64}$ */
+  sourceSha256?: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  reportedRevenue: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  reportedExpenses: string;
+  /** @pattern ^-?[0-9]+(\.[0-9]{1,2})?$ */
+  reportedProfit: string;
+  /** @minItems 1 */
+  lines: ProfitLossLineInput[];
+}
+
+export interface BusinessProfitLossDocument {
+  id: string;
+  businessId: string;
+  statementPeriodStart: string;
+  statementPeriodEnd: string;
+  /** @nullable */
+  sourceFileName: string | null;
+  /** @nullable */
+  sourceObjectPath: string | null;
+  /** @nullable */
+  sourceSha256: string | null;
+  reportedRevenue: string;
+  reportedExpenses: string;
+  reportedProfit: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface BusinessIncomePeriodReconciliationInput {
+  businessId: string;
+  statementPeriodStart: string;
+  statementPeriodEnd: string;
+  /** @pattern ^-?[0-9]+(\.[0-9]{1,2})?$ */
+  reportedProfit?: string;
+}
+
+export interface BusinessIncomePeriodReconciliation {
+  id: string;
+  businessId: string;
+  statementPeriodStart: string;
+  statementPeriodEnd: string;
+  settlementGross: string;
+  settlementDeductions: string;
+  operatingExpenses: string;
+  calculatedProfit: string;
+  /** @nullable */
+  reportedProfit: string | null;
+  variance: string;
+  periodCoverage: string;
+  status: string;
+  reason: string;
+  createdAt: string;
+}
+
+export interface BusinessSettlementCashMatch {
+  id: string;
+  businessId: string;
+  settlementDocumentId: string;
+  /** @nullable */
+  financeTransactionId: string | null;
+  matchedAmount: string;
+  matchStatus: string;
+  confidence: string;
+  reason: string;
+  /** @nullable */
+  reviewedBy: string | null;
+  /** @nullable */
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export interface BusinessCashPositionInput {
+  businessId: string;
+  asOf: string;
+}
+
+export interface BusinessCashPosition {
+  id: string;
+  businessId: string;
+  asOf: string;
+  bankCash: string;
+  pendingDeposits: string;
+  outstandingAdvances: string;
+  escrowHeld: string;
+  reimbursementsDue: string;
+  reserveFloor: string;
+  safeToDistribute: string;
+  status: string;
+  reason: string;
+  createdAt: string;
+}
+
+export interface BusinessOwnerDrawInput {
+  businessId: string;
+  proposalDate: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  amount: string;
+  /** @maxLength 500 */
+  notes?: string;
+}
+
+export interface BusinessOwnerDraw {
+  id: string;
+  businessId: string;
+  proposalDate: string;
+  amount: string;
+  status: string;
+  eligibleAmount: string;
+  blockedReasons: string[];
+  /** @nullable */
+  approvedBy: string | null;
+  /** @nullable */
+  approvedAt: string | null;
+  /** @nullable */
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface BusinessOwnerDrawApprovalInput {
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  approvedAmount: string;
+  /** @maxLength 500 */
+  notes?: string;
+}
+
+export interface BusinessVerifiedHouseholdIncome {
+  id: string;
+  businessId: string;
+  ownerDrawProposalId: string;
+  incomeDate: string;
+  amount: string;
+  sourceType: string;
+  verificationStatus: string;
+  createdAt: string;
+}
+
+export interface BusinessIncomeAnomaly {
+  id: string;
+  businessId: string;
+  anomalyType: string;
+  severity: string;
+  status: string;
+  /** @nullable */
+  relatedEntityType: string | null;
+  /** @nullable */
+  relatedEntityId: string | null;
+  message: string;
+  createdAt: string;
+  /** @nullable */
+  resolvedAt: string | null;
+  /** @nullable */
+  resolvedBy: string | null;
+}
+
+export interface BusinessOwnerDrawApprovalResult {
+  proposal: BusinessOwnerDraw;
+  verifiedIncome: BusinessVerifiedHouseholdIncome;
+}
+
+export type BusinessIncomeIntelligenceSummaryBankSyncMode = typeof BusinessIncomeIntelligenceSummaryBankSyncMode[keyof typeof BusinessIncomeIntelligenceSummaryBankSyncMode];
+
+
+export const BusinessIncomeIntelligenceSummaryBankSyncMode = {
+  read_only: 'read_only',
+} as const;
+
+export type BusinessIncomeIntelligenceSummary = {
+  settlementCount: number;
+  reconciledSettlementCount: number;
+  openAnomalyCount: number;
+  pendingOwnerDrawAmount: string;
+  verifiedHouseholdIncome: string;
+  bankSyncMode: BusinessIncomeIntelligenceSummaryBankSyncMode;
+};
+
 export interface BusinessEntity {
   id: string;
   legalName: string;
@@ -3638,6 +3934,19 @@ export interface BusinessEntity {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface BusinessIncomeIntelligence {
+  asOf: string;
+  summary: BusinessIncomeIntelligenceSummary;
+  businesses: BusinessEntity[];
+  settlements: BusinessSettlementDocument[];
+  profitLossDocuments: BusinessProfitLossDocument[];
+  reconciliationRuns: BusinessIncomePeriodReconciliation[];
+  cashPositions: BusinessCashPosition[];
+  ownerDraws: BusinessOwnerDraw[];
+  verifiedIncome: BusinessVerifiedHouseholdIncome[];
+  anomalies: BusinessIncomeAnomaly[];
 }
 
 export interface BusinessEntityInput {

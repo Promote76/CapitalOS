@@ -6760,3 +6760,442 @@ export const UpdateBusinessReserveResponse = zod.object({
 })
 
 
+/**
+ * @summary Get settlement, reconciliation, cash, and verified-income intelligence
+ */
+export const GetBusinessIncomeIntelligenceResponse = zod.object({
+  "asOf": zod.coerce.date(),
+  "summary": zod.object({
+  "settlementCount": zod.number(),
+  "reconciledSettlementCount": zod.number(),
+  "openAnomalyCount": zod.number(),
+  "pendingOwnerDrawAmount": zod.string(),
+  "verifiedHouseholdIncome": zod.string(),
+  "bankSyncMode": zod.enum(['read_only'])
+}),
+  "businesses": zod.array(zod.object({
+  "id": zod.string(),
+  "legalName": zod.string(),
+  "displayName": zod.string(),
+  "entityType": zod.string(),
+  "ownershipPercentage": zod.string(),
+  "taxClassification": zod.string().nullable(),
+  "industry": zod.string().nullable(),
+  "status": zod.string(),
+  "formationDate": zod.coerce.date().nullable(),
+  "state": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})),
+  "settlements": zod.array(zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "sourceKind": zod.string(),
+  "documentType": zod.string(),
+  "provider": zod.string().nullable(),
+  "statementPeriodStart": zod.coerce.date(),
+  "statementPeriodEnd": zod.coerce.date(),
+  "paidDate": zod.coerce.date().nullable(),
+  "sourceFileName": zod.string().nullable(),
+  "sourceObjectPath": zod.string().nullable(),
+  "sourceSha256": zod.string().nullable(),
+  "extractionStatus": zod.string(),
+  "verificationStatus": zod.string(),
+  "reportedGross": zod.string(),
+  "reportedDeductions": zod.string(),
+  "reportedNet": zod.string(),
+  "notes": zod.string().nullable(),
+  "correctedFromId": zod.string().nullable(),
+  "sourceVersion": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "mathStatus": zod.string(),
+  "mathReason": zod.string(),
+  "calculatedNet": zod.string()
+})),
+  "profitLossDocuments": zod.array(zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "statementPeriodStart": zod.coerce.date(),
+  "statementPeriodEnd": zod.coerce.date(),
+  "sourceFileName": zod.string().nullable(),
+  "sourceObjectPath": zod.string().nullable(),
+  "sourceSha256": zod.string().nullable(),
+  "reportedRevenue": zod.string(),
+  "reportedExpenses": zod.string(),
+  "reportedProfit": zod.string(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "reconciliationRuns": zod.array(zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "statementPeriodStart": zod.coerce.date(),
+  "statementPeriodEnd": zod.coerce.date(),
+  "settlementGross": zod.string(),
+  "settlementDeductions": zod.string(),
+  "operatingExpenses": zod.string(),
+  "calculatedProfit": zod.string(),
+  "reportedProfit": zod.string().nullable(),
+  "variance": zod.string(),
+  "periodCoverage": zod.string(),
+  "status": zod.string(),
+  "reason": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "cashPositions": zod.array(zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "asOf": zod.coerce.date(),
+  "bankCash": zod.string(),
+  "pendingDeposits": zod.string(),
+  "outstandingAdvances": zod.string(),
+  "escrowHeld": zod.string(),
+  "reimbursementsDue": zod.string(),
+  "reserveFloor": zod.string(),
+  "safeToDistribute": zod.string(),
+  "status": zod.string(),
+  "reason": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "ownerDraws": zod.array(zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "proposalDate": zod.coerce.date(),
+  "amount": zod.string(),
+  "status": zod.string(),
+  "eligibleAmount": zod.string(),
+  "blockedReasons": zod.array(zod.string()),
+  "approvedBy": zod.string().nullable(),
+  "approvedAt": zod.coerce.date().nullable(),
+  "notes": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})),
+  "verifiedIncome": zod.array(zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "ownerDrawProposalId": zod.string(),
+  "incomeDate": zod.coerce.date(),
+  "amount": zod.string(),
+  "sourceType": zod.string(),
+  "verificationStatus": zod.string(),
+  "createdAt": zod.coerce.date()
+})),
+  "anomalies": zod.array(zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "anomalyType": zod.string(),
+  "severity": zod.string(),
+  "status": zod.string(),
+  "relatedEntityType": zod.string().nullable(),
+  "relatedEntityId": zod.string().nullable(),
+  "message": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "resolvedAt": zod.coerce.date().nullable(),
+  "resolvedBy": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Record an immutable settlement source and reconcile its exact-cent math
+ */
+export const createBusinessSettlementBodyProviderMax = 80;
+
+export const createBusinessSettlementBodySourceFileNameMax = 255;
+
+export const createBusinessSettlementBodySourceObjectPathMax = 500;
+
+export const createBusinessSettlementBodySourceSha256RegExp = new RegExp('^[a-fA-F0-9]{64}$');
+export const createBusinessSettlementBodyReportedGrossRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createBusinessSettlementBodyReportedDeductionsRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createBusinessSettlementBodyReportedNetRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createBusinessSettlementBodyNotesMax = 1000;
+
+export const createBusinessSettlementBodyRevenueLinesItemDescriptionMax = 300;
+
+export const createBusinessSettlementBodyRevenueLinesItemCategoryMax = 60;
+
+export const createBusinessSettlementBodyRevenueLinesItemAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createBusinessSettlementBodyRevenueLinesItemQuantityRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,4})?$');
+export const createBusinessSettlementBodyRevenueLinesItemUnitAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+
+
+export const createBusinessSettlementBodyDeductionLinesItemDescriptionMax = 300;
+
+export const createBusinessSettlementBodyDeductionLinesItemCategoryMax = 60;
+
+export const createBusinessSettlementBodyDeductionLinesItemAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+
+
+
+export const CreateBusinessSettlementBody = zod.object({
+  "businessId": zod.string(),
+  "statementPeriodStart": zod.coerce.date(),
+  "statementPeriodEnd": zod.coerce.date(),
+  "paidDate": zod.coerce.date().optional(),
+  "provider": zod.string().max(createBusinessSettlementBodyProviderMax).optional(),
+  "sourceFileName": zod.string().max(createBusinessSettlementBodySourceFileNameMax).optional(),
+  "sourceObjectPath": zod.string().max(createBusinessSettlementBodySourceObjectPathMax).optional(),
+  "sourceSha256": zod.string().regex(createBusinessSettlementBodySourceSha256RegExp).optional(),
+  "reportedGross": zod.string().regex(createBusinessSettlementBodyReportedGrossRegExp).optional(),
+  "reportedDeductions": zod.string().regex(createBusinessSettlementBodyReportedDeductionsRegExp).optional(),
+  "reportedNet": zod.string().regex(createBusinessSettlementBodyReportedNetRegExp).optional(),
+  "notes": zod.string().max(createBusinessSettlementBodyNotesMax).optional(),
+  "revenueLines": zod.array(zod.object({
+  "description": zod.string().min(1).max(createBusinessSettlementBodyRevenueLinesItemDescriptionMax),
+  "category": zod.string().max(createBusinessSettlementBodyRevenueLinesItemCategoryMax).optional(),
+  "amount": zod.string().regex(createBusinessSettlementBodyRevenueLinesItemAmountRegExp),
+  "quantity": zod.string().regex(createBusinessSettlementBodyRevenueLinesItemQuantityRegExp).optional(),
+  "unitAmount": zod.string().regex(createBusinessSettlementBodyRevenueLinesItemUnitAmountRegExp).optional(),
+  "serviceDate": zod.coerce.date().optional(),
+  "sourcePage": zod.number().min(1).optional()
+})).min(1),
+  "deductionLines": zod.array(zod.object({
+  "description": zod.string().min(1).max(createBusinessSettlementBodyDeductionLinesItemDescriptionMax),
+  "category": zod.string().max(createBusinessSettlementBodyDeductionLinesItemCategoryMax).optional(),
+  "amount": zod.string().regex(createBusinessSettlementBodyDeductionLinesItemAmountRegExp),
+  "taxDeduction": zod.boolean().optional(),
+  "passThrough": zod.boolean().optional(),
+  "ownerDraw": zod.boolean().optional(),
+  "reimbursement": zod.boolean().optional(),
+  "sourcePage": zod.number().min(1).optional()
+}))
+})
+
+export const CreateBusinessSettlementResponse = zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "sourceKind": zod.string(),
+  "documentType": zod.string(),
+  "provider": zod.string().nullable(),
+  "statementPeriodStart": zod.coerce.date(),
+  "statementPeriodEnd": zod.coerce.date(),
+  "paidDate": zod.coerce.date().nullable(),
+  "sourceFileName": zod.string().nullable(),
+  "sourceObjectPath": zod.string().nullable(),
+  "sourceSha256": zod.string().nullable(),
+  "extractionStatus": zod.string(),
+  "verificationStatus": zod.string(),
+  "reportedGross": zod.string(),
+  "reportedDeductions": zod.string(),
+  "reportedNet": zod.string(),
+  "notes": zod.string().nullable(),
+  "correctedFromId": zod.string().nullable(),
+  "sourceVersion": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "mathStatus": zod.string(),
+  "mathReason": zod.string(),
+  "calculatedNet": zod.string()
+})
+
+
+/**
+ * @summary Record a period P&L document for reconciliation
+ */
+export const createBusinessProfitLossBodySourceFileNameMax = 255;
+
+export const createBusinessProfitLossBodySourceObjectPathMax = 500;
+
+export const createBusinessProfitLossBodySourceSha256RegExp = new RegExp('^[a-fA-F0-9]{64}$');
+export const createBusinessProfitLossBodyReportedRevenueRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createBusinessProfitLossBodyReportedExpensesRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createBusinessProfitLossBodyReportedProfitRegExp = new RegExp('^-?[0-9]+(\\.[0-9]{1,2})?$');
+export const createBusinessProfitLossBodyLinesItemDescriptionMax = 300;
+
+export const createBusinessProfitLossBodyLinesItemCategoryMax = 60;
+
+export const createBusinessProfitLossBodyLinesItemLineTypeMax = 30;
+
+export const createBusinessProfitLossBodyLinesItemAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+
+
+
+export const CreateBusinessProfitLossBody = zod.object({
+  "businessId": zod.string(),
+  "statementPeriodStart": zod.coerce.date(),
+  "statementPeriodEnd": zod.coerce.date(),
+  "sourceFileName": zod.string().max(createBusinessProfitLossBodySourceFileNameMax).optional(),
+  "sourceObjectPath": zod.string().max(createBusinessProfitLossBodySourceObjectPathMax).optional(),
+  "sourceSha256": zod.string().regex(createBusinessProfitLossBodySourceSha256RegExp).optional(),
+  "reportedRevenue": zod.string().regex(createBusinessProfitLossBodyReportedRevenueRegExp),
+  "reportedExpenses": zod.string().regex(createBusinessProfitLossBodyReportedExpensesRegExp),
+  "reportedProfit": zod.string().regex(createBusinessProfitLossBodyReportedProfitRegExp),
+  "lines": zod.array(zod.object({
+  "description": zod.string().min(1).max(createBusinessProfitLossBodyLinesItemDescriptionMax),
+  "category": zod.string().max(createBusinessProfitLossBodyLinesItemCategoryMax).optional(),
+  "lineType": zod.string().max(createBusinessProfitLossBodyLinesItemLineTypeMax).optional(),
+  "amount": zod.string().regex(createBusinessProfitLossBodyLinesItemAmountRegExp)
+})).min(1)
+})
+
+export const CreateBusinessProfitLossResponse = zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "statementPeriodStart": zod.coerce.date(),
+  "statementPeriodEnd": zod.coerce.date(),
+  "sourceFileName": zod.string().nullable(),
+  "sourceObjectPath": zod.string().nullable(),
+  "sourceSha256": zod.string().nullable(),
+  "reportedRevenue": zod.string(),
+  "reportedExpenses": zod.string(),
+  "reportedProfit": zod.string(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Reconcile settlement-derived profit to a period P&L
+ */
+export const reconcileBusinessIncomePeriodBodyReportedProfitRegExp = new RegExp('^-?[0-9]+(\\.[0-9]{1,2})?$');
+
+
+export const ReconcileBusinessIncomePeriodBody = zod.object({
+  "businessId": zod.string(),
+  "statementPeriodStart": zod.coerce.date(),
+  "statementPeriodEnd": zod.coerce.date(),
+  "reportedProfit": zod.string().regex(reconcileBusinessIncomePeriodBodyReportedProfitRegExp).optional()
+})
+
+export const ReconcileBusinessIncomePeriodResponse = zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "statementPeriodStart": zod.coerce.date(),
+  "statementPeriodEnd": zod.coerce.date(),
+  "settlementGross": zod.string(),
+  "settlementDeductions": zod.string(),
+  "operatingExpenses": zod.string(),
+  "calculatedProfit": zod.string(),
+  "reportedProfit": zod.string().nullable(),
+  "variance": zod.string(),
+  "periodCoverage": zod.string(),
+  "status": zod.string(),
+  "reason": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Match a settlement to read-only business bank evidence
+ */
+export const MatchBusinessSettlementCashParams = zod.object({
+  "settlementId": zod.coerce.string()
+})
+
+export const MatchBusinessSettlementCashResponse = zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "settlementDocumentId": zod.string(),
+  "financeTransactionId": zod.string().nullable(),
+  "matchedAmount": zod.string(),
+  "matchStatus": zod.string(),
+  "confidence": zod.string(),
+  "reason": zod.string(),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Build a reserve-governed business cash position from read-only evidence
+ */
+export const CreateBusinessCashPositionBody = zod.object({
+  "businessId": zod.string(),
+  "asOf": zod.coerce.date()
+})
+
+export const CreateBusinessCashPositionResponse = zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "asOf": zod.coerce.date(),
+  "bankCash": zod.string(),
+  "pendingDeposits": zod.string(),
+  "outstandingAdvances": zod.string(),
+  "escrowHeld": zod.string(),
+  "reimbursementsDue": zod.string(),
+  "reserveFloor": zod.string(),
+  "safeToDistribute": zod.string(),
+  "status": zod.string(),
+  "reason": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Prepare a reserve-governed owner draw for human approval
+ */
+export const createBusinessOwnerDrawBodyAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const createBusinessOwnerDrawBodyNotesMax = 500;
+
+
+
+export const CreateBusinessOwnerDrawBody = zod.object({
+  "businessId": zod.string(),
+  "proposalDate": zod.coerce.date(),
+  "amount": zod.string().regex(createBusinessOwnerDrawBodyAmountRegExp),
+  "notes": zod.string().max(createBusinessOwnerDrawBodyNotesMax).optional()
+})
+
+export const CreateBusinessOwnerDrawResponse = zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "proposalDate": zod.coerce.date(),
+  "amount": zod.string(),
+  "status": zod.string(),
+  "eligibleAmount": zod.string(),
+  "blockedReasons": zod.array(zod.string()),
+  "approvedBy": zod.string().nullable(),
+  "approvedAt": zod.coerce.date().nullable(),
+  "notes": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Approve an eligible owner draw and create verified household income
+ */
+export const ApproveBusinessOwnerDrawParams = zod.object({
+  "proposalId": zod.coerce.string()
+})
+
+export const approveBusinessOwnerDrawBodyApprovedAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const approveBusinessOwnerDrawBodyNotesMax = 500;
+
+
+
+export const ApproveBusinessOwnerDrawBody = zod.object({
+  "approvedAmount": zod.string().regex(approveBusinessOwnerDrawBodyApprovedAmountRegExp),
+  "notes": zod.string().max(approveBusinessOwnerDrawBodyNotesMax).optional()
+})
+
+export const ApproveBusinessOwnerDrawResponse = zod.object({
+  "proposal": zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "proposalDate": zod.coerce.date(),
+  "amount": zod.string(),
+  "status": zod.string(),
+  "eligibleAmount": zod.string(),
+  "blockedReasons": zod.array(zod.string()),
+  "approvedBy": zod.string().nullable(),
+  "approvedAt": zod.coerce.date().nullable(),
+  "notes": zod.string().nullable(),
+  "createdAt": zod.coerce.date()
+}),
+  "verifiedIncome": zod.object({
+  "id": zod.string(),
+  "businessId": zod.string(),
+  "ownerDrawProposalId": zod.string(),
+  "incomeDate": zod.coerce.date(),
+  "amount": zod.string(),
+  "sourceType": zod.string(),
+  "verificationStatus": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+})
+
+

@@ -55,6 +55,8 @@ import type {
   BudgetPlanningReorderResult,
   BudgetPlanningVersionInput,
   BudgetSummary,
+  BusinessCashPosition,
+  BusinessCashPositionInput,
   BusinessDistribution,
   BusinessDistributionInput,
   BusinessEntity,
@@ -62,11 +64,21 @@ import type {
   BusinessEntityUpdate,
   BusinessExpense,
   BusinessExpenseInput,
+  BusinessIncomeIntelligence,
+  BusinessIncomePeriodReconciliation,
+  BusinessIncomePeriodReconciliationInput,
   BusinessOverview,
+  BusinessOwnerDraw,
+  BusinessOwnerDrawApprovalInput,
+  BusinessOwnerDrawApprovalResult,
+  BusinessOwnerDrawInput,
+  BusinessProfitLossDocument,
   BusinessReserve,
   BusinessReserveUpdate,
   BusinessRevenue,
   BusinessRevenueInput,
+  BusinessSettlementCashMatch,
+  BusinessSettlementDocument,
   BuyBox,
   CapitalRequest,
   CapitalRequestDecisionInput,
@@ -171,6 +183,7 @@ import type {
   OperationsWorker,
   PortfolioSummary,
   PrivacySettingsInput,
+  ProfitLossDocumentInput,
   PropertyAnalysis,
   PropertyCandidate,
   PropertyNote,
@@ -192,6 +205,7 @@ import type {
   RiskSummary,
   RunStrategyExperimentInput,
   SafeToDeploy,
+  SettlementDocumentInput,
   ShadowIntent,
   ShadowIntentInput,
   ShadowPortfolio,
@@ -13156,5 +13170,580 @@ export const useUpdateBusinessReserve = <TError = ErrorType<BadRequestResponse |
         TContext
       > => {
       return useMutation(getUpdateBusinessReserveMutationOptions(options));
+    }
+
+export const getGetBusinessIncomeIntelligenceUrl = () => {
+
+
+
+
+  return `/api/business/income-intelligence`
+}
+
+/**
+ * @summary Get settlement, reconciliation, cash, and verified-income intelligence
+ */
+export const getBusinessIncomeIntelligence = async ( options?: Parameters<typeof customFetch>[1]): Promise<BusinessIncomeIntelligence> => {
+
+  return customFetch<BusinessIncomeIntelligence>(getGetBusinessIncomeIntelligenceUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBusinessIncomeIntelligenceQueryKey = () => {
+    return [
+    `/api/business/income-intelligence`
+    ] as const;
+    }
+
+
+export const getGetBusinessIncomeIntelligenceQueryOptions = <TData = Awaited<ReturnType<typeof getBusinessIncomeIntelligence>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBusinessIncomeIntelligence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBusinessIncomeIntelligenceQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBusinessIncomeIntelligence>>> = ({ signal }) => getBusinessIncomeIntelligence({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBusinessIncomeIntelligence>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBusinessIncomeIntelligenceQueryResult = NonNullable<Awaited<ReturnType<typeof getBusinessIncomeIntelligence>>>
+export type GetBusinessIncomeIntelligenceQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get settlement, reconciliation, cash, and verified-income intelligence
+ */
+
+export function useGetBusinessIncomeIntelligence<TData = Awaited<ReturnType<typeof getBusinessIncomeIntelligence>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBusinessIncomeIntelligence>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBusinessIncomeIntelligenceQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateBusinessSettlementUrl = () => {
+
+
+
+
+  return `/api/business/income/settlements`
+}
+
+/**
+ * @summary Record an immutable settlement source and reconcile its exact-cent math
+ */
+export const createBusinessSettlement = async (settlementDocumentInput: SettlementDocumentInput, options?: Parameters<typeof customFetch>[1]): Promise<BusinessSettlementDocument> => {
+
+  return customFetch<BusinessSettlementDocument>(getCreateBusinessSettlementUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(settlementDocumentInput)
+  }
+);}
+
+
+
+
+
+export const getCreateBusinessSettlementMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBusinessSettlement>>, TError,{data: BodyType<SettlementDocumentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBusinessSettlement>>, TError,{data: BodyType<SettlementDocumentInput>}, TContext> => {
+
+const mutationKey = ['createBusinessSettlement'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBusinessSettlement>>, {data: BodyType<SettlementDocumentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBusinessSettlement(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBusinessSettlementMutationResult = NonNullable<Awaited<ReturnType<typeof createBusinessSettlement>>>
+    export type CreateBusinessSettlementMutationBody = BodyType<SettlementDocumentInput>
+    export type CreateBusinessSettlementMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Record an immutable settlement source and reconcile its exact-cent math
+ */
+export const useCreateBusinessSettlement = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBusinessSettlement>>, TError,{data: BodyType<SettlementDocumentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBusinessSettlement>>,
+        TError,
+        {data: BodyType<SettlementDocumentInput>},
+        TContext
+      > => {
+      return useMutation(getCreateBusinessSettlementMutationOptions(options));
+    }
+
+export const getCreateBusinessProfitLossUrl = () => {
+
+
+
+
+  return `/api/business/income/profit-loss`
+}
+
+/**
+ * @summary Record a period P&L document for reconciliation
+ */
+export const createBusinessProfitLoss = async (profitLossDocumentInput: ProfitLossDocumentInput, options?: Parameters<typeof customFetch>[1]): Promise<BusinessProfitLossDocument> => {
+
+  return customFetch<BusinessProfitLossDocument>(getCreateBusinessProfitLossUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(profitLossDocumentInput)
+  }
+);}
+
+
+
+
+
+export const getCreateBusinessProfitLossMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBusinessProfitLoss>>, TError,{data: BodyType<ProfitLossDocumentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBusinessProfitLoss>>, TError,{data: BodyType<ProfitLossDocumentInput>}, TContext> => {
+
+const mutationKey = ['createBusinessProfitLoss'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBusinessProfitLoss>>, {data: BodyType<ProfitLossDocumentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBusinessProfitLoss(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBusinessProfitLossMutationResult = NonNullable<Awaited<ReturnType<typeof createBusinessProfitLoss>>>
+    export type CreateBusinessProfitLossMutationBody = BodyType<ProfitLossDocumentInput>
+    export type CreateBusinessProfitLossMutationError = ErrorType<BadRequestResponse | ForbiddenResponse>
+
+    /**
+ * @summary Record a period P&L document for reconciliation
+ */
+export const useCreateBusinessProfitLoss = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBusinessProfitLoss>>, TError,{data: BodyType<ProfitLossDocumentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBusinessProfitLoss>>,
+        TError,
+        {data: BodyType<ProfitLossDocumentInput>},
+        TContext
+      > => {
+      return useMutation(getCreateBusinessProfitLossMutationOptions(options));
+    }
+
+export const getReconcileBusinessIncomePeriodUrl = () => {
+
+
+
+
+  return `/api/business/income/reconcile`
+}
+
+/**
+ * @summary Reconcile settlement-derived profit to a period P&L
+ */
+export const reconcileBusinessIncomePeriod = async (businessIncomePeriodReconciliationInput: BusinessIncomePeriodReconciliationInput, options?: Parameters<typeof customFetch>[1]): Promise<BusinessIncomePeriodReconciliation> => {
+
+  return customFetch<BusinessIncomePeriodReconciliation>(getReconcileBusinessIncomePeriodUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(businessIncomePeriodReconciliationInput)
+  }
+);}
+
+
+
+
+
+export const getReconcileBusinessIncomePeriodMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileBusinessIncomePeriod>>, TError,{data: BodyType<BusinessIncomePeriodReconciliationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reconcileBusinessIncomePeriod>>, TError,{data: BodyType<BusinessIncomePeriodReconciliationInput>}, TContext> => {
+
+const mutationKey = ['reconcileBusinessIncomePeriod'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileBusinessIncomePeriod>>, {data: BodyType<BusinessIncomePeriodReconciliationInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  reconcileBusinessIncomePeriod(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReconcileBusinessIncomePeriodMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileBusinessIncomePeriod>>>
+    export type ReconcileBusinessIncomePeriodMutationBody = BodyType<BusinessIncomePeriodReconciliationInput>
+    export type ReconcileBusinessIncomePeriodMutationError = ErrorType<BadRequestResponse | ForbiddenResponse>
+
+    /**
+ * @summary Reconcile settlement-derived profit to a period P&L
+ */
+export const useReconcileBusinessIncomePeriod = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileBusinessIncomePeriod>>, TError,{data: BodyType<BusinessIncomePeriodReconciliationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reconcileBusinessIncomePeriod>>,
+        TError,
+        {data: BodyType<BusinessIncomePeriodReconciliationInput>},
+        TContext
+      > => {
+      return useMutation(getReconcileBusinessIncomePeriodMutationOptions(options));
+    }
+
+export const getMatchBusinessSettlementCashUrl = (settlementId: string,) => {
+
+
+
+
+  return `/api/business/income/settlements/${settlementId}/cash-match`
+}
+
+/**
+ * @summary Match a settlement to read-only business bank evidence
+ */
+export const matchBusinessSettlementCash = async (settlementId: string, options?: Parameters<typeof customFetch>[1]): Promise<BusinessSettlementCashMatch> => {
+
+  return customFetch<BusinessSettlementCashMatch>(getMatchBusinessSettlementCashUrl(settlementId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getMatchBusinessSettlementCashMutationOptions = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof matchBusinessSettlementCash>>, TError,{settlementId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof matchBusinessSettlementCash>>, TError,{settlementId: string}, TContext> => {
+
+const mutationKey = ['matchBusinessSettlementCash'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof matchBusinessSettlementCash>>, {settlementId: string}> = (props) => {
+          const {settlementId} = props ?? {};
+
+          return  matchBusinessSettlementCash(settlementId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MatchBusinessSettlementCashMutationResult = NonNullable<Awaited<ReturnType<typeof matchBusinessSettlementCash>>>
+
+    export type MatchBusinessSettlementCashMutationError = ErrorType<ForbiddenResponse | NotFoundResponse>
+
+    /**
+ * @summary Match a settlement to read-only business bank evidence
+ */
+export const useMatchBusinessSettlementCash = <TError = ErrorType<ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof matchBusinessSettlementCash>>, TError,{settlementId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof matchBusinessSettlementCash>>,
+        TError,
+        {settlementId: string},
+        TContext
+      > => {
+      return useMutation(getMatchBusinessSettlementCashMutationOptions(options));
+    }
+
+export const getCreateBusinessCashPositionUrl = () => {
+
+
+
+
+  return `/api/business/income/cash-position`
+}
+
+/**
+ * @summary Build a reserve-governed business cash position from read-only evidence
+ */
+export const createBusinessCashPosition = async (businessCashPositionInput: BusinessCashPositionInput, options?: Parameters<typeof customFetch>[1]): Promise<BusinessCashPosition> => {
+
+  return customFetch<BusinessCashPosition>(getCreateBusinessCashPositionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(businessCashPositionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateBusinessCashPositionMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBusinessCashPosition>>, TError,{data: BodyType<BusinessCashPositionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBusinessCashPosition>>, TError,{data: BodyType<BusinessCashPositionInput>}, TContext> => {
+
+const mutationKey = ['createBusinessCashPosition'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBusinessCashPosition>>, {data: BodyType<BusinessCashPositionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBusinessCashPosition(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBusinessCashPositionMutationResult = NonNullable<Awaited<ReturnType<typeof createBusinessCashPosition>>>
+    export type CreateBusinessCashPositionMutationBody = BodyType<BusinessCashPositionInput>
+    export type CreateBusinessCashPositionMutationError = ErrorType<BadRequestResponse | ForbiddenResponse>
+
+    /**
+ * @summary Build a reserve-governed business cash position from read-only evidence
+ */
+export const useCreateBusinessCashPosition = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBusinessCashPosition>>, TError,{data: BodyType<BusinessCashPositionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBusinessCashPosition>>,
+        TError,
+        {data: BodyType<BusinessCashPositionInput>},
+        TContext
+      > => {
+      return useMutation(getCreateBusinessCashPositionMutationOptions(options));
+    }
+
+export const getCreateBusinessOwnerDrawUrl = () => {
+
+
+
+
+  return `/api/business/income/owner-draws`
+}
+
+/**
+ * @summary Prepare a reserve-governed owner draw for human approval
+ */
+export const createBusinessOwnerDraw = async (businessOwnerDrawInput: BusinessOwnerDrawInput, options?: Parameters<typeof customFetch>[1]): Promise<BusinessOwnerDraw> => {
+
+  return customFetch<BusinessOwnerDraw>(getCreateBusinessOwnerDrawUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(businessOwnerDrawInput)
+  }
+);}
+
+
+
+
+
+export const getCreateBusinessOwnerDrawMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBusinessOwnerDraw>>, TError,{data: BodyType<BusinessOwnerDrawInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBusinessOwnerDraw>>, TError,{data: BodyType<BusinessOwnerDrawInput>}, TContext> => {
+
+const mutationKey = ['createBusinessOwnerDraw'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBusinessOwnerDraw>>, {data: BodyType<BusinessOwnerDrawInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBusinessOwnerDraw(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBusinessOwnerDrawMutationResult = NonNullable<Awaited<ReturnType<typeof createBusinessOwnerDraw>>>
+    export type CreateBusinessOwnerDrawMutationBody = BodyType<BusinessOwnerDrawInput>
+    export type CreateBusinessOwnerDrawMutationError = ErrorType<BadRequestResponse | ForbiddenResponse>
+
+    /**
+ * @summary Prepare a reserve-governed owner draw for human approval
+ */
+export const useCreateBusinessOwnerDraw = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBusinessOwnerDraw>>, TError,{data: BodyType<BusinessOwnerDrawInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBusinessOwnerDraw>>,
+        TError,
+        {data: BodyType<BusinessOwnerDrawInput>},
+        TContext
+      > => {
+      return useMutation(getCreateBusinessOwnerDrawMutationOptions(options));
+    }
+
+export const getApproveBusinessOwnerDrawUrl = (proposalId: string,) => {
+
+
+
+
+  return `/api/business/income/owner-draws/${proposalId}/approve`
+}
+
+/**
+ * @summary Approve an eligible owner draw and create verified household income
+ */
+export const approveBusinessOwnerDraw = async (proposalId: string,
+    businessOwnerDrawApprovalInput: BusinessOwnerDrawApprovalInput, options?: Parameters<typeof customFetch>[1]): Promise<BusinessOwnerDrawApprovalResult> => {
+
+  return customFetch<BusinessOwnerDrawApprovalResult>(getApproveBusinessOwnerDrawUrl(proposalId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(businessOwnerDrawApprovalInput)
+  }
+);}
+
+
+
+
+
+export const getApproveBusinessOwnerDrawMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveBusinessOwnerDraw>>, TError,{proposalId: string;data: BodyType<BusinessOwnerDrawApprovalInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveBusinessOwnerDraw>>, TError,{proposalId: string;data: BodyType<BusinessOwnerDrawApprovalInput>}, TContext> => {
+
+const mutationKey = ['approveBusinessOwnerDraw'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveBusinessOwnerDraw>>, {proposalId: string;data: BodyType<BusinessOwnerDrawApprovalInput>}> = (props) => {
+          const {proposalId,data} = props ?? {};
+
+          return  approveBusinessOwnerDraw(proposalId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveBusinessOwnerDrawMutationResult = NonNullable<Awaited<ReturnType<typeof approveBusinessOwnerDraw>>>
+    export type ApproveBusinessOwnerDrawMutationBody = BodyType<BusinessOwnerDrawApprovalInput>
+    export type ApproveBusinessOwnerDrawMutationError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Approve an eligible owner draw and create verified household income
+ */
+export const useApproveBusinessOwnerDraw = <TError = ErrorType<BadRequestResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveBusinessOwnerDraw>>, TError,{proposalId: string;data: BodyType<BusinessOwnerDrawApprovalInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveBusinessOwnerDraw>>,
+        TError,
+        {proposalId: string;data: BodyType<BusinessOwnerDrawApprovalInput>},
+        TContext
+      > => {
+      return useMutation(getApproveBusinessOwnerDrawMutationOptions(options));
     }
 

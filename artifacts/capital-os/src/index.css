@@ -2361,6 +2361,173 @@ button {
   color: var(--muted);
   font-size: 13px;
 }
+.business-intelligence {
+  display: grid;
+  gap: 14px;
+}
+.business-intelligence-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  padding: 22px;
+  border: 1px solid #dbe7df;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #f5faf7, #eef4ec);
+}
+.business-intelligence-header h2 {
+  max-width: 720px;
+  margin: 6px 0;
+  font: 400 26px/1.05 var(--app-font-serif);
+  letter-spacing: -0.035em;
+}
+.business-intelligence-header p {
+  max-width: 720px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.business-intelligence-header > .status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.business-intelligence-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.business-intelligence-metrics > div {
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+}
+.business-intelligence-metrics span,
+.business-intelligence-metrics small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+.business-intelligence-metrics strong {
+  display: block;
+  margin: 8px 0 3px;
+  font: 400 24px var(--app-font-serif);
+  letter-spacing: -0.03em;
+}
+.business-intelligence-metrics .business-alert-value {
+  color: #a9634b;
+}
+.business-intelligence-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.business-intelligence-form {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(5, minmax(110px, 1fr)) auto;
+  align-items: end;
+  gap: 10px;
+}
+.business-intelligence-form h3 {
+  margin: 5px 0;
+}
+.business-intelligence-form p {
+  max-width: 250px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.business-intelligence-form label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.business-intelligence-form input,
+.business-draw-form input {
+  min-width: 0;
+  height: 37px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+.business-intelligence-form > div:last-child {
+  display: flex;
+  gap: 6px;
+}
+.business-intelligence-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.business-intelligence-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.business-intelligence-row > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.business-intelligence-row span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.business-intelligence-row .status {
+  flex: 0 0 auto;
+}
+.business-draw-form {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 5px;
+}
+.business-draw-form input {
+  flex: 1;
+}
+.business-empty {
+  margin: 0;
+  padding: 12px 0 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.business-anomaly-list {
+  display: grid;
+  gap: 7px;
+  padding: 13px 15px;
+  border: 1px solid #ead9ce;
+  border-radius: 11px;
+  background: #fff8f3;
+  color: #935c47;
+  font-size: 11px;
+}
+.business-anomaly-list > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.business-anomaly-list > span {
+  padding-left: 22px;
+}
+.business-loading-row {
+  height: 84px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #eeeae0 25%, #f7f5ee 50%, #eeeae0 75%);
+  background-size: 200% 100%;
+  animation: lab-shimmer 1.4s infinite;
+}
 @media (max-width: 900px) {
   .business-metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2380,6 +2547,19 @@ button {
   }
   .business-ledgers {
     grid-template-columns: 1fr;
+  }
+  .business-intelligence-metrics,
+  .business-intelligence-columns {
+    grid-template-columns: 1fr 1fr;
+  }
+  .business-intelligence-form {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  .business-intelligence-form > div:first-child {
+    grid-column: 1/-1;
+  }
+  .business-intelligence-header {
+    flex-direction: column;
   }
 }
 @media (max-width: 620px) {
@@ -2418,6 +2598,18 @@ button {
   }
   .business-boundary {
     align-items: flex-start;
+  }
+  .business-intelligence-metrics,
+  .business-intelligence-columns,
+  .business-intelligence-form {
+    grid-template-columns: 1fr;
+  }
+  .business-intelligence-form > div:first-child {
+    grid-column: auto;
+  }
+  .business-intelligence-form > div:last-child,
+  .business-draw-form {
+    flex-wrap: wrap;
   }
 }
 @media (max-width: 460px) {

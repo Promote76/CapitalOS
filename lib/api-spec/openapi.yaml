@@ -2798,6 +2798,150 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /business/income-intelligence:
+    get:
+      operationId: getBusinessIncomeIntelligence
+      tags: [business]
+      summary: Get settlement, reconciliation, cash, and verified-income intelligence
+      responses:
+        "200":
+          description: Business income intelligence
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessIncomeIntelligence" }
+  /business/income/settlements:
+    post:
+      operationId: createBusinessSettlement
+      tags: [business]
+      summary: Record an immutable settlement source and reconcile its exact-cent math
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SettlementDocumentInput" }
+      responses:
+        "201":
+          description: Settlement document and math reconciliation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessSettlementDocument" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /business/income/profit-loss:
+    post:
+      operationId: createBusinessProfitLoss
+      tags: [business]
+      summary: Record a period P&L document for reconciliation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProfitLossDocumentInput" }
+      responses:
+        "201":
+          description: P&L document
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessProfitLossDocument" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /business/income/reconcile:
+    post:
+      operationId: reconcileBusinessIncomePeriod
+      tags: [business]
+      summary: Reconcile settlement-derived profit to a period P&L
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessIncomePeriodReconciliationInput" }
+      responses:
+        "201":
+          description: Reconciliation run
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessIncomePeriodReconciliation" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /business/income/settlements/{settlementId}/cash-match:
+    post:
+      operationId: matchBusinessSettlementCash
+      tags: [business]
+      summary: Match a settlement to read-only business bank evidence
+      parameters:
+        - name: settlementId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Settlement cash match
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessSettlementCashMatch" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /business/income/cash-position:
+    post:
+      operationId: createBusinessCashPosition
+      tags: [business]
+      summary: Build a reserve-governed business cash position from read-only evidence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessCashPositionInput" }
+      responses:
+        "201":
+          description: Business cash position
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessCashPosition" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /business/income/owner-draws:
+    post:
+      operationId: createBusinessOwnerDraw
+      tags: [business]
+      summary: Prepare a reserve-governed owner draw for human approval
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessOwnerDrawInput" }
+      responses:
+        "201":
+          description: Owner draw proposal
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessOwnerDraw" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /business/income/owner-draws/{proposalId}/approve:
+    post:
+      operationId: approveBusinessOwnerDraw
+      tags: [business]
+      summary: Approve an eligible owner draw and create verified household income
+      parameters:
+        - name: proposalId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessOwnerDrawApprovalInput" }
+      responses:
+        "200":
+          description: Approved owner draw and verified income event
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessOwnerDrawApprovalResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
 components:
   securitySchemes:
     clerkSession:
@@ -5685,6 +5829,270 @@ components:
         accounts:
           type: array
           items: { $ref: "#/components/schemas/AccountingAccount" }
+    SettlementRevenueLineInput:
+      type: object
+      required: [description, amount]
+      properties:
+        description: { type: string, minLength: 1, maxLength: 300 }
+        category: { type: string, maxLength: 60 }
+        amount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        quantity: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,4})?$" }
+        unitAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        serviceDate: { type: string, format: date }
+        sourcePage: { type: number, minimum: 1 }
+    SettlementDeductionLineInput:
+      type: object
+      required: [description, amount]
+      properties:
+        description: { type: string, minLength: 1, maxLength: 300 }
+        category: { type: string, maxLength: 60 }
+        amount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        taxDeduction: { type: boolean }
+        passThrough: { type: boolean }
+        ownerDraw: { type: boolean }
+        reimbursement: { type: boolean }
+        sourcePage: { type: number, minimum: 1 }
+    SettlementDocumentInput:
+      type: object
+      required: [businessId, statementPeriodStart, statementPeriodEnd, revenueLines, deductionLines]
+      properties:
+        businessId: { type: string }
+        statementPeriodStart: { type: string, format: date }
+        statementPeriodEnd: { type: string, format: date }
+        paidDate: { type: string, format: date }
+        provider: { type: string, maxLength: 80 }
+        sourceFileName: { type: string, maxLength: 255 }
+        sourceObjectPath: { type: string, maxLength: 500 }
+        sourceSha256: { type: string, pattern: "^[a-fA-F0-9]{64}$" }
+        reportedGross: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        reportedDeductions: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        reportedNet: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        notes: { type: string, maxLength: 1000 }
+        revenueLines:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/SettlementRevenueLineInput" }
+        deductionLines:
+          type: array
+          items: { $ref: "#/components/schemas/SettlementDeductionLineInput" }
+    BusinessSettlementDocument:
+      type: object
+      required: [id, businessId, sourceKind, documentType, provider, statementPeriodStart, statementPeriodEnd, paidDate, sourceFileName, sourceObjectPath, sourceSha256, extractionStatus, verificationStatus, reportedGross, reportedDeductions, reportedNet, notes, correctedFromId, sourceVersion, createdAt, updatedAt, mathStatus, mathReason, calculatedNet]
+      properties:
+        id: { type: string }
+        businessId: { type: string }
+        sourceKind: { type: string }
+        documentType: { type: string }
+        provider: { type: ["string", "null"] }
+        statementPeriodStart: { type: string, format: date }
+        statementPeriodEnd: { type: string, format: date }
+        paidDate: { type: ["string", "null"], format: date }
+        sourceFileName: { type: ["string", "null"] }
+        sourceObjectPath: { type: ["string", "null"] }
+        sourceSha256: { type: ["string", "null"] }
+        extractionStatus: { type: string }
+        verificationStatus: { type: string }
+        reportedGross: { type: string }
+        reportedDeductions: { type: string }
+        reportedNet: { type: string }
+        notes: { type: ["string", "null"] }
+        correctedFromId: { type: ["string", "null"] }
+        sourceVersion: { type: number }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        mathStatus: { type: string }
+        mathReason: { type: string }
+        calculatedNet: { type: string }
+    ProfitLossLineInput:
+      type: object
+      required: [description, amount]
+      properties:
+        description: { type: string, minLength: 1, maxLength: 300 }
+        category: { type: string, maxLength: 60 }
+        lineType: { type: string, maxLength: 30 }
+        amount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+    ProfitLossDocumentInput:
+      type: object
+      required: [businessId, statementPeriodStart, statementPeriodEnd, reportedRevenue, reportedExpenses, reportedProfit, lines]
+      properties:
+        businessId: { type: string }
+        statementPeriodStart: { type: string, format: date }
+        statementPeriodEnd: { type: string, format: date }
+        sourceFileName: { type: string, maxLength: 255 }
+        sourceObjectPath: { type: string, maxLength: 500 }
+        sourceSha256: { type: string, pattern: "^[a-fA-F0-9]{64}$" }
+        reportedRevenue: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        reportedExpenses: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        reportedProfit: { type: string, pattern: "^-?[0-9]+(\\.[0-9]{1,2})?$" }
+        lines:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/ProfitLossLineInput" }
+    BusinessProfitLossDocument:
+      type: object
+      required: [id, businessId, statementPeriodStart, statementPeriodEnd, sourceFileName, sourceObjectPath, sourceSha256, reportedRevenue, reportedExpenses, reportedProfit, status, createdAt]
+      properties:
+        id: { type: string }
+        businessId: { type: string }
+        statementPeriodStart: { type: string, format: date }
+        statementPeriodEnd: { type: string, format: date }
+        sourceFileName: { type: ["string", "null"] }
+        sourceObjectPath: { type: ["string", "null"] }
+        sourceSha256: { type: ["string", "null"] }
+        reportedRevenue: { type: string }
+        reportedExpenses: { type: string }
+        reportedProfit: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+    BusinessIncomePeriodReconciliationInput:
+      type: object
+      required: [businessId, statementPeriodStart, statementPeriodEnd]
+      properties:
+        businessId: { type: string }
+        statementPeriodStart: { type: string, format: date }
+        statementPeriodEnd: { type: string, format: date }
+        reportedProfit: { type: string, pattern: "^-?[0-9]+(\\.[0-9]{1,2})?$" }
+    BusinessIncomePeriodReconciliation:
+      type: object
+      required: [id, businessId, statementPeriodStart, statementPeriodEnd, settlementGross, settlementDeductions, operatingExpenses, calculatedProfit, reportedProfit, variance, periodCoverage, status, reason, createdAt]
+      properties:
+        id: { type: string }
+        businessId: { type: string }
+        statementPeriodStart: { type: string, format: date }
+        statementPeriodEnd: { type: string, format: date }
+        settlementGross: { type: string }
+        settlementDeductions: { type: string }
+        operatingExpenses: { type: string }
+        calculatedProfit: { type: string }
+        reportedProfit: { type: ["string", "null"] }
+        variance: { type: string }
+        periodCoverage: { type: string }
+        status: { type: string }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
+    BusinessSettlementCashMatch:
+      type: object
+      required: [id, businessId, settlementDocumentId, financeTransactionId, matchedAmount, matchStatus, confidence, reason, reviewedBy, reviewedAt, createdAt]
+      properties:
+        id: { type: string }
+        businessId: { type: string }
+        settlementDocumentId: { type: string }
+        financeTransactionId: { type: ["string", "null"] }
+        matchedAmount: { type: string }
+        matchStatus: { type: string }
+        confidence: { type: string }
+        reason: { type: string }
+        reviewedBy: { type: ["string", "null"] }
+        reviewedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+    BusinessCashPositionInput:
+      type: object
+      required: [businessId, asOf]
+      properties:
+        businessId: { type: string }
+        asOf: { type: string, format: date }
+    BusinessCashPosition:
+      type: object
+      required: [id, businessId, asOf, bankCash, pendingDeposits, outstandingAdvances, escrowHeld, reimbursementsDue, reserveFloor, safeToDistribute, status, reason, createdAt]
+      properties:
+        id: { type: string }
+        businessId: { type: string }
+        asOf: { type: string, format: date }
+        bankCash: { type: string }
+        pendingDeposits: { type: string }
+        outstandingAdvances: { type: string }
+        escrowHeld: { type: string }
+        reimbursementsDue: { type: string }
+        reserveFloor: { type: string }
+        safeToDistribute: { type: string }
+        status: { type: string }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
+    BusinessOwnerDrawInput:
+      type: object
+      required: [businessId, proposalDate, amount]
+      properties:
+        businessId: { type: string }
+        proposalDate: { type: string, format: date }
+        amount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        notes: { type: string, maxLength: 500 }
+    BusinessOwnerDraw:
+      type: object
+      required: [id, businessId, proposalDate, amount, status, eligibleAmount, blockedReasons, approvedBy, approvedAt, notes, createdAt]
+      properties:
+        id: { type: string }
+        businessId: { type: string }
+        proposalDate: { type: string, format: date }
+        amount: { type: string }
+        status: { type: string }
+        eligibleAmount: { type: string }
+        blockedReasons: { type: array, items: { type: string } }
+        approvedBy: { type: ["string", "null"] }
+        approvedAt: { type: ["string", "null"], format: date-time }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    BusinessOwnerDrawApprovalInput:
+      type: object
+      required: [approvedAmount]
+      properties:
+        approvedAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        notes: { type: string, maxLength: 500 }
+    BusinessVerifiedHouseholdIncome:
+      type: object
+      required: [id, businessId, ownerDrawProposalId, incomeDate, amount, sourceType, verificationStatus, createdAt]
+      properties:
+        id: { type: string }
+        businessId: { type: string }
+        ownerDrawProposalId: { type: string }
+        incomeDate: { type: string, format: date }
+        amount: { type: string }
+        sourceType: { type: string }
+        verificationStatus: { type: string }
+        createdAt: { type: string, format: date-time }
+    BusinessIncomeAnomaly:
+      type: object
+      required: [id, businessId, anomalyType, severity, status, relatedEntityType, relatedEntityId, message, createdAt, resolvedAt, resolvedBy]
+      properties:
+        id: { type: string }
+        businessId: { type: string }
+        anomalyType: { type: string }
+        severity: { type: string }
+        status: { type: string }
+        relatedEntityType: { type: ["string", "null"] }
+        relatedEntityId: { type: ["string", "null"] }
+        message: { type: string }
+        createdAt: { type: string, format: date-time }
+        resolvedAt: { type: ["string", "null"], format: date-time }
+        resolvedBy: { type: ["string", "null"] }
+    BusinessOwnerDrawApprovalResult:
+      type: object
+      required: [proposal, verifiedIncome]
+      properties:
+        proposal: { $ref: "#/components/schemas/BusinessOwnerDraw" }
+        verifiedIncome: { $ref: "#/components/schemas/BusinessVerifiedHouseholdIncome" }
+    BusinessIncomeIntelligence:
+      type: object
+      required: [asOf, summary, businesses, settlements, profitLossDocuments, reconciliationRuns, cashPositions, ownerDraws, verifiedIncome, anomalies]
+      properties:
+        asOf: { type: string, format: date }
+        summary:
+          type: object
+          required: [settlementCount, reconciledSettlementCount, openAnomalyCount, pendingOwnerDrawAmount, verifiedHouseholdIncome, bankSyncMode]
+          properties:
+            settlementCount: { type: number }
+            reconciledSettlementCount: { type: number }
+            openAnomalyCount: { type: number }
+            pendingOwnerDrawAmount: { type: string }
+            verifiedHouseholdIncome: { type: string }
+            bankSyncMode: { type: string, enum: [read_only] }
+        businesses: { type: array, items: { $ref: "#/components/schemas/BusinessEntity" } }
+        settlements: { type: array, items: { $ref: "#/components/schemas/BusinessSettlementDocument" } }
+        profitLossDocuments: { type: array, items: { $ref: "#/components/schemas/BusinessProfitLossDocument" } }
+        reconciliationRuns: { type: array, items: { $ref: "#/components/schemas/BusinessIncomePeriodReconciliation" } }
+        cashPositions: { type: array, items: { $ref: "#/components/schemas/BusinessCashPosition" } }
+        ownerDraws: { type: array, items: { $ref: "#/components/schemas/BusinessOwnerDraw" } }
+        verifiedIncome: { type: array, items: { $ref: "#/components/schemas/BusinessVerifiedHouseholdIncome" } }
+        anomalies: { type: array, items: { $ref: "#/components/schemas/BusinessIncomeAnomaly" } }
     BusinessEntity:
       type: object
       required: [id, legalName, displayName, entityType, ownershipPercentage, status, industry, taxClassification, formationDate, state, notes, createdAt, updatedAt]

@@ -5,6 +5,150 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+export type FinancialDocumentSourceMetadata = { [key: string]: unknown };
+
+/**
+ * @nullable
+ */
+export type FinancialDocumentBankStatement = { [key: string]: unknown } | null;
+
+export type FinancialDocumentTransactionsItem = { [key: string]: unknown };
+
+export interface FinancialDocument {
+  id: string;
+  documentType: string;
+  status: string;
+  /** @nullable */
+  sourceInstitution?: string | null;
+  sourceFileName: string;
+  mimeType: string;
+  documentHash: string;
+  sourceObjectPath: string;
+  sourceMetadata?: FinancialDocumentSourceMetadata;
+  /** @nullable */
+  periodStart?: string | null;
+  /** @nullable */
+  periodEnd?: string | null;
+  /** @nullable */
+  statementDate?: string | null;
+  /** @nullable */
+  parserVersion?: string | null;
+  /** @nullable */
+  sourceRecordType?: string | null;
+  /** @nullable */
+  sourceRecordId?: string | null;
+  uploadedAt: string;
+  /** @nullable */
+  reviewedAt?: string | null;
+  /** @nullable */
+  reviewDecision?: string | null;
+  /** @nullable */
+  reviewReason?: string | null;
+  /** @nullable */
+  bankStatement?: FinancialDocumentBankStatement;
+  transactions?: FinancialDocumentTransactionsItem[];
+}
+
+export interface FinancialDocumentList {
+  documents: FinancialDocument[];
+}
+
+export type FinancialDocumentUploadInputContentType = typeof FinancialDocumentUploadInputContentType[keyof typeof FinancialDocumentUploadInputContentType];
+
+
+export const FinancialDocumentUploadInputContentType = {
+  'application/pdf': 'application/pdf',
+  'text/csv': 'text/csv',
+  'application/vndopenxmlformats-officedocumentspreadsheetmlsheet': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+} as const;
+
+export type FinancialDocumentUploadInputDocumentType = typeof FinancialDocumentUploadInputDocumentType[keyof typeof FinancialDocumentUploadInputDocumentType];
+
+
+export const FinancialDocumentUploadInputDocumentType = {
+  STEVENS_SETTLEMENT: 'STEVENS_SETTLEMENT',
+  BUSINESS_PROFIT_AND_LOSS: 'BUSINESS_PROFIT_AND_LOSS',
+  BANK_STATEMENT: 'BANK_STATEMENT',
+  NUMBER_1099: '1099',
+  INCOME_VERIFICATION: 'INCOME_VERIFICATION',
+  INSURANCE_DOCUMENT: 'INSURANCE_DOCUMENT',
+  AUTO_LOAN_DOCUMENT: 'AUTO_LOAN_DOCUMENT',
+  BUSINESS_LEASE_DOCUMENT: 'BUSINESS_LEASE_DOCUMENT',
+  OTHER_FINANCIAL_DOCUMENT: 'OTHER_FINANCIAL_DOCUMENT',
+} as const;
+
+export interface FinancialDocumentUploadInput {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+  /**
+     * @minimum 1
+     * @maximum 52428800
+     */
+  size: number;
+  contentType: FinancialDocumentUploadInputContentType;
+  documentType: FinancialDocumentUploadInputDocumentType;
+}
+
+export interface FinancialDocumentUploadTarget {
+  name: string;
+  size: number;
+  contentType: string;
+  documentType: string;
+  uploadURL: string;
+  objectPath: string;
+}
+
+export interface FinancialDocumentIngestInput {
+  documentType: string;
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  sourceFileName: string;
+  /** @pattern ^/objects/uploads/[0-9a-fA-F-]{36}$ */
+  sourceObjectPath: string;
+  contentType: string;
+  /**
+     * @minimum 1
+     * @maximum 52428800
+     */
+  sourceSizeBytes: number;
+  businessId?: string;
+  sourceInstitution?: string;
+  accountId?: string;
+  statementStart?: string;
+  statementEnd?: string;
+  accountDisplayName?: string;
+  accountMask?: string;
+}
+
+export type FinancialDocumentReviewInputDecision = typeof FinancialDocumentReviewInputDecision[keyof typeof FinancialDocumentReviewInputDecision];
+
+
+export const FinancialDocumentReviewInputDecision = {
+  VERIFIED: 'VERIFIED',
+  REJECTED: 'REJECTED',
+  NEEDS_REVIEW: 'NEEDS_REVIEW',
+} as const;
+
+export interface FinancialDocumentReviewInput {
+  decision: FinancialDocumentReviewInputDecision;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+}
+
+export type FinancialReviewQueueItemsItem = { [key: string]: unknown };
+
+export interface FinancialReviewQueue {
+  items: FinancialReviewQueueItemsItem[];
+}
+
 export interface BudgetPlanningVersionInput {
   /** @minimum 1 */
   version: number;
@@ -2788,6 +2932,16 @@ export interface CashFlowSummary {
   forecast: CashFlowSummaryForecast;
 }
 
+export type FinancialAccountDataMode = typeof FinancialAccountDataMode[keyof typeof FinancialAccountDataMode];
+
+
+export const FinancialAccountDataMode = {
+  MANUAL: 'MANUAL',
+  STATEMENT_SUPPORTED: 'STATEMENT_SUPPORTED',
+  LIVE_CONNECTED: 'LIVE_CONNECTED',
+  SIMULATED_TEST_ONLY: 'SIMULATED_TEST_ONLY',
+} as const;
+
 export interface FinancialAccount {
   id: string;
   institution: string;
@@ -2799,6 +2953,7 @@ export interface FinancialAccount {
   availableBalance?: string | null;
   connectionStatus: string;
   dataSource: string;
+  dataMode?: FinancialAccountDataMode;
   /** @nullable */
   lastSync?: string | null;
   includedInNetWorth: boolean;

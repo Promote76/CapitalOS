@@ -644,6 +644,41 @@ button {
   margin: 0 auto;
   padding: 40px 38px 70px;
 }
+
+/* Financial evidence and household foundation: compact, review-first surfaces. */
+.household-foundation { border-color: #cfddd1; background: #edf4ee; }
+.foundation-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+.foundation-grid > div { padding:12px; border-radius:8px; background:rgba(255,255,255,.58); }
+.foundation-grid strong { display:block; margin:6px 0; font-size:16px; line-height:1.15; }
+.foundation-grid small, .document-row span, .document-pending-note { display:block; color:var(--ink-soft); font-size:11px; line-height:1.45; }
+.foundation-actions, .document-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+.document-boundary { display:flex; gap:12px; align-items:flex-start; margin-bottom:18px; background:#fff8e9; }
+.document-boundary svg { flex:0 0 auto; color:#9b6b18; }
+.document-boundary strong, .document-boundary span { display:block; }
+.document-boundary span { margin-top:3px; color:var(--ink-soft); font-size:12px; line-height:1.45; }
+.document-inbox-layout { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(245px,.5fr); gap:18px; }
+.document-dropzone { min-height:150px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; border:1px dashed #b7c9bd; border-radius:9px; background:#f8fbf8; text-align:center; padding:18px; color:var(--ink-soft); }
+.document-dropzone strong { color:var(--ink); font-size:13px; overflow-wrap:anywhere; }
+.document-dropzone span { font-size:11px; }
+.document-queue { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; background:#e7eee5; }
+.document-queue > strong { font:400 29px/1.05 var(--app-font-serif); margin:9px 0; }
+.document-queue p { margin:0 0 16px; color:var(--ink-soft); font-size:12px; line-height:1.5; }
+.document-list { display:grid; }
+.document-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:13px 0; border-bottom:1px solid var(--line); }
+.document-row:last-child { border-bottom:0; }
+.document-row strong { display:block; font-size:13px; margin-bottom:3px; }
+.document-row > div:last-child { min-width:128px; text-align:right; }
+.document-pending-note { margin-top:5px; }
+@media (max-width: 800px) {
+  .foundation-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .document-inbox-layout { grid-template-columns:1fr; }
+}
+@media (max-width: 520px) {
+  .foundation-grid { grid-template-columns:1fr; }
+  .foundation-actions .btn, .document-actions .btn { flex:1 1 100%; }
+  .document-row { align-items:flex-start; flex-direction:column; }
+  .document-row > div:last-child { text-align:left; }
+}
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.17em;

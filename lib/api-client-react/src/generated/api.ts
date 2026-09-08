@@ -123,6 +123,13 @@ import type {
   FinanceTransaction,
   FinancialAccount,
   FinancialAccountsSummary,
+  FinancialDocument,
+  FinancialDocumentIngestInput,
+  FinancialDocumentList,
+  FinancialDocumentReviewInput,
+  FinancialDocumentUploadInput,
+  FinancialDocumentUploadTarget,
+  FinancialReviewQueue,
   FinancingCreditProfile,
   FinancingCreditProfileUpdate,
   FinancingDocument,
@@ -14430,5 +14437,450 @@ export const useApproveBusinessOwnerDraw = <TError = ErrorType<BadRequestRespons
         TContext
       > => {
       return useMutation(getApproveBusinessOwnerDrawMutationOptions(options));
+    }
+
+export const getListFinancialDocumentsUrl = () => {
+
+
+
+
+  return `/api/financial-documents`
+}
+
+/**
+ * @summary List household financial source evidence
+ */
+export const listFinancialDocuments = async ( options?: Parameters<typeof customFetch>[1]): Promise<FinancialDocumentList> => {
+
+  return customFetch<FinancialDocumentList>(getListFinancialDocumentsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFinancialDocumentsQueryKey = () => {
+    return [
+    `/api/financial-documents`
+    ] as const;
+    }
+
+
+export const getListFinancialDocumentsQueryOptions = <TData = Awaited<ReturnType<typeof listFinancialDocuments>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinancialDocuments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFinancialDocumentsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFinancialDocuments>>> = ({ signal }) => listFinancialDocuments({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFinancialDocuments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFinancialDocumentsQueryResult = NonNullable<Awaited<ReturnType<typeof listFinancialDocuments>>>
+export type ListFinancialDocumentsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List household financial source evidence
+ */
+
+export function useListFinancialDocuments<TData = Awaited<ReturnType<typeof listFinancialDocuments>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinancialDocuments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFinancialDocumentsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRequestFinancialDocumentUploadUrlUrl = () => {
+
+
+
+
+  return `/api/financial-documents/upload-url`
+}
+
+/**
+ * @summary Request a private upload URL for financial evidence
+ */
+export const requestFinancialDocumentUploadUrl = async (financialDocumentUploadInput: FinancialDocumentUploadInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancialDocumentUploadTarget> => {
+
+  return customFetch<FinancialDocumentUploadTarget>(getRequestFinancialDocumentUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financialDocumentUploadInput)
+  }
+);}
+
+
+
+
+
+export const getRequestFinancialDocumentUploadUrlMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestFinancialDocumentUploadUrl>>, TError,{data: BodyType<FinancialDocumentUploadInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestFinancialDocumentUploadUrl>>, TError,{data: BodyType<FinancialDocumentUploadInput>}, TContext> => {
+
+const mutationKey = ['requestFinancialDocumentUploadUrl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestFinancialDocumentUploadUrl>>, {data: BodyType<FinancialDocumentUploadInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestFinancialDocumentUploadUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestFinancialDocumentUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestFinancialDocumentUploadUrl>>>
+    export type RequestFinancialDocumentUploadUrlMutationBody = BodyType<FinancialDocumentUploadInput>
+    export type RequestFinancialDocumentUploadUrlMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Request a private upload URL for financial evidence
+ */
+export const useRequestFinancialDocumentUploadUrl = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestFinancialDocumentUploadUrl>>, TError,{data: BodyType<FinancialDocumentUploadInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestFinancialDocumentUploadUrl>>,
+        TError,
+        {data: BodyType<FinancialDocumentUploadInput>},
+        TContext
+      > => {
+      return useMutation(getRequestFinancialDocumentUploadUrlMutationOptions(options));
+    }
+
+export const getIngestFinancialDocumentUrl = () => {
+
+
+
+
+  return `/api/financial-documents/ingest`
+}
+
+/**
+ * @summary Record uploaded financial evidence without creating ledger entries
+ */
+export const ingestFinancialDocument = async (financialDocumentIngestInput: FinancialDocumentIngestInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancialDocument> => {
+
+  return customFetch<FinancialDocument>(getIngestFinancialDocumentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financialDocumentIngestInput)
+  }
+);}
+
+
+
+
+
+export const getIngestFinancialDocumentMutationOptions = <TError = ErrorType<ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestFinancialDocument>>, TError,{data: BodyType<FinancialDocumentIngestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof ingestFinancialDocument>>, TError,{data: BodyType<FinancialDocumentIngestInput>}, TContext> => {
+
+const mutationKey = ['ingestFinancialDocument'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ingestFinancialDocument>>, {data: BodyType<FinancialDocumentIngestInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  ingestFinancialDocument(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IngestFinancialDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof ingestFinancialDocument>>>
+    export type IngestFinancialDocumentMutationBody = BodyType<FinancialDocumentIngestInput>
+    export type IngestFinancialDocumentMutationError = ErrorType<ConflictResponse>
+
+    /**
+ * @summary Record uploaded financial evidence without creating ledger entries
+ */
+export const useIngestFinancialDocument = <TError = ErrorType<ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestFinancialDocument>>, TError,{data: BodyType<FinancialDocumentIngestInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof ingestFinancialDocument>>,
+        TError,
+        {data: BodyType<FinancialDocumentIngestInput>},
+        TContext
+      > => {
+      return useMutation(getIngestFinancialDocumentMutationOptions(options));
+    }
+
+export const getListFinancialReviewQueueUrl = () => {
+
+
+
+
+  return `/api/financial-documents/review-queue`
+}
+
+/**
+ * @summary List cross-source financial evidence requiring review
+ */
+export const listFinancialReviewQueue = async ( options?: Parameters<typeof customFetch>[1]): Promise<FinancialReviewQueue> => {
+
+  return customFetch<FinancialReviewQueue>(getListFinancialReviewQueueUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFinancialReviewQueueQueryKey = () => {
+    return [
+    `/api/financial-documents/review-queue`
+    ] as const;
+    }
+
+
+export const getListFinancialReviewQueueQueryOptions = <TData = Awaited<ReturnType<typeof listFinancialReviewQueue>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinancialReviewQueue>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFinancialReviewQueueQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFinancialReviewQueue>>> = ({ signal }) => listFinancialReviewQueue({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFinancialReviewQueue>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFinancialReviewQueueQueryResult = NonNullable<Awaited<ReturnType<typeof listFinancialReviewQueue>>>
+export type ListFinancialReviewQueueQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List cross-source financial evidence requiring review
+ */
+
+export function useListFinancialReviewQueue<TData = Awaited<ReturnType<typeof listFinancialReviewQueue>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinancialReviewQueue>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFinancialReviewQueueQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFinancialDocumentUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/financial-documents/${documentId}`
+}
+
+/**
+ * @summary Retrieve source provenance and evidence detail
+ */
+export const getFinancialDocument = async (documentId: string, options?: Parameters<typeof customFetch>[1]): Promise<FinancialDocument> => {
+
+  return customFetch<FinancialDocument>(getGetFinancialDocumentUrl(documentId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFinancialDocumentQueryKey = (documentId: string,) => {
+    return [
+    `/api/financial-documents/${documentId}`
+    ] as const;
+    }
+
+
+export const getGetFinancialDocumentQueryOptions = <TData = Awaited<ReturnType<typeof getFinancialDocument>>, TError = ErrorType<unknown>>(documentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinancialDocument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFinancialDocumentQueryKey(documentId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFinancialDocument>>> = ({ signal }) => getFinancialDocument(documentId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: documentId !== null && documentId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFinancialDocument>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFinancialDocumentQueryResult = NonNullable<Awaited<ReturnType<typeof getFinancialDocument>>>
+export type GetFinancialDocumentQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Retrieve source provenance and evidence detail
+ */
+
+export function useGetFinancialDocument<TData = Awaited<ReturnType<typeof getFinancialDocument>>, TError = ErrorType<unknown>>(
+ documentId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinancialDocument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFinancialDocumentQueryOptions(documentId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReviewFinancialDocumentUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/financial-documents/${documentId}/review`
+}
+
+/**
+ * @summary Record an approver review decision for source evidence
+ */
+export const reviewFinancialDocument = async (documentId: string,
+    financialDocumentReviewInput: FinancialDocumentReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancialDocument> => {
+
+  return customFetch<FinancialDocument>(getReviewFinancialDocumentUrl(documentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financialDocumentReviewInput)
+  }
+);}
+
+
+
+
+
+export const getReviewFinancialDocumentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewFinancialDocument>>, TError,{documentId: string;data: BodyType<FinancialDocumentReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewFinancialDocument>>, TError,{documentId: string;data: BodyType<FinancialDocumentReviewInput>}, TContext> => {
+
+const mutationKey = ['reviewFinancialDocument'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewFinancialDocument>>, {documentId: string;data: BodyType<FinancialDocumentReviewInput>}> = (props) => {
+          const {documentId,data} = props ?? {};
+
+          return  reviewFinancialDocument(documentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewFinancialDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof reviewFinancialDocument>>>
+    export type ReviewFinancialDocumentMutationBody = BodyType<FinancialDocumentReviewInput>
+    export type ReviewFinancialDocumentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Record an approver review decision for source evidence
+ */
+export const useReviewFinancialDocument = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewFinancialDocument>>, TError,{documentId: string;data: BodyType<FinancialDocumentReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewFinancialDocument>>,
+        TError,
+        {documentId: string;data: BodyType<FinancialDocumentReviewInput>},
+        TContext
+      > => {
+      return useMutation(getReviewFinancialDocumentMutationOptions(options));
     }
 

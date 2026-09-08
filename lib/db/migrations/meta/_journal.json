@@ -183,6 +183,13 @@
       "when": 1788830675010,
       "tag": "0025_futuristic_goblin_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1788834408203,
+      "tag": "0026_flimsy_vulture",
+      "breakpoints": true
     }
   ]
 }

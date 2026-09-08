@@ -203,7 +203,15 @@ async function ensureDefaultFinanceCategories(id: string) {
   });
 }
 
-function accountVisibility(actor: Actor, account: typeof financialAccounts.$inferSelect) {
+function accountDataMode(account: typeof financialAccounts.$inferSelect, connection?: typeof bankConnections.$inferSelect, credentialPresent = false) {
+  if (account.dataSource === "manual" || !connection || connection.provider === "manual") return "MANUAL";
+  if (connection.provider === "simulated" || connection.provider === "test") return "SIMULATED_TEST_ONLY";
+  // A label such as "Wells Fargo" is never evidence of a live connection.
+  if (credentialPresent && connection.consentStatus === "granted" && ["connected", "healthy"].includes(connection.status)) return "LIVE_CONNECTED";
+  return "STATEMENT_SUPPORTED";
+}
+
+function accountVisibility(actor: Actor, account: typeof financialAccounts.$inferSelect, connection?: typeof bankConnections.$inferSelect, credentialPresent = false) {
   const restricted = !canViewFinancialBalance(actor.role, account.protected);
   return {
     id: account.id,
@@ -214,6 +222,7 @@ function accountVisibility(actor: Actor, account: typeof financialAccounts.$infe
     availableBalance: restricted ? null : account.availableBalance,
     connectionStatus: account.connectionStatus,
     dataSource: account.dataSource,
+    dataMode: accountDataMode(account, connection, credentialPresent),
     lastSync: account.lastSync,
     includedInNetWorth: account.includedInNetWorth,
     includedInBudget: account.includedInBudget,
@@ -333,7 +342,10 @@ export async function getFinancialAccounts(actor: Actor) {
   const credentialConnectionIds = new Set(credentials.map((credential) => credential.connectionId));
   return {
     readOnly: true,
-    accounts: rows.map((account) => accountVisibility(actor, account)),
+    accounts: rows.map((account) => {
+      const connection = connections.find((candidate) => candidate.id === account.bankConnectionId);
+      return accountVisibility(actor, account, connection, Boolean(connection && credentialConnectionIds.has(connection.id)));
+    }),
     connections: connections.map((connection) => ({
       id: connection.id,
       provider: connection.provider,
@@ -1313,6 +1325,7 @@ export async function createManualFinancialAccount(actor: Actor, input: {
       availableBalance: input.currentBalance ?? "0.00",
       connectionStatus: "manual",
       dataSource: "manual",
+      dataMode: "manual",
       lastSync: recordedAt,
       lastSuccessfulSync: recordedAt,
     }).returning();

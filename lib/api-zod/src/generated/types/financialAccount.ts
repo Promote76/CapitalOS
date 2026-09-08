@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { FinancialAccountDataMode } from './financialAccountDataMode';
 
 export interface FinancialAccount {
   id: string;
@@ -17,6 +18,7 @@ export interface FinancialAccount {
   availableBalance?: string | null;
   connectionStatus: string;
   dataSource: string;
+  dataMode?: FinancialAccountDataMode;
   /** @nullable */
   lastSync?: Date | null;
   includedInNetWorth: boolean;

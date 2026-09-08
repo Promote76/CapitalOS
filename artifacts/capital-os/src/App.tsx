@@ -154,6 +154,14 @@ import {
   type FamilyOfficeResearchFailure,
   type ShadowIntentInputDirection,
   type TaxLienCandidateInput,
+  useListFinancialDocuments,
+  useRequestFinancialDocumentUploadUrl,
+  useIngestFinancialDocument,
+  useListFinancialReviewQueue,
+  getListFinancialDocumentsQueryKey,
+  getListFinancialReviewQueueQueryKey,
+  type FinancialDocumentUploadInputContentType,
+  type FinancialDocumentUploadInputDocumentType,
 } from '@workspace/api-client-react';
 import { dashboardDataState } from './dashboard-state';
 import {
@@ -1995,11 +2003,23 @@ function BudgetPage() {
   const data = query.data;
   const hasBudgetData = Number(data?.totals.budgeted ?? 0) > 0;
   const accountsAvailable = Boolean(accounts.data?.accounts.length);
+  const intelligenceIncomplete = variableBudget.data?.constraints.status === 'INCOMPLETE_DATA';
+  const safeCalculated = safe.isSuccess && Boolean(safe.data) && variableBudget.isSuccess && !intelligenceIncomplete && hasBudgetData;
   return <main className="content">
     <PageHeading eyebrow="Household finance / budget" title={<>Give every dollar<br /><em>a clear job.</em></>} description="A calm view of what came in, what went out, and what remains available for the plan." actions={<Link className="btn btn-primary" href="/cash-flow"><TrendingUp size={15} /> View cash flow</Link>} />
     {query.isLoading && <div className="finance-data-banner" role="status"><div className="finance-data-banner-icon"><Activity size={16} /></div><div><strong>Loading household budget</strong><span>Confirming reviewed transactions and planning targets before showing totals.</span></div></div>}
     {query.isError && <div className="card card-pad finance-route-error" role="alert"><div><strong>Budget data is temporarily unavailable</strong><span>No financial totals are shown until the household budget can be confirmed.</span></div><button className="btn btn-secondary" onClick={() => { void query.refetch(); }} data-testid="button-retry-budget">Try again</button></div>}
     {query.isSuccess && <div className="finance-data-banner" role="note"><div className="finance-data-banner-icon"><ShieldCheck size={16} /></div><div><strong>{hasBudgetData ? 'Household planning data' : 'Start with your household facts'}</strong><span>{hasBudgetData ? 'Manual entries and CSV imports are read-only source records. Imported rows stay in review until approved.' : 'Add a manual account, income source, or CSV ledger to build this household view. No demo household data is shared here.'}</span></div></div>}
+    <section className="card card-pad page-section household-foundation animate-in" data-testid="household-financial-foundation">
+      <CardTitle title="Household financial foundation" subtitle="Income evidence becomes planning income only after household verification." action={<Link className="btn btn-secondary" href="/documents">Add financial evidence</Link>} />
+      <div className="foundation-grid">
+        <div><span className="mono-label">Observed cash inflows</span><strong>Needs classification</strong><small>Observed or business cash is not automatically verified household income.</small></div>
+        <div><span className="mono-label">Verified income & history</span><strong>{variableBudget.data && !intelligenceIncomplete ? displayMoney(variableBudget.data.incomeProfile.currentMonthVerifiedIncome, 'Not established') : 'Insufficient verified history'}</strong><small>{variableBudget.data?.incomeProfile.confidenceStatus.replaceAll('_', ' ') ?? 'Evidence required before scenarios are calculated.'}</small></div>
+        <div><span className="mono-label">Current household cash</span><strong>{variableBudget.data ? displayMoney(variableBudget.data.cash.current, 'Not available') : 'Not available'}</strong><small>Account balances are separate from period income.</small></div>
+        <div><span className="mono-label">Current plan state</span><strong>{hasBudgetData ? 'Plan in progress' : 'Not established'}</strong><small>{hasBudgetData ? 'Targets are available for this period.' : 'Create a plan after evidence and obligations are reviewed.'}</small></div>
+      </div>
+      <div className="foundation-actions"><Link className="btn btn-primary" href="/documents?type=STEVENS_SETTLEMENT">Upload Stevens settlement</Link><Link className="btn" href="/documents?type=BUSINESS_PROFIT_AND_LOSS">Upload P&amp;L</Link><Link className="btn" href="/documents?type=BANK_STATEMENT">Upload bank statement</Link><Link className="btn" href="/budget#budget-planning">Open plan builder</Link><Link className="btn" href="/bills">Set obligations &amp; reserves</Link></div>
+    </section>
     <section className="card card-pad page-section animate-in">
       <CardTitle title="Record a transaction" subtitle="Enter it once, then review it before it reaches your budget or Safe-to-Deploy." />
       {accounts.isLoading ? <div className="finance-empty-state" role="status"><strong>Loading household accounts</strong><span>The transaction form will be ready when account ownership is confirmed.</span></div> : accounts.isError ? <div className="finance-empty-state" role="alert"><strong>Accounts are temporarily unavailable</strong><span>A transaction cannot be attributed safely until accounts load.</span><button className="btn btn-secondary" onClick={() => { void accounts.refetch(); }} data-testid="button-retry-budget-accounts">Try again</button></div> : !accountsAvailable ? <div className="finance-empty-state"><strong>Add an account first</strong><span>Transactions need a household account so balances and history stay attributable.</span><Link className="btn btn-secondary" href="/accounts">Open accounts</Link></div> : <form className="account-form transaction-form" onSubmit={submitTransaction}>
@@ -2021,7 +2041,7 @@ function BudgetPage() {
         <FinanceMetric label="Month planned" value={displayMoney(data.totals.budgeted, '$0')} detail="household expense targets" tone="blue" action={<Link className="text-link" href="/transactions">Review activity</Link>} />
         <FinanceMetric label="Spent so far" value={displayMoney(data.totals.actual, '$0')} detail={`${data.totals.percentageUsed}% of planned`} tone="amber" action={<Link className="text-link" href="/transactions">Review transactions</Link>} />
         <FinanceMetric label="Remaining" value={displayMoney(data.totals.remaining, '$0')} detail="before the month closes" tone="green" action={<Link className="text-link" href="/cash-flow">View cash flow</Link>} />
-        <FinanceMetric label="Safe to deploy" value={safe.isLoading ? 'Calculating…' : safe.isError ? 'Unavailable' : displayMoney(safe.data?.safeToDeploy, '$0')} detail={safe.isError ? 'Capital Governor could not be refreshed' : 'Capital Governor limit'} tone="lavender" action={safe.isError ? <button className="text-link" onClick={() => { void safe.refetch(); }} data-testid="button-retry-budget-safe-to-deploy">Try again</button> : <Link className="text-link" href="/cash-flow">See calculation</Link>} />
+        <FinanceMetric label="Safe to deploy" value={safe.isLoading ? 'Calculating…' : safeCalculated ? displayMoney(safe.data?.safeToDeploy, 'NOT CALCULATED') : 'NOT CALCULATED'} detail={safeCalculated ? 'Capital Governor limit' : 'Needs a plan, reserves, and verified evidence'} tone="lavender" action={safe.isError ? <button className="text-link" onClick={() => { void safe.refetch(); }} data-testid="button-retry-budget-safe-to-deploy">Try again</button> : <Link className="text-link" href="/documents">Add evidence</Link>} />
       </div>
 
        <section className="card card-pad page-section animate-in delay-1 budget-capital-governor" data-testid="budget-capital-governor">
@@ -2054,14 +2074,14 @@ function BudgetPage() {
         {variableBudget.isError && <div className="finance-empty-state" role="alert"><strong>Variable-income intelligence is unavailable</strong><span>No variable-income totals are shown until its household sources can be confirmed.</span><button className="btn btn-secondary" onClick={() => { void variableBudget.refetch(); }}>Try again</button></div>}
         {variableBudget.isSuccess && variableBudget.data && <>
           <div className="finance-grid variable-budget-metrics">
-            <FinanceMetric label="Income floor" value={displayMoney(variableBudget.data.incomeProfile.incomeFloor, '$0')} detail={variableBudget.data.incomeProfile.confidenceStatus.replaceAll('_', ' ').toLowerCase()} tone="lavender" />
-            <FinanceMetric label="Base month" value={displayMoney(variableBudget.data.incomeProfile.baseIncome, '$0')} detail="recent verified median" tone="blue" />
-            <FinanceMetric label="Strong month" value={displayMoney(variableBudget.data.incomeProfile.strongMonthIncome, '$0')} detail="recent verified high" tone="green" />
-            <FinanceMetric label="Capital surplus at floor" value={displayMoney(variableBudget.data.constraints.capitalSurplusAtFloor, '$0')} detail={variableBudget.data.constraints.status.replaceAll('_', ' ').toLowerCase()} tone="amber" />
+            <FinanceMetric label="Income floor" value={intelligenceIncomplete ? 'INSUFFICIENT VERIFIED HISTORY' : displayMoney(variableBudget.data.incomeProfile.incomeFloor, 'NOT ESTABLISHED')} detail={variableBudget.data.incomeProfile.confidenceStatus.replaceAll('_', ' ').toLowerCase()} tone="lavender" />
+            <FinanceMetric label="Base month" value={intelligenceIncomplete ? 'INSUFFICIENT VERIFIED HISTORY' : displayMoney(variableBudget.data.incomeProfile.baseIncome, 'NOT ESTABLISHED')} detail="recent verified median" tone="blue" />
+            <FinanceMetric label="Strong month" value={intelligenceIncomplete ? 'INSUFFICIENT VERIFIED HISTORY' : displayMoney(variableBudget.data.incomeProfile.strongMonthIncome, 'NOT ESTABLISHED')} detail="recent verified high" tone="green" />
+            <FinanceMetric label="Capital surplus at floor" value={intelligenceIncomplete ? 'NOT CALCULATED' : displayMoney(variableBudget.data.constraints.capitalSurplusAtFloor, 'NOT CALCULATED')} detail={variableBudget.data.constraints.status.replaceAll('_', ' ').toLowerCase()} tone="amber" />
           </div>
           <div className="variable-budget-columns">
             <div className="finance-table">
-              <div className="finance-row"><div><strong>Operating budget cap</strong><span>Floor less mandatory, essential, and reserve needs</span></div><div className="finance-amount"><strong>{displayMoney(variableBudget.data.constraints.operatingBudgetCap, '$0')}</strong></div></div>
+               <div className="finance-row"><div><strong>Operating budget cap</strong><span>Floor less mandatory, essential, and reserve needs</span></div><div className="finance-amount"><strong>{intelligenceIncomplete ? 'NOT CALCULATED' : displayMoney(variableBudget.data.constraints.operatingBudgetCap, 'NOT CALCULATED')}</strong></div></div>
               <div className="finance-row"><div><strong>Mandatory obligations</strong><span>Approved plan and essential bills</span></div><div className="finance-amount"><strong>{displayMoney(variableBudget.data.constraints.mandatoryObligations, '$0')}</strong></div></div>
               <div className="finance-row"><div><strong>Reserve funding</strong><span>{variableBudget.data.reserve.status.replaceAll('_', ' ').toLowerCase()}</span></div><div className="finance-amount"><strong>{displayMoney(variableBudget.data.reserve.monthlyFunding, '$0')}</strong></div></div>
               <div className="finance-row"><div><strong>Next 30-day obligations</strong><span>{variableBudget.data.cash.coverage}x cash coverage</span></div><div className="finance-amount"><strong>{displayMoney(variableBudget.data.obligations.next30Days, '$0')}</strong></div></div>
@@ -2469,7 +2489,7 @@ function AccountsPage({ onFeedback }: { onFeedback: (message: string) => void })
   return <main className="content">
     <PageHeading eyebrow="Household finance / accounts" title={<>Know where the money<br /><em>is held.</em></>} description="Manual, imported, and explicitly consented read-only accounts give the Capital Governor context without allowing Capital OS to move money." actions={<button className="btn btn-primary" onClick={() => setAdding(!adding)} data-testid="button-add-financial-account"><Plus size={15} /> Add manual account</button>} />
     {adding && <section className="card card-pad page-section"><CardTitle title="Add a manual account" subtitle="Balances stay read-only after they are entered." /><form className="account-form" onSubmit={submit}><div className="field"><label>Institution</label><input required value={form.institution} onChange={(event) => setForm({ ...form, institution: event.target.value })} /></div><div className="field"><label>Nickname</label><input required value={form.nickname} onChange={(event) => setForm({ ...form, nickname: event.target.value })} /></div><div className="field"><label>Account type</label><select value={form.accountType} onChange={(event) => setForm({ ...form, accountType: event.target.value })}><option value="checking">Checking</option><option value="savings">Savings</option><option value="credit_card">Credit card</option><option value="loan">Loan</option></select></div><div className="field"><label>Current balance</label><input inputMode="decimal" value={form.currentBalance} onChange={(event) => setForm({ ...form, currentBalance: event.target.value })} placeholder="0.00" /></div><div className="modal-actions"><button type="button" className="btn" onClick={() => setAdding(false)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={create.isPending}><Check size={14} /> Save account</button></div></form></section>}
-    <section className="card card-pad animate-in delay-1"><CardTitle title="Connected financial accounts" subtitle={`${query.data?.totals.accountCount ?? 0} accounts · read-only by design`} /><div className="table-wrap"><table className="table"><thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>Source</th><th>Status</th><th>History</th></tr></thead><tbody>{(query.data?.accounts ?? []).map((account) => <tr key={account.id}><td><strong>{account.nickname}</strong><br /><span className="table-secondary">{account.institution}</span></td><td>{account.accountType.replace('_', ' ')}</td><td className="font-mono">{account.restricted ? 'Restricted' : displayMoney(account.currentBalance ?? undefined, '$0')}</td><td>{account.dataSource.replace('_', ' ')}</td><td><span className="status">{account.protected ? 'Protected' : 'Read only'}</span></td><td><button className="btn btn-small" onClick={() => { setImportingAccountId(account.id); setCsvText(''); setCsvFileName(''); }}><FileText size={13} /> Import CSV</button></td></tr>)}</tbody></table></div>{!query.isLoading && !(query.data?.accounts.length) && <div className="finance-empty-state"><strong>Add an account before importing history</strong><span>Use a manual account for the current balance, then import a CSV ledger. Imported rows stay in review until you approve them for planning.</span></div>}<div className="finance-note"><LockKeyhole size={16} /><span>Every source is read-only. Capital OS does not expose transfers, bill pay, ACH, trading, or stored bank credentials.</span></div></section>
+    <section className="card card-pad animate-in delay-1"><CardTitle title="Financial accounts" subtitle={`${query.data?.totals.accountCount ?? 0} accounts · read-only by design`} /><div className="table-wrap"><table className="table"><thead><tr><th>Account</th><th>Type</th><th>Balance</th><th>Source</th><th>Data mode</th><th>History</th></tr></thead><tbody>{(query.data?.accounts ?? []).map((account) => <tr key={account.id}><td><strong>{account.nickname}</strong><br /><span className="table-secondary">{account.institution}</span></td><td>{account.accountType.replace('_', ' ')}</td><td className="font-mono">{account.restricted ? 'Restricted' : displayMoney(account.currentBalance ?? undefined, '$0')}</td><td>{account.dataSource.replace('_', ' ')}</td><td><span className="status">{account.dataMode ? account.dataMode.replaceAll('_', ' ') : 'MANUAL'}</span></td><td><button className="btn btn-small" onClick={() => { setImportingAccountId(account.id); setCsvText(''); setCsvFileName(''); }}><FileText size={13} /> Import CSV</button></td></tr>)}</tbody></table></div>{!query.isLoading && !(query.data?.accounts.length) && <div className="finance-empty-state"><strong>Add an account before importing history</strong><span>Use a manual account for the current balance, then import a CSV ledger. Imported rows stay in review until you approve them for planning.</span></div>}<div className="finance-note"><LockKeyhole size={16} /><span>Data mode is determined by account metadata, never by an institution name. Every source is read-only; Capital OS has no bank writes.</span></div></section>
     <section className="card card-pad page-section bank-connections" data-testid="section-bank-connections">
       <CardTitle title="Read-only bank connections" subtitle={productionProviders.length ? 'Consent, match, review, and revoke provider access.' : 'Unavailable until an approved production provider is configured.'} action={<button className="btn" type="button" disabled={!productionProviders.length} onClick={() => setConnecting((value) => !value)} data-testid="button-connect-bank"><Landmark size={14} /> Connect bank</button>} />
       {bankingStatus.isError && <div className="bank-state-banner critical" role="alert"><ShieldAlert size={17} /><div><strong>Provider status is unavailable</strong><span>New connections, matching, and sync are paused. Existing connections remain available for review, export, consent revocation, and provider-data deletion.</span></div></div>}
@@ -2643,6 +2663,87 @@ function UtilityPage({ kind, onAction, transactions, dashboard }: { kind: string
     return <main className="content"><PageHeading eyebrow={item.eyebrow} title={item.title} description={item.description} actions={<button className="btn btn-primary" data-testid="button-add-contribution-page" onClick={() => onAction('contribution')}><Plus size={15} /> Record contribution</button>} /><section className="card card-pad stat-strip animate-in delay-1">{[[`$${contributed.toFixed(2)}`, 'contributed in loaded history', `${transactions.length} recorded movements`], [`$${weeklyPace.toFixed(2)}`, 'current weekly pace', 'From the active household rule'], ['—', 'on-time rhythm', 'Requires contribution schedule data']].map(([value, label, detail], index) => <div className="stat-cell" key={label}><div className="mono-label">{label}</div><div className="stat-value" data-testid={index === 0 ? 'stat-contributed-loaded-history' : index === 1 ? 'stat-current-weekly-pace' : undefined}>{value}</div><div className="stat-detail">{detail}</div></div>)}</section><section className="card card-pad page-section"><CardTitle title="Allocation rhythm" subtitle="The server applies the active household rule when a contribution is recorded." />{allocationRows.map(([name, amount, total]) => <div className="goal-row" key={name}><div className="goal-label"><i />{name}</div><div className="goal-progress"><b style={{ width: `${total && Number(total) > 0 ? (Number(amount) / Number(total)) * 100 : 0}%`, background:name === 'Duplex Reserve' ? 'var(--color-protected)' : name === 'Capital OS' ? 'var(--color-primary)' : 'var(--color-opportunity)' }} /></div><div className="goal-pct" data-testid={`text-allocation-${name.toLowerCase().replaceAll(' ', '-')}`}>${Number(amount).toFixed(2)}</div></div>)}</section></main>;
   }
   return <main className="content"><PageHeading eyebrow={item.eyebrow} title={item.title} description={item.description} actions={<button className="btn btn-primary" data-testid={`button-add-${kind}`} onClick={() => onAction(kind === 'documents' ? 'property' : 'strategy')}><Plus size={15} /> {kind === 'documents' ? 'Add document note' : kind === 'reports' ? 'Build a report' : 'Save an insight'}</button>} /><section className="empty-state animate-in delay-1"><Icon size={25} /><h3>{kind === 'documents' ? 'Your future self will thank you.' : kind === 'reports' ? 'A report worth opening.' : 'A little perspective helps.'}</h3><p>{kind === 'documents' ? 'Add a note about a statement, inspection checklist, or lender conversation when it becomes useful.' : kind === 'reports' ? 'Your first monthly capital report will appear after the next contribution cycle.' : 'Insights will become more personal as your weekly rhythm builds a longer story.'}</p><button className="btn btn-gold" data-testid={`button-create-${kind}`} onClick={() => onAction(kind === 'documents' ? 'property' : 'strategy')}><FilePlus2 size={14} /> Create the first one</button></section></main>;
+}
+
+const financialDocumentTypes: Array<{ type: FinancialDocumentUploadInputDocumentType; label: string; institution: string }> = [
+  { type: 'STEVENS_SETTLEMENT', label: 'Upload Stevens Settlement', institution: 'Stevens Transport' },
+  { type: 'BUSINESS_PROFIT_AND_LOSS', label: 'Upload P&L', institution: 'Business accounting' },
+  { type: 'BANK_STATEMENT', label: 'Upload Bank Statement', institution: 'Your bank' },
+  { type: 'OTHER_FINANCIAL_DOCUMENT', label: 'Upload Financial Document', institution: '' },
+];
+
+function FinancialDocumentInboxPage() {
+  const documents = useListFinancialDocuments();
+  const queue = useListFinancialReviewQueue();
+  const requestUpload = useRequestFinancialDocumentUploadUrl();
+  const ingest = useIngestFinancialDocument();
+  const [location] = useLocation();
+  const initialType = new URLSearchParams(location.split('?')[1]).get('type');
+  const selectedInitial = financialDocumentTypes.some((item) => item.type === initialType) ? initialType as FinancialDocumentUploadInputDocumentType : 'STEVENS_SETTLEMENT';
+  const [documentType, setDocumentType] = useState<FinancialDocumentUploadInputDocumentType>(selectedInitial);
+  const [file, setFile] = useState<File | null>(null);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const selected = financialDocumentTypes.find((item) => item.type === documentType) ?? financialDocumentTypes[0];
+  const refresh = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getListFinancialDocumentsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListFinancialReviewQueueQueryKey() }),
+    ]);
+  };
+  const choose = (next: FinancialDocumentUploadInputDocumentType) => {
+    setDocumentType(next); setFile(null); setError(''); setMessage('');
+    inputRef.current?.click();
+  };
+  const mimeFor = (selectedFile: File): FinancialDocumentUploadInputContentType | null => {
+    if (selectedFile.name.toLowerCase().endsWith('.pdf') || selectedFile.type === 'application/pdf') return 'application/pdf';
+    if (selectedFile.name.toLowerCase().endsWith('.csv') || selectedFile.type === 'text/csv') return 'text/csv';
+    if (selectedFile.name.toLowerCase().endsWith('.xlsx') || selectedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    return null;
+  };
+  const upload = async () => {
+    if (!file) { setError('Choose a PDF, CSV, or XLSX file first.'); return; }
+    const contentType = mimeFor(file);
+    if (!contentType) { setError('Only PDF, CSV, and XLSX financial documents can be uploaded.'); return; }
+    setError(''); setMessage('');
+    try {
+      const target = await requestUpload.mutateAsync({ data: { name: file.name, size: file.size, contentType, documentType } });
+      const stored = await fetch(target.uploadURL, { method: 'PUT', headers: { 'Content-Type': target.contentType }, body: file });
+      if (!stored.ok) throw new Error('The file could not be uploaded to App Storage.');
+      await ingest.mutateAsync({ data: { documentType, sourceFileName: file.name, sourceObjectPath: target.objectPath, contentType: target.contentType, sourceSizeBytes: file.size, sourceInstitution: selected.institution || undefined } });
+      await refresh(); setMessage('Evidence uploaded. It will remain separate from planning totals until reviewed.'); setFile(null);
+    } catch (cause) {
+      const detail = cause instanceof Error ? cause.message : 'The financial document could not be ingested.';
+      setError(/duplicate|already exists|conflict/i.test(detail) ? 'DOCUMENT ALREADY EXISTS — this evidence was not imported twice.' : detail);
+    }
+  };
+  const pending = queue.data?.items.length ?? documents.data?.documents.filter((item) => ['NEEDS_REVIEW', 'PARSED', 'PARSING', 'UPLOADED'].includes(item.status)).length ?? 0;
+  return <main className="content">
+    <PageHeading eyebrow="Documents / financial inbox" title={<>Financial evidence,<br /><em>ready for review.</em></>} description="Upload source records first. Capital OS stores evidence and never writes to a bank." actions={<button className="btn btn-primary" onClick={() => inputRef.current?.click()}><FilePlus2 size={15} /> Choose file</button>} />
+    <section className="card card-pad document-boundary" data-testid="financial-inbox-provider-boundary"><ShieldAlert size={18} /><div><strong>Wells Fargo and live bank connections are not configured.</strong><span>Uploaded statements are read-only statement evidence only. They begin pending review and never create bank writes.</span></div></section>
+    <section className="document-inbox-layout">
+      <section className="card card-pad" data-testid="financial-document-upload">
+        <CardTitle title="Upload financial evidence" subtitle="PDF, CSV, or XLSX · up to 50 MB. Drag a file here on desktop or choose a file on your device." />
+        <div className="document-actions">{financialDocumentTypes.map((item) => <button type="button" className={`btn ${documentType === item.type ? 'btn-primary' : ''}`} key={item.type} onClick={() => choose(item.type)}>{item.label}</button>)}</div>
+        <div className="document-dropzone" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); setFile(event.dataTransfer.files[0] ?? null); setError(''); }}>
+          <FileText size={22} /><strong>{file ? file.name : `Ready for ${selected.label.replace('Upload ', '')}`}</strong><span>{file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : 'Drop a file here, or use Choose file.'}</span>
+          <button type="button" className="btn" onClick={() => inputRef.current?.click()}>Choose file</button>
+          <input ref={inputRef} className="sr-only" type="file" accept=".pdf,.csv,.xlsx,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+        </div>
+        <div className="modal-actions"><button className="btn btn-primary" type="button" onClick={() => void upload()} disabled={!file || requestUpload.isPending || ingest.isPending}>{requestUpload.isPending || ingest.isPending ? 'Uploading…' : 'Upload and ingest'}</button></div>
+        {message && <div className="form-feedback success" role="status">{message}</div>}{error && <div className="form-feedback error" role="alert">{error}</div>}
+      </section>
+      <aside className="card card-pad document-queue"><span className="eyebrow">Central review queue</span><strong>{pending} item{pending === 1 ? '' : 's'} need attention</strong><p>Parsed is not verified. Review source evidence before it informs reconciliations or household planning.</p><button className="btn btn-secondary" onClick={() => { void queue.refetch(); void documents.refetch(); }}>Refresh queue</button></aside>
+    </section>
+    <section className="card card-pad page-section">
+      <CardTitle title="Financial document inbox" subtitle="Source file, institution, and document date are shown for review. Storage paths and hashes stay out of the primary workspace." />
+      {documents.isLoading && <div className="finance-empty-state"><strong>Loading financial evidence</strong></div>}
+      {documents.isError && <div className="finance-empty-state" role="alert"><strong>Financial evidence is temporarily unavailable</strong><button className="btn btn-secondary" onClick={() => void documents.refetch()}>Try again</button></div>}
+      {documents.isSuccess && documents.data.documents.length === 0 && <div className="finance-empty-state"><strong>No financial documents yet</strong><span>Add a settlement, P&amp;L, or bank statement to begin the reviewable evidence trail.</span></div>}
+      <div className="document-list">{documents.data?.documents.map((document) => <div className="document-row" key={document.id}><div><strong>{document.sourceFileName}</strong><span>{document.sourceInstitution || 'Source institution not supplied'} · {document.statementDate || document.periodEnd || document.periodStart || displayDate(document.uploadedAt, 'uploaded today')}</span></div><div><span className={`status ${['NEEDS_REVIEW', 'PARSE_FAILED', 'DUPLICATE'].includes(document.status) ? 'review' : document.status === 'VERIFIED' || document.status === 'RECONCILED' ? '' : 'pending'}`}>{document.status.replaceAll('_', ' ')}</span>{document.documentType === 'BANK_STATEMENT' && <small className="document-pending-note">Statement evidence · pending review</small>}</div></div>)}</div>
+    </section>
+  </main>;
 }
 
 function TransactionTable({ transactions }: { transactions: Transaction[] }) {
@@ -3520,7 +3621,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, dashboardSta
      <Route path="/transactions" component={() => <TransactionReviewPage onFeedback={onFeedback} />} />
      <Route path="/contributions" component={() => <UtilityPage kind="contributions" onAction={onAction} transactions={transactions} dashboard={dashboard} />} />
     <Route path="/reports" component={() => <UtilityPage kind="reports" onAction={onAction} transactions={transactions} />} />
-    <Route path="/documents" component={() => <UtilityPage kind="documents" onAction={onAction} transactions={transactions} />} />
+     <Route path="/documents" component={FinancialDocumentInboxPage} />
      <Route path="/insights" component={() => <IntelligencePage onFeedback={onFeedback} />} />
      <Route path="/family-office" component={() => <FamilyOfficePage onFeedback={onFeedback} />} />
     <Route component={NotFound} />

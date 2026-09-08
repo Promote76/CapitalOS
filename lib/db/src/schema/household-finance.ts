@@ -145,6 +145,8 @@ export const financialAccounts = pgTable(
     protected: boolean("protected").notNull().default(false),
     businessEntityId: uuid("business_entity_id").references(() => businessEntities.id, { onDelete: "set null" }),
     dataSource: financeDataSourceEnum("data_source").notNull().default("manual"),
+    // Derived strictly from connection/provider metadata, never institution text.
+    dataMode: text("data_mode").notNull().default("manual"),
     lastSuccessfulSync: timestamp("last_successful_sync", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

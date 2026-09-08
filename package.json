@@ -22,7 +22,8 @@
     "certify:migrations": "node scripts/certify-migrations.mjs",
     "certify:internal-reliability": "node scripts/certify-internal-reliability.mjs",
     "certify:variable-budget": "node scripts/certify-variable-budget.mjs",
-    "certify:capital-governor-v2": "node scripts/certify-capital-governor-v2.mjs"
+    "certify:capital-governor-v2": "node scripts/certify-capital-governor-v2.mjs",
+    "certify:financial-planning-completion": "node scripts/certify-financial-planning-completion.mjs"
   },
   "private": true,
   "dependencies": {

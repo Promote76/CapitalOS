@@ -3339,6 +3339,7 @@ export const ListFinancialAccountsResponse = zod.object({
   "availableBalance": zod.string().nullish(),
   "connectionStatus": zod.string(),
   "dataSource": zod.string(),
+  "dataMode": zod.enum(['MANUAL', 'STATEMENT_SUPPORTED', 'LIVE_CONNECTED', 'SIMULATED_TEST_ONLY']).optional(),
   "lastSync": zod.coerce.date().nullish(),
   "includedInNetWorth": zod.boolean(),
   "includedInBudget": zod.boolean(),
@@ -3392,6 +3393,7 @@ export const CreateManualFinancialAccountResponse = zod.object({
   "availableBalance": zod.string().nullish(),
   "connectionStatus": zod.string(),
   "dataSource": zod.string(),
+  "dataMode": zod.enum(['MANUAL', 'STATEMENT_SUPPORTED', 'LIVE_CONNECTED', 'SIMULATED_TEST_ONLY']).optional(),
   "lastSync": zod.coerce.date().nullish(),
   "includedInNetWorth": zod.boolean(),
   "includedInBudget": zod.boolean(),
@@ -5149,6 +5151,7 @@ export const LinkReadOnlyBankAccountResponse = zod.object({
   "availableBalance": zod.string().nullish(),
   "connectionStatus": zod.string(),
   "dataSource": zod.string(),
+  "dataMode": zod.enum(['MANUAL', 'STATEMENT_SUPPORTED', 'LIVE_CONNECTED', 'SIMULATED_TEST_ONLY']).optional(),
   "lastSync": zod.coerce.date().nullish(),
   "includedInNetWorth": zod.boolean(),
   "includedInBudget": zod.boolean(),
@@ -7835,6 +7838,199 @@ export const ApproveBusinessOwnerDrawResponse = zod.object({
   "verificationStatus": zod.string(),
   "createdAt": zod.coerce.date()
 })
+})
+
+
+/**
+ * @summary List household financial source evidence
+ */
+export const ListFinancialDocumentsResponse = zod.object({
+  "documents": zod.array(zod.object({
+  "id": zod.string(),
+  "documentType": zod.string(),
+  "status": zod.string(),
+  "sourceInstitution": zod.string().nullish(),
+  "sourceFileName": zod.string(),
+  "mimeType": zod.string(),
+  "documentHash": zod.string(),
+  "sourceObjectPath": zod.string(),
+  "sourceMetadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "periodStart": zod.string().nullish(),
+  "periodEnd": zod.string().nullish(),
+  "statementDate": zod.string().nullish(),
+  "parserVersion": zod.string().nullish(),
+  "sourceRecordType": zod.string().nullish(),
+  "sourceRecordId": zod.string().nullish(),
+  "uploadedAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "reviewDecision": zod.string().nullish(),
+  "reviewReason": zod.string().nullish(),
+  "bankStatement": zod.record(zod.string(), zod.unknown()).nullish(),
+  "transactions": zod.array(zod.record(zod.string(), zod.unknown())).optional()
+}))
+})
+
+
+/**
+ * @summary Request a private upload URL for financial evidence
+ */
+export const requestFinancialDocumentUploadUrlBodyNameMax = 255;
+
+export const requestFinancialDocumentUploadUrlBodySizeMax = 52428800;
+
+
+
+export const RequestFinancialDocumentUploadUrlBody = zod.object({
+  "name": zod.string().min(1).max(requestFinancialDocumentUploadUrlBodyNameMax),
+  "size": zod.number().min(1).max(requestFinancialDocumentUploadUrlBodySizeMax),
+  "contentType": zod.enum(['application/pdf', 'text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']),
+  "documentType": zod.enum(['STEVENS_SETTLEMENT', 'BUSINESS_PROFIT_AND_LOSS', 'BANK_STATEMENT', '1099', 'INCOME_VERIFICATION', 'INSURANCE_DOCUMENT', 'AUTO_LOAN_DOCUMENT', 'BUSINESS_LEASE_DOCUMENT', 'OTHER_FINANCIAL_DOCUMENT'])
+})
+
+export const RequestFinancialDocumentUploadUrlResponse = zod.object({
+  "name": zod.string(),
+  "size": zod.number(),
+  "contentType": zod.string(),
+  "documentType": zod.string(),
+  "uploadURL": zod.string(),
+  "objectPath": zod.string()
+})
+
+
+/**
+ * @summary Record uploaded financial evidence without creating ledger entries
+ */
+export const ingestFinancialDocumentBodySourceFileNameMax = 255;
+
+export const ingestFinancialDocumentBodySourceObjectPathRegExp = new RegExp('^/objects/uploads/[0-9a-fA-F-]{36}$');
+export const ingestFinancialDocumentBodySourceSizeBytesMax = 52428800;
+
+
+
+export const IngestFinancialDocumentBody = zod.object({
+  "documentType": zod.string(),
+  "sourceFileName": zod.string().min(1).max(ingestFinancialDocumentBodySourceFileNameMax),
+  "sourceObjectPath": zod.string().regex(ingestFinancialDocumentBodySourceObjectPathRegExp),
+  "contentType": zod.string(),
+  "sourceSizeBytes": zod.number().min(1).max(ingestFinancialDocumentBodySourceSizeBytesMax),
+  "businessId": zod.string().optional(),
+  "sourceInstitution": zod.string().optional(),
+  "accountId": zod.string().optional(),
+  "statementStart": zod.string().optional(),
+  "statementEnd": zod.string().optional(),
+  "accountDisplayName": zod.string().optional(),
+  "accountMask": zod.string().optional()
+})
+
+export const IngestFinancialDocumentResponse = zod.object({
+  "id": zod.string(),
+  "documentType": zod.string(),
+  "status": zod.string(),
+  "sourceInstitution": zod.string().nullish(),
+  "sourceFileName": zod.string(),
+  "mimeType": zod.string(),
+  "documentHash": zod.string(),
+  "sourceObjectPath": zod.string(),
+  "sourceMetadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "periodStart": zod.string().nullish(),
+  "periodEnd": zod.string().nullish(),
+  "statementDate": zod.string().nullish(),
+  "parserVersion": zod.string().nullish(),
+  "sourceRecordType": zod.string().nullish(),
+  "sourceRecordId": zod.string().nullish(),
+  "uploadedAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "reviewDecision": zod.string().nullish(),
+  "reviewReason": zod.string().nullish(),
+  "bankStatement": zod.record(zod.string(), zod.unknown()).nullish(),
+  "transactions": zod.array(zod.record(zod.string(), zod.unknown())).optional()
+})
+
+
+/**
+ * @summary List cross-source financial evidence requiring review
+ */
+export const ListFinancialReviewQueueResponse = zod.object({
+  "items": zod.array(zod.record(zod.string(), zod.unknown()))
+})
+
+
+/**
+ * @summary Retrieve source provenance and evidence detail
+ */
+export const getFinancialDocumentPathDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const GetFinancialDocumentParams = zod.object({
+  "documentId": zod.coerce.string().regex(getFinancialDocumentPathDocumentIdRegExp)
+})
+
+export const GetFinancialDocumentResponse = zod.object({
+  "id": zod.string(),
+  "documentType": zod.string(),
+  "status": zod.string(),
+  "sourceInstitution": zod.string().nullish(),
+  "sourceFileName": zod.string(),
+  "mimeType": zod.string(),
+  "documentHash": zod.string(),
+  "sourceObjectPath": zod.string(),
+  "sourceMetadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "periodStart": zod.string().nullish(),
+  "periodEnd": zod.string().nullish(),
+  "statementDate": zod.string().nullish(),
+  "parserVersion": zod.string().nullish(),
+  "sourceRecordType": zod.string().nullish(),
+  "sourceRecordId": zod.string().nullish(),
+  "uploadedAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "reviewDecision": zod.string().nullish(),
+  "reviewReason": zod.string().nullish(),
+  "bankStatement": zod.record(zod.string(), zod.unknown()).nullish(),
+  "transactions": zod.array(zod.record(zod.string(), zod.unknown())).optional()
+})
+
+
+/**
+ * @summary Record an approver review decision for source evidence
+ */
+export const reviewFinancialDocumentPathDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ReviewFinancialDocumentParams = zod.object({
+  "documentId": zod.coerce.string().regex(reviewFinancialDocumentPathDocumentIdRegExp)
+})
+
+export const reviewFinancialDocumentBodyReasonMax = 1000;
+
+
+
+export const ReviewFinancialDocumentBody = zod.object({
+  "decision": zod.enum(['VERIFIED', 'REJECTED', 'NEEDS_REVIEW']),
+  "reason": zod.string().min(1).max(reviewFinancialDocumentBodyReasonMax)
+})
+
+export const ReviewFinancialDocumentResponse = zod.object({
+  "id": zod.string(),
+  "documentType": zod.string(),
+  "status": zod.string(),
+  "sourceInstitution": zod.string().nullish(),
+  "sourceFileName": zod.string(),
+  "mimeType": zod.string(),
+  "documentHash": zod.string(),
+  "sourceObjectPath": zod.string(),
+  "sourceMetadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "periodStart": zod.string().nullish(),
+  "periodEnd": zod.string().nullish(),
+  "statementDate": zod.string().nullish(),
+  "parserVersion": zod.string().nullish(),
+  "sourceRecordType": zod.string().nullish(),
+  "sourceRecordId": zod.string().nullish(),
+  "uploadedAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullish(),
+  "reviewDecision": zod.string().nullish(),
+  "reviewReason": zod.string().nullish(),
+  "bankStatement": zod.record(zod.string(), zod.unknown()).nullish(),
+  "transactions": zod.array(zod.record(zod.string(), zod.unknown())).optional()
 })
 
 

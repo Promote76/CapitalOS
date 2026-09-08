@@ -175,6 +175,12 @@ test("authenticated Treasury certifies Safe-to-Deploy 2.0 readiness states and r
     governorResponse = readyState;
     await page.goto("/budget");
     await expect(page.getByRole("heading", { name: /Give every dollar/i })).toBeVisible();
+    const foundation = page.getByTestId("household-financial-foundation");
+    await expect(foundation).toBeVisible();
+    await expect(foundation).toContainText("Household financial foundation");
+    await expect(foundation).toContainText("Needs classification");
+    await expect(foundation).toContainText("Insufficient verified history");
+    await expect(foundation.getByRole("link", { name: "Upload bank statement" })).toBeVisible();
     const budgetPanel = page.getByTestId("budget-capital-governor");
     await expect(budgetPanel).toBeVisible();
     await expect(budgetPanel).toContainText("Capital Governor 2.0");
@@ -183,6 +189,13 @@ test("authenticated Treasury certifies Safe-to-Deploy 2.0 readiness states and r
     await expect(budgetPanel).toContainText("Waterfall available");
     await expect(budgetPanel).toContainText("Advisory only");
     await expect(budgetPanel).toContainText("do not move money");
+
+    await page.goto("/documents");
+    await expect(page.getByRole("heading", { name: /Financial evidence/i })).toBeVisible();
+    await expect(page.getByTestId("financial-document-upload")).toBeVisible();
+    const providerBoundary = page.getByTestId("financial-inbox-provider-boundary");
+    await expect(providerBoundary).toContainText("Wells Fargo and live bank connections are not configured");
+    await expect(providerBoundary).toContainText("never create bank writes");
 
     governorResponse = undefined;
     await page.goto("/treasury");

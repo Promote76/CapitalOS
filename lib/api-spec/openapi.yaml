@@ -3102,6 +3102,62 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
+  /financial-documents:
+    get:
+      operationId: listFinancialDocuments
+      tags: [household-finance]
+      summary: List household financial source evidence
+      responses:
+        "200":
+          description: Financial documents
+          content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocumentList" } } }
+  /financial-documents/upload-url:
+    post:
+      operationId: requestFinancialDocumentUploadUrl
+      tags: [household-finance]
+      summary: Request a private upload URL for financial evidence
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocumentUploadInput" } } }
+      responses:
+        "200": { description: Upload target, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocumentUploadTarget" } } } }
+  /financial-documents/ingest:
+    post:
+      operationId: ingestFinancialDocument
+      tags: [household-finance]
+      summary: Record uploaded financial evidence without creating ledger entries
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocumentIngestInput" } } }
+      responses:
+        "201": { description: Recorded financial evidence, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocument" } } } }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /financial-documents/review-queue:
+    get:
+      operationId: listFinancialReviewQueue
+      tags: [household-finance]
+      summary: List cross-source financial evidence requiring review
+      responses:
+        "200": { description: Review queue, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialReviewQueue" } } } }
+  /financial-documents/{documentId}:
+    get:
+      operationId: getFinancialDocument
+      tags: [household-finance]
+      summary: Retrieve source provenance and evidence detail
+      parameters: [{ $ref: "#/components/parameters/FinancialDocumentId" }]
+      responses:
+        "200": { description: Financial document detail, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocument" } } } }
+  /financial-documents/{documentId}/review:
+    post:
+      operationId: reviewFinancialDocument
+      tags: [household-finance]
+      summary: Record an approver review decision for source evidence
+      parameters: [{ $ref: "#/components/parameters/FinancialDocumentId" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocumentReviewInput" } } }
+      responses:
+        "200": { description: Reviewed document, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocument" } } } }
 components:
   securitySchemes:
     clerkSession:
@@ -3115,6 +3171,11 @@ components:
       bearerFormat: JWT
       description: Clerk provider-supported reverification is required by the server for protected policy, approval, permission, ownership, and Micro-Live boundary writes. The client receives Clerk's reverification hint and retries after provider verification.
   parameters:
+    FinancialDocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
     IdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -3211,6 +3272,79 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
   schemas:
+    FinancialDocument:
+      type: object
+      required: [id, documentType, status, sourceFileName, mimeType, documentHash, sourceObjectPath, uploadedAt]
+      properties:
+        id: { type: string }
+        documentType: { type: string }
+        status: { type: string }
+        sourceInstitution: { type: [string, "null"] }
+        sourceFileName: { type: string }
+        mimeType: { type: string }
+        documentHash: { type: string }
+        sourceObjectPath: { type: string }
+        sourceMetadata: { type: object, additionalProperties: true }
+        periodStart: { type: [string, "null"] }
+        periodEnd: { type: [string, "null"] }
+        statementDate: { type: [string, "null"] }
+        parserVersion: { type: [string, "null"] }
+        sourceRecordType: { type: [string, "null"] }
+        sourceRecordId: { type: [string, "null"] }
+        uploadedAt: { type: string, format: date-time }
+        reviewedAt: { type: [string, "null"], format: date-time }
+        reviewDecision: { type: [string, "null"] }
+        reviewReason: { type: [string, "null"] }
+        bankStatement: { type: [object, "null"], additionalProperties: true }
+        transactions: { type: array, items: { type: object, additionalProperties: true } }
+    FinancialDocumentList:
+      type: object
+      required: [documents]
+      properties: { documents: { type: array, items: { $ref: "#/components/schemas/FinancialDocument" } } }
+    FinancialDocumentUploadInput:
+      type: object
+      required: [name, size, contentType, documentType]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        size: { type: number, minimum: 1, maximum: 52428800 }
+        contentType: { type: string, enum: [application/pdf, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet] }
+        documentType: { type: string, enum: [STEVENS_SETTLEMENT, BUSINESS_PROFIT_AND_LOSS, BANK_STATEMENT, "1099", INCOME_VERIFICATION, INSURANCE_DOCUMENT, AUTO_LOAN_DOCUMENT, BUSINESS_LEASE_DOCUMENT, OTHER_FINANCIAL_DOCUMENT] }
+    FinancialDocumentUploadTarget:
+      type: object
+      required: [name, size, contentType, documentType, uploadURL, objectPath]
+      properties:
+        name: { type: string }
+        size: { type: number }
+        contentType: { type: string }
+        documentType: { type: string }
+        uploadURL: { type: string }
+        objectPath: { type: string }
+    FinancialDocumentIngestInput:
+      type: object
+      required: [documentType, sourceFileName, sourceObjectPath, contentType, sourceSizeBytes]
+      properties:
+        documentType: { type: string }
+        sourceFileName: { type: string, minLength: 1, maxLength: 255 }
+        sourceObjectPath: { type: string, pattern: "^/objects/uploads/[0-9a-fA-F-]{36}$" }
+        contentType: { type: string }
+        sourceSizeBytes: { type: number, minimum: 1, maximum: 52428800 }
+        businessId: { type: string }
+        sourceInstitution: { type: string }
+        accountId: { type: string }
+        statementStart: { type: string }
+        statementEnd: { type: string }
+        accountDisplayName: { type: string }
+        accountMask: { type: string }
+    FinancialDocumentReviewInput:
+      type: object
+      required: [decision, reason]
+      properties:
+        decision: { type: string, enum: [VERIFIED, REJECTED, NEEDS_REVIEW] }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    FinancialReviewQueue:
+      type: object
+      required: [items]
+      properties: { items: { type: array, items: { type: object, additionalProperties: true } } }
     BudgetPlanningVersionInput:
       type: object
       required: [version]
@@ -5403,6 +5537,7 @@ components:
         availableBalance: { type: ["string", "null"] }
         connectionStatus: { type: string }
         dataSource: { type: string }
+        dataMode: { type: string, enum: [MANUAL, STATEMENT_SUPPORTED, LIVE_CONNECTED, SIMULATED_TEST_ONLY] }
         lastSync: { type: ["string", "null"], format: date-time }
         includedInNetWorth: { type: boolean }
         includedInBudget: { type: boolean }

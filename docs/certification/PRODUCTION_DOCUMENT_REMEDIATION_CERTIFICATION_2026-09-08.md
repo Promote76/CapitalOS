@@ -4,9 +4,9 @@
 
 **PRODUCTION DOCUMENT REMEDIATION: BLOCKED**
 
-The managed Publish flow has now applied the production integrity schema. The read-only post-Publish preflight verified both known misclassified source objects and their content-based type evidence. It could not apply either authorized correction because this household has no existing `business_entities` row, and the server-authorized correction workflow requires a valid existing business before a P&L can become authoritative.
+The managed Publish flow has now applied the production integrity schema. The read-only post-Publish preflight verified both known misclassified source objects and their content-based type evidence. The authorized bootstrap confirmation was received, but no production mutation occurred because the current operator environment does not hold a real authenticated Clerk session from the instance that owns this household. Production still has no `business_entities` row, and the server-authorized correction workflow requires a valid existing business before a P&L can become authoritative.
 
-The exact downstream blocker is `BUSINESS_ENTITY_LINK_REQUIRED`.
+The exact downstream blockers are `PRODUCTION_CLERK_OPERATOR_SESSION_REQUIRED` and, until bootstrap completes, `BUSINESS_ENTITY_LINK_REQUIRED`.
 
 No ad hoc production SQL, source-object deletion, duplicate-business creation, or simulated correction was performed.
 
@@ -31,7 +31,7 @@ Managed Publish applied the production diff successfully. The latest managed pro
 
 ## Required operator action
 
-Create or link the correct existing trucking `BusinessEntity` for this household through the authorized Capital OS workflow. Do not create a duplicate entity merely for this remediation. Then rerun the authenticated correction previews independently for both documents.
+Use a real authenticated operator session from the Clerk instance that owns household `d6672e8d-c193-4182-bd76-4170329e529a`. With the confirmed bootstrap preview, create or link the correct trucking `BusinessEntity` through the authorized Capital OS workflow. Do not create a duplicate entity merely for this remediation. Then rerun the authenticated correction previews independently for both documents.
 
 ## Evidence collected
 
@@ -46,7 +46,7 @@ The detector found P&L headings, income/revenue totals, expense totals, net inco
 
 ```text
 CURRENT HEAD:
-4479a51
+503cd69
 
 MANAGED PRODUCTION RELEASE:
 f4d91104-18a6-4853-8e94-a6dfe27b1c61
@@ -67,7 +67,7 @@ PRODUCTION DOCUMENT REMEDIATION:
 BLOCKED
 
 PDR:
-15/30 evidence gates closed; correction and downstream gates blocked by BUSINESS_ENTITY_LINK_REQUIRED
+15/30 evidence gates closed; correction and downstream gates blocked by PRODUCTION_CLERK_OPERATOR_SESSION_REQUIRED / BUSINESS_ENTITY_LINK_REQUIRED
 
 DOCUMENT-TO-BUDGET BRIDGE:
 PASS 30/30 (previous certification; must be rerun after production remediation)
@@ -169,7 +169,7 @@ MICRO-LIVE:
 DISABLED
 
 USER ACTION REQUIRED:
-Create or link the correct existing trucking BusinessEntity for household `d6672e8d-c193-4182-bd76-4170329e529a`, then rerun the authenticated remediation independently for both P&Ls. Publish the current source once more to ship the corrected “Reviewed income transactions” Budget label.
+Open the published Capital OS application while authenticated through the Clerk instance that owns household `d6672e8d-c193-4182-bd76-4170329e529a`, complete the already-confirmed trucking BusinessEntity bootstrap, then rerun the authenticated remediation independently for both P&Ls. Publish the current source once more to ship the corrected “Reviewed income transactions” Budget label.
 ```
 
 ## Safety conclusion

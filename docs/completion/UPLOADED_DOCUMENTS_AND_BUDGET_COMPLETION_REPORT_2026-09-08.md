@@ -8,6 +8,8 @@
 
 > **Production upload-location audit (2026-09-08):** The real uploaded PDFs were found in production App Storage. Their persisted paths use the expected private `/objects/uploads/<opaque-object-id>` format. They were not uploaded into the project filesystem or the public-assets area. Two P&L files were, however, submitted through the Stevens Settlement intake and therefore received the wrong document type even though their physical storage location is correct.
 
+> **Financial document integrity update (2026-09-08):** The type-integrity sprint is now implemented. New uploads are classified from PDF content and structural signals rather than filenames alone; high-confidence mismatches enter an audited, role-protected review flow; parser generations and source evidence are preserved; exact-hash duplicates are idempotent; and explicit duplicate/version reviews prevent automatic merging or deletion. The two known production P&L records have **not** been mutated. They remain pending authorized review and managed-production certification.
+
 ## Executive conclusion
 
 The implementation now provides a controlled, human-approved bridge from reviewed bank-statement evidence to categorized official household transactions and Budget actuals.
@@ -22,6 +24,8 @@ Reviewed uploads still produce a separate advisory evidence summary and do not b
 - preserves planned targets and all financial-authority boundaries.
 
 Transfers, settlement-linked rows, ambiguous duplicates, invalid signs, foreign accounts or categories, and out-of-policy dates fail closed. Corrections, unlinking, import reversals, source provenance, and audit history remain explicit.
+
+The financial-document integrity boundary is also implemented. A document's selected upload context is not treated as proof of type. P&L, Stevens Settlement, and Bank Statement evidence are classified separately; corrected parser generations supersede prior generations without deleting the original private object; and superseded settlement state is excluded from current business-income reconciliation. P&L evidence remains business evidence and does not automatically create owner draws or verified household income.
 
 ## What the user reasonably expects
 
@@ -90,7 +94,7 @@ The workspace `attached_assets/` directory was also inspected. It contains conve
 - **Wrong-location concern:** Not confirmed. No real financial PDFs were found in the workspace upload folder or public object namespace.
 - **Wrong intake/type confirmed:** `FUQC P&L (2).pdf` and `FUQC P&L (3).pdf` were recorded as `STEVENS_SETTLEMENT`, most likely because **Upload Stevens Settlement** was selected instead of **Upload P&L**.
 - **Possible duplicate/version groups:** Six filenames begin with `000001`, and four begin with `FUQC P&L`. Filename similarity alone is not enough to delete or merge them; document hashes and intended business purpose must be reviewed first.
-- **Safe next step:** Keep the original objects and audit history. Reclassify the two incorrectly typed P&L records through an explicit correction workflow if available, or upload the authoritative copies through **Upload P&L** and explicitly reject the wrongly classified records. Do not delete private objects directly from App Storage before their database provenance and downstream evidence links are resolved.
+- **Safe next step:** Keep the original objects and audit history. The explicit correction workflow is now available, but the two records must first be reviewed by an authorized operator using hashes, content detection evidence, parser generations, and downstream links. Do not delete private objects directly from App Storage or claim the records are corrected until managed-production certification is complete.
 
 ### 2. Statement transaction review
 
@@ -339,7 +343,8 @@ The 2026-09-08 execution passed **DBB-01 through DBB-30 (30/30)**, including the
 **Automatic category population:** INTENTIONALLY DISALLOWED  
 **Human-approved category utilization:** IMPLEMENTED  
 **Production private-storage path:** VERIFIED  
-**Production document-type audit:** TWO P&L RECORDS REQUIRE CORRECTION  
+**Document-type integrity implementation:** COMPLETE — content detection, audited correction, parser-generation history, duplicate/version review, and downstream settlement exclusion are implemented
+**Production document-type audit:** TWO P&L RECORDS REQUIRE AUTHORIZED REVIEW; NO PRODUCTION MUTATION CLAIMED
 **Uploaded-document-to-Budget workflow:** IMPLEMENTED AND CERTIFIED 30/30
 
 The implemented correction does not make uploads automatically authoritative. It adds the controlled, human-approved bridge described in this report so Budget actuals can reflect reviewed statement activity without silently changing the family's plan.

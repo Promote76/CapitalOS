@@ -1,0 +1,1816 @@
+CAPITAL OS — FINANCIAL DOCUMENT TYPE INTEGRITY & BUSINESS INCOME RECONCILIATION
+
+SURGICAL PRODUCTION-DATA CORRECTION SPRINT
+
+P&L RECLASSIFICATION → DUPLICATE REVIEW → BUSINESS INCOME → OWNER DRAW → VERIFIED HOUSEHOLD INCOME
+
+MISSION
+
+Correct the production financial-document classification problem without deleting source evidence or weakening any existing controls.
+
+The current document-to-Budget bridge is already implemented and certified.
+
+DO NOT rebuild it.
+
+The current production audit found:
+
+- financial documents are correctly stored in private App Storage;
+- document upload/storage location is correct;
+- the controlled document-to-Budget bridge is certified;
+- two P&L files were incorrectly recorded as Stevens Settlement documents;
+- multiple similarly named settlement/P&L files require duplicate/version review before any deletion or consolidation.
+
+This sprint must:
+
+1. Correct misclassified P&L records safely.
+2. Add durable document-type mismatch protection.
+3. Review potential duplicate/version groups using hashes and document content.
+4. Reprocess corrected documents through the proper parser.
+5. Reconcile P&L data with the Business Income Engine.
+6. Rebuild the Stevens → Business Ledger → P&L → Owner Draw → Verified Household Income chain.
+7. Refresh Variable Income, Budget readiness, forecasts, and Capital Governor.
+8. Preserve immutable source evidence and complete audit history.
+
+No file deletion merely because filenames look similar.
+
+No money movement.
+
+No ACH.
+
+No bank writes.
+
+No brokerage execution.
+
+No Micro-Live activation.
+
+No autonomous Grok financial authority.
+
+==================================================
+
+1. AUTHORITATIVE PRODUCTION FINDING
+   ==================================================
+
+Current known production records include two documents whose filenames indicate P&L but whose recorded document type is wrong:
+
+FUQC P&L (2).pdf
+recorded as:
+STEVENS_SETTLEMENT
+
+FUQC P&L (3).pdf
+recorded as:
+STEVENS_SETTLEMENT
+
+Other known P&L records include:
+
+FUQC P&L.pdf
+
+FUQC P&L (1).pdf
+
+recorded correctly as:
+
+BUSINESS_PROFIT_AND_LOSS
+
+Do not hard-code these names into general production logic.
+
+Use them only as the current remediation targets.
+
+==================================================
+2. STORAGE LOCATION IS NOT THE PROBLEM
+
+Preserve existing private App Storage paths:
+
+/objects/uploads/<opaque-object-id>
+
+Do not move files into:
+
+project filesystem
+
+attached_assets
+
+public assets
+
+public object storage
+
+Do not delete or replace the underlying object merely to correct metadata.
+
+==================================================
+3. DOCUMENT TYPE MUST BECOME CORRECTABLE
+
+Create an audited:
+
+FinancialDocumentTypeCorrection
+
+Fields:
+
+id
+
+householdId
+
+financialDocumentId
+
+originalDocumentType
+
+correctedDocumentType
+
+reason
+
+detectionEvidence
+
+requestedBy
+
+approvedBy
+
+createdAt
+
+appliedAt
+
+status
+
+Statuses:
+
+DRAFT
+
+READY_FOR_REVIEW
+
+APPROVED
+
+APPLIED
+
+REJECTED
+
+FAILED
+
+==================================================
+4. CORRECTION MUST PRESERVE ORIGINAL STATE
+
+Never silently overwrite:
+
+original documentType.
+
+Preserve:
+
+originalDocumentType
+
+correctedDocumentType
+
+correction actor
+
+correction reason
+
+timestamp
+
+parser versions
+
+previous parse records
+
+previous downstream links
+
+==================================================
+5. CORRECT TYPE ≠ DELETE OLD EVIDENCE
+
+When document type changes:
+
+retain original uploaded object
+
+retain original document hash
+
+retain prior parser evidence
+
+retain audit events
+
+retain original metadata history
+
+Then create a new parse/reprocessing generation under the corrected type.
+
+Do not erase historical evidence that the document was previously misclassified.
+
+==================================================
+6. DOCUMENT TYPE DETECTION ENGINE
+
+Create:
+
+FinancialDocumentTypeDetection
+
+Supported types:
+
+STEVENS_SETTLEMENT
+
+BUSINESS_PROFIT_AND_LOSS
+
+BANK_STATEMENT
+
+INCOME_VERIFICATION
+
+1099
+
+INSURANCE_DOCUMENT
+
+AUTO_LOAN_DOCUMENT
+
+BUSINESS_LEASE_DOCUMENT
+
+OTHER_FINANCIAL_DOCUMENT
+
+Output:
+
+detectedType
+
+confidence
+
+signals[]
+
+conflictsWithSelectedType
+
+detectionVersion
+
+==================================================
+7. DOCUMENT TYPE SIGNALS
+
+Use deterministic structural/text signals where possible.
+
+Examples for P&L:
+
+Profit & Loss
+
+Profit and Loss
+
+Income
+
+Total Income
+
+Expenses
+
+Total Expenses
+
+Net Income
+
+Net Profit
+
+period-based account/category tables
+
+Examples for Stevens Settlement:
+
+settlement
+
+driver/contractor identifiers
+
+truck/unit
+
+load/order numbers
+
+mileage pay
+
+fuel protection
+
+advances
+
+escrow
+
+lease deductions
+
+total deductions
+
+net settlement / net pay
+
+Do not rely on filename alone.
+
+==================================================
+8. FILENAME IS SUPPORTING EVIDENCE ONLY
+
+Filename may contribute weak evidence.
+
+Example:
+
+FUQC P&L.pdf
+
+strongly suggests P&L
+
+but final classification should consider document contents.
+
+Do not make filename the sole authority.
+
+==================================================
+9. UPLOAD-TYPE MISMATCH WARNING
+
+When user selects:
+
+UPLOAD STEVENS SETTLEMENT
+
+but detector finds:
+
+BUSINESS_PROFIT_AND_LOSS
+
+with sufficiently high confidence:
+
+STOP BEFORE FINAL CLASSIFICATION.
+
+Show:
+
+DOCUMENT TYPE MISMATCH
+
+Selected:
+Stevens Settlement
+
+Detected:
+Profit & Loss Statement
+
+Confidence:
+HIGH
+
+Actions:
+
+USE DETECTED TYPE
+
+KEEP SELECTED TYPE
+
+REVIEW DOCUMENT
+
+==================================================
+10. KEEP SELECTED TYPE REQUIRES EXPLICIT CONFIRMATION
+
+If the user overrides a high-confidence mismatch:
+
+require:
+
+reason
+
+actor attribution
+
+audit event
+
+Do not silently honor the wrong intake.
+
+==================================================
+11. LOW-CONFIDENCE DETECTION
+
+If detection confidence is low:
+
+show:
+
+TYPE REVIEW REQUIRED
+
+Do not auto-switch.
+
+Allow human confirmation.
+
+==================================================
+12. PRODUCTION CORRECTION — P&L FILES
+
+For the two known misclassified P&L records:
+
+1. Confirm document hash.
+2. Confirm current downstream dependencies.
+3. Run document-type detection.
+4. Verify content is consistent with BUSINESS_PROFIT_AND_LOSS.
+5. Create audited correction record.
+6. Apply corrected type.
+7. Re-run P&L parser.
+8. Create/rebuild ProfitLossDocument and ProfitLossLine records.
+9. Preserve old settlement parse as superseded historical parse evidence.
+10. Do not delete the underlying source file.
+
+==================================================
+13. SUPERSEDED PARSE MODEL
+
+Create parser-generation status:
+
+CURRENT
+
+SUPERSEDED_BY_TYPE_CORRECTION
+
+FAILED
+
+REJECTED
+
+Previous settlement parsing of a corrected P&L must no longer feed current business calculations.
+
+But preserve it for audit.
+
+==================================================
+14. DOWNSTREAM INVALIDATION
+
+When a document type correction is applied:
+
+invalidate any derived state that depended on the incorrect parse.
+
+Potentially affected:
+
+SettlementDocument
+
+SettlementRevenueLine
+
+SettlementDeductionLine
+
+SettlementMathReconciliation
+
+BusinessEarningsEvent
+
+ProfitLossDocument
+
+ProfitLossLine
+
+P&L reconciliation
+
+BusinessCashPosition
+
+OwnerDrawProposal
+
+VerifiedHouseholdIncomeEvent
+
+VariableIncomeProfile
+
+Budget income readiness
+
+Cash Flow Forecast
+
+Capital Governor readiness
+
+Do not blindly delete downstream records.
+
+Use supersede/reconcile logic.
+
+==================================================
+15. NO DOUBLE-COUNT DURING REPROCESSING
+
+Critical invariant:
+
+A misclassified document must not contribute simultaneously as:
+
+Stevens settlement
+
+and:
+
+P&L.
+
+After correction:
+
+only current authoritative parse generation contributes to calculations.
+
+==================================================
+16. POTENTIAL DUPLICATE / VERSION REVIEW
+
+The production audit shows groups with similar filenames.
+
+Potential settlement group:
+
+000001.PDF
+
+000001 (1).PDF
+
+000001 (2).PDF
+
+000001 (3).PDF
+
+000001 (5).PDF
+
+000001-9.pdf
+
+Potential P&L group:
+
+FUQC P&L.pdf
+
+FUQC P&L (1).pdf
+
+FUQC P&L (2).pdf
+
+FUQC P&L (3).pdf
+
+Do not assume duplicates based on filenames.
+
+==================================================
+17. DOCUMENT IDENTITY ANALYSIS
+
+Create:
+
+FinancialDocumentIdentityReview
+
+Compare:
+
+SHA-256/document hash
+
+file size
+
+document type
+
+period start/end
+
+statement/settlement date
+
+recognized financial totals
+
+content fingerprint
+
+source institution/carrier
+
+parser structural signature
+
+==================================================
+18. DUPLICATE CLASSIFICATIONS
+
+Classify:
+
+EXACT_DUPLICATE
+
+PROBABLE_DUPLICATE
+
+DISTINCT_PERIOD
+
+DISTINCT_VERSION
+
+CORRECTED_VERSION
+
+UNKNOWN_REVIEW_REQUIRED
+
+==================================================
+19. EXACT DUPLICATE
+
+Exact same document hash within same household:
+
+must not be treated as separate financial evidence.
+
+Keep upload audit history if already present.
+
+Select one canonical FinancialDocument.
+
+Mark others:
+
+DUPLICATE_REFERENCE
+
+Do not double-count downstream data.
+
+==================================================
+20. SAME FILENAME / DIFFERENT HASH
+
+If filenames are similar but hashes differ:
+
+do not merge automatically.
+
+Compare:
+
+period
+
+totals
+
+content
+
+version markers
+
+Determine:
+
+different settlement
+
+different period
+
+amended/corrected report
+
+or duplicate scan/export
+
+==================================================
+21. CANONICAL DOCUMENT MODEL
+
+Allow:
+
+canonicalDocumentId
+
+duplicateOfDocumentId
+
+supersedesDocumentId
+
+supersededByDocumentId
+
+versionLabel
+
+Do not physically delete source objects as part of this sprint.
+
+==================================================
+22. REPROCESS STEVENS SETTLEMENTS
+
+After duplicate review:
+
+identify canonical valid Stevens settlement documents.
+
+For each:
+
+verify parser status
+
+verify settlement date
+
+verify production metrics
+
+verify revenue lines
+
+verify deduction lines
+
+verify advances
+
+verify escrow
+
+verify reported net pay
+
+verify settlement math
+
+verify current parser generation
+
+==================================================
+23. STEVENS SETTLEMENT STATUS DASHBOARD
+
+Create under:
+
+Business
+→ Income Intelligence
+→ Settlements
+
+Show:
+
+Documents uploaded
+
+Canonical settlements
+
+Duplicates
+
+Needs type review
+
+Needs parser review
+
+Verified
+
+Settlement period coverage
+
+Latest settlement
+
+Gross revenue
+
+Carrier deductions
+
+Net settlement
+
+==================================================
+24. P&L STATUS DASHBOARD
+
+Under:
+
+Business
+→ Income Intelligence
+→ P&L
+
+Show:
+
+P&L documents uploaded
+
+Canonical P&Ls
+
+Duplicates
+
+Misclassified corrected
+
+Needs review
+
+Verified
+
+Periods covered
+
+Latest P&L period
+
+Total income
+
+Total expenses
+
+Net business income
+
+==================================================
+25. P&L PERIOD INTEGRITY
+
+Each canonical P&L must expose:
+
+periodStart
+
+periodEnd
+
+accountingBasis
+
+totalIncome
+
+totalExpenses
+
+netIncome
+
+Do not combine overlapping P&L reports by addition.
+
+==================================================
+26. OVERLAPPING P&L PROTECTION
+
+Example:
+
+Jan–Jun P&L
+
+and:
+
+Jan–Jul P&L
+
+must not be added together.
+
+These are overlapping cumulative reports.
+
+Use the appropriate report for the requested period.
+
+Store period semantics.
+
+==================================================
+27. P&L VERSIONING
+
+If two P&Ls cover the same period:
+
+compare:
+
+hash
+
+totals
+
+line items
+
+creation date
+
+If one appears to be corrected/amended:
+
+mark:
+
+SUPERSEDED
+
+only with explicit review.
+
+Do not silently choose based only on upload date.
+
+==================================================
+28. BUSINESS EARNINGS RECONSTRUCTION
+
+After canonical sources are resolved:
+
+rebuild current:
+
+BusinessEarningsLedger
+
+using current authoritative sources only.
+
+Distinguish:
+
+OPERATING_REVENUE
+
+OPERATING_EXPENSE
+
+BALANCE_SHEET_MOVEMENT
+
+ADVANCE
+
+ADVANCE_RECOVERY
+
+REIMBURSEMENT
+
+ESCROW
+
+TRANSFER
+
+ADJUSTMENT
+
+==================================================
+29. DO NOT SUM SETTLEMENT GROSS + P&L INCOME
+
+Critical invariant:
+
+Stevens settlement revenue
+
+and:
+
+P&L total income
+
+are different evidence/accounting views.
+
+They must not be summed merely because both exist.
+
+Use P&L as accounting reconciliation.
+
+==================================================
+30. P&L RECONCILIATION
+
+Create/re-run:
+
+ProfitLossReconciliationRun
+
+For each supported overlap period compare:
+
+Capital OS recognized revenue
+
+P&L reported revenue
+
+variance
+
+Capital OS recognized expenses
+
+P&L reported expenses
+
+variance
+
+Capital OS net business income
+
+P&L reported net income
+
+variance
+
+==================================================
+31. PERIOD MISMATCH
+
+If periods differ:
+
+return:
+
+PERIOD_MISMATCH
+
+Show:
+
+Settlement coverage
+
+P&L coverage
+
+overlap coverage
+
+Do not force equality.
+
+==================================================
+32. BUSINESS INCOME READINESS
+
+Create:
+
+BusinessIncomeReadiness
+
+States:
+
+NO_DATA
+
+SOURCE_TYPE_REVIEW_REQUIRED
+
+DUPLICATE_REVIEW_REQUIRED
+
+SETTLEMENT_REVIEW_REQUIRED
+
+P_AND_L_REVIEW_REQUIRED
+
+RECONCILIATION_REQUIRED
+
+READY_FOR_OWNER_DRAW
+
+==================================================
+33. OWNER DRAW REBUILD
+
+After business data is reconciled:
+
+recalculate:
+
+available business cash
+
+required business reserves
+
+unreconciled amounts
+
+maximum eligible owner draw
+
+Do not create money movement.
+
+==================================================
+34. OWNER DRAW AUTHORITY
+
+Owner draw remains:
+
+planning/accounting classification
+
+requiring human approval.
+
+Grok cannot approve.
+
+P&L cannot automatically generate an owner draw.
+
+A settlement deposit cannot automatically generate an owner draw.
+
+==================================================
+35. VERIFIED HOUSEHOLD INCOME CHAIN
+
+Required:
+
+Canonical settlements
+↓
+Business earnings
+↓
+P&L reconciliation
+↓
+Business reserve protection
+↓
+Approved owner draw
+↓
+VerifiedHouseholdIncomeEvent
+↓
+VariableIncomeProfile
+↓
+Budget
+
+==================================================
+36. REVIEW CURRENT VERIFIED INCOME
+
+The current Budget UI has shown values such as:
+
+$1,735 verified income
+
+while variable-income history has remained incomplete.
+
+After source correction:
+
+determine exactly which records produce the current household income value.
+
+Return explicit provenance.
+
+Examples:
+
+2 VerifiedHouseholdIncomeEvents
+
+or:
+
+2 financeTransactions incorrectly labeled as verified
+
+Do not leave semantic ambiguity.
+
+==================================================
+37. VARIABLE INCOME REBUILD
+
+Recalculate:
+
+current-month verified income
+
+trailing 4 weeks
+
+trailing 8 weeks
+
+trailing 13 weeks
+
+trailing 3 months
+
+trailing 6 months
+
+income floor
+
+base case
+
+strong case
+
+only from authoritative VerifiedHouseholdIncomeEvent history.
+
+==================================================
+38. HISTORICAL OWNER DRAW OPTION
+
+Historical settlements/P&Ls may establish business performance.
+
+Do NOT automatically fabricate historical household owner draws.
+
+If historical household draws cannot be verified:
+
+show:
+
+BUSINESS HISTORY AVAILABLE
+
+HOUSEHOLD DRAW HISTORY INCOMPLETE
+
+Allow user-reviewed historical owner-draw classification only when supported by evidence.
+
+==================================================
+39. BANK STATEMENTS ARE NOT REQUIRED FOR THIS CORRECTION
+
+Wells Fargo remains:
+
+NOT LIVE CONNECTED.
+
+Do not block settlement/P&L correction merely because live bank data is absent.
+
+If bank statement evidence exists later:
+
+use it for cash reconciliation.
+
+==================================================
+40. DOCUMENT CORRECTION UI
+
+Financial Inbox should show:
+
+DOCUMENT TYPE ISSUE
+
+FUQC P&L (2).pdf
+
+Recorded:
+Stevens Settlement
+
+Detected:
+Profit & Loss
+
+[ Review ]
+
+Review screen:
+
+Original type
+
+Detected type
+
+Detection evidence
+
+Downstream impact
+
+Correction preview
+
+[ Keep Existing ]
+
+[ Reclassify as P&L ]
+
+==================================================
+41. DUPLICATE REVIEW UI
+
+Show potential document groups.
+
+Example:
+
+POSSIBLE DUPLICATE / VERSION GROUP
+
+000001.PDF
+
+000001 (1).PDF
+
+000001 (2).PDF
+
+...
+
+For each show:
+
+hash status
+
+period
+
+settlement date
+
+net settlement
+
+size
+
+parser status
+
+Actions:
+
+MARK DISTINCT
+
+MARK DUPLICATE
+
+MARK VERSION
+
+REVIEW SOURCE
+
+==================================================
+42. DO NOT AUTO-DELETE DUPLICATES
+
+Even after marking duplicate:
+
+preserve source object and audit provenance in current scope.
+
+Exclude duplicate from calculations.
+
+Physical deletion requires a separately explicit data-retention action.
+
+==================================================
+43. DOCUMENT TYPE BADGES
+
+Every financial document card must visibly show:
+
+STEVENS SETTLEMENT
+
+P&L
+
+BANK STATEMENT
+
+INCOME VERIFICATION
+
+etc.
+
+Do not make users infer type from filename.
+
+==================================================
+44. TYPE CORRECTION BADGE
+
+If corrected:
+
+show:
+
+P&L
+CORRECTED FROM STEVENS SETTLEMENT
+
+with audit detail.
+
+==================================================
+45. INGESTION BUTTON HARDENING
+
+Keep contextual buttons:
+
+Upload Stevens Settlement
+
+Upload P&L
+
+Upload Bank Statement
+
+But each must pass through type detection.
+
+The selected button provides:
+
+EXPECTED TYPE
+
+not unquestioned authoritative type.
+
+==================================================
+46. UNIVERSAL UPLOAD OPTION
+
+Also add:
+
+UPLOAD FINANCIAL DOCUMENT
+
+where Capital OS detects type and asks user to confirm.
+
+This may be safer for users unfamiliar with financial terminology.
+
+==================================================
+47. EDUCATION COPY
+
+Explain:
+
+Stevens Settlement:
+A carrier settlement showing trucking revenue, deductions and net settlement.
+
+Profit & Loss:
+An accounting report summarizing business income and expenses over a period.
+
+Bank Statement:
+A record of cash activity in a bank account.
+
+These are different evidence types and are not interchangeable.
+
+==================================================
+48. GROK ROLE
+
+Grok may:
+
+assist with document-type suggestion
+
+summarize P&L
+
+summarize settlement
+
+explain mismatches
+
+identify likely duplicate/version candidates
+
+Grok may NOT:
+
+apply type correction
+
+delete document
+
+mark canonical authority automatically
+
+approve owner draw
+
+create verified household income
+
+==================================================
+49. TYPE DETECTION MUST NOT DEPEND ON GROK
+
+Core type mismatch protection must work without Grok.
+
+Use deterministic parser/document signals first.
+
+Grok may provide advisory secondary review.
+
+==================================================
+50. AUDIT
+
+Audit:
+
+type detection
+
+type mismatch
+
+override
+
+type correction
+
+reparse
+
+superseded parse
+
+duplicate review
+
+canonical designation
+
+P&L reconciliation
+
+Business Income rebuild
+
+Owner Draw recalculation
+
+Verified Income rebuild
+
+actor
+
+timestamp
+
+before/after
+
+==================================================
+51. TENANT ISOLATION
+
+Household A must not:
+
+view
+
+correct
+
+merge
+
+duplicate-link
+
+reprocess
+
+or use
+
+Household B financial documents.
+
+==================================================
+52. ROLE AUTHORIZATION
+
+Protect:
+
+document reclassification
+
+canonical designation
+
+duplicate resolution
+
+P&L approval
+
+owner draw approval
+
+with existing effective household permissions.
+
+==================================================
+53. EXACT-CENT MATH
+
+Preserve exact integer-cent financial math.
+
+No money-unit regression.
+
+==================================================
+54. TRANSACTIONAL SAFETY
+
+Applying a type correction must atomically:
+
+validate document
+
+validate household
+
+create correction record
+
+create new parser generation
+
+supersede old generation
+
+update current document classification
+
+invalidate/reconcile downstream derived records
+
+write audit event
+
+If the operation fails:
+
+rollback current-authority change.
+
+Original evidence remains intact.
+
+==================================================
+55. IDEMPOTENCY
+
+Applying the same approved correction twice:
+
+must not create multiple current parse generations.
+
+Duplicate resolution must be idempotent.
+
+Reprocessing same canonical document with same parser version:
+
+must not duplicate financial events.
+
+==================================================
+56. REQUIRED PRODUCTION REMEDIATION TEST
+
+Use the two known misclassified production P&Ls.
+
+For each:
+
+verify current type
+
+run content detection
+
+create correction
+
+reparse as P&L
+
+verify ProfitLossDocument
+
+verify ProfitLossLine
+
+verify old settlement parse is non-authoritative
+
+verify no duplicate business income event is created
+
+==================================================
+57. REQUIRED DUPLICATE TEST
+
+For all current:
+
+000001*
+
+and:
+
+FUQC P&L*
+
+documents:
+
+produce a review table with:
+
+document ID
+
+filename
+
+hash
+
+type
+
+period
+
+key totals
+
+canonical/duplicate/version status
+
+Do not remove records automatically.
+
+==================================================
+58. REQUIRED P&L OVERLAP TEST
+
+If multiple P&Ls overlap:
+
+ensure:
+
+Jan–Jun + Jan–Jul
+
+are not added.
+
+The appropriate report contributes to period analysis according to its coverage.
+
+==================================================
+59. REQUIRED BUSINESS INCOME TEST
+
+After source cleanup:
+
+generate:
+
+Business Income Summary
+
+Settlement coverage
+
+P&L coverage
+
+Revenue
+
+Recognized operating expenses
+
+Net business income
+
+Unresolved reconciliation amount
+
+Owner Draw eligibility
+
+==================================================
+60. REQUIRED HOUSEHOLD INCOME TEST
+
+Trace current household income from:
+
+source document / ledger event
+
+through:
+
+owner draw
+
+to:
+
+VerifiedHouseholdIncomeEvent
+
+to:
+
+VariableIncomeProfile
+
+to:
+
+Budget.
+
+If chain is incomplete:
+
+return exact missing link.
+
+==================================================
+61. REFRESH DOWNSTREAM SURFACES
+
+After remediation refresh:
+
+Documents
+
+Financial Inbox
+
+Business → Income Intelligence
+
+Settlements
+
+P&L
+
+Accounting
+
+Income
+
+Variable-Income Planning
+
+Budget
+
+Cash Flow Forecast
+
+Capital Governor
+
+Family Office Morning Brief where applicable
+
+==================================================
+62. CERTIFICATION COMMAND
+
+Create:
+
+pnpm run certify:financial-document-integrity
+
+Required:
+
+FDI-01 Private Storage Preserved
+
+FDI-02 Document Type Detection
+
+FDI-03 Type Mismatch Warning
+
+FDI-04 Explicit Override
+
+FDI-05 Audited Reclassification
+
+FDI-06 Immutable Original Evidence
+
+FDI-07 Reparse After Correction
+
+FDI-08 Superseded Parse Isolation
+
+FDI-09 No Double Counting
+
+FDI-10 Exact Duplicate Detection
+
+FDI-11 Similar Filename Safety
+
+FDI-12 Canonical Document Model
+
+FDI-13 P&L Period Integrity
+
+FDI-14 Overlap Protection
+
+FDI-15 Settlement Canonicalization
+
+FDI-16 P&L Canonicalization
+
+FDI-17 Business Ledger Rebuild
+
+FDI-18 P&L Reconciliation
+
+FDI-19 Period Mismatch Safety
+
+FDI-20 Business Reserve Boundary
+
+FDI-21 Owner Draw Recalculation
+
+FDI-22 Verified Income Authority
+
+FDI-23 Variable Income Rebuild
+
+FDI-24 Budget Refresh
+
+FDI-25 Forecast Refresh
+
+FDI-26 Capital Governor Refresh
+
+FDI-27 Tenant Isolation
+
+FDI-28 Role Authorization
+
+FDI-29 Audit / Idempotency / Atomicity
+
+FDI-30 Production Misclassification Remediation
+
+==================================================
+63. NEGATIVE TESTS
+
+Test:
+
+"Filename says P&L, so automatically change type."
+
+Expected:
+
+content/type detection + review.
+
+Filename alone insufficient.
+
+---
+
+Test:
+
+"Delete all files named 000001 except one."
+
+Expected:
+
+DENIED.
+
+Review hashes/periods first.
+
+---
+
+Test:
+
+"P&L and Stevens settlement both show income, add them together."
+
+Expected:
+
+DOUBLE_COUNT_REJECTED.
+
+---
+
+Test:
+
+"Reclassify a P&L but leave its old settlement parse active."
+
+Expected:
+
+DENIED.
+
+Only current parse generation may feed calculations.
+
+---
+
+Test:
+
+"Same P&L uploaded four times means four months of income."
+
+Expected:
+
+DENIED.
+
+Document identity/period review.
+
+---
+
+Test:
+
+"Jan–Jun P&L plus Jan–Jul P&L equals YTD income."
+
+Expected:
+
+DENIED.
+
+Overlapping cumulative periods.
+
+---
+
+Test:
+
+"Correct document type by overwriting audit history."
+
+Expected:
+
+DENIED.
+
+Correction history required.
+
+---
+
+Test:
+
+"Let Grok decide which document is authoritative."
+
+Expected:
+
+NO AUTHORITY.
+
+---
+
+Test:
+
+"Automatically create household income from P&L net income."
+
+Expected:
+
+DENIED.
+
+Owner Draw / Verified Income chain required.
+
+==================================================
+64. REGRESSION
+
+Run:
+
+typecheck
+
+API tests
+
+route parity
+
+document ingestion
+
+document-budget bridge
+
+financial foundation tests
+
+Business Income
+
+Accounting
+
+Variable Budget
+
+Cash Flow Forecast
+
+Safe-to-Deploy
+
+Capital Governor
+
+Grok Intelligence
+
+Family Office
+
+Execution Control
+
+Guardian
+
+OMS
+
+Micro-Live
+
+The existing certified document-to-Budget bridge must remain PASS.
+
+==================================================
+65. DOCUMENTATION
+
+Create:
+
+docs/FINANCIAL_DOCUMENT_TYPE_POLICY.md
+
+docs/FINANCIAL_DOCUMENT_RECLASSIFICATION.md
+
+docs/FINANCIAL_DOCUMENT_DUPLICATE_VERSION_POLICY.md
+
+docs/P_AND_L_PERIOD_INTEGRITY.md
+
+docs/BUSINESS_INCOME_SOURCE_AUTHORITY.md
+
+docs/certification/
+FINANCIAL_DOCUMENT_INTEGRITY_CERTIFICATION_2026-09-08.md
+
+Update:
+
+docs/CAPITAL_OS_CURRENT_CERTIFICATION.md
+
+==================================================
+66. FINAL RESPONSE
+
+Return:
+
+CURRENT HEAD:
+<hash>
+
+FINANCIAL DOCUMENT INTEGRITY:
+PASS / PARTIAL / BLOCKED / FAIL
+
+FDI:
+<n>/30
+
+PRIVATE STORAGE:
+PASS / FAIL
+
+DOCUMENT TYPE DETECTION:
+PASS / FAIL
+
+TYPE MISMATCH WARNING:
+PASS / FAIL
+
+MISCLASSIFIED P&Ls FOUND:
+<n>
+
+MISCLASSIFIED P&Ls CORRECTED:
+<n>
+
+FUQC P&L (2).pdf:
+<final status>
+
+FUQC P&L (3).pdf:
+<final status>
+
+SETTLEMENT DOCUMENTS:
+<n total>
+
+CANONICAL SETTLEMENTS:
+<n>
+
+SETTLEMENT DUPLICATES:
+<n>
+
+P&L DOCUMENTS:
+<n total>
+
+CANONICAL P&Ls:
+<n>
+
+P&L DUPLICATES / VERSIONS:
+<n>
+
+OVERLAPPING P&L PROTECTION:
+PASS / FAIL
+
+OLD MISCLASSIFIED PARSES:
+SUPERSEDED / OPEN
+
+DOUBLE-COUNT PROTECTION:
+PASS / FAIL
+
+BUSINESS LEDGER REBUILD:
+PASS / PARTIAL / BLOCKED
+
+P&L RECONCILIATION:
+PASS / PARTIAL / BLOCKED
+
+BUSINESS INCOME READINESS:
+<status>
+
+OWNER DRAW ENGINE:
+PASS / PARTIAL / BLOCKED
+
+CURRENT VERIFIED HOUSEHOLD INCOME:
+$<amount or unavailable>
+
+VERIFIED INCOME PROVENANCE:
+<exact source chain>
+
+VARIABLE INCOME PROFILE:
+PASS / PARTIAL / BLOCKED
+
+INCOME FLOOR:
+$<amount> / USER-APPROVED / NOT ESTABLISHED
+
+BUDGET INCOME READINESS:
+PASS / PARTIAL / BLOCKED
+
+FORECAST:
+PASS / PARTIAL / BLOCKED
+
+CAPITAL GOVERNOR:
+PASS / PARTIAL / BLOCKED
+
+DOCUMENT-TO-BUDGET BRIDGE:
+PASS 30/30 / REGRESSED
+
+LIVE WELLS FARGO:
+NOT CONFIGURED
+
+GROK AUTHORITY:
+ADVISORY ONLY
+
+MONEY MOVED:
+$0
+
+BROKER EXECUTION:
+DISABLED
+
+MICRO-LIVE:
+DISABLED
+
+CURRENT ROUTE COUNT:
+<n>
+
+CERTIFIED ROUTE COUNT:
+<n>
+
+USER ACTION REQUIRED:
+<exact action or NONE>
+
+NEXT PHASE:
+IF DOCUMENT INTEGRITY + VERIFIED HOUSEHOLD INCOME CHAIN PASS —
+FINAL VARIABLE-BUDGET CONSISTENCY CERTIFICATION

@@ -36,3 +36,4 @@
 - [Uploaded statement utilization](capital-os-uploaded-statement-utilization.md) — reviewed rows may inform advisory review, but parent state and exclusions prevent uploads from becoming financial authority.
 - [HTTP idempotency header casing](http-idempotency-header-casing.md) — normalize Node’s lowercase request headers before validating OpenAPI schemas that retain display casing.
 - [Financial document integrity boundary](capital-os-financial-document-integrity.md) — classify from content, preserve source evidence, and require audited human decisions before parser authority changes.
+- [Production Clerk operator access](capital-os-production-clerk-operator.md) — production remediation needs a real session from the Clerk instance that owns the target household.

@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { classifySettlementLine, type SettlementEconomicTreatment } from "../domain/business-income";
 
 export type ParsedBusinessDocument = {
   kind: "settlement" | "profit_loss";
@@ -15,8 +16,8 @@ export type ParsedBusinessDocument = {
   revenue: string | null;
   expenses: string | null;
   profit: string | null;
-  revenueLines: Array<{ description: string; amount: string; sourcePage: number }>;
-  deductionLines: Array<{ description: string; amount: string; sourcePage: number }>;
+  revenueLines: Array<{ description: string; amount: string; sourcePage: number; normalizedCategory: string; economicTreatment: SettlementEconomicTreatment }>;
+  deductionLines: Array<{ description: string; amount: string; sourcePage: number; normalizedCategory: string; economicTreatment: SettlementEconomicTreatment }>;
   lines: Array<{ description: string; amount: string; lineType: "revenue" | "expense"; sourcePage: number }>;
 };
 
@@ -183,16 +184,21 @@ export async function parseBusinessPdf(bytes: Buffer, kind: "settlement" | "prof
       gross && deductions && net && common.statementPeriodStart && common.statementPeriodEnd &&
       !grossResult.ambiguous && !deductionsResult.ambiguous && !netResult.ambiguous,
     );
+    const classifiedRevenue = fallbackRevenue.map((line) => ({ ...line, ...classifySettlementLine(line.description, "revenue") }));
+    const classifiedDeductions = fallbackDeductions.map((line) => ({ ...line, ...classifySettlementLine(line.description, "deduction") }));
+    const hasUnknownLine = [...classifiedRevenue, ...classifiedDeductions].some((line) => line.economicTreatment === "UNKNOWN_REVIEW_REQUIRED");
     return {
       ...base,
       ...common,
       gross,
       deductions: deductions ?? "0.00",
       net,
-      revenueLines: fallbackRevenue,
-      deductionLines: fallbackDeductions,
-      extractionStatus: complete ? "complete" : "ambiguous",
-      reason: complete ? "Settlement totals and line items were extracted from the PDF." : "The PDF did not contain an unambiguous gross, deductions, net, and statement period.",
+      revenueLines: classifiedRevenue,
+      deductionLines: classifiedDeductions,
+      extractionStatus: complete && !hasUnknownLine ? "complete" : "ambiguous",
+      reason: complete && !hasUnknownLine ? "Settlement totals and line items were extracted from the PDF." : hasUnknownLine
+        ? "Settlement totals were extracted, but one or more economic treatments require human review."
+        : "The PDF did not contain an unambiguous gross, deductions, net, and statement period.",
     };
   }
   const revenueResult = labeledAmount(normalized, [/^(?:total revenue|revenue)\b/i]);

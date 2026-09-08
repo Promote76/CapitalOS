@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { SettlementDeductionLineInputEconomicTreatment } from './settlementDeductionLineInputEconomicTreatment';
 
 export interface SettlementDeductionLineInput {
   /**
@@ -14,6 +15,12 @@ export interface SettlementDeductionLineInput {
   description: string;
   /** @maxLength 60 */
   category?: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  normalizedCategory?: string;
+  economicTreatment?: SettlementDeductionLineInputEconomicTreatment;
   /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   amount: string;
   taxDeduction?: boolean;

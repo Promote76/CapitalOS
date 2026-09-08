@@ -1,12 +1,14 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
-  auditEvents, bankStatementDocuments, bankStatementTransactions, financialDocuments,
-  profitLossDocuments, settlementDocuments,
+  auditEvents, bankStatementDocuments, bankStatementTransactions, financialDocuments, idempotencyKeys,
+  businessAdvances, businessEscrowMovements, financeTransactions, profitLossDocuments, profitLossReconciliationRuns,
+  settlementCashMatches, settlementDocuments, settlementMathReconciliations, settlementDeductionLines, verifiedHouseholdIncomeEvents,
 } from "@workspace/db/schema";
 import type { Actor } from "./capital-os";
 import { assertPermission, GovernanceError } from "../domain/governance";
 import { assertPrivateObjectPath, downloadBusinessDocument, requestBusinessDocumentUpload } from "../lib/business-document-storage";
+import { BANK_STATEMENT_PARSER_VERSION, parseBankStatement } from "./bank-statement-parser";
 
 const acceptedTypes = new Set([
   "STEVENS_SETTLEMENT", "BUSINESS_PROFIT_AND_LOSS", "BANK_STATEMENT", "1099",
@@ -54,13 +56,37 @@ export async function ingestFinancialDocument(actor: Actor, input: {
       uploadedBy: actor.userId,
     }).returning();
     let bankStatement: typeof bankStatementDocuments.$inferSelect | undefined;
+    let transactions: (typeof bankStatementTransactions.$inferSelect)[] = [];
     if (input.documentType === "BANK_STATEMENT") {
+      const parsed = await parseBankStatement(bytes, input.contentType);
+      const parseable = parsed.errors.length === 0;
+      await tx.update(financialDocuments).set({
+        parserVersion: BANK_STATEMENT_PARSER_VERSION,
+        status: parseable ? "NEEDS_REVIEW" : "NEEDS_REVIEW",
+        sourceMetadata: { declaredSizeBytes: input.sourceSizeBytes, observedSizeBytes: bytes.length, parserVersion: BANK_STATEMENT_PARSER_VERSION, parserErrors: parsed.errors },
+      }).where(eq(financialDocuments.id, document.id));
       [bankStatement] = await tx.insert(bankStatementDocuments).values({
         householdId: actor.householdId, documentId: document.id, accountId: input.accountId,
         institutionName: input.sourceInstitution, accountDisplayName: input.accountDisplayName, accountMask: input.accountMask,
         statementStart: input.statementStart, statementEnd: input.statementEnd,
+        openingBalance: parsed.openingBalance ?? "0.00", closingBalance: parsed.closingBalance ?? "0.00",
+        totalDeposits: parsed.totalDeposits ?? "0.00", totalWithdrawals: parsed.totalWithdrawals ?? "0.00",
         status: "DOCUMENT_EVIDENCE_PENDING_REVIEW",
       }).returning();
+      if (parseable && parsed.rows.length) {
+        const fingerprints = parsed.rows.map((row) => row.evidenceFingerprint);
+        const existing = await tx.select({ fingerprint: bankStatementTransactions.evidenceFingerprint }).from(bankStatementTransactions)
+          .where(and(eq(bankStatementTransactions.householdId, actor.householdId), inArray(bankStatementTransactions.evidenceFingerprint, fingerprints)));
+        const duplicateFingerprints = new Set(existing.map((row) => row.fingerprint));
+        transactions = await tx.insert(bankStatementTransactions).values(parsed.rows.map((row) => ({
+          householdId: actor.householdId, bankStatementDocumentId: bankStatement!.id, postedDate: row.postedDate,
+          description: row.description, amount: row.amount, direction: row.direction, runningBalance: row.runningBalance,
+          reference: row.reference, sourcePage: row.sourcePage, confidence: duplicateFingerprints.has(row.evidenceFingerprint) ? "0.50" : "0.95",
+          sourceLine: row.sourceLine, sourceRegion: row.sourceRegion, parserVersion: BANK_STATEMENT_PARSER_VERSION,
+          evidenceFingerprint: row.evidenceFingerprint, originalValue: row.originalValue,
+          reviewStatus: duplicateFingerprints.has(row.evidenceFingerprint) ? "NEEDS_USER" : "DOCUMENT_EVIDENCE_PENDING_REVIEW",
+        }))).returning();
+      }
     }
     await tx.insert(auditEvents).values({
       householdId: actor.householdId, eventType: "financial_document_ingested", actor: actor.userId,
@@ -68,7 +94,43 @@ export async function ingestFinancialDocument(actor: Actor, input: {
       reason: "Financial evidence recorded; no ledger entry or bank write was made.",
       metadata: { documentType: input.documentType, documentHash: sha256, bankStatement: Boolean(bankStatement) },
     });
-    return response(document, bankStatement);
+    const [updatedDocument] = await tx.select().from(financialDocuments).where(eq(financialDocuments.id, document.id));
+    return response(updatedDocument, bankStatement, transactions);
+  });
+}
+
+export async function reviewBankStatementTransaction(actor: Actor, transactionId: string, input: {
+  action: "APPROVE" | "REJECT" | "RECLASSIFY" | "LINK_SETTLEMENT" | "MARK_TRANSFER";
+  reason: string; idempotencyKey: string; correctedValue?: Record<string, unknown>; settlementDocumentId?: string;
+}) {
+  assertPermission(actor.role, "approve");
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`bank-statement-review:${actor.householdId}:${input.idempotencyKey}`}, 0))`);
+    const [previous] = await tx.select().from(idempotencyKeys).where(and(eq(idempotencyKeys.householdId, actor.householdId), eq(idempotencyKeys.key, input.idempotencyKey)));
+    if (previous) {
+      if (previous.operation !== "bank_statement_transaction_review") throw new GovernanceError("IDEMPOTENCY_CONFLICT", "Idempotency-Key was used for another operation");
+      return previous.responseBody;
+    }
+    const [row] = await tx.select().from(bankStatementTransactions).where(and(eq(bankStatementTransactions.id, transactionId), eq(bankStatementTransactions.householdId, actor.householdId))).limit(1);
+    if (!row) throw new GovernanceError("INVALID_STATE", "Bank statement transaction not found");
+    if (input.action === "LINK_SETTLEMENT" && !input.settlementDocumentId) throw new GovernanceError("INVALID_STATE", "A settlement document is required");
+    if (input.action === "LINK_SETTLEMENT") {
+      const [settlement] = await tx.select({ id: settlementDocuments.id, verificationStatus: settlementDocuments.verificationStatus })
+        .from(settlementDocuments)
+        .where(and(eq(settlementDocuments.id, input.settlementDocumentId!), eq(settlementDocuments.householdId, actor.householdId)))
+        .limit(1);
+      if (!settlement) throw new GovernanceError("INVALID_STATE", "Settlement document not found");
+      if (settlement.verificationStatus === "rejected") throw new GovernanceError("INVALID_STATE", "Rejected settlement documents cannot be linked");
+    }
+    const statuses = { APPROVE: "RESOLVED", REJECT: "REJECTED", RECLASSIFY: "NEEDS_USER", LINK_SETTLEMENT: "RESOLVED", MARK_TRANSFER: "RESOLVED" } as const;
+    const [updated] = await tx.update(bankStatementTransactions).set({
+      reviewStatus: statuses[input.action], reviewedBy: actor.userId, reviewedAt: new Date(),
+      correctedValue: input.correctedValue, correctionReason: input.reason,
+      linkedSettlementDocumentId: input.settlementDocumentId,
+    }).where(and(eq(bankStatementTransactions.id, transactionId), eq(bankStatementTransactions.householdId, actor.householdId))).returning();
+    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "bank_statement_transaction_reviewed", actor: actor.userId, entity: "bank_statement_transaction", entityId: transactionId, reason: input.reason, metadata: { action: input.action, idempotencyKey: input.idempotencyKey, originalValue: row.originalValue } });
+    await tx.insert(idempotencyKeys).values({ householdId: actor.householdId, key: input.idempotencyKey, operation: "bank_statement_transaction_review", responseStatus: 200, responseBody: updated });
+    return updated;
   });
 }
 
@@ -99,16 +161,39 @@ export async function reviewFinancialDocument(actor: Actor, documentId: string, 
 }
 
 export async function listFinancialReviewQueue(actor: Actor) {
-  const [documents, bankTransactions, settlements, pnls] = await Promise.all([
+  const [documents, bankTransactions, settlements, pnls, math, pnlRuns, cashMatches, deductions, advances, escrow, income, pendingTransactions] = await Promise.all([
     db.select().from(financialDocuments).where(and(eq(financialDocuments.householdId, actor.householdId), inArray(financialDocuments.status, [...reviewableStatuses]))),
     db.select().from(bankStatementTransactions).where(and(eq(bankStatementTransactions.householdId, actor.householdId), eq(bankStatementTransactions.reviewStatus, "document_evidence_pending_review"))),
     db.select().from(settlementDocuments).where(and(eq(settlementDocuments.householdId, actor.householdId), eq(settlementDocuments.verificationStatus, "needs_review"))),
     db.select().from(profitLossDocuments).where(and(eq(profitLossDocuments.householdId, actor.householdId), eq(profitLossDocuments.verificationStatus, "needs_review"))),
+    db.select().from(settlementMathReconciliations).where(and(eq(settlementMathReconciliations.householdId, actor.householdId), inArray(settlementMathReconciliations.status, ["unresolved_variance", "failed", "needs_review"]))),
+    db.select().from(profitLossReconciliationRuns).where(and(eq(profitLossReconciliationRuns.householdId, actor.householdId), inArray(profitLossReconciliationRuns.status, ["review_required", "period_mismatch", "needs_review"]))),
+    db.select().from(settlementCashMatches).where(and(eq(settlementCashMatches.householdId, actor.householdId), inArray(settlementCashMatches.matchStatus, ["unmatched", "ambiguous", "missing", "partial_match", "timing_match"]))),
+    db.select().from(settlementDeductionLines).where(and(eq(settlementDeductionLines.householdId, actor.householdId), eq(settlementDeductionLines.reviewStatus, "needs_review"))),
+    db.select().from(businessAdvances).where(and(eq(businessAdvances.householdId, actor.householdId), inArray(businessAdvances.status, ["open", "needs_review"]))),
+    db.select().from(businessEscrowMovements).where(and(eq(businessEscrowMovements.householdId, actor.householdId), inArray(businessEscrowMovements.status, ["needs_review", "unknown"]))),
+    db.select().from(verifiedHouseholdIncomeEvents).where(and(eq(verifiedHouseholdIncomeEvents.householdId, actor.householdId), inArray(verifiedHouseholdIncomeEvents.verificationStatus, ["needs_review", "cash_received", "eligible_for_draw"]))),
+    db.select().from(financeTransactions).where(and(eq(financeTransactions.householdId, actor.householdId), eq(financeTransactions.pending, true))),
   ]);
+  const queueStatus = (status: string) => {
+    if (status === "REJECTED" || status === "rejected") return "REJECTED";
+    if (status === "RESOLVED" || status === "verified") return "RESOLVED";
+    if (status === "READY_FOR_APPROVAL" || status === "parsed") return "READY_FOR_APPROVAL";
+    if (status === "NEEDS_USER" || status === "needs_review" || status === "NEEDS_REVIEW") return "NEEDS_USER";
+    return "OPEN";
+  };
   return { items: [
-    ...documents.map((row) => ({ type: "financial_document", id: row.id, status: row.status, sourceFileName: row.sourceFileName })),
-    ...bankTransactions.map((row) => ({ type: "bank_statement_transaction", id: row.id, status: row.reviewStatus, description: row.description })),
-    ...settlements.map((row) => ({ type: "settlement", id: row.id, status: row.verificationStatus, sourceFileName: row.sourceFileName })),
-    ...pnls.map((row) => ({ type: "profit_loss", id: row.id, status: row.verificationStatus, sourceFileName: row.sourceFileName })),
+    ...documents.map((row) => ({ type: "financial_document", id: row.id, status: queueStatus(row.status), sourceFileName: row.sourceFileName })),
+    ...bankTransactions.map((row) => ({ type: "bank_statement_transaction", id: row.id, status: queueStatus(row.reviewStatus), description: row.description })),
+    ...settlements.map((row) => ({ type: "settlement", id: row.id, status: queueStatus(row.verificationStatus), sourceFileName: row.sourceFileName })),
+    ...pnls.map((row) => ({ type: "profit_loss", id: row.id, status: queueStatus(row.verificationStatus), sourceFileName: row.sourceFileName })),
+    ...math.map((row) => ({ type: "settlement_math_variance", id: row.id, sourceEntityId: row.settlementDocumentId, status: queueStatus(row.status), reason: row.reason })),
+    ...pnlRuns.map((row) => ({ type: "profit_loss_mismatch", id: row.id, status: queueStatus(row.status), reason: row.reason })),
+    ...cashMatches.map((row) => ({ type: "settlement_deposit_match", id: row.id, sourceEntityId: row.settlementDocumentId, status: queueStatus(row.matchStatus), reason: row.reason })),
+    ...deductions.map((row) => ({ type: "settlement_economic_treatment", id: row.id, sourceEntityId: row.settlementDocumentId, status: queueStatus(row.reviewStatus), description: row.description })),
+    ...advances.map((row) => ({ type: "advance_recovery", id: row.id, status: queueStatus(row.status), counterparty: row.counterparty })),
+    ...escrow.map((row) => ({ type: "escrow_classification", id: row.id, status: queueStatus(row.status), direction: row.direction })),
+    ...income.map((row) => ({ type: "verified_income", id: row.id, sourceEntityId: row.ownerDrawProposalId, status: queueStatus(row.verificationStatus) })),
+    ...pendingTransactions.map((row) => ({ type: "pending_budget_transaction", id: row.id, status: "OPEN", description: row.description })),
   ] };
 }

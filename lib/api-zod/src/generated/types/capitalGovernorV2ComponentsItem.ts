@@ -5,11 +5,14 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { CapitalGovernorV2ComponentsItemSourceReferencesItem } from './capitalGovernorV2ComponentsItemSourceReferencesItem';
 
 export type CapitalGovernorV2ComponentsItem = {
   key: string;
   label: string;
-  amount: string;
+  amount: string | null;
   sign: string;
   provenance: string[];
+  sourceReferences?: CapitalGovernorV2ComponentsItemSourceReferencesItem[];
+  subtractionGroup?: string;
 };

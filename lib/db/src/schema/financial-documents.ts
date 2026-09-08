@@ -2,6 +2,7 @@ import { date, index, integer, jsonb, numeric, pgTable, text, timestamp, uniqueI
 import { households, users } from "./households.ts";
 import { businessEntities } from "./business.ts";
 import { financialAccounts } from "./household-finance.ts";
+import { settlementDocuments } from "./business-income.ts";
 
 const money = (name: string) => numeric(name, { precision: 18, scale: 2 }).notNull().default("0");
 
@@ -74,16 +75,21 @@ export const bankStatementTransactions = pgTable("bank_statement_transactions", 
   reference: text("reference"),
   confidence: numeric("confidence", { precision: 5, scale: 2 }),
   sourcePage: integer("source_page"),
+  sourceLine: integer("source_line"),
+  sourceRegion: text("source_region"),
+  parserVersion: text("parser_version").notNull().default("bank-statement-v1"),
+  evidenceFingerprint: text("evidence_fingerprint").notNull(),
   originalValue: jsonb("original_value").$type<Record<string, unknown>>().notNull().default({}),
   correctedValue: jsonb("corrected_value").$type<Record<string, unknown>>(),
   correctionReason: text("correction_reason"),
   reviewStatus: text("review_status").notNull().default("document_evidence_pending_review"),
   reviewedBy: uuid("reviewed_by").references(() => users.id),
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
-  linkedSettlementDocumentId: uuid("linked_settlement_document_id"),
+  linkedSettlementDocumentId: uuid("linked_settlement_document_id").references(() => settlementDocuments.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   householdReviewIdx: index("bank_statement_transactions_household_review_idx").on(table.householdId, table.reviewStatus),
+  statementFingerprintUnique: uniqueIndex("bank_statement_transactions_statement_fingerprint_unique").on(table.bankStatementDocumentId, table.evidenceFingerprint),
 }));
 
 export type FinancialDocument = typeof financialDocuments.$inferSelect;

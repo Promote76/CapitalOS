@@ -21,11 +21,12 @@ import {
   type TreasurySnapshot,
 } from "@workspace/api-client-react";
 
-function money(value: string) {
+function money(value: string | null) {
+  if (value === null || value === "NOT_CALCULATED") return "NOT CALCULATED";
   const amount = Number(value);
   return Number.isFinite(amount)
     ? `$${amount.toLocaleString("en-US", { maximumFractionDigits: 0 })}`
-    : "$0";
+    : "NOT AVAILABLE";
 }
 
 function percent(value: number) {
@@ -118,7 +119,7 @@ function TreasuryOverview({ snapshot }: { snapshot: TreasurySnapshot }) {
           <div><span className="mono-label">Household capital surplus</span><strong>{money(governor.householdCapitalSurplus.base)}</strong><small>Floor {money(governor.householdCapitalSurplus.floor)} · strong {money(governor.householdCapitalSurplus.strong)}</small></div>
           <div><span className="mono-label">Recommended waterfall</span><strong>{money(governor.waterfall.availableForWaterfall)}</strong><small>{governor.waterfall.allocations.length} advisory allocation(s) · no movement authorized</small></div>
         </div>}
-        {governor && <div className="treasury-v2-reasons">{governor.components.filter((component) => Number(component.amount) > 0).slice(0, 5).map((component) => <span key={component.key}>{component.sign === "subtract" ? "−" : "+"} {component.label}: {money(component.amount)}</span>)}</div>}
+        {governor && <div className="treasury-v2-reasons">{governor.components.filter((component) => Number(component.amount) > 0).slice(0, 5).map((component) => <span key={component.key}>{component.sign === "subtract" ? "−" : "+"} {component.label}: {money(component.amount ?? "0")}</span>)}</div>}
       </section>
 
       <section className="treasury-hero-grid page-section">

@@ -59,7 +59,23 @@ function profileResponse(profile: ReturnType<typeof calculateVariableIncomeProfi
 
 function vehicleResponse(row: typeof householdVehicleScenarios.$inferSelect) {
   const { householdId: _householdId, createdBy: _createdBy, ...response } = row;
-  return response;
+  return {
+    ...response,
+    paymentSource: response.paymentSource as "USER_PROVIDED" | "DERIVED_FROM_APR_TERM" | "NOT_CALCULATED",
+    currentOperatingCost: response.currentOperatingCost,
+    newOperatingCost: response.newOperatingCost,
+    cashBufferImpact: response.cashBufferImpact,
+    emergencyReserveImpact: response.emergencyReserveImpact,
+    duplexContributionImpact: response.duplexContributionImpact,
+    horizonImpact: {
+      days30: response.totalMonthlyCost,
+      days60: centsToMoney(cents(response.totalMonthlyCost) * 2),
+      days90: centsToMoney(cents(response.totalMonthlyCost) * 3),
+    },
+    planningOnly: true,
+    liabilityCreated: false,
+    status: response.affordabilityStatus,
+  };
 }
 
 export async function getVariableBudgetIntelligence(actor: Actor, asOf = today()) {
@@ -95,9 +111,10 @@ export async function getVariableBudgetIntelligence(actor: Actor, asOf = today()
   const billMandatory = bills.filter((bill) => bill.essential).reduce((sum, bill) => sum + cents(bill.expectedAmount), 0);
   const mandatory = mandatoryFromPlan || billMandatory;
   const essential = essentialFromPlan;
-  const reserveTarget = cents(reserve?.essentialMonthlyExpenses) * (reserve?.targetMonths ?? 0);
-  const reserveGap = Math.max(0, reserveTarget - cents(reserve?.currentAmount));
-  const reserveMonthly = reserve?.targetMonths ? Math.ceil(reserveGap / reserve.targetMonths) : 0;
+  const reserveConfigured = Boolean(reserve && reserve.targetMonths > 0 && cents(reserve.essentialMonthlyExpenses) > 0);
+  const reserveTarget = reserveConfigured ? cents(reserve?.essentialMonthlyExpenses) * (reserve?.targetMonths ?? 0) : 0;
+  const reserveGap = reserveConfigured ? Math.max(0, reserveTarget - cents(reserve?.currentAmount)) : 0;
+  const reserveMonthly = reserveConfigured ? Math.ceil(reserveGap / (reserve?.targetMonths ?? 1)) : 0;
   const currentCash = accounts
     .filter((account) => ["checking", "savings", "money_market"].includes(account.accountType) && !account.businessEntityId && !account.protected)
     .reduce((sum, account) => sum + cents(account.availableBalance ?? account.currentBalance), 0);
@@ -119,11 +136,25 @@ export async function getVariableBudgetIntelligence(actor: Actor, asOf = today()
     capitalGoals: centsToMoney(capitalGoals),
     next30DayObligations: centsToMoney(next30),
   });
-  const forecast = [30, 60, 90].flatMap((days) => [
-    buildVariableCashFlowForecast({ scenarioIncome: centsToMoney(profile.incomeFloorCents), openingCash: centsToMoney(currentCash), obligations: centsToMoney(obligationsFor(days)), essentialSpending: centsToMoney(Math.round(essential * days / 30)), reserveContributions: centsToMoney(Math.round(reserveMonthly * days / 30)), approvedCapitalContributions: "0.00", cashBuffer: centsToMoney(cashBuffer), days }),
-    buildVariableCashFlowForecast({ scenarioIncome: centsToMoney(profile.baseIncomeCents), openingCash: centsToMoney(currentCash), obligations: centsToMoney(obligationsFor(days)), essentialSpending: centsToMoney(Math.round(essential * days / 30)), reserveContributions: centsToMoney(Math.round(reserveMonthly * days / 30)), approvedCapitalContributions: "0.00", cashBuffer: centsToMoney(cashBuffer), days }),
-    buildVariableCashFlowForecast({ scenarioIncome: centsToMoney(profile.strongMonthIncomeCents), openingCash: centsToMoney(currentCash), obligations: centsToMoney(obligationsFor(days)), essentialSpending: centsToMoney(Math.round(essential * days / 30)), reserveContributions: centsToMoney(Math.round(reserveMonthly * days / 30)), approvedCapitalContributions: "0.00", cashBuffer: centsToMoney(cashBuffer), days }),
-  ]);
+  const forecastComplete = Boolean(period && currentCash >= 0 && profile.confidenceStatus !== "INSUFFICIENT_HISTORY" && reserveConfigured);
+  const forecast = [7, 14, 30, 60, 90].flatMap((days) => ([
+    ["FLOOR", profile.incomeFloorCents],
+    ["BASE", profile.baseIncomeCents],
+    ["STRONG", profile.strongMonthIncomeCents],
+  ] as const).map(([scenario, monthlyIncome]) => buildVariableCashFlowForecast({
+    scenario,
+    scenarioIncome: centsToMoney(Math.round(monthlyIncome * days / 30)),
+    openingCash: centsToMoney(currentCash),
+    obligations: centsToMoney(obligationsFor(days)),
+    essentialSpending: centsToMoney(Math.round(essential * days / 30)),
+    reserveContributions: centsToMoney(Math.round(reserveMonthly * days / 30)),
+    discretionaryAllowance: centsToMoney(Math.round(discretionary * days / 30)),
+    approvedCapitalContributions: centsToMoney(Math.round(capitalGoals * days / 30)),
+    cashBuffer: centsToMoney(cashBuffer),
+    days,
+    requiredInputsComplete: forecastComplete,
+  })));
+  const scenariosIdentical = profile.incomeFloorCents === profile.baseIncomeCents && profile.baseIncomeCents === profile.strongMonthIncomeCents;
   return {
     asOf,
     source: {
@@ -131,6 +162,7 @@ export async function getVariableBudgetIntelligence(actor: Actor, asOf = today()
       approvedBudgetPeriod: period ? period.month : null,
       incomeAuthority: "VerifiedHouseholdIncomeEvent",
       planningStatus: period ? "APPROVED_PLAN" : "INCOMPLETE_DATA",
+      forecastReadiness: forecastComplete ? "READY" : "INCOMPLETE",
     },
     incomeProfile: profileResponse(profile, asOf),
     constraints,
@@ -143,12 +175,12 @@ export async function getVariableBudgetIntelligence(actor: Actor, asOf = today()
       items: [...bills.filter((bill) => bill.dueDate >= asOf && bill.dueDate <= addDays(asOf, 90)).map((bill) => ({ name: bill.billName, dueDate: bill.dueDate, amount: money(bill.expectedAmount), required: bill.essential, source: "bill" })), ...upcoming.filter((expense) => expense.required && expense.expectedDate >= asOf && expense.expectedDate <= addDays(asOf, 90)).map((expense) => ({ name: expense.name, dueDate: expense.expectedDate, amount: money(Math.max(0, cents(expense.estimatedAmount) - cents(expense.fundedAmount))), required: expense.required, source: "upcoming_expense" }))],
     },
     reserve: {
-      targetMonths: reserve?.targetMonths ?? 0,
-      target: money(reserveTarget),
-      current: money(reserve?.currentAmount),
-      fundingGap: money(reserveGap),
-      monthlyFunding: money(reserveMonthly),
-      status: reserve ? reserveGap > 0 ? "UNDERFUNDED" : "FUNDED" : "INCOMPLETE_DATA",
+      targetMonths: reserveConfigured ? reserve?.targetMonths ?? 0 : 0,
+      target: reserveConfigured ? money(reserveTarget) : "NOT_CALCULATED",
+      current: reserveConfigured ? money(reserve?.currentAmount) : "NOT_CALCULATED",
+      fundingGap: reserveConfigured ? money(reserveGap) : "NOT_CALCULATED",
+      monthlyFunding: reserveConfigured ? money(reserveMonthly) : "NOT_CALCULATED",
+      status: !reserve ? "NOT_CONFIGURED" : !reserveConfigured ? "INCOMPLETE" : reserveGap > 0 ? "UNDERFUNDED" : reserveTarget === 0 ? "ZERO_REQUIRED" : "FUNDED",
     },
     cash: {
       current: money(currentCash),
@@ -157,6 +189,9 @@ export async function getVariableBudgetIntelligence(actor: Actor, asOf = today()
       pressure: constraints.status === "SHORTFALL_RISK" ? "HIGH" : constraints.status === "TIGHT" ? "MODERATE" : constraints.status === "INCOMPLETE_DATA" ? "UNKNOWN" : "LOW",
     },
     forecast,
+    forecastExplanation: scenariosIdentical
+      ? "Floor, base, and strong paths are identical because the verified-income scenario inputs are equal."
+      : "Scenario paths use distinct verified-income floor, base, and strong inputs, prorated deterministically by forecast window.",
     vehicleScenarios: vehicles.map(vehicleResponse),
   };
 }
@@ -229,20 +264,20 @@ export async function createVehicleScenario(actor: Actor, input: {
   loanAmount?: string;
   estimatedApr?: string;
   loanTermMonths?: number;
-  monthlyPayment: string;
-  insurance: string;
-  fuel: string;
-  maintenanceReserve: string;
-  registrationReserve?: string;
-  parkingTolls?: string;
-  otherMonthlyCost?: string;
+    monthlyPayment?: string;
+    insurance: string;
+    fuel: string;
+    maintenanceReserve: string;
+    registrationReserve?: string;
+    parkingTolls?: string;
+    otherMonthlyCost?: string;
   notes?: string;
 }) {
   assertPermission(actor.role, "contribute");
   const intelligence = await getVariableBudgetIntelligence(actor);
   const affordability = calculateVehicleAffordability({
     incomeFloor: intelligence.incomeProfile.incomeFloor,
-    currentOperatingBudget: intelligence.constraints.operatingBudgetCap,
+    currentOperatingBudget: intelligence.constraints.operatingBudgetCap ?? undefined,
     currentCapitalSurplus: intelligence.constraints.capitalSurplusAtFloor,
     monthlyPayment: input.monthlyPayment,
     insurance: input.insurance,
@@ -251,16 +286,26 @@ export async function createVehicleScenario(actor: Actor, input: {
     registrationReserve: input.registrationReserve ?? "0.00",
     parkingTolls: input.parkingTolls ?? "0.00",
     otherMonthlyCost: input.otherMonthlyCost ?? "0.00",
+    vehiclePrice: input.vehiclePrice,
+    downPayment: input.downPayment,
+    loanAmount: input.loanAmount,
+    estimatedApr: input.estimatedApr,
+    loanTermMonths: input.loanTermMonths,
+    currentVehicleOperatingCost: "0.00",
+    cashBuffer: intelligence.cash.buffer,
+    emergencyReserveGap: intelligence.reserve.fundingGap === "NOT_CALCULATED" ? undefined : intelligence.reserve.fundingGap,
+    duplexContribution: intelligence.constraints.capitalGoals,
   });
   const [row] = await db.insert(householdVehicleScenarios).values({
     householdId: actor.householdId,
     name: input.name,
     vehiclePrice: money(input.vehiclePrice),
     downPayment: money(input.downPayment),
-    loanAmount: money(input.loanAmount),
+    loanAmount: affordability.loanAmount ?? money(input.loanAmount),
     estimatedApr: input.estimatedApr ?? "0",
     loanTermMonths: String(input.loanTermMonths ?? 0),
-    monthlyPayment: money(input.monthlyPayment),
+    monthlyPayment: affordability.monthlyPayment ?? money(input.monthlyPayment),
+    paymentSource: affordability.paymentSource,
     insurance: money(input.insurance),
     fuel: money(input.fuel),
     maintenanceReserve: money(input.maintenanceReserve),
@@ -268,6 +313,11 @@ export async function createVehicleScenario(actor: Actor, input: {
     parkingTolls: money(input.parkingTolls),
     otherMonthlyCost: money(input.otherMonthlyCost),
     totalMonthlyCost: affordability.totalMonthlyCost,
+    currentOperatingCost: affordability.currentOperatingCost,
+    newOperatingCost: affordability.newOperatingCost,
+    cashBufferImpact: affordability.cashBufferImpact,
+    emergencyReserveImpact: affordability.emergencyReserveImpact,
+    duplexContributionImpact: affordability.duplexContributionImpact,
     affordabilityStatus: affordability.status,
     notes: input.notes,
     createdBy: actor.userId,

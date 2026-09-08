@@ -1,0 +1,53 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { parseBankStatement } from "./bank-statement-parser";
+
+function representativePdf(pages: string[]) {
+  const objects: string[] = ["<< /Type /Catalog /Pages 2 0 R >>", `<< /Type /Pages /Kids [${pages.map((_, index) => `${3 + index * 2} 0 R`).join(" ")}] /Count ${pages.length} >>`];
+  pages.forEach((page, index) => {
+    const pageId = 3 + index * 2; const contentId = pageId + 1;
+    const stream = `BT /F1 10 Tf 50 750 Td ${page.split("\n").map((line, lineIndex) => `${lineIndex ? "0 -14 Td " : ""}(${line.replace(/[()\\]/g, "\\$&")}) Tj`).join(" ")} ET`;
+    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${3 + pages.length * 2} 0 R >> >> /Contents ${contentId} 0 R >>`, `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`);
+  });
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  let pdf = "%PDF-1.4\n"; const offsets = [0];
+  objects.forEach((object, index) => { offsets.push(Buffer.byteLength(pdf)); pdf += `${index + 1} 0 obj\n${object}\nendobj\n`; });
+  const xref = Buffer.byteLength(pdf); pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.slice(1).map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("")}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf);
+}
+
+test("parses common CSV headers into exact-cent, evidence-only rows", async () => {
+  const parsed = await parseBankStatement(Buffer.from([
+    "Opening Balance,100.00",
+    "Date,Description,Debit,Credit,Running Balance,Reference",
+    "2026-01-02,Payroll,,\"1,234.50\",1334.50,ABC",
+    "2026-01-03,Groceries,12.5,,1322.00,",
+    "Closing Balance,1322.00",
+  ].join("\n")), "text/csv");
+  assert.deepEqual(parsed.errors, []);
+  assert.equal(parsed.openingBalance, "100.00");
+  assert.equal(parsed.closingBalance, "1322.00");
+  assert.deepEqual(parsed.rows.map((row) => [row.amount, row.direction, row.sourceLine]), [["1234.50", "deposit", 3], ["12.50", "withdrawal", 4]]);
+  assert.equal(parsed.rows[0].originalValue.description, "Payroll");
+});
+
+test("extracts a generated multi-page layout-safe PDF statement", async () => {
+  const parsed = await parseBankStatement(representativePdf([
+    "Account Number 1234 Statement Period 01/01/2026 to 01/31/2026\nOpening Balance 100.00\nDate Description Amount Balance\n2026-01-02 Payroll 100.00 200.00\nTotal Deposits 100.00",
+    "Date Description Amount Balance\n2026-01-03 Groceries -12.50 187.50\nClosing Balance 187.50\nTotal Withdrawals 12.50",
+  ]), "application/pdf");
+  assert.deepEqual(parsed.errors, []);
+  assert.deepEqual(parsed.rows.map((row) => [row.sourcePage, row.amount, row.direction]), [[1, "100.00", "deposit"], [2, "12.50", "withdrawal"]]);
+  assert.equal(parsed.rows[1].sourceRegion, "page:2;line:2");
+  assert.equal(parsed.openingBalance, "100.00"); assert.equal(parsed.closingBalance, "187.50");
+  assert.equal(parsed.totalDeposits, "100.00"); assert.equal(parsed.totalWithdrawals, "12.50");
+});
+
+test("rejects ambiguous amount rows and marks PDF extraction for review", async () => {
+  const parsed = await parseBankStatement(Buffer.from("Date,Description,Amount,Debit\n2026-01-01,Test,1.00,1.00"), "text/csv");
+  assert.match(parsed.errors[0], /ambiguous/i);
+  assert.match((await parseBankStatement(Buffer.from("%PDF-"), "application/pdf")).errors[0], /extraction failed/i);
+  const ambiguousPdf = await parseBankStatement(representativePdf(["Account 1234\nDate Description Amount Balance\n2026-01-02 Ambiguous 10.00 20.00 30.00"]), "application/pdf");
+  assert.match(ambiguousPdf.errors[0], /ambiguous transaction layout/i);
+  assert.deepEqual(ambiguousPdf.rows, []);
+});

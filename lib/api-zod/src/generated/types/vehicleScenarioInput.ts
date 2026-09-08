@@ -18,7 +18,8 @@ export interface VehicleScenarioInput {
   estimatedApr?: string;
   /** @minimum 0 */
   loanTermMonths?: number;
-  monthlyPayment: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  monthlyPayment?: string;
   insurance: string;
   fuel: string;
   maintenanceReserve: string;

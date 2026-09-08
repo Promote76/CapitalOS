@@ -1,22 +1,22 @@
 # Capital OS current certification
 
-**Certification date:** 2026-09-07
-**Certification source base HEAD:** `298f5034cc6d43312e078343587b025f38c505ac`
+**Certification date:** 2026-09-08
+**Certification source base HEAD:** `297bc91`
 **Previous certification:** **NOT READY** (`docs/PRODUCTION_CANDIDATE_CERTIFICATION_2026-09-02.md`)  
 **Current decision:** **READY FOR CONTROLLED INTERNAL USE ONLY — PUBLIC PRODUCTION NOT CERTIFIED**
 
-This is the single current certification document. The current-surface replay
-supersedes historical 149-route and 163-route claims: all 170 route/method pairs
-completed one clean guarded disposable-target replay with 393 probes, 58 scoped
-collection reads, 58 foreign-identifier rejections, and 58 malformed-identifier
-rejections. P0-01, P0-06, and P0-08 remain PASS. The focused Family Office
-certification separately exercised its seven-route HTTP and authenticated-browser
-slice. See `docs/certification/CURRENT_SURFACE_CERTIFICATION_2026-09-07.md` and
+This is the single current certification document. The Financial Planning
+Completion replay passed all 40 FPC gates, the 197-test API suite, generated
+artifact freshness, and authenticated Budget/Documents/Treasury browser
+certification. Source-derived and certified route inventories both contain 199
+route/method pairs. See
+`docs/certification/FINANCIAL_PLANNING_COMPLETION_2026-09-08.md`,
+`docs/certification/CURRENT_SURFACE_CERTIFICATION_2026-09-07.md`, and
 `docs/PRODUCTION_CANDIDATE_EVIDENCE_INDEX.md`.
 
-The 2026-09-07 transaction-review reverification remediation and this report are
-working-tree changes after the base HEAD. Their local checks are recorded below;
-they are not represented as published-production certification.
+The 2026-09-08 financial-planning completion work and this report are working-tree
+changes after the base HEAD. Their local checks are recorded below; they are not
+represented as published-production certification.
 
 ## Scope and non-goals
 

@@ -118,15 +118,16 @@ export function calculateHouseholdBudgetConstraints(input: {
   const buffer = cents(input.cashBuffer);
   const capitalGoals = cents(input.capitalGoals);
   const next30 = cents(input.next30DayObligations);
-  const operatingBudgetCap = Math.max(0, floor - mandatory - essential - reserves);
+  const complete = floor > 0 && base > 0 && strong > 0 && (mandatory > 0 || essential > 0);
+  const operatingBudgetCap = complete ? Math.max(0, floor - mandatory - essential - reserves) : null;
   const minimumViableOperatingCost = mandatory + essential + reserves;
-  const optionalDiscretionaryAllowance = Math.max(0, operatingBudgetCap - discretionary);
+  const optionalDiscretionaryAllowance = operatingBudgetCap === null ? null : Math.max(0, operatingBudgetCap - discretionary);
   const capitalSurplusAtFloor = floor - mandatory - essential - reserves - discretionary;
   const capitalSurplusAtBase = base - mandatory - essential - reserves - discretionary;
   const capitalSurplusAtStrong = strong - mandatory - essential - reserves - discretionary;
   const obligationCoverage = next30 <= 0 ? 0 : Number((cash / next30).toFixed(2));
   const forecastShortfall = Math.max(0, next30 + buffer - cash);
-  const status = !floor || !mandatory && !essential
+  const status = !complete
     ? "INCOMPLETE_DATA"
     : capitalSurplusAtFloor < 0 || forecastShortfall > 0
       ? "SHORTFALL_RISK"
@@ -146,9 +147,9 @@ export function calculateHouseholdBudgetConstraints(input: {
     cashBuffer: centsToMoney(buffer),
     capitalGoals: centsToMoney(capitalGoals),
     next30DayObligations: centsToMoney(next30),
-    operatingBudgetCap: centsToMoney(operatingBudgetCap),
+    operatingBudgetCap: operatingBudgetCap === null ? "NOT_CALCULATED" : centsToMoney(operatingBudgetCap),
     minimumViableOperatingCost: centsToMoney(minimumViableOperatingCost),
-    optionalDiscretionaryAllowance: centsToMoney(optionalDiscretionaryAllowance),
+    optionalDiscretionaryAllowance: optionalDiscretionaryAllowance === null ? "NOT_CALCULATED" : centsToMoney(optionalDiscretionaryAllowance),
     capitalSurplusAtFloor: centsToMoney(capitalSurplusAtFloor),
     capitalSurplusAtBase: centsToMoney(capitalSurplusAtBase),
     capitalSurplusAtStrong: centsToMoney(capitalSurplusAtStrong),
@@ -159,32 +160,61 @@ export function calculateHouseholdBudgetConstraints(input: {
 }
 
 export function calculateVehicleAffordability(input: {
-  incomeFloor: string;
-  currentOperatingBudget: string;
-  currentCapitalSurplus: string;
-  monthlyPayment: string;
-  insurance: string;
-  fuel: string;
-  maintenanceReserve: string;
-  registrationReserve: string;
-  parkingTolls: string;
-  otherMonthlyCost: string;
+  incomeFloor?: string;
+  currentOperatingBudget?: string;
+  currentCapitalSurplus?: string;
+  vehiclePrice?: string;
+  downPayment?: string;
+  loanAmount?: string;
+  estimatedApr?: string;
+  loanTermMonths?: number;
+  monthlyPayment?: string;
+  insurance?: string;
+  fuel?: string;
+  maintenanceReserve?: string;
+  registrationReserve?: string;
+  parkingTolls?: string;
+  otherMonthlyCost?: string;
+  currentVehicleOperatingCost?: string;
+  cashBuffer?: string;
+  emergencyReserveGap?: string;
+  duplexContribution?: string;
 }) {
+  const price = input.vehiclePrice === undefined ? null : cents(input.vehiclePrice);
+  const downPayment = input.downPayment === undefined ? null : cents(input.downPayment);
+  const explicitLoan = input.loanAmount === undefined ? null : cents(input.loanAmount);
+  const loan = explicitLoan ?? (price !== null && downPayment !== null ? Math.max(0, price - downPayment) : null);
+  const term = input.loanTermMonths && input.loanTermMonths > 0 ? input.loanTermMonths : null;
+  const apr = input.estimatedApr === undefined ? null : Number(input.estimatedApr);
+  const derivedPayment = loan !== null && term !== null && apr !== null && Number.isFinite(apr)
+    ? (() => {
+      const rate = apr / 100 / 12;
+      return rate === 0 ? Math.round(loan / term) : Math.round((loan * rate) / (1 - (1 + rate) ** -term));
+    })()
+    : null;
+  const payment = input.monthlyPayment === undefined ? derivedPayment : cents(input.monthlyPayment);
+  const ownershipInputs = [payment, input.insurance, input.fuel, input.maintenanceReserve, input.registrationReserve, input.parkingTolls, input.otherMonthlyCost];
+  const completeOwnership = ownershipInputs.every((value) => value !== undefined && value !== null);
   const total = [
-    input.monthlyPayment,
+    payment ?? 0,
     input.insurance,
     input.fuel,
     input.maintenanceReserve,
     input.registrationReserve,
     input.parkingTolls,
     input.otherMonthlyCost,
-  ].reduce((sum, value) => sum + cents(value), 0);
+  ].reduce<number>((sum, value) => sum + cents(value), 0);
   const floor = cents(input.incomeFloor);
   const operating = cents(input.currentOperatingBudget);
   const surplus = cents(input.currentCapitalSurplus);
+  const currentVehicleOperatingCost = cents(input.currentVehicleOperatingCost);
+  const cashBuffer = cents(input.cashBuffer);
+  const emergencyReserveGap = cents(input.emergencyReserveGap);
+  const duplexContribution = cents(input.duplexContribution);
   const newOperatingBudget = operating + total;
   const newFloorSurplus = floor - newOperatingBudget;
-  const status = !floor || !total
+  const completePlanning = completeOwnership && input.incomeFloor !== undefined && input.currentOperatingBudget !== undefined && input.currentCapitalSurplus !== undefined;
+  const status = !completePlanning
     ? "INSUFFICIENT_DATA"
     : newFloorSurplus < 0
       ? "HOUSEHOLD_SHORTFALL_RISK"
@@ -194,36 +224,76 @@ export function calculateVehicleAffordability(input: {
           ? "AFFORDABLE_BUT_TIGHT"
           : "AFFORDABLE_WITH_BUFFER";
   return {
+    vehiclePrice: price === null ? null : centsToMoney(price),
+    downPayment: downPayment === null ? null : centsToMoney(downPayment),
+    loanAmount: loan === null ? null : centsToMoney(loan),
+    monthlyPayment: payment === null ? "NOT_CALCULATED" : centsToMoney(payment),
+    paymentSource: input.monthlyPayment !== undefined ? "USER_PROVIDED" : derivedPayment !== null ? "DERIVED_FROM_APR_TERM" : "NOT_CALCULATED",
     totalMonthlyCost: centsToMoney(total),
+    currentOperatingCost: centsToMoney(currentVehicleOperatingCost),
+    newOperatingCost: centsToMoney(currentVehicleOperatingCost + total),
     newOperatingBudget: centsToMoney(newOperatingBudget),
     newFloorSurplus: centsToMoney(newFloorSurplus),
     capitalSurplusImpact: centsToMoney(Math.max(0, total - Math.max(surplus, 0))),
+    cashBufferImpact: centsToMoney(Math.max(0, total - Math.max(0, newFloorSurplus))),
+    emergencyReserveImpact: centsToMoney(Math.max(0, total - Math.max(0, newFloorSurplus - emergencyReserveGap))),
+    duplexContributionImpact: centsToMoney(Math.min(Math.max(0, total), duplexContribution)),
+    horizonImpact: {
+      days30: centsToMoney(total),
+      days60: centsToMoney(total * 2),
+      days90: centsToMoney(total * 3),
+    },
     status,
+    planningOnly: true,
+    liabilityCreated: false,
   };
 }
 
 export function buildVariableCashFlowForecast(input: {
-  scenarioIncome: string;
-  openingCash: string;
-  obligations: string;
-  essentialSpending: string;
-  reserveContributions: string;
-  approvedCapitalContributions: string;
-  cashBuffer: string;
+  scenarioIncome?: string;
+  openingCash?: string;
+  obligations?: string;
+  essentialSpending?: string;
+  reserveContributions?: string;
+  discretionaryAllowance?: string;
+  approvedCapitalContributions?: string;
+  cashBuffer?: string;
   days: number;
+  scenario?: "FLOOR" | "BASE" | "STRONG";
+  requiredInputsComplete?: boolean;
 }) {
-  const ending = cents(input.openingCash) + cents(input.scenarioIncome) - cents(input.obligations) - cents(input.essentialSpending) - cents(input.reserveContributions) - cents(input.approvedCapitalContributions);
+  const required = [input.scenarioIncome, input.openingCash, input.obligations, input.essentialSpending, input.reserveContributions, input.approvedCapitalContributions];
+  const complete = input.requiredInputsComplete ?? required.every((value) => value !== undefined && value !== null);
+  if (!complete) return {
+    days: input.days, scenario: input.scenario ?? "BASE", status: "INSUFFICIENT_DATA", pressure: "INCOMPLETE",
+    openingCash: "NOT_CALCULATED", income: "NOT_CALCULATED", mandatoryOutflows: "NOT_CALCULATED", essentialAllowance: "NOT_CALCULATED", reserveFunding: "NOT_CALCULATED",
+    discretionaryAllowance: "NOT_CALCULATED", capitalContributions: "NOT_CALCULATED", endingCash: "NOT_CALCULATED", shortfall: "NOT_CALCULATED",
+    explanation: "Required verified income, household cash, approved plan, or reserve inputs are incomplete.",
+  };
+  const discretionary = cents(input.discretionaryAllowance);
+  const ending = cents(input.openingCash) + cents(input.scenarioIncome) - cents(input.obligations) - cents(input.essentialSpending) - cents(input.reserveContributions) - discretionary - cents(input.approvedCapitalContributions);
   const buffer = cents(input.cashBuffer);
+  const status = ending < 0 ? "SHORTFALL" : ending < buffer ? "SHORTFALL_RISK" : ending < buffer * 1.25 ? "TIGHT" : "HEALTHY";
   return {
     days: input.days,
+    scenario: input.scenario ?? "BASE",
     scenarioIncome: centsToMoney(cents(input.scenarioIncome)),
     openingCash: centsToMoney(cents(input.openingCash)),
+    income: centsToMoney(cents(input.scenarioIncome)),
+    mandatoryOutflows: centsToMoney(cents(input.obligations)),
+    essentialAllowance: centsToMoney(cents(input.essentialSpending)),
+    reserveFunding: centsToMoney(cents(input.reserveContributions)),
+    discretionaryAllowance: centsToMoney(discretionary),
+    capitalContributions: centsToMoney(cents(input.approvedCapitalContributions)),
     obligations: centsToMoney(cents(input.obligations)),
     essentialSpending: centsToMoney(cents(input.essentialSpending)),
     reserveContributions: centsToMoney(cents(input.reserveContributions)),
     approvedCapitalContributions: centsToMoney(cents(input.approvedCapitalContributions)),
+    endingCash: centsToMoney(ending),
     endingProjectedCash: centsToMoney(ending),
+    shortfall: centsToMoney(Math.max(0, -ending, buffer - ending)),
     bufferShortfall: centsToMoney(Math.max(0, buffer - ending)),
-    status: ending < 0 ? "SHORTFALL" : ending < buffer ? "SHORTFALL_RISK" : ending < buffer * 1.25 ? "TIGHT" : "HEALTHY",
+    status,
+    pressure: status === "HEALTHY" ? "LOW" : status === "TIGHT" ? "MODERATE" : status === "SHORTFALL_RISK" ? "HIGH" : "CRITICAL",
   };
 }

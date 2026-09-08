@@ -8,12 +8,25 @@ import {
 } from "../fixtures/business-income-pdfs.ts";
 import {
   calculateBusinessCashPosition,
+  classifySettlementLine,
   evaluateOwnerDraw,
   matchSettlementCash,
   reconcileBusinessPeriod,
   reconcileSettlementMath,
   verifiedIncomeFromApprovedDraw,
 } from "./business-income.ts";
+
+test("settlement economic classification is conservative and preserves advance, reimbursement, and escrow boundaries", () => {
+  assert.deepEqual(classifySettlementLine("Mileage pay", "revenue"), {
+    normalizedCategory: "carrier_operating_revenue",
+    economicTreatment: "OPERATING_REVENUE",
+  });
+  assert.equal(classifySettlementLine("Cash advance", "revenue").economicTreatment, "ADVANCE_RECEIVED");
+  assert.equal(classifySettlementLine("Advance recovery", "deduction").economicTreatment, "ADVANCE_RECOVERY");
+  assert.equal(classifySettlementLine("Fuel reimbursement", "revenue").economicTreatment, "REIMBURSEMENT");
+  assert.equal(classifySettlementLine("Escrow contribution", "deduction").economicTreatment, "UNKNOWN_REVIEW_REQUIRED");
+  assert.equal(classifySettlementLine("Carrier adjustment", "deduction").economicTreatment, "UNKNOWN_REVIEW_REQUIRED");
+});
 
 test("settlement math reconciles only when every reported total agrees", () => {
   const result = reconcileSettlementMath({
@@ -112,11 +125,12 @@ test("representative settlement PDF preserves totals, dates, line items, and pag
   assert.equal(result.gross, "1250.00");
   assert.equal(result.deductions, "250.00");
   assert.equal(result.net, "1000.00");
-  assert.deepEqual(result.revenueLines, [
+  assert.deepEqual(result.revenueLines.map(({ description, amount, sourcePage }) => ({ description, amount, sourcePage })), [
     { description: "Service revenue", amount: "900.00", sourcePage: 1 },
     { description: "Subscription revenue", amount: "350.00", sourcePage: 1 },
   ]);
-  assert.deepEqual(result.deductionLines, [
+  assert.ok(result.revenueLines.every((line) => line.economicTreatment === "OPERATING_REVENUE"));
+  assert.deepEqual(result.deductionLines.map(({ description, amount, sourcePage }) => ({ description, amount, sourcePage })), [
     { description: "Processor fee", amount: "50.00", sourcePage: 2 },
     { description: "Withholding tax", amount: "200.00", sourcePage: 2 },
   ]);
@@ -150,5 +164,5 @@ test("PDF parser fails closed for malformed, unsupported, and ambiguous source e
 
   const ambiguous = await parseBusinessPdf(ambiguousSettlementPdfFixture(), "settlement");
   assert.equal(ambiguous.extractionStatus, "ambiguous");
-  assert.match(ambiguous.reason, /unambiguous/i);
+  assert.match(ambiguous.reason, /unambiguous|human review/i);
 });

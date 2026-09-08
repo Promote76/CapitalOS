@@ -13,8 +13,7 @@ export interface AccountingLiability {
   amount: string;
   /** @nullable */
   interestRate: string | null;
-  /** @nullable */
-  monthlyPayment: string | null;
+  monthlyPayment: string;
   /** @nullable */
   maturity: Date | null;
 }

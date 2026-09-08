@@ -1,5 +1,45 @@
 import { centsToMoney, parseMoneyToCents } from "./finance";
 
+export const SETTLEMENT_ECONOMIC_TREATMENTS = [
+  "OPERATING_REVENUE",
+  "OPERATING_EXPENSE",
+  "BALANCE_SHEET_MOVEMENT",
+  "ADVANCE_RECEIVED",
+  "ADVANCE_RECOVERY",
+  "REIMBURSEMENT",
+  "REIMBURSEMENT_OFFSET",
+  "OWNER_PERSONAL_ITEM",
+  "UNKNOWN_REVIEW_REQUIRED",
+] as const;
+
+export type SettlementEconomicTreatment = typeof SETTLEMENT_ECONOMIC_TREATMENTS[number];
+
+/**
+ * Deliberately recognizes only unambiguous settlement wording. New carrier
+ * wording, escrow direction, and generic deductions are review-required.
+ */
+export function classifySettlementLine(description: string, kind: "revenue" | "deduction"): {
+  normalizedCategory: string;
+  economicTreatment: SettlementEconomicTreatment;
+} {
+  const text = description.toLowerCase().replace(/\s+/g, " ").trim();
+  if (/\bescrow\b/.test(text)) return { normalizedCategory: "escrow", economicTreatment: "UNKNOWN_REVIEW_REQUIRED" };
+  if (/\badvance\b/.test(text)) {
+    return { normalizedCategory: "advance", economicTreatment: kind === "revenue" ? "ADVANCE_RECEIVED" : "ADVANCE_RECOVERY" };
+  }
+  if (/\breimburse(?:ment)?\b/.test(text)) {
+    return { normalizedCategory: "reimbursement", economicTreatment: kind === "revenue" ? "REIMBURSEMENT" : "REIMBURSEMENT_OFFSET" };
+  }
+  if (/\b(owner draw|personal)\b/.test(text)) return { normalizedCategory: "owner_personal", economicTreatment: "OWNER_PERSONAL_ITEM" };
+  if (kind === "revenue" && /\b(mileage pay|line ?haul|detention|layover|stop pay|other pay|service revenue|subscription revenue|product revenue)\b/.test(text)) {
+    return { normalizedCategory: "carrier_operating_revenue", economicTreatment: "OPERATING_REVENUE" };
+  }
+  if (kind === "deduction" && /\b(fuel|def|lease|insurance|permit|apu|repair|maintenance|toll|processor fee|withholding tax)\b/.test(text)) {
+    return { normalizedCategory: "carrier_operating_expense", economicTreatment: "OPERATING_EXPENSE" };
+  }
+  return { normalizedCategory: "unknown", economicTreatment: "UNKNOWN_REVIEW_REQUIRED" };
+}
+
 export type SettlementMathResult = {
   revenueLineTotalCents: number;
   deductionLineTotalCents: number;

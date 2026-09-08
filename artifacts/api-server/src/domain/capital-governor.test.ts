@@ -88,13 +88,15 @@ test("stale or incomplete evidence fails closed", () => {
   assert.ok(stale.reasonCodes.includes("DATA_STALE"));
   const incomplete = calculateCapitalGovernorV2(input({ dataReadiness: "INCOMPLETE_DATA" }));
   assert.equal(incomplete.status, "INCOMPLETE_DATA");
-  assert.equal(incomplete.safeToDeploy, "0.00");
+  assert.equal(incomplete.safeToDeploy, "NOT_CALCULATED");
+  assert.equal(incomplete.dataReadiness.status, "BLOCKED_DATA_INCOMPLETE");
+  assert.equal(incomplete.calculation.amountCalculated, false);
 });
 
 test("duplicate subtraction risk never produces a deployable result", () => {
   const result = calculateCapitalGovernorV2(input({ duplicateSubtractionDetected: true }));
   assert.equal(result.status, "INCOMPLETE_DATA");
-  assert.equal(result.safeToDeploy, "0.00");
+  assert.equal(result.safeToDeploy, "NOT_CALCULATED");
   assert.ok(result.reasonCodes.includes("DUPLICATE_SUBTRACTION_RISK"));
 });
 

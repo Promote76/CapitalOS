@@ -1,0 +1,1 @@
+ALTER TABLE "bank_statement_transactions" ADD CONSTRAINT "bank_statement_transactions_linked_settlement_document_id_business_settlement_documents_id_fk" FOREIGN KEY ("linked_settlement_document_id") REFERENCES "public"."business_settlement_documents"("id") ON DELETE set null ON UPDATE no action;

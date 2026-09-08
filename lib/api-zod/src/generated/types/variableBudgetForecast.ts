@@ -5,16 +5,29 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { VariableBudgetForecastPressure } from './variableBudgetForecastPressure';
+import type { VariableBudgetForecastScenario } from './variableBudgetForecastScenario';
 
 export interface VariableBudgetForecast {
   days: number;
-  scenarioIncome: string;
+  scenario: VariableBudgetForecastScenario;
+  scenarioIncome?: string;
   openingCash: string;
-  obligations: string;
-  essentialSpending: string;
-  reserveContributions: string;
-  approvedCapitalContributions: string;
-  endingProjectedCash: string;
-  bufferShortfall: string;
+  income: string;
+  mandatoryOutflows: string;
+  essentialAllowance: string;
+  reserveFunding: string;
+  discretionaryAllowance: string;
+  capitalContributions: string;
+  endingCash: string;
+  shortfall: string;
+  pressure: VariableBudgetForecastPressure;
+  explanation?: string;
+  obligations?: string;
+  essentialSpending?: string;
+  reserveContributions?: string;
+  approvedCapitalContributions?: string;
+  endingProjectedCash?: string;
+  bufferShortfall?: string;
   status: string;
 }

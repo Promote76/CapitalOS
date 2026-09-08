@@ -49,6 +49,10 @@ export const settlementRevenueLines = pgTable("business_settlement_revenue_lines
   settlementDocumentId: uuid("settlement_document_id").notNull().references(() => settlementDocuments.id, { onDelete: "cascade" }),
   lineNumber: integer("line_number").notNull(),
   description: text("description").notNull(),
+  // category remains the legacy compatibility flag.  These two fields are
+  // authoritative for economic reporting and verification.
+  normalizedCategory: text("normalized_category").notNull().default("unknown"),
+  economicTreatment: text("economic_treatment").notNull().default("UNKNOWN_REVIEW_REQUIRED"),
   category: text("category").notNull().default("operating_revenue"),
   quantity: numeric("quantity", { precision: 18, scale: 4 }),
   unitAmount: money("unit_amount"),
@@ -72,6 +76,9 @@ export const settlementDeductionLines = pgTable("business_settlement_deduction_l
   settlementDocumentId: uuid("settlement_document_id").notNull().references(() => settlementDocuments.id, { onDelete: "cascade" }),
   lineNumber: integer("line_number").notNull(),
   description: text("description").notNull(),
+  // category and the flags below are retained for existing integrations.
+  normalizedCategory: text("normalized_category").notNull().default("unknown"),
+  economicTreatment: text("economic_treatment").notNull().default("UNKNOWN_REVIEW_REQUIRED"),
   category: text("category").notNull().default("other_deduction"),
   amount: money("amount"),
   taxDeduction: boolean("tax_deduction").notNull().default(false),

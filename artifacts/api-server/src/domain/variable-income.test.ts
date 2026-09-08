@@ -81,3 +81,33 @@ test("cash-flow forecast fails closed into shortfall risk below buffer", () => {
   assert.equal(result.endingProjectedCash, "2800.00");
   assert.equal(result.status, "HEALTHY");
 });
+
+test("forecast emits all five windows and fails closed without planning inputs", () => {
+  for (const days of [7, 14, 30, 60, 90]) {
+    const result = buildVariableCashFlowForecast({ days, requiredInputsComplete: false });
+    assert.equal(result.status, "INSUFFICIENT_DATA");
+    assert.equal(result.endingCash, "NOT_CALCULATED");
+    assert.equal(result.pressure, "INCOMPLETE");
+  }
+});
+
+test("money regression values remain exact cents through constraints and vehicle output", () => {
+  const constraints = calculateHouseholdBudgetConstraints({
+    incomeFloor: "1735.00", baseIncome: "1735.00", strongIncome: "1735.00",
+    mandatoryObligations: "78.00", essentialVariableCosts: "900.00", reserveRequirements: "0.00",
+    discretionarySpending: "0.00", currentCash: "1735.00", cashBuffer: "0.00",
+    capitalGoals: "0.00", next30DayObligations: "900.00",
+  });
+  assert.equal(constraints.mandatoryObligations, "78.00");
+  assert.equal(constraints.essentialVariableCosts, "900.00");
+  assert.equal(constraints.currentCash, "1735.00");
+  assert.equal(constraints.cashBuffer, "0.00");
+  const vehicle = calculateVehicleAffordability({
+    incomeFloor: "1735.00", currentOperatingBudget: "978.00", currentCapitalSurplus: "757.00",
+    vehiclePrice: "900.00", downPayment: "78.00", estimatedApr: "0", loanTermMonths: 1,
+    insurance: "0.00", fuel: "0.00", maintenanceReserve: "0.00", registrationReserve: "0.00",
+    parkingTolls: "0.00", otherMonthlyCost: "0.00",
+  });
+  assert.equal(vehicle.loanAmount, "822.00");
+  assert.equal(vehicle.monthlyPayment, "822.00");
+});

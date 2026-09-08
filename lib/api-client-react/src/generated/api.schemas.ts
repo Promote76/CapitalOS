@@ -149,6 +149,52 @@ export interface FinancialReviewQueue {
   items: FinancialReviewQueueItemsItem[];
 }
 
+export type BankStatementTransactionReviewInputAction = typeof BankStatementTransactionReviewInputAction[keyof typeof BankStatementTransactionReviewInputAction];
+
+
+export const BankStatementTransactionReviewInputAction = {
+  APPROVE: 'APPROVE',
+  REJECT: 'REJECT',
+  RECLASSIFY: 'RECLASSIFY',
+  LINK_SETTLEMENT: 'LINK_SETTLEMENT',
+  MARK_TRANSFER: 'MARK_TRANSFER',
+} as const;
+
+export type BankStatementTransactionReviewInputCorrectedValue = { [key: string]: unknown };
+
+export interface BankStatementTransactionReviewInput {
+  action: BankStatementTransactionReviewInputAction;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+  correctedValue?: BankStatementTransactionReviewInputCorrectedValue;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  settlementDocumentId?: string;
+}
+
+export type BankStatementTransactionEvidenceOriginalValue = { [key: string]: unknown };
+
+/**
+ * @nullable
+ */
+export type BankStatementTransactionEvidenceCorrectedValue = { [key: string]: unknown } | null;
+
+export interface BankStatementTransactionEvidence {
+  id: string;
+  description: string;
+  reviewStatus: string;
+  originalValue: BankStatementTransactionEvidenceOriginalValue;
+  /** @nullable */
+  correctedValue?: BankStatementTransactionEvidenceCorrectedValue;
+}
+
 export interface BudgetPlanningVersionInput {
   /** @minimum 1 */
   version: number;
@@ -3454,12 +3500,33 @@ export type CapitalGovernorV2DataReadiness = {
   failClosed: boolean;
 };
 
+export type CapitalGovernorV2CalculationDoubleSubtraction = {
+  detected: boolean;
+  obligationsAreDisjoint: boolean;
+  method: string;
+};
+
+export type CapitalGovernorV2Calculation = {
+  amountCalculated: boolean;
+  /** @nullable */
+  blockedStatus: string | null;
+  requiredComponents: string[];
+  doubleSubtraction: CapitalGovernorV2CalculationDoubleSubtraction;
+};
+
+export type CapitalGovernorV2ComponentsItemSourceReferencesItem = {
+  reference: string;
+  sourceType: string;
+};
+
 export type CapitalGovernorV2ComponentsItem = {
   key: string;
   label: string;
-  amount: string;
+  amount: string | null;
   sign: string;
   provenance: string[];
+  sourceReferences?: CapitalGovernorV2ComponentsItemSourceReferencesItem[];
+  subtractionGroup?: string;
 };
 
 export type CapitalGovernorV2BucketStatusItem = {
@@ -3519,6 +3586,7 @@ export interface CapitalGovernorV2 {
   reasons: string[];
   householdCapitalSurplus: CapitalGovernorV2HouseholdCapitalSurplus;
   dataReadiness: CapitalGovernorV2DataReadiness;
+  calculation: CapitalGovernorV2Calculation;
   components: CapitalGovernorV2ComponentsItem[];
   bucketStatus: CapitalGovernorV2BucketStatusItem[];
   waterfall: CapitalGovernorV2Waterfall;
@@ -3720,8 +3788,7 @@ export interface AccountingLiability {
   amount: string;
   /** @nullable */
   interestRate: string | null;
-  /** @nullable */
-  monthlyPayment: string | null;
+  monthlyPayment: string;
   /** @nullable */
   maturity: string | null;
 }
@@ -3873,6 +3940,21 @@ export interface AccountingOverview {
   accounts: AccountingAccount[];
 }
 
+export type SettlementRevenueLineInputEconomicTreatment = typeof SettlementRevenueLineInputEconomicTreatment[keyof typeof SettlementRevenueLineInputEconomicTreatment];
+
+
+export const SettlementRevenueLineInputEconomicTreatment = {
+  OPERATING_REVENUE: 'OPERATING_REVENUE',
+  OPERATING_EXPENSE: 'OPERATING_EXPENSE',
+  BALANCE_SHEET_MOVEMENT: 'BALANCE_SHEET_MOVEMENT',
+  ADVANCE_RECEIVED: 'ADVANCE_RECEIVED',
+  ADVANCE_RECOVERY: 'ADVANCE_RECOVERY',
+  REIMBURSEMENT: 'REIMBURSEMENT',
+  REIMBURSEMENT_OFFSET: 'REIMBURSEMENT_OFFSET',
+  OWNER_PERSONAL_ITEM: 'OWNER_PERSONAL_ITEM',
+  UNKNOWN_REVIEW_REQUIRED: 'UNKNOWN_REVIEW_REQUIRED',
+} as const;
+
 export interface SettlementRevenueLineInput {
   /**
      * @minLength 1
@@ -3881,6 +3963,12 @@ export interface SettlementRevenueLineInput {
   description: string;
   /** @maxLength 60 */
   category?: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  normalizedCategory?: string;
+  economicTreatment?: SettlementRevenueLineInputEconomicTreatment;
   /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   amount: string;
   /** @pattern ^[0-9]+(\.[0-9]{1,4})?$ */
@@ -3892,6 +3980,21 @@ export interface SettlementRevenueLineInput {
   sourcePage?: number;
 }
 
+export type SettlementDeductionLineInputEconomicTreatment = typeof SettlementDeductionLineInputEconomicTreatment[keyof typeof SettlementDeductionLineInputEconomicTreatment];
+
+
+export const SettlementDeductionLineInputEconomicTreatment = {
+  OPERATING_REVENUE: 'OPERATING_REVENUE',
+  OPERATING_EXPENSE: 'OPERATING_EXPENSE',
+  BALANCE_SHEET_MOVEMENT: 'BALANCE_SHEET_MOVEMENT',
+  ADVANCE_RECEIVED: 'ADVANCE_RECEIVED',
+  ADVANCE_RECOVERY: 'ADVANCE_RECOVERY',
+  REIMBURSEMENT: 'REIMBURSEMENT',
+  REIMBURSEMENT_OFFSET: 'REIMBURSEMENT_OFFSET',
+  OWNER_PERSONAL_ITEM: 'OWNER_PERSONAL_ITEM',
+  UNKNOWN_REVIEW_REQUIRED: 'UNKNOWN_REVIEW_REQUIRED',
+} as const;
+
 export interface SettlementDeductionLineInput {
   /**
      * @minLength 1
@@ -3900,6 +4003,12 @@ export interface SettlementDeductionLineInput {
   description: string;
   /** @maxLength 60 */
   category?: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  normalizedCategory?: string;
+  economicTreatment?: SettlementDeductionLineInputEconomicTreatment;
   /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   amount: string;
   taxDeduction?: boolean;
@@ -3947,6 +4056,21 @@ export const BusinessSettlementDocumentReviewDecision = {
   rejected: 'rejected',
 } as const;
 
+export type BusinessSettlementRevenueLineEconomicTreatment = typeof BusinessSettlementRevenueLineEconomicTreatment[keyof typeof BusinessSettlementRevenueLineEconomicTreatment];
+
+
+export const BusinessSettlementRevenueLineEconomicTreatment = {
+  OPERATING_REVENUE: 'OPERATING_REVENUE',
+  OPERATING_EXPENSE: 'OPERATING_EXPENSE',
+  BALANCE_SHEET_MOVEMENT: 'BALANCE_SHEET_MOVEMENT',
+  ADVANCE_RECEIVED: 'ADVANCE_RECEIVED',
+  ADVANCE_RECOVERY: 'ADVANCE_RECOVERY',
+  REIMBURSEMENT: 'REIMBURSEMENT',
+  REIMBURSEMENT_OFFSET: 'REIMBURSEMENT_OFFSET',
+  OWNER_PERSONAL_ITEM: 'OWNER_PERSONAL_ITEM',
+  UNKNOWN_REVIEW_REQUIRED: 'UNKNOWN_REVIEW_REQUIRED',
+} as const;
+
 export type BusinessSettlementRevenueLineReviewStatus = typeof BusinessSettlementRevenueLineReviewStatus[keyof typeof BusinessSettlementRevenueLineReviewStatus];
 
 
@@ -3972,6 +4096,8 @@ export interface BusinessSettlementRevenueLine {
   lineNumber: number;
   description: string;
   category: string;
+  normalizedCategory: string;
+  economicTreatment: BusinessSettlementRevenueLineEconomicTreatment;
   /** @nullable */
   quantity: string | null;
   /** @nullable */
@@ -3992,6 +4118,21 @@ export interface BusinessSettlementRevenueLine {
   reviewedAt: string | null;
   createdAt: string;
 }
+
+export type BusinessSettlementDeductionLineEconomicTreatment = typeof BusinessSettlementDeductionLineEconomicTreatment[keyof typeof BusinessSettlementDeductionLineEconomicTreatment];
+
+
+export const BusinessSettlementDeductionLineEconomicTreatment = {
+  OPERATING_REVENUE: 'OPERATING_REVENUE',
+  OPERATING_EXPENSE: 'OPERATING_EXPENSE',
+  BALANCE_SHEET_MOVEMENT: 'BALANCE_SHEET_MOVEMENT',
+  ADVANCE_RECEIVED: 'ADVANCE_RECEIVED',
+  ADVANCE_RECOVERY: 'ADVANCE_RECOVERY',
+  REIMBURSEMENT: 'REIMBURSEMENT',
+  REIMBURSEMENT_OFFSET: 'REIMBURSEMENT_OFFSET',
+  OWNER_PERSONAL_ITEM: 'OWNER_PERSONAL_ITEM',
+  UNKNOWN_REVIEW_REQUIRED: 'UNKNOWN_REVIEW_REQUIRED',
+} as const;
 
 export type BusinessSettlementDeductionLineReviewStatus = typeof BusinessSettlementDeductionLineReviewStatus[keyof typeof BusinessSettlementDeductionLineReviewStatus];
 
@@ -4018,6 +4159,8 @@ export interface BusinessSettlementDeductionLine {
   lineNumber: number;
   description: string;
   category: string;
+  normalizedCategory: string;
+  economicTreatment: BusinessSettlementDeductionLineEconomicTreatment;
   amount: string;
   taxDeduction: boolean;
   passThrough: boolean;
@@ -4334,6 +4477,21 @@ export const BusinessIncomeLineReviewInputDecision = {
   rejected: 'rejected',
 } as const;
 
+export type BusinessIncomeLineReviewInputEconomicTreatment = typeof BusinessIncomeLineReviewInputEconomicTreatment[keyof typeof BusinessIncomeLineReviewInputEconomicTreatment];
+
+
+export const BusinessIncomeLineReviewInputEconomicTreatment = {
+  OPERATING_REVENUE: 'OPERATING_REVENUE',
+  OPERATING_EXPENSE: 'OPERATING_EXPENSE',
+  BALANCE_SHEET_MOVEMENT: 'BALANCE_SHEET_MOVEMENT',
+  ADVANCE_RECEIVED: 'ADVANCE_RECEIVED',
+  ADVANCE_RECOVERY: 'ADVANCE_RECOVERY',
+  REIMBURSEMENT: 'REIMBURSEMENT',
+  REIMBURSEMENT_OFFSET: 'REIMBURSEMENT_OFFSET',
+  OWNER_PERSONAL_ITEM: 'OWNER_PERSONAL_ITEM',
+  UNKNOWN_REVIEW_REQUIRED: 'UNKNOWN_REVIEW_REQUIRED',
+} as const;
+
 export interface BusinessIncomeLineReviewInput {
   decision: BusinessIncomeLineReviewInputDecision;
   /**
@@ -4348,6 +4506,12 @@ export interface BusinessIncomeLineReviewInput {
   correctedDescription?: string;
   /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   correctedAmount?: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  normalizedCategory?: string;
+  economicTreatment?: BusinessIncomeLineReviewInputEconomicTreatment;
 }
 
 export interface BusinessIncomeDocumentReviewParams {
@@ -5936,7 +6100,8 @@ export interface VehicleScenarioInput {
   estimatedApr?: string;
   /** @minimum 0 */
   loanTermMonths?: number;
-  monthlyPayment: string;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
+  monthlyPayment?: string;
   insurance: string;
   fuel: string;
   maintenanceReserve: string;
@@ -5947,26 +6112,51 @@ export interface VehicleScenarioInput {
   notes?: string;
 }
 
+export type VehicleScenarioPaymentSource = typeof VehicleScenarioPaymentSource[keyof typeof VehicleScenarioPaymentSource];
+
+
+export const VehicleScenarioPaymentSource = {
+  USER_PROVIDED: 'USER_PROVIDED',
+  DERIVED_FROM_APR_TERM: 'DERIVED_FROM_APR_TERM',
+  NOT_CALCULATED: 'NOT_CALCULATED',
+} as const;
+
+export type VehicleScenarioHorizonImpact = {
+  days30: string;
+  days60: string;
+  days90: string;
+};
+
 export interface VehicleScenario {
   id: string;
   name: string;
-  vehiclePrice?: string;
-  downPayment?: string;
-  loanAmount?: string;
-  estimatedApr?: string;
-  loanTermMonths?: string;
-  monthlyPayment?: string;
-  insurance?: string;
-  fuel?: string;
-  maintenanceReserve?: string;
-  registrationReserve?: string;
-  parkingTolls?: string;
-  otherMonthlyCost?: string;
+  vehiclePrice: string;
+  downPayment: string;
+  loanAmount: string;
+  estimatedApr: string;
+  loanTermMonths: string;
+  /** @nullable */
+  monthlyPayment: string | null;
+  paymentSource: VehicleScenarioPaymentSource;
+  insurance: string;
+  fuel: string;
+  maintenanceReserve: string;
+  registrationReserve: string;
+  parkingTolls: string;
+  otherMonthlyCost: string;
   totalMonthlyCost: string;
+  currentOperatingCost: string;
+  newOperatingCost: string;
   affordabilityStatus: string;
   newOperatingBudget: string;
   newFloorSurplus: string;
   capitalSurplusImpact: string;
+  cashBufferImpact: string;
+  emergencyReserveImpact: string;
+  duplexContributionImpact: string;
+  horizonImpact: VehicleScenarioHorizonImpact;
+  planningOnly: boolean;
+  liabilityCreated: boolean;
   status: string;
   /** @nullable */
   notes?: string | null;
@@ -5999,16 +6189,47 @@ export interface VariableBudgetConstraintSet {
   status: string;
 }
 
+export type VariableBudgetForecastScenario = typeof VariableBudgetForecastScenario[keyof typeof VariableBudgetForecastScenario];
+
+
+export const VariableBudgetForecastScenario = {
+  FLOOR: 'FLOOR',
+  BASE: 'BASE',
+  STRONG: 'STRONG',
+} as const;
+
+export type VariableBudgetForecastPressure = typeof VariableBudgetForecastPressure[keyof typeof VariableBudgetForecastPressure];
+
+
+export const VariableBudgetForecastPressure = {
+  LOW: 'LOW',
+  MODERATE: 'MODERATE',
+  HIGH: 'HIGH',
+  CRITICAL: 'CRITICAL',
+  INCOMPLETE: 'INCOMPLETE',
+} as const;
+
 export interface VariableBudgetForecast {
   days: number;
-  scenarioIncome: string;
+  scenario: VariableBudgetForecastScenario;
+  scenarioIncome?: string;
   openingCash: string;
-  obligations: string;
-  essentialSpending: string;
-  reserveContributions: string;
-  approvedCapitalContributions: string;
-  endingProjectedCash: string;
-  bufferShortfall: string;
+  income: string;
+  mandatoryOutflows: string;
+  essentialAllowance: string;
+  reserveFunding: string;
+  discretionaryAllowance: string;
+  capitalContributions: string;
+  endingCash: string;
+  shortfall: string;
+  pressure: VariableBudgetForecastPressure;
+  explanation?: string;
+  obligations?: string;
+  essentialSpending?: string;
+  reserveContributions?: string;
+  approvedCapitalContributions?: string;
+  endingProjectedCash?: string;
+  bufferShortfall?: string;
   status: string;
 }
 
@@ -6062,6 +6283,7 @@ export interface VariableBudgetIntelligence {
   reserve: VariableBudgetIntelligenceReserve;
   cash: VariableBudgetIntelligenceCash;
   forecast: VariableBudgetForecast[];
+  forecastExplanation?: string;
   vehicleScenarios: VehicleScenario[];
 }
 

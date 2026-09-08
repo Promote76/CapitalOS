@@ -28,10 +28,12 @@ import type { Actor } from "./capital-os";
 import { assertPermission, GovernanceError } from "../domain/governance";
 import {
   calculateBusinessCashPosition,
+  classifySettlementLine,
   evaluateOwnerDraw,
   matchSettlementCash,
   reconcileBusinessPeriod,
   reconcileSettlementMath,
+  SETTLEMENT_ECONOMIC_TREATMENTS,
   verifiedIncomeFromApprovedDraw,
 } from "../domain/business-income";
 import { centsToMoney, parseMoneyToCents } from "../domain/finance";
@@ -155,13 +157,22 @@ type SettlementInput = {
   sourceContentType?: string;
   sourceSizeBytes?: number;
   sourcePageCount?: number;
-  revenueLines: Array<{ description: string; category?: string; amount: string; quantity?: string; unitAmount?: string; serviceDate?: string | Date; sourcePage?: number }>;
-  deductionLines: Array<{ description: string; category?: string; amount: string; taxDeduction?: boolean; passThrough?: boolean; ownerDraw?: boolean; reimbursement?: boolean; sourcePage?: number }>;
+  revenueLines: Array<{ description: string; category?: string; normalizedCategory?: string; economicTreatment?: string; amount: string; quantity?: string; unitAmount?: string; serviceDate?: string | Date; sourcePage?: number }>;
+  deductionLines: Array<{ description: string; category?: string; normalizedCategory?: string; economicTreatment?: string; amount: string; taxDeduction?: boolean; passThrough?: boolean; ownerDraw?: boolean; reimbursement?: boolean; sourcePage?: number }>;
 };
 
 export async function createSettlementDocument(actor: Actor, input: SettlementInput) {
   assertPermission(actor.role, "contribute");
   const business = await assertBusiness(actor.householdId, input.businessId);
+  for (const line of [...input.revenueLines, ...input.deductionLines]) {
+    if (line.economicTreatment && !SETTLEMENT_ECONOMIC_TREATMENTS.includes(line.economicTreatment as typeof SETTLEMENT_ECONOMIC_TREATMENTS[number])) {
+      throw new GovernanceError("INVALID_STATE", "Settlement economic treatment is not allowed");
+    }
+  }
+  const hasUnknownEconomicTreatment = [
+    ...input.revenueLines.map((line) => line.economicTreatment ?? classifySettlementLine(line.description, "revenue").economicTreatment),
+    ...input.deductionLines.map((line) => line.economicTreatment ?? classifySettlementLine(line.description, "deduction").economicTreatment),
+  ].some((treatment) => treatment === "UNKNOWN_REVIEW_REQUIRED");
   const math = reconcileSettlementMath(input);
   const persistedMathStatus = input.extractionStatus && input.extractionStatus !== "complete" && input.extractionStatus !== "manual"
     ? "needs_review"
@@ -193,7 +204,7 @@ export async function createSettlementDocument(actor: Actor, input: SettlementIn
       sourcePageCount: input.sourcePageCount,
       extractionStatus: input.extractionStatus ?? "manual",
       extractionReason: input.extractionReason,
-      verificationStatus: input.verificationStatus ?? (input.sourceObjectPath ? "needs_review" : persistedMathStatus === "reconciled" ? "verified" : "needs_review"),
+      verificationStatus: hasUnknownEconomicTreatment ? "needs_review" : input.verificationStatus ?? (input.sourceObjectPath ? "needs_review" : persistedMathStatus === "reconciled" ? "verified" : "needs_review"),
       reviewDecision: input.sourceObjectPath ? undefined : "approved",
       reviewReason: input.sourceObjectPath ? undefined : "Manual source recorded by an operator.",
       reviewedBy: input.sourceObjectPath ? undefined : actor.userId,
@@ -204,33 +215,41 @@ export async function createSettlementDocument(actor: Actor, input: SettlementIn
       notes: input.notes,
       createdBy: actor.userId,
     }).returning();
-    if (input.revenueLines.length > 0) await tx.insert(settlementRevenueLines).values(input.revenueLines.map((line, index) => ({
+    if (input.revenueLines.length > 0) await tx.insert(settlementRevenueLines).values(input.revenueLines.map((line, index) => {
+      const classification = classifySettlementLine(line.description, "revenue");
+      return ({
       householdId: actor.householdId,
       settlementDocumentId: document.id,
       lineNumber: index + 1,
       description: line.description,
       category: line.category ?? "operating_revenue",
+      normalizedCategory: line.normalizedCategory ?? classification.normalizedCategory,
+      economicTreatment: line.economicTreatment ?? classification.economicTreatment,
       amount: line.amount,
       quantity: line.quantity,
       unitAmount: line.unitAmount,
       serviceDate: dateOnly(line.serviceDate),
        sourcePage: line.sourcePage,
-       reviewStatus: input.sourceObjectPath ? "needs_review" : "approved",
-    })));
-    if (input.deductionLines.length > 0) await tx.insert(settlementDeductionLines).values(input.deductionLines.map((line, index) => ({
+       reviewStatus: input.sourceObjectPath || (line.economicTreatment ?? classification.economicTreatment) === "UNKNOWN_REVIEW_REQUIRED" ? "needs_review" : "approved",
+    }); }));
+    if (input.deductionLines.length > 0) await tx.insert(settlementDeductionLines).values(input.deductionLines.map((line, index) => {
+      const classification = classifySettlementLine(line.description, "deduction");
+      return ({
       householdId: actor.householdId,
       settlementDocumentId: document.id,
       lineNumber: index + 1,
       description: line.description,
       category: line.category ?? "other_deduction",
+      normalizedCategory: line.normalizedCategory ?? classification.normalizedCategory,
+      economicTreatment: line.economicTreatment ?? classification.economicTreatment,
       amount: line.amount,
       taxDeduction: line.taxDeduction ?? false,
       passThrough: line.passThrough ?? false,
       ownerDraw: line.ownerDraw ?? false,
       reimbursement: line.reimbursement ?? false,
        sourcePage: line.sourcePage,
-       reviewStatus: input.sourceObjectPath ? "needs_review" : "approved",
-    })));
+       reviewStatus: input.sourceObjectPath || (line.economicTreatment ?? classification.economicTreatment) === "UNKNOWN_REVIEW_REQUIRED" ? "needs_review" : "approved",
+    }); }));
     const [mathRow] = await tx.insert(settlementMathReconciliations).values({
       householdId: actor.householdId,
       settlementDocumentId: document.id,
@@ -502,9 +521,12 @@ export async function reviewBusinessIncomeDocument(actor: Actor, documentId: str
         reportedDeductions: settlement.reportedDeductions,
         reportedNet: settlement.reportedNet,
       });
-      const verified = input.decision === "approved" && math.status === "reconciled" &&
+      const hasUnknownTreatment = [...revenue, ...deductions].some((line) => line.economicTreatment === "UNKNOWN_REVIEW_REQUIRED");
+      const verified = input.decision === "approved" && !hasUnknownTreatment && math.status === "reconciled" &&
         (settlement.extractionStatus === "complete" || settlement.extractionStatus === "manual");
-      const reason = verified ? "All extracted settlement line items were approved and the totals reconcile." : input.reason;
+      const reason = verified ? "All extracted settlement line items were approved and the totals reconcile." : hasUnknownTreatment
+        ? "Settlement verification is blocked until every unknown economic treatment is classified."
+        : input.reason;
       await tx.update(settlementMathReconciliations).set({
         revenueLineTotal: centsToMoney(math.revenueLineTotalCents),
         deductionLineTotal: centsToMoney(math.deductionLineTotalCents),
@@ -648,6 +670,8 @@ export async function reviewBusinessIncomeLineItem(actor: Actor, documentId: str
   reason: string;
   correctedDescription?: string;
   correctedAmount?: string;
+  normalizedCategory?: string;
+  economicTreatment?: string;
 }) {
   assertPermission(actor.role, "approve");
   return db.transaction(async (tx) => {
@@ -662,6 +686,8 @@ export async function reviewBusinessIncomeLineItem(actor: Actor, documentId: str
       await tx.update(table).set({
         description: input.correctedDescription ?? existing.description,
         amount: input.correctedAmount ?? existing.amount,
+        normalizedCategory: input.normalizedCategory ?? existing.normalizedCategory,
+        economicTreatment: input.economicTreatment ?? existing.economicTreatment,
         reviewStatus: input.decision,
         reviewDecision: input.decision,
         reviewReason: input.reason,
@@ -672,14 +698,17 @@ export async function reviewBusinessIncomeLineItem(actor: Actor, documentId: str
       const deductions = await tx.select().from(settlementDeductionLines).where(and(eq(settlementDeductionLines.settlementDocumentId, documentId), eq(settlementDeductionLines.householdId, actor.householdId)));
       const math = reconcileSettlementMath({ revenueLines: revenue, deductionLines: deductions, reportedGross: settlement.reportedGross, reportedDeductions: settlement.reportedDeductions, reportedNet: settlement.reportedNet });
       const allApproved = [...revenue, ...deductions].every((line) => line.id === lineId ? input.decision === "approved" : line.reviewStatus === "approved");
-      const verified = allApproved && math.status === "reconciled" && (settlement.extractionStatus === "complete" || settlement.extractionStatus === "manual");
+      const hasUnknownTreatment = [...revenue, ...deductions].some((line) =>
+        line.id === lineId ? (input.economicTreatment ?? line.economicTreatment) === "UNKNOWN_REVIEW_REQUIRED" : line.economicTreatment === "UNKNOWN_REVIEW_REQUIRED",
+      );
+      const verified = allApproved && !hasUnknownTreatment && math.status === "reconciled" && (settlement.extractionStatus === "complete" || settlement.extractionStatus === "manual");
       await tx.update(settlementMathReconciliations).set({
         revenueLineTotal: centsToMoney(math.revenueLineTotalCents),
         deductionLineTotal: centsToMoney(math.deductionLineTotalCents),
         calculatedNet: centsToMoney(math.calculatedNetCents),
         variance: centsToMoney(math.netVarianceCents),
         status: verified ? "reconciled" : "needs_review",
-        reason: verified ? "All settlement line items are approved and totals reconcile." : input.reason,
+        reason: verified ? "All settlement line items are approved and totals reconcile." : hasUnknownTreatment ? "Settlement verification is blocked until every unknown economic treatment is classified." : input.reason,
       }).where(and(eq(settlementMathReconciliations.settlementDocumentId, documentId), eq(settlementMathReconciliations.householdId, actor.householdId)));
       await tx.update(settlementDocuments).set({
         verificationStatus: verified ? "verified" : "needs_review",

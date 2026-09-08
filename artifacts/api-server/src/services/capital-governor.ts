@@ -249,7 +249,9 @@ export async function runCapitalWaterfall(actor: Actor, input: { asOf?: string; 
       scenario,
       policyVersion: built.policyVersion,
       status: result.status,
-      safeToDeploy: result.safeToDeploy,
+       // Database column is non-null for historical run compatibility; the API
+       // response remains null/amount-not-calculated when a gate is blocked.
+       safeToDeploy: result.safeToDeploy === "NOT_CALCULATED" ? "0.00" : result.safeToDeploy,
       allocations: result.waterfall.allocations,
       decision: result as unknown as Record<string, unknown>,
       idempotencyKey,

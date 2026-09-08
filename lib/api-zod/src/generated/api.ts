@@ -4037,12 +4037,27 @@ export const GetCapitalGovernorV2Response = zod.object({
   "freshnessDays": zod.number().nullable(),
   "failClosed": zod.boolean()
 }),
+  "calculation": zod.object({
+  "amountCalculated": zod.boolean(),
+  "blockedStatus": zod.string().nullable(),
+  "requiredComponents": zod.array(zod.string()),
+  "doubleSubtraction": zod.object({
+  "detected": zod.boolean(),
+  "obligationsAreDisjoint": zod.boolean(),
+  "method": zod.string()
+})
+}),
   "components": zod.array(zod.object({
   "key": zod.string(),
   "label": zod.string(),
-  "amount": zod.string(),
+  "amount": zod.string().nullable(),
   "sign": zod.string(),
-  "provenance": zod.array(zod.string())
+  "provenance": zod.array(zod.string()),
+  "sourceReferences": zod.array(zod.object({
+  "reference": zod.string(),
+  "sourceType": zod.string()
+})).optional(),
+  "subtractionGroup": zod.string().optional()
 })),
   "bucketStatus": zod.array(zod.object({
   "key": zod.string(),
@@ -4121,12 +4136,27 @@ export const RunCapitalWaterfallResponse = zod.object({
   "freshnessDays": zod.number().nullable(),
   "failClosed": zod.boolean()
 }),
+  "calculation": zod.object({
+  "amountCalculated": zod.boolean(),
+  "blockedStatus": zod.string().nullable(),
+  "requiredComponents": zod.array(zod.string()),
+  "doubleSubtraction": zod.object({
+  "detected": zod.boolean(),
+  "obligationsAreDisjoint": zod.boolean(),
+  "method": zod.string()
+})
+}),
   "components": zod.array(zod.object({
   "key": zod.string(),
   "label": zod.string(),
-  "amount": zod.string(),
+  "amount": zod.string().nullable(),
   "sign": zod.string(),
-  "provenance": zod.array(zod.string())
+  "provenance": zod.array(zod.string()),
+  "sourceReferences": zod.array(zod.object({
+  "reference": zod.string(),
+  "sourceType": zod.string()
+})).optional(),
+  "subtractionGroup": zod.string().optional()
 })),
   "bucketStatus": zod.array(zod.object({
   "key": zod.string(),
@@ -4889,36 +4919,61 @@ export const GetVariableBudgetIntelligenceResponse = zod.object({
 }),
   "forecast": zod.array(zod.object({
   "days": zod.number(),
-  "scenarioIncome": zod.string(),
+  "scenario": zod.enum(['FLOOR', 'BASE', 'STRONG']),
+  "scenarioIncome": zod.string().optional(),
   "openingCash": zod.string(),
-  "obligations": zod.string(),
-  "essentialSpending": zod.string(),
-  "reserveContributions": zod.string(),
-  "approvedCapitalContributions": zod.string(),
-  "endingProjectedCash": zod.string(),
-  "bufferShortfall": zod.string(),
+  "income": zod.string(),
+  "mandatoryOutflows": zod.string(),
+  "essentialAllowance": zod.string(),
+  "reserveFunding": zod.string(),
+  "discretionaryAllowance": zod.string(),
+  "capitalContributions": zod.string(),
+  "endingCash": zod.string(),
+  "shortfall": zod.string(),
+  "pressure": zod.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL', 'INCOMPLETE']),
+  "explanation": zod.string().optional(),
+  "obligations": zod.string().optional(),
+  "essentialSpending": zod.string().optional(),
+  "reserveContributions": zod.string().optional(),
+  "approvedCapitalContributions": zod.string().optional(),
+  "endingProjectedCash": zod.string().optional(),
+  "bufferShortfall": zod.string().optional(),
   "status": zod.string()
 })),
+  "forecastExplanation": zod.string().optional(),
   "vehicleScenarios": zod.array(zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "vehiclePrice": zod.string().optional(),
-  "downPayment": zod.string().optional(),
-  "loanAmount": zod.string().optional(),
-  "estimatedApr": zod.string().optional(),
-  "loanTermMonths": zod.string().optional(),
-  "monthlyPayment": zod.string().optional(),
-  "insurance": zod.string().optional(),
-  "fuel": zod.string().optional(),
-  "maintenanceReserve": zod.string().optional(),
-  "registrationReserve": zod.string().optional(),
-  "parkingTolls": zod.string().optional(),
-  "otherMonthlyCost": zod.string().optional(),
+  "vehiclePrice": zod.string(),
+  "downPayment": zod.string(),
+  "loanAmount": zod.string(),
+  "estimatedApr": zod.string(),
+  "loanTermMonths": zod.string(),
+  "monthlyPayment": zod.string().nullable(),
+  "paymentSource": zod.enum(['USER_PROVIDED', 'DERIVED_FROM_APR_TERM', 'NOT_CALCULATED']),
+  "insurance": zod.string(),
+  "fuel": zod.string(),
+  "maintenanceReserve": zod.string(),
+  "registrationReserve": zod.string(),
+  "parkingTolls": zod.string(),
+  "otherMonthlyCost": zod.string(),
   "totalMonthlyCost": zod.string(),
+  "currentOperatingCost": zod.string(),
+  "newOperatingCost": zod.string(),
   "affordabilityStatus": zod.string(),
   "newOperatingBudget": zod.string(),
   "newFloorSurplus": zod.string(),
   "capitalSurplusImpact": zod.string(),
+  "cashBufferImpact": zod.string(),
+  "emergencyReserveImpact": zod.string(),
+  "duplexContributionImpact": zod.string(),
+  "horizonImpact": zod.object({
+  "days30": zod.string(),
+  "days60": zod.string(),
+  "days90": zod.string()
+}),
+  "planningOnly": zod.boolean(),
+  "liabilityCreated": zod.boolean(),
   "status": zod.string(),
   "notes": zod.string().nullish(),
   "active": zod.boolean().optional(),
@@ -4974,6 +5029,7 @@ export const createVehicleScenarioBodyNameMax = 120;
 
 export const createVehicleScenarioBodyLoanTermMonthsMin = 0;
 
+export const createVehicleScenarioBodyMonthlyPaymentRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const createVehicleScenarioBodyNotesMax = 1000;
 
 
@@ -4985,7 +5041,7 @@ export const CreateVehicleScenarioBody = zod.object({
   "loanAmount": zod.string().optional(),
   "estimatedApr": zod.string().optional(),
   "loanTermMonths": zod.number().min(createVehicleScenarioBodyLoanTermMonthsMin).optional(),
-  "monthlyPayment": zod.string(),
+  "monthlyPayment": zod.string().regex(createVehicleScenarioBodyMonthlyPaymentRegExp).optional(),
   "insurance": zod.string(),
   "fuel": zod.string(),
   "maintenanceReserve": zod.string(),
@@ -4998,23 +5054,36 @@ export const CreateVehicleScenarioBody = zod.object({
 export const CreateVehicleScenarioResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "vehiclePrice": zod.string().optional(),
-  "downPayment": zod.string().optional(),
-  "loanAmount": zod.string().optional(),
-  "estimatedApr": zod.string().optional(),
-  "loanTermMonths": zod.string().optional(),
-  "monthlyPayment": zod.string().optional(),
-  "insurance": zod.string().optional(),
-  "fuel": zod.string().optional(),
-  "maintenanceReserve": zod.string().optional(),
-  "registrationReserve": zod.string().optional(),
-  "parkingTolls": zod.string().optional(),
-  "otherMonthlyCost": zod.string().optional(),
+  "vehiclePrice": zod.string(),
+  "downPayment": zod.string(),
+  "loanAmount": zod.string(),
+  "estimatedApr": zod.string(),
+  "loanTermMonths": zod.string(),
+  "monthlyPayment": zod.string().nullable(),
+  "paymentSource": zod.enum(['USER_PROVIDED', 'DERIVED_FROM_APR_TERM', 'NOT_CALCULATED']),
+  "insurance": zod.string(),
+  "fuel": zod.string(),
+  "maintenanceReserve": zod.string(),
+  "registrationReserve": zod.string(),
+  "parkingTolls": zod.string(),
+  "otherMonthlyCost": zod.string(),
   "totalMonthlyCost": zod.string(),
+  "currentOperatingCost": zod.string(),
+  "newOperatingCost": zod.string(),
   "affordabilityStatus": zod.string(),
   "newOperatingBudget": zod.string(),
   "newFloorSurplus": zod.string(),
   "capitalSurplusImpact": zod.string(),
+  "cashBufferImpact": zod.string(),
+  "emergencyReserveImpact": zod.string(),
+  "duplexContributionImpact": zod.string(),
+  "horizonImpact": zod.object({
+  "days30": zod.string(),
+  "days60": zod.string(),
+  "days90": zod.string()
+}),
+  "planningOnly": zod.boolean(),
+  "liabilityCreated": zod.boolean(),
   "status": zod.string(),
   "notes": zod.string().nullish(),
   "active": zod.boolean().optional(),
@@ -5536,7 +5605,7 @@ export const GetAccountingOverviewResponse = zod.object({
   "institution": zod.string(),
   "amount": zod.string(),
   "interestRate": zod.string().nullable(),
-  "monthlyPayment": zod.string().nullable(),
+  "monthlyPayment": zod.string(),
   "maturity": zod.coerce.date().nullable()
 })),
   "totalAssets": zod.string(),
@@ -7216,6 +7285,8 @@ export const GetBusinessIncomeIntelligenceResponse = zod.object({
   "lineNumber": zod.number(),
   "description": zod.string(),
   "category": zod.string(),
+  "normalizedCategory": zod.string(),
+  "economicTreatment": zod.enum(['OPERATING_REVENUE', 'OPERATING_EXPENSE', 'BALANCE_SHEET_MOVEMENT', 'ADVANCE_RECEIVED', 'ADVANCE_RECOVERY', 'REIMBURSEMENT', 'REIMBURSEMENT_OFFSET', 'OWNER_PERSONAL_ITEM', 'UNKNOWN_REVIEW_REQUIRED']),
   "quantity": zod.string().nullable(),
   "unitAmount": zod.string().nullable(),
   "amount": zod.string(),
@@ -7233,6 +7304,8 @@ export const GetBusinessIncomeIntelligenceResponse = zod.object({
   "lineNumber": zod.number(),
   "description": zod.string(),
   "category": zod.string(),
+  "normalizedCategory": zod.string(),
+  "economicTreatment": zod.enum(['OPERATING_REVENUE', 'OPERATING_EXPENSE', 'BALANCE_SHEET_MOVEMENT', 'ADVANCE_RECEIVED', 'ADVANCE_RECOVERY', 'REIMBURSEMENT', 'REIMBURSEMENT_OFFSET', 'OWNER_PERSONAL_ITEM', 'UNKNOWN_REVIEW_REQUIRED']),
   "amount": zod.string(),
   "taxDeduction": zod.boolean(),
   "passThrough": zod.boolean(),
@@ -7451,13 +7524,17 @@ export const reviewBusinessIncomeLineBodyReasonMax = 1000;
 export const reviewBusinessIncomeLineBodyCorrectedDescriptionMax = 300;
 
 export const reviewBusinessIncomeLineBodyCorrectedAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
+export const reviewBusinessIncomeLineBodyNormalizedCategoryMax = 80;
+
 
 
 export const ReviewBusinessIncomeLineBody = zod.object({
   "decision": zod.enum(['approved', 'rejected']),
   "reason": zod.string().min(1).max(reviewBusinessIncomeLineBodyReasonMax),
   "correctedDescription": zod.string().min(1).max(reviewBusinessIncomeLineBodyCorrectedDescriptionMax).optional(),
-  "correctedAmount": zod.string().regex(reviewBusinessIncomeLineBodyCorrectedAmountRegExp).optional()
+  "correctedAmount": zod.string().regex(reviewBusinessIncomeLineBodyCorrectedAmountRegExp).optional(),
+  "normalizedCategory": zod.string().min(1).max(reviewBusinessIncomeLineBodyNormalizedCategoryMax).optional(),
+  "economicTreatment": zod.enum(['OPERATING_REVENUE', 'OPERATING_EXPENSE', 'BALANCE_SHEET_MOVEMENT', 'ADVANCE_RECEIVED', 'ADVANCE_RECOVERY', 'REIMBURSEMENT', 'REIMBURSEMENT_OFFSET', 'OWNER_PERSONAL_ITEM', 'UNKNOWN_REVIEW_REQUIRED']).optional()
 })
 
 export const ReviewBusinessIncomeLineResponse = zod.object({
@@ -7490,6 +7567,8 @@ export const createBusinessSettlementBodyRevenueLinesItemDescriptionMax = 300;
 
 export const createBusinessSettlementBodyRevenueLinesItemCategoryMax = 60;
 
+export const createBusinessSettlementBodyRevenueLinesItemNormalizedCategoryMax = 80;
+
 export const createBusinessSettlementBodyRevenueLinesItemAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const createBusinessSettlementBodyRevenueLinesItemQuantityRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,4})?$');
 export const createBusinessSettlementBodyRevenueLinesItemUnitAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
@@ -7498,6 +7577,8 @@ export const createBusinessSettlementBodyRevenueLinesItemUnitAmountRegExp = new 
 export const createBusinessSettlementBodyDeductionLinesItemDescriptionMax = 300;
 
 export const createBusinessSettlementBodyDeductionLinesItemCategoryMax = 60;
+
+export const createBusinessSettlementBodyDeductionLinesItemNormalizedCategoryMax = 80;
 
 export const createBusinessSettlementBodyDeductionLinesItemAmountRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 
@@ -7519,6 +7600,8 @@ export const CreateBusinessSettlementBody = zod.object({
   "revenueLines": zod.array(zod.object({
   "description": zod.string().min(1).max(createBusinessSettlementBodyRevenueLinesItemDescriptionMax),
   "category": zod.string().max(createBusinessSettlementBodyRevenueLinesItemCategoryMax).optional(),
+  "normalizedCategory": zod.string().min(1).max(createBusinessSettlementBodyRevenueLinesItemNormalizedCategoryMax).optional(),
+  "economicTreatment": zod.enum(['OPERATING_REVENUE', 'OPERATING_EXPENSE', 'BALANCE_SHEET_MOVEMENT', 'ADVANCE_RECEIVED', 'ADVANCE_RECOVERY', 'REIMBURSEMENT', 'REIMBURSEMENT_OFFSET', 'OWNER_PERSONAL_ITEM', 'UNKNOWN_REVIEW_REQUIRED']).optional(),
   "amount": zod.string().regex(createBusinessSettlementBodyRevenueLinesItemAmountRegExp),
   "quantity": zod.string().regex(createBusinessSettlementBodyRevenueLinesItemQuantityRegExp).optional(),
   "unitAmount": zod.string().regex(createBusinessSettlementBodyRevenueLinesItemUnitAmountRegExp).optional(),
@@ -7528,6 +7611,8 @@ export const CreateBusinessSettlementBody = zod.object({
   "deductionLines": zod.array(zod.object({
   "description": zod.string().min(1).max(createBusinessSettlementBodyDeductionLinesItemDescriptionMax),
   "category": zod.string().max(createBusinessSettlementBodyDeductionLinesItemCategoryMax).optional(),
+  "normalizedCategory": zod.string().min(1).max(createBusinessSettlementBodyDeductionLinesItemNormalizedCategoryMax).optional(),
+  "economicTreatment": zod.enum(['OPERATING_REVENUE', 'OPERATING_EXPENSE', 'BALANCE_SHEET_MOVEMENT', 'ADVANCE_RECEIVED', 'ADVANCE_RECOVERY', 'REIMBURSEMENT', 'REIMBURSEMENT_OFFSET', 'OWNER_PERSONAL_ITEM', 'UNKNOWN_REVIEW_REQUIRED']).optional(),
   "amount": zod.string().regex(createBusinessSettlementBodyDeductionLinesItemAmountRegExp),
   "taxDeduction": zod.boolean().optional(),
   "passThrough": zod.boolean().optional(),
@@ -7575,6 +7660,8 @@ export const CreateBusinessSettlementResponse = zod.object({
   "lineNumber": zod.number(),
   "description": zod.string(),
   "category": zod.string(),
+  "normalizedCategory": zod.string(),
+  "economicTreatment": zod.enum(['OPERATING_REVENUE', 'OPERATING_EXPENSE', 'BALANCE_SHEET_MOVEMENT', 'ADVANCE_RECEIVED', 'ADVANCE_RECOVERY', 'REIMBURSEMENT', 'REIMBURSEMENT_OFFSET', 'OWNER_PERSONAL_ITEM', 'UNKNOWN_REVIEW_REQUIRED']),
   "quantity": zod.string().nullable(),
   "unitAmount": zod.string().nullable(),
   "amount": zod.string(),
@@ -7592,6 +7679,8 @@ export const CreateBusinessSettlementResponse = zod.object({
   "lineNumber": zod.number(),
   "description": zod.string(),
   "category": zod.string(),
+  "normalizedCategory": zod.string(),
+  "economicTreatment": zod.enum(['OPERATING_REVENUE', 'OPERATING_EXPENSE', 'BALANCE_SHEET_MOVEMENT', 'ADVANCE_RECEIVED', 'ADVANCE_RECOVERY', 'REIMBURSEMENT', 'REIMBURSEMENT_OFFSET', 'OWNER_PERSONAL_ITEM', 'UNKNOWN_REVIEW_REQUIRED']),
   "amount": zod.string(),
   "taxDeduction": zod.boolean(),
   "passThrough": zod.boolean(),
@@ -8031,6 +8120,50 @@ export const ReviewFinancialDocumentResponse = zod.object({
   "reviewReason": zod.string().nullish(),
   "bankStatement": zod.record(zod.string(), zod.unknown()).nullish(),
   "transactions": zod.array(zod.record(zod.string(), zod.unknown())).optional()
+})
+
+
+/**
+ * @summary Review statement evidence only; never posts or writes to a bank
+ */
+export const reviewBankStatementTransactionPathTransactionIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ReviewBankStatementTransactionParams = zod.object({
+  "transactionId": zod.coerce.string().regex(reviewBankStatementTransactionPathTransactionIdRegExp)
+})
+
+export const reviewBankStatementTransactionHeaderIdempotencyKeyMin = 8;
+export const reviewBankStatementTransactionHeaderIdempotencyKeyMax = 128;
+
+
+
+export const ReviewBankStatementTransactionHeader = zod.object({
+  "Idempotency-Key": zod.string().min(reviewBankStatementTransactionHeaderIdempotencyKeyMin).max(reviewBankStatementTransactionHeaderIdempotencyKeyMax)
+})
+
+export const reviewBankStatementTransactionBodyReasonMax = 1000;
+
+export const reviewBankStatementTransactionBodyIdempotencyKeyMin = 8;
+export const reviewBankStatementTransactionBodyIdempotencyKeyMax = 128;
+
+export const reviewBankStatementTransactionBodySettlementDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ReviewBankStatementTransactionBody = zod.object({
+  "action": zod.enum(['APPROVE', 'REJECT', 'RECLASSIFY', 'LINK_SETTLEMENT', 'MARK_TRANSFER']),
+  "reason": zod.string().min(1).max(reviewBankStatementTransactionBodyReasonMax),
+  "idempotencyKey": zod.string().min(reviewBankStatementTransactionBodyIdempotencyKeyMin).max(reviewBankStatementTransactionBodyIdempotencyKeyMax),
+  "correctedValue": zod.record(zod.string(), zod.unknown()).optional(),
+  "settlementDocumentId": zod.string().regex(reviewBankStatementTransactionBodySettlementDocumentIdRegExp).optional()
+})
+
+export const ReviewBankStatementTransactionResponse = zod.object({
+  "id": zod.string(),
+  "description": zod.string(),
+  "reviewStatus": zod.string(),
+  "originalValue": zod.record(zod.string(), zod.unknown()),
+  "correctedValue": zod.record(zod.string(), zod.unknown()).nullish()
 })
 
 

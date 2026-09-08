@@ -5,27 +5,39 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { VehicleScenarioHorizonImpact } from './vehicleScenarioHorizonImpact';
+import type { VehicleScenarioPaymentSource } from './vehicleScenarioPaymentSource';
 
 export interface VehicleScenario {
   id: string;
   name: string;
-  vehiclePrice?: string;
-  downPayment?: string;
-  loanAmount?: string;
-  estimatedApr?: string;
-  loanTermMonths?: string;
-  monthlyPayment?: string;
-  insurance?: string;
-  fuel?: string;
-  maintenanceReserve?: string;
-  registrationReserve?: string;
-  parkingTolls?: string;
-  otherMonthlyCost?: string;
+  vehiclePrice: string;
+  downPayment: string;
+  loanAmount: string;
+  estimatedApr: string;
+  loanTermMonths: string;
+  /** @nullable */
+  monthlyPayment: string | null;
+  paymentSource: VehicleScenarioPaymentSource;
+  insurance: string;
+  fuel: string;
+  maintenanceReserve: string;
+  registrationReserve: string;
+  parkingTolls: string;
+  otherMonthlyCost: string;
   totalMonthlyCost: string;
+  currentOperatingCost: string;
+  newOperatingCost: string;
   affordabilityStatus: string;
   newOperatingBudget: string;
   newFloorSurplus: string;
   capitalSurplusImpact: string;
+  cashBufferImpact: string;
+  emergencyReserveImpact: string;
+  duplexContributionImpact: string;
+  horizonImpact: VehicleScenarioHorizonImpact;
+  planningOnly: boolean;
+  liabilityCreated: boolean;
   status: string;
   /** @nullable */
   notes?: string | null;

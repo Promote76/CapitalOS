@@ -36,6 +36,8 @@ import type {
   BankConnectionDeleteResult,
   BankConnectionExport,
   BankConnectionList,
+  BankStatementTransactionEvidence,
+  BankStatementTransactionReviewInput,
   BankSyncResult,
   BankingStatus,
   Bill,
@@ -14882,5 +14884,77 @@ export const useReviewFinancialDocument = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getReviewFinancialDocumentMutationOptions(options));
+    }
+
+export const getReviewBankStatementTransactionUrl = (transactionId: string,) => {
+
+
+
+
+  return `/api/bank-statement-transactions/${transactionId}/review`
+}
+
+/**
+ * @summary Review statement evidence only; never posts or writes to a bank
+ */
+export const reviewBankStatementTransaction = async (transactionId: string,
+    bankStatementTransactionReviewInput: BankStatementTransactionReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<BankStatementTransactionEvidence> => {
+
+  return customFetch<BankStatementTransactionEvidence>(getReviewBankStatementTransactionUrl(transactionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(bankStatementTransactionReviewInput)
+  }
+);}
+
+
+
+
+
+export const getReviewBankStatementTransactionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewBankStatementTransaction>>, TError,{transactionId: string;data: BodyType<BankStatementTransactionReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewBankStatementTransaction>>, TError,{transactionId: string;data: BodyType<BankStatementTransactionReviewInput>}, TContext> => {
+
+const mutationKey = ['reviewBankStatementTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewBankStatementTransaction>>, {transactionId: string;data: BodyType<BankStatementTransactionReviewInput>}> = (props) => {
+          const {transactionId,data} = props ?? {};
+
+          return  reviewBankStatementTransaction(transactionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewBankStatementTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof reviewBankStatementTransaction>>>
+    export type ReviewBankStatementTransactionMutationBody = BodyType<BankStatementTransactionReviewInput>
+    export type ReviewBankStatementTransactionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Review statement evidence only; never posts or writes to a bank
+ */
+export const useReviewBankStatementTransaction = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewBankStatementTransaction>>, TError,{transactionId: string;data: BodyType<BankStatementTransactionReviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewBankStatementTransaction>>,
+        TError,
+        {transactionId: string;data: BodyType<BankStatementTransactionReviewInput>},
+        TContext
+      > => {
+      return useMutation(getReviewBankStatementTransactionMutationOptions(options));
     }
 

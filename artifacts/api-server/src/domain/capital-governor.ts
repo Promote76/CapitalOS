@@ -128,6 +128,7 @@ export function calculateCapitalGovernorV2(input: CapitalGovernorInput) {
     ? clampMoney(rawCents)
     : 0;
   const status = statusFor(input, safeCents, reasons);
+  const amountCalculated = status !== "INCOMPLETE_DATA" && status !== "LOCKED";
 
   const order = input.waterfallOrder?.length ? input.waterfallOrder : [...CAPITAL_WATERFALL_BUCKETS];
   let remainingCents = safeCents;
@@ -175,32 +176,47 @@ export function calculateCapitalGovernorV2(input: CapitalGovernorInput) {
     { key: "protected_commitments", label: "Protected commitments", amount: centsToMoney(deductions.protectedCommitments), sign: "subtract", provenance: ["goals", "protected_capital_registry"] },
     { key: "encumbrances", label: "Capital encumbrances", amount: centsToMoney(deductions.encumbrances), sign: "subtract", provenance: ["capital_encumbrances"] },
     { key: "forecast_shortfall", label: "Forecast shortfall", amount: centsToMoney(deductions.forecastShortfall), sign: "subtract", provenance: ["variable_budget_forecast"] },
-  ];
+  ].map((component) => ({
+    ...component,
+    amount: amountCalculated ? component.amount : null,
+    sourceReferences: component.provenance.map((reference) => ({ reference, sourceType: reference.split(":")[0] })),
+    subtractionGroup: component.sign === "subtract" ? "SAFE_TO_DEPLOY_DEDUCTIONS" : "ELIGIBLE_CASH",
+  }));
 
   return {
     version: "2.0",
     asOf: input.asOf,
     status,
-    safeToDeploy: centsToMoney(safeCents),
-    rawSafeToDeploy: centsToMoney(clampMoney(rawCents)),
+    safeToDeploy: amountCalculated ? centsToMoney(safeCents) : "NOT_CALCULATED",
+    rawSafeToDeploy: amountCalculated ? centsToMoney(clampMoney(rawCents)) : "NOT_CALCULATED",
     householdCapitalSurplus: {
-      floor: centsToMoney(input.floorOperatingSurplusCents),
-      base: centsToMoney(input.baseOperatingSurplusCents),
-      strong: centsToMoney(input.strongOperatingSurplusCents),
+       floor: amountCalculated ? centsToMoney(input.floorOperatingSurplusCents) : "NOT_CALCULATED",
+       base: amountCalculated ? centsToMoney(input.baseOperatingSurplusCents) : "NOT_CALCULATED",
+       strong: amountCalculated ? centsToMoney(input.strongOperatingSurplusCents) : "NOT_CALCULATED",
       source: "verified_income_minus_operating_costs_and_reserve_contributions",
     },
     dataReadiness: {
-      status: input.dataReadiness,
+       status: amountCalculated ? input.dataReadiness : "BLOCKED_DATA_INCOMPLETE",
       freshnessDays: input.freshnessDays,
       failClosed: status === "INCOMPLETE_DATA" || status === "LOCKED",
+    },
+    calculation: {
+      amountCalculated,
+      blockedStatus: amountCalculated ? null : "BLOCKED_DATA_INCOMPLETE",
+      requiredComponents: ["eligible_household_cash", "next_30_day_obligations", "operating_buffer", "reserve_gaps", "protected_commitments", "encumbrances", "forecast_shortfall"],
+      doubleSubtraction: {
+        detected: input.duplicateSubtractionDetected,
+        obligationsAreDisjoint: input.obligationsAreDisjoint,
+        method: "Each deduction is assigned once to SAFE_TO_DEPLOY_DEDUCTIONS; duplicate or non-disjoint inputs fail closed.",
+      },
     },
     reasonCodes: [...new Set(reasonCodes)],
     reasons: [...new Set(reasons)],
     components,
     bucketStatus,
     waterfall: {
-      availableForWaterfall: centsToMoney(safeCents),
-      unallocatedAfterRecommendations: centsToMoney(remainingCents),
+       availableForWaterfall: amountCalculated ? centsToMoney(safeCents) : "NOT_CALCULATED",
+       unallocatedAfterRecommendations: amountCalculated ? centsToMoney(remainingCents) : "NOT_CALCULATED",
       allocations,
       scenarioBehavior: {
         floor: input.floorOperatingSurplusCents < 0 ? "PROTECT_ONLY" : "FLOOR_FIRST",

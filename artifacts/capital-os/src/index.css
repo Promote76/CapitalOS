@@ -646,7 +646,49 @@ button {
 }
 
 /* Financial evidence and household foundation: compact, review-first surfaces. */
-.household-foundation { border-color: #cfddd1; background: #edf4ee; }
+.vehicle-layout { display: grid; grid-template-columns: 1fr; gap: 24px; }
+@media (min-width: 900px) {
+  .vehicle-layout { grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr); }
+}
+.vehicle-form label { display: block; font-size: 11px; font-family: var(--app-font-mono); color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.vehicle-form input { width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: 14px; background: #fff; margin-bottom: 12px; font-family: var(--app-font-sans); }
+.form-group-title { font-size: 14px; font-weight: 600; border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 12px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 16px; }
+.result-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+.impact-row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.impact-row:last-child { border-bottom: none; }
+.status-banner { padding: 12px; border-radius: 8px; text-align: center; }
+.status-banner.verified { background: #edf4ee; color: #2e594f; border: 1px solid #cfddd1; }
+.status-banner.pending { background: #fff8e9; color: #9b6b18; border: 1px solid #e3ded1; }
+.status-banner.critical { background: #fbebe9; color: #a43a2e; border: 1px solid #e4c2be; }
+
+.forecast-grid { display: grid; gap: 16px; }
+.forecast-row { padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,0.4); }
+.forecast-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 15px; }
+.forecast-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; font-size: 13px; }
+.forecast-metrics div span { display: block; font-size: 10px; font-family: var(--app-font-mono); color: var(--ink-soft); text-transform: uppercase; margin-bottom: 4px; }
+.forecast-pressure { margin-bottom: 12px; }
+.critical-track .progress-fill { background: #a43a2e; }
+.forecast-explanation { font-size: 12px; color: var(--ink-soft); line-height: 1.5; margin: 0; }
+
+.governor-hero { text-align: center; padding: 24px 0; border-bottom: 1px solid var(--line); }
+.governor-amount { font: 400 42px var(--app-font-serif); margin-bottom: 12px; }
+.governor-amount span { display: block; font: 500 11px var(--app-font-mono); color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+.governor-reasons { display: flex; flex-direction: column; gap: 8px; text-align: left; background: #fff8e9; padding: 12px; border-radius: 6px; font-size: 12px; color: #9b6b18; margin-bottom: 16px; }
+.governor-no-movement { font-size: 12px; color: var(--ink-soft); }
+.components-list { display: grid; gap: 8px; }
+.component-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 8px; background: rgba(255,255,255,0.5); border-radius: 6px; font-size: 13px; }
+.comp-provenance { font-size: 10px; color: var(--ink-soft); font-family: var(--app-font-mono); margin-top: 4px; }
+.comp-amount { font-family: var(--app-font-mono); font-weight: 500; }
+.comp-amount .negative { color: #a43a2e; margin-right: 4px; }
+.comp-amount .positive { color: #2e594f; margin-right: 4px; }
+
+@media (max-width: 640px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .forecast-metrics { grid-template-columns: 1fr 1fr; }
+  .result-grid { grid-template-columns: 1fr; }
+}
 .foundation-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
 .foundation-grid > div { padding:12px; border-radius:8px; background:rgba(255,255,255,.58); }
 .foundation-grid strong { display:block; margin:6px 0; font-size:16px; line-height:1.15; }

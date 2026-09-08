@@ -23,5 +23,6 @@ export interface VariableBudgetIntelligence {
   reserve: VariableBudgetIntelligenceReserve;
   cash: VariableBudgetIntelligenceCash;
   forecast: VariableBudgetForecast[];
+  forecastExplanation?: string;
   vehicleScenarios: VehicleScenario[];
 }

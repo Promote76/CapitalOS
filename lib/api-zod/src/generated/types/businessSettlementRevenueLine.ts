@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { BusinessSettlementRevenueLineEconomicTreatment } from './businessSettlementRevenueLineEconomicTreatment';
 import type { BusinessSettlementRevenueLineReviewDecision } from './businessSettlementRevenueLineReviewDecision';
 import type { BusinessSettlementRevenueLineReviewStatus } from './businessSettlementRevenueLineReviewStatus';
 
@@ -13,6 +14,8 @@ export interface BusinessSettlementRevenueLine {
   lineNumber: number;
   description: string;
   category: string;
+  normalizedCategory: string;
+  economicTreatment: BusinessSettlementRevenueLineEconomicTreatment;
   /** @nullable */
   quantity: string | null;
   /** @nullable */

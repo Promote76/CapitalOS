@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { BusinessSettlementDeductionLineEconomicTreatment } from './businessSettlementDeductionLineEconomicTreatment';
 import type { BusinessSettlementDeductionLineReviewDecision } from './businessSettlementDeductionLineReviewDecision';
 import type { BusinessSettlementDeductionLineReviewStatus } from './businessSettlementDeductionLineReviewStatus';
 
@@ -13,6 +14,8 @@ export interface BusinessSettlementDeductionLine {
   lineNumber: number;
   description: string;
   category: string;
+  normalizedCategory: string;
+  economicTreatment: BusinessSettlementDeductionLineEconomicTreatment;
   amount: string;
   taxDeduction: boolean;
   passThrough: boolean;

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { BusinessIncomeLineReviewInputDecision } from './businessIncomeLineReviewInputDecision';
+import type { BusinessIncomeLineReviewInputEconomicTreatment } from './businessIncomeLineReviewInputEconomicTreatment';
 
 export interface BusinessIncomeLineReviewInput {
   decision: BusinessIncomeLineReviewInputDecision;
@@ -21,4 +22,10 @@ export interface BusinessIncomeLineReviewInput {
   correctedDescription?: string;
   /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   correctedAmount?: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  normalizedCategory?: string;
+  economicTreatment?: BusinessIncomeLineReviewInputEconomicTreatment;
 }

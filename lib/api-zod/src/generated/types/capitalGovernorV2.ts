@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { CapitalGovernorV2BucketStatusItem } from './capitalGovernorV2BucketStatusItem';
+import type { CapitalGovernorV2Calculation } from './capitalGovernorV2Calculation';
 import type { CapitalGovernorV2ComponentsItem } from './capitalGovernorV2ComponentsItem';
 import type { CapitalGovernorV2Controls } from './capitalGovernorV2Controls';
 import type { CapitalGovernorV2DataReadiness } from './capitalGovernorV2DataReadiness';
@@ -26,6 +27,7 @@ export interface CapitalGovernorV2 {
   reasons: string[];
   householdCapitalSurplus: CapitalGovernorV2HouseholdCapitalSurplus;
   dataReadiness: CapitalGovernorV2DataReadiness;
+  calculation: CapitalGovernorV2Calculation;
   components: CapitalGovernorV2ComponentsItem[];
   bucketStatus: CapitalGovernorV2BucketStatusItem[];
   waterfall: CapitalGovernorV2Waterfall;

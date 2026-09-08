@@ -235,6 +235,8 @@ import OperationsPage from '@/pages/operations';
 import DailyOpsPage from '@/pages/daily-ops';
 import BusinessPage from '@/pages/business';
 import FinancingPage from '@/pages/financing';
+import BudgetCompletionPage from '@/pages/budget';
+import DocumentsPage from '@/pages/documents';
 import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 
 const queryClient = new QueryClient();
@@ -1938,7 +1940,7 @@ function BudgetPlanningControlCenter() {
   );
 }
 
-function BudgetPage() {
+function ActiveBudgetPage() {
   const query = useGetBudget();
   const safe = useGetSafeToDeploy();
   const capitalGovernor = useGetCapitalGovernorV2();
@@ -2140,6 +2142,20 @@ function BudgetPage() {
       </section>
     </>}
   </main>;
+}
+
+function CompletedBudgetPage() {
+  return <>
+    <ActiveBudgetPage />
+    <BudgetCompletionPage embedded />
+  </>;
+}
+
+function CompletedDocumentsPage() {
+  return <>
+    <FinancialDocumentInboxPage />
+    <DocumentsPage embedded />
+  </>;
 }
 
 function formatPlanningDate(value: string | undefined, fallback = 'Not scheduled') {
@@ -3599,7 +3615,7 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
 function AppRouter({ onAction, onFeedback, transactions, dashboard, dashboardState, contributionsLoading, contributionsUnavailable, onRetry }: { onAction: (kind: Exclude<ModalKind, null>) => void; onFeedback: (message: string) => void; transactions: Transaction[]; dashboard?: DashboardSnapshot; dashboardState: 'loading' | 'unavailable' | 'empty' | 'ready'; contributionsLoading: boolean; contributionsUnavailable: boolean; onRetry: () => void }) {
   return <Switch>
     <Route path="/" component={() => <Dashboard onAction={onAction} onFeedback={onFeedback} transactions={transactions} dashboard={dashboard} dashboardState={dashboardState} contributionsLoading={contributionsLoading} contributionsUnavailable={contributionsUnavailable} onRetry={onRetry} />} />
-    <Route path="/budget" component={BudgetPage} />
+    <Route path="/budget" component={CompletedBudgetPage} />
     <Route path="/cash-flow" component={CashFlowPage} />
     <Route path="/bills" component={() => <BillsPage onFeedback={onFeedback} />} />
     <Route path="/upcoming-expenses" component={() => <UpcomingExpensesPage onFeedback={onFeedback} />} />
@@ -3621,7 +3637,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, dashboardSta
      <Route path="/transactions" component={() => <TransactionReviewPage onFeedback={onFeedback} />} />
      <Route path="/contributions" component={() => <UtilityPage kind="contributions" onAction={onAction} transactions={transactions} dashboard={dashboard} />} />
     <Route path="/reports" component={() => <UtilityPage kind="reports" onAction={onAction} transactions={transactions} />} />
-     <Route path="/documents" component={FinancialDocumentInboxPage} />
+     <Route path="/documents" component={CompletedDocumentsPage} />
      <Route path="/insights" component={() => <IntelligencePage onFeedback={onFeedback} />} />
      <Route path="/family-office" component={() => <FamilyOfficePage onFeedback={onFeedback} />} />
     <Route component={NotFound} />

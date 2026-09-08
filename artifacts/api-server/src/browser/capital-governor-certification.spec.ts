@@ -19,9 +19,19 @@ type GovernorState = {
     source: string;
   };
   dataReadiness: {
-    status: "READY" | "INCOMPLETE_DATA";
+    status: "READY" | "INCOMPLETE_DATA" | "BLOCKED_DATA_INCOMPLETE";
     freshnessDays: number | null;
     failClosed: boolean;
+  };
+  calculation: {
+    amountCalculated: boolean;
+    blockedStatus: string | null;
+    requiredComponents: string[];
+    doubleSubtraction: {
+      detected: boolean;
+      obligationsAreDisjoint: boolean;
+      method: string;
+    };
   };
   reasons: string[];
   reasonCodes: string[];
@@ -30,16 +40,35 @@ type GovernorState = {
     label: string;
     amount: string;
     sign: "add" | "subtract";
+    provenance: string[];
+    sourceReferences: Array<{ reference: string; sourceType: string }>;
+    subtractionGroup: string;
   }>;
+  bucketStatus: [];
   waterfall: {
     availableForWaterfall: string;
     unallocatedAfterRecommendations: string;
     allocations: Array<{
       bucket: string;
       amount: string;
+      amountCents: number;
       recommendedOnly: true;
       physicalMovementAuthorized: false;
+      provenance: string[];
     }>;
+    scenarioBehavior: {
+      floor: string;
+      base: string;
+      strong: string;
+    };
+  };
+  controls: {
+    protectedDuplexReserveLocked: boolean;
+    businessCashExcluded: boolean;
+    moneyMovementAuthorized: false;
+    microLiveAuthorized: false;
+    strategyLabAuthority: false;
+    manualOverride: false;
   };
 };
 
@@ -47,8 +76,8 @@ const governorState = (state: Partial<GovernorState>): GovernorState => ({
   version: "2.0",
   asOf: "2026-09-08",
   status: "INCOMPLETE_DATA",
-  safeToDeploy: "0.00",
-  rawSafeToDeploy: "0.00",
+  safeToDeploy: "NOT_CALCULATED",
+  rawSafeToDeploy: "NOT_CALCULATED",
   householdCapitalSurplus: {
     floor: "0.00",
     base: "0.00",
@@ -56,9 +85,19 @@ const governorState = (state: Partial<GovernorState>): GovernorState => ({
     source: "verified_income_minus_operating_costs_and_reserve_contributions",
   },
   dataReadiness: {
-    status: "INCOMPLETE_DATA",
+    status: "BLOCKED_DATA_INCOMPLETE",
     freshnessDays: null,
     failClosed: true,
+  },
+  calculation: {
+    amountCalculated: false,
+    blockedStatus: "BLOCKED_DATA_INCOMPLETE",
+    requiredComponents: ["eligible_household_cash"],
+    doubleSubtraction: {
+      detected: false,
+      obligationsAreDisjoint: true,
+      method: "Each deduction is assigned once; non-disjoint inputs fail closed.",
+    },
   },
   reasons: ["Required planning, source, or reconciliation evidence is not ready."],
   reasonCodes: ["DATA_INCOMPLETE_DATA"],
@@ -67,11 +106,24 @@ const governorState = (state: Partial<GovernorState>): GovernorState => ({
     label: "Eligible household cash",
     amount: "0.00",
     sign: "add",
+    provenance: ["household_financial_accounts"],
+    sourceReferences: [{ reference: "household_financial_accounts", sourceType: "household_financial_accounts" }],
+    subtractionGroup: "ELIGIBLE_CASH",
   }],
+  bucketStatus: [],
   waterfall: {
-    availableForWaterfall: "0.00",
-    unallocatedAfterRecommendations: "0.00",
+    availableForWaterfall: "NOT_CALCULATED",
+    unallocatedAfterRecommendations: "NOT_CALCULATED",
     allocations: [],
+    scenarioBehavior: { floor: "PROTECT_ONLY", base: "BALANCED", strong: "SURPLUS_AFTER_RESERVES" },
+  },
+  controls: {
+    protectedDuplexReserveLocked: true,
+    businessCashExcluded: true,
+    moneyMovementAuthorized: false,
+    microLiveAuthorized: false,
+    strategyLabAuthority: false,
+    manualOverride: false,
   },
   ...state,
 });
@@ -82,16 +134,18 @@ const readyState = governorState({
   rawSafeToDeploy: "1234.00",
   householdCapitalSurplus: { floor: "800.00", base: "2000.00", strong: "3500.00", source: "verified_income_minus_operating_costs_and_reserve_contributions" },
   dataReadiness: { status: "READY", freshnessDays: 1, failClosed: false },
+  calculation: { ...governorState({}).calculation, amountCalculated: true, blockedStatus: null },
   reasons: [],
   reasonCodes: [],
   components: [
-    { key: "eligible_household_cash", label: "Eligible household cash", amount: "5000.00", sign: "add" },
-    { key: "operating_buffer", label: "Household operating buffer", amount: "3766.00", sign: "subtract" },
+    { key: "eligible_household_cash", label: "Eligible household cash", amount: "5000.00", sign: "add", provenance: ["household_financial_accounts"], sourceReferences: [{ reference: "household_financial_accounts", sourceType: "household_financial_accounts" }], subtractionGroup: "ELIGIBLE_CASH" },
+    { key: "operating_buffer", label: "Household operating buffer", amount: "3766.00", sign: "subtract", provenance: ["approved_budget"], sourceReferences: [{ reference: "approved_budget", sourceType: "approved_budget" }], subtractionGroup: "SAFE_TO_DEPLOY_DEDUCTIONS" },
   ],
   waterfall: {
     availableForWaterfall: "1234.00",
     unallocatedAfterRecommendations: "0.00",
-    allocations: [{ bucket: "INVESTMENT_CAPITAL", amount: "750.00", recommendedOnly: true, physicalMovementAuthorized: false }],
+    allocations: [{ bucket: "INVESTMENT_CAPITAL", amount: "750.00", amountCents: 75000, recommendedOnly: true, physicalMovementAuthorized: false, provenance: ["capital_governor_v2"] }],
+    scenarioBehavior: { floor: "FLOOR_FIRST", base: "BALANCED", strong: "SURPLUS_AFTER_RESERVES" },
   },
 });
 
@@ -104,13 +158,14 @@ const conservativeState = governorState({
   reasons: ["Financial evidence is stale; the result is conservative until refreshed."],
   reasonCodes: ["STALE_EVIDENCE"],
   components: [
-    { key: "eligible_household_cash", label: "Eligible household cash", amount: "5,000.00", sign: "add" },
-    { key: "reserve_gaps", label: "Reserve funding gaps", amount: "4,500.00", sign: "subtract" },
+    { key: "eligible_household_cash", label: "Eligible household cash", amount: "5,000.00", sign: "add", provenance: ["household_financial_accounts"], sourceReferences: [{ reference: "household_financial_accounts", sourceType: "household_financial_accounts" }], subtractionGroup: "ELIGIBLE_CASH" },
+    { key: "reserve_gaps", label: "Reserve funding gaps", amount: "4,500.00", sign: "subtract", provenance: ["emergency_reserves"], sourceReferences: [{ reference: "emergency_reserves", sourceType: "emergency_reserves" }], subtractionGroup: "SAFE_TO_DEPLOY_DEDUCTIONS" },
   ],
   waterfall: {
     availableForWaterfall: "500.00",
     unallocatedAfterRecommendations: "500.00",
     allocations: [],
+    scenarioBehavior: { floor: "FLOOR_FIRST", base: "BALANCED", strong: "SURPLUS_AFTER_RESERVES" },
   },
 });
 
@@ -202,7 +257,9 @@ test("authenticated Treasury certifies Safe-to-Deploy 2.0 readiness states and r
     await expect(page.getByRole("heading", { name: /Every dollar with a job/i })).toBeVisible();
     const panel = page.getByTestId("capital-governor-v2-panel");
     await expect(panel).toBeVisible();
-    await expect(panel).toContainText("INCOMPLETE_DATA");
+    await expect(panel).toContainText(/LOCKED|INCOMPLETE_DATA/);
+    await expect(panel).toContainText("BLOCKED_DATA_INCOMPLETE");
+    await expect(panel).toContainText("NOT CALCULATED");
     await expect(panel).toContainText("V2 safe to deploy");
     await expect(panel).toContainText("Household capital surplus");
     await expect(panel).toContainText("no movement authorized");
@@ -225,14 +282,14 @@ test("authenticated Treasury certifies Safe-to-Deploy 2.0 readiness states and r
 
     governorResponse = governorState({
       status: "INCOMPLETE_DATA",
-      safeToDeploy: "0.00",
-      householdCapitalSurplus: { floor: "-400.00", base: "100.00", strong: "900.00", source: "verified_income_minus_operating_costs_and_reserve_contributions" },
+      safeToDeploy: "NOT_CALCULATED",
+      rawSafeToDeploy: "NOT_CALCULATED",
+      householdCapitalSurplus: { floor: "NOT_CALCULATED", base: "NOT_CALCULATED", strong: "NOT_CALCULATED", source: "verified_income_minus_operating_costs_and_reserve_contributions" },
       reasons: ["Complete reviewed plan, reconciliation, and freshness requirements before treating surplus as deployable."],
     });
     await page.reload();
     await expect(panel.getByText("INCOMPLETE_DATA", { exact: true })).toBeVisible();
-    await expect(panel).toContainText("$0");
-    await expect(panel).toContainText("$100");
+    await expect(panel).toContainText("NOT CALCULATED");
     await expect(panel).toContainText("Complete reviewed plan");
     await expect(panel).toContainText("no movement authorized");
 

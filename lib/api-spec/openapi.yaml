@@ -3158,6 +3158,22 @@ paths:
         content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocumentReviewInput" } } }
       responses:
         "200": { description: Reviewed document, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocument" } } } }
+  /bank-statement-transactions/{transactionId}/review:
+    post:
+      operationId: reviewBankStatementTransaction
+      tags: [household-finance]
+      summary: Review statement evidence only; never posts or writes to a bank
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/BankStatementTransactionReviewInput" } } }
+      responses:
+        "200": { description: Reviewed evidence row, content: { application/json: { schema: { $ref: "#/components/schemas/BankStatementTransactionEvidence" } } } }
 components:
   securitySchemes:
     clerkSession:
@@ -3345,6 +3361,24 @@ components:
       type: object
       required: [items]
       properties: { items: { type: array, items: { type: object, additionalProperties: true } } }
+    BankStatementTransactionReviewInput:
+      type: object
+      required: [action, reason, idempotencyKey]
+      properties:
+        action: { type: string, enum: [APPROVE, REJECT, RECLASSIFY, LINK_SETTLEMENT, MARK_TRANSFER] }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+        correctedValue: { type: object, additionalProperties: true }
+        settlementDocumentId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+    BankStatementTransactionEvidence:
+      type: object
+      required: [id, description, reviewStatus, originalValue]
+      properties:
+        id: { type: string }
+        description: { type: string }
+        reviewStatus: { type: string }
+        originalValue: { type: object, additionalProperties: true }
+        correctedValue: { type: [object, "null"], additionalProperties: true }
     BudgetPlanningVersionInput:
       type: object
       required: [version]
@@ -5770,7 +5804,7 @@ components:
         scenario: { type: string, enum: [floor, base, strong] }
     CapitalGovernorV2:
       type: object
-      required: [version, asOf, status, safeToDeploy, rawSafeToDeploy, householdCapitalSurplus, dataReadiness, reasonCodes, reasons, components, bucketStatus, waterfall, controls]
+      required: [version, asOf, status, safeToDeploy, rawSafeToDeploy, householdCapitalSurplus, dataReadiness, calculation, reasonCodes, reasons, components, bucketStatus, waterfall, controls]
       properties:
         version: { type: string }
         asOf: { type: string, format: date }
@@ -5800,6 +5834,20 @@ components:
             status: { type: string }
             freshnessDays: { type: ["number", "null"] }
             failClosed: { type: boolean }
+        calculation:
+          type: object
+          required: [amountCalculated, blockedStatus, requiredComponents, doubleSubtraction]
+          properties:
+            amountCalculated: { type: boolean }
+            blockedStatus: { type: ["string", "null"] }
+            requiredComponents: { type: array, items: { type: string } }
+            doubleSubtraction:
+              type: object
+              required: [detected, obligationsAreDisjoint, method]
+              properties:
+                detected: { type: boolean }
+                obligationsAreDisjoint: { type: boolean }
+                method: { type: string }
         components:
           type: array
           items:
@@ -5808,11 +5856,20 @@ components:
             properties:
               key: { type: string }
               label: { type: string }
-              amount: { type: string }
+              amount: { type: string, nullable: true }
               sign: { type: string }
               provenance:
                 type: array
                 items: { type: string }
+              sourceReferences:
+                type: array
+                items:
+                  type: object
+                  required: [reference, sourceType]
+                  properties:
+                    reference: { type: string }
+                    sourceType: { type: string }
+              subtractionGroup: { type: string }
         bucketStatus:
           type: array
           items:
@@ -6068,7 +6125,7 @@ components:
         institution: { type: string }
         amount: { type: string }
         interestRate: { type: ["string", "null"] }
-        monthlyPayment: { type: ["string", "null"] }
+        monthlyPayment: { type: string }
         maturity: { type: ["string", "null"], format: date }
     AccountingNetWorth:
       type: object
@@ -6236,6 +6293,8 @@ components:
       properties:
         description: { type: string, minLength: 1, maxLength: 300 }
         category: { type: string, maxLength: 60 }
+        normalizedCategory: { type: string, minLength: 1, maxLength: 80 }
+        economicTreatment: { type: string, enum: [OPERATING_REVENUE, OPERATING_EXPENSE, BALANCE_SHEET_MOVEMENT, ADVANCE_RECEIVED, ADVANCE_RECOVERY, REIMBURSEMENT, REIMBURSEMENT_OFFSET, OWNER_PERSONAL_ITEM, UNKNOWN_REVIEW_REQUIRED] }
         amount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
         quantity: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,4})?$" }
         unitAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
@@ -6247,6 +6306,8 @@ components:
       properties:
         description: { type: string, minLength: 1, maxLength: 300 }
         category: { type: string, maxLength: 60 }
+        normalizedCategory: { type: string, minLength: 1, maxLength: 80 }
+        economicTreatment: { type: string, enum: [OPERATING_REVENUE, OPERATING_EXPENSE, BALANCE_SHEET_MOVEMENT, ADVANCE_RECEIVED, ADVANCE_RECOVERY, REIMBURSEMENT, REIMBURSEMENT_OFFSET, OWNER_PERSONAL_ITEM, UNKNOWN_REVIEW_REQUIRED] }
         amount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
         taxDeduction: { type: boolean }
         passThrough: { type: boolean }
@@ -6316,12 +6377,14 @@ components:
         deductionLines: { type: array, items: { $ref: "#/components/schemas/BusinessSettlementDeductionLine" } }
     BusinessSettlementRevenueLine:
       type: object
-      required: [id, lineNumber, description, category, quantity, unitAmount, amount, serviceDate, sourcePage, reviewStatus, reviewDecision, reviewReason, reviewedBy, reviewedAt, createdAt]
+      required: [id, lineNumber, description, category, normalizedCategory, economicTreatment, quantity, unitAmount, amount, serviceDate, sourcePage, reviewStatus, reviewDecision, reviewReason, reviewedBy, reviewedAt, createdAt]
       properties:
         id: { type: string }
         lineNumber: { type: number }
         description: { type: string }
         category: { type: string }
+        normalizedCategory: { type: string }
+        economicTreatment: { type: string, enum: [OPERATING_REVENUE, OPERATING_EXPENSE, BALANCE_SHEET_MOVEMENT, ADVANCE_RECEIVED, ADVANCE_RECOVERY, REIMBURSEMENT, REIMBURSEMENT_OFFSET, OWNER_PERSONAL_ITEM, UNKNOWN_REVIEW_REQUIRED] }
         quantity: { type: ["string", "null"] }
         unitAmount: { type: ["string", "null"] }
         amount: { type: string }
@@ -6335,12 +6398,14 @@ components:
         createdAt: { type: string, format: date-time }
     BusinessSettlementDeductionLine:
       type: object
-      required: [id, lineNumber, description, category, amount, taxDeduction, passThrough, ownerDraw, reimbursement, sourcePage, reviewStatus, reviewDecision, reviewReason, reviewedBy, reviewedAt, createdAt]
+      required: [id, lineNumber, description, category, normalizedCategory, economicTreatment, amount, taxDeduction, passThrough, ownerDraw, reimbursement, sourcePage, reviewStatus, reviewDecision, reviewReason, reviewedBy, reviewedAt, createdAt]
       properties:
         id: { type: string }
         lineNumber: { type: number }
         description: { type: string }
         category: { type: string }
+        normalizedCategory: { type: string }
+        economicTreatment: { type: string, enum: [OPERATING_REVENUE, OPERATING_EXPENSE, BALANCE_SHEET_MOVEMENT, ADVANCE_RECEIVED, ADVANCE_RECOVERY, REIMBURSEMENT, REIMBURSEMENT_OFFSET, OWNER_PERSONAL_ITEM, UNKNOWN_REVIEW_REQUIRED] }
         amount: { type: string }
         taxDeduction: { type: boolean }
         passThrough: { type: boolean }
@@ -6474,6 +6539,8 @@ components:
         reason: { type: string, minLength: 1, maxLength: 1000 }
         correctedDescription: { type: string, minLength: 1, maxLength: 300 }
         correctedAmount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
+        normalizedCategory: { type: string, minLength: 1, maxLength: 80 }
+        economicTreatment: { type: string, enum: [OPERATING_REVENUE, OPERATING_EXPENSE, BALANCE_SHEET_MOVEMENT, ADVANCE_RECEIVED, ADVANCE_RECOVERY, REIMBURSEMENT, REIMBURSEMENT_OFFSET, OWNER_PERSONAL_ITEM, UNKNOWN_REVIEW_REQUIRED] }
     BusinessIncomeDocumentReviewParams:
       type: object
       required: [documentId]
@@ -7526,7 +7593,7 @@ components:
         updatedAt: { type: string, format: date-time }
     VehicleScenarioInput:
       type: object
-      required: [name, monthlyPayment, insurance, fuel, maintenanceReserve]
+      required: [name, insurance, fuel, maintenanceReserve]
       properties:
         name: { type: string, minLength: 1, maxLength: 120 }
         vehiclePrice: { type: string }
@@ -7534,7 +7601,7 @@ components:
         loanAmount: { type: string }
         estimatedApr: { type: string }
         loanTermMonths: { type: number, minimum: 0 }
-        monthlyPayment: { type: string }
+        monthlyPayment: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
         insurance: { type: string }
         fuel: { type: string }
         maintenanceReserve: { type: string }
@@ -7544,7 +7611,7 @@ components:
         notes: { type: string, maxLength: 1000 }
     VehicleScenario:
       type: object
-      required: [id, name, totalMonthlyCost, affordabilityStatus, newOperatingBudget, newFloorSurplus, capitalSurplusImpact, status]
+      required: [id, name, vehiclePrice, downPayment, loanAmount, estimatedApr, loanTermMonths, monthlyPayment, paymentSource, insurance, fuel, maintenanceReserve, registrationReserve, parkingTolls, otherMonthlyCost, totalMonthlyCost, currentOperatingCost, newOperatingCost, affordabilityStatus, newOperatingBudget, newFloorSurplus, capitalSurplusImpact, cashBufferImpact, emergencyReserveImpact, duplexContributionImpact, horizonImpact, planningOnly, liabilityCreated, status]
       properties:
         id: { type: string }
         name: { type: string }
@@ -7553,7 +7620,8 @@ components:
         loanAmount: { type: string }
         estimatedApr: { type: string }
         loanTermMonths: { type: string }
-        monthlyPayment: { type: string }
+        monthlyPayment: { type: ["string", "null"] }
+        paymentSource: { type: string, enum: [USER_PROVIDED, DERIVED_FROM_APR_TERM, NOT_CALCULATED] }
         insurance: { type: string }
         fuel: { type: string }
         maintenanceReserve: { type: string }
@@ -7561,10 +7629,24 @@ components:
         parkingTolls: { type: string }
         otherMonthlyCost: { type: string }
         totalMonthlyCost: { type: string }
+        currentOperatingCost: { type: string }
+        newOperatingCost: { type: string }
         affordabilityStatus: { type: string }
         newOperatingBudget: { type: string }
         newFloorSurplus: { type: string }
         capitalSurplusImpact: { type: string }
+        cashBufferImpact: { type: string }
+        emergencyReserveImpact: { type: string }
+        duplexContributionImpact: { type: string }
+        horizonImpact:
+          type: object
+          required: [days30, days60, days90]
+          properties:
+            days30: { type: string }
+            days60: { type: string }
+            days90: { type: string }
+        planningOnly: { type: boolean }
+        liabilityCreated: { type: boolean }
         status: { type: string }
         notes: { type: ["string", "null"] }
         active: { type: boolean }
@@ -7597,11 +7679,22 @@ components:
         status: { type: string }
     VariableBudgetForecast:
       type: object
-      required: [days, scenarioIncome, openingCash, obligations, essentialSpending, reserveContributions, approvedCapitalContributions, endingProjectedCash, bufferShortfall, status]
+      required: [days, scenario, openingCash, income, mandatoryOutflows, essentialAllowance, reserveFunding, discretionaryAllowance, capitalContributions, endingCash, shortfall, pressure, status]
       properties:
         days: { type: number }
+        scenario: { type: string, enum: [FLOOR, BASE, STRONG] }
         scenarioIncome: { type: string }
         openingCash: { type: string }
+        income: { type: string }
+        mandatoryOutflows: { type: string }
+        essentialAllowance: { type: string }
+        reserveFunding: { type: string }
+        discretionaryAllowance: { type: string }
+        capitalContributions: { type: string }
+        endingCash: { type: string }
+        shortfall: { type: string }
+        pressure: { type: string, enum: [LOW, MODERATE, HIGH, CRITICAL, INCOMPLETE] }
+        explanation: { type: string }
         obligations: { type: string }
         essentialSpending: { type: string }
         reserveContributions: { type: string }
@@ -7665,6 +7758,7 @@ components:
         forecast:
           type: array
           items: { $ref: "#/components/schemas/VariableBudgetForecast" }
+        forecastExplanation: { type: string }
         vehicleScenarios:
           type: array
           items: { $ref: "#/components/schemas/VehicleScenario" }

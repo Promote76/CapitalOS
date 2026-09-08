@@ -166,7 +166,7 @@ export interface BankStatementTransactionEvidence {
 export interface FinancialDocument {
   id: string;
   /** @nullable */
-  businessId?: string | null;
+  businessId: string | null;
   documentType: string;
   /** @nullable */
   originalDocumentType?: string | null;
@@ -320,6 +320,21 @@ export interface FinancialDocumentReviewInput {
   reason: string;
 }
 
+export interface FinancialDocumentBusinessLinkInput {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  businessId: string;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+}
+
 export type FinancialDocumentTypeDecisionInputAction = typeof FinancialDocumentTypeDecisionInputAction[keyof typeof FinancialDocumentTypeDecisionInputAction];
 
 
@@ -365,21 +380,6 @@ export interface FinancialDocumentIdentityReviewInput {
   reason: string;
   /** @pattern ^[0-9a-fA-F-]{36}$ */
   canonicalDocumentId?: string;
-}
-
-export interface FinancialDocumentBusinessLinkInput {
-  /** @pattern ^[0-9a-fA-F-]{36}$ */
-  businessId: string;
-  /**
-     * @minLength 1
-     * @maxLength 1000
-     */
-  reason: string;
-  /**
-     * @minLength 8
-     * @maxLength 128
-     */
-  idempotencyKey: string;
 }
 
 export type CompatibleBusinessSetupInputBusinessKind = typeof CompatibleBusinessSetupInputBusinessKind[keyof typeof CompatibleBusinessSetupInputBusinessKind];

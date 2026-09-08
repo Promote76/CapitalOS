@@ -10,7 +10,7 @@
 
 > **Financial document integrity update (2026-09-08):** The type-integrity sprint is now implemented. New uploads are classified from PDF content and structural signals rather than filenames alone; high-confidence mismatches enter an audited, role-protected review flow; parser generations and source evidence are preserved; exact-hash duplicates are idempotent; and explicit duplicate/version reviews prevent automatic merging or deletion. The two known production P&L records have **not** been mutated. They remain pending authorized review and managed-production certification.
 
-> **Authorized production remediation preflight (2026-09-08):** Both known P&L objects were found, their stored SHA-256 hashes matched, and current content detection classified both as high-confidence `BUSINESS_PROFIT_AND_LOSS`. The correction is **BLOCKED**, not simulated, because production still lacks migration `0037_zippy_plazm.sql` and has no matching business-income source rows to rebuild. Apply the migration through managed Publish, then rerun the authenticated correction and downstream certification.
+> **Authorized production remediation update (2026-09-08):** Both known P&L objects were found, their stored SHA-256 hashes matched, and current content detection classified both as high-confidence `BUSINESS_PROFIT_AND_LOSS`. Managed Publish has applied migration `0037_zippy_plazm.sql` and production schema parity now passes. The correction remains **BLOCKED**, not simulated, because this household has no existing `BusinessEntity`; the server-authorized P&L correction requires a valid existing business before downstream authority can be rebuilt. The observed `$1,735` remains two reviewed manual household transactions, not verified household income.
 
 ## Executive conclusion
 
@@ -346,7 +346,7 @@ The 2026-09-08 execution passed **DBB-01 through DBB-30 (30/30)**, including the
 **Human-approved category utilization:** IMPLEMENTED  
 **Production private-storage path:** VERIFIED  
 **Document-type integrity implementation:** COMPLETE — content detection, audited correction, parser-generation history, duplicate/version review, and downstream settlement exclusion are implemented
-**Production document-type audit:** HIGH-CONFIDENCE P&L MISCLASSIFICATIONS CONFIRMED; CORRECTION BLOCKED UNTIL MANAGED PRODUCTION SCHEMA IS APPLIED
+**Production document-type audit:** HIGH-CONFIDENCE P&L MISCLASSIFICATIONS CONFIRMED; SCHEMA PARITY PASS; CORRECTION BLOCKED BY `BUSINESS_ENTITY_LINK_REQUIRED`
 **Uploaded-document-to-Budget workflow:** IMPLEMENTED AND CERTIFIED 30/30
 
 The implemented correction does not make uploads automatically authoritative. It adds the controlled, human-approved bridge described in this report so Budget actuals can reflect reviewed statement activity without silently changing the family's plan.

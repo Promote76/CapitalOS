@@ -1755,7 +1755,7 @@ function BudgetPlanningControlCenter() {
 
                     <div className="finance-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
                        <div className="metric-card green" style={{ padding: '12px' }}>
-                          <span className="metric-detail">Verified Income ({guidanceQuery.data.includedIncomeCount} rows)</span>
+                          <span className="metric-detail">Reviewed income transactions ({guidanceQuery.data.includedIncomeCount} rows)</span>
                           <div className="metric-value">{displayMoney(guidanceQuery.data.verifiedIncome, '$0')}</div>
                        </div>
                        <div className="metric-card amber" style={{ padding: '12px' }}>

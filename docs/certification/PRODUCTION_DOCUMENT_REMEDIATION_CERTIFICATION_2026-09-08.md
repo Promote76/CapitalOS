@@ -4,15 +4,11 @@
 
 **PRODUCTION DOCUMENT REMEDIATION: BLOCKED**
 
-The read-only production preflight verified both known misclassified source objects and their content-based type evidence. It could not apply the authorized correction because production is still on the pre-integrity schema:
+The managed Publish flow has now applied the production integrity schema. The read-only post-Publish preflight verified both known misclassified source objects and their content-based type evidence. It could not apply either authorized correction because this household has no existing `business_entities` row, and the server-authorized correction workflow requires a valid existing business before a P&L can become authoritative.
 
-- `financial_documents` does not contain the integrity columns.
-- `financial_document_type_detections` does not exist.
-- `financial_document_type_corrections` does not exist.
-- `financial_document_parse_generations` does not exist.
-- `financial_document_identity_reviews` does not exist.
+The exact downstream blocker is `BUSINESS_ENTITY_LINK_REQUIRED`.
 
-Production schema changes must be applied through the managed Publish flow. No ad hoc production SQL, source-object deletion, or simulated correction was performed.
+No ad hoc production SQL, source-object deletion, duplicate-business creation, or simulated correction was performed.
 
 ## Pre-Publish schema evidence
 
@@ -31,11 +27,11 @@ The source migration inventory contains 38 migrations, ending at `0037_zippy_pla
 
 Before development synchronization, both development and production lacked the required integrity tables and columns. The normal development schema push has now succeeded. The managed schema diff reports the expected additive statements with no removals, truncations, or structural-data-loss warnings.
 
-Production read-only introspection still shows no integrity tables or columns. The latest managed production migration inventory entry is `_system.replit_database_migrations_v1.id = 16`, deployment `f4d91104-18a6-4853-8e94-a6dfe27b1c61`, recorded at `2026-09-08 11:18:31.765316+00`; it does not expose a source migration tag and does not establish integrity-schema parity.
+Managed Publish applied the production diff successfully. The latest managed production migration inventory entry is `_system.replit_database_migrations_v1.id = 17`, build `a015d75f-926c-4020-99ed-100c85fd1ee4`, deployment `f4d91104-18a6-4853-8e94-a6dfe27b1c61`, 36 statements, recorded at `2026-09-08 11:50:44.060487+00`. Post-Publish introspection confirms all required tables and columns.
 
 ## Required operator action
 
-Publish the current application so the managed database applies migration `0037_zippy_plazm.sql`. Then rerun this remediation with an authenticated approver and capture the post-migration production evidence before applying either correction.
+Create or link the correct existing trucking `BusinessEntity` for this household through the authorized Capital OS workflow. Do not create a duplicate entity merely for this remediation. Then rerun the authenticated correction previews independently for both documents.
 
 ## Evidence collected
 
@@ -50,28 +46,28 @@ The detector found P&L headings, income/revenue totals, expense totals, net inco
 
 ```text
 CURRENT HEAD:
-968726b
+4479a51
 
 MANAGED PRODUCTION RELEASE:
-f4d91104-18a6-4853-8e94-a6dfe27b1c61 (latest identifier exposed by production migration inventory)
+f4d91104-18a6-4853-8e94-a6dfe27b1c61
 
 MIGRATION 0037_zippy_plazm.sql:
-BLOCKED — development schema is ready; managed Publish has not applied production parity
+APPLIED via managed Publish; production migration inventory entry 17
 
 SOURCE MIGRATION HEAD:
 0037_zippy_plazm.sql (38 source migrations)
 
 PRODUCTION MIGRATION HEAD:
-_system.replit_database_migrations_v1.id=16; source tag unavailable
+_system.replit_database_migrations_v1.id=17; source tag unavailable
 
 SCHEMA PARITY:
-FAIL — production integrity tables and columns are absent
+PASS
 
 PRODUCTION DOCUMENT REMEDIATION:
 BLOCKED
 
 PDR:
-2/30 implementation-independent evidence gates; correction and downstream gates blocked by production schema
+15/30 evidence gates closed; correction and downstream gates blocked by BUSINESS_ENTITY_LINK_REQUIRED
 
 DOCUMENT-TO-BUDGET BRIDGE:
 PASS 30/30 (previous certification; must be rerun after production remediation)
@@ -80,16 +76,16 @@ DOCUMENT TYPE INTEGRITY:
 PASS for implementation and read-only source detection; production correction not applied
 
 FUQC P&L (2).pdf:
-BLOCKED — high-confidence P&L detection confirmed; correction tables/columns absent in production
+BLOCKED — high-confidence P&L detection confirmed; no valid existing BusinessEntity for authoritative P&L correction
 
 FUQC P&L (3).pdf:
-BLOCKED — high-confidence P&L detection confirmed; correction tables/columns absent in production
+BLOCKED — high-confidence P&L detection confirmed; no valid existing BusinessEntity for authoritative P&L correction
 
 SOURCE OBJECTS DELETED:
 0
 
 OLD SETTLEMENT PARSES:
-OPEN — production has no parser-generation table and no matching business settlement rows
+OPEN — legacy rows have no parser generations; no matching business settlement rows exist
 
 SETTLEMENT DOCUMENTS:
 0 matching business settlement rows; 8 financial-document evidence rows recorded as settlements
@@ -110,7 +106,7 @@ EXACT P&L DUPLICATES:
 0 by the recorded hashes
 
 OVERLAPPING P&Ls:
-BLOCKED — production P&L authority fields are not deployed
+BLOCKED — P&Ls cannot be parsed or period-reviewed until a valid business is linked
 
 P&L RECONCILIATION:
 BLOCKED — no production P&L/business reconciliation source rows
@@ -119,13 +115,13 @@ BUSINESS INCOME READINESS:
 BLOCKED — no production business source chain and unresolved document correction
 
 CURRENT $1,735 SOURCE:
-Production aggregate read-only data showed a $1,735 positive-inflow total for one household, but a stable row-level source record could not be returned from the production replica during this preflight.
+Two production `finance_transactions` records for household `d6672e8d-c193-4182-bd76-4170329e529a`: `4219113a-7a6c-42aa-b8e8-52dca3eaad08` for `$1,500.00` dated `2026-09-03`, and `5d2b0a7c-7cda-42f1-a981-0cc4e173d888` for `$235.00` dated `2026-09-06`. Both are manual, approved, household-tagged, non-pending, and have no source document.
 
 CURRENT $1,735 IS AUTHORITATIVE VERIFIED INCOME:
 NO — production contains 0 VerifiedHouseholdIncomeEvent rows
 
 OWNER DRAW CHAIN:
-BLOCKED — 0 production owner-draw proposals
+BLOCKED — 0 production owner-draw proposals and no BusinessEntity
 
 CURRENT VERIFIED HOUSEHOLD INCOME:
 $0 recorded in production VerifiedHouseholdIncomeEvent
@@ -173,7 +169,7 @@ MICRO-LIVE:
 DISABLED
 
 USER ACTION REQUIRED:
-Publish the current app to apply migration 0037, then rerun the authenticated production remediation and independently review both correction previews.
+Create or link the correct existing trucking BusinessEntity for household `d6672e8d-c193-4182-bd76-4170329e529a`, then rerun the authenticated remediation independently for both P&Ls. Publish the current source once more to ship the corrected “Reviewed income transactions” Budget label.
 ```
 
 ## Safety conclusion

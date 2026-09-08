@@ -3202,6 +3202,21 @@ paths:
         content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocumentReviewInput" } } }
       responses:
         "200": { description: Reviewed document, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocument" } } } }
+  /financial-documents/{documentId}/detect-type:
+    post:
+      operationId: runFinancialDocumentTypeDetection
+      tags: [household-finance]
+      summary: Run or re-run content detection against preserved financial evidence
+      parameters: [{ $ref: "#/components/parameters/FinancialDocumentId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinancialDocumentTypeDetectionInput" }
+      responses:
+        "200": { description: Persisted detection evidence, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocument" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /financial-documents/{documentId}/business-link:
     post:
       operationId: linkFinancialDocumentBusiness
@@ -3570,6 +3585,12 @@ components:
       required: [action, reason, idempotencyKey]
       properties:
         action: { type: string, enum: [USE_DETECTED_TYPE, KEEP_SELECTED_TYPE] }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+    FinancialDocumentTypeDetectionInput:
+      type: object
+      required: [reason, idempotencyKey]
+      properties:
         reason: { type: string, minLength: 1, maxLength: 1000 }
         idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
     FinancialDocumentIdentityReviewInput:

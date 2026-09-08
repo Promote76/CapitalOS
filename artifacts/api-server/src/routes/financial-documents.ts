@@ -13,12 +13,13 @@ import {
   GetBankStatementTransactionInclusionParams, GetBankStatementTransactionInclusionResponse,
   ReconcileBankStatementTransactionInclusionBody, ReconcileBankStatementTransactionInclusionHeader, ReconcileBankStatementTransactionInclusionParams, ReconcileBankStatementTransactionInclusionResponse,
   DecideFinancialDocumentTypeBody, DecideFinancialDocumentTypeParams, DecideFinancialDocumentTypeResponse,
+  RunFinancialDocumentTypeDetectionBody, RunFinancialDocumentTypeDetectionParams, RunFinancialDocumentTypeDetectionResponse,
   ReviewFinancialDocumentIdentityBody, ReviewFinancialDocumentIdentityParams, ReviewFinancialDocumentIdentityResponse,
   LinkFinancialDocumentBusinessBody, LinkFinancialDocumentBusinessParams, LinkFinancialDocumentBusinessResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
-import { decideBankStatementTransactionCategory, decideFinancialDocumentType, getBankStatementTransactionInclusion, getFinancialDocument, importBankStatementTransaction, ingestFinancialDocument, linkBankStatementTransaction, linkFinancialDocumentBusiness, listFinancialDocuments, listFinancialReviewQueue, previewBankStatementTransactionMatch, reconcileBankStatementTransactionInclusion, requestFinancialDocumentUploadUrl, reverseBankStatementTransactionImport, reviewBankStatementTransaction, reviewFinancialDocument, reviewFinancialDocumentIdentity, unlinkBankStatementTransaction } from "../services/financial-documents";
+import { decideBankStatementTransactionCategory, decideFinancialDocumentType, getBankStatementTransactionInclusion, getFinancialDocument, importBankStatementTransaction, ingestFinancialDocument, linkBankStatementTransaction, linkFinancialDocumentBusiness, listFinancialDocuments, listFinancialReviewQueue, previewBankStatementTransactionMatch, reconcileBankStatementTransactionInclusion, requestFinancialDocumentUploadUrl, reverseBankStatementTransactionImport, reviewBankStatementTransaction, reviewFinancialDocument, reviewFinancialDocumentIdentity, runFinancialDocumentTypeDetection, unlinkBankStatementTransaction } from "../services/financial-documents";
 
 const router: IRouter = Router();
 router.get("/financial-documents", asyncRoute(async (_req, res) => res.json(ListFinancialDocumentsResponse.parse(await listFinancialDocuments(actorFrom(res))))));
@@ -27,6 +28,10 @@ router.post("/financial-documents/ingest", asyncRoute(async (req, res) => res.st
 router.get("/financial-documents/review-queue", asyncRoute(async (_req, res) => res.json(ListFinancialReviewQueueResponse.parse(await listFinancialReviewQueue(actorFrom(res))))));
 router.get("/financial-documents/:documentId", asyncRoute(async (req, res) => { const { documentId } = GetFinancialDocumentParams.parse(req.params); res.json(GetFinancialDocumentResponse.parse(await getFinancialDocument(actorFrom(res), documentId))); }));
 router.post("/financial-documents/:documentId/review", asyncRoute(async (req, res) => { const { documentId } = GetFinancialDocumentParams.parse(req.params); res.json(ReviewFinancialDocumentResponse.parse(await reviewFinancialDocument(actorFrom(res), documentId, ReviewFinancialDocumentBody.parse(req.body)))); }));
+router.post("/financial-documents/:documentId/detect-type", asyncRoute(async (req, res) => {
+  const { documentId } = RunFinancialDocumentTypeDetectionParams.parse(req.params);
+  res.json(RunFinancialDocumentTypeDetectionResponse.parse(await runFinancialDocumentTypeDetection(actorFrom(res), documentId, RunFinancialDocumentTypeDetectionBody.parse(req.body))));
+}));
 router.post("/financial-documents/:documentId/type-decision", asyncRoute(async (req, res) => {
   const { documentId } = DecideFinancialDocumentTypeParams.parse(req.params);
   res.json(DecideFinancialDocumentTypeResponse.parse(await decideFinancialDocumentType(actorFrom(res), documentId, DecideFinancialDocumentTypeBody.parse(req.body))));

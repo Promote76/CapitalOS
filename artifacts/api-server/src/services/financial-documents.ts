@@ -233,6 +233,7 @@ export async function ingestFinancialDocument(actor: Actor, input: {
 
 type FinancialDocumentTypeDecision = "USE_DETECTED_TYPE" | "KEEP_SELECTED_TYPE";
 const FINANCIAL_DOCUMENT_BUSINESS_LINK_OPERATION = "financial_document_business_link";
+const FINANCIAL_DOCUMENT_TYPE_DETECTION_OPERATION = "financial_document_type_detection";
 
 async function getFinancialDocumentForTypeAction(actor: Actor, documentId: string) {
   const [document] = await db.select().from(financialDocuments).where(and(
@@ -535,6 +536,116 @@ export async function decideFinancialDocumentType(actor: Actor, documentId: stri
   });
 }
 
+/**
+ * Runs the content detector against the original private source object. The
+ * source path and hash are treated as immutable evidence: if the object no
+ * longer matches the recorded hash, the action fails closed without writing a
+ * detection observation or changing document metadata.
+ */
+export async function runFinancialDocumentTypeDetection(actor: Actor, documentId: string, input: {
+  reason: string;
+  idempotencyKey: string;
+}) {
+  assertPermission(actor.role, "approve");
+  if (!input.reason.trim()) throw new GovernanceError("INVALID_STATE", "A reason is required to run content detection");
+  const existingDocument = await getFinancialDocumentForTypeAction(actor, documentId);
+  assertPrivateObjectPath(existingDocument.sourceObjectPath);
+  const declaredSizeBytes = existingDocument.sourceMetadata?.declaredSizeBytes;
+  if (typeof declaredSizeBytes !== "number") {
+    throw new GovernanceError("INVALID_STATE", "The original upload size is unavailable; content detection cannot safely re-read this source");
+  }
+  const { bytes, sha256 } = await downloadBusinessDocument(existingDocument.sourceObjectPath, {
+    maxBytes: 50 * 1024 * 1024,
+    expectedBytes: declaredSizeBytes,
+    expectedContentType: existingDocument.mimeType,
+  });
+  if (sha256 !== existingDocument.documentHash) {
+    throw new GovernanceError("CONFLICT", "The preserved source object no longer matches its recorded hash; no detection was recorded");
+  }
+  const detection = await detectFinancialDocumentType(
+    bytes,
+    existingDocument.sourceFileName,
+    existingDocument.documentType as SupportedFinancialDocumentType,
+  );
+  const fingerprint = JSON.stringify(input);
+
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`${FINANCIAL_DOCUMENT_TYPE_DETECTION_OPERATION}:${actor.householdId}:${documentId}:${input.idempotencyKey}`}, 0))`);
+    const [prior] = await tx.select().from(idempotencyKeys).where(and(
+      eq(idempotencyKeys.householdId, actor.householdId),
+      eq(idempotencyKeys.key, input.idempotencyKey),
+    )).limit(1);
+    if (prior) {
+      if (prior.operation !== FINANCIAL_DOCUMENT_TYPE_DETECTION_OPERATION || !prior.responseBody || prior.responseBody.fingerprint !== fingerprint) {
+        throw new GovernanceError("IDEMPOTENCY_CONFLICT", "Idempotency key was already used for a different detection request");
+      }
+      return prior.responseBody.response;
+    }
+
+    const [document] = await tx.select().from(financialDocuments).where(and(
+      eq(financialDocuments.id, documentId),
+      eq(financialDocuments.householdId, actor.householdId),
+    )).limit(1);
+    if (!document) throw new GovernanceError("INVALID_STATE", "Financial document not found");
+    if (document.documentHash !== sha256 || document.sourceObjectPath !== existingDocument.sourceObjectPath || document.mimeType !== existingDocument.mimeType) {
+      throw new GovernanceError("CONFLICT", "The preserved source metadata changed while detection was running; no detection was recorded");
+    }
+
+    const [observation] = await tx.insert(financialDocumentTypeDetections).values({
+      householdId: actor.householdId,
+      financialDocumentId: document.id,
+      selectedDocumentType: document.documentType,
+      detectedDocumentType: detection.detectedType,
+      confidence: detection.confidence,
+      signals: detection.signals,
+      conflictsWithSelectedType: detection.conflictsWithSelectedType,
+      detectionVersion: detection.detectionVersion,
+      createdBy: actor.userId,
+    }).returning();
+    const [updated] = await tx.update(financialDocuments).set({
+      detectedDocumentType: detection.detectedType,
+      detectionConfidence: detection.confidence,
+      detectionSignals: detection.signals,
+      detectionVersion: detection.detectionVersion,
+      typeMismatchStatus: detection.conflictsWithSelectedType ? "OPEN" : "NONE",
+      status: detection.conflictsWithSelectedType
+        ? "TYPE_REVIEW_REQUIRED"
+        : document.status === "TYPE_REVIEW_REQUIRED" ? "NEEDS_REVIEW" : document.status,
+    }).where(and(
+      eq(financialDocuments.id, document.id),
+      eq(financialDocuments.householdId, actor.householdId),
+    )).returning();
+    if (!updated) throw new GovernanceError("INVALID_STATE", "Financial document could not be updated with detection evidence");
+    const result = response(updated);
+    await tx.insert(auditEvents).values({
+      householdId: actor.householdId,
+      eventType: "financial_document_type_detected",
+      actor: actor.userId,
+      entity: "financial_document",
+      entityId: document.id,
+      reason: input.reason,
+      metadata: {
+        detectionId: observation.id,
+        detectionVersion: detection.detectionVersion,
+        detectedDocumentType: detection.detectedType,
+        confidence: detection.confidence,
+        conflictsWithSelectedType: detection.conflictsWithSelectedType,
+        documentHash: document.documentHash,
+        sourceObjectPreserved: true,
+        idempotencyKey: input.idempotencyKey,
+      },
+    });
+    await tx.insert(idempotencyKeys).values({
+      householdId: actor.householdId,
+      key: input.idempotencyKey,
+      operation: FINANCIAL_DOCUMENT_TYPE_DETECTION_OPERATION,
+      responseStatus: 200,
+      responseBody: { response: result, fingerprint },
+    });
+    return result;
+  });
+}
+
 export async function reviewBankStatementTransaction(actor: Actor, transactionId: string, input: {
   action: "APPROVE" | "REJECT" | "RECLASSIFY" | "LINK_SETTLEMENT" | "MARK_TRANSFER";
   reason: string; idempotencyKey: string; correctedValue?: Record<string, unknown>; settlementDocumentId?: string;
@@ -655,27 +766,28 @@ export async function reviewFinancialDocumentIdentity(actor: Actor, documentId: 
     if (canonicalDocumentId && canonicalDocumentId !== document.id && canonicalDocumentId !== compared.id) {
       throw new GovernanceError("INVALID_STATE", "Canonical document must be one of the reviewed documents");
     }
+    const reviewEvidence = {
+      reason: input.reason,
+      documentHash: document.documentHash,
+      comparedDocumentHash: compared.documentHash,
+      documentSizeBytes: document.sourceMetadata?.observedSizeBytes,
+      comparedSizeBytes: compared.sourceMetadata?.observedSizeBytes,
+      documentPeriod: [document.periodStart, document.periodEnd, document.statementDate],
+      comparedPeriod: [compared.periodStart, compared.periodEnd, compared.statementDate],
+      documentSourceTotals: document.sourceMetadata?.reportedTotals ?? document.sourceMetadata?.totals ?? null,
+      comparedSourceTotals: compared.sourceMetadata?.reportedTotals ?? compared.sourceMetadata?.totals ?? null,
+    };
     await tx.insert(financialDocumentIdentityReviews).values({
       householdId: actor.householdId,
       documentId,
       comparedDocumentId: compared.id,
       classification: input.classification,
-      evidence: {
-        reason: input.reason,
-        documentHash: document.documentHash,
-        comparedDocumentHash: compared.documentHash,
-        documentSizeBytes: document.sourceMetadata?.observedSizeBytes,
-        comparedSizeBytes: compared.sourceMetadata?.observedSizeBytes,
-        documentPeriod: [document.periodStart, document.periodEnd, document.statementDate],
-        comparedPeriod: [compared.periodStart, compared.periodEnd, compared.statementDate],
-           documentSourceTotals: document.sourceMetadata?.reportedTotals ?? document.sourceMetadata?.totals ?? null,
-           comparedSourceTotals: compared.sourceMetadata?.reportedTotals ?? compared.sourceMetadata?.totals ?? null,
-      },
+      evidence: reviewEvidence,
       canonicalDocumentId,
       reviewedBy: actor.userId,
     }).onConflictDoUpdate({
       target: [financialDocumentIdentityReviews.householdId, financialDocumentIdentityReviews.documentId, financialDocumentIdentityReviews.comparedDocumentId],
-      set: { classification: input.classification, evidence: { reason: input.reason }, canonicalDocumentId, reviewedBy: actor.userId, reviewedAt: new Date() },
+      set: { classification: input.classification, evidence: reviewEvidence, canonicalDocumentId, reviewedBy: actor.userId, reviewedAt: new Date() },
     });
     const isDuplicate = input.classification === "EXACT_DUPLICATE" || input.classification === "PROBABLE_DUPLICATE";
     const nextStatus = isDuplicate ? "DUPLICATE_REFERENCE" : input.classification === "UNKNOWN_REVIEW_REQUIRED" ? "REVIEW_REQUIRED" : "REVIEWED";
@@ -685,6 +797,28 @@ export async function reviewFinancialDocumentIdentity(actor: Actor, documentId: 
       duplicateOfDocumentId: isDuplicate && canonicalDocumentId && canonicalDocumentId !== document.id ? canonicalDocumentId : document.duplicateOfDocumentId,
       versionLabel: input.classification === "DISTINCT_VERSION" || input.classification === "CORRECTED_VERSION" ? input.classification : document.versionLabel,
     }).where(and(eq(financialDocuments.id, document.id), eq(financialDocuments.householdId, actor.householdId))).returning();
+    let supersessionCreated = false;
+    if (input.classification === "CORRECTED_VERSION") {
+      if (document.supersedesDocumentId && document.supersedesDocumentId !== compared.id) {
+        throw new GovernanceError("CONFLICT", "This document already supersedes a different document");
+      }
+      if (compared.supersededByDocumentId && compared.supersededByDocumentId !== document.id) {
+        throw new GovernanceError("CONFLICT", "The compared document is already superseded by a different document");
+      }
+      await tx.update(financialDocuments).set({
+        supersedesDocumentId: compared.id,
+      }).where(and(
+        eq(financialDocuments.id, document.id),
+        eq(financialDocuments.householdId, actor.householdId),
+      ));
+      await tx.update(financialDocuments).set({
+        supersededByDocumentId: document.id,
+      }).where(and(
+        eq(financialDocuments.id, compared.id),
+        eq(financialDocuments.householdId, actor.householdId),
+      ));
+      supersessionCreated = true;
+    }
     await tx.insert(auditEvents).values({
       householdId: actor.householdId,
       eventType: "financial_document_identity_reviewed",
@@ -692,9 +826,21 @@ export async function reviewFinancialDocumentIdentity(actor: Actor, documentId: 
       entity: "financial_document",
       entityId: document.id,
       reason: input.reason,
-      metadata: { comparedDocumentId: compared.id, classification: input.classification, canonicalDocumentId: canonicalDocumentId ?? null, sourceObjectsPreserved: true },
+      metadata: {
+        comparedDocumentId: compared.id,
+        classification: input.classification,
+        canonicalDocumentId: canonicalDocumentId ?? null,
+        supersessionCreated,
+        supersedesDocumentId: supersessionCreated ? compared.id : null,
+        supersededByDocumentId: supersessionCreated ? document.id : null,
+        sourceObjectsPreserved: true,
+      },
     });
-    return response(updated);
+    const [updatedWithRelations] = await tx.select().from(financialDocuments).where(and(
+      eq(financialDocuments.id, document.id),
+      eq(financialDocuments.householdId, actor.householdId),
+    )).limit(1);
+    return response(updatedWithRelations ?? updated);
   });
 }
 

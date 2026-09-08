@@ -134,6 +134,7 @@ import type {
   FinancialDocumentList,
   FinancialDocumentReviewInput,
   FinancialDocumentTypeDecisionInput,
+  FinancialDocumentTypeDetectionInput,
   FinancialDocumentUploadInput,
   FinancialDocumentUploadTarget,
   FinancialReviewQueue,
@@ -330,6 +331,7 @@ export const getGetInternalMetricsQueryKey = () => {
     `/api/internal/metrics`
     ] as const;
     }
+
 
 export const getGetInternalMetricsQueryOptions = <TData = Awaited<ReturnType<typeof getInternalMetrics>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInternalMetrics>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
@@ -15111,6 +15113,78 @@ export const useReviewFinancialDocument = <TError = ErrorType<unknown>,
       return useMutation(getReviewFinancialDocumentMutationOptions(options));
     }
 
+export const getRunFinancialDocumentTypeDetectionUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/financial-documents/${documentId}/detect-type`
+}
+
+/**
+ * @summary Run or re-run content detection against preserved financial evidence
+ */
+export const runFinancialDocumentTypeDetection = async (documentId: string,
+    financialDocumentTypeDetectionInput: FinancialDocumentTypeDetectionInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancialDocument> => {
+
+  return customFetch<FinancialDocument>(getRunFinancialDocumentTypeDetectionUrl(documentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financialDocumentTypeDetectionInput)
+  }
+);}
+
+
+
+
+
+export const getRunFinancialDocumentTypeDetectionMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runFinancialDocumentTypeDetection>>, TError,{documentId: string;data: BodyType<FinancialDocumentTypeDetectionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runFinancialDocumentTypeDetection>>, TError,{documentId: string;data: BodyType<FinancialDocumentTypeDetectionInput>}, TContext> => {
+
+const mutationKey = ['runFinancialDocumentTypeDetection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runFinancialDocumentTypeDetection>>, {documentId: string;data: BodyType<FinancialDocumentTypeDetectionInput>}> = (props) => {
+          const {documentId,data} = props ?? {};
+
+          return  runFinancialDocumentTypeDetection(documentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunFinancialDocumentTypeDetectionMutationResult = NonNullable<Awaited<ReturnType<typeof runFinancialDocumentTypeDetection>>>
+    export type RunFinancialDocumentTypeDetectionMutationBody = BodyType<FinancialDocumentTypeDetectionInput>
+    export type RunFinancialDocumentTypeDetectionMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Run or re-run content detection against preserved financial evidence
+ */
+export const useRunFinancialDocumentTypeDetection = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runFinancialDocumentTypeDetection>>, TError,{documentId: string;data: BodyType<FinancialDocumentTypeDetectionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runFinancialDocumentTypeDetection>>,
+        TError,
+        {documentId: string;data: BodyType<FinancialDocumentTypeDetectionInput>},
+        TContext
+      > => {
+      return useMutation(getRunFinancialDocumentTypeDetectionMutationOptions(options));
+    }
+
 export const getLinkFinancialDocumentBusinessUrl = (documentId: string,) => {
 
 
@@ -15978,3 +16052,4 @@ export const useReverseBankStatementTransactionImport = <TError = ErrorType<BadR
       > => {
       return useMutation(getReverseBankStatementTransactionImportMutationOptions(options));
     }
+

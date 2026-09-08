@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetAccountingOverviewQueryKey,
@@ -13,17 +13,23 @@ import {
   getListTransactionReviewQueueQueryKey,
   type BusinessEntity,
   type FinancialDocument,
+  type FinancialDocumentUploadInputContentType,
+  type FinancialDocumentUploadInputDocumentType,
   type FinancialDocumentIdentityReviewInputClassification,
   useDecideFinancialDocumentType,
+  useIngestFinancialDocument,
   useLinkFinancialDocumentBusiness,
   useListBusinessEntities,
+  useListFinancialAccounts,
   useListFinancialDocuments,
   useListFinancialReviewQueue,
+  useRequestFinancialDocumentUploadUrl,
   useReviewFinancialDocument,
   useReviewFinancialDocumentIdentity,
   useReviewBankStatementTransaction,
+  useRunFinancialDocumentTypeDetection,
 } from "@workspace/api-client-react";
-import { AlertCircle, ArrowRightLeft, Check, CheckCircle2, ClipboardList, FileText, Info, Link2, RefreshCw, ShieldCheck, Tag, X } from "lucide-react";
+import { AlertCircle, ArrowRightLeft, Check, CheckCircle2, ClipboardList, FilePlus2, FileText, Info, Link2, RefreshCw, ShieldCheck, Tag, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import {
@@ -37,14 +43,21 @@ import { TransactionEvidenceRow } from "./TransactionEvidenceRow";
 
 const label = (value?: string | null) => value ? value.replaceAll("_", " ") : "Not recorded";
 const shortHash = (value: string) => value.length > 20 ? `${value.slice(0, 10)}…${value.slice(-8)}` : value;
+const financialDocumentTypes: Array<{ type: FinancialDocumentUploadInputDocumentType; label: string }> = [
+  { type: "STEVENS_SETTLEMENT", label: "Stevens Settlement" },
+  { type: "BUSINESS_PROFIT_AND_LOSS", label: "Profit & Loss" },
+  { type: "BANK_STATEMENT", label: "Bank Statement" },
+  { type: "OTHER_FINANCIAL_DOCUMENT", label: "Other financial document" },
+];
 
-const PageHeading = ({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) => (
+const PageHeading = ({ eyebrow, title, description, actions }: { eyebrow: string; title: string; description?: string; actions?: ReactNode }) => (
   <div className="page-heading animate-in">
     <div>
       <div className="eyebrow">{eyebrow}</div>
       <h1 data-testid="text-page-title">{title}</h1>
       {description && <p>{description}</p>}
     </div>
+    {actions && <div className="page-heading-actions">{actions}</div>}
   </div>
 );
 
@@ -63,13 +76,22 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
   const docsQuery = useListFinancialDocuments();
   const queueQuery = useListFinancialReviewQueue();
   const businessesQuery = useListBusinessEntities();
+  const accountsQuery = useListFinancialAccounts();
   const reviewDoc = useReviewFinancialDocument();
   const reviewTx = useReviewBankStatementTransaction();
+  const requestUpload = useRequestFinancialDocumentUploadUrl();
+  const ingestDocument = useIngestFinancialDocument();
   const reviewKeys = useRef(new Map<string, string>());
   const [canReview, setCanReview] = useState(false);
   const [selectedBusinessId, setSelectedBusinessId] = useState("");
   const [txCorrectionId, setTxCorrectionId] = useState<string | null>(null);
   const [txCorrectionAmount, setTxCorrectionAmount] = useState("");
+  const [uploadType, setUploadType] = useState<FinancialDocumentUploadInputDocumentType>("STEVENS_SETTLEMENT");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadAccountId, setUploadAccountId] = useState("");
+  const [uploadMessage, setUploadMessage] = useState("");
+  const [uploadError, setUploadError] = useState("");
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -138,9 +160,69 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
 
   const selectedBusiness = businesses.find((business) => business.id === selectedBusinessId);
 
+  const mimeFor = (file: File): FinancialDocumentUploadInputContentType | null => {
+    if (file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf") return "application/pdf";
+    if (file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv") return "text/csv";
+    if (file.name.toLowerCase().endsWith(".xlsx") || file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    return null;
+  };
+
+  const upload = async () => {
+    if (!uploadFile) {
+      setUploadError("Choose a PDF, CSV, or XLSX file first.");
+      return;
+    }
+    const contentType = mimeFor(uploadFile);
+    if (!contentType) {
+      setUploadError("Only PDF, CSV, and XLSX financial documents can be uploaded.");
+      return;
+    }
+    if (uploadType === "BANK_STATEMENT" && !uploadAccountId) {
+      setUploadError("Choose the household account shown on this statement.");
+      return;
+    }
+    setUploadError("");
+    setUploadMessage("");
+    try {
+      const target = await requestUpload.mutateAsync({ data: { name: uploadFile.name, size: uploadFile.size, contentType, documentType: uploadType } });
+      const stored = await fetch(target.uploadURL, { method: "PUT", headers: { "Content-Type": target.contentType }, body: uploadFile });
+      if (!stored.ok) throw new Error("The file could not be uploaded to App Storage.");
+      const account = accountsQuery.data?.accounts.find((item) => item.id === uploadAccountId);
+      await ingestDocument.mutateAsync({ data: {
+        documentType: uploadType,
+        sourceFileName: uploadFile.name,
+        sourceObjectPath: target.objectPath,
+        contentType: target.contentType,
+        sourceSizeBytes: uploadFile.size,
+        uploadGrant: target.uploadGrant,
+        sourceInstitution: account?.institution,
+        accountId: uploadType === "BANK_STATEMENT" ? uploadAccountId : undefined,
+        accountDisplayName: account?.nickname,
+      } });
+      await invalidateEverything();
+      setUploadFile(null);
+      setUploadAccountId("");
+      setUploadMessage("Evidence uploaded. It remains separate from planning totals until reviewed.");
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "The financial document could not be ingested.");
+    }
+  };
+
   return (
     <>
-      {!embedded && <PageHeading eyebrow="Operations" title="Financial Inbox" description="Review parsed documents and transactions. Parsed never means verified." />}
+      {!embedded && <PageHeading eyebrow="Operations" title="Financial Inbox" description="Upload preserved source evidence, then review its content type, identity, and downstream use." actions={<button className="btn btn-primary" onClick={() => uploadInputRef.current?.click()}><FilePlus2 size={15} /> Choose file</button>} />}
+      {!embedded && <section className="card card-pad page-section animate-in" data-testid="financial-document-upload">
+        <CardTitle title="Upload financial evidence" subtitle="PDF, CSV, or XLSX · up to 50 MB. The original source object and hash are preserved." />
+        <div className="financial-upload-grid">
+          <label>Recorded type<select value={uploadType} onChange={(event) => setUploadType(event.target.value as FinancialDocumentUploadInputDocumentType)}>{financialDocumentTypes.map((item) => <option key={item.type} value={item.type}>{item.label}</option>)}</select></label>
+          {uploadType === "BANK_STATEMENT" && <label>Statement account<select value={uploadAccountId} onChange={(event) => setUploadAccountId(event.target.value)}><option value="">Choose a household account</option>{accountsQuery.data?.accounts.map((account) => <option key={account.id} value={account.id}>{account.nickname} · {account.institution}</option>)}</select></label>}
+          <label>Source file<input ref={uploadInputRef} type="file" accept=".pdf,.csv,.xlsx,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => { setUploadFile(event.target.files?.[0] ?? null); setUploadError(""); }} /></label>
+        </div>
+        {uploadFile && <div className="text-sm text-[var(--ink-soft)]">{uploadFile.name} · {(uploadFile.size / 1024 / 1024).toFixed(2)} MB</div>}
+        <div className="modal-actions"><button className="btn btn-primary" type="button" onClick={() => void upload()} disabled={!uploadFile || requestUpload.isPending || ingestDocument.isPending}>{requestUpload.isPending || ingestDocument.isPending ? "Uploading…" : "Upload and ingest"}</button></div>
+        {uploadMessage && <div className="form-feedback success" role="status">{uploadMessage}</div>}
+        {uploadError && <div className="form-feedback error" role="alert">{uploadError}</div>}
+      </section>}
       <div className="document-inbox-layout">
         <div className="grid gap-[18px]">
           <div className="card card-pad animate-in delay-1">
@@ -204,7 +286,8 @@ function FinancialEvidenceCard({ document, documents, businesses, selectedBusine
     <button className="financial-evidence-summary" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>
       <span className="financial-evidence-icon"><FileText size={16} /></span>
       <span className="financial-evidence-heading"><strong title={document.sourceFileName}>{document.sourceFileName}</strong><span>{label(document.documentType)} · {document.periodStart || document.statementDate || "Period not recorded"}{document.periodEnd ? ` to ${document.periodEnd}` : ""}</span></span>
-      <span className={`status ${document.status === "VERIFIED" ? "verified" : document.status === "REJECTED" ? "critical" : "pending"}`}>{label(document.status)}</span>
+       <span className={`status ${documentReadiness(document).complete ? "verified" : documentReadiness(document).hasIssue ? "review" : "pending"}`}>{documentReadiness(document).headline}</span>
+       <small className="document-pending-note">{documentReadiness(document).detail}</small>
     </button>
     {expanded && <div className="financial-evidence-detail">
       <div className="financial-evidence-grid">
@@ -234,6 +317,7 @@ function FinancialEvidenceActions({ document, documents, businesses, selectedBus
 }) {
   const linkBusiness = useLinkFinancialDocumentBusiness();
   const decideType = useDecideFinancialDocumentType();
+  const detectType = useRunFinancialDocumentTypeDetection();
   const reviewIdentity = useReviewFinancialDocumentIdentity();
   const { toast } = useToast();
   const [reviewReason, setReviewReason] = useState("");
@@ -243,8 +327,10 @@ function FinancialEvidenceActions({ document, documents, businesses, selectedBus
   const [comparisonDocumentId, setComparisonDocumentId] = useState("");
   const [classification, setClassification] = useState<FinancialDocumentIdentityReviewInputClassification>("UNKNOWN_REVIEW_REQUIRED");
   const [canonicalDocumentId, setCanonicalDocumentId] = useState("");
+  const [detectionReason, setDetectionReason] = useState("");
   const typeIdempotencyKey = useRef(crypto.randomUUID());
   const linkIdempotencyKey = useRef(crypto.randomUUID());
+  const detectionIdempotencyKey = useRef(crypto.randomUUID());
   const hasCanonicalChoice = ["EXACT_DUPLICATE", "PROBABLE_DUPLICATE", "CORRECTED_VERSION"].includes(classification);
   const comparisonDocument = documents.find((candidate) => candidate.id === comparisonDocumentId);
   const linkedBusiness = businesses.find((business) => business.id === document.businessId);
@@ -259,6 +345,19 @@ function FinancialEvidenceActions({ document, documents, businesses, selectedBus
       toast({ title: "Detected type accepted", description: "USE_DETECTED_TYPE was persisted for this document." });
     } catch (error) {
       toast({ title: "Type decision failed", description: error instanceof Error ? error.message : "The type decision could not be saved.", variant: "destructive" });
+    }
+  };
+
+  const runDetection = async () => {
+    if (!canReview || !detectionReason.trim()) return;
+    try {
+      await detectType.mutateAsync({ documentId: document.id, data: { reason: detectionReason.trim(), idempotencyKey: detectionIdempotencyKey.current } });
+      setDetectionReason("");
+      detectionIdempotencyKey.current = crypto.randomUUID();
+      await onRefresh();
+      toast({ title: document.detectedDocumentType ? "Content detection re-run" : "Content detection recorded", description: "The preserved source object was read without replacing its hash or file." });
+    } catch (error) {
+      toast({ title: "Content detection failed", description: error instanceof Error ? error.message : "The preserved source could not be classified.", variant: "destructive" });
     }
   };
 
@@ -291,6 +390,12 @@ function FinancialEvidenceActions({ document, documents, businesses, selectedBus
 
   return <div className="financial-evidence-actions">
     {!canReview && <div className="business-review-permission-note"><ShieldCheck size={14} /> Read-only evidence view. Approver permission is required for business linkage, type, identity, and document decisions.</div>}
+    <div className="financial-action-block">
+      <div className="financial-action-title"><FileText size={14} /><strong>Content detection</strong><span>{document.detectedDocumentType ? `Last result: ${label(document.detectedDocumentType)}` : "No content result recorded"}</span></div>
+      <label>Required reason<input value={detectionReason} onChange={(event) => setDetectionReason(event.target.value)} placeholder="Explain why the preserved source should be checked" maxLength={1000} disabled={!canReview} /></label>
+      <button className="btn" onClick={() => void runDetection()} disabled={!canReview || !detectionReason.trim() || detectType.isPending}><RefreshCw size={13} /> {detectType.isPending ? "Detecting…" : document.detectedDocumentType ? "Re-run content detector" : "Run content detector"}</button>
+      <small className="text-[var(--ink-soft)]">Reads the original private source object and creates a new immutable detection observation. It does not replace, merge, delete, or rewrite the upload.</small>
+    </div>
     <div className="financial-action-block">
       <div className="financial-action-title"><Link2 size={14} /><strong>Business linkage</strong><span>{document.businessId ? `Persisted: ${linkedBusiness?.displayName ?? `Business ${document.businessId.slice(0, 8)}`}` : "No business link"}</span></div>
       {!document.businessId && <><label>Link reason<input value={linkReason} onChange={(event) => setLinkReason(event.target.value)} placeholder="Explain the business boundary match" maxLength={1000} disabled={!canReview} /></label><button className="btn btn-primary" onClick={() => void saveLink()} disabled={!canReview || !selectedBusinessId || !linkReason.trim() || linkBusiness.isPending}><Link2 size={13} /> {linkBusiness.isPending ? "Saving…" : "Link to selected business"}</button></>}
@@ -348,6 +453,32 @@ function sourceTotals(document: FinancialDocument) {
 
 function documentIdentityOptions(document: FinancialDocument, documents: FinancialDocument[]) {
   return documents.filter((candidate) => candidate.id !== document.id).map((candidate) => ({ id: candidate.id, name: candidate.sourceFileName }));
+}
+
+function documentReadiness(document: FinancialDocument) {
+  const evidenceReady = document.reviewDecision === "VERIFIED";
+  const evidenceLabel = evidenceReady
+    ? "Evidence verified"
+    : document.reviewDecision
+      ? `Evidence ${label(document.reviewDecision).toLowerCase()}`
+      : "Evidence pending";
+  const typeReady = document.typeMismatchStatus === "CORRECTED"
+    ? "Type corrected"
+    : document.typeMismatchStatus === "OPEN"
+      ? "Type review pending"
+      : document.detectedDocumentType
+        ? document.detectedDocumentType === document.documentType ? "Type confirmed" : "Type review pending"
+        : "Type detection pending";
+  const identityReady = document.identityStatus === "REVIEWED" || document.identityStatus === "DUPLICATE_REFERENCE";
+  const identityLabel = identityReady
+    ? "Identity reviewed"
+    : document.identityStatus === "REVIEW_REQUIRED" ? "Identity review required" : "Identity review pending";
+  return {
+    complete: evidenceReady && (document.typeMismatchStatus === "CORRECTED" || (document.detectedDocumentType === document.documentType && document.typeMismatchStatus === "NONE")) && identityReady,
+    hasIssue: document.typeMismatchStatus === "OPEN" || document.identityStatus === "REVIEW_REQUIRED",
+    headline: evidenceLabel,
+    detail: `${typeReady} · ${identityLabel}`,
+  };
 }
 
 function EvidenceMeta({ label: metaLabel, value, mono = false }: { label: string; value: string; mono?: boolean }) {

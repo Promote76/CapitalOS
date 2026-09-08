@@ -78,6 +78,18 @@ function BusinessSetupArea({ onFeedback }: { onFeedback: (message: string) => vo
   const resolveBusiness = useResolveCompatibleTruckingBusiness();
   const idempotencyKey = useRef(crypto.randomUUID());
   const [setupResult, setSetupResult] = useState<{ outcome: string; businessName: string; disclaimer: string } | null>(null);
+  const [canReview, setCanReview] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/me", { credentials: "same-origin" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => {
+        if (active) setCanReview(Boolean(payload?.memberships?.some((membership: { permissions?: string[] }) => membership.permissions?.includes("approve"))));
+      })
+      .catch(() => { if (active) setCanReview(false); });
+    return () => { active = false; };
+  }, []);
 
   const setup = async () => {
     try {
@@ -110,7 +122,7 @@ function BusinessSetupArea({ onFeedback }: { onFeedback: (message: string) => vo
         <h2>Household businesses and accounting boundaries</h2>
         <p>Use the approved independent-contractor trucking boundary when business evidence needs a home. This does not determine legal or tax status.</p>
       </div>
-      <button className="btn btn-primary" onClick={() => void setup()} disabled={resolveBusiness.isPending}>
+      <button className="btn btn-primary" onClick={() => void setup()} disabled={!canReview || resolveBusiness.isPending}>
         <Plus size={14} /> {resolveBusiness.isPending ? "Resolving…" : "Resolve trucking boundary"}
       </button>
     </div>
@@ -118,6 +130,7 @@ function BusinessSetupArea({ onFeedback }: { onFeedback: (message: string) => vo
       <LockKeyhole size={15} />
       <span><strong>Internal accounting boundary.</strong> Capital OS keeps business books separate from household income. The server result below is the persisted record; it is not a statement about entity formation, registration, tax classification, or employer identifiers.</span>
     </div>
+    {!canReview && <div className="business-review-permission-note"><ShieldCheck size={14} /> Read-only setup view. Approver permission is required to create or reuse the internal business boundary.</div>}
     {businesses.isLoading ? <div className="business-setup-list"><div className="business-loading-row" /><div className="business-loading-row" /></div> :
       businesses.isError ? <div className="operations-inline-error business-setup-error"><AlertCircle size={15} /><span>Business records could not be loaded.</span><button className="btn" onClick={() => businesses.refetch()}><RefreshCw size={14} /> Retry</button></div> :
         businesses.data?.length ? <div className="business-setup-list">{businesses.data.map((business) => <div className="business-setup-row" key={business.id}><div className="business-company-icon"><Building2 size={16} /></div><div><strong>{business.displayName}</strong><span>{business.legalName}</span></div><span className="business-setup-boundary">Available for internal linkage</span><span className="status">{title(business.status)}</span></div>)}</div> :

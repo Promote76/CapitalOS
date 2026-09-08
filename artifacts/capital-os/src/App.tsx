@@ -2522,10 +2522,7 @@ function CompletedBudgetPage() {
 }
 
 function CompletedDocumentsPage() {
-  return <>
-    <FinancialDocumentInboxPage />
-    <DocumentsPage embedded />
-  </>;
+  return <DocumentsPage />;
 }
 
 function formatPlanningDate(value: string | undefined, fallback = 'Not scheduled') {

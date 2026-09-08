@@ -278,6 +278,7 @@ export * from './financialDocumentReviewInputDecision';
 export * from './financialDocumentSourceMetadata';
 export * from './financialDocumentTypeDecisionInput';
 export * from './financialDocumentTypeDecisionInputAction';
+export * from './financialDocumentTypeDetectionInput';
 export * from './financialDocumentUploadInput';
 export * from './financialDocumentUploadInputContentType';
 export * from './financialDocumentUploadInputDocumentType';

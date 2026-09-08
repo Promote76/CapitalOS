@@ -50,12 +50,20 @@ function amountsOnLine(line: string) {
 }
 
 function labeledAmount(text: string, labels: RegExp[]) {
-  for (const line of text.split(/\r?\n/)) {
+  const candidates: string[] = [];
+  let ambiguous = false;
+  for (const line of text.split(/\r?\n|\f/)) {
+    if (/(?:statement|period|date|through)/i.test(line)) continue;
     if (!labels.some((label) => label.test(line))) continue;
     const values = amountsOnLine(line);
-    if (values.length > 0) return values[values.length - 1];
+    if (values.length > 1) ambiguous = true;
+    if (values.length > 0) candidates.push(values[values.length - 1]);
   }
-  return null;
+  const distinct = [...new Set(candidates)];
+  return {
+    value: distinct[0] ?? null,
+    ambiguous: ambiguous || distinct.length > 1,
+  };
 }
 
 function period(text: string) {
@@ -67,10 +75,22 @@ function period(text: string) {
 }
 
 function candidateLines(text: string, excluded: RegExp[]) {
-  return text.split(/\r?\n/)
-    .map((line) => line.replace(/\s+/g, " ").trim())
-    .filter((line) => line.length > 2 && !excluded.some((pattern) => pattern.test(line)))
-    .map((line) => {
+  let sourcePage = 1;
+  const lines: Array<{ line: string; page: number }> = [];
+  for (const line of text.split(/\r?\n/)) {
+    const pageLines = line.split("\f");
+    for (const [index, pageLine] of pageLines.entries()) {
+      lines.push({ line: pageLine, page: sourcePage });
+      if (index < pageLines.length - 1) sourcePage += 1;
+    }
+  }
+  return lines
+    .map(({ line, page }) => ({
+      line: line.replace(/\s+/g, " ").trim(),
+      page,
+    }))
+    .filter(({ line }) => line.length > 2 && !excluded.some((pattern) => pattern.test(line)))
+    .map(({ line, page }) => {
       const values = amountsOnLine(line);
       const amount = values[values.length - 1];
       if (!amount) return null;
@@ -79,7 +99,7 @@ function candidateLines(text: string, excluded: RegExp[]) {
         .replace(/[|:]+$/, "")
         .trim();
       if (!description || /^\d+$/.test(description)) return null;
-      return { description: description.slice(0, 300), amount, sourcePage: 1 };
+      return { description: description.slice(0, 300), amount, sourcePage: page };
     })
     .filter((line): line is { description: string; amount: string; sourcePage: number } => line !== null);
 }
@@ -133,7 +153,7 @@ export async function parseBusinessPdf(bytes: Buffer, kind: "settlement" | "prof
     return { ...base, reason: "The PDF could not be read. It may be encrypted, corrupted, or image-only." };
   }
   const normalized = text.replace(/\u0000/g, " ").trim();
-  const pageCount = Math.max(1, (text.match(/\f/g) ?? []).length + 1);
+  const pageCount = Math.max(1, (normalized.match(/\f/g) ?? []).length + 1);
   if (!normalized) {
     return { ...base, pageCount, reason: "The PDF contains no readable text; manual review is required." };
   }
@@ -146,17 +166,23 @@ export async function parseBusinessPdf(bytes: Buffer, kind: "settlement" | "prof
     provider: normalized.split(/\r?\n/).map((line) => line.trim()).find((line) => /provider|merchant|company|business/i.test(line))?.slice(0, 80) ?? null,
   };
   if (kind === "settlement") {
-    const gross = labeledAmount(normalized, [/gross/i, /total (?:earnings|revenue|amount)/i, /revenue/i]);
-    const deductions = labeledAmount(normalized, [/total deductions?/i, /withhold/i, /fees?/i]);
-    const net = labeledAmount(normalized, [/net (?:pay|amount|paid)/i, /amount paid/i, /deposit/i]);
-    const allLines = candidateLines(normalized, [/gross|net|deduction|withhold|total|period|date|statement/i]);
+    const grossResult = labeledAmount(normalized, [/^(?:gross|total (?:earnings|revenue|amount))\b/i]);
+    const deductionsResult = labeledAmount(normalized, [/^total deductions?\b/i]);
+    const netResult = labeledAmount(normalized, [/^(?:net (?:pay|amount|paid)|amount paid|deposit)\b/i]);
+    const gross = grossResult.value;
+    const deductions = deductionsResult.value;
+    const net = netResult.value;
+    const allLines = candidateLines(normalized, [/gross|net|deduction|total|period|date|statement/i]);
     const revenueLines = allLines.filter((line) => !/tax|fee|deduction|withhold|reimburse|owner draw/i.test(line.description));
     const deductionLines = allLines.filter((line) => /tax|fee|deduction|withhold|reimburse|owner draw/i.test(line.description));
     const fallbackRevenue = gross && revenueLines.length === 0 ? [{ description: "Extracted settlement gross", amount: gross, sourcePage: 1 }] : revenueLines;
     const fallbackDeductions = deductions && deductions !== "0.00" && deductionLines.length === 0
       ? [{ description: "Extracted settlement deductions", amount: deductions, sourcePage: 1 }]
       : deductionLines;
-    const complete = Boolean(gross && deductions && net && common.statementPeriodStart && common.statementPeriodEnd);
+    const complete = Boolean(
+      gross && deductions && net && common.statementPeriodStart && common.statementPeriodEnd &&
+      !grossResult.ambiguous && !deductionsResult.ambiguous && !netResult.ambiguous,
+    );
     return {
       ...base,
       ...common,
@@ -169,16 +195,22 @@ export async function parseBusinessPdf(bytes: Buffer, kind: "settlement" | "prof
       reason: complete ? "Settlement totals and line items were extracted from the PDF." : "The PDF did not contain an unambiguous gross, deductions, net, and statement period.",
     };
   }
-  const revenue = labeledAmount(normalized, [/total revenue/i, /^revenue\b/i, /income/i]);
-  const expenses = labeledAmount(normalized, [/total expenses?/i, /operating expenses?/i, /^expenses?\b/i]);
-  const profit = labeledAmount(normalized, [/net profit/i, /net income/i, /profit\b/i]);
+  const revenueResult = labeledAmount(normalized, [/^(?:total revenue|revenue)\b/i]);
+  const expensesResult = labeledAmount(normalized, [/^(?:total expenses?|operating expenses?|expenses?)\b/i]);
+  const profitResult = labeledAmount(normalized, [/^(?:net profit|net income|profit)\b/i]);
+  const revenue = revenueResult.value;
+  const expenses = expensesResult.value;
+  const profit = profitResult.value;
   const lines = candidateLines(normalized, [/total revenue|total expenses?|net profit|net income|period|date|statement/i])
     .map((line) => ({ ...line, lineType: /expense|cost|fee|tax/i.test(line.description) ? "expense" as const : "revenue" as const }));
   const fallbackLines = lines.length > 0 ? lines : [
     ...(revenue ? [{ description: "Extracted P&L revenue", amount: revenue, lineType: "revenue" as const, sourcePage: 1 }] : []),
     ...(expenses ? [{ description: "Extracted P&L expenses", amount: expenses, lineType: "expense" as const, sourcePage: 1 }] : []),
   ];
-  const complete = Boolean(revenue && expenses && profit && common.statementPeriodStart && common.statementPeriodEnd);
+  const complete = Boolean(
+    revenue && expenses && profit && common.statementPeriodStart && common.statementPeriodEnd &&
+    !revenueResult.ambiguous && !expensesResult.ambiguous && !profitResult.ambiguous,
+  );
   return {
     ...base,
     ...common,

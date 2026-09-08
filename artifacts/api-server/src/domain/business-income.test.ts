@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { parseBusinessPdf } from "../services/business-document-parser.ts";
+import {
+  ambiguousSettlementPdfFixture,
+  profitLossPdfFixture,
+  settlementPdfFixture,
+} from "../fixtures/business-income-pdfs.ts";
 import {
   calculateBusinessCashPosition,
   evaluateOwnerDraw,
@@ -94,4 +100,55 @@ test("period reconciliation remains incomplete without a covering source period"
   });
   assert.equal(result.periodCoverage, "incomplete");
   assert.equal(result.status, "needs_review");
+});
+
+test("representative settlement PDF preserves totals, dates, line items, and page count", async () => {
+  const result = await parseBusinessPdf(settlementPdfFixture(), "settlement");
+  assert.equal(result.extractionStatus, "complete");
+  assert.equal(result.pageCount, 2);
+  assert.equal(result.statementPeriodStart, "2026-08-01");
+  assert.equal(result.statementPeriodEnd, "2026-08-31");
+  assert.equal(result.paidDate, "2026-09-03");
+  assert.equal(result.gross, "1250.00");
+  assert.equal(result.deductions, "250.00");
+  assert.equal(result.net, "1000.00");
+  assert.deepEqual(result.revenueLines, [
+    { description: "Service revenue", amount: "900.00", sourcePage: 1 },
+    { description: "Subscription revenue", amount: "350.00", sourcePage: 1 },
+  ]);
+  assert.deepEqual(result.deductionLines, [
+    { description: "Processor fee", amount: "50.00", sourcePage: 2 },
+    { description: "Withholding tax", amount: "200.00", sourcePage: 2 },
+  ]);
+});
+
+test("representative P&L PDF preserves totals, dates, line items, and page count", async () => {
+  const result = await parseBusinessPdf(profitLossPdfFixture(), "profit_loss");
+  assert.equal(result.extractionStatus, "complete");
+  assert.equal(result.pageCount, 2);
+  assert.equal(result.statementPeriodStart, "2026-08-01");
+  assert.equal(result.statementPeriodEnd, "2026-08-31");
+  assert.equal(result.revenue, "2000.00");
+  assert.equal(result.expenses, "700.00");
+  assert.equal(result.profit, "1300.00");
+  assert.deepEqual(result.lines, [
+    { description: "Service revenue", amount: "1400.00", lineType: "revenue", sourcePage: 1 },
+    { description: "Product revenue", amount: "600.00", lineType: "revenue", sourcePage: 1 },
+    { description: "Contractor expense", amount: "500.00", lineType: "expense", sourcePage: 2 },
+    { description: "Software expense", amount: "200.00", lineType: "expense", sourcePage: 2 },
+  ]);
+});
+
+test("PDF parser fails closed for malformed, unsupported, and ambiguous source evidence", async () => {
+  const malformed = await parseBusinessPdf(Buffer.from("%PDF-1.4\nnot a valid PDF"), "settlement");
+  assert.equal(malformed.extractionStatus, "failed");
+  assert.match(malformed.reason, /could not be read/i);
+
+  const unsupported = await parseBusinessPdf(Buffer.from("not a PDF"), "profit_loss");
+  assert.equal(unsupported.extractionStatus, "failed");
+  assert.match(unsupported.reason, /only PDF files/i);
+
+  const ambiguous = await parseBusinessPdf(ambiguousSettlementPdfFixture(), "settlement");
+  assert.equal(ambiguous.extractionStatus, "ambiguous");
+  assert.match(ambiguous.reason, /unambiguous/i);
 });

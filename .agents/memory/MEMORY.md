@@ -32,3 +32,4 @@
 - [Saved brief provenance](capital-os-saved-brief-provenance.md) — brief history should expose only fixed, redacted authoritative workspace markers alongside provider context.
 - [Variable-income household budget](capital-os-variable-income-budget.md) — keep verified-income planning advisory, floor-first, and separate from business cash and Safe-to-Deploy authority.
 - [Capital Governor certification](capital-governor-certification.md) — refresh all tenant-route evidence markers before certifying additive Safe-to-Deploy routes.
+- [PDF evidence extraction](capital-os-pdf-evidence.md) — normalize pdftotext form-feed output before counting pages or attributing extracted lines to source pages.

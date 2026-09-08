@@ -3194,7 +3194,6 @@ paths:
           in: path
           required: true
           schema: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
-        - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: "#/components/schemas/BankStatementTransactionReviewInput" } } }
@@ -3337,8 +3336,11 @@ components:
         reviewedAt: { type: [string, "null"], format: date-time }
         reviewDecision: { type: [string, "null"] }
         reviewReason: { type: [string, "null"] }
-        bankStatement: { type: [object, "null"], additionalProperties: true }
-        transactions: { type: array, items: { type: object, additionalProperties: true } }
+        bankStatement:
+          oneOf:
+            - $ref: "#/components/schemas/BankStatementEvidence"
+            - type: "null"
+        transactions: { type: array, items: { $ref: "#/components/schemas/BankStatementTransactionEvidence" } }
     FinancialDocumentList:
       type: object
       required: [documents]
@@ -3353,7 +3355,7 @@ components:
         documentType: { type: string, enum: [STEVENS_SETTLEMENT, BUSINESS_PROFIT_AND_LOSS, BANK_STATEMENT, "1099", INCOME_VERIFICATION, INSURANCE_DOCUMENT, AUTO_LOAN_DOCUMENT, BUSINESS_LEASE_DOCUMENT, OTHER_FINANCIAL_DOCUMENT] }
     FinancialDocumentUploadTarget:
       type: object
-      required: [name, size, contentType, documentType, uploadURL, objectPath]
+      required: [name, size, contentType, documentType, uploadURL, objectPath, uploadGrant]
       properties:
         name: { type: string }
         size: { type: number }
@@ -3361,15 +3363,17 @@ components:
         documentType: { type: string }
         uploadURL: { type: string }
         objectPath: { type: string }
+        uploadGrant: { type: string }
     FinancialDocumentIngestInput:
       type: object
-      required: [documentType, sourceFileName, sourceObjectPath, contentType, sourceSizeBytes]
+      required: [documentType, sourceFileName, sourceObjectPath, contentType, sourceSizeBytes, uploadGrant]
       properties:
         documentType: { type: string }
         sourceFileName: { type: string, minLength: 1, maxLength: 255 }
         sourceObjectPath: { type: string, pattern: "^/objects/uploads/[0-9a-fA-F-]{36}$" }
         contentType: { type: string }
         sourceSizeBytes: { type: number, minimum: 1, maximum: 52428800 }
+        uploadGrant: { type: string, minLength: 40, maxLength: 2048 }
         businessId: { type: string }
         sourceInstitution: { type: string }
         accountId: { type: string }
@@ -3398,13 +3402,61 @@ components:
         settlementDocumentId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
     BankStatementTransactionEvidence:
       type: object
-      required: [id, description, reviewStatus, originalValue]
+      required: [id, bankStatementDocumentId, description, amount, direction, confidence, sourceLine, sourceRegion, parserVersion, evidenceFingerprint, reviewStatus, originalValue, correctionHistory, createdAt]
       properties:
         id: { type: string }
+        bankStatementDocumentId: { type: string }
+        postedDate: { type: [string, "null"] }
         description: { type: string }
+        amount: { type: string }
+        direction: { type: [string, "null"] }
+        runningBalance: { type: [string, "null"] }
+        reference: { type: [string, "null"] }
+        confidence: { type: [string, "null"] }
+        sourcePage: { type: [number, "null"], multipleOf: 1 }
+        sourceLine: { type: [number, "null"], multipleOf: 1 }
+        sourceRegion: { type: [string, "null"] }
+        parserVersion: { type: string }
+        evidenceFingerprint: { type: string }
         reviewStatus: { type: string }
         originalValue: { type: object, additionalProperties: true }
         correctedValue: { type: [object, "null"], additionalProperties: true }
+        correctionReason: { type: [string, "null"] }
+        reviewedAt: { type: [string, "null"], format: date-time }
+        linkedSettlementDocumentId: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+        correctionHistory:
+          type: array
+          items: { $ref: "#/components/schemas/BankStatementTransactionCorrection" }
+    BankStatementTransactionCorrection:
+      type: object
+      required: [id, transactionId, revision, correctedValue, reason, correctedAt]
+      properties:
+        id: { type: string }
+        transactionId: { type: string }
+        revision: { type: number, multipleOf: 1 }
+        previousValue: { type: [object, "null"], additionalProperties: true }
+        correctedValue: { type: object, additionalProperties: true }
+        reason: { type: string }
+        correctedAt: { type: string, format: date-time }
+    BankStatementEvidence:
+      type: object
+      required: [id, documentId, openingBalance, closingBalance, totalDeposits, totalWithdrawals, status, createdAt]
+      properties:
+        id: { type: string }
+        documentId: { type: string }
+        accountId: { type: [string, "null"] }
+        institutionName: { type: [string, "null"] }
+        accountDisplayName: { type: [string, "null"] }
+        accountMask: { type: [string, "null"] }
+        statementStart: { type: [string, "null"] }
+        statementEnd: { type: [string, "null"] }
+        openingBalance: { type: string }
+        closingBalance: { type: string }
+        totalDeposits: { type: string }
+        totalWithdrawals: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
     BudgetPlanningVersionInput:
       type: object
       required: [version]

@@ -6,7 +6,4 @@
  * OpenAPI spec version: 0.3.0
  */
 
-/**
- * @nullable
- */
-export type FinancialDocumentBankStatement = { [key: string]: unknown } | null;
+export type BankStatementTransactionCorrectionCorrectedValue = { [key: string]: unknown };

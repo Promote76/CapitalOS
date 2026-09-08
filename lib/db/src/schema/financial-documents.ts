@@ -90,8 +90,26 @@ export const bankStatementTransactions = pgTable("bank_statement_transactions", 
 }, (table) => ({
   householdReviewIdx: index("bank_statement_transactions_household_review_idx").on(table.householdId, table.reviewStatus),
   statementFingerprintUnique: uniqueIndex("bank_statement_transactions_statement_fingerprint_unique").on(table.bankStatementDocumentId, table.evidenceFingerprint),
+  householdFingerprintUnique: uniqueIndex("bank_statement_transactions_household_fingerprint_unique").on(table.householdId, table.evidenceFingerprint),
+}));
+
+/** Append-only reviewer corrections; the evidence row retains the latest projection. */
+export const bankStatementTransactionCorrections = pgTable("bank_statement_transaction_corrections", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+  transactionId: uuid("transaction_id").notNull().references(() => bankStatementTransactions.id, { onDelete: "cascade" }),
+  revision: integer("revision").notNull(),
+  previousValue: jsonb("previous_value").$type<Record<string, unknown>>(),
+  correctedValue: jsonb("corrected_value").$type<Record<string, unknown>>().notNull(),
+  reason: text("reason").notNull(),
+  correctedBy: uuid("corrected_by").notNull().references(() => users.id),
+  correctedAt: timestamp("corrected_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  transactionRevisionUnique: uniqueIndex("bank_statement_transaction_corrections_revision_unique").on(table.transactionId, table.revision),
+  householdTransactionIdx: index("bank_statement_transaction_corrections_household_transaction_idx").on(table.householdId, table.transactionId),
 }));
 
 export type FinancialDocument = typeof financialDocuments.$inferSelect;
 export type BankStatementDocument = typeof bankStatementDocuments.$inferSelect;
 export type BankStatementTransaction = typeof bankStatementTransactions.$inferSelect;
+export type BankStatementTransactionCorrection = typeof bankStatementTransactionCorrections.$inferSelect;

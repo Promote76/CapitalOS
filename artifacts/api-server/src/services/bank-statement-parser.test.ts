@@ -51,3 +51,25 @@ test("rejects ambiguous amount rows and marks PDF extraction for review", async 
   assert.match(ambiguousPdf.errors[0], /ambiguous transaction layout/i);
   assert.deepEqual(ambiguousPdf.rows, []);
 });
+
+test("parses aligned PDF debit and credit columns without confusing the running balance", async () => {
+  const header = `${"Date".padEnd(11)}${"Description".padEnd(20)}${"Debit".padEnd(12)}${"Credit".padEnd(12)}Balance`;
+  const row = (date: string, description: string, debit: string, credit: string, balance: string) =>
+    `${date.padEnd(11)}${description.padEnd(20)}${debit.padEnd(12)}${credit.padEnd(12)}${balance}`;
+  const parsed = await parseBankStatement(representativePdf([
+    `Account 1234 Statement Period 01/01/2026 to 01/31/2026\n${header}\n${row("2026-01-02", "Groceries", "12.50", "", "87.50")}\n${row("2026-01-03", "Payroll", "", "100.00", "187.50")}`,
+  ]), "application/pdf");
+  assert.deepEqual(parsed.errors, []);
+  assert.deepEqual(parsed.rows.map((row) => [row.amount, row.direction, row.runningBalance]), [
+    ["12.50", "withdrawal", "87.50"],
+    ["100.00", "deposit", "187.50"],
+  ]);
+});
+
+test("distinguishes legitimate repeated rows while keeping fingerprints stable across replays", async () => {
+  const bytes = Buffer.from("Date,Description,Amount\n2026-01-01,Coffee,-5.00\n2026-01-01,Coffee,-5.00");
+  const first = await parseBankStatement(bytes, "text/csv");
+  const replay = await parseBankStatement(bytes, "text/csv");
+  assert.notEqual(first.rows[0].evidenceFingerprint, first.rows[1].evidenceFingerprint);
+  assert.deepEqual(first.rows.map((row) => row.evidenceFingerprint), replay.rows.map((row) => row.evidenceFingerprint));
+});

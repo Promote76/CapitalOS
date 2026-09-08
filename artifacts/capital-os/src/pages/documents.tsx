@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'wouter';
+import { useRef } from 'react';
 import {
   normalizeReviewQueueItem,
   queueItemDestination,
@@ -47,6 +48,7 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
   const { data: queueData, refetch: refetchQueue } = useListFinancialReviewQueue();
   const reviewDoc = useReviewFinancialDocument();
   const reviewTx = useReviewBankStatementTransaction();
+  const reviewKeys = useRef(new Map<string, string>());
 
   const documents = docsData?.documents || [];
   const queueItems = (queueData?.items || []).map(normalizeReviewQueueItem);
@@ -65,19 +67,29 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
     }
   };
 
-  const handleTxReview = async (id: string, action: 'APPROVE' | 'REJECT' | 'RECLASSIFY' | 'MARK_TRANSFER', reason: string) => {
+  const handleTxReview = async (
+    id: string,
+    action: 'APPROVE' | 'REJECT' | 'RECLASSIFY' | 'MARK_TRANSFER',
+    reason: string,
+    correctedValue?: Record<string, unknown>,
+  ) => {
+    const key = `${id}:${action}`;
+    const idempotencyKey = reviewKeys.current.get(key) ?? crypto.randomUUID();
+    reviewKeys.current.set(key, idempotencyKey);
     try {
       await reviewTx.mutateAsync({
         transactionId: id,
         data: { 
           action, 
           reason,
-          idempotencyKey: `${id}-${Date.now()}`
+          idempotencyKey,
+          correctedValue,
         }
       });
       toast({ title: `Transaction action: ${action.toLowerCase()}` });
       refetchQueue();
       refetchDocs();
+      reviewKeys.current.delete(key);
     } catch (err: any) {
       toast({ title: 'Review failed', description: err.message, variant: 'destructive' });
     }
@@ -143,7 +155,7 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
             ) : (
               <div className="document-list">
                 {documents.map(doc => (
-                  <div key={doc.id} className="document-row !py-2">
+                  <div key={doc.id} className="document-row !py-2 !items-start">
                     <div className="min-w-0 flex-1">
                       <strong className="truncate block" title={doc.sourceFileName}>{doc.sourceFileName}</strong>
                       <span className="truncate block">{doc.documentType.replace(/_/g, ' ')}</span>
@@ -152,6 +164,33 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
                           {doc.status}
                         </span>
                       </div>
+                      {doc.bankStatement && (
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs" data-testid={`statement-summary-${doc.id}`}>
+                          <EvidenceAmount label="Opening" value={doc.bankStatement.openingBalance} />
+                          <EvidenceAmount label="Closing" value={doc.bankStatement.closingBalance} />
+                          <EvidenceAmount label="Deposits" value={doc.bankStatement.totalDeposits} />
+                          <EvidenceAmount label="Withdrawals" value={doc.bankStatement.totalWithdrawals} />
+                        </div>
+                      )}
+                      {doc.transactions?.map((transaction) => (
+                        <div key={transaction.id} className="mt-3 rounded-md border border-[var(--line)] p-3 text-xs" data-testid={`statement-transaction-${transaction.id}`}>
+                          <div className="flex items-center justify-between gap-3">
+                            <strong>{transaction.description}</strong>
+                            <span>{transaction.direction === 'withdrawal' ? '−' : '+'}${transaction.amount}</span>
+                          </div>
+                          <div className="mt-1 text-[var(--ink-soft)]">
+                            {transaction.postedDate ?? 'Date unavailable'} · {transaction.sourcePage ? `page ${transaction.sourcePage}, ` : ''}line {transaction.sourceLine ?? 'unknown'} · {transaction.parserVersion}
+                          </div>
+                          <div className="mt-1 text-[var(--ink-soft)]">
+                            Original: {JSON.stringify(transaction.originalValue)}
+                          </div>
+                          {transaction.correctionHistory.length > 0 && (
+                            <div className="mt-1 text-[var(--ink-soft)]">
+                              {transaction.correctionHistory.length} correction{transaction.correctionHistory.length === 1 ? '' : 's'} preserved
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -164,6 +203,10 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
   );
 }
 
+function EvidenceAmount({ label, value }: { label: string; value: string }) {
+  return <div><span className="text-[var(--ink-soft)]">{label}</span><div className="font-medium">${value}</div></div>;
+}
+
 function QueueItemActions({
   item,
   handleDocReview,
@@ -171,7 +214,7 @@ function QueueItemActions({
 }: {
   item: ReviewQueueItem | undefined;
   handleDocReview: (id: string, decision: 'VERIFIED' | 'REJECTED', reason: string) => Promise<void>;
-  handleTxReview: (id: string, action: 'APPROVE' | 'REJECT' | 'RECLASSIFY' | 'MARK_TRANSFER', reason: string) => Promise<void>;
+  handleTxReview: (id: string, action: 'APPROVE' | 'REJECT' | 'RECLASSIFY' | 'MARK_TRANSFER', reason: string, correctedValue?: Record<string, unknown>) => Promise<void>;
 }) {
   if (!item) return <span className="document-pending-note">Specialized review required</span>;
 
@@ -184,6 +227,12 @@ function QueueItemActions({
     case 'bank_statement_transaction':
       return <>
         <button className="btn btn-primary" onClick={() => handleTxReview(item.id, 'APPROVE', 'Matches statement')}><Check size={14} /> Approve</button>
+        <button className="btn" onClick={() => {
+          const amount = window.prompt('Correct amount (for example, 12.34)');
+          if (amount && /^\d+\.\d{2}$/.test(amount)) {
+            void handleTxReview(item.id, 'RECLASSIFY', 'Reviewer corrected extracted amount', { amount });
+          }
+        }}>Correct amount</button>
         <button className="btn" onClick={() => handleTxReview(item.id, 'MARK_TRANSFER', 'Internal transfer')}><ArrowRightLeft size={14} /> Mark Transfer</button>
         <button className="btn" onClick={() => handleTxReview(item.id, 'REJECT', 'Fraud/Error')}><X size={14} /> Reject</button>
       </>;

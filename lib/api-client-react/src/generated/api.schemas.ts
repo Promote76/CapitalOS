@@ -7,12 +7,90 @@
  */
 export type FinancialDocumentSourceMetadata = { [key: string]: unknown };
 
+export interface BankStatementEvidence {
+  id: string;
+  documentId: string;
+  /** @nullable */
+  accountId?: string | null;
+  /** @nullable */
+  institutionName?: string | null;
+  /** @nullable */
+  accountDisplayName?: string | null;
+  /** @nullable */
+  accountMask?: string | null;
+  /** @nullable */
+  statementStart?: string | null;
+  /** @nullable */
+  statementEnd?: string | null;
+  openingBalance: string;
+  closingBalance: string;
+  totalDeposits: string;
+  totalWithdrawals: string;
+  status: string;
+  createdAt: string;
+}
+
 /**
  * @nullable
  */
-export type FinancialDocumentBankStatement = { [key: string]: unknown } | null;
+export type BankStatementTransactionCorrectionPreviousValue = { [key: string]: unknown } | null;
 
-export type FinancialDocumentTransactionsItem = { [key: string]: unknown };
+export type BankStatementTransactionCorrectionCorrectedValue = { [key: string]: unknown };
+
+export interface BankStatementTransactionCorrection {
+  id: string;
+  transactionId: string;
+  revision: number;
+  /** @nullable */
+  previousValue?: BankStatementTransactionCorrectionPreviousValue;
+  correctedValue: BankStatementTransactionCorrectionCorrectedValue;
+  reason: string;
+  correctedAt: string;
+}
+
+export type BankStatementTransactionEvidenceOriginalValue = { [key: string]: unknown };
+
+/**
+ * @nullable
+ */
+export type BankStatementTransactionEvidenceCorrectedValue = { [key: string]: unknown } | null;
+
+export interface BankStatementTransactionEvidence {
+  id: string;
+  bankStatementDocumentId: string;
+  /** @nullable */
+  postedDate?: string | null;
+  description: string;
+  amount: string;
+  /** @nullable */
+  direction: string | null;
+  /** @nullable */
+  runningBalance?: string | null;
+  /** @nullable */
+  reference?: string | null;
+  /** @nullable */
+  confidence: string | null;
+  /** @nullable */
+  sourcePage?: number | null;
+  /** @nullable */
+  sourceLine: number | null;
+  /** @nullable */
+  sourceRegion: string | null;
+  parserVersion: string;
+  evidenceFingerprint: string;
+  reviewStatus: string;
+  originalValue: BankStatementTransactionEvidenceOriginalValue;
+  /** @nullable */
+  correctedValue?: BankStatementTransactionEvidenceCorrectedValue;
+  /** @nullable */
+  correctionReason?: string | null;
+  /** @nullable */
+  reviewedAt?: string | null;
+  /** @nullable */
+  linkedSettlementDocumentId?: string | null;
+  createdAt: string;
+  correctionHistory: BankStatementTransactionCorrection[];
+}
 
 export interface FinancialDocument {
   id: string;
@@ -44,9 +122,8 @@ export interface FinancialDocument {
   reviewDecision?: string | null;
   /** @nullable */
   reviewReason?: string | null;
-  /** @nullable */
-  bankStatement?: FinancialDocumentBankStatement;
-  transactions?: FinancialDocumentTransactionsItem[];
+  bankStatement?: BankStatementEvidence | null;
+  transactions?: BankStatementTransactionEvidence[];
 }
 
 export interface FinancialDocumentList {
@@ -99,6 +176,7 @@ export interface FinancialDocumentUploadTarget {
   documentType: string;
   uploadURL: string;
   objectPath: string;
+  uploadGrant: string;
 }
 
 export interface FinancialDocumentIngestInput {
@@ -116,6 +194,11 @@ export interface FinancialDocumentIngestInput {
      * @maximum 52428800
      */
   sourceSizeBytes: number;
+  /**
+     * @minLength 40
+     * @maxLength 2048
+     */
+  uploadGrant: string;
   businessId?: string;
   sourceInstitution?: string;
   accountId?: string;
@@ -177,22 +260,6 @@ export interface BankStatementTransactionReviewInput {
   correctedValue?: BankStatementTransactionReviewInputCorrectedValue;
   /** @pattern ^[0-9a-fA-F-]{36}$ */
   settlementDocumentId?: string;
-}
-
-export type BankStatementTransactionEvidenceOriginalValue = { [key: string]: unknown };
-
-/**
- * @nullable
- */
-export type BankStatementTransactionEvidenceCorrectedValue = { [key: string]: unknown } | null;
-
-export interface BankStatementTransactionEvidence {
-  id: string;
-  description: string;
-  reviewStatus: string;
-  originalValue: BankStatementTransactionEvidenceOriginalValue;
-  /** @nullable */
-  correctedValue?: BankStatementTransactionEvidenceCorrectedValue;
 }
 
 export interface BudgetPlanningVersionInput {

@@ -73,6 +73,20 @@ function parseRows(matrix: unknown[][]): ParsedStatement {
   }
   return { ...empty, rows };
 }
+function distinguishRepeatedRows(parsed: ParsedStatement): ParsedStatement {
+  const occurrences = new Map<string, number>();
+  return {
+    ...parsed,
+    rows: parsed.rows.map((row) => {
+      const occurrence = (occurrences.get(row.evidenceFingerprint) ?? 0) + 1;
+      occurrences.set(row.evidenceFingerprint, occurrence);
+      return {
+        ...row,
+        evidenceFingerprint: createHash("sha256").update(`${row.evidenceFingerprint}:${occurrence}`).digest("hex"),
+      };
+    }),
+  };
+}
 async function pdfText(bytes: Buffer) {
   return new Promise<string>((resolve, reject) => {
     const child = spawn("pdftotext", ["-layout", "-", "-"]); const output: Buffer[] = []; const errors: Buffer[] = [];
@@ -91,15 +105,54 @@ function pdfStatement(text: string): ParsedStatement {
     if (!headerLine) { if (lines.some((line) => /\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/.test(line))) result.errors.push(`Page ${page + 1} has transaction-like text without an unambiguous column header.`); continue; }
     const debitCredit = /\bdebit\b/i.test(headerLine) && /\bcredit\b/i.test(headerLine);
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
-      const raw = lines[lineIndex].replace(/\s+/g, " ").trim();
+      const sourceLine = lines[lineIndex];
+      if (debitCredit) {
+        const normalizedHeader = headerLine.toLowerCase();
+        const debitStart = normalizedHeader.indexOf("debit");
+        const creditStart = normalizedHeader.indexOf("credit");
+        const balanceStart = normalizedHeader.indexOf("balance");
+        if (debitStart < 0 || creditStart <= debitStart || balanceStart <= creditStart) {
+          result.errors.push(`Page ${page + 1} has an ambiguous debit/credit header layout.`);
+          continue;
+        }
+        const dateMatch = sourceLine.match(/^\s*(\d{1,2}[/-]\d{1,2}[/-]\d{4}|\d{4}[/-]\d{1,2}[/-]\d{1,2})\s+/);
+        if (!dateMatch) continue;
+        const moneyMatches = [...sourceLine.matchAll(/(?:-|\()?\$?[\d,]+\.\d{1,2}\)?/g)];
+        if (moneyMatches.length !== 2) {
+          result.errors.push(`Page ${page + 1}, line ${lineIndex + 1} has an ambiguous debit/credit amount.`);
+          continue;
+        }
+        const [transactionMatch, balanceMatch] = moneyMatches;
+        const transactionColumn = transactionMatch.index ?? -1;
+        const debitDistance = Math.abs(transactionColumn - debitStart);
+        const creditDistance = Math.abs(transactionColumn - creditStart);
+        if (debitDistance === creditDistance || transactionColumn >= balanceStart) {
+          result.errors.push(`Page ${page + 1}, line ${lineIndex + 1} has an ambiguous debit/credit column.`);
+          continue;
+        }
+        const postedDate = date(dateMatch[1]);
+        if (!postedDate) continue;
+        const direction: Direction = debitDistance < creditDistance ? "withdrawal" : "deposit";
+        const amount = cents(transactionMatch[0])!.replace(/^-/, "");
+        const runningBalance = cents(balanceMatch[0]);
+        const description = sourceLine.slice(dateMatch[0].length, transactionColumn).trim();
+        if (!description) {
+          result.errors.push(`Page ${page + 1}, line ${lineIndex + 1} is missing a transaction description.`);
+          continue;
+        }
+        const raw = sourceLine.replace(/\s+/g, " ").trim();
+        result.rows.push({ postedDate, description, amount, direction, runningBalance, reference: null, sourcePage: page + 1, sourceLine: lineIndex + 1, sourceRegion: `page:${page + 1};line:${lineIndex + 1}`, originalValue: { text: raw, page: page + 1, line: lineIndex + 1, layout: "debit_credit" }, evidenceFingerprint: createHash("sha256").update(JSON.stringify([postedDate, description.toLowerCase(), amount, direction])).digest("hex") });
+        continue;
+      }
+      const raw = sourceLine.replace(/\s+/g, " ").trim();
       const match = raw.match(/^(\d{1,2}[/-]\d{1,2}[/-]\d{4}|\d{4}[/-]\d{1,2}[/-]\d{1,2})\s+(.+?)\s+((?:-|\()?\$?[\d,]+(?:\.\d{1,2})?\)?)(?:\s+((?:-|\()?\$?[\d,]+(?:\.\d{1,2})?\)?))?(?:\s+((?:-|\()?\$?[\d,]+(?:\.\d{1,2})?\)?))?$/);
       if (!match) continue;
       const postedDate = date(match[1]); const description = match[2]; const first = cents(match[3]); const second = cents(match[4]); const third = cents(match[5]);
-      if (!postedDate || !first || !description || (debitCredit ? (!second || third !== null) : (second !== null && third !== null))) { result.errors.push(`Page ${page + 1}, line ${lineIndex + 1} has an ambiguous transaction layout.`); continue; }
-      const direction: Direction = debitCredit ? "withdrawal" : first.startsWith("-") ? "withdrawal" : "deposit";
+      if (!postedDate || !first || !description || (second !== null && third !== null)) { result.errors.push(`Page ${page + 1}, line ${lineIndex + 1} has an ambiguous transaction layout.`); continue; }
+      const direction: Direction = first.startsWith("-") ? "withdrawal" : "deposit";
       const amount = first.replace(/^-/, "");
-      const runningBalance = debitCredit ? second : second;
-      const originalValue = { text: raw, page: page + 1, line: lineIndex + 1, layout: debitCredit ? "debit_credit" : "signed_amount" };
+      const runningBalance = second;
+      const originalValue = { text: raw, page: page + 1, line: lineIndex + 1, layout: "signed_amount" };
       result.rows.push({ postedDate, description, amount, direction, runningBalance, reference: null, sourcePage: page + 1, sourceLine: lineIndex + 1, sourceRegion: `page:${page + 1};line:${lineIndex + 1}`, originalValue, evidenceFingerprint: createHash("sha256").update(JSON.stringify([postedDate, description.toLowerCase(), amount, direction])).digest("hex") });
     }
   }
@@ -114,13 +167,13 @@ function pdfStatement(text: string): ParsedStatement {
 export async function parseBankStatement(bytes: Buffer, contentType: string): Promise<ParsedStatement> {
   if (contentType === "application/pdf") {
     if (bytes.subarray(0, 5).toString("ascii") !== "%PDF-") return { rows: [], errors: ["File is not a valid PDF bank statement."], openingBalance: null, closingBalance: null, totalDeposits: null, totalWithdrawals: null };
-    try { return pdfStatement(await pdfText(bytes)); } catch { return { rows: [], errors: ["PDF text extraction failed; encrypted, image-only, or corrupt statements require manual review."], openingBalance: null, closingBalance: null, totalDeposits: null, totalWithdrawals: null }; }
+    try { return distinguishRepeatedRows(pdfStatement(await pdfText(bytes))); } catch { return { rows: [], errors: ["PDF text extraction failed; encrypted, image-only, or corrupt statements require manual review."], openingBalance: null, closingBalance: null, totalDeposits: null, totalWithdrawals: null }; }
   }
   try {
-    if (contentType === "text/csv") return parseRows(csvMatrix(bytes.toString("utf8")));
+    if (contentType === "text/csv") return distinguishRepeatedRows(parseRows(csvMatrix(bytes.toString("utf8"))));
     const workbook = XLSX.read(bytes, { type: "buffer", raw: false });
     if (workbook.SheetNames.length !== 1) return { rows: [], errors: ["XLSX must contain exactly one transaction worksheet."], openingBalance: null, closingBalance: null, totalDeposits: null, totalWithdrawals: null };
-    return parseRows(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: "" }) as unknown[][]);
+    return distinguishRepeatedRows(parseRows(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: "" }) as unknown[][]));
   } catch { return { rows: [], errors: ["Statement file could not be parsed as structured CSV/XLSX."] , openingBalance: null, closingBalance: null, totalDeposits: null, totalWithdrawals: null }; }
 }
 function csvMatrix(text: string): string[][] {

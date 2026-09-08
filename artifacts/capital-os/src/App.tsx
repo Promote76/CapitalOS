@@ -2056,7 +2056,7 @@ function BudgetPlanningControlCenter() {
   );
 }
 
-function ActiveBudgetPage() {
+function _DuplicateActiveBudgetPage() {
   const query = useGetBudget();
   const safe = useGetSafeToDeploy();
   const capitalGovernor = useGetCapitalGovernorV2();
@@ -3047,7 +3047,7 @@ function FinancialDocumentInboxPage() {
       const target = await requestUpload.mutateAsync({ data: { name: file.name, size: file.size, contentType, documentType } });
       const stored = await fetch(target.uploadURL, { method: 'PUT', headers: { 'Content-Type': target.contentType }, body: file });
       if (!stored.ok) throw new Error('The file could not be uploaded to App Storage.');
-      await ingest.mutateAsync({ data: { documentType, sourceFileName: file.name, sourceObjectPath: target.objectPath, contentType: target.contentType, sourceSizeBytes: file.size, sourceInstitution: selected.institution || undefined } });
+      await ingest.mutateAsync({ data: { documentType, sourceFileName: file.name, sourceObjectPath: target.objectPath, contentType: target.contentType, sourceSizeBytes: file.size, uploadGrant: target.uploadGrant, sourceInstitution: selected.institution || undefined } });
       await refresh(); setMessage('Evidence uploaded. It will remain separate from planning totals until reviewed.'); setFile(null);
     } catch (cause) {
       const detail = cause instanceof Error ? cause.message : 'The financial document could not be ingested.';

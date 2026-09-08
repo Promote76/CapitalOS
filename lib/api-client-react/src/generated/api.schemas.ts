@@ -3699,7 +3699,15 @@ export interface BusinessSettlementDocument {
   sourceObjectPath: string | null;
   /** @nullable */
   sourceSha256: string | null;
+  /** @nullable */
+  sourceContentType?: string | null;
+  /** @nullable */
+  sourceSizeBytes?: number | null;
+  /** @nullable */
+  sourcePageCount?: number | null;
   extractionStatus: string;
+  /** @nullable */
+  extractionReason?: string | null;
   verificationStatus: string;
   reportedGross: string;
   reportedDeductions: string;
@@ -3753,6 +3761,7 @@ export interface ProfitLossDocumentInput {
 export interface BusinessProfitLossDocument {
   id: string;
   businessId: string;
+  sourceKind: string;
   statementPeriodStart: string;
   statementPeriodEnd: string;
   /** @nullable */
@@ -3761,6 +3770,16 @@ export interface BusinessProfitLossDocument {
   sourceObjectPath: string | null;
   /** @nullable */
   sourceSha256: string | null;
+  /** @nullable */
+  sourceContentType: string | null;
+  /** @nullable */
+  sourceSizeBytes: number | null;
+  /** @nullable */
+  sourcePageCount: number | null;
+  extractionStatus: string;
+  /** @nullable */
+  extractionReason: string | null;
+  verificationStatus: string;
   reportedRevenue: string;
   reportedExpenses: string;
   reportedProfit: string;
@@ -3768,6 +3787,7 @@ export interface BusinessProfitLossDocument {
   createdAt: string;
 }
 
+export type BusinessIncomeDocumentUploadInputContentType = typeof BusinessIncomeDocumentUploadInputContentType[keyof typeof BusinessIncomeDocumentUploadInputContentType];
 export interface BusinessIncomePeriodReconciliationInput {
   businessId: string;
   statementPeriodStart: string;
@@ -5600,3 +5620,91 @@ export const ExportDailyOpsHistoryCadence = {
   MONTH: 'MONTH',
 } as const;
 
+
+export const BusinessIncomeDocumentIngestResultDocumentType = {
+  settlement: 'settlement',
+  profit_loss: 'profit_loss',
+} as const;
+
+export interface BusinessIncomeDocumentUpload {
+  uploadURL: string;
+  objectPath: string;
+  name: string;
+  size: number;
+  contentType: string;
+  documentType: BusinessIncomeDocumentUploadDocumentType;
+}
+
+export interface BusinessIncomeDocumentIngestResult {
+  documentType: BusinessIncomeDocumentIngestResultDocumentType;
+  documentId: string;
+  extractionStatus: string;
+  verificationStatus: string;
+  message: string;
+}
+
+export const BusinessIncomeDocumentUploadInputDocumentType = {
+  settlement: 'settlement',
+  profit_loss: 'profit_loss',
+} as const;
+
+export interface BusinessIncomeDocumentIngestInput {
+  businessId: string;
+  documentType: BusinessIncomeDocumentIngestInputDocumentType;
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  sourceFileName: string;
+  /** @pattern ^/objects/uploads/[0-9a-fA-F-]{36}$ */
+  sourceObjectPath: string;
+  contentType: BusinessIncomeDocumentIngestInputContentType;
+  /**
+     * @minimum 1
+     * @maximum 10485760
+     */
+  sourceSizeBytes: number;
+}
+
+export const BusinessIncomeDocumentIngestInputDocumentType = {
+  settlement: 'settlement',
+  profit_loss: 'profit_loss',
+} as const;
+
+export const BusinessIncomeDocumentIngestInputContentType = {
+  'application/pdf': 'application/pdf',
+} as const;
+
+export type BusinessIncomeDocumentUploadDocumentType = typeof BusinessIncomeDocumentUploadDocumentType[keyof typeof BusinessIncomeDocumentUploadDocumentType];
+
+export type BusinessIncomeDocumentIngestResultDocumentType = typeof BusinessIncomeDocumentIngestResultDocumentType[keyof typeof BusinessIncomeDocumentIngestResultDocumentType];
+
+export type BusinessIncomeDocumentUploadInputDocumentType = typeof BusinessIncomeDocumentUploadInputDocumentType[keyof typeof BusinessIncomeDocumentUploadInputDocumentType];
+
+export const BusinessIncomeDocumentUploadDocumentType = {
+  settlement: 'settlement',
+  profit_loss: 'profit_loss',
+} as const;
+
+export type BusinessIncomeDocumentIngestInputDocumentType = typeof BusinessIncomeDocumentIngestInputDocumentType[keyof typeof BusinessIncomeDocumentIngestInputDocumentType];
+
+export type BusinessIncomeDocumentIngestInputContentType = typeof BusinessIncomeDocumentIngestInputContentType[keyof typeof BusinessIncomeDocumentIngestInputContentType];
+
+export const BusinessIncomeDocumentUploadInputContentType = {
+  'application/pdf': 'application/pdf',
+} as const;
+
+export interface BusinessIncomeDocumentUploadInput {
+  /**
+     * @minLength 1
+     * @maxLength 255
+     */
+  name: string;
+  /**
+     * @minimum 1
+     * @maximum 10485760
+     */
+  size: number;
+  contentType: BusinessIncomeDocumentUploadInputContentType;
+  documentType: BusinessIncomeDocumentUploadInputDocumentType;
+}

@@ -23,7 +23,15 @@ export interface BusinessSettlementDocument {
   sourceObjectPath: string | null;
   /** @nullable */
   sourceSha256: string | null;
+  /** @nullable */
+  sourceContentType?: string | null;
+  /** @nullable */
+  sourceSizeBytes?: number | null;
+  /** @nullable */
+  sourcePageCount?: number | null;
   extractionStatus: string;
+  /** @nullable */
+  extractionReason?: string | null;
   verificationStatus: string;
   reportedGross: string;
   reportedDeductions: string;

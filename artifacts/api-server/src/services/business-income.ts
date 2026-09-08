@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, ne, or, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   auditEvents,
@@ -35,6 +35,8 @@ import {
   verifiedIncomeFromApprovedDraw,
 } from "../domain/business-income";
 import { centsToMoney, parseMoneyToCents } from "../domain/finance";
+import { assertPrivateObjectPath, downloadBusinessDocument, requestBusinessDocumentUpload } from "../lib/business-document-storage";
+import { parseBusinessPdf } from "./business-document-parser";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const dateOnly = (value: string | Date | null | undefined) => value == null ? undefined : value instanceof Date ? value.toISOString().slice(0, 10) : value;
@@ -100,6 +102,19 @@ export async function getBusinessIncomeIntelligence(actor: Actor) {
   };
 }
 
+export async function requestBusinessIncomeDocumentUploadUrl(actor: Actor, input: {
+  name: string;
+  size: number;
+  contentType: string;
+  documentType: "settlement" | "profit_loss";
+}) {
+  assertPermission(actor.role, "contribute");
+  if (input.contentType !== "application/pdf" || !input.name.toLowerCase().endsWith(".pdf")) {
+    throw new GovernanceError("INVALID_STATE", "Only PDF business source documents are supported");
+  }
+  return { ...input, ...(await requestBusinessDocumentUpload()) };
+}
+
 type SettlementInput = {
   businessId: string;
   statementPeriodStart: string | Date;
@@ -113,6 +128,12 @@ type SettlementInput = {
   reportedDeductions?: string;
   reportedNet?: string;
   notes?: string;
+  extractionStatus?: string;
+  extractionReason?: string;
+  verificationStatus?: string;
+  sourceContentType?: string;
+  sourceSizeBytes?: number;
+  sourcePageCount?: number;
   revenueLines: Array<{ description: string; category?: string; amount: string; quantity?: string; unitAmount?: string; serviceDate?: string | Date; sourcePage?: number }>;
   deductionLines: Array<{ description: string; category?: string; amount: string; taxDeduction?: boolean; passThrough?: boolean; ownerDraw?: boolean; reimbursement?: boolean; sourcePage?: number }>;
 };
@@ -121,6 +142,12 @@ export async function createSettlementDocument(actor: Actor, input: SettlementIn
   assertPermission(actor.role, "contribute");
   const business = await assertBusiness(actor.householdId, input.businessId);
   const math = reconcileSettlementMath(input);
+  const persistedMathStatus = input.extractionStatus && input.extractionStatus !== "complete" && input.extractionStatus !== "manual"
+    ? "needs_review"
+    : math.status;
+  const persistedMathReason = persistedMathStatus === "needs_review" && persistedMathStatus !== math.status
+    ? input.extractionReason ?? "Source extraction requires operator review."
+    : math.reason;
   return db.transaction(async (tx) => {
     if (input.sourceSha256) {
       const [existing] = await tx.select().from(settlementDocuments).where(and(
@@ -140,13 +167,19 @@ export async function createSettlementDocument(actor: Actor, input: SettlementIn
       sourceFileName: input.sourceFileName,
       sourceObjectPath: input.sourceObjectPath,
       sourceSha256: input.sourceSha256,
+      sourceContentType: input.sourceContentType,
+      sourceSizeBytes: input.sourceSizeBytes,
+      sourcePageCount: input.sourcePageCount,
+      extractionStatus: input.extractionStatus ?? "manual",
+      extractionReason: input.extractionReason,
+      verificationStatus: input.verificationStatus ?? (persistedMathStatus === "reconciled" ? "verified" : "needs_review"),
       reportedGross: input.reportedGross ?? centsToMoney(math.revenueLineTotalCents),
       reportedDeductions: input.reportedDeductions ?? centsToMoney(math.deductionLineTotalCents),
       reportedNet: input.reportedNet ?? centsToMoney(math.calculatedNetCents),
       notes: input.notes,
       createdBy: actor.userId,
     }).returning();
-    await tx.insert(settlementRevenueLines).values(input.revenueLines.map((line, index) => ({
+    if (input.revenueLines.length > 0) await tx.insert(settlementRevenueLines).values(input.revenueLines.map((line, index) => ({
       householdId: actor.householdId,
       settlementDocumentId: document.id,
       lineNumber: index + 1,
@@ -158,7 +191,7 @@ export async function createSettlementDocument(actor: Actor, input: SettlementIn
       serviceDate: dateOnly(line.serviceDate),
       sourcePage: line.sourcePage,
     })));
-    await tx.insert(settlementDeductionLines).values(input.deductionLines.map((line, index) => ({
+    if (input.deductionLines.length > 0) await tx.insert(settlementDeductionLines).values(input.deductionLines.map((line, index) => ({
       householdId: actor.householdId,
       settlementDocumentId: document.id,
       lineNumber: index + 1,
@@ -179,10 +212,10 @@ export async function createSettlementDocument(actor: Actor, input: SettlementIn
       calculatedNet: centsToMoney(math.calculatedNetCents),
       reportedNet: input.reportedNet ?? centsToMoney(math.calculatedNetCents),
       variance: centsToMoney(math.netVarianceCents),
-      status: math.status,
-      reason: math.reason,
+       status: persistedMathStatus,
+       reason: persistedMathReason,
     }).returning();
-    if (math.status !== "reconciled") {
+     if (persistedMathStatus !== "reconciled") {
       await tx.insert(businessIncomeAnomalies).values({
         householdId: actor.householdId,
         businessId: business.id,
@@ -190,7 +223,7 @@ export async function createSettlementDocument(actor: Actor, input: SettlementIn
         severity: "error",
         relatedEntityType: "settlement_document",
         relatedEntityId: document.id,
-        message: math.reason,
+         message: persistedMathReason,
       });
     }
     await tx.insert(auditEvents).values({
@@ -199,8 +232,8 @@ export async function createSettlementDocument(actor: Actor, input: SettlementIn
       actor: actor.userId,
       entity: "business_settlement_document",
       entityId: document.id,
-      reason: math.reason,
-      metadata: { businessId: business.id, mathStatus: math.status, sourceKind: document.sourceKind },
+       reason: persistedMathReason,
+       metadata: { businessId: business.id, mathStatus: persistedMathStatus, sourceKind: document.sourceKind, extractionStatus: document.extractionStatus },
     });
     return settlementResponse(document, mathRow);
   });
@@ -213,6 +246,14 @@ type ProfitLossInput = {
   sourceFileName?: string;
   sourceObjectPath?: string;
   sourceSha256?: string;
+  sourceKind?: string;
+  sourceContentType?: string;
+  sourceSizeBytes?: number;
+  sourcePageCount?: number;
+  extractionStatus?: string;
+  extractionReason?: string;
+  verificationStatus?: string;
+  allowReview?: boolean;
   reportedRevenue: string;
   reportedExpenses: string;
   reportedProfit: string;
@@ -223,10 +264,17 @@ export async function createProfitLossDocument(actor: Actor, input: ProfitLossIn
   assertPermission(actor.role, "contribute");
   await assertBusiness(actor.householdId, input.businessId);
   const calculated = parseMoneyToCents(input.reportedRevenue) - parseMoneyToCents(input.reportedExpenses);
-  if (calculated !== parseMoneyToCents(input.reportedProfit)) {
+  if (!input.allowReview && calculated !== parseMoneyToCents(input.reportedProfit)) {
     throw new Error("Reported P&L revenue minus expenses must equal reported profit");
   }
   return db.transaction(async (tx) => {
+    if (input.sourceSha256) {
+      const [existing] = await tx.select({ id: profitLossDocuments.id }).from(profitLossDocuments).where(and(
+        eq(profitLossDocuments.householdId, actor.householdId),
+        eq(profitLossDocuments.sourceSha256, input.sourceSha256),
+      )).limit(1);
+      if (existing) throw new GovernanceError("CONFLICT", "This source document was already recorded");
+    }
     const [document] = await tx.insert(profitLossDocuments).values({
       householdId: actor.householdId,
       businessId: input.businessId,
@@ -235,13 +283,20 @@ export async function createProfitLossDocument(actor: Actor, input: ProfitLossIn
       sourceFileName: input.sourceFileName,
       sourceObjectPath: input.sourceObjectPath,
       sourceSha256: input.sourceSha256,
+      sourceKind: input.sourceKind ?? (input.sourceObjectPath ? "object_storage" : "manual"),
+      sourceContentType: input.sourceContentType,
+      sourceSizeBytes: input.sourceSizeBytes,
+      sourcePageCount: input.sourcePageCount,
+      extractionStatus: input.extractionStatus ?? "manual",
+      extractionReason: input.extractionReason,
+      verificationStatus: input.verificationStatus ?? "needs_review",
       reportedRevenue: input.reportedRevenue,
       reportedExpenses: input.reportedExpenses,
       reportedProfit: input.reportedProfit,
       status: "needs_review",
       createdBy: actor.userId,
     }).returning();
-    await tx.insert(profitLossLines).values(input.lines.map((line, index) => ({
+     if (input.lines.length > 0) await tx.insert(profitLossLines).values(input.lines.map((line, index) => ({
       householdId: actor.householdId,
       profitLossDocumentId: document.id,
       lineNumber: index + 1,
@@ -249,18 +304,113 @@ export async function createProfitLossDocument(actor: Actor, input: ProfitLossIn
       category: line.category ?? "other",
       lineType: line.lineType ?? "expense",
       amount: line.amount,
-    })));
+     })));
     await tx.insert(auditEvents).values({
       householdId: actor.householdId,
       eventType: "business_profit_loss_recorded",
       actor: actor.userId,
       entity: "business_profit_loss_document",
       entityId: document.id,
-      reason: "Business P&L document recorded for reconciliation review",
-      metadata: { businessId: input.businessId },
+       reason: input.extractionReason ?? "Business P&L document recorded for reconciliation review",
+       metadata: { businessId: input.businessId, extractionStatus: document.extractionStatus, verificationStatus: document.verificationStatus },
     });
+      if (document.sourceKind === "object_storage" && (document.extractionStatus !== "complete" || document.verificationStatus !== "verified")) {
+       await tx.insert(businessIncomeAnomalies).values({
+         householdId: actor.householdId,
+         businessId: input.businessId,
+         anomalyType: "profit_loss_extraction_review",
+         severity: "error",
+         relatedEntityType: "profit_loss_document",
+         relatedEntityId: document.id,
+         message: input.extractionReason ?? "P&L source extraction requires review before an owner draw.",
+       });
+     }
     return hideHousehold(document);
   });
+}
+
+export async function ingestBusinessIncomeDocument(actor: Actor, input: {
+  businessId: string;
+  documentType: "settlement" | "profit_loss";
+  sourceFileName: string;
+  sourceObjectPath: string;
+  contentType: string;
+  sourceSizeBytes: number;
+}) {
+  assertPermission(actor.role, "contribute");
+  await assertBusiness(actor.householdId, input.businessId);
+  assertPrivateObjectPath(input.sourceObjectPath);
+  const { bytes, sha256 } = await downloadBusinessDocument(input.sourceObjectPath);
+  const parsed = await parseBusinessPdf(bytes, input.documentType);
+  const start = parsed.statementPeriodStart ?? today();
+  const end = parsed.statementPeriodEnd ?? start;
+  const metadata = {
+    sourceFileName: input.sourceFileName,
+    sourceObjectPath: input.sourceObjectPath,
+    sourceSha256: sha256,
+    sourceContentType: input.contentType,
+    sourceSizeBytes: bytes.length,
+    sourcePageCount: parsed.pageCount ?? undefined,
+    extractionStatus: parsed.extractionStatus,
+    extractionReason: parsed.reason,
+  };
+  if (input.documentType === "settlement") {
+    const document = await createSettlementDocument(actor, {
+      businessId: input.businessId,
+      statementPeriodStart: start,
+      statementPeriodEnd: end,
+      paidDate: parsed.paidDate ?? end,
+      provider: parsed.provider ?? undefined,
+      ...metadata,
+      reportedGross: parsed.gross ?? "0.00",
+      reportedDeductions: parsed.deductions ?? "0.00",
+      reportedNet: parsed.net ?? "0.00",
+      verificationStatus: parsed.extractionStatus === "complete" ? undefined : "needs_review",
+      revenueLines: parsed.revenueLines,
+      deductionLines: parsed.deductionLines,
+      notes: parsed.reason,
+    });
+    return {
+      documentType: input.documentType,
+      documentId: document.id,
+      extractionStatus: document.extractionStatus,
+      verificationStatus: document.verificationStatus,
+      message: parsed.reason,
+    };
+  }
+  const reportedRevenue = parsed.revenue ?? "0.00";
+  const reportedExpenses = parsed.expenses ?? "0.00";
+  const reportedProfit = parsed.profit ?? "0.00";
+  const calculated = parseMoneyToCents(reportedRevenue) - parseMoneyToCents(reportedExpenses);
+  const mathMatches = calculated === parseMoneyToCents(reportedProfit);
+  const document = await createProfitLossDocument(actor, {
+    businessId: input.businessId,
+    statementPeriodStart: start,
+    statementPeriodEnd: end,
+    ...metadata,
+    sourceKind: "object_storage",
+    reportedRevenue,
+    reportedExpenses,
+    reportedProfit,
+    extractionStatus: parsed.extractionStatus,
+    verificationStatus: parsed.extractionStatus === "complete" && mathMatches ? "verified" : "needs_review",
+    allowReview: true,
+    lines: parsed.lines.map((line) => ({
+      description: line.description,
+      amount: line.amount,
+      lineType: line.lineType,
+      category: line.lineType === "expense" ? "operating" : "revenue",
+    })),
+  });
+  return {
+    documentType: input.documentType,
+    documentId: document.id,
+    extractionStatus: document.extractionStatus,
+    verificationStatus: document.verificationStatus,
+    message: parsed.extractionStatus === "complete" && mathMatches
+      ? parsed.reason
+      : `${parsed.reason} P&L revenue minus expenses does not yet verify to profit.`,
+  };
 }
 
 export async function reconcileBusinessIncomePeriod(actor: Actor, input: {
@@ -448,6 +598,15 @@ export async function createOwnerDrawProposal(actor: Actor, input: { businessId:
       eq(settlementDocuments.businessId, input.businessId),
       eq(settlementMathReconciliations.status, "needs_review"),
     )).limit(1);
+  const [uploadedReview] = await db.select({ id: settlementDocuments.id }).from(settlementDocuments).where(and(
+    eq(settlementDocuments.householdId, actor.householdId),
+    eq(settlementDocuments.businessId, input.businessId),
+    eq(settlementDocuments.sourceKind, "object_storage"),
+    or(
+      ne(settlementDocuments.extractionStatus, "complete"),
+      ne(settlementDocuments.verificationStatus, "verified"),
+    ),
+  )).limit(1);
   const [cashMatch] = await db.select().from(settlementCashMatches).where(and(
     eq(settlementCashMatches.householdId, actor.householdId),
     eq(settlementCashMatches.businessId, input.businessId),
@@ -459,7 +618,7 @@ export async function createOwnerDrawProposal(actor: Actor, input: { businessId:
     safeToDistribute: cash?.safeToDistribute ?? "0.00",
     unresolvedAnomalies: unresolved.length,
     cashMatchStatus: cashMatch ? "needs_review" : "not_required",
-    settlementMathStatus: math ? "needs_review" : "not_required",
+    settlementMathStatus: math || uploadedReview ? "needs_review" : "not_required",
   });
   const [row] = await db.insert(ownerDrawProposals).values({
     householdId: actor.householdId,

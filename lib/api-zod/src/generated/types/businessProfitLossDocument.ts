@@ -9,6 +9,7 @@
 export interface BusinessProfitLossDocument {
   id: string;
   businessId: string;
+  sourceKind: string;
   statementPeriodStart: Date;
   statementPeriodEnd: Date;
   /** @nullable */
@@ -17,6 +18,16 @@ export interface BusinessProfitLossDocument {
   sourceObjectPath: string | null;
   /** @nullable */
   sourceSha256: string | null;
+  /** @nullable */
+  sourceContentType: string | null;
+  /** @nullable */
+  sourceSizeBytes: number | null;
+  /** @nullable */
+  sourcePageCount: number | null;
+  extractionStatus: string;
+  /** @nullable */
+  extractionReason: string | null;
+  verificationStatus: string;
   reportedRevenue: string;
   reportedExpenses: string;
   reportedProfit: string;

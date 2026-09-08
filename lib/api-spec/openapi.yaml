@@ -2846,6 +2846,43 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/BusinessIncomeIntelligence" }
+  /business/income/documents/upload-url:
+    post:
+      operationId: requestBusinessIncomeDocumentUploadUrl
+      tags: [business]
+      summary: Request a managed object-storage upload URL for a business source PDF
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessIncomeDocumentUploadInput" }
+      responses:
+        "200":
+          description: Presigned document upload
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessIncomeDocumentUpload" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /business/income/documents/ingest:
+    post:
+      operationId: ingestBusinessIncomeDocument
+      tags: [business]
+      summary: Parse a stored settlement or P&L PDF into reviewable source records
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BusinessIncomeDocumentIngestInput" }
+      responses:
+        "201":
+          description: Parsed or review-blocked business source document
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessIncomeDocumentIngestResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /business/income/settlements:
     post:
       operationId: createBusinessSettlement
@@ -5927,7 +5964,11 @@ components:
         sourceFileName: { type: ["string", "null"] }
         sourceObjectPath: { type: ["string", "null"] }
         sourceSha256: { type: ["string", "null"] }
+        sourceContentType: { type: ["string", "null"] }
+        sourceSizeBytes: { type: ["number", "null"] }
+        sourcePageCount: { type: ["number", "null"] }
         extractionStatus: { type: string }
+        extractionReason: { type: ["string", "null"] }
         verificationStatus: { type: string }
         reportedGross: { type: string }
         reportedDeductions: { type: string }
@@ -5967,20 +6008,64 @@ components:
           items: { $ref: "#/components/schemas/ProfitLossLineInput" }
     BusinessProfitLossDocument:
       type: object
-      required: [id, businessId, statementPeriodStart, statementPeriodEnd, sourceFileName, sourceObjectPath, sourceSha256, reportedRevenue, reportedExpenses, reportedProfit, status, createdAt]
+      required: [id, businessId, sourceKind, statementPeriodStart, statementPeriodEnd, sourceFileName, sourceObjectPath, sourceSha256, sourceContentType, sourceSizeBytes, sourcePageCount, extractionStatus, extractionReason, verificationStatus, reportedRevenue, reportedExpenses, reportedProfit, status, createdAt]
       properties:
         id: { type: string }
         businessId: { type: string }
+        sourceKind: { type: string }
         statementPeriodStart: { type: string, format: date }
         statementPeriodEnd: { type: string, format: date }
         sourceFileName: { type: ["string", "null"] }
         sourceObjectPath: { type: ["string", "null"] }
         sourceSha256: { type: ["string", "null"] }
+        sourceContentType: { type: ["string", "null"] }
+        sourceSizeBytes: { type: ["number", "null"] }
+        sourcePageCount: { type: ["number", "null"] }
+        extractionStatus: { type: string }
+        extractionReason: { type: ["string", "null"] }
+        verificationStatus: { type: string }
         reportedRevenue: { type: string }
         reportedExpenses: { type: string }
         reportedProfit: { type: string }
         status: { type: string }
         createdAt: { type: string, format: date-time }
+    BusinessIncomeDocumentUploadInput:
+      type: object
+      required: [name, size, contentType, documentType]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        size: { type: number, minimum: 1, maximum: 10485760 }
+        contentType: { type: string, enum: [application/pdf] }
+        documentType: { type: string, enum: [settlement, profit_loss] }
+    BusinessIncomeDocumentUpload:
+      type: object
+      required: [uploadURL, objectPath, name, size, contentType, documentType]
+      properties:
+        uploadURL: { type: string }
+        objectPath: { type: string }
+        name: { type: string }
+        size: { type: number }
+        contentType: { type: string }
+        documentType: { type: string, enum: [settlement, profit_loss] }
+    BusinessIncomeDocumentIngestInput:
+      type: object
+      required: [businessId, documentType, sourceFileName, sourceObjectPath, contentType, sourceSizeBytes]
+      properties:
+        businessId: { type: string }
+        documentType: { type: string, enum: [settlement, profit_loss] }
+        sourceFileName: { type: string, minLength: 1, maxLength: 255 }
+        sourceObjectPath: { type: string, pattern: "^/objects/uploads/[0-9a-fA-F-]{36}$" }
+        contentType: { type: string, enum: [application/pdf] }
+        sourceSizeBytes: { type: number, minimum: 1, maximum: 10485760 }
+    BusinessIncomeDocumentIngestResult:
+      type: object
+      required: [documentType, documentId, extractionStatus, verificationStatus, message]
+      properties:
+        documentType: { type: string, enum: [settlement, profit_loss] }
+        documentId: { type: string }
+        extractionStatus: { type: string }
+        verificationStatus: { type: string }
+        message: { type: string }
     BusinessIncomePeriodReconciliationInput:
       type: object
       required: [businessId, statementPeriodStart, statementPeriodEnd]

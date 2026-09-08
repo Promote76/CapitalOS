@@ -11,6 +11,10 @@ import {
   CreateBusinessProfitLossResponse,
   CreateBusinessSettlementBody,
   CreateBusinessSettlementResponse,
+  IngestBusinessIncomeDocumentBody,
+  IngestBusinessIncomeDocumentResponse,
+  RequestBusinessIncomeDocumentUploadUrlBody,
+  RequestBusinessIncomeDocumentUploadUrlResponse,
   GetBusinessIncomeIntelligenceResponse,
   MatchBusinessSettlementCashParams,
   MatchBusinessSettlementCashResponse,
@@ -28,12 +32,24 @@ import {
   getBusinessIncomeIntelligence,
   matchBusinessSettlementCash,
   reconcileBusinessIncomePeriod,
+  ingestBusinessIncomeDocument,
+  requestBusinessIncomeDocumentUploadUrl,
 } from "../services/business-income";
 
 const router: IRouter = Router();
 
 router.get("/business/income-intelligence", asyncRoute(async (_req, res) => {
   res.json(GetBusinessIncomeIntelligenceResponse.parse(await getBusinessIncomeIntelligence(actorFrom(res))));
+}));
+
+router.post("/business/income/documents/upload-url", asyncRoute(async (req, res) => {
+  const body = RequestBusinessIncomeDocumentUploadUrlBody.parse(req.body);
+  res.json(RequestBusinessIncomeDocumentUploadUrlResponse.parse(await requestBusinessIncomeDocumentUploadUrl(actorFrom(res), body)));
+}));
+
+router.post("/business/income/documents/ingest", asyncRoute(async (req, res) => {
+  const body = IngestBusinessIncomeDocumentBody.parse(req.body);
+  res.status(201).json(IngestBusinessIncomeDocumentResponse.parse(await ingestBusinessIncomeDocument(actorFrom(res), body)));
 }));
 
 router.post("/business/income/settlements", asyncRoute(async (req, res) => {

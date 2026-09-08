@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { AlertCircle, ArrowUpRight, BriefcaseBusiness, Building2, CircleDollarSign, ClipboardCheck, FileCheck2, Landmark, LockKeyhole, Plus, RefreshCw, ShieldCheck, TrendingUp, TriangleAlert } from "lucide-react";
-import { createBusinessDistribution, getGetBusinessIncomeIntelligenceQueryKey, getGetBusinessOverviewQueryKey, useCreateBusinessCashPosition, useCreateBusinessExpense, useCreateBusinessOwnerDraw, useCreateBusinessRevenue, useCreateBusinessSettlement, useApproveBusinessOwnerDraw, useGetBusinessIncomeIntelligence, useGetBusinessOverview } from "@workspace/api-client-react";
+import { createBusinessDistribution, getGetBusinessIncomeIntelligenceQueryKey, getGetBusinessOverviewQueryKey, useCreateBusinessCashPosition, useCreateBusinessExpense, useCreateBusinessOwnerDraw, useCreateBusinessRevenue, useApproveBusinessOwnerDraw, useGetBusinessIncomeIntelligence, useGetBusinessOverview, useIngestBusinessIncomeDocument, useRequestBusinessIncomeDocumentUploadUrl } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 const money = (value?: string) => Number(value ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
@@ -74,42 +74,50 @@ export default function BusinessPage({ onFeedback }: { onFeedback: (message: str
 function BusinessIncomeIntelligencePanel({ businessId, onFeedback }: { businessId?: string; onFeedback: (message: string) => void }) {
   const queryClient = useQueryClient();
   const intelligence = useGetBusinessIncomeIntelligence();
-  const addSettlement = useCreateBusinessSettlement();
+  const requestUpload = useRequestBusinessIncomeDocumentUploadUrl();
+  const ingestDocument = useIngestBusinessIncomeDocument();
   const refreshCash = useCreateBusinessCashPosition();
   const proposeDraw = useCreateBusinessOwnerDraw();
   const approveDraw = useApproveBusinessOwnerDraw();
   const today = new Date().toISOString().slice(0, 10);
   const [settlementOpen, setSettlementOpen] = useState(false);
-  const [settlement, setSettlement] = useState({ start: today, end: today, gross: "", deductions: "0.00", net: "" });
+  const [documentType, setDocumentType] = useState<"settlement" | "profit_loss">("settlement");
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [drawAmount, setDrawAmount] = useState("");
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: getGetBusinessIncomeIntelligenceQueryKey() });
   };
 
-  const submitSettlement = async (event: FormEvent) => {
+  const submitDocument = async (event: FormEvent) => {
     event.preventDefault();
-    if (!businessId || !settlement.gross || !settlement.net) return;
+    if (!businessId || !sourceFile) return;
     try {
-      await addSettlement.mutateAsync({
+      const upload = await requestUpload.mutateAsync({
+        data: { name: sourceFile.name, size: sourceFile.size, contentType: "application/pdf", documentType },
+      });
+      const stored = await fetch(upload.uploadURL, {
+        method: "PUT",
+        headers: { "Content-Type": "application/pdf" },
+        body: sourceFile,
+      });
+      if (!stored.ok) throw new Error("The document could not be uploaded to managed storage.");
+      const result = await ingestDocument.mutateAsync({
         data: {
           businessId,
-          statementPeriodStart: settlement.start,
-          statementPeriodEnd: settlement.end,
-          paidDate: settlement.end,
-          reportedGross: settlement.gross,
-          reportedDeductions: settlement.deductions || "0.00",
-          reportedNet: settlement.net,
-          revenueLines: [{ description: "Settlement revenue", amount: settlement.gross }],
-          deductionLines: settlement.deductions && settlement.deductions !== "0.00" ? [{ description: "Settlement deductions", amount: settlement.deductions }] : [],
+          documentType,
+          sourceFileName: sourceFile.name,
+          sourceObjectPath: upload.objectPath,
+          contentType: "application/pdf",
+          sourceSizeBytes: sourceFile.size,
         },
       });
       await refresh();
       setSettlementOpen(false);
-      setSettlement({ start: today, end: today, gross: "", deductions: "0.00", net: "" });
-      onFeedback("Settlement recorded and held to its reconciliation status.");
+      setSourceFile(null);
+      onFeedback(`${title(documentType)} uploaded. ${result.message}`);
     } catch (error) {
-      onFeedback(error instanceof Error ? error.message : "The settlement could not be recorded.");
+      onFeedback(error instanceof Error ? error.message : "The source document could not be processed.");
     }
   };
 
@@ -168,20 +176,19 @@ function BusinessIncomeIntelligencePanel({ businessId, onFeedback }: { businessI
       <div><span>Safe to distribute</span><strong>{latestCash ? money(latestCash.safeToDistribute) : "Not calculated"}</strong><small>{latestCash ? `as of ${latestCash.asOf}` : "refresh read-only cash evidence"}</small></div>
     </div>
     <div className="business-intelligence-actions">
-      <button className="btn btn-primary" onClick={() => setSettlementOpen((open) => !open)}><FileCheck2 size={14} /> Record settlement</button>
+       <button className="btn btn-primary" onClick={() => setSettlementOpen((open) => !open)}><FileCheck2 size={14} /> Upload source document</button>
       <button className="btn" onClick={() => void snapshotCash()} disabled={!businessId || refreshCash.isPending}><Landmark size={14} /> {refreshCash.isPending ? "Refreshing…" : "Refresh cash evidence"}</button>
     </div>
-    {settlementOpen && <form className="card card-pad business-intelligence-form" onSubmit={submitSettlement}>
-      <div><span className="eyebrow">Immutable source record</span><h3>Record a settlement</h3><p>Enter the reported totals and the engine will keep any variance in review.</p></div>
-      <label>Period start<input type="date" value={settlement.start} onChange={(event) => setSettlement({ ...settlement, start: event.target.value })} /></label>
-      <label>Period end<input type="date" value={settlement.end} onChange={(event) => setSettlement({ ...settlement, end: event.target.value })} /></label>
-      <label>Gross<input required inputMode="decimal" value={settlement.gross} onChange={(event) => setSettlement({ ...settlement, gross: event.target.value })} placeholder="0.00" /></label>
-      <label>Deductions<input inputMode="decimal" value={settlement.deductions} onChange={(event) => setSettlement({ ...settlement, deductions: event.target.value })} placeholder="0.00" /></label>
-      <label>Net paid<input required inputMode="decimal" value={settlement.net} onChange={(event) => setSettlement({ ...settlement, net: event.target.value })} placeholder="0.00" /></label>
-      <div><button className="btn btn-primary" disabled={addSettlement.isPending}>Save settlement</button><button className="btn" type="button" onClick={() => setSettlementOpen(false)}>Cancel</button></div>
+     {settlementOpen && <form className="card card-pad business-intelligence-form" onSubmit={submitDocument}>
+       <div><span className="eyebrow">Managed source evidence</span><h3>Upload a settlement or P&amp;L PDF</h3><p>The server extracts totals and line items from the stored PDF. Unsupported, unreadable, or ambiguous documents remain in review.</p></div>
+       <label>Document type<select value={documentType} onChange={(event) => setDocumentType(event.target.value as "settlement" | "profit_loss")}><option value="settlement">Settlement</option><option value="profit_loss">Profit &amp; loss</option></select></label>
+       <label>Source PDF<input required type="file" accept="application/pdf,.pdf" onChange={(event) => setSourceFile(event.target.files?.[0] ?? null)} /></label>
+       {sourceFile && <span className="business-upload-file">{sourceFile.name} · {(sourceFile.size / 1024 / 1024).toFixed(2)} MB</span>}
+       <div><button className="btn btn-primary" disabled={!sourceFile || requestUpload.isPending || ingestDocument.isPending}>{requestUpload.isPending || ingestDocument.isPending ? "Processing…" : "Upload and parse"}</button><button className="btn" type="button" onClick={() => { setSettlementOpen(false); setSourceFile(null); }}>Cancel</button></div>
     </form>}
     <div className="business-intelligence-columns">
-      <div className="card card-pad"><div className="business-section-head"><div><span className="eyebrow">Settlement review</span><h3>Recent source documents</h3></div></div>{data.settlements.length === 0 ? <p className="business-empty">No settlement evidence recorded yet.</p> : data.settlements.slice(0, 5).map((row) => <div className="business-intelligence-row" key={row.id}><div><strong>{money(row.reportedNet)} net · {row.statementPeriodStart} to {row.statementPeriodEnd}</strong><span>{row.sourceKind.replaceAll("_", " ")} · {row.mathReason}</span></div><span className={`status ${row.mathStatus === "reconciled" ? "" : "pending"}`}>{title(row.mathStatus)}</span></div>)}</div>
+      <div className="card card-pad"><div className="business-section-head"><div><span className="eyebrow">Settlement review</span><h3>Recent source documents</h3></div></div>{data.settlements.length === 0 ? <p className="business-empty">No settlement evidence recorded yet.</p> : data.settlements.slice(0, 5).map((row) => <div className="business-intelligence-row" key={row.id}><div><strong>{money(row.reportedNet)} net · {row.statementPeriodStart} to {row.statementPeriodEnd}</strong><span>{row.sourceFileName || row.sourceKind.replaceAll("_", " ")} · extraction {title(row.extractionStatus)} · {row.mathReason}</span></div><span className={`status ${row.mathStatus === "reconciled" && row.verificationStatus === "verified" ? "" : "pending"}`}>{row.verificationStatus === "verified" ? "Verified" : "Needs review"}</span></div>)}</div>
+      <div className="card card-pad"><div className="business-section-head"><div><span className="eyebrow">P&amp;L review</span><h3>Recent profit &amp; loss sources</h3></div></div>{data.profitLossDocuments.length === 0 ? <p className="business-empty">No P&amp;L evidence recorded yet.</p> : data.profitLossDocuments.slice(0, 5).map((row) => <div className="business-intelligence-row" key={row.id}><div><strong>{money(row.reportedProfit)} profit · {row.statementPeriodStart} to {row.statementPeriodEnd}</strong><span>{row.sourceFileName || row.sourceKind.replaceAll("_", " ")} · extraction {title(row.extractionStatus)} · {row.extractionReason || "Awaiting review"}</span></div><span className={`status ${row.verificationStatus === "verified" ? "" : "pending"}`}>{row.verificationStatus === "verified" ? "Verified" : "Needs review"}</span></div>)}</div>
       <div className="card card-pad"><div className="business-section-head"><div><span className="eyebrow">Owner draw bridge</span><h3>Human approval required</h3></div></div><form className="business-draw-form" onSubmit={submitDraw}><input required inputMode="decimal" value={drawAmount} onChange={(event) => setDrawAmount(event.target.value)} placeholder="Amount to review" /><button className="btn" disabled={proposeDraw.isPending}><ShieldCheck size={14} /> Prepare review</button></form>{data.ownerDraws.length === 0 ? <p className="business-empty">No owner draw proposals yet.</p> : data.ownerDraws.slice(0, 5).map((draw) => <div className="business-intelligence-row" key={draw.id}><div><strong>{money(draw.amount)} · {title(draw.status)}</strong><span>{draw.blockedReasons[0] || "Eligible after review"} · {draw.proposalDate}</span></div>{draw.status === "eligible" && <button className="text-link" onClick={() => void approve(draw.id, draw.eligibleAmount)} disabled={approveDraw.isPending}>Approve</button>}</div>)}</div>
     </div>
     {data.anomalies.length > 0 && <div className="business-anomaly-list"><div><TriangleAlert size={15} /><strong>Review blockers</strong></div>{data.anomalies.slice(0, 4).map((anomaly) => <span key={anomaly.id}>{anomaly.message}</span>)}</div>}

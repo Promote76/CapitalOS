@@ -2449,6 +2449,7 @@ button {
   font-weight: 700;
 }
 .business-intelligence-form input,
+.business-intelligence-form select,
 .business-draw-form input {
   min-width: 0;
   height: 37px;
@@ -2456,6 +2457,10 @@ button {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: #fff;
+}
+.business-upload-file {
+  color: var(--muted);
+  font-size: 11px;
 }
 .business-intelligence-form > div:last-child {
   display: flex;

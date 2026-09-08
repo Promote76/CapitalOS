@@ -9,6 +9,7 @@
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "check:generated-finance-artifacts": "node scripts/check-generated-finance-artifacts.mjs",
     "certify:financial-document-integrity": "node scripts/certify-financial-document-integrity.mjs",
+    "certify:production-document-remediation": "node scripts/certify-production-document-remediation.mjs",
     "test:generated-finance-artifacts": "node scripts/test-generated-finance-artifacts.mjs",
     "certify:production-candidate": "node scripts/certify-production-candidate.mjs",
     "certify:micro-live": "node scripts/certify-micro-live.mjs",

@@ -1,27 +1,24 @@
 # Schwab read-only architecture
 
-**Status:** disabled by default; live provider not configured  
+**Status:** OAuth observation foundation implemented; provider credentials not configured
 **Boundary:** internal family-capital planning, advisory only, no execution
 
 ## Current decision
 
-Capital OS has a broker portfolio boundary for a future approved Schwab
-connection. The boundary is intentionally present without a live connector so
-the application cannot grow an accidental generic brokerage client.
-
-The current implementation does **not** claim that Schwab is connected. It does
-not read, store, or fabricate Schwab accounts, positions, orders, fills, or
-transactions. A live provider remains blocked until the approved connector is
-attached and real provider-backed evidence closes SR-01 through SR-20.
+Capital OS now contains a server-side Schwab OAuth and read-only observation
+foundation. It is not a certified or currently connected provider integration:
+the required credentials and production callback registration are absent, and
+no fixture or local test is real Schwab evidence. The existing certification
+result remains **BLOCKED / NOT CONFIGURED**.
 
 ## Data flow
 
 ```text
-Approved Schwab OAuth connector
+Schwab OAuth (server-held credentials and tokens)
         ↓
-SchwabReadOnlyProvider
+bounded HTTPS GET observations
         ↓
-normalized broker observations
+normalized, sanitized household snapshot
         ↓
 fail-closed reconciliation and freshness
         ↓
@@ -31,97 +28,107 @@ advisory Family Office / human-reviewed Shadow baseline
 ```
 
 There is no path from this boundary to an OMS, order transmission, money
-movement, Micro-Live, or AI execution authority.
+movement, Guardian authority, Micro-Live, or AI execution authority.
 
-## Provider contract
+## OAuth and credential boundary
 
-`BrokerPortfolioProvider` exposes only:
+The callback is derived exactly as:
 
-- accounts and balances
-- positions
-- historical/active order observations
-- transactions and investment transactions
-- quotes and market clock
-- provider health
+```text
+new URL(CAPITAL_OS_PUBLIC_ORIGIN).origin
+  + /api/integrations/schwab/oauth/callback
+```
 
-It intentionally does not expose methods for placing, replacing, or cancelling
-orders; withdrawing, transferring, ACH, journaling, or wiring funds; or changing
-margin or options permissions.
+`CAPITAL_OS_PUBLIC_ORIGIN` must be a canonical HTTPS origin: no credentials,
+path other than `/`, query, or fragment. It is server configuration and cannot
+be supplied by the browser. The same derived URL is used in authorization and
+token exchange.
 
-`SchwabReadOnlyProvider` currently fails closed. With the default
-`SCHWAB_READ_ONLY_ENABLED=false`, no provider request is made. Setting the flag
-without an attached approved connector produces `ACTION_REQUIRED` health and
-`NOT_CONFIGURED` data calls. `SCHWAB_TRADING_ENABLED` is never an authority
-switch and the normalized provider always reports `tradingEnabled: false`.
+`SCHWAB_APP_KEY`, `SCHWAB_APP_SECRET`, `CAPITAL_OS_PUBLIC_ORIGIN`, and a
+minimum-32-character `SESSION_SECRET` are server secrets/configuration. Access
+and refresh tokens are encrypted before persistence with AES-256-GCM using a
+versioned key derived from `SESSION_SECRET`; ciphertext, nonce, and
+authentication tag are stored separately. Authorization codes are exchanged
+server-side and are not persisted. Tokens, codes, raw state, and private account
+numbers are excluded from frontend storage, API responses, redirects, logs,
+audit metadata, and Grok projections.
 
-## Credential boundary
+## State, lifecycle, and route authorization
 
-Only a server-side credential reference belongs in a provider context. Raw
-client secrets, authorization codes, access tokens, refresh tokens, private
-account numbers, OAuth state, and routing data must not appear in:
+OAuth state is 32 random bytes, persisted only as a SHA-256 hash, bound to the
+initiating household and actor, expires after ten minutes, and is atomically
+consumed once. The callback takes household and actor identity only from that
+state; callback query parameters cannot select a household.
 
-- frontend code or browser storage
-- Grok prompts or projections
-- API responses or OpenAPI models
-- logs, errors, or audit metadata
+Connect creates a random lifecycle generation. Connect, callback commit,
+refresh, sync commit/failure, and disconnect serialize household lifecycle
+changes with a PostgreSQL advisory transaction lock. A callback must still
+match its generation, disconnect consumes pending states, rotates the
+generation, and clears token material. Sync rechecks the connection and token
+under the lock before committing, so stale callbacks or in-flight observations
+cannot resurrect or update a disconnected/replaced connection.
 
-The future connector must provide the server-side OAuth contract. Capital OS
-will not introduce a custom token exchange or ask users to paste credentials
-into chat.
+`GET /integrations/schwab/status` requires an authenticated household context.
+Connect, refresh, sync, and disconnect additionally require recent provider
+authentication and the household `approve` permission (owner/admin authority
+under the current governance policy). The OAuth callback intentionally has no
+browser-session requirement because its persisted state is its single-use
+authorization and tenant binding.
 
-## Normalization and freshness
+## Bounded read-only observations
 
-Normalized values preserve `UNKNOWN` when the provider cannot supply a value;
-they are never manufactured as zero. Each provider-derived record keeps the
-provider timestamp, receipt timestamp, and one of:
+The provider and route inventories expose status, connect, callback, refresh,
+sync, and disconnect only. Observation transport accepts only HTTPS `GET` to
+the configured Schwab API origin, with a ten-second timeout. Sync reads account
+references, account/position/balance data, orders, transactions, quotes, and
+the equity market clock. Order and transaction history is bounded to 60 days,
+orders to 300 results per account, and quote symbols to 500. There are no
+place/replace/cancel order, transfer, withdrawal, permission, or other broker
+write methods or routes.
 
-- `CURRENT`
-- `AGING`
-- `STALE`
-- `UNKNOWN`
+Raw provider payloads are not stored. Normalizers retain opaque provider
+references rather than account numbers, preserve unavailable values as
+`UNKNOWN`, and attach provider/receipt timestamps and
+`CURRENT`/`AGING`/`STALE`/`UNKNOWN` freshness. Household-scoped snapshots store
+only normalized accounts, balances, positions, observed orders and
+transactions, quotes, market clock, counts, and freshness. The Grok snapshot
+remains further minimized: no household IDs, provider account references, or
+credentials, and it is marked advisory-only with execution disabled.
 
-Stale or unknown data remains visibly stale/unknown and cannot be treated as a
-fresh household decision input.
+## Audit and fail-closed behavior
 
-## Reconciliation
+Append-only audit events cover connect initiation, OAuth callback success or
+failure (when state identifies the household), token refresh success/failure,
+sync success/failure, and disconnect. Metadata contains only `provider:
+schwab` and `readOnly: true`.
 
-Reconciliation compares provider observations with the stored normalized broker
-state. It checks accounts, cash, positions, quantities, cost basis, orders,
-fills, and transactions. A missing record, cash mismatch, or quantity mismatch
-produces `CRITICAL_MISMATCH` and `requiresReview: true`.
-
-The reconciliation function reports mismatches; it never overwrites stored
-state and Grok cannot resolve a mismatch. Persistence and audit activation are
-deferred until the provider connector and database certification are available.
-
-## Grok and Shadow boundary
-
-`getGrokPortfolioResearchSnapshot()` is the only intended projection into
-portfolio analysis. It contains sanitized investment context and excludes
-household ids, provider account references, and credentials. It is marked
-`advisoryOnly: true` and `executionDisabled: true`.
-
-A Shadow baseline copies only the approved normalized portfolio observations.
-The baseline is independent, human-review-required, and never changes Schwab
-state or creates a broker order.
+Missing credentials/origin, malformed or replayed state, expired tokens,
+decrypt/authentication failure, non-HTTPS or cross-origin endpoints, provider
+timeouts/rejections, malformed responses, and lifecycle races fail closed.
+Status reports `CONFIGURATION_REQUIRED`, disconnected/expired sync is rejected,
+refresh or sync failure marks an error, and failed callbacks redirect with only
+a generic outcome. No stale request is treated as a successful observation.
+Reconciliation remains report-only: mismatches require review and neither Grok
+nor Schwab ingestion can resolve or overwrite them.
 
 Schwab cash is broker cash only. It does not automatically become
 Safe-to-Deploy, protected capital, Treasury capital, or any other Capital OS
-classification.
+classification. Shadow remains independent and human-reviewed. Trading,
+Guardian, and Micro-Live controls and authority are unchanged;
+`tradingEnabled` remains false.
 
-## Activation checklist
+## Production activation
 
-Before enabling a live connector:
+Production still requires:
 
-1. Attach the approved Replit Schwab connector through the managed integration
-   flow.
-2. Keep `SCHWAB_TRADING_ENABLED=false`.
-3. Keep all write methods absent from the Capital OS provider interface.
-4. Add server-side account mapping and append-only audit persistence.
-5. Run a real read-only fetch for account metadata, cash, positions, orders, and
-   transactions.
-6. Run tenant-isolation, credential-attack, mismatch, freshness, and
-   sanitized-projection checks against the approved disposable target.
-7. Run `pnpm run certify:schwab-read-only`.
-8. Do not change the release status to PASS unless the certification report
-   contains real provider-backed evidence.
+1. provision the server secrets/configuration above while keeping
+   `SCHWAB_TRADING_ENABLED=false`;
+2. publish the API/UI and apply the Schwab schema migrations;
+3. register the exact derived callback URL in the Schwab developer portal;
+4. collect real OAuth and read-only provider evidence for account isolation,
+   token lifecycle, observations, sanitization, freshness, reconciliation, and
+   audit behavior; and
+5. rerun `pnpm run certify:schwab-read-only`.
+
+Do not claim provider certification or change the certification result to PASS
+until approved real Schwab evidence closes the blocked gates.

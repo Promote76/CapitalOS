@@ -6,10 +6,90 @@ import {
   brokerFreshness,
   getGrokPortfolioResearchSnapshot,
   initializeShadowBrokerBaseline,
+  normalizeSchwabAccounts,
+  normalizeSchwabBalances,
+  normalizeSchwabMarketClock,
+  normalizeSchwabOrders,
+  normalizeSchwabPositions,
+  normalizeSchwabQuotes,
+  normalizeSchwabTransactions,
   reconcileBrokerPortfolio,
   schwabFeatureStatus,
   type BrokerPortfolioSnapshot,
 } from "../adapters/broker-portfolio.ts";
+
+test("Schwab provider-shaped observations normalize without account numbers or trading methods", async () => {
+  const accountNumber = "123456789";
+  const accountHash = "opaque-account-hash";
+  const account = normalizeSchwabAccounts("household-a", {
+    hashValue: accountHash,
+    accountNumber,
+    type: "MARGIN",
+    currentBalances: { cashBalance: 1000, buyingPower: 1200 },
+  });
+  assert.equal(account[0]?.id, accountHash);
+  assert.doesNotMatch(JSON.stringify(account), new RegExp(accountNumber));
+  assert.deepEqual(normalizeSchwabAccounts("household-a", { accountNumber }), []);
+
+  const positions = normalizeSchwabPositions("household-a", accountHash, [{
+    longQuantity: 4,
+    averagePrice: 10,
+    averageLongPrice: 40,
+    marketValue: 60,
+    instrument: { symbol: "ABC", assetType: "EQUITY" },
+  }]);
+  assert.equal(positions[0]?.marketPrice, "15");
+  assert.equal(normalizeSchwabBalances(accountHash, { cashBalance: 1000 })[0]?.cashBalance, "1000");
+
+  const orders = normalizeSchwabOrders(accountHash, [{
+    orderId: 44,
+    orderType: "LIMIT",
+    orderStrategyType: "SINGLE",
+    orderLegCollection: [{ instruction: "BUY", instrument: { symbol: "ABC" } }],
+  }]);
+  assert.equal(orders[0]?.side, "BUY");
+  assert.equal(orders[0]?.orderIdReference, "44");
+
+  const transaction = normalizeSchwabTransactions(accountHash, [{ activityId: 9, type: "DIVIDEND", netAmount: 4 }])[0];
+  assert.equal(transaction?.transactionClass, "income");
+  assert.equal(transaction?.transactionIdReference, "9");
+  assert.equal(normalizeSchwabQuotes({ ABC: { symbol: "ABC", assetMainType: "EQUITY", quote: { lastPrice: 15, quoteTime: 1788900000000 } } })[0]?.providerTimestamp, "2026-09-08T20:40:00.000Z");
+  assert.equal(normalizeSchwabMarketClock({ equity: { EQ: { isOpen: true, sessionHours: { regularMarket: [{ start: "2026-09-08T13:30:00.000Z" }] } } } }).marketOpen, true);
+  const short = normalizeSchwabPositions("household-a", accountHash, [{
+    shortQuantity: 2,
+    marketValue: -40,
+    instrument: { symbol: "XYZ", assetType: "EQUITY" },
+  }])[0];
+  assert.equal(short?.quantity, "-2");
+  assert.equal(short?.marketPrice, "20");
+  assert.equal(short?.costBasis, "UNKNOWN");
+  const option = (multiplier?: number) => normalizeSchwabPositions("household-a", accountHash, [{
+    longQuantity: 2,
+    marketValue: 600,
+    instrument: { symbol: "ABC  261218C00100000", assetType: "OPTION", multiplier },
+  }])[0];
+  assert.equal(option(100)?.marketPrice, "3");
+  assert.equal(option(50)?.marketPrice, "6");
+  assert.equal(option()?.marketPrice, "UNKNOWN");
+  assert.equal(option(0)?.marketPrice, "UNKNOWN");
+
+  const calls: string[] = [];
+  const provider = new SchwabReadOnlyProvider(
+    { SCHWAB_READ_ONLY_ENABLED: "true" },
+    async (path) => {
+      calls.push(path);
+      return path.includes("markets/equity") ? { equity: { isOpen: false } } : [];
+    },
+  );
+  await provider.getOrders({ householdId: "household-a", credentialRef: accountHash });
+  await provider.getTransactions({ householdId: "household-a", credentialRef: accountHash });
+  await provider.getMarketClock({ householdId: "household-a", credentialRef: accountHash });
+  assert.equal(calls.every((path) => !/place|replace|cancel|transfer|withdraw/i.test(path)), true);
+  assert.ok(calls.some((path) => path.includes("fromEnteredTime=") && path.includes("toEnteredTime=")));
+  assert.ok(calls.some((path) => path.includes("startDate=") && path.includes("endDate=") && path.includes("types=")));
+  assert.ok(calls.some((path) => path.includes("/markets?markets=equity&date=")));
+  assert.equal("placeOrder" in provider, false);
+});
 
 const baseSnapshot = (): BrokerPortfolioSnapshot => ({
   accounts: [{

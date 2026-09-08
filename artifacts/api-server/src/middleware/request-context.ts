@@ -40,7 +40,8 @@ function requiresRecentAuthentication(req: Request) {
     path.startsWith("/financing") ||
     path.startsWith("/family-office/proposals/") ||
     path.startsWith("/family-office/shadow/") ||
-    path.startsWith("/family-office/tax-liens");
+    path.startsWith("/family-office/tax-liens") ||
+    (path.startsWith("/integrations/schwab/") && path !== "/integrations/schwab/oauth/callback");
 }
 
 export type ResolvedClerkIdentity = {
@@ -230,6 +231,9 @@ function setLocals(res: Response, context: RequestSecurityContext) {
 
 export async function requestContext(req: Request, res: Response, next: NextFunction) {
   try {
+    // OAuth callbacks have no browser session requirement: state is the sole,
+    // persisted, single-use household+actor binding checked by the callback.
+    if (req.path === "/integrations/schwab/oauth/callback") { next(); return; }
     const auth = await authenticatedContext(req) ?? await testDatabaseContext(req);
     if (auth) {
       if (requiresRecentAuthentication(req) && !hasProviderReverification(req, auth)) {

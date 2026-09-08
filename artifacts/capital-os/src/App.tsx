@@ -237,6 +237,7 @@ import AccountingPage from '@/pages/accounting';
 import OperationsPage from '@/pages/operations';
 import DailyOpsPage from '@/pages/daily-ops';
 import BusinessPage from '@/pages/business';
+import SchwabIntegrationPage from '@/pages/schwab-integration';
 import FinancingPage from '@/pages/financing';
 import BudgetCompletionPage from '@/pages/budget';
 import DocumentsPage from '@/pages/documents';
@@ -1132,6 +1133,7 @@ function SettingsPage({ onFeedback }: { onFeedback: (message: string) => void })
       <section className="card card-pad animate-in delay-2"><CardTitle title="Account details" subtitle="A few useful anchors." /><div className="field" style={{ marginBottom:15 }}><label>Household</label><input data-testid="input-household" defaultValue="The Morgan household" /></div><div className="field" style={{ marginBottom:15 }}><label>Plan name</label><input data-testid="input-plan-name" defaultValue="First duplex" /></div><div className="field"><label>Review cadence</label><select data-testid="select-review-cadence" defaultValue="quarterly"><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="twice-yearly">Twice yearly</option></select></div><button className="btn btn-primary" style={{ marginTop:20 }} data-testid="button-save-settings" onClick={() => onFeedback('Workspace preferences saved locally.')}><Check size={14} /> Save changes</button></section>
     </div>
      <section className="card card-pad page-section"><CardTitle title="Privacy & access" subtitle={`${household.data?.role ?? 'household'} permissions · credentials stored: never`} /><div className="setting-row"><div style={{ display:'flex', gap:12, alignItems:'center' }}><div className="activity-icon"><LockKeyhole size={14} /></div><div><strong>Keep finance data private</strong><p>Account and household-finance details stay inside this household workspace.</p></div></div><button className={`toggle ${privacy.financeDataPrivate ? 'on' : ''}`} role="switch" aria-checked={privacy.financeDataPrivate} onClick={() => togglePrivacy('financeDataPrivate')}><span /></button></div><div className="setting-row"><div style={{ display:'flex', gap:12, alignItems:'center' }}><div className="activity-icon"><CircleHelp size={14} /></div><div><strong>Share health summary</strong><p>Allow a high-level financial health summary to be shared with household advisors.</p></div></div><button className={`toggle ${privacy.shareHealthSummary ? 'on' : ''}`} role="switch" aria-checked={privacy.shareHealthSummary} onClick={() => togglePrivacy('shareHealthSummary')}><span /></button></div><div className="setting-row"><div style={{ display:'flex', gap:12, alignItems:'center' }}><div className="activity-icon"><CircleHelp size={14} /></div><div><strong>Need a hand?</strong><p>Read the short guide to using Capital OS every week.</p></div></div><button className="btn" data-testid="button-open-guide" onClick={() => onFeedback('The weekly review guide is ready in your workspace.')} >Open guide <ArrowUpRight size={14} /></button></div></section>
+     <section className="card card-pad page-section"><CardTitle title="Integrations" subtitle="External financial connections" /><div className="setting-row"><div style={{ display:'flex', gap:12, alignItems:'center' }}><div className="activity-icon"><Database size={14} /></div><div><strong>Charles Schwab</strong><p>Observation connection for balances and holdings.</p></div></div><Link href="/integrations/schwab" className="btn btn-secondary">Manage</Link></div></section>
   </main>;
 }
 
@@ -4076,6 +4078,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, dashboardSta
     <Route path="/financing" component={() => <FinancingPage onFeedback={onFeedback} />} />
     <Route path="/risk" component={() => <RiskPage onFeedback={onFeedback} />} />
     <Route path="/settings" component={() => <SettingsPage onFeedback={onFeedback} />} />
+    <Route path="/integrations/schwab" component={() => <SchwabIntegrationPage onFeedback={onFeedback} />} />
      <Route path="/transactions" component={() => <TransactionReviewPage onFeedback={onFeedback} />} />
      <Route path="/contributions" component={() => <UtilityPage kind="contributions" onAction={onAction} transactions={transactions} dashboard={dashboard} />} />
     <Route path="/reports" component={() => <UtilityPage kind="reports" onAction={onAction} transactions={transactions} />} />

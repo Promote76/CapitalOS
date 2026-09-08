@@ -41,6 +41,7 @@ export type UnknownValue = string | "UNKNOWN";
 
 export type BrokerProviderContext = {
   credentialRef: string;
+  householdId?: string;
 };
 
 export type BrokerAccount = {
@@ -215,7 +216,10 @@ export class SchwabReadOnlyProvider implements BrokerPortfolioProvider {
   readonly provider = "schwab";
   readonly readOnly = true as const;
 
-  constructor(private readonly env: NodeJS.ProcessEnv = process.env) {}
+  constructor(
+    private readonly env: NodeJS.ProcessEnv = process.env,
+    private readonly observe?: (path: string) => Promise<unknown>,
+  ) {}
 
   async getProviderHealth(): Promise<BrokerProviderHealth> {
     const status = schwabFeatureStatus(this.env);
@@ -233,7 +237,7 @@ export class SchwabReadOnlyProvider implements BrokerPortfolioProvider {
     };
   }
 
-  private unavailable(context: BrokerProviderContext): never {
+  private client(context: BrokerProviderContext) {
     const status = schwabFeatureStatus(this.env);
     if (!status.readOnlyEnabled) {
       throw new BrokerProviderError(
@@ -242,43 +246,158 @@ export class SchwabReadOnlyProvider implements BrokerPortfolioProvider {
       );
     }
     requireCredential(context);
-    throw new BrokerProviderError(
-      "NOT_CONFIGURED",
-      "Schwab read-only provider is enabled but its approved connector is not attached",
-    );
+    if (!this.observe) throw new BrokerProviderError("NOT_CONFIGURED", "Schwab read-only observation client is not attached");
+    return this.observe;
   }
 
   async getAccounts(context: BrokerProviderContext) {
-    return this.unavailable(context);
+    const raw = await this.client(context)(`/trader/v1/accounts/${encodeURIComponent(context.credentialRef)}?fields=positions`);
+    const account = raw && typeof raw === "object" ? (raw as Record<string, unknown>).securitiesAccount : null;
+    return normalizeSchwabAccounts(context.householdId ?? "UNKNOWN", account && typeof account === "object" ? { ...(account as Record<string, unknown>), hashValue: context.credentialRef } : null);
   }
 
   async getBalances(context: BrokerProviderContext) {
-    return this.unavailable(context);
+    const raw = await this.client(context)(`/trader/v1/accounts/${encodeURIComponent(context.credentialRef)}`);
+    const account = raw && typeof raw === "object" ? (raw as Record<string, unknown>).securitiesAccount as Record<string, unknown> | undefined : undefined;
+    return normalizeSchwabBalances(context.credentialRef, account?.currentBalances);
   }
 
   async getPositions(context: BrokerProviderContext) {
-    return this.unavailable(context);
+    const raw = await this.client(context)(`/trader/v1/accounts/${encodeURIComponent(context.credentialRef)}?fields=positions`);
+    const account = raw && typeof raw === "object" ? (raw as Record<string, unknown>).securitiesAccount as Record<string, unknown> | undefined : undefined;
+    return normalizeSchwabPositions(context.householdId ?? "UNKNOWN", context.credentialRef, account?.positions);
   }
 
   async getOrders(context: BrokerProviderContext) {
-    return this.unavailable(context);
+    const window = schwabHistoryWindow();
+    const query = new URLSearchParams({ maxResults: "300", fromEnteredTime: window.from, toEnteredTime: window.to }).toString();
+    return normalizeSchwabOrders(context.credentialRef, await this.client(context)(`/trader/v1/accounts/${encodeURIComponent(context.credentialRef)}/orders?${query}`));
   }
 
   async getTransactions(context: BrokerProviderContext) {
-    return this.unavailable(context);
+    const window = schwabHistoryWindow();
+    const query = new URLSearchParams({ startDate: window.from, endDate: window.to, types: schwabTransactionTypes }).toString();
+    return normalizeSchwabTransactions(context.credentialRef, await this.client(context)(`/trader/v1/accounts/${encodeURIComponent(context.credentialRef)}/transactions?${query}`));
   }
 
   async getInvestmentTransactions(context: BrokerProviderContext) {
-    return this.unavailable(context);
+    const window = schwabHistoryWindow();
+    const query = new URLSearchParams({ startDate: window.from, endDate: window.to, types: schwabTransactionTypes }).toString();
+    return normalizeSchwabInvestmentTransactions(context.credentialRef, await this.client(context)(`/trader/v1/accounts/${encodeURIComponent(context.credentialRef)}/transactions?${query}`));
   }
 
-  async getQuotes(context: BrokerProviderContext, _symbols: string[]) {
-    return this.unavailable(context);
+  async getQuotes(context: BrokerProviderContext, symbols: string[]) {
+    const client = this.client(context);
+    if (!symbols.length) return [];
+    return normalizeSchwabQuotes(await client(`/marketdata/v1/quotes?symbols=${encodeURIComponent(symbols.slice(0, 500).join(","))}`));
   }
 
   async getMarketClock(context: BrokerProviderContext) {
-    return this.unavailable(context);
+    return normalizeSchwabMarketClock(await this.client(context)(`/marketdata/v1/markets?markets=equity&date=${new Date().toISOString().slice(0, 10)}`));
   }
+}
+
+const schwabTransactionTypes = "TRADE,RECEIVE_AND_DELIVER,DIVIDEND_OR_INTEREST,ACH_RECEIPT,ACH_DISBURSEMENT,CASH_RECEIPT,CASH_DISBURSEMENT,ELECTRONIC_FUND,WIRE,ADVISOR_FEE,JOURNAL,MEMORANDUM,MARGIN_CALL,MONEY_MARKET,SMA_ADJUSTMENT";
+const schwabHistoryWindow = (now = new Date()) => ({
+  from: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+  to: now.toISOString(),
+});
+
+/**
+ * Normalizers deliberately accept only provider response data and emit the
+ * broker read models. They do not retain response payloads, account numbers,
+ * or credentials, and are intentionally separate from any write-capable SDK.
+ */
+const observed = () => new Date().toISOString();
+const value = (input: unknown): UnknownValue => typeof input === "string" || typeof input === "number" ? String(input) : "UNKNOWN";
+const timestampValue = (input: unknown): string | null => {
+  if (typeof input === "number" && Number.isFinite(input)) {
+    const date = new Date(input);
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  }
+  return typeof input === "string" && !Number.isNaN(Date.parse(input)) ? input : null;
+};
+const nestedSymbol = (items: unknown): string | null => {
+  const first = Array.isArray(items) && items[0] && typeof items[0] === "object" ? items[0] as Record<string, unknown> : null;
+  const instrument = first?.instrument && typeof first.instrument === "object" ? first.instrument as Record<string, unknown> : null;
+  return typeof instrument?.symbol === "string" ? instrument.symbol : null;
+};
+
+export function normalizeSchwabAccounts(householdId: string, raw: unknown): BrokerAccount[] {
+  const accounts = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === "object"
+      ? [(raw as Record<string, unknown>).securitiesAccount ?? raw]
+      : [];
+  return accounts.filter((item): item is Record<string, unknown> => !!item && typeof item === "object").map((item) => {
+    const now = observed(); const providerTimestamp = timestampValue(item.updatedAt);
+    return {
+      id: typeof item.hashValue === "string" ? item.hashValue : "UNKNOWN",
+      householdId, provider: "schwab", providerAccountReference: cryptoSafeReference(item.hashValue),
+      accountType: typeof item.type === "string" ? item.type : "UNKNOWN", displayName: typeof item.nickname === "string" ? item.nickname : "Schwab account",
+      status: typeof item.status === "string" ? item.status : "UNKNOWN", currency: "USD",
+      cashBalance: value((item.currentBalances as Record<string, unknown> | undefined)?.cashBalance),
+      buyingPower: value((item.currentBalances as Record<string, unknown> | undefined)?.buyingPower),
+      marginEnabled: typeof item.isMarginEnabled === "boolean" ? item.isMarginEnabled : "UNKNOWN" as const,
+      lastSyncedAt: now, dataFreshness: brokerFreshness(providerTimestamp, now),
+    };
+  }).filter((item) => item.id !== "UNKNOWN");
+}
+function cryptoSafeReference(input: unknown): string {
+  // An opaque provider hash is acceptable; never synthesize or expose an account number.
+  return (typeof input === "string" && input.length > 0) || (typeof input === "number" && Number.isFinite(input)) ? String(input) : "UNKNOWN";
+}
+export function normalizeSchwabPositions(householdId: string, accountId: string, raw: unknown): BrokerPosition[] {
+  const positions = Array.isArray(raw) ? raw : [];
+  return positions.filter((p): p is Record<string, unknown> => !!p && typeof p === "object").map((p) => {
+    const now = observed(); const instrument = p.instrument as Record<string, unknown> | undefined;
+    const timestamp = timestampValue(p.settlementDate);
+    const longQuantity = typeof p.longQuantity === "number" ? p.longQuantity : 0;
+    const shortQuantity = typeof p.shortQuantity === "number" ? p.shortQuantity : 0;
+    const netQuantity = longQuantity - shortQuantity;
+    const assetType = typeof instrument?.assetType === "string" ? instrument.assetType : "UNKNOWN";
+    const requiresMultiplier = /OPTION|FUTURE/i.test(assetType);
+    const multiplier = typeof instrument?.multiplier === "number" && instrument.multiplier > 0
+      ? instrument.multiplier
+      : requiresMultiplier
+        ? null
+        : 1;
+    const openProfitLoss = typeof p.longOpenProfitLoss === "number" || typeof p.shortOpenProfitLoss === "number"
+      ? (typeof p.longOpenProfitLoss === "number" ? p.longOpenProfitLoss : 0) + (typeof p.shortOpenProfitLoss === "number" ? p.shortOpenProfitLoss : 0)
+      : null;
+    return { accountId, householdId, symbol: typeof instrument?.symbol === "string" ? instrument.symbol : "UNKNOWN", assetType,
+      quantity: String(netQuantity), averageCost: value(p.averagePrice), costBasis: "UNKNOWN", marketPrice: typeof p.marketValue === "number" && netQuantity !== 0 && multiplier !== null ? String(p.marketValue / (netQuantity * multiplier)) : "UNKNOWN", marketValue: value(p.marketValue), unrealizedGainLoss: openProfitLoss === null ? "UNKNOWN" : String(openProfitLoss), realizedGainLoss: "UNKNOWN", portfolioWeight: "UNKNOWN", providerTimestamp: timestamp, receivedAt: now, dataFreshness: brokerFreshness(timestamp, now) };
+  });
+}
+export function normalizeSchwabBalances(accountId: string, raw: unknown): BrokerBalance[] {
+  const b = raw && typeof raw === "object" ? raw as Record<string, unknown> : {}; const now = observed(); const stamp = timestampValue(b.updatedAt);
+  return [{ accountId, cashBalance: value(b.cashBalance), buyingPower: value(b.buyingPower), providerTimestamp: stamp, receivedAt: now, dataFreshness: brokerFreshness(stamp, now) }];
+}
+export function normalizeSchwabOrders(accountId: string, raw: unknown): BrokerOrder[] {
+  return (Array.isArray(raw) ? raw : []).filter((x): x is Record<string, unknown> => !!x && typeof x === "object").map((x) => { const now = observed(); const stamp = timestampValue(x.closeTime ?? x.enteredTime); const firstLeg = Array.isArray(x.orderLegCollection) && x.orderLegCollection[0] && typeof x.orderLegCollection[0] === "object" ? x.orderLegCollection[0] as Record<string, unknown> : null; return { accountId, orderIdReference: cryptoSafeReference(x.orderId), symbol: nestedSymbol(x.orderLegCollection) ?? "UNKNOWN", side: typeof firstLeg?.instruction === "string" ? firstLeg.instruction : "UNKNOWN", orderType: typeof x.orderType === "string" ? x.orderType : "UNKNOWN", quantity: value(x.quantity), limitPrice: value(x.price), stopPrice: value(x.stopPrice), status: typeof x.status === "string" ? x.status : "UNKNOWN", submittedAt: timestampValue(x.enteredTime), filledAt: timestampValue(x.closeTime), filledQuantity: value(x.filledQuantity), averageFillPrice: value(x.price), providerTimestamp: stamp, receivedAt: now, dataFreshness: brokerFreshness(stamp, now) }; });
+}
+export function normalizeSchwabTransactions(accountId: string, raw: unknown): BrokerTransaction[] {
+  return (Array.isArray(raw) ? raw : []).filter((x): x is Record<string, unknown> => !!x && typeof x === "object").map((x) => { const now = observed(); const stamp = timestampValue(x.time); const type = typeof x.type === "string" ? x.type.toLowerCase() : ""; const transactionClass: BrokerTransactionClass = type.includes("trade") ? "trade" : type.includes("fee") ? "fee" : type.includes("dividend") ? "income" : type.includes("transfer") ? "transfer" : "unknown"; return { accountId, transactionIdReference: cryptoSafeReference(x.activityId ?? x.transactionId), symbol: nestedSymbol(x.transferItems), transactionClass, amount: value(x.netAmount), quantity: value((x.transferItems as Array<Record<string, unknown>> | undefined)?.[0]?.amount), description: typeof x.description === "string" ? x.description : "UNKNOWN", transactionTimestamp: stamp, providerTimestamp: stamp, receivedAt: now, dataFreshness: brokerFreshness(stamp, now) }; });
+}
+export function normalizeSchwabInvestmentTransactions(accountId: string, raw: unknown): BrokerInvestmentTransaction[] {
+  return normalizeSchwabTransactions(accountId, raw).filter((item): item is BrokerInvestmentTransaction => item.transactionClass !== "transfer");
+}
+export function normalizeSchwabQuotes(raw: unknown): BrokerQuote[] {
+  const records = raw && typeof raw === "object" ? Object.values(raw as Record<string, unknown>) : [];
+  return records.filter((x): x is Record<string, unknown> => !!x && typeof x === "object").map((x) => { const now = observed(); const quote = x.quote as Record<string, unknown> | undefined; const stamp = timestampValue(quote?.quoteTime); return { symbol: typeof x.symbol === "string" ? x.symbol : "UNKNOWN", assetType: typeof x.assetMainType === "string" ? x.assetMainType : "UNKNOWN", marketPrice: value(quote?.lastPrice), providerTimestamp: stamp, receivedAt: now, dataFreshness: brokerFreshness(stamp, now) }; });
+}
+export function normalizeSchwabMarketClock(raw: unknown): BrokerMarketClock {
+  const root = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+  const equity = root.equity && typeof root.equity === "object" ? root.equity as Record<string, unknown> : root;
+  const nestedProduct = typeof equity.isOpen === "boolean"
+    ? null
+    : Object.values(equity).find((candidate): candidate is Record<string, unknown> => !!candidate && typeof candidate === "object");
+  const valueRaw = nestedProduct ?? equity;
+  const now = observed();
+  const sessionHours = valueRaw.sessionHours && typeof valueRaw.sessionHours === "object" ? valueRaw.sessionHours as Record<string, unknown> : {};
+  const regular = Array.isArray(sessionHours.regularMarket) ? sessionHours.regularMarket[0] as Record<string, unknown> | undefined : undefined;
+  const stamp = timestampValue(valueRaw.datetime ?? regular?.start);
+  return { marketOpen: typeof valueRaw.isOpen === "boolean" ? valueRaw.isOpen : "UNKNOWN", providerTimestamp: stamp, receivedAt: now, dataFreshness: brokerFreshness(stamp, now) };
 }
 
 export function brokerFreshness(

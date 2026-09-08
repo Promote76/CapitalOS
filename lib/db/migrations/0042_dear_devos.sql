@@ -1,0 +1,1 @@
+ALTER TABLE "schwab_oauth_states" ADD COLUMN "browser_binding_hash" text DEFAULT 'legacy' NOT NULL;

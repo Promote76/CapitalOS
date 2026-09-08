@@ -25,6 +25,7 @@ tags:
   - name: financing
   - name: observability
   - name: family-office
+  - name: schwab
 paths:
   /internal/metrics:
     get:
@@ -3416,6 +3417,59 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
+  /integrations/schwab/status:
+    get:
+      operationId: getSchwabIntegrationStatus
+      tags: [schwab]
+      summary: Get household-scoped read-only Schwab connection status
+      responses:
+        "200": { description: Redacted connection status, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabStatus" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /integrations/schwab/connect:
+    post:
+      operationId: initiateSchwabConnect
+      tags: [schwab]
+      summary: Initiate approved read-only Schwab OAuth authorization
+      responses:
+        "201": { description: Server-derived authorization URL, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabConnectResult" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /integrations/schwab/oauth/callback:
+    get:
+      security: []
+      operationId: schwabOAuthCallback
+      tags: [schwab]
+      summary: Complete server-side Schwab OAuth callback using single-use state
+      parameters:
+        - { name: code, in: query, required: true, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+      responses:
+        "303": { description: Redirect to the integration page with a non-sensitive status indicator }
+  /integrations/schwab/refresh:
+    post:
+      operationId: refreshSchwabConnection
+      tags: [schwab]
+      summary: Refresh a household-scoped Schwab read-only token
+      responses:
+        "200": { description: Refreshed redacted connection state, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabRefreshResult" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /integrations/schwab/sync:
+    post:
+      operationId: syncSchwabObservations
+      tags: [schwab]
+      summary: Record a successful read-only Schwab observation sync
+      responses:
+        "200": { description: Observation sync status, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabSyncResult" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /integrations/schwab/disconnect:
+    post:
+      operationId: disconnectSchwabConnection
+      tags: [schwab]
+      summary: Remove household-scoped Schwab authorization material
+      responses:
+        "200": { description: Disconnected redacted connection state, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabDisconnectResult" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
 components:
   securitySchemes:
     clerkSession:
@@ -3530,6 +3584,41 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
   schemas:
+    SchwabConnectResult:
+      type: object
+      required: [authorizationUrl, callbackUrl, readOnly, tradingEnabled]
+      properties:
+        authorizationUrl: { type: string }
+        callbackUrl: { type: string }
+        readOnly: { type: boolean, const: true }
+        tradingEnabled: { type: boolean, const: false }
+    SchwabRefreshResult:
+      type: object
+      required: [status, tokenHealth]
+      properties: { status: { type: string, enum: [LIVE_CONNECTED] }, tokenHealth: { type: string, enum: [HEALTHY] } }
+    SchwabSyncResult:
+      type: object
+      required: [status, dataMode]
+      properties: { status: { type: string, enum: [SYNCED] }, dataMode: { type: string, enum: [LIVE_CONNECTED] } }
+    SchwabDisconnectResult:
+      type: object
+      required: [status, readOnly, tradingEnabled]
+      properties: { status: { type: string, enum: [DISCONNECTED] }, readOnly: { type: boolean, const: true }, tradingEnabled: { type: boolean, const: false } }
+    SchwabStatus:
+      type: object
+      required: [provider, readOnly, tradingEnabled, dataMode, credentialsConfigured, callbackUrl, connectionStatus, accountAuthorizationStatus, tokenHealth, tokenExpiresAt, lastSuccessfulSyncAt]
+      properties:
+        provider: { type: string, enum: [schwab] }
+        readOnly: { type: boolean, const: true }
+        tradingEnabled: { type: boolean, const: false }
+        dataMode: { type: string, enum: [LIVE_CONNECTED, DISCONNECTED] }
+        credentialsConfigured: { type: boolean }
+        callbackUrl: { type: ["string", "null"] }
+        connectionStatus: { type: string, enum: [LIVE_CONNECTED, DISCONNECTED, CONFIGURATION_REQUIRED, ERROR] }
+        accountAuthorizationStatus: { type: string, enum: [AUTHORIZED, NOT_AUTHORIZED] }
+        tokenHealth: { type: string, enum: [HEALTHY, EXPIRED, UNAVAILABLE] }
+        tokenExpiresAt: { type: ["string", "null"], format: date-time }
+        lastSuccessfulSyncAt: { type: ["string", "null"], format: date-time }
     FinancialDocument:
       type: object
       required: [id, documentType, status, sourceFileName, mimeType, documentHash, sourceObjectPath, uploadedAt, detectionSignals, businessId]

@@ -235,6 +235,12 @@ import type {
   RiskSummary,
   RunStrategyExperimentInput,
   SafeToDeploy,
+  SchwabConnectResult,
+  SchwabDisconnectResult,
+  SchwabOAuthCallbackParams,
+  SchwabRefreshResult,
+  SchwabStatus,
+  SchwabSyncResult,
   SettlementDocumentInput,
   ShadowIntent,
   ShadowIntentInput,
@@ -16351,5 +16357,450 @@ export const useReverseBankStatementTransactionImport = <TError = ErrorType<BadR
         TContext
       > => {
       return useMutation(getReverseBankStatementTransactionImportMutationOptions(options));
+    }
+
+export const getGetSchwabIntegrationStatusUrl = () => {
+
+
+
+
+  return `/api/integrations/schwab/status`
+}
+
+/**
+ * @summary Get household-scoped read-only Schwab connection status
+ */
+export const getSchwabIntegrationStatus = async ( options?: Parameters<typeof customFetch>[1]): Promise<SchwabStatus> => {
+
+  return customFetch<SchwabStatus>(getGetSchwabIntegrationStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchwabIntegrationStatusQueryKey = () => {
+    return [
+    `/api/integrations/schwab/status`
+    ] as const;
+    }
+
+
+export const getGetSchwabIntegrationStatusQueryOptions = <TData = Awaited<ReturnType<typeof getSchwabIntegrationStatus>>, TError = ErrorType<ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchwabIntegrationStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchwabIntegrationStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchwabIntegrationStatus>>> = ({ signal }) => getSchwabIntegrationStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchwabIntegrationStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchwabIntegrationStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getSchwabIntegrationStatus>>>
+export type GetSchwabIntegrationStatusQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary Get household-scoped read-only Schwab connection status
+ */
+
+export function useGetSchwabIntegrationStatus<TData = Awaited<ReturnType<typeof getSchwabIntegrationStatus>>, TError = ErrorType<ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchwabIntegrationStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchwabIntegrationStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getInitiateSchwabConnectUrl = () => {
+
+
+
+
+  return `/api/integrations/schwab/connect`
+}
+
+/**
+ * @summary Initiate approved read-only Schwab OAuth authorization
+ */
+export const initiateSchwabConnect = async ( options?: Parameters<typeof customFetch>[1]): Promise<SchwabConnectResult> => {
+
+  return customFetch<SchwabConnectResult>(getInitiateSchwabConnectUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getInitiateSchwabConnectMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initiateSchwabConnect>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof initiateSchwabConnect>>, TError,void, TContext> => {
+
+const mutationKey = ['initiateSchwabConnect'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof initiateSchwabConnect>>, void> = () => {
+
+
+          return  initiateSchwabConnect(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InitiateSchwabConnectMutationResult = NonNullable<Awaited<ReturnType<typeof initiateSchwabConnect>>>
+
+    export type InitiateSchwabConnectMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Initiate approved read-only Schwab OAuth authorization
+ */
+export const useInitiateSchwabConnect = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initiateSchwabConnect>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof initiateSchwabConnect>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getInitiateSchwabConnectMutationOptions(options));
+    }
+
+export const getSchwabOAuthCallbackUrl = (params: SchwabOAuthCallbackParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/integrations/schwab/oauth/callback?${stringifiedParams}` : `/api/integrations/schwab/oauth/callback`
+}
+
+/**
+ * @summary Complete server-side Schwab OAuth callback using single-use state
+ */
+export const schwabOAuthCallback = async (params: SchwabOAuthCallbackParams, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
+
+  return customFetch<unknown>(getSchwabOAuthCallbackUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSchwabOAuthCallbackQueryKey = (params?: SchwabOAuthCallbackParams,) => {
+    return [
+    `/api/integrations/schwab/oauth/callback`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getSchwabOAuthCallbackQueryOptions = <TData = Awaited<ReturnType<typeof schwabOAuthCallback>>, TError = ErrorType<void>>(params: SchwabOAuthCallbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof schwabOAuthCallback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSchwabOAuthCallbackQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof schwabOAuthCallback>>> = ({ signal }) => schwabOAuthCallback(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof schwabOAuthCallback>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type SchwabOAuthCallbackQueryResult = NonNullable<Awaited<ReturnType<typeof schwabOAuthCallback>>>
+export type SchwabOAuthCallbackQueryError = ErrorType<void>
+
+
+/**
+ * @summary Complete server-side Schwab OAuth callback using single-use state
+ */
+
+export function useSchwabOAuthCallback<TData = Awaited<ReturnType<typeof schwabOAuthCallback>>, TError = ErrorType<void>>(
+ params: SchwabOAuthCallbackParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof schwabOAuthCallback>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getSchwabOAuthCallbackQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRefreshSchwabConnectionUrl = () => {
+
+
+
+
+  return `/api/integrations/schwab/refresh`
+}
+
+/**
+ * @summary Refresh a household-scoped Schwab read-only token
+ */
+export const refreshSchwabConnection = async ( options?: Parameters<typeof customFetch>[1]): Promise<SchwabRefreshResult> => {
+
+  return customFetch<SchwabRefreshResult>(getRefreshSchwabConnectionUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRefreshSchwabConnectionMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshSchwabConnection>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof refreshSchwabConnection>>, TError,void, TContext> => {
+
+const mutationKey = ['refreshSchwabConnection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshSchwabConnection>>, void> = () => {
+
+
+          return  refreshSchwabConnection(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RefreshSchwabConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof refreshSchwabConnection>>>
+
+    export type RefreshSchwabConnectionMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Refresh a household-scoped Schwab read-only token
+ */
+export const useRefreshSchwabConnection = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshSchwabConnection>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof refreshSchwabConnection>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRefreshSchwabConnectionMutationOptions(options));
+    }
+
+export const getSyncSchwabObservationsUrl = () => {
+
+
+
+
+  return `/api/integrations/schwab/sync`
+}
+
+/**
+ * @summary Record a successful read-only Schwab observation sync
+ */
+export const syncSchwabObservations = async ( options?: Parameters<typeof customFetch>[1]): Promise<SchwabSyncResult> => {
+
+  return customFetch<SchwabSyncResult>(getSyncSchwabObservationsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSyncSchwabObservationsMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncSchwabObservations>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof syncSchwabObservations>>, TError,void, TContext> => {
+
+const mutationKey = ['syncSchwabObservations'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof syncSchwabObservations>>, void> = () => {
+
+
+          return  syncSchwabObservations(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SyncSchwabObservationsMutationResult = NonNullable<Awaited<ReturnType<typeof syncSchwabObservations>>>
+
+    export type SyncSchwabObservationsMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Record a successful read-only Schwab observation sync
+ */
+export const useSyncSchwabObservations = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof syncSchwabObservations>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof syncSchwabObservations>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getSyncSchwabObservationsMutationOptions(options));
+    }
+
+export const getDisconnectSchwabConnectionUrl = () => {
+
+
+
+
+  return `/api/integrations/schwab/disconnect`
+}
+
+/**
+ * @summary Remove household-scoped Schwab authorization material
+ */
+export const disconnectSchwabConnection = async ( options?: Parameters<typeof customFetch>[1]): Promise<SchwabDisconnectResult> => {
+
+  return customFetch<SchwabDisconnectResult>(getDisconnectSchwabConnectionUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getDisconnectSchwabConnectionMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectSchwabConnection>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof disconnectSchwabConnection>>, TError,void, TContext> => {
+
+const mutationKey = ['disconnectSchwabConnection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof disconnectSchwabConnection>>, void> = () => {
+
+
+          return  disconnectSchwabConnection(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DisconnectSchwabConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof disconnectSchwabConnection>>>
+
+    export type DisconnectSchwabConnectionMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Remove household-scoped Schwab authorization material
+ */
+export const useDisconnectSchwabConnection = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectSchwabConnection>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof disconnectSchwabConnection>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDisconnectSchwabConnectionMutationOptions(options));
     }
 

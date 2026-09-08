@@ -49,6 +49,7 @@ packages = ["glib", "nss", "nspr", "atk", "at-spi2-atk", "cups", "libdrm", "libx
 GROK_INTELLIGENCE_ENABLED = "true"
 XAI_ENABLED = "true"
 XAI_MODEL = "grok-4.20-0309-non-reasoning"
+CAPITAL_OS_PUBLIC_ORIGIN = "https://capital-os-fund.replit.app"
 
 [userenv.production]
 CAPITAL_OS_ALLOWED_ORIGIN = "https://capital-os-fund.replit.app"

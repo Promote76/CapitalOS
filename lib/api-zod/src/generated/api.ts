@@ -10232,3 +10232,71 @@ export const ReverseBankStatementTransactionImportResponse = zod.object({
 })
 
 
+/**
+ * @summary Get household-scoped read-only Schwab connection status
+ */
+export const GetSchwabIntegrationStatusResponse = zod.object({
+  "provider": zod.enum(['schwab']),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "dataMode": zod.enum(['LIVE_CONNECTED', 'DISCONNECTED']),
+  "credentialsConfigured": zod.boolean(),
+  "callbackUrl": zod.string().nullable(),
+  "connectionStatus": zod.enum(['LIVE_CONNECTED', 'DISCONNECTED', 'CONFIGURATION_REQUIRED', 'ERROR']),
+  "accountAuthorizationStatus": zod.enum(['AUTHORIZED', 'NOT_AUTHORIZED']),
+  "tokenHealth": zod.enum(['HEALTHY', 'EXPIRED', 'UNAVAILABLE']),
+  "tokenExpiresAt": zod.coerce.date().nullable(),
+  "lastSuccessfulSyncAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Initiate approved read-only Schwab OAuth authorization
+ */
+export const InitiateSchwabConnectResponse = zod.object({
+  "authorizationUrl": zod.string(),
+  "callbackUrl": zod.string(),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false)
+})
+
+
+/**
+ * @summary Complete server-side Schwab OAuth callback using single-use state
+ */
+export const SchwabOAuthCallbackQueryParams = zod.object({
+  "code": zod.coerce.string(),
+  "state": zod.coerce.string()
+})
+
+export const SchwabOAuthCallbackResponse = zod.void()
+
+
+/**
+ * @summary Refresh a household-scoped Schwab read-only token
+ */
+export const RefreshSchwabConnectionResponse = zod.object({
+  "status": zod.enum(['LIVE_CONNECTED']),
+  "tokenHealth": zod.enum(['HEALTHY'])
+})
+
+
+/**
+ * @summary Record a successful read-only Schwab observation sync
+ */
+export const SyncSchwabObservationsResponse = zod.object({
+  "status": zod.enum(['SYNCED']),
+  "dataMode": zod.enum(['LIVE_CONNECTED'])
+})
+
+
+/**
+ * @summary Remove household-scoped Schwab authorization material
+ */
+export const DisconnectSchwabConnectionResponse = zod.object({
+  "status": zod.enum(['DISCONNECTED']),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false)
+})
+
+

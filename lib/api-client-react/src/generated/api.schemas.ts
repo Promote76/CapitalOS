@@ -5,6 +5,123 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+export interface SchwabConnectResult {
+  authorizationUrl: string;
+  callbackUrl: string;
+  readOnly: true;
+  tradingEnabled: false;
+}
+
+export type SchwabRefreshResultStatus = typeof SchwabRefreshResultStatus[keyof typeof SchwabRefreshResultStatus];
+
+
+export const SchwabRefreshResultStatus = {
+  LIVE_CONNECTED: 'LIVE_CONNECTED',
+} as const;
+
+export type SchwabRefreshResultTokenHealth = typeof SchwabRefreshResultTokenHealth[keyof typeof SchwabRefreshResultTokenHealth];
+
+
+export const SchwabRefreshResultTokenHealth = {
+  HEALTHY: 'HEALTHY',
+} as const;
+
+export interface SchwabRefreshResult {
+  status: SchwabRefreshResultStatus;
+  tokenHealth: SchwabRefreshResultTokenHealth;
+}
+
+export type SchwabSyncResultStatus = typeof SchwabSyncResultStatus[keyof typeof SchwabSyncResultStatus];
+
+
+export const SchwabSyncResultStatus = {
+  SYNCED: 'SYNCED',
+} as const;
+
+export type SchwabSyncResultDataMode = typeof SchwabSyncResultDataMode[keyof typeof SchwabSyncResultDataMode];
+
+
+export const SchwabSyncResultDataMode = {
+  LIVE_CONNECTED: 'LIVE_CONNECTED',
+} as const;
+
+export interface SchwabSyncResult {
+  status: SchwabSyncResultStatus;
+  dataMode: SchwabSyncResultDataMode;
+}
+
+export type SchwabDisconnectResultStatus = typeof SchwabDisconnectResultStatus[keyof typeof SchwabDisconnectResultStatus];
+
+
+export const SchwabDisconnectResultStatus = {
+  DISCONNECTED: 'DISCONNECTED',
+} as const;
+
+export interface SchwabDisconnectResult {
+  status: SchwabDisconnectResultStatus;
+  readOnly: true;
+  tradingEnabled: false;
+}
+
+export type SchwabStatusProvider = typeof SchwabStatusProvider[keyof typeof SchwabStatusProvider];
+
+
+export const SchwabStatusProvider = {
+  schwab: 'schwab',
+} as const;
+
+export type SchwabStatusDataMode = typeof SchwabStatusDataMode[keyof typeof SchwabStatusDataMode];
+
+
+export const SchwabStatusDataMode = {
+  LIVE_CONNECTED: 'LIVE_CONNECTED',
+  DISCONNECTED: 'DISCONNECTED',
+} as const;
+
+export type SchwabStatusConnectionStatus = typeof SchwabStatusConnectionStatus[keyof typeof SchwabStatusConnectionStatus];
+
+
+export const SchwabStatusConnectionStatus = {
+  LIVE_CONNECTED: 'LIVE_CONNECTED',
+  DISCONNECTED: 'DISCONNECTED',
+  CONFIGURATION_REQUIRED: 'CONFIGURATION_REQUIRED',
+  ERROR: 'ERROR',
+} as const;
+
+export type SchwabStatusAccountAuthorizationStatus = typeof SchwabStatusAccountAuthorizationStatus[keyof typeof SchwabStatusAccountAuthorizationStatus];
+
+
+export const SchwabStatusAccountAuthorizationStatus = {
+  AUTHORIZED: 'AUTHORIZED',
+  NOT_AUTHORIZED: 'NOT_AUTHORIZED',
+} as const;
+
+export type SchwabStatusTokenHealth = typeof SchwabStatusTokenHealth[keyof typeof SchwabStatusTokenHealth];
+
+
+export const SchwabStatusTokenHealth = {
+  HEALTHY: 'HEALTHY',
+  EXPIRED: 'EXPIRED',
+  UNAVAILABLE: 'UNAVAILABLE',
+} as const;
+
+export interface SchwabStatus {
+  provider: SchwabStatusProvider;
+  readOnly: true;
+  tradingEnabled: false;
+  dataMode: SchwabStatusDataMode;
+  credentialsConfigured: boolean;
+  /** @nullable */
+  callbackUrl: string | null;
+  connectionStatus: SchwabStatusConnectionStatus;
+  accountAuthorizationStatus: SchwabStatusAccountAuthorizationStatus;
+  tokenHealth: SchwabStatusTokenHealth;
+  /** @nullable */
+  tokenExpiresAt: string | null;
+  /** @nullable */
+  lastSuccessfulSyncAt: string | null;
+}
+
 export type FinancialDocumentSourceMetadata = { [key: string]: unknown };
 
 export interface BankStatementEvidence {
@@ -7185,4 +7302,9 @@ export const ExportDailyOpsHistoryCadence = {
   WEEK: 'WEEK',
   MONTH: 'MONTH',
 } as const;
+
+export type SchwabOAuthCallbackParams = {
+code: string;
+state: string;
+};
 

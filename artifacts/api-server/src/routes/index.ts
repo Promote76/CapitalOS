@@ -22,6 +22,7 @@ import observabilityRouter from "./observability";
 import familyOfficeRouter from "./family-office";
 import variableIncomeRouter from "./variable-income";
 import financialDocumentsRouter from "./financial-documents";
+import schwabRouter from "./schwab";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use(observabilityRouter);
 router.use(familyOfficeRouter);
 router.use(variableIncomeRouter);
 router.use(financialDocumentsRouter);
+router.use(schwabRouter);
 
 export default router;

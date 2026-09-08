@@ -1,17 +1,23 @@
 ---
 name: Schwab read-only boundary
-description: Capital OS has a disabled observation-only Schwab contract; live provider work waits for an approved managed connector and real evidence.
+description: Capital OS has a custom OAuth observation foundation whose lifecycle and data remain isolated from every execution authority.
 ---
 
-The Schwab portfolio boundary must remain observation-only and disabled by
-default until an approved managed connector is attached. Do not introduce a
-custom OAuth flow, accept pasted credentials, claim fixture data as provider
-evidence, or expose any order/money-movement capability through Capital OS.
+The Schwab portfolio boundary must remain observation-only. The custom OAuth
+foundation may read and persist sanitized snapshots, but must never expose
+order, cancellation, transfer, withdrawal, risk-change, or execution methods.
+Credentials and tokens stay server-side and encrypted.
 
-**Why:** The user deferred the connector until approval, and the sprint
-explicitly requires real provider-backed evidence before a Schwab PASS.
+OAuth state must be single-use, expiring, household/actor scoped, bound to an
+unpredictable host-only HttpOnly browser cookie, and tied to a durable lifecycle
+generation shared by connect, callback, refresh, sync, and disconnect.
 
-**How to apply:** Resume with the managed connector, keep trading disabled,
-then add server-side persistence, tenant isolation evidence, audit evidence,
-freshness/reconciliation checks, and sanitized Grok/Shadow validation before
-changing the certification status.
+**Why:** State alone prevents guessing and replay but not account-linking CSRF
+from a valid authorization URL opened in another browser. A lifecycle lock
+without a durable generation also lets stale callbacks or syncs overwrite a
+newer disconnect/reconnect decision.
+
+**How to apply:** Keep trading disabled and fail closed unless OAuth is healthy.
+Reject any callback whose browser binding or lifecycle generation differs, and
+conditionally commit sync results only while the same live token generation is
+current. Do not claim provider certification until real OAuth evidence exists.

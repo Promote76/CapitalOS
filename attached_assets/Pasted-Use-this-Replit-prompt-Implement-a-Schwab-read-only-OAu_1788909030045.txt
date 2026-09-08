@@ -1,0 +1,163 @@
+Use this Replit prompt:
+
+> Implement a Schwab read-only OAuth connector foundation for Capital OS.
+
+Objective: connect Charles Schwab for observation only—accounts, balances, positions, transactions/order history, quotes, and market-clock data—without enabling any trading or money movement.
+
+Requirements:
+
+Add a server-side Schwab OAuth flow with a dedicated production callback route.
+
+Expose the exact callback URL in the Capital OS admin/integration UI so I can copy it into the Schwab Developer Portal.
+
+The callback URL must be derived from the actual deployed Capital OS origin and must not be guessed or hard-coded to a stale deployment.
+
+Add a Schwab connection page showing:
+
+connection status
+
+account authorization status
+
+token health/expiry state
+
+last successful sync
+
+data mode: LIVE_CONNECTED only after successful OAuth; otherwise fail closed
+
+
+Store Schwab credentials and tokens server-side only. Never expose app secret, refresh token, or access token to the browser.
+
+Require Schwab app credentials to come from server-side secrets/environment configuration.
+
+Add clear setup fields/instructions for:
+
+Schwab App Key / Client ID
+
+Schwab App Secret
+
+production callback URL
+
+
+Do not log secrets or tokens.
+
+
+Initial capability must be strictly read-only:
+
+allowed:
+
+accounts
+
+balances
+
+positions
+
+transaction history
+
+order history
+
+quotes
+
+market data
+
+market clock/status
+
+
+prohibited:
+
+place order
+
+replace order
+
+cancel order
+
+transfer money
+
+withdraw money
+
+change risk limits
+
+enable strategy execution
+
+arm Micro-Live
+
+
+
+Keep:
+
+tradingEnabled = false
+
+readOnly = true
+
+Micro-Live disabled
+
+all existing Guardian/risk boundaries unchanged
+
+
+Architecture:
+
+Schwab is an external observation adapter only.
+
+Normalize Schwab account, balance, position, transaction, order-history, and market-data responses into Capital OS internal read models.
+
+Do not let Schwab data automatically become household verified income, deployable cash, owner draw, treasury authority, or strategy execution authority.
+
+Keep household finance, business finance, and trading research boundaries separate.
+
+
+Authorization and security:
+
+connection setup requires authenticated household admin/approver permission
+
+household-scoped OAuth state and CSRF protection
+
+validate callback state before exchanging code
+
+encrypt stored token material at rest where supported
+
+rotate/refresh tokens server-side
+
+fail closed on token expiry or provider errors
+
+audit connect, refresh, disconnect, and sync events
+
+
+UI:
+
+Add Settings / Integrations / Charles Schwab
+
+Show a large copyable OAuth Callback URL
+
+Show product guidance that this integration is intended to use both:
+
+Accounts and Trading Production
+
+Market Data Production
+
+
+Make clear that Accounts and Trading is being used in read-only observation mode only
+
+Add Connect Schwab, Reconnect, and Disconnect actions
+
+Show “Read-only connection — trading disabled” prominently
+
+
+Testing:
+
+OAuth state validation
+
+callback success/failure
+
+token refresh
+
+disconnected state
+
+expired-token fail-closed behavior
+
+household isolation
+
+no client exposure of secrets/tokens
+
+confirm that no write/trading endpoint exists or can be invoked
+
+
+After implementation, report the exact production callback URL I should register in the Schwab Developer Portal, and do not enable any trading capability.

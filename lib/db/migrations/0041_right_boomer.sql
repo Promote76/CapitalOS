@@ -1,0 +1,2 @@
+ALTER TABLE "schwab_connections" ADD COLUMN "lifecycle_generation" text DEFAULT 'legacy' NOT NULL;--> statement-breakpoint
+ALTER TABLE "schwab_oauth_states" ADD COLUMN "lifecycle_generation" text DEFAULT 'legacy' NOT NULL;

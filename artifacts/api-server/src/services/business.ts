@@ -219,18 +219,42 @@ export async function createBusinessEntity(actor: Actor, input: BusinessEntityIn
   assertPermission(actor.role, "contribute");
   const ids = { householdId: actor.householdId, ownerId: actor.userId };
   if (Number(input.ownershipPercentage) <= 0 || Number(input.ownershipPercentage) > 100) throw new Error("Ownership percentage must be greater than 0 and no more than 100");
-  const [row] = await db.insert(businessEntities).values({ ...input, formationDate: input.formationDate?.toISOString().slice(0, 10), householdId: ids.householdId, createdBy: actor.userId }).returning();
-  await db.insert(businessReserves).values({ householdId: ids.householdId, businessId: row.id, updatedBy: actor.userId });
-  await db.insert(auditEvents).values({
-    householdId: ids.householdId,
-    eventType: "business_entity_created",
-    actor: actor.userId,
-    entity: "business_entity",
-    entityId: row.id,
-    afterState: { displayName: row.displayName, entityType: row.entityType, ownershipPercentage: row.ownershipPercentage },
-    reason: "Business entity created",
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`business-bootstrap:${ids.householdId}`}))`);
+    const [existing] = await tx.select().from(businessEntities)
+      .where(and(eq(businessEntities.householdId, ids.householdId), eq(businessEntities.displayName, input.displayName)))
+      .limit(1);
+    if (existing) return entityResponse(existing);
+
+    const [anyExisting] = await tx.select({ id: businessEntities.id }).from(businessEntities)
+      .where(eq(businessEntities.householdId, ids.householdId))
+      .limit(1);
+    if (anyExisting) {
+      throw new GovernanceError("CONFLICT", "A business already exists for this household; review and reuse the canonical entity instead of creating another");
+    }
+
+    const [row] = await tx.insert(businessEntities).values({
+      ...input,
+      formationDate: input.formationDate?.toISOString().slice(0, 10),
+      householdId: ids.householdId,
+      createdBy: actor.userId,
+    }).returning();
+    await tx.insert(businessReserves).values({
+      householdId: ids.householdId,
+      businessId: row.id,
+      updatedBy: actor.userId,
+    });
+    await tx.insert(auditEvents).values({
+      householdId: ids.householdId,
+      eventType: "business_entity_created",
+      actor: actor.userId,
+      entity: "business_entity",
+      entityId: row.id,
+      afterState: { displayName: row.displayName, entityType: row.entityType, ownershipPercentage: row.ownershipPercentage },
+      reason: "Business entity created",
+    });
+    return entityResponse(row);
   });
-  return entityResponse(row);
 }
 
 export async function updateBusinessEntity(actor: Actor, businessId: string, input: BusinessEntityUpdate) {

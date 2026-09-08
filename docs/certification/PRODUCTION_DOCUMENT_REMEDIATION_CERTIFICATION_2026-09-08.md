@@ -14,6 +14,25 @@ The read-only production preflight verified both known misclassified source obje
 
 Production schema changes must be applied through the managed Publish flow. No ad hoc production SQL, source-object deletion, or simulated correction was performed.
 
+## Pre-Publish schema evidence
+
+The source migration inventory contains 38 migrations, ending at `0037_zippy_plazm.sql`. The migration is additive:
+
+- 4 integrity tables created
+- 12 `financial_documents` columns added
+- 14 foreign-key constraints added
+- 6 indexes created
+- no enum changes
+- no backfill or data rewrite
+- no table drops or truncation
+- no destructive statements
+- table creation and `ALTER TABLE` operations still require normal PostgreSQL DDL locks
+- rollback is not an automatic operation; if Publish fails, stop and use the managed deployment/checkpoint recovery path rather than hand-editing production
+
+Before development synchronization, both development and production lacked the required integrity tables and columns. The normal development schema push has now succeeded. The managed schema diff reports the expected additive statements with no removals, truncations, or structural-data-loss warnings.
+
+Production read-only introspection still shows no integrity tables or columns. The latest managed production migration inventory entry is `_system.replit_database_migrations_v1.id = 16`, deployment `f4d91104-18a6-4853-8e94-a6dfe27b1c61`, recorded at `2026-09-08 11:18:31.765316+00`; it does not expose a source migration tag and does not establish integrity-schema parity.
+
 ## Required operator action
 
 Publish the current application so the managed database applies migration `0037_zippy_plazm.sql`. Then rerun this remediation with an authenticated approver and capture the post-migration production evidence before applying either correction.
@@ -31,7 +50,22 @@ The detector found P&L headings, income/revenue totals, expense totals, net inco
 
 ```text
 CURRENT HEAD:
-a6e6f99
+968726b
+
+MANAGED PRODUCTION RELEASE:
+f4d91104-18a6-4853-8e94-a6dfe27b1c61 (latest identifier exposed by production migration inventory)
+
+MIGRATION 0037_zippy_plazm.sql:
+BLOCKED — development schema is ready; managed Publish has not applied production parity
+
+SOURCE MIGRATION HEAD:
+0037_zippy_plazm.sql (38 source migrations)
+
+PRODUCTION MIGRATION HEAD:
+_system.replit_database_migrations_v1.id=16; source tag unavailable
+
+SCHEMA PARITY:
+FAIL — production integrity tables and columns are absent
 
 PRODUCTION DOCUMENT REMEDIATION:
 BLOCKED

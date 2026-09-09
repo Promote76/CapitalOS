@@ -83,7 +83,7 @@ router.post("/family-office/research", asyncRoute(async (req, res) => {
   let publicWebEvidence: ResearchOptions["publicWebEvidence"];
   let sourceRetrieval: { finalUrl: string; retrievedAt: string; freshness: "fresh" | "stale" | "unknown"; provenance: "PUBLIC_WEB_RETRIEVAL" } | null = null;
   if (body.url) {
-    const fetched = await ingestPublicResearchUrl({ url: body.url, ticker: body.ticker });
+    const fetched = await ingestPublicResearchUrl({ url: body.url, ticker: body.ticker ?? normalizedDigestion?.ticker });
     if (fetched.status !== "extracted") {
       const actor = actorFrom(res);
       const [blockedRun] = await db.insert(familyOfficeRuns).values({
@@ -118,7 +118,11 @@ router.post("/family-office/research", asyncRoute(async (req, res) => {
       finalUrl: fetched.finalUrl!, excerpt: (fetched.text ?? fetched.facts.join(" ")).slice(0, 3000),
       retrievedAt: fetched.retrievedAt!, freshness: fetched.freshness, status: "extracted", accessLimitation: null,
     };
-    researchInput = { ...body, ticker: body.ticker ?? fetched.ticker!, prompt: body.prompt ?? "Provide general investment analysis." };
+    researchInput = {
+      ...researchInput,
+      ticker: researchInput.ticker ?? fetched.ticker!,
+      prompt: researchInput.prompt ?? "Provide general investment analysis.",
+    };
   }
   const result = await runFamilyOfficeResearch(actorFrom(res), researchInput, { publicWebEvidence, structuredResearchDigestion: normalizedDigestion });
   if (result.run.status !== "completed" || !result.proposal) {

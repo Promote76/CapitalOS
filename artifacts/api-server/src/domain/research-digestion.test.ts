@@ -23,6 +23,86 @@ test("digestion parser canonicalizes common nested aliases and preserves separat
   }
 });
 
+test("Capital OS investment-research compatibility format normalizes linked facts and conclusions", () => {
+  const result = parse({
+    document_type: "capital_os_investment_research_digestion",
+    schema_version: "1.0",
+    generated_at: "2026-09-09T00:00:00Z",
+    security: { ticker: "bksc", company_name: "Bank of South Carolina Corporation" },
+    source_registry: [{
+      source_id: "annual-report",
+      source_name: "2025 Annual Report",
+      source_url: "https://example.com/bksc-annual-report",
+      source_type: "annual-report",
+      published_at: "2025-12-31",
+    }],
+    factual_claims: [{
+      claim_id: "fact-1",
+      category: "fundamentals",
+      statement: "Reported deposits increased.",
+      source_ids: ["annual-report"],
+    }],
+    sections: {
+      valuation: [{
+        conclusion: "Valuation should be reviewed against verified book value.",
+        citations: ["annual-report"],
+        confidence: 0.72,
+        author: "ChatGPT",
+      }],
+    },
+  });
+  assert.equal(result.success, true);
+  if (result.success) {
+    assert.equal(result.data.ticker, "BKSC");
+    assert.equal(result.data.company, "Bank of South Carolina Corporation");
+    assert.deepEqual(result.data.sourceClaims, [{ sourceId: "annual-report", statement: "Reported deposits increased." }]);
+    assert.deepEqual(result.data.inferences?.[0].basisSourceIds, ["annual-report"]);
+  }
+});
+
+test("Capital OS compatibility format remains strict and requires provenance links", () => {
+  const base = {
+    document_type: "capital_os_investment_research",
+    security: { ticker: "BKSC", company_name: "Bank of South Carolina Corporation" },
+    source_registry: [{ source_id: "s1", source_name: "Filing" }],
+    factual_claims: [{ statement: "Revenue increased." }],
+    analytical_inferences: [{ conclusion: "Momentum improved.", source_ids: ["s1"], confidence: 0.7 }],
+  };
+  assert.equal(parse(base).success, false);
+  assert.equal(parse({ ...base, factual_claims: [{ statement: "Revenue increased.", source_ids: ["s1"] }], arbitrary: true }).success, false);
+  assert.equal(parse({ ...base, factual_claims: [{ statement: "Revenue increased.", source_ids: ["s1"] }], valuation: ["Unsupported unlinked conclusion"] }).success, false);
+  assert.equal(parse({
+    ...base,
+    factual_claims: [{ statement: "Revenue increased.", source_ids: ["s1"] }],
+    analytical_inferences: [{ conclusion: "Momentum improved.", source_ids: [], confidence: 0.7 }],
+  }).success, false);
+  assert.equal(parse({
+    ...base,
+    factual_claims: [{ statement: "Revenue increased.", source_ids: ["s1"] }],
+    format: "unrecognized",
+  }).success, false);
+  assert.equal(parse({
+    ...base,
+    ticker: "OTHER",
+    factual_claims: [{ statement: "Revenue increased.", source_ids: ["s1"] }],
+  }).success, false);
+  const linkedConclusion = { conclusion: "Momentum improved.", source_ids: ["s1"], confidence: 0.7 };
+  assert.equal(parse({
+    ...base,
+    factual_claims: [{ statement: "Revenue increased.", source_ids: ["s1"] }],
+    valuation: [linkedConclusion],
+    sections: { valuation: [{ ...linkedConclusion, conclusion: "Momentum weakened." }] },
+  }).success, false);
+  const equalDuplicate = parse({
+    ...base,
+    factual_claims: [{ statement: "Revenue increased.", source_ids: ["s1"] }],
+    valuation: [linkedConclusion],
+    sections: { valuation: [linkedConclusion] },
+  });
+  assert.equal(equalDuplicate.success, true);
+  if (equalDuplicate.success) assert.equal(equalDuplicate.data.inferences?.length, 2);
+});
+
 test("digestion parser returns safe issues for invalid JSON and required fields", () => {
   assert.equal(parseResearchDigestion("{").issues[0]?.code, "invalid_json");
   for (const field of ["ticker", "company", "sources", "sourceClaims"]) {

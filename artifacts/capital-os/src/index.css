@@ -5,6 +5,50 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.digestion-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.digestion-validation-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+.digestion-validation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  max-height: 12rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.35rem;
+}
+
+@media (max-width: 600px) {
+  .digestion-validation-panel {
+    align-items: flex-start;
+  }
+
+  .digestion-validation-panel > div {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .digestion-validation-list {
+    max-height: 9rem;
+  }
+
+  .digestion-actions .status {
+    width: 100%;
+  }
+}
+
 @theme inline {
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));

@@ -5,7 +5,7 @@ description: Safety and provenance rules for user-supplied structured investment
 
 Structured research ingestion must reject ambiguous aliases and unsupported fields, preserve both the exact accepted payload and its canonical normalized representation with separate fingerprints, and remain household-scoped, immutable, advisory-only, and non-authoritative.
 
-Source claims and user-supplied inferences are different evidence classes. Only source claims may become structured-research evidence, and provider citations must resolve through an exact claim reference to one persisted evidence row. Never expand a provenance category into every row or elevate an inference into a source claim.
+Source claims and user-supplied inferences are different evidence classes. Only source claims may become structured-research evidence, and provider citations must resolve through an exact claim reference to one persisted evidence row. Every accepted inference needs at least one valid registered source ID. Never expand a provenance category into every row or elevate an inference into a source claim.
 
 **Why:** Category-wide citation mapping or mismatched original/canonical payloads can create plausible-looking but false provenance in a financial planning system.
 

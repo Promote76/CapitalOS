@@ -3837,6 +3837,7 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
   const [digestionPayloadDraft, setDigestionPayloadDraft] = useState('');
   const [digestionPreview, setDigestionPreview] = useState<FamilyOfficeResearchDigestionPreview | null>(null);
   const [digestionValidationErrors, setDigestionValidationErrors] = useState<FamilyOfficeResearchDigestionValidationError | null>(null);
+  const [validatedDigestionPayload, setValidatedDigestionPayload] = useState<string | null>(null);
 
   const [newEvidence, setNewEvidence] = useState({ title: '', sourceUrl: '', excerpt: '', permissionConfirmed: false });
   const [portfolioDraft, setPortfolioDraft] = useState({ name: '', benchmark: 'SPY', strategy: '' });
@@ -3866,6 +3867,10 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
   const recentProviderRuns = snapshot?.runs.slice(0, 5) ?? [];
   const reports = snapshot?.reports ?? [];
   const taxLiens = realEstate?.taxLiens ?? [];
+  const digestionIsValidated = !!digestionPreview && validatedDigestionPayload === digestionPayloadDraft;
+  const digestionNeedsRevalidation = !!digestionPayloadDraft.trim()
+    && validatedDigestionPayload !== null
+    && validatedDigestionPayload !== digestionPayloadDraft;
   const activeProposal = proposals.find((proposal) => proposal.id === intentDraft.proposalId) ?? proposals[0];
   const activePortfolio = shadowPortfolios.find((portfolio) => portfolio.id === intentDraft.shadowPortfolioId) ?? shadowPortfolios[0];
 
@@ -3889,7 +3894,10 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
       setDigestionValidationErrors(null);
       const result = await previewDigestion.mutateAsync({ data: { digestionPayload: digestionPayloadDraft } });
       setDigestionPreview(result);
+      setValidatedDigestionPayload(digestionPayloadDraft);
     } catch (error) {
+      setDigestionPreview(null);
+      setValidatedDigestionPayload(null);
       if (typeof error === 'object' && error !== null && 'data' in error) {
         setDigestionValidationErrors((error as { data?: FamilyOfficeResearchDigestionValidationError }).data || null);
       } else {
@@ -3904,6 +3912,13 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
     setDigestionValidationErrors(null);
   };
 
+  const clearDigestion = () => {
+    setDigestionPayloadDraft('');
+    setDigestionPreview(null);
+    setDigestionValidationErrors(null);
+    setValidatedDigestionPayload(null);
+  };
+
   const runResearch = async (event: FormEvent) => {
     event.preventDefault();
 
@@ -3913,8 +3928,8 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
     const hasEvidence = researchDraft.permittedEvidence && researchDraft.permittedEvidence.length > 0;
     const hasDigestion = !!digestionPayloadDraft?.trim();
 
-    if (hasDigestion && !digestionPreview) {
-      onFeedback('Please Validate & Preview the digestion payload before analyzing.');
+    if (hasDigestion && !digestionIsValidated) {
+      onFeedback('The digestion payload changed or has not been validated. Validate the exact payload before analyzing.');
       return;
     }
 
@@ -3934,7 +3949,7 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
         ticker: researchDraft.ticker?.trim() || undefined,
         prompt: researchDraft.prompt?.trim() || undefined,
         dossierContext: researchDraft.dossierContext?.trim() || undefined,
-        digestionPayload: hasDigestion ? digestionPayloadDraft.trim() : undefined,
+        digestionPayload: hasDigestion ? validatedDigestionPayload ?? undefined : undefined,
         permittedEvidence: researchDraft.permittedEvidence?.map((ev) => ({
           ...ev,
           sourceUrl: ev.sourceUrl?.trim() || undefined
@@ -3948,9 +3963,6 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
       }
 
       setResearchDraft({ scope: 'family office intelligence', prompt: '', analyst: 'CIO analyst', ticker: '', url: '', dossierContext: '', permittedEvidence: [] });
-      setDigestionPayloadDraft('');
-      setDigestionPreview(null);
-      setDigestionValidationErrors(null);
 
       // Update cache in-place if possible, but refresh will pick it up
       await refresh();
@@ -3960,7 +3972,6 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
         ? (error as { data?: FamilyOfficeResearchFailure }).data
         : undefined;
       setResearchFailure(failure || null);
-      await refresh();
       onFeedback(failure?.message ?? (error instanceof Error ? error.message : 'Family Office research is unavailable.'));
     }
   };
@@ -4213,13 +4224,23 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
             </div>
 
             {digestionValidationErrors && (
-              <div className="operator-form-note warning" style={{ marginTop: '0.75rem' }}>
+              <div className="operator-form-note warning digestion-validation-panel" style={{ marginTop: '0.75rem' }} role="alert">
                 <AlertTriangle size={14} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                   <strong>{digestionValidationErrors.message} ({digestionValidationErrors.code})</strong>
-                  {digestionValidationErrors.issues?.map((issue, idx) => (
+                  {digestionValidationErrors.issues?.slice(0, 3).map((issue, idx) => (
                     <span key={idx}>• {issue.path}: {issue.message}</span>
                   ))}
+                  {(digestionValidationErrors.issues?.length ?? 0) > 3 && (
+                    <details className="digestion-validation-details">
+                      <summary>Show all {digestionValidationErrors.issues?.length} validation issues</summary>
+                      <div className="digestion-validation-list">
+                        {digestionValidationErrors.issues?.map((issue, idx) => (
+                          <span key={`${issue.path}-${idx}`}>• {issue.path}: {issue.message}</span>
+                        ))}
+                      </div>
+                    </details>
+                  )}
                 </div>
               </div>
             )}
@@ -4287,9 +4308,16 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
               </div>
             )}
 
-            <button type="button" className="btn" style={{ marginTop: '0.75rem' }} onClick={handleValidateDigestion} disabled={previewDigestion.isPending}>
-               <CheckCircle2 size={14} /> Validate & Preview
-            </button>
+            <div className="digestion-actions">
+              <button type="button" className="btn" onClick={handleValidateDigestion} disabled={previewDigestion.isPending || !digestionPayloadDraft.trim()}>
+                <CheckCircle2 size={14} /> {previewDigestion.isPending ? 'Validating…' : 'Validate & Preview'}
+              </button>
+              <button type="button" className="btn" onClick={clearDigestion} disabled={!digestionPayloadDraft && !digestionValidationErrors && !digestionPreview}>
+                <X size={14} /> Clear
+              </button>
+              {digestionIsValidated && <span className="status">Exact payload validated</span>}
+              {digestionNeedsRevalidation && <span className="status pending">Payload changed · revalidate</span>}
+            </div>
           </div>
 
           <div style={{ gridColumn: '1 / -1' }}>
@@ -4347,7 +4375,7 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
           <div style={{ gridColumn: '1 / -1', fontSize: '0.875rem', color: 'var(--ink-soft)' }}>
              The request may validate the public URL, check access policy, extract public evidence, and run advisory agents.
           </div>
-          <button className="btn btn-primary" style={{ gridColumn: '1 / -1' }} type="submit" disabled={research.isPending || snapshot.provider.state === 'disabled' || (!!digestionPayloadDraft.trim() && !digestionPreview)}>
+          <button className="btn btn-primary" style={{ gridColumn: '1 / -1' }} type="submit" disabled={research.isPending || snapshot.provider.state === 'disabled' || (!!digestionPayloadDraft.trim() && !digestionIsValidated)}>
             <Sparkles size={14} />
             {research.isPending ? 'Processing…' : (digestionPayloadDraft.trim() ? 'Analyze Digestion' : 'Fetch & Analyze')}
           </button>
@@ -4533,7 +4561,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, dashboardSta
     <Route path="/reports" component={() => <UtilityPage kind="reports" onAction={onAction} transactions={transactions} />} />
      <Route path="/documents" component={CompletedDocumentsPage} />
      <Route path="/insights" component={() => <IntelligencePage onFeedback={onFeedback} />} />
-     <Route path="/family-office" component={() => <FamilyOfficePage onFeedback={onFeedback} />} />
+      <Route path="/family-office"><FamilyOfficePage onFeedback={onFeedback} /></Route>
     <Route component={NotFound} />
   </Switch>;
 }

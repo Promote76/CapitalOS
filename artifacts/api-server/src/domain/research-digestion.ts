@@ -14,7 +14,6 @@ export type NormalizedResearchDigestion = {
 };
 
 type Result = { success: true; data: NormalizedResearchDigestion; issues: [] } | { success: false; issues: DigestionIssue[] };
-const key = (o: Record<string, unknown>, names: string[]) => names.map((n) => o[n]).find((v) => v !== undefined);
 function aliasesValue(o: Record<string, unknown>, names: string[], path: string, issues: DigestionIssue[]) {
   const populated = names.filter((name) => o[name] !== undefined);
   if (populated.length > 1) {
@@ -50,6 +49,185 @@ const aliases = {
   inferences: ["inferences", "inference", "analysis", "derivedInsights"],
 };
 
+const legacyDocumentTypes = new Set([
+  "capital_os_investment_research",
+  "capital_os_investment_research_digestion",
+  "capital-os-investment-research",
+  "capital-os-investment-research-digestion",
+]);
+const legacyInferenceSectionGroups = [
+  ["executiveSummary", "executive_summary"],
+  ["investmentThesis", "investment_thesis"],
+  ["fundamentals"],
+  ["valuation"],
+  ["catalysts"],
+  ["risks"],
+  ["downsideCase", "downside_case"],
+  ["peerContext", "peer_context"],
+  ["portfolioFit", "portfolio_fit"],
+  ["concentrationLiquidityRisk", "concentration_liquidity_risk"],
+  ["thesisInvalidationConditions", "thesis_invalidation_conditions"],
+  ["evidenceQuality", "evidence_quality"],
+] as const;
+const legacyInferenceSections = legacyInferenceSectionGroups.flat();
+
+function legacyTextArray(value: unknown) {
+  return Array.isArray(value) ? value : value === undefined ? [] : [value];
+}
+
+function adaptCapitalOsInvestmentResearch(
+  root: Record<string, unknown>,
+  issues: DigestionIssue[],
+): Record<string, unknown> | null {
+  const documentTypeNames = ["documentType", "document_type", "format"];
+  const documentTypeCandidates = documentTypeNames.map((name) => root[name]).filter((value): value is string => typeof value === "string");
+  const hasLegacySignature =
+    documentTypeCandidates.some((value) => legacyDocumentTypes.has(value.trim().toLowerCase()))
+    || ("source_registry" in root && ("factual_claims" in root || "analytical_inferences" in root));
+  if (!hasLegacySignature) return null;
+  const documentType = aliasesValue(root, documentTypeNames, "$.documentType", issues);
+
+  rejectUnknown(root, [
+    "documentType", "document_type", "format",
+    "schemaVersion", "schema_version", "version",
+    "generatedAt", "generated_at", "asOf", "as_of",
+    "ticker", "symbol", "company", "companyName", "company_name", "security",
+    "sourceRegistry", "source_registry",
+    "factualClaims", "factual_claims",
+    "analyticalInferences", "analytical_inferences",
+    "sections", ...legacyInferenceSections,
+  ], "$", issues);
+
+  if (typeof documentType !== "string" || !legacyDocumentTypes.has(documentType.trim().toLowerCase())) {
+    issue(issues, "$.documentType", "invalid_legacy_format", "Capital OS compatibility payload requires a recognized investment-research document type.");
+  }
+  for (const metadataNames of [["generatedAt", "generated_at"], ["asOf", "as_of"]]) {
+    const metadata = aliasesValue(root, metadataNames, `$.${metadataNames[0]}`, issues);
+    if (metadata !== undefined && !text(metadata, 80)) {
+      issue(issues, `$.${metadataNames[0]}`, "invalid_metadata", "Compatibility metadata must be bounded text.");
+    }
+  }
+
+  const securityIsObject = root.security && typeof root.security === "object" && !Array.isArray(root.security);
+  if (root.security !== undefined && !securityIsObject) {
+    issue(issues, "$.security", "invalid_security", "Compatibility security metadata must be an object.");
+  }
+  const security = securityIsObject
+    ? root.security as Record<string, unknown>
+    : {};
+  rejectUnknown(security, ["ticker", "symbol", "company", "companyName", "company_name", "name"], "$.security", issues);
+  const rootTicker = aliasesValue(root, ["ticker", "symbol"], "$.ticker", issues);
+  const securityTicker = aliasesValue(security, ["ticker", "symbol"], "$.security.ticker", issues);
+  const tickerCandidates = [rootTicker, securityTicker]
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim().toUpperCase());
+  if (new Set(tickerCandidates).size > 1) issue(issues, "$.ticker", "conflict", "Root and security ticker values conflict.");
+  const ticker = rootTicker ?? securityTicker;
+  const rootCompany = aliasesValue(root, ["company", "companyName", "company_name"], "$.company", issues);
+  const securityCompany = aliasesValue(security, ["company", "companyName", "company_name", "name"], "$.security.company", issues);
+  const companyCandidates = [rootCompany, securityCompany]
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim());
+  if (new Set(companyCandidates).size > 1) issue(issues, "$.company", "conflict", "Root and security company values conflict.");
+  const company = rootCompany ?? securityCompany;
+
+  const rawSources = aliasesValue(root, ["sourceRegistry", "source_registry"], "$.sourceRegistry", issues);
+  const sources = Array.isArray(rawSources) ? rawSources.map((raw, index) => {
+    const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
+    rejectUnknown(source, [
+      "id", "sourceId", "source_id", "title", "name", "sourceName", "source_name",
+      "url", "sourceUrl", "source_url", "link",
+      "publisher", "sourcePublisher", "publisherName", "publisher_name",
+      "sourceType", "source_type", "type",
+      "asOf", "as_of", "date", "publishedAt", "published_at", "retrievedAt", "retrieved_at",
+    ], `$.source_registry[${index}]`, issues);
+    return {
+      id: aliasesValue(source, ["id", "sourceId", "source_id"], `$.source_registry[${index}].id`, issues),
+      title: aliasesValue(source, ["title", "name", "sourceName", "source_name"], `$.source_registry[${index}].title`, issues),
+      url: aliasesValue(source, ["url", "sourceUrl", "source_url", "link"], `$.source_registry[${index}].url`, issues),
+      publisher: aliasesValue(source, ["publisher", "sourcePublisher", "publisherName", "publisher_name"], `$.source_registry[${index}].publisher`, issues),
+      sourceType: aliasesValue(source, ["sourceType", "source_type", "type"], `$.source_registry[${index}].sourceType`, issues),
+      asOf: aliasesValue(source, ["asOf", "as_of", "date", "publishedAt", "published_at", "retrievedAt", "retrieved_at"], `$.source_registry[${index}].asOf`, issues),
+    };
+  }) : rawSources;
+
+  const rawClaims = aliasesValue(root, ["factualClaims", "factual_claims"], "$.factualClaims", issues);
+  const sourceClaims: unknown[] = [];
+  if (Array.isArray(rawClaims)) rawClaims.forEach((raw, index) => {
+    const claim = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
+    rejectUnknown(claim, [
+      "id", "claimId", "claim_id", "category",
+      "statement", "text", "claim", "excerpt",
+      "sourceId", "source_id", "source", "sourceIds", "source_ids",
+      "asOf", "as_of",
+    ], `$.factual_claims[${index}]`, issues);
+    const statement = aliasesValue(claim, ["statement", "text", "claim", "excerpt"], `$.factual_claims[${index}].statement`, issues);
+    const oneSource = aliasesValue(claim, ["sourceId", "source_id", "source"], `$.factual_claims[${index}].sourceId`, issues);
+    const manySources = aliasesValue(claim, ["sourceIds", "source_ids"], `$.factual_claims[${index}].sourceIds`, issues);
+    const sourceIds = oneSource !== undefined ? [oneSource] : Array.isArray(manySources) ? manySources : [];
+    if (oneSource !== undefined && manySources !== undefined) {
+      const normalizedOne = JSON.stringify([aliasComparable(oneSource)]);
+      const normalizedMany = JSON.stringify(aliasComparable(manySources));
+      if (normalizedOne !== normalizedMany) issue(issues, `$.factual_claims[${index}].sourceIds`, "conflict", "Single and plural claim source aliases conflict.");
+    }
+    if (!sourceIds.length) {
+      issue(issues, `$.factual_claims[${index}].sourceIds`, "missing_source_link", "Every factual claim must reference at least one registered source.");
+    }
+    sourceIds.forEach((sourceId) => sourceClaims.push({ sourceId, statement }));
+  });
+
+  const inferenceInputs: Array<{ raw: unknown; path: string }> = [];
+  const rawInferences = aliasesValue(root, ["analyticalInferences", "analytical_inferences"], "$.analyticalInferences", issues);
+  legacyTextArray(rawInferences).forEach((raw, index) => inferenceInputs.push({ raw, path: `$.analytical_inferences[${index}]` }));
+  let sections: Record<string, unknown> = {};
+  if (root.sections !== undefined) {
+    if (!root.sections || typeof root.sections !== "object" || Array.isArray(root.sections)) {
+      issue(issues, "$.sections", "invalid_sections", "Compatibility sections must be an object.");
+    } else {
+      sections = root.sections as Record<string, unknown>;
+    }
+    rejectUnknown(sections, [...legacyInferenceSections], "$.sections", issues);
+  }
+  for (const sectionNames of legacyInferenceSectionGroups) {
+    const rootSection = aliasesValue(root, [...sectionNames], `$.${sectionNames[0]}`, issues);
+    const nestedSection = aliasesValue(sections, [...sectionNames], `$.sections.${sectionNames[0]}`, issues);
+    if (
+      rootSection !== undefined
+      && nestedSection !== undefined
+      && JSON.stringify(aliasComparable(rootSection)) !== JSON.stringify(aliasComparable(nestedSection))
+    ) {
+      issue(issues, `$.${sectionNames[0]}`, "conflict", `Root and nested ${sectionNames[0]} sections conflict.`);
+    }
+    const sectionValue = rootSection ?? nestedSection;
+    legacyTextArray(sectionValue).forEach((raw, index) => inferenceInputs.push({ raw, path: `$.${sectionNames[0]}[${index}]` }));
+  }
+  const inferences = inferenceInputs.map(({ raw, path }) => {
+    const inference = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
+    rejectUnknown(inference, [
+      "statement", "text", "inference", "conclusion",
+      "basisSourceIds", "basis_source_ids", "sourceIds", "source_ids", "citations",
+      "confidence", "author", "by", "analyst", "model", "modelName", "model_name",
+      "category",
+    ], path, issues);
+    return {
+      statement: aliasesValue(inference, ["statement", "text", "inference", "conclusion"], `${path}.statement`, issues),
+      basisSourceIds: aliasesValue(inference, ["basisSourceIds", "basis_source_ids", "sourceIds", "source_ids", "citations"], `${path}.basisSourceIds`, issues),
+      confidence: inference.confidence,
+      author: aliasesValue(inference, ["author", "by", "analyst"], `${path}.author`, issues),
+      model: aliasesValue(inference, ["model", "modelName", "model_name"], `${path}.model`, issues),
+    };
+  });
+
+  return {
+    schemaVersion: aliasesValue(root, ["schemaVersion", "schema_version", "version"], "$.schemaVersion", issues),
+    ticker,
+    company,
+    sources,
+    sourceClaims,
+    inferences,
+  };
+}
+
 function depthAndSize(value: unknown, depth = 0, nodes = { n: 0 }): boolean {
   if (++nodes.n > 5000 || depth > 12) return false;
   if (Array.isArray(value)) return value.length <= 150 && value.every((v) => depthAndSize(v, depth + 1, nodes));
@@ -75,7 +253,8 @@ export function parseResearchDigestion(payload: string): Result {
   let root: unknown;
   try { root = JSON.parse(payload); } catch { return { success: false, issues: [{ path: "$", code: "invalid_json", message: "Digestion payload is not valid JSON." }] }; }
   if (!depthAndSize(root) || !root || typeof root !== "object" || Array.isArray(root)) return { success: false, issues: [{ path: "$", code: "unsafe_container", message: "Payload must be a bounded object with safe nesting." }] };
-  const r = root as Record<string, unknown>;
+  const originalRoot = root as Record<string, unknown>;
+  const r = adaptCapitalOsInvestmentResearch(originalRoot, issues) ?? originalRoot;
   rejectUnknown(r, ["schemaVersion", "schema_version", "version", "ticker", "symbol", "company", "companyName", "security", ...aliases.sources, ...aliases.claims, ...aliases.inferences], "$", issues);
   if (r.security && typeof r.security === "object" && !Array.isArray(r.security)) rejectUnknown(r.security as Record<string, unknown>, ["ticker", "symbol", "company", "companyName"], "$.security", issues);
   if (r.company && typeof r.company === "object" && !Array.isArray(r.company)) rejectUnknown(r.company as Record<string, unknown>, ["ticker", "symbol", "name", "companyName"], "$.company", issues);
@@ -134,7 +313,9 @@ export function parseResearchDigestion(payload: string): Result {
       const bases = aliasesValue(o, ["basisSourceIds", "basis_source_ids", "sourceIds"], `$.inferences[${i}].basisSourceIds`, issues);
       const confidence = typeof o.confidence === "number" && Number.isFinite(o.confidence) && o.confidence >= 0 && o.confidence <= 1 ? o.confidence : NaN;
       const basisSourceIds = Array.isArray(bases) ? bases.map((v) => text(v, 120)).filter((v): v is string => Boolean(v)) : [];
-      if (!statement || !Array.isArray(bases) || Number.isNaN(confidence)) issue(issues, `$.inferences[${i}]`, "invalid_inference", "Inference requires statement, basis source IDs, and confidence 0..1.");
+      if (!statement || !Array.isArray(bases) || !basisSourceIds.length || basisSourceIds.length !== (Array.isArray(bases) ? bases.length : 0) || Number.isNaN(confidence)) {
+        issue(issues, `$.inferences[${i}]`, "invalid_inference", "Inference requires a statement, at least one valid basis source ID, and confidence 0..1.");
+      }
       basisSourceIds.forEach((id) => { if (!ids.has(id)) issue(issues, `$.inferences[${i}].basisSourceIds`, "bad_reference", "Inference references an unknown source."); });
       const author = text(aliasesValue(o, ["author", "by", "analyst"], `$.inferences[${i}].author`, issues), 180);
       const model = text(aliasesValue(o, ["model", "modelName", "model_name"], `$.inferences[${i}].model`, issues), 180);

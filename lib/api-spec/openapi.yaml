@@ -5613,11 +5613,24 @@ components:
         advisoryOnly: { type: boolean }
     FamilyOfficeResearchInput:
       type: object
-      required: [scope, prompt]
+      required: [scope, prompt, ticker]
       properties:
         analyst: { type: string, maxLength: 80 }
         scope: { type: string, minLength: 1, maxLength: 120 }
         prompt: { type: string, minLength: 1, maxLength: 4000 }
+        ticker: { type: string, pattern: "^[A-Za-z][A-Za-z0-9.-]{0,14}$" }
+        dossierContext: { type: string, maxLength: 2000 }
+        permittedEvidence:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            required: [title, excerpt, permissionConfirmed]
+            properties:
+              title: { type: string, minLength: 1, maxLength: 180 }
+              sourceUrl: { type: string, maxLength: 2000 }
+              excerpt: { type: string, minLength: 1, maxLength: 3000 }
+              permissionConfirmed: { type: boolean, enum: [true] }
     FamilyOfficeEvidence:
       type: object
       required: [id, title, excerpt, sourceKind, classification, freshness, confidence, createdAt]
@@ -5677,7 +5690,7 @@ components:
         runId: { type: ["string", "null"] }
     FamilyOfficeProposal:
       type: object
-      required: [id, title, thesis, label, analyticalDirection, confidence, facts, assumptions, risks, evidenceIds, status, createdAt, reviewedAt, reviewReason, advisoryOnly, executionAuthorization]
+      required: [id, title, thesis, label, analyticalDirection, confidence, facts, assumptions, risks, advisorySections, ticker, dossierKind, multiAgentSynthesis, evidenceIds, status, createdAt, reviewedAt, reviewReason, advisoryOnly, executionAuthorization]
       properties:
         id: { type: string }
         title: { type: string }
@@ -5688,6 +5701,33 @@ components:
         facts: { type: array, items: { type: string } }
         assumptions: { type: array, items: { type: string } }
         risks: { type: array, items: { type: string } }
+        advisorySections:
+          type: object
+          description: Source-attributed advisory-only dossier sections.
+          additionalProperties:
+            type: object
+            required: [content, evidenceIds, provenance]
+            properties:
+              content: { type: array, items: { type: string } }
+              evidenceIds: { type: array, items: { type: string } }
+              provenance:
+                type: array
+                items:
+                  type: string
+                  enum: [SIMPLY_WALL_ST_PERMITTED_EVIDENCE, SCHWAB_MARKET_OBSERVATION, CAPITAL_OS_CALCULATION, GROK_INFERENCE]
+        ticker: { type: ["string", "null"] }
+        dossierKind: { type: string }
+        multiAgentSynthesis:
+          type: object
+          required: [agreements, disagreements, evidenceGaps, recommendation, advisoryOnly, pendingHumanApproval, agentSummaries]
+          properties:
+            agreements: { type: array, items: { type: string } }
+            disagreements: { type: array, items: { type: string } }
+            evidenceGaps: { type: array, items: { type: string } }
+            recommendation: { type: string, enum: [RESEARCH_ONLY, WATCH, REVIEW_CANDIDATE, INVESTMENT_CANDIDATE, AVOID, RISK_REVIEW_REQUIRED, INSUFFICIENT_EVIDENCE] }
+            advisoryOnly: { type: boolean, enum: [true] }
+            pendingHumanApproval: { type: boolean, enum: [true] }
+            agentSummaries: { type: array, items: { type: object, properties: { agent: { type: string }, thesis: { type: string }, confidence: { type: number } } } }
         evidenceIds: { type: array, items: { type: string } }
         status: { type: string }
         createdAt: { type: string, format: date-time }
@@ -5968,7 +6008,7 @@ components:
         purchaseAuthority: { type: boolean }
     FamilyOfficeSnapshot:
       type: object
-      required: [provider, guardrails, runs, refreshes, refreshCadence, proposals, shadowPortfolios, shadowIntents, shadowOutcomes, workforce, reports, realEstate, summary]
+      required: [provider, guardrails, runs, refreshes, refreshCadence, proposals, watchlist, investmentTheses, riskReviews, aiCioSynthesis, shadowPortfolioProjection, shadowPortfolios, shadowIntents, shadowOutcomes, workforce, reports, realEstate, summary]
       properties:
         provider:
           type: object
@@ -6005,6 +6045,41 @@ components:
                 - $ref: "#/components/schemas/FamilyOfficeRefresh"
             blockedReason: { type: ["string", "null"] }
         proposals: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeProposal" } }
+        watchlist: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeProposal" } }
+        investmentTheses: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeProposal" } }
+        riskReviews: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeProposal" } }
+        aiCioSynthesis:
+          type: array
+          items:
+            type: object
+            properties:
+              ticker: { type: ["string", "null"] }
+              synthesis:
+                type: object
+                properties:
+                  agreements: { type: array, items: { type: string } }
+                  disagreements: { type: array, items: { type: string } }
+                  evidenceGaps: { type: array, items: { type: string } }
+                  recommendation: { type: string }
+                  advisoryOnly: { type: boolean }
+                  pendingHumanApproval: { type: boolean }
+                  agentSummaries:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        agent: { type: string }
+                        thesis: { type: string }
+                        confidence: { type: number }
+              advisoryOnly: { type: boolean }
+              pendingHumanApproval: { type: boolean }
+        shadowPortfolioProjection:
+          type: object
+          properties:
+            proposals: { type: array, items: { $ref: "#/components/schemas/FamilyOfficeProposal" } }
+            nonExecuting: { type: boolean }
+            createsPortfoliosOrIntents: { type: boolean }
+            householdCapitalIncluded: { type: boolean }
         shadowPortfolios: { type: array, items: { $ref: "#/components/schemas/ShadowPortfolio" } }
         shadowIntents: { type: array, items: { $ref: "#/components/schemas/ShadowIntent" } }
         shadowOutcomes: { type: array, items: { $ref: "#/components/schemas/ShadowPortfolioOutcome" } }

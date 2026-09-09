@@ -2949,6 +2949,22 @@ export interface RecommendationFeedback {
   advisoryOnly: boolean;
 }
 
+export type FamilyOfficeResearchInputPermittedEvidenceItem = {
+  /**
+     * @minLength 1
+     * @maxLength 180
+     */
+  title: string;
+  /** @maxLength 2000 */
+  sourceUrl?: string;
+  /**
+     * @minLength 1
+     * @maxLength 3000
+     */
+  excerpt: string;
+  permissionConfirmed: true;
+};
+
 export interface FamilyOfficeResearchInput {
   /** @maxLength 80 */
   analyst?: string;
@@ -2962,6 +2978,12 @@ export interface FamilyOfficeResearchInput {
      * @maxLength 4000
      */
   prompt: string;
+  /** @pattern ^[A-Za-z][A-Za-z0-9.-]{0,14}$ */
+  ticker: string;
+  /** @maxLength 2000 */
+  dossierContext?: string;
+  /** @maxItems 20 */
+  permittedEvidence?: FamilyOfficeResearchInputPermittedEvidenceItem[];
 }
 
 export interface FamilyOfficeEvidence {
@@ -3055,6 +3077,54 @@ export interface FamilyOfficeRefresh {
   runId: string | null;
 }
 
+export type FamilyOfficeProposalAdvisorySectionsProvenanceItem = typeof FamilyOfficeProposalAdvisorySectionsProvenanceItem[keyof typeof FamilyOfficeProposalAdvisorySectionsProvenanceItem];
+
+
+export const FamilyOfficeProposalAdvisorySectionsProvenanceItem = {
+  SIMPLY_WALL_ST_PERMITTED_EVIDENCE: 'SIMPLY_WALL_ST_PERMITTED_EVIDENCE',
+  SCHWAB_MARKET_OBSERVATION: 'SCHWAB_MARKET_OBSERVATION',
+  CAPITAL_OS_CALCULATION: 'CAPITAL_OS_CALCULATION',
+  GROK_INFERENCE: 'GROK_INFERENCE',
+} as const;
+
+/**
+ * Source-attributed advisory-only dossier sections.
+ */
+export type FamilyOfficeProposalAdvisorySections = {[key: string]: {
+  content: string[];
+  evidenceIds: string[];
+  provenance: FamilyOfficeProposalAdvisorySectionsProvenanceItem[];
+}};
+
+export type FamilyOfficeProposalMultiAgentSynthesisRecommendation = typeof FamilyOfficeProposalMultiAgentSynthesisRecommendation[keyof typeof FamilyOfficeProposalMultiAgentSynthesisRecommendation];
+
+
+export const FamilyOfficeProposalMultiAgentSynthesisRecommendation = {
+  RESEARCH_ONLY: 'RESEARCH_ONLY',
+  WATCH: 'WATCH',
+  REVIEW_CANDIDATE: 'REVIEW_CANDIDATE',
+  INVESTMENT_CANDIDATE: 'INVESTMENT_CANDIDATE',
+  AVOID: 'AVOID',
+  RISK_REVIEW_REQUIRED: 'RISK_REVIEW_REQUIRED',
+  INSUFFICIENT_EVIDENCE: 'INSUFFICIENT_EVIDENCE',
+} as const;
+
+export type FamilyOfficeProposalMultiAgentSynthesisAgentSummariesItem = {
+  agent?: string;
+  thesis?: string;
+  confidence?: number;
+};
+
+export type FamilyOfficeProposalMultiAgentSynthesis = {
+  agreements: string[];
+  disagreements: string[];
+  evidenceGaps: string[];
+  recommendation: FamilyOfficeProposalMultiAgentSynthesisRecommendation;
+  advisoryOnly: true;
+  pendingHumanApproval: true;
+  agentSummaries: FamilyOfficeProposalMultiAgentSynthesisAgentSummariesItem[];
+};
+
 export interface FamilyOfficeProposal {
   id: string;
   title: string;
@@ -3065,6 +3135,12 @@ export interface FamilyOfficeProposal {
   facts: string[];
   assumptions: string[];
   risks: string[];
+  /** Source-attributed advisory-only dossier sections. */
+  advisorySections: FamilyOfficeProposalAdvisorySections;
+  /** @nullable */
+  ticker: string | null;
+  dossierKind: string;
+  multiAgentSynthesis: FamilyOfficeProposalMultiAgentSynthesis;
   evidenceIds: string[];
   status: string;
   createdAt: string;
@@ -3543,6 +3619,37 @@ export type FamilyOfficeSnapshotRefreshCadence = {
   blockedReason: string | null;
 };
 
+export type FamilyOfficeSnapshotAiCioSynthesisItemSynthesisAgentSummariesItem = {
+  agent?: string;
+  thesis?: string;
+  confidence?: number;
+};
+
+export type FamilyOfficeSnapshotAiCioSynthesisItemSynthesis = {
+  agreements?: string[];
+  disagreements?: string[];
+  evidenceGaps?: string[];
+  recommendation?: string;
+  advisoryOnly?: boolean;
+  pendingHumanApproval?: boolean;
+  agentSummaries?: FamilyOfficeSnapshotAiCioSynthesisItemSynthesisAgentSummariesItem[];
+};
+
+export type FamilyOfficeSnapshotAiCioSynthesisItem = {
+  /** @nullable */
+  ticker?: string | null;
+  synthesis?: FamilyOfficeSnapshotAiCioSynthesisItemSynthesis;
+  advisoryOnly?: boolean;
+  pendingHumanApproval?: boolean;
+};
+
+export type FamilyOfficeSnapshotShadowPortfolioProjection = {
+  proposals?: FamilyOfficeProposal[];
+  nonExecuting?: boolean;
+  createsPortfoliosOrIntents?: boolean;
+  householdCapitalIncluded?: boolean;
+};
+
 export type FamilyOfficeSnapshotSummary = {
   liveExecutionEnabled: boolean;
   realOrdersSent: number;
@@ -3565,6 +3672,11 @@ export interface FamilyOfficeSnapshot {
   refreshes: FamilyOfficeRefresh[];
   refreshCadence: FamilyOfficeSnapshotRefreshCadence;
   proposals: FamilyOfficeProposal[];
+  watchlist: FamilyOfficeProposal[];
+  investmentTheses: FamilyOfficeProposal[];
+  riskReviews: FamilyOfficeProposal[];
+  aiCioSynthesis: FamilyOfficeSnapshotAiCioSynthesisItem[];
+  shadowPortfolioProjection: FamilyOfficeSnapshotShadowPortfolioProjection;
   shadowPortfolios: ShadowPortfolio[];
   shadowIntents: ShadowIntent[];
   shadowOutcomes: ShadowPortfolioOutcome[];

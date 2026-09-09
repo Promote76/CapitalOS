@@ -152,6 +152,8 @@ import {
   useCreateTaxLienCandidate,
   getGetRealEstateIntelligenceQueryKey,
   getGetFamilyOfficeQueryKey,
+  type FamilyOfficeProposal,
+  type FamilyOfficeResearchInput,
   type FamilyOfficeProposalDecisionInputDecision,
   type FamilyOfficeResearchFailure,
   type ShadowIntentInputDirection,
@@ -3701,6 +3703,82 @@ function ActionModal({ kind, close, onComplete }: { kind: Exclude<ModalKind, nul
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !submitting) close(); }}><div className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div className="modal-header"><div><div className="eyebrow">Capital OS / quick action</div><h2 id="modal-title">{copy.title}</h2><p>{copy.desc}</p></div><button className="icon-btn" aria-label="Close dialog" data-testid="button-close-modal" onClick={close} disabled={submitting}><X size={17} /></button></div><form className="modal-form" onSubmit={(event) => { void submit(event); }}>{(kind === 'contribution' || kind === 'transfer') && <div className="field"><label>Amount</label><input autoFocus required inputMode="decimal" min="0.01" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} data-testid="input-action-amount" placeholder="250" /></div>}{kind === 'contribution' && <div className="field"><label>Allocation rule</label><div className="field-help">The active household allocation rule applies server-side; this contribution is not manually routed to a sleeve.</div></div>}{(kind === 'strategy' || kind === 'property') && <div className="field"><label>{kind === 'property' ? 'Note title' : 'Strategy title'}</label><input autoFocus required value={name} onChange={(event) => setName(event.target.value)} data-testid="input-action-name" /></div>}<div className="field"><label>Note <span style={{ textTransform:'none', letterSpacing:0 }}>(optional)</span></label><textarea value={note} onChange={(event) => setNote(event.target.value)} data-testid="textarea-action-note" placeholder="A little context for later..." /></div><div className="modal-actions"><button type="button" className="btn" data-testid="button-cancel-modal" onClick={close} disabled={submitting}>Cancel</button><button type="submit" className="btn btn-primary" data-testid="button-submit-modal" disabled={submitting}><Check size={14} /> {submitting ? 'Saving…' : copy.submit}</button></div></form></div></div>;
 }
 
+const RECOMMENDED_LABELS: Record<string, string> = {
+  RESEARCH_ONLY: 'Research Only',
+  WATCH: 'Watch',
+  REVIEW_CANDIDATE: 'Review Candidate',
+  INVESTMENT_CANDIDATE: 'Investment Candidate',
+  AVOID: 'Avoid',
+  RISK_REVIEW_REQUIRED: 'Risk Review Required',
+  INSUFFICIENT_EVIDENCE: 'Insufficient Evidence',
+};
+
+function ProposalCard({ proposal, onDecide }: { proposal: FamilyOfficeProposal, onDecide: (id: string, decision: FamilyOfficeProposalDecisionInputDecision) => void }) {
+  return (
+    <div className="card card-pad ai-card">
+      <div className="card-title-row" style={{ marginBottom: '0.5rem' }}>
+        <div>
+          <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>{proposal.ticker ? `${proposal.ticker} · ` : ''}{proposal.title}</h3>
+          <span className="intelligence-confidence">Confidence: {proposal.confidence.toFixed(0)}% · {proposal.dossierKind}</span>
+        </div>
+        <span className="status">{proposal.label}</span>
+      </div>
+      <p style={{ fontSize: '0.875rem' }}>{proposal.thesis}</p>
+
+      <div className="logic-grid" style={{ marginTop: '1rem' }}>
+        {proposal.multiAgentSynthesis?.agreements?.length > 0 && (
+          <div><span><CheckCircle2 size={12} /> Agreements</span>
+            <ul style={{ paddingLeft: '1.25rem', margin: '0.25rem 0 0', fontSize: '0.875rem' }}>{proposal.multiAgentSynthesis.agreements.map((item: string, i: number) => <li key={i}>{item}</li>)}</ul>
+          </div>
+        )}
+        {proposal.multiAgentSynthesis?.disagreements?.length > 0 && (
+          <div><span><AlertCircle size={12} /> Disagreements</span>
+            <ul style={{ paddingLeft: '1.25rem', margin: '0.25rem 0 0', fontSize: '0.875rem' }}>{proposal.multiAgentSynthesis.disagreements.map((item: string, i: number) => <li key={i}>{item}</li>)}</ul>
+          </div>
+        )}
+        {proposal.multiAgentSynthesis?.evidenceGaps?.length > 0 && (
+          <div><span><Search size={12} /> Evidence Gaps</span>
+            <ul style={{ paddingLeft: '1.25rem', margin: '0.25rem 0 0', fontSize: '0.875rem' }}>{proposal.multiAgentSynthesis.evidenceGaps.map((item: string, i: number) => <li key={i}>{item}</li>)}</ul>
+          </div>
+        )}
+      </div>
+
+      <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-inset)', borderRadius: '0.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <strong style={{ fontSize: '0.875rem' }}>Multi-Agent Synthesis Recommendation</strong>
+          <span className="status pending">{RECOMMENDED_LABELS[proposal.multiAgentSynthesis?.recommendation] || proposal.multiAgentSynthesis?.recommendation}</span>
+        </div>
+        {proposal.multiAgentSynthesis?.pendingHumanApproval && <div className="safety-inline" style={{ marginTop: 0 }}><ShieldAlert size={14} /> Final advisory recommendation pending human approval. Non-executable.</div>}
+        {proposal.advisoryOnly && <div className="safety-inline" style={{ marginTop: '0.25rem' }}><Lock size={14} /> Protected capital notice: This is advisory analysis only. No real orders or allocations will be executed.</div>}
+      </div>
+
+      {proposal.advisorySections && Object.keys(proposal.advisorySections).length > 0 && (
+        <div style={{ marginTop: '1rem' }}>
+          <strong style={{ fontSize: '0.875rem' }}>Source-separated Advisory Sections</strong>
+          {Object.entries(proposal.advisorySections as unknown as Record<string, { content: string[], provenance?: string[] }>).map(([key, section]) => (
+            <div key={key} style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
+              <div style={{ fontWeight: 500, textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}</div>
+              {section.content.map((p: string, i: number) => <p key={i} style={{ margin: '0.25rem 0 0' }}>{p}</p>)}
+              {section.provenance && section.provenance.length > 0 && (
+                 <div style={{ color: 'var(--ink-soft)', marginTop: '0.25rem', fontSize: '0.8rem' }}>Sources: {section.provenance.join(', ')}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {proposal.status === 'pending' && (
+        <div className="heading-actions" style={{ marginTop: '1rem', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" onClick={() => onDecide(proposal.id, 'approve_shadow')}><Check size={14} /> Approve for Shadow</button>
+          <button className="btn" onClick={() => onDecide(proposal.id, 'watch')}><Search size={14} /> Watch</button>
+          <button className="btn" onClick={() => onDecide(proposal.id, 'request_more_research')}><FlaskConical size={14} /> More Research</button>
+          <button className="btn" onClick={() => onDecide(proposal.id, 'reject')}><X size={14} /> Reject</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => void }) {
   const query = useGetFamilyOffice();
   const research = useCreateFamilyOfficeResearch();
@@ -3709,7 +3787,8 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
   const createIntent = useCreateShadowIntent();
   const realEstateQuery = useGetRealEstateIntelligence();
   const createTaxLien = useCreateTaxLienCandidate();
-  const [researchDraft, setResearchDraft] = useState({ scope: 'family office intelligence', prompt: '', analyst: 'CIO analyst' });
+  const [researchDraft, setResearchDraft] = useState<FamilyOfficeResearchInput>({ scope: 'family office intelligence', prompt: '', analyst: 'CIO analyst', ticker: '', dossierContext: '', permittedEvidence: [] });
+  const [newEvidence, setNewEvidence] = useState({ title: '', sourceUrl: '', excerpt: '', permissionConfirmed: false });
   const [portfolioDraft, setPortfolioDraft] = useState({ name: '', benchmark: 'SPY', strategy: '' });
   const [intentDraft, setIntentDraft] = useState({ proposalId: '', shadowPortfolioId: '', symbol: '', direction: 'neutral' as ShadowIntentInputDirection, hypotheticalQuantity: '1', hypotheticalNotional: '1000.00', referencePrice: '100', timeHorizon: '12 months' });
   const [taxLienDraft, setTaxLienDraft] = useState<TaxLienCandidateInput>({
@@ -3756,7 +3835,7 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
     if (!researchDraft.prompt.trim()) return;
     try {
       await research.mutateAsync({ data: researchDraft });
-      setResearchDraft({ ...researchDraft, prompt: '' });
+      setResearchDraft({ ...researchDraft, prompt: '', ticker: '', dossierContext: '', permittedEvidence: [] });
       await refresh();
       onFeedback('Research completed as advisory evidence. No order or capital action was created.');
     } catch (error) {
@@ -3971,19 +4050,134 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
     </section>
 
     <section className="section-grid page-section">
-      <section className="card card-pad animate-in delay-2">
-        <CardTitle title="Commission an analyst" subtitle="Prompts are sanitized server-side and stored without credentials." action={<Sparkles size={17} color="var(--ink-soft)" />} />
+      <section className="card card-pad animate-in delay-2" style={{ gridColumn: '1 / -1' }}>
+        <CardTitle title="Ticker dossier & advisory research" subtitle="Research via permitted sources. Capital OS does not scrape external sites autonomously." action={<Sparkles size={17} color="var(--ink-soft)" />} />
         <form className="account-form" onSubmit={runResearch}>
           <div className="field"><label>Scope</label><input required maxLength={120} value={researchDraft.scope} onChange={(event) => setResearchDraft({ ...researchDraft, scope: event.target.value })} /></div>
           <div className="field"><label>Analyst</label><input maxLength={80} value={researchDraft.analyst} onChange={(event) => setResearchDraft({ ...researchDraft, analyst: event.target.value })} /></div>
-          <div className="field" style={{ gridColumn: '1 / -1' }}><label>Research question</label><textarea required maxLength={4000} rows={5} value={researchDraft.prompt} onChange={(event) => setResearchDraft({ ...researchDraft, prompt: event.target.value })} placeholder="Compare current Florida tax-lien market signals with this household's property buy box. Separate facts, assumptions, and unknowns." /></div>
-          <button className="btn btn-primary" type="submit" disabled={research.isPending || snapshot.provider.state === 'disabled'}><Sparkles size={14} /> {research.isPending ? 'Researching…' : 'Run advisory research'}</button>
+          <div className="field"><label>Ticker</label><input required pattern="^[A-Za-z][A-Za-z0-9.-]{0,14}$" maxLength={15} value={researchDraft.ticker} onChange={(event) => setResearchDraft({ ...researchDraft, ticker: event.target.value })} placeholder="AAPL" /></div>
+          <div className="field" style={{ gridColumn: '1 / -1' }}><label>Research question / prompt</label><textarea required maxLength={4000} rows={3} value={researchDraft.prompt} onChange={(event) => setResearchDraft({ ...researchDraft, prompt: event.target.value })} placeholder="Evaluate the thesis for..." /></div>
+          <div className="field" style={{ gridColumn: '1 / -1' }}><label>Dossier context <span style={{ textTransform:'none', letterSpacing:0 }}>(optional)</span></label><textarea maxLength={2000} rows={2} value={researchDraft.dossierContext} onChange={(event) => setResearchDraft({ ...researchDraft, dossierContext: event.target.value })} placeholder="Internal notes or context..." /></div>
+
+          <div style={{ gridColumn: '1 / -1' }}>
+            <div className="card-title-row"><div><h4>Permitted Simply Wall St Evidence</h4></div></div>
+            <p className="field-help" style={{ marginBottom: '0.75rem' }}>Attach excerpts from Simply Wall St. You must explicitly confirm permission to use this excerpt; Capital OS will not autonomously scrape the URL.</p>
+            <div className="review-list">
+              {researchDraft.permittedEvidence?.map((ev: any, idx: number) => (
+                <div className="review-row" key={idx}>
+                  <div><strong>{ev.title}</strong>{ev.sourceUrl && <span>{ev.sourceUrl}</span>}</div>
+                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }}>{ev.excerpt}</span>
+                  <button type="button" className="btn btn-sm" onClick={() => setResearchDraft((d: FamilyOfficeResearchInput) => ({ ...d, permittedEvidence: d.permittedEvidence!.filter((_: any, i: number) => i !== idx) }))}><X size={12} /></button>
+                </div>
+              ))}
+            </div>
+
+            <div className="card card-pad" style={{ marginTop: '0.75rem', background: 'var(--bg-inset)' }}>
+               <div className="account-form">
+                 <div className="field"><label>Evidence Title</label><input value={newEvidence.title} onChange={e => setNewEvidence({...newEvidence, title: e.target.value})} placeholder="Q3 Earnings Report Excerpt" /></div>
+                 <div className="field"><label>Source URL <span style={{ textTransform:'none', letterSpacing:0 }}>(optional)</span></label><input value={newEvidence.sourceUrl} onChange={e => setNewEvidence({...newEvidence, sourceUrl: e.target.value})} placeholder="https://simplywall.st/..." /></div>
+                 <div className="field" style={{ gridColumn: '1 / -1' }}><label>Excerpt</label><textarea rows={2} value={newEvidence.excerpt} onChange={e => setNewEvidence({...newEvidence, excerpt: e.target.value})} placeholder="Paste the permitted excerpt here..." /></div>
+                 <label className="checkbox-label" style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
+                   <input type="checkbox" checked={newEvidence.permissionConfirmed} onChange={e => setNewEvidence({...newEvidence, permissionConfirmed: e.target.checked})} />
+                   I confirm I have permission to provide this Simply Wall St excerpt for advisory analysis.
+                 </label>
+                 <button type="button" className="btn" style={{ gridColumn: '1 / -1', justifySelf: 'start' }} onClick={() => {
+                   if (!newEvidence.title || !newEvidence.excerpt || !newEvidence.permissionConfirmed) {
+                     onFeedback("Title, excerpt, and explicit permission confirmation are required to add evidence.");
+                     return;
+                   }
+                   setResearchDraft((d: FamilyOfficeResearchInput) => ({
+                     ...d,
+                     permittedEvidence: [...(d.permittedEvidence || []), { title: newEvidence.title, sourceUrl: newEvidence.sourceUrl, excerpt: newEvidence.excerpt, permissionConfirmed: true as const }]
+                   }));
+                   setNewEvidence({ title: '', sourceUrl: '', excerpt: '', permissionConfirmed: false });
+                 }}><Plus size={14} /> Add permitted evidence</button>
+               </div>
+            </div>
+          </div>
+          <button className="btn btn-primary" style={{ gridColumn: '1 / -1' }} type="submit" disabled={research.isPending || snapshot.provider.state === 'disabled'}><Sparkles size={14} /> {research.isPending ? 'Researching…' : 'Run advisory research'}</button>
         </form>
       </section>
       <section className="card card-pad animate-in delay-2">
         <CardTitle title="Safety contract" subtitle="These boundaries are not configurable from the intelligence workspace." />
         <div className="logic-grid">{snapshot.guardrails.map((guardrail) => <div key={guardrail}><span><Lock size={12} /> Guardrail</span><p>{guardrail}</p></div>)}</div>
       </section>
+    </section>
+
+    <section className="section-grid page-section">
+      <div className="card card-pad animate-in delay-2">
+         <CardTitle title="Watchlist Projection" subtitle="Advisory tracking list." action={<Search size={17} color="var(--ink-soft)" />} />
+         {snapshot.watchlist.length === 0 ? <div className="empty-state">No watchlist candidates</div> : (
+           <div className="review-list">
+             {snapshot.watchlist.map(p => <ProposalCard key={p.id} proposal={p} onDecide={recordDecision} />)}
+           </div>
+         )}
+      </div>
+      <div className="card card-pad animate-in delay-2">
+         <CardTitle title="Investment Thesis Projection" subtitle="Dossiers categorized as actionable thesis candidates." action={<BookOpen size={17} color="var(--ink-soft)" />} />
+         {snapshot.investmentTheses.length === 0 ? <div className="empty-state">No investment thesis proposals</div> : (
+           <div className="review-list">
+             {snapshot.investmentTheses.map(p => <ProposalCard key={p.id} proposal={p} onDecide={recordDecision} />)}
+           </div>
+         )}
+      </div>
+    </section>
+
+    <section className="section-grid page-section">
+      <div className="card card-pad animate-in delay-2">
+         <CardTitle title="Risk Review Projection" subtitle="Candidates requiring risk mitigation." action={<ShieldAlert size={17} color="var(--ink-soft)" />} />
+         {snapshot.riskReviews.length === 0 ? <div className="empty-state">No risk reviews pending</div> : (
+           <div className="review-list">
+             {snapshot.riskReviews.map(p => <ProposalCard key={p.id} proposal={p} onDecide={recordDecision} />)}
+           </div>
+         )}
+      </div>
+      <div className="card card-pad animate-in delay-2">
+         <CardTitle title="Shadow Portfolio Research Projection" subtitle="Impact of proposals on shadow portfolios." action={<BarChart3 size={17} color="var(--ink-soft)" />} />
+         {snapshot.shadowPortfolioProjection?.nonExecuting && <div className="safety-inline"><Lock size={14} /> Shadow projection is non-executing.</div>}
+         {(!snapshot.shadowPortfolioProjection?.proposals || snapshot.shadowPortfolioProjection.proposals.length === 0) ? <div className="empty-state">No shadow projections</div> : (
+           <div className="review-list">
+             {snapshot.shadowPortfolioProjection.proposals.map(p => <ProposalCard key={p.id} proposal={p} onDecide={recordDecision} />)}
+           </div>
+         )}
+      </div>
+    </section>
+
+    <section className="card card-pad page-section animate-in delay-2">
+      <CardTitle title="AI CIO Synthesis" subtitle="Cross-dossier pattern recognition and alignment." action={<FlaskConical size={17} color="var(--ink-soft)" />} />
+      {snapshot.aiCioSynthesis.length === 0 ? <div className="empty-state">No synthesis available</div> : (
+        <div className="review-list">
+           {snapshot.aiCioSynthesis.map((s, idx) => (
+             <div className="review-row" key={idx} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.75rem' }}>
+               <div className="card-title-row" style={{ width: '100%', marginBottom: 0 }}>
+                 <strong>{s.ticker ? `Ticker: ${s.ticker}` : 'Global Synthesis'}</strong>
+                 <span className="status">{s.synthesis?.recommendation ? RECOMMENDED_LABELS[s.synthesis.recommendation] || s.synthesis.recommendation : 'No Recommendation'}</span>
+               </div>
+
+               <div className="logic-grid" style={{ width: '100%' }}>
+                  {s.synthesis?.agreements && s.synthesis.agreements.length > 0 && (
+                    <div><span><CheckCircle2 size={12} /> Agreements</span>
+                      <ul style={{ paddingLeft: '1.25rem', margin: '0.25rem 0 0', fontSize: '0.875rem' }}>{s.synthesis.agreements.map((item, i) => <li key={i}>{item}</li>)}</ul>
+                    </div>
+                  )}
+                  {s.synthesis?.disagreements && s.synthesis.disagreements.length > 0 && (
+                    <div><span><AlertCircle size={12} /> Disagreements</span>
+                      <ul style={{ paddingLeft: '1.25rem', margin: '0.25rem 0 0', fontSize: '0.875rem' }}>{s.synthesis.disagreements.map((item, i) => <li key={i}>{item}</li>)}</ul>
+                    </div>
+                  )}
+                  {s.synthesis?.evidenceGaps && s.synthesis.evidenceGaps.length > 0 && (
+                    <div><span><Search size={12} /> Evidence Gaps</span>
+                      <ul style={{ paddingLeft: '1.25rem', margin: '0.25rem 0 0', fontSize: '0.875rem' }}>{s.synthesis.evidenceGaps.map((item, i) => <li key={i}>{item}</li>)}</ul>
+                    </div>
+                  )}
+               </div>
+
+               {s.pendingHumanApproval && <div className="safety-inline" style={{ marginTop: 0 }}><ShieldAlert size={14} /> CIO synthesis recommendation pending human approval.</div>}
+               {s.advisoryOnly && <div className="safety-inline" style={{ marginTop: '0.25rem' }}><Lock size={14} /> Advisory only. Not a trade recommendation.</div>}
+             </div>
+           ))}
+        </div>
+      )}
     </section>
 
      <section className="section-grid page-section">

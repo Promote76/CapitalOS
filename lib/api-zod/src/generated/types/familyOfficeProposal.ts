@@ -5,6 +5,8 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { FamilyOfficeProposalAdvisorySections } from './familyOfficeProposalAdvisorySections';
+import type { FamilyOfficeProposalMultiAgentSynthesis } from './familyOfficeProposalMultiAgentSynthesis';
 
 export interface FamilyOfficeProposal {
   id: string;
@@ -16,6 +18,12 @@ export interface FamilyOfficeProposal {
   facts: string[];
   assumptions: string[];
   risks: string[];
+  /** Source-attributed advisory-only dossier sections. */
+  advisorySections: FamilyOfficeProposalAdvisorySections;
+  /** @nullable */
+  ticker: string | null;
+  dossierKind: string;
+  multiAgentSynthesis: FamilyOfficeProposalMultiAgentSynthesis;
   evidenceIds: string[];
   status: string;
   createdAt: Date;

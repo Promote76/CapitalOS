@@ -8,6 +8,16 @@ export const familyOfficeLabels = [
   "INSUFFICIENT_EVIDENCE",
 ] as const;
 
+/** Immutable provenance classes accepted by research dossiers.  A provider may
+ * infer from these classes, but it may never relabel an inference as evidence. */
+export const researchProvenanceCategories = [
+  "SIMPLY_WALL_ST_PERMITTED_EVIDENCE",
+  "SCHWAB_MARKET_OBSERVATION",
+  "CAPITAL_OS_CALCULATION",
+  "GROK_INFERENCE",
+] as const;
+export type ResearchProvenanceCategory = (typeof researchProvenanceCategories)[number];
+
 export const analyticalDirections = ["BULLISH", "NEUTRAL", "BEARISH"] as const;
 export const proposalDecisions = ["watch", "reject", "request_more_research", "approve_shadow"] as const;
 
@@ -170,9 +180,10 @@ export type ResearchOutput = {
   facts: string[];
   assumptions: string[];
   risks: string[];
+  sections: ResearchAdvisorySections;
   evidence: Array<{
     title: string;
-    sourceKind: string;
+    sourceKind: ResearchProvenanceCategory;
     sourceUrl?: string;
     excerpt: string;
     classification: string;
@@ -180,6 +191,125 @@ export type ResearchOutput = {
     confidence: number;
   }>;
 };
+
+export type ResearchAdvisorySection = {
+  content: string[];
+  evidenceIds: string[];
+  provenance: ResearchProvenanceCategory[];
+};
+
+export type ResearchAdvisorySections = {
+  fundamentals: ResearchAdvisorySection;
+  valuation: ResearchAdvisorySection;
+  catalysts: ResearchAdvisorySection;
+  risks: ResearchAdvisorySection;
+  downsideCase: ResearchAdvisorySection;
+  peerContext: ResearchAdvisorySection;
+  portfolioFit: ResearchAdvisorySection;
+  concentrationLiquidityRisk: ResearchAdvisorySection;
+  thesisInvalidationConditions: ResearchAdvisorySection;
+  evidenceQuality: ResearchAdvisorySection;
+};
+
+export type MultiAgentSynthesis = {
+  agreements: string[];
+  disagreements: string[];
+  evidenceGaps: string[];
+  recommendation: (typeof familyOfficeLabels)[number];
+  advisoryOnly: true;
+  pendingHumanApproval: true;
+  agentSummaries: Array<{ agent: string; thesis: string; confidence: number }>;
+};
+
+export type PermittedResearchEvidence = {
+  title: string;
+  sourceUrl?: string;
+  excerpt: string;
+  permissionConfirmed: true;
+};
+
+export type InvestmentDossierInput = {
+  ticker: string;
+  dossierContext?: string;
+  permittedEvidence?: PermittedResearchEvidence[];
+};
+
+export function normalizeTicker(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const ticker = value.trim().toUpperCase();
+  return /^[A-Z][A-Z0-9.-]{0,14}$/.test(ticker) ? ticker : null;
+}
+
+export function validateInvestmentDossierInput(value: unknown): InvestmentDossierInput | null {
+  if (!value || typeof value !== "object") return null;
+  const input = value as Record<string, unknown>;
+  const ticker = normalizeTicker(input.ticker);
+  if (!ticker) return null;
+  const dossierContext = input.dossierContext === undefined ? undefined : boundedString(input.dossierContext, 2000) ?? undefined;
+  if (input.dossierContext !== undefined && !dossierContext) return null;
+  if (input.permittedEvidence !== undefined && (!Array.isArray(input.permittedEvidence) || input.permittedEvidence.length > 20)) return null;
+  const permittedEvidence = (input.permittedEvidence ?? []).map((item) => {
+    if (!item || typeof item !== "object") return null;
+    const row = item as Record<string, unknown>;
+    const title = boundedString(row.title, 180);
+    const excerpt = boundedString(row.excerpt, 3000);
+    const sourceUrl = row.sourceUrl === undefined ? undefined : boundedString(row.sourceUrl, 2000);
+    if (!title || !excerpt || row.permissionConfirmed !== true || (row.sourceUrl !== undefined && !sourceUrl)) return null;
+    if (sourceUrl) try { new URL(sourceUrl); } catch { return null; }
+    return { title, excerpt, ...(sourceUrl ? { sourceUrl } : {}), permissionConfirmed: true as const };
+  });
+  return permittedEvidence.every(Boolean) ? { ticker, dossierContext, permittedEvidence: permittedEvidence as PermittedResearchEvidence[] } : null;
+}
+
+export function capitalOsDossierContext() {
+  return {
+    firstDuplexReserveExcluded: true,
+    protectedHouseholdCapitalExcluded: true,
+    deployableAuthority: false,
+    note: "Capital OS calculations are advisory context only; no deployable authority exists.",
+  } as const;
+}
+
+const sectionNames = [
+  "fundamentals", "valuation", "catalysts", "risks", "downsideCase",
+  "peerContext", "portfolioFit", "concentrationLiquidityRisk",
+  "thesisInvalidationConditions", "evidenceQuality",
+] as const;
+
+function parseSection(value: unknown): ResearchAdvisorySection | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const content = boundedStringArray(record.content, 20, 1000);
+  const evidenceIds = boundedStringArray(record.evidenceIds, 30, 100);
+  const provenance = Array.isArray(record.provenance) && record.provenance.every((item) =>
+    researchProvenanceCategories.includes(item as ResearchProvenanceCategory),
+  ) ? record.provenance as ResearchProvenanceCategory[] : null;
+  return content && evidenceIds && provenance ? { content, evidenceIds, provenance } : null;
+}
+
+/** Deterministic, advisory-only reduction of independent analyst outputs. */
+export function synthesizeResearch(outputs: readonly ResearchOutput[]): MultiAgentSynthesis {
+  const agreements = outputs.length
+    ? [...new Set(outputs.flatMap((output) => output.facts))].slice(0, 20)
+    : [];
+  const directions = new Set(outputs.map((output) => output.analyticalDirection));
+  const disagreements = directions.size > 1
+    ? [`Analysts disagree on direction: ${[...directions].join(", ")}.`]
+    : [];
+  const evidenceGaps = outputs.length
+    ? [...new Set(outputs.flatMap((output) => output.sections.evidenceQuality.content))].slice(0, 20)
+    : ["No analyst evidence was available."];
+  const recommendation = outputs.length
+    ? outputs.reduce((least, output) => output.confidence < least.confidence ? output : least).label
+    : "INSUFFICIENT_EVIDENCE";
+  return {
+    agreements, disagreements, evidenceGaps, recommendation, advisoryOnly: true, pendingHumanApproval: true,
+    agentSummaries: outputs.map((output, index) => ({
+      agent: ["fundamentals-valuation", "risk-downside", "portfolio-cio"][index] ?? `agent-${index + 1}`,
+      thesis: output.thesis, confidence: output.confidence,
+    })),
+  };
+}
 
 function boundedString(value: unknown, max: number): string | null {
   if (typeof value !== "string") return null;
@@ -210,13 +340,24 @@ function parseResearchOutput(value: unknown): ResearchOutput | null {
   const assumptions = boundedStringArray(record.assumptions, 20, 1000);
   const risks = boundedStringArray(record.risks, 20, 1000);
   if (!title || !thesis || !label || !analyticalDirection || confidence === null || !facts || !assumptions || !risks) return null;
+  const sections = sectionNames.reduce((result, name) => {
+    const parsed = parseSection((record.sections as Record<string, unknown> | undefined)?.[name]);
+    if (parsed) result[name] = parsed;
+    return result;
+  }, {} as Partial<ResearchAdvisorySections>);
+  // Older provider responses are upgraded to explicit, traceable sections.
+  for (const name of sectionNames) {
+    sections[name] ??= { content: name === "risks" ? risks : [], evidenceIds: [], provenance: [] };
+  }
   if (!Array.isArray(record.evidence) || record.evidence.length > 20) return null;
   const evidence = record.evidence.map((raw) => {
     if (!raw || typeof raw !== "object") return null;
     const item = raw as Record<string, unknown>;
     const itemTitle = boundedString(item.title, 180);
     const excerpt = boundedString(item.excerpt, 1500);
-    const sourceKind = boundedString(item.sourceKind ?? "unverified", 80);
+    const sourceKind = researchProvenanceCategories.includes(item.sourceKind as ResearchProvenanceCategory)
+      ? item.sourceKind as ResearchProvenanceCategory
+      : null;
     const classification = boundedString(item.classification ?? "unverified", 80);
     const freshness = boundedString(item.freshness ?? "unknown", 80);
     const itemConfidence = typeof item.confidence === "number" && Number.isFinite(item.confidence) && item.confidence >= 0 && item.confidence <= 100 ? item.confidence : 0;
@@ -228,7 +369,7 @@ function parseResearchOutput(value: unknown): ResearchOutput | null {
     return { title: itemTitle, sourceKind, sourceUrl: sourceUrl ?? undefined, excerpt, classification, freshness, confidence: itemConfidence };
   });
   if (!evidence.every((item): item is NonNullable<typeof item> => Boolean(item))) return null;
-  return { title, thesis, label, analyticalDirection, confidence, facts, assumptions, risks, evidence };
+  return { title, thesis, label, analyticalDirection, confidence, facts, assumptions, risks, sections: sections as ResearchAdvisorySections, evidence };
 }
 
 export const researchOutputSchema = {

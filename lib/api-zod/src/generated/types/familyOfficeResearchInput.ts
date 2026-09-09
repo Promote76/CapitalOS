@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { FamilyOfficeResearchInputPermittedEvidenceItem } from './familyOfficeResearchInputPermittedEvidenceItem';
 
 export interface FamilyOfficeResearchInput {
   /** @maxLength 80 */
@@ -19,4 +20,10 @@ export interface FamilyOfficeResearchInput {
      * @maxLength 4000
      */
   prompt: string;
+  /** @pattern ^[A-Za-z][A-Za-z0-9.-]{0,14}$ */
+  ticker: string;
+  /** @maxLength 2000 */
+  dossierContext?: string;
+  /** @maxItems 20 */
+  permittedEvidence?: FamilyOfficeResearchInputPermittedEvidenceItem[];
 }

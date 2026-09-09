@@ -10,8 +10,10 @@ import type { FamilyOfficeRealEstateSnapshot } from './familyOfficeRealEstateSna
 import type { FamilyOfficeRefresh } from './familyOfficeRefresh';
 import type { FamilyOfficeReport } from './familyOfficeReport';
 import type { FamilyOfficeRun } from './familyOfficeRun';
+import type { FamilyOfficeSnapshotAiCioSynthesisItem } from './familyOfficeSnapshotAiCioSynthesisItem';
 import type { FamilyOfficeSnapshotProvider } from './familyOfficeSnapshotProvider';
 import type { FamilyOfficeSnapshotRefreshCadence } from './familyOfficeSnapshotRefreshCadence';
+import type { FamilyOfficeSnapshotShadowPortfolioProjection } from './familyOfficeSnapshotShadowPortfolioProjection';
 import type { FamilyOfficeSnapshotSummary } from './familyOfficeSnapshotSummary';
 import type { FamilyOfficeWorkforce } from './familyOfficeWorkforce';
 import type { ShadowIntent } from './shadowIntent';
@@ -25,6 +27,11 @@ export interface FamilyOfficeSnapshot {
   refreshes: FamilyOfficeRefresh[];
   refreshCadence: FamilyOfficeSnapshotRefreshCadence;
   proposals: FamilyOfficeProposal[];
+  watchlist: FamilyOfficeProposal[];
+  investmentTheses: FamilyOfficeProposal[];
+  riskReviews: FamilyOfficeProposal[];
+  aiCioSynthesis: FamilyOfficeSnapshotAiCioSynthesisItem[];
+  shadowPortfolioProjection: FamilyOfficeSnapshotShadowPortfolioProjection;
   shadowPortfolios: ShadowPortfolio[];
   shadowIntents: ShadowIntent[];
   shadowOutcomes: ShadowPortfolioOutcome[];

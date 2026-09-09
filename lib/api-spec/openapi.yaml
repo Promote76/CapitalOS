@@ -5677,7 +5677,7 @@ components:
         digestionPayload:
           type: string
           maxLength: 102400
-          description: Bounded JSON text containing advisory structured research digestion
+          description: Bounded plain-text investment research or compatible structured JSON. Plain text is normalized into source-linked facts and advisory observations before analysis.
     FamilyOfficeResearchDigestionPreviewInput:
       type: object
       required: [digestionPayload]

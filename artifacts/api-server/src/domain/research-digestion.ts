@@ -246,12 +246,238 @@ function claimedUrl(v: unknown, path: string, issues: DigestionIssue[]) {
   } catch { issue(issues, path, "unsafe_url", "Claimed URL must use HTTPS and contain no credentials."); return undefined; }
 }
 
+const plainTextClaimSections = new Set([
+  "source facts",
+  "facts",
+  "source-derived evidence",
+  "source derived evidence",
+  "external verification",
+  "verified facts",
+]);
+const plainTextInferenceSections = new Map<string, { label: string; confidence: number }>([
+  ["fundamentals", { label: "Fundamentals", confidence: 0.5 }],
+  ["valuation", { label: "Valuation", confidence: 0.5 }],
+  ["catalysts", { label: "Catalyst", confidence: 0.45 }],
+  ["investment thesis", { label: "Investment thesis", confidence: 0.45 }],
+  ["thesis", { label: "Investment thesis", confidence: 0.45 }],
+  ["risks", { label: "Risk", confidence: 0.45 }],
+  ["risk", { label: "Risk", confidence: 0.45 }],
+  ["bull case", { label: "Bull case", confidence: 0.45 }],
+  ["base case", { label: "Base case", confidence: 0.45 }],
+  ["bear case", { label: "Bear case", confidence: 0.45 }],
+  ["downside case", { label: "Downside case", confidence: 0.45 }],
+  ["portfolio fit", { label: "Portfolio fit", confidence: 0.4 }],
+  ["portfolio / cio", { label: "Portfolio / CIO", confidence: 0.4 }],
+  ["portfolio/cio", { label: "Portfolio / CIO", confidence: 0.4 }],
+  ["evidence quality", { label: "Evidence quality", confidence: 0.35 }],
+  ["research notes", { label: "Research note", confidence: 0.35 }],
+  ["notes", { label: "Research note", confidence: 0.35 }],
+]);
+const plainTextSourceSections = new Set(["source", "sources", "source details"]);
+
+function normalizedHeading(value: string) {
+  return value
+    .replace(/^#{1,6}\s*/, "")
+    .replace(/^\*{1,2}|\*{1,2}$/g, "")
+    .replace(/:$/, "")
+    .trim()
+    .toLowerCase();
+}
+
+function plainTextItem(value: string) {
+  return value.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim();
+}
+
+function parseSourceReferences(
+  value: string,
+  sources: Array<{ id: string }>,
+  path: string,
+  issues: DigestionIssue[],
+) {
+  const match = value.match(/^\[([A-Za-z0-9._,-]+)\]\s*(.*)$/);
+  if (match) {
+    const ids = match[1].split(",").map((id) => id.trim()).filter(Boolean);
+    for (const id of ids) {
+      if (!sources.some((source) => source.id === id)) issue(issues, path, "bad_reference", `Text references unknown source ${id}.`);
+    }
+    return { statement: match[2].trim(), sourceIds: ids };
+  }
+  if (sources.length === 1) return { statement: value, sourceIds: [sources[0].id] };
+  if (sources.length > 1) {
+    issue(issues, path, "ambiguous_source_reference", "With multiple sources, start each fact or observation with a source reference such as [source-1].");
+  }
+  return { statement: value, sourceIds: [] };
+}
+
+function parsePlainTextResearch(payload: string, issues: DigestionIssue[]): Record<string, unknown> {
+  const lines = payload.replace(/\r\n?/g, "\n").split("\n");
+  if (lines.length > 2000) {
+    issue(issues, "$", "too_many_lines", "Plain-text research may contain at most 2,000 lines.");
+  }
+  const overlongLine = lines.findIndex((line) => line.length > 5000);
+  if (overlongLine >= 0) issue(issues, `$.text.line${overlongLine + 1}`, "line_too_long", "A research line may contain at most 5,000 characters.");
+
+  let ticker: string | undefined;
+  let company: string | undefined;
+  let currentSection = "";
+  let pendingSourceTitle: string | undefined;
+  const sources: Array<{ id: string; title: string; url?: string; publisher?: string; asOf?: string }> = [];
+  const sourceClaims: Array<{ sourceId: string; statement: string }> = [];
+  const inferences: Array<{ statement: string; basisSourceIds: string[]; confidence: number; author: string }> = [];
+  const unsectioned: Array<{ value: string; lineNumber: number }> = [];
+
+  const uniqueGeneratedSourceId = () => {
+    const base = `source-${sources.length + 1}`;
+    if (!sources.some((source) => source.id === base)) return base;
+    let suffix = 2;
+    while (sources.some((source) => source.id === `${base}-${suffix}`)) suffix += 1;
+    return `${base}-${suffix}`;
+  };
+  const addSource = (raw: string, lineNumber: number) => {
+    const item = plainTextItem(raw);
+    const reference = item.match(/^\[([A-Za-z0-9._-]+)\]\s*(.*)$/);
+    const requestedId = reference?.[1];
+    const withoutReference = reference?.[2] ?? item;
+    const urlMatch = withoutReference.match(/https?:\/\/[^\s|)>\]]+/i);
+    const url = urlMatch?.[0]?.replace(/[.,;]+$/, "");
+    const titleCandidate = withoutReference
+      .replace(urlMatch?.[0] ?? "", "")
+      .replace(/^[\s|—–-]+|[\s|—–-]+$/g, "")
+      .trim();
+    let hostname = "";
+    if (url) {
+      try { hostname = new URL(url).hostname; } catch { /* claimedUrl reports the safe validation issue later */ }
+    }
+    const title = titleCandidate || pendingSourceTitle || hostname;
+    if (!title && !url) {
+      pendingSourceTitle = withoutReference || pendingSourceTitle;
+      return;
+    }
+    if (requestedId && sources.some((source) => source.id === requestedId)) {
+      issue(issues, `$.text.line${lineNumber}`, "duplicate_id", `Source ID ${requestedId} is declared more than once.`);
+    }
+    sources.push({
+      id: requestedId ?? uniqueGeneratedSourceId(),
+      title: title || "User-provided source",
+      ...(url ? { url } : {}),
+    });
+    pendingSourceTitle = undefined;
+    if (url?.startsWith("http://")) issue(issues, `$.text.line${lineNumber}`, "unsafe_url", "Source URLs must use HTTPS.");
+  };
+
+  lines.forEach((rawLine, index) => {
+    const lineNumber = index + 1;
+    const line = rawLine.trim();
+    if (!line) return;
+
+    const metadata = line.match(/^(ticker|symbol|company|company name|source|source url|source title|publisher|as of|source date)\s*:\s*(.+)$/i);
+    if (metadata) {
+      const field = metadata[1].toLowerCase();
+      const value = metadata[2].trim();
+      if (field === "ticker" || field === "symbol") {
+        if (ticker && ticker.trim().toUpperCase() !== value.toUpperCase()) {
+          issue(issues, `$.text.line${lineNumber}`, "conflicting_metadata", `Ticker conflicts with the earlier value ${ticker}.`);
+        } else if (!ticker) {
+          ticker = value;
+        }
+      } else if (field === "company" || field === "company name") {
+        const normalizedCompany = (candidate: string) => candidate.trim().replace(/\s+/g, " ").toLowerCase();
+        if (company && normalizedCompany(company) !== normalizedCompany(value)) {
+          issue(issues, `$.text.line${lineNumber}`, "conflicting_metadata", `Company conflicts with the earlier value ${company}.`);
+        } else if (!company) {
+          company = value;
+        }
+      }
+      else if (field === "source title") pendingSourceTitle = value;
+      else if (field === "source") addSource(value, lineNumber);
+      else if (field === "source url") addSource(`${pendingSourceTitle ?? ""} ${value}`, lineNumber);
+      else if (field === "publisher" && sources.length) sources[sources.length - 1].publisher = value;
+      else if ((field === "as of" || field === "source date") && sources.length) sources[sources.length - 1].asOf = value;
+      return;
+    }
+
+    let itemLine = line;
+    const inlineHeading = line.match(/^([^:]{1,80}):\s*(.*)$/);
+    const heading = normalizedHeading(inlineHeading?.[1] ?? line);
+    if (
+      plainTextClaimSections.has(heading)
+      || plainTextInferenceSections.has(heading)
+      || plainTextSourceSections.has(heading)
+    ) {
+      currentSection = heading;
+      itemLine = inlineHeading?.[2]?.trim() ?? "";
+      if (!itemLine) return;
+    }
+
+    if (plainTextSourceSections.has(currentSection)) {
+      addSource(itemLine, lineNumber);
+      return;
+    }
+
+    const item = plainTextItem(itemLine);
+    if (plainTextClaimSections.has(currentSection)) {
+      const linked = parseSourceReferences(item, sources, `$.text.line${lineNumber}`, issues);
+      for (const sourceId of linked.sourceIds) {
+        sourceClaims.push({
+          sourceId,
+          statement: currentSection === "external verification" ? `External verification: ${linked.statement}` : linked.statement,
+        });
+      }
+      return;
+    }
+
+    const inferenceSection = plainTextInferenceSections.get(currentSection);
+    if (inferenceSection) {
+      const linked = parseSourceReferences(item, sources, `$.text.line${lineNumber}`, issues);
+      if (linked.statement) {
+        inferences.push({
+          statement: `${inferenceSection.label}: ${linked.statement}`,
+          basisSourceIds: linked.sourceIds,
+          confidence: inferenceSection.confidence,
+          author: "User-supplied research",
+        });
+      }
+      return;
+    }
+
+    unsectioned.push({ value: item, lineNumber });
+  });
+
+  for (const note of unsectioned) {
+    const linked = parseSourceReferences(note.value, sources, `$.text.line${note.lineNumber}`, issues);
+    if (linked.statement) {
+      inferences.push({
+        statement: `Research note: ${linked.statement}`,
+        basisSourceIds: linked.sourceIds,
+        confidence: 0.3,
+        author: "User-supplied research",
+      });
+    }
+  }
+  if (!payload.trim()) issue(issues, "$", "empty", "Paste investment research before validating.");
+  return {
+    schemaVersion: "plain-text-v1",
+    ticker,
+    company,
+    sources,
+    sourceClaims,
+    inferences,
+  };
+}
+
 export function parseResearchDigestion(payload: string): Result {
   const issues: DigestionIssue[] = [];
-  if (typeof payload !== "string") return { success: false, issues: [{ path: "$", code: "type", message: "Digestion payload must be JSON text." }] };
-  if (Buffer.byteLength(payload, "utf8") > MAX_DIGESTION_BYTES) return { success: false, issues: [{ path: "$", code: "oversized", message: "Digestion payload exceeds 100 KiB." }] };
+  if (typeof payload !== "string") return { success: false, issues: [{ path: "$", code: "type", message: "Research must be plain text or compatible JSON." }] };
+  if (Buffer.byteLength(payload, "utf8") > MAX_DIGESTION_BYTES) return { success: false, issues: [{ path: "$", code: "oversized", message: "Research exceeds 100 KiB." }] };
   let root: unknown;
-  try { root = JSON.parse(payload); } catch { return { success: false, issues: [{ path: "$", code: "invalid_json", message: "Digestion payload is not valid JSON." }] }; }
+  try {
+    root = JSON.parse(payload);
+  } catch {
+    if (/^\s*[\[{]/.test(payload)) {
+      return { success: false, issues: [{ path: "$", code: "invalid_json", message: "The pasted JSON is incomplete or invalid. Plain text should start with Company: or Ticker:." }] };
+    }
+    root = parsePlainTextResearch(payload, issues);
+  }
   if (!depthAndSize(root) || !root || typeof root !== "object" || Array.isArray(root)) return { success: false, issues: [{ path: "$", code: "unsafe_container", message: "Payload must be a bounded object with safe nesting." }] };
   const originalRoot = root as Record<string, unknown>;
   const r = adaptCapitalOsInvestmentResearch(originalRoot, issues) ?? originalRoot;

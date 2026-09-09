@@ -60,6 +60,127 @@ test("Capital OS investment-research compatibility format normalizes linked fact
   }
 });
 
+test("plain-text investment research normalizes facts and advisory observations with provenance", () => {
+  const result = parseResearchDigestion(`Company: Bank of South Carolina Corporation
+Ticker: BKSC
+Source Title: 2025 Annual Report
+Source URL: https://example.com/bksc-annual-report
+Publisher: Bank of South Carolina
+As Of: 2025-12-31
+
+Source Facts:
+- Deposits increased year over year.
+- Nonperforming assets remained limited.
+
+External Verification:
+- Regulatory filings report the same period-end balances.
+
+Fundamentals:
+- Deposit funding appears stable.
+
+Valuation:
+- Compare price to verified tangible book value.
+
+Risks:
+- Geographic concentration may amplify local credit losses.
+
+Bull Case:
+- Stable deposits support measured growth.
+
+Base Case:
+- Earnings normalize without material credit deterioration.
+
+Bear Case:
+- Credit costs rise and compress book value.
+
+Evidence Quality:
+- Primary filing evidence is available, but market pricing needs a fresh check.
+
+Research Notes:
+- Advisory analysis only; human approval remains required.`);
+  assert.equal(result.success, true);
+  if (result.success) {
+    assert.equal(result.data.schemaVersion, "plain-text-v1");
+    assert.equal(result.data.ticker, "BKSC");
+    assert.equal(result.data.company, "Bank of South Carolina Corporation");
+    assert.equal(result.data.sources[0].url, "https://example.com/bksc-annual-report");
+    assert.equal(result.data.sourceClaims.length, 3);
+    assert.equal(result.data.inferences?.length, 8);
+    assert.ok(result.data.inferences?.every((inference) => inference.basisSourceIds[0] === "source-1"));
+  }
+});
+
+test("plain-text research fails closed for missing provenance and ambiguous multi-source attribution", () => {
+  const noSource = parseResearchDigestion(`Company: Example Corp
+Ticker: EXM
+Source Facts:
+- Revenue increased.`);
+  assert.equal(noSource.success, false);
+
+  const ambiguous = parseResearchDigestion(`Company: Example Corp
+Ticker: EXM
+Sources:
+- [filing] Annual report | https://example.com/annual
+- [market] Market data | https://example.com/market
+Source Facts:
+- Revenue increased.`);
+  assert.equal(ambiguous.success, false);
+
+  const linked = parseResearchDigestion(`Company: Example Corp
+Ticker: EXM
+Sources:
+- [filing] Annual report | https://example.com/annual
+- [market] Market data | https://example.com/market
+Source Facts:
+- [filing] Revenue increased.
+Valuation:
+- [market] Shares trade below the observed peer multiple.`);
+  assert.equal(linked.success, true);
+
+  const readableInline = parseResearchDigestion(`Company: Example Corp
+Ticker: EXM
+Source: Annual report https://example.com/annual
+Source Facts: Revenue increased.
+Valuation: Shares may trade below verified book value.
+Additional context for the advisory reviewers.`);
+  assert.equal(readableInline.success, true);
+});
+
+test("plain-text research rejects duplicate source IDs and conflicting security metadata", () => {
+  const duplicateSource = parseResearchDigestion(`Company: Example Corp
+Ticker: EXM
+Sources:
+- [filing] Annual report | https://example.com/annual
+- [filing] Quarterly report | https://example.com/quarterly
+Source Facts:
+- [filing] Revenue increased.`);
+  assert.equal(duplicateSource.success, false);
+  if (!duplicateSource.success) assert.ok(duplicateSource.issues.some((candidate) => candidate.code === "duplicate_id"));
+
+  const conflictingMetadata = parseResearchDigestion(`Company: Example Corp
+Company: Different Corp
+Ticker: EXM
+Ticker: OTHER
+Source: Annual report https://example.com/annual
+Source Facts: Revenue increased.`);
+  assert.equal(conflictingMetadata.success, false);
+  if (!conflictingMetadata.success) assert.equal(conflictingMetadata.issues.filter((candidate) => candidate.code === "conflicting_metadata").length, 2);
+
+  const equivalentMetadata = parseResearchDigestion(`Company: Example Corp
+Company Name: example   corp
+Ticker: exm
+Symbol: EXM
+Source: Annual report https://example.com/annual
+Source Facts: Revenue increased.`);
+  assert.equal(equivalentMetadata.success, true);
+});
+
+test("JSON-looking malformed input remains an explicit JSON error", () => {
+  const result = parseResearchDigestion(`{\"ticker\":`);
+  assert.equal(result.success, false);
+  assert.equal(result.issues[0]?.code, "invalid_json");
+});
+
 test("Capital OS compatibility format remains strict and requires provenance links", () => {
   const base = {
     document_type: "capital_os_investment_research",

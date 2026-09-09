@@ -3280,7 +3280,7 @@ export const CreateFamilyOfficeResearchBody = zod.object({
   "excerpt": zod.string().min(1).max(createFamilyOfficeResearchBodyPermittedEvidenceItemExcerptMax),
   "permissionConfirmed": zod.literal(true)
 })).max(createFamilyOfficeResearchBodyPermittedEvidenceMax).optional(),
-  "digestionPayload": zod.string().max(createFamilyOfficeResearchBodyDigestionPayloadMax).optional().describe('Bounded JSON text containing advisory structured research digestion')
+  "digestionPayload": zod.string().max(createFamilyOfficeResearchBodyDigestionPayloadMax).optional().describe('Bounded plain-text investment research or compatible structured JSON. Plain text is normalized into source-linked facts and advisory observations before analysis.')
 })
 
 export const createFamilyOfficeResearchResponseRunSourceMarkersMax = 3;

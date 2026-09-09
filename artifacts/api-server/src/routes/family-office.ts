@@ -74,7 +74,7 @@ router.post("/family-office/research", asyncRoute(async (req, res) => {
   if (digestionPayload !== undefined) {
     const parsed = parseResearchDigestion(digestionPayload as string);
     if (!parsed.success) {
-      res.status(422).json({ code: "DIGESTION_VALIDATION_FAILED", message: "Structured research digestion is invalid.", issues: parsed.issues, advisoryOnly: true });
+      res.status(422).json({ code: "DIGESTION_VALIDATION_FAILED", message: "Investment research could not be normalized safely.", issues: parsed.issues, advisoryOnly: true });
       return;
     }
     normalizedDigestion = parsed.data;
@@ -151,7 +151,7 @@ router.post("/family-office/research/digestion/preview", asyncRoute(async (req, 
   const previewBody = PreviewFamilyOfficeResearchDigestionBody.parse(req.body);
   const parsed = parseResearchDigestion(previewBody.digestionPayload);
   if (!parsed.success) {
-    res.status(422).json({ code: "DIGESTION_VALIDATION_FAILED", message: "Structured research digestion is invalid.", issues: parsed.issues, advisoryOnly: true });
+    res.status(422).json({ code: "DIGESTION_VALIDATION_FAILED", message: "Investment research could not be normalized safely.", issues: parsed.issues, advisoryOnly: true });
     return;
   }
   const d = parsed.data;

@@ -14,6 +14,25 @@ import type { ResearchOutput, ResearchAdvisorySections } from "../domain/family-
 
 const enabled = process.env.CAPITAL_OS_RUN_INTEGRATION === "1";
 const original = `{\n  "ticker":"ACME", "company":"Acme Corp",\n  "sources":[{"id":"a","title":"Source A","url":"https://example.com/a"},{"id":"b","title":"Source B"}],\n  "sourceClaims":[{"sourceId":"a","statement":"Claim A"},{"sourceId":"b","statement":"Claim B"}],\n  "inferences":[{"statement":"Inference I","basisSourceIds":["a"],"confidence":0.4}]\n}`;
+const plainOriginal = `Company: Acme Corp
+Ticker: ACME
+Source Title: Source A
+Source URL: https://example.com/a
+
+Source Facts:
+- Claim A
+
+Fundamentals:
+- Durable demand should be reviewed against the filing.
+
+Valuation:
+- Compare the observed price with verified cash flow.
+
+Risks:
+- Evidence may become stale.
+
+Research Notes:
+- Human approval remains required.`;
 
 async function fixture() {
   const [user] = await db.insert(users).values({ email: `dig-${randomUUID()}@test.local`, displayName: "Digestion Tester", status: "active" }).returning();
@@ -98,6 +117,25 @@ test("service success calls three agents, persists exact provenance, safe househ
   assert.deepEqual((result.proposal?.advisorySections.fundamentals as { evidenceIds: string[] }).evidenceIds, [claimRows[0].id]);
   const other = await getFamilyOfficeSnapshot(f.otherActor);
   assert.ok(!other.proposals.some((proposal) => proposal.id === result.proposal?.id));
+  assert.deepEqual(await Promise.all([count(shadowOrderIntents, f.household.id), count(orderIntents, f.household.id), count(ledgerTransactions, f.household.id), count(capitalRequests, f.household.id)]), before);
+});
+
+test("plain-text research calls all three advisory agents and persists the exact pasted content without execution", { skip: !enabled }, async () => {
+  const f = await fixture();
+  const parsed = parseResearchDigestion(plainOriginal);
+  assert.equal(parsed.success, true);
+  let calls = 0;
+  const before = await Promise.all([count(shadowOrderIntents, f.household.id), count(orderIntents, f.household.id), count(ledgerTransactions, f.household.id), count(capitalRequests, f.household.id)]);
+  const result = await runFamilyOfficeResearch(f.actor, { scope: "investment", ticker: "ACME", digestionPayload: plainOriginal }, {
+    structuredResearchDigestion: parsed.data,
+    provider: { status: { enabled: true, state: "configured", model: "deterministic-test" }, research: async () => { calls++; return output(); } },
+  });
+  assert.equal(calls, 3);
+  assert.equal(result.run.status, "completed");
+  const [stored] = await db.select().from(familyOfficeResearchDigestions).where(eq(familyOfficeResearchDigestions.runId, result.run.id));
+  assert.equal(stored.originalPayload, plainOriginal);
+  assert.equal(stored.originalFingerprint, createHash("sha256").update(plainOriginal).digest("hex"));
+  assert.equal((stored.canonicalPayload as { schemaVersion?: string }).schemaVersion, "plain-text-v1");
   assert.deepEqual(await Promise.all([count(shadowOrderIntents, f.household.id), count(orderIntents, f.household.id), count(ledgerTransactions, f.household.id), count(capitalRequests, f.household.id)]), before);
 });
 

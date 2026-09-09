@@ -3838,6 +3838,8 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
   const [digestionPreview, setDigestionPreview] = useState<FamilyOfficeResearchDigestionPreview | null>(null);
   const [digestionValidationErrors, setDigestionValidationErrors] = useState<FamilyOfficeResearchDigestionValidationError | null>(null);
   const [validatedDigestionPayload, setValidatedDigestionPayload] = useState<string | null>(null);
+  const digestionPayloadRef = useRef('');
+  const digestionValidationRequestRef = useRef(0);
 
   const [newEvidence, setNewEvidence] = useState({ title: '', sourceUrl: '', excerpt: '', permissionConfirmed: false });
   const [portfolioDraft, setPortfolioDraft] = useState({ name: '', benchmark: 'SPY', strategy: '' });
@@ -3886,16 +3888,20 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
     ]);
   };
   const handleValidateDigestion = async () => {
-    if (!digestionPayloadDraft.trim()) {
-      onFeedback("Please enter a JSON digestion payload to preview.");
+    const submittedPayload = digestionPayloadDraft;
+    if (!submittedPayload.trim()) {
+      onFeedback("Please paste investment research to preview.");
       return;
     }
+    const requestId = ++digestionValidationRequestRef.current;
     try {
       setDigestionValidationErrors(null);
-      const result = await previewDigestion.mutateAsync({ data: { digestionPayload: digestionPayloadDraft } });
+      const result = await previewDigestion.mutateAsync({ data: { digestionPayload: submittedPayload } });
+      if (requestId !== digestionValidationRequestRef.current || digestionPayloadRef.current !== submittedPayload) return;
       setDigestionPreview(result);
-      setValidatedDigestionPayload(digestionPayloadDraft);
+      setValidatedDigestionPayload(submittedPayload);
     } catch (error) {
+      if (requestId !== digestionValidationRequestRef.current || digestionPayloadRef.current !== submittedPayload) return;
       setDigestionPreview(null);
       setValidatedDigestionPayload(null);
       if (typeof error === 'object' && error !== null && 'data' in error) {
@@ -3907,12 +3913,17 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
   };
 
   const handleDigestionPayloadChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    setDigestionPayloadDraft(e.target.value);
+    const nextPayload = e.target.value;
+    digestionPayloadRef.current = nextPayload;
+    digestionValidationRequestRef.current += 1;
+    setDigestionPayloadDraft(nextPayload);
     setDigestionPreview(null);
     setDigestionValidationErrors(null);
   };
 
   const clearDigestion = () => {
+    digestionPayloadRef.current = '';
+    digestionValidationRequestRef.current += 1;
     setDigestionPayloadDraft('');
     setDigestionPreview(null);
     setDigestionValidationErrors(null);
@@ -4210,17 +4221,52 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
 
           <div style={{ gridColumn: '1 / -1' }}>
             <div className="card-title-row"><div><h4>Research Digestion Box</h4></div></div>
-            <p className="field-help" style={{ marginBottom: '0.75rem' }}>Controlled parsing of user-provided third-party structured research.</p>
+            <p className="field-help" style={{ marginBottom: '0.75rem' }}>Paste readable investment research. Capital OS will normalize source facts and advisory observations while preserving the original text and source links. Compatible structured JSON is also accepted.</p>
             <div className="field" style={{ gridColumn: '1 / -1' }}>
-              <label>JSON Digestion Payload <span style={{ textTransform:'none', letterSpacing:0 }}>(ticker, company, sources, sourceClaims, optional inferences)</span></label>
+              <label>Investment Research <span style={{ textTransform:'none', letterSpacing:0 }}>(plain text recommended)</span></label>
               <textarea
                 maxLength={102400}
-                rows={6}
+                rows={14}
                 value={digestionPayloadDraft}
                 onChange={handleDigestionPayloadChange}
-                placeholder='{ "company": "Apple Inc.", ... }'
-                style={{ fontFamily: 'monospace' }}
+                placeholder={`Company: Bank of South Carolina Corporation
+Ticker: BKSC
+Source Title: 2025 Annual Report
+Source URL: https://example.com/annual-report
+
+Source Facts:
+- Deposits increased year over year.
+- Nonperforming assets remained limited.
+
+External Verification:
+- Regulatory filings report the same period-end balances.
+
+Fundamentals:
+- Deposit funding appears stable.
+
+Valuation:
+- Compare price to verified tangible book value.
+
+Risks:
+- Geographic concentration may amplify local credit losses.
+
+Bull Case:
+- Stable deposits support measured growth.
+
+Base Case:
+- Earnings normalize without material credit deterioration.
+
+Bear Case:
+- Credit costs rise and compress book value.
+
+Evidence Quality:
+- Primary filings are available; market pricing needs a fresh check.
+
+Research Notes:
+- Advisory only. Human approval remains required.`}
+                style={{ fontFamily: 'inherit', fontSize: '0.85rem', lineHeight: 1.5 }}
               />
+              <span className="field-help">One source is linked automatically. With multiple sources, label them under Sources and start each fact or observation with its ID, for example [annual-report].</span>
             </div>
 
             {digestionValidationErrors && (

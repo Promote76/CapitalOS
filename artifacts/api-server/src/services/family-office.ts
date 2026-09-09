@@ -684,19 +684,19 @@ export async function runFamilyOfficeResearch(
   if (input.digestionPayload) {
     const suppliedDigestion = options.structuredResearchDigestion;
     const reparsed = parseResearchDigestion(input.digestionPayload);
-    if (!reparsed.success) throw new GovernanceError("INVALID_STATE", "Invalid structured research digestion");
+    if (!reparsed.success) throw new GovernanceError("INVALID_STATE", "Investment research could not be normalized");
     if (suppliedDigestion && suppliedDigestion.fingerprint !== reparsed.data.fingerprint) {
-      throw new GovernanceError("INVALID_STATE", "Structured research digestion fingerprint mismatch");
+      throw new GovernanceError("INVALID_STATE", "Normalized investment research fingerprint mismatch");
     }
     options = { ...options, structuredResearchDigestion: reparsed.data };
     input = { ...input, ticker: input.ticker ?? reparsed.data.ticker };
   }
   if (options.structuredResearchDigestion && !input.digestionPayload) {
-    throw new GovernanceError("INVALID_STATE", "Structured research digestion requires its original JSON payload");
+    throw new GovernanceError("INVALID_STATE", "Normalized investment research requires its original pasted content");
   }
   const originalDigestionPayload = input.digestionPayload;
   if (options.structuredResearchDigestion && input.ticker && input.ticker.trim().toUpperCase() !== options.structuredResearchDigestion.ticker) {
-    throw new GovernanceError("INVALID_STATE", "Ticker conflicts with structured research digestion");
+    throw new GovernanceError("INVALID_STATE", "Ticker conflicts with normalized investment research");
   }
   const dossier = validateInvestmentDossierInput(input);
   if (!dossier) throw new GovernanceError("INVALID_STATE", "Invalid investment dossier input");

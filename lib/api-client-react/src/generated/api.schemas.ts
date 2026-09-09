@@ -2990,7 +2990,7 @@ export interface FamilyOfficeResearchInput {
   /** @maxItems 20 */
   permittedEvidence?: FamilyOfficeResearchInputPermittedEvidenceItem[];
   /**
-     * Bounded JSON text containing advisory structured research digestion
+     * Bounded plain-text investment research or compatible structured JSON. Plain text is normalized into source-linked facts and advisory observations before analysis.
      * @maxLength 102400
      */
   digestionPayload?: string;

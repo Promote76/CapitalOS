@@ -3462,6 +3462,22 @@ paths:
         "200": { description: Observation sync status, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabSyncResult" } } } }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
+  /integrations/schwab/market-data:
+    get:
+      operationId: getSchwabMarketData
+      tags: [schwab]
+      summary: Read normalized Schwab quotes and equity market status
+      parameters:
+        - name: symbols
+          in: query
+          required: false
+          description: Optional comma-separated ticker symbols; normalized and capped at 500.
+          schema: { type: string, maxLength: 15499 }
+      responses:
+        "200": { description: Normalized observation-only market data, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabMarketDataResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "503": { description: Schwab Market Data Production request failed, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
   /integrations/schwab/disconnect:
     post:
       operationId: disconnectSchwabConnection
@@ -3600,6 +3616,40 @@ components:
       type: object
       required: [status, dataMode]
       properties: { status: { type: string, enum: [SYNCED] }, dataMode: { type: string, enum: [LIVE_CONNECTED] } }
+    SchwabMarketDataResult:
+      type: object
+      required: [provider, readOnly, tradingEnabled, dataMode, quotes, marketClock]
+      properties:
+        provider: { type: string, enum: [schwab] }
+        readOnly: { type: boolean, const: true }
+        tradingEnabled: { type: boolean, const: false }
+        dataMode: { type: string, enum: [LIVE_CONNECTED] }
+        quotes:
+          type: array
+          maxItems: 500
+          items: { $ref: "#/components/schemas/SchwabMarketQuote" }
+        marketClock: { $ref: "#/components/schemas/SchwabMarketClock" }
+    SchwabMarketQuote:
+      type: object
+      required: [symbol, assetType, marketPrice, providerTimestamp, receivedAt, dataFreshness]
+      properties:
+        symbol: { type: string }
+        assetType: { type: string }
+        marketPrice: { type: string }
+        providerTimestamp: { type: ["string", "null"], format: date-time }
+        receivedAt: { type: string, format: date-time }
+        dataFreshness: { type: string, enum: [CURRENT, AGING, STALE, UNKNOWN] }
+    SchwabMarketClock:
+      type: object
+      required: [marketOpen, providerTimestamp, receivedAt, dataFreshness]
+      properties:
+        marketOpen:
+          oneOf:
+            - { type: boolean }
+            - { type: string, enum: [UNKNOWN] }
+        providerTimestamp: { type: ["string", "null"], format: date-time }
+        receivedAt: { type: string, format: date-time }
+        dataFreshness: { type: string, enum: [CURRENT, AGING, STALE, UNKNOWN] }
     SchwabDisconnectResult:
       type: object
       required: [status, readOnly, tradingEnabled]

@@ -50,6 +50,68 @@ export interface SchwabSyncResult {
   dataMode: SchwabSyncResultDataMode;
 }
 
+export type SchwabMarketDataResultProvider = typeof SchwabMarketDataResultProvider[keyof typeof SchwabMarketDataResultProvider];
+
+
+export const SchwabMarketDataResultProvider = {
+  schwab: 'schwab',
+} as const;
+
+export type SchwabMarketDataResultDataMode = typeof SchwabMarketDataResultDataMode[keyof typeof SchwabMarketDataResultDataMode];
+
+
+export const SchwabMarketDataResultDataMode = {
+  LIVE_CONNECTED: 'LIVE_CONNECTED',
+} as const;
+
+export type SchwabMarketQuoteDataFreshness = typeof SchwabMarketQuoteDataFreshness[keyof typeof SchwabMarketQuoteDataFreshness];
+
+
+export const SchwabMarketQuoteDataFreshness = {
+  CURRENT: 'CURRENT',
+  AGING: 'AGING',
+  STALE: 'STALE',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export interface SchwabMarketQuote {
+  symbol: string;
+  assetType: string;
+  marketPrice: string;
+  /** @nullable */
+  providerTimestamp: string | null;
+  receivedAt: string;
+  dataFreshness: SchwabMarketQuoteDataFreshness;
+}
+
+export type SchwabMarketClockDataFreshness = typeof SchwabMarketClockDataFreshness[keyof typeof SchwabMarketClockDataFreshness];
+
+
+export const SchwabMarketClockDataFreshness = {
+  CURRENT: 'CURRENT',
+  AGING: 'AGING',
+  STALE: 'STALE',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export interface SchwabMarketClock {
+  marketOpen: boolean | 'UNKNOWN';
+  /** @nullable */
+  providerTimestamp: string | null;
+  receivedAt: string;
+  dataFreshness: SchwabMarketClockDataFreshness;
+}
+
+export interface SchwabMarketDataResult {
+  provider: SchwabMarketDataResultProvider;
+  readOnly: true;
+  tradingEnabled: false;
+  dataMode: SchwabMarketDataResultDataMode;
+  /** @maxItems 500 */
+  quotes: SchwabMarketQuote[];
+  marketClock: SchwabMarketClock;
+}
+
 export type SchwabDisconnectResultStatus = typeof SchwabDisconnectResultStatus[keyof typeof SchwabDisconnectResultStatus];
 
 
@@ -7306,5 +7368,13 @@ export const ExportDailyOpsHistoryCadence = {
 export type SchwabOAuthCallbackParams = {
 code: string;
 state: string;
+};
+
+export type GetSchwabMarketDataParams = {
+/**
+ * Optional comma-separated ticker symbols; normalized and capped at 500.
+ * @maxLength 15499
+ */
+symbols?: string;
 };
 

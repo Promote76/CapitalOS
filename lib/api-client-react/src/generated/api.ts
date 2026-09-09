@@ -111,6 +111,7 @@ import type {
   DailyOpsJournalEntryInput,
   DashboardSnapshot,
   EmergencyStopInput,
+  ErrorResponse,
   ExecutionControlCommandInput,
   ExecutionControlState,
   ExportDailyOpsHistoryParams,
@@ -156,6 +157,7 @@ import type {
   FinancingSnapshot,
   ForbiddenResponse,
   GetCapitalGovernorV2Params,
+  GetSchwabMarketDataParams,
   GetVariableBudgetIntelligenceParams,
   GoalSummary,
   GuidedRunActionInput,
@@ -237,6 +239,7 @@ import type {
   SafeToDeploy,
   SchwabConnectResult,
   SchwabDisconnectResult,
+  SchwabMarketDataResult,
   SchwabOAuthCallbackParams,
   SchwabRefreshResult,
   SchwabStatus,
@@ -16732,6 +16735,90 @@ export const useSyncSchwabObservations = <TError = ErrorType<ForbiddenResponse |
       > => {
       return useMutation(getSyncSchwabObservationsMutationOptions(options));
     }
+
+export const getGetSchwabMarketDataUrl = (params?: GetSchwabMarketDataParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/integrations/schwab/market-data?${stringifiedParams}` : `/api/integrations/schwab/market-data`
+}
+
+/**
+ * @summary Read normalized Schwab quotes and equity market status
+ */
+export const getSchwabMarketData = async (params?: GetSchwabMarketDataParams, options?: Parameters<typeof customFetch>[1]): Promise<SchwabMarketDataResult> => {
+
+  return customFetch<SchwabMarketDataResult>(getGetSchwabMarketDataUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchwabMarketDataQueryKey = (params?: GetSchwabMarketDataParams,) => {
+    return [
+    `/api/integrations/schwab/market-data`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchwabMarketDataQueryOptions = <TData = Awaited<ReturnType<typeof getSchwabMarketData>>, TError = ErrorType<BadRequestResponse | ConflictResponse | ErrorResponse>>(params?: GetSchwabMarketDataParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchwabMarketData>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchwabMarketDataQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchwabMarketData>>> = ({ signal }) => getSchwabMarketData(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchwabMarketData>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchwabMarketDataQueryResult = NonNullable<Awaited<ReturnType<typeof getSchwabMarketData>>>
+export type GetSchwabMarketDataQueryError = ErrorType<BadRequestResponse | ConflictResponse | ErrorResponse>
+
+
+/**
+ * @summary Read normalized Schwab quotes and equity market status
+ */
+
+export function useGetSchwabMarketData<TData = Awaited<ReturnType<typeof getSchwabMarketData>>, TError = ErrorType<BadRequestResponse | ConflictResponse | ErrorResponse>>(
+ params?: GetSchwabMarketDataParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchwabMarketData>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchwabMarketDataQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getDisconnectSchwabConnectionUrl = () => {
 

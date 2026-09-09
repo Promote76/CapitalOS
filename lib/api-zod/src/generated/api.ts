@@ -10291,6 +10291,43 @@ export const SyncSchwabObservationsResponse = zod.object({
 
 
 /**
+ * @summary Read normalized Schwab quotes and equity market status
+ */
+export const getSchwabMarketDataQuerySymbolsMax = 15499;
+
+
+
+export const GetSchwabMarketDataQueryParams = zod.object({
+  "symbols": zod.coerce.string().max(getSchwabMarketDataQuerySymbolsMax).optional().describe('Optional comma-separated ticker symbols; normalized and capped at 500.')
+})
+
+export const getSchwabMarketDataResponseQuotesMax = 500;
+
+
+
+export const GetSchwabMarketDataResponse = zod.object({
+  "provider": zod.enum(['schwab']),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "dataMode": zod.enum(['LIVE_CONNECTED']),
+  "quotes": zod.array(zod.object({
+  "symbol": zod.string(),
+  "assetType": zod.string(),
+  "marketPrice": zod.string(),
+  "providerTimestamp": zod.coerce.date().nullable(),
+  "receivedAt": zod.coerce.date(),
+  "dataFreshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN'])
+})).max(getSchwabMarketDataResponseQuotesMax),
+  "marketClock": zod.object({
+  "marketOpen": zod.union([zod.boolean(),zod.enum(['UNKNOWN'])]),
+  "providerTimestamp": zod.coerce.date().nullable(),
+  "receivedAt": zod.coerce.date(),
+  "dataFreshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN'])
+})
+})
+
+
+/**
  * @summary Remove household-scoped Schwab authorization material
  */
 export const DisconnectSchwabConnectionResponse = zod.object({

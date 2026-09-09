@@ -16,7 +16,7 @@
     "test:capital-governor-browser": "playwright test --config playwright.config.ts src/browser/capital-governor-certification.spec.ts",
     "certify:document-budget-bridge": "playwright test --config playwright.config.ts src/browser/document-budget-bridge-certification.spec.ts",
     "certify:production-document-remediation-browser": "playwright test --config playwright.config.ts src/browser/production-document-remediation-certification.spec.ts",
-    "test": "../../scripts/node_modules/.bin/tsx --test src/domain/*.test.ts src/middleware/*.test.ts src/integration/*.test.ts"
+    "test": "../../scripts/node_modules/.bin/tsx --test src/domain/*.test.ts src/middleware/*.test.ts src/integration/*.test.ts src/services/*.test.ts"
   },
   "dependencies": {
     "@clerk/express": "^2.1.64",
@@ -29,6 +29,7 @@
     "drizzle-orm": "catalog:",
     "express": "^5.2.1",
     "http-proxy-middleware": "^4.2.0",
+    "ipaddr.js": "^2.5.0",
     "pino": "^9.14.0",
     "pino-http": "^10.5.0",
     "xlsx": "^0.18.5"

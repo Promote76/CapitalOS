@@ -75,6 +75,7 @@ export const familyOfficeEvidence = pgTable(
     excerpt: text("excerpt").notNull(),
     classification: text("classification").notNull().default("unverified"),
     freshness: text("freshness").notNull().default("unknown"),
+    retrievedAt: timestamp("retrieved_at", { withTimezone: true }),
     confidence: numeric("confidence", { precision: 5, scale: 2 }).notNull().default("0"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -102,6 +103,10 @@ export const familyOfficeProposals = pgTable(
     dossierKind: text("dossier_kind").notNull().default("general"),
     advisorySections: jsonb("advisory_sections").$type<Record<string, unknown>>().notNull().default({}),
     multiAgentSynthesis: jsonb("multi_agent_synthesis").$type<Record<string, unknown>>().notNull().default({}),
+    sourceRetrieval: jsonb("source_retrieval").$type<{
+      finalUrl: string; retrievedAt: string; freshness: string; provenance: "PUBLIC_WEB_RETRIEVAL";
+      title: string; status: string; accessLimitation: string | null;
+    } | null>(),
     evidenceIds: jsonb("evidence_ids").$type<string[]>().notNull().default([]),
     status: text("status").notNull().default("proposed"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

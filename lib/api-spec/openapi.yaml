@@ -1187,6 +1187,16 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FamilyOfficeResearchFailure" }
+        "400":
+          description: Public research URL requires a ticker or was blocked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyOfficeResearchFailure" }
+        "422":
+          description: Public research URL could not be safely retrieved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyOfficeResearchFailure" }
   /family-office/proposals/{proposalId}/decision:
     post:
       operationId: decideFamilyOfficeProposal
@@ -5613,12 +5623,13 @@ components:
         advisoryOnly: { type: boolean }
     FamilyOfficeResearchInput:
       type: object
-      required: [scope, prompt, ticker]
+      required: [scope]
       properties:
         analyst: { type: string, maxLength: 80 }
         scope: { type: string, minLength: 1, maxLength: 120 }
-        prompt: { type: string, minLength: 1, maxLength: 4000 }
+        prompt: { type: string, minLength: 1, maxLength: 4000, default: "Provide general investment analysis." }
         ticker: { type: string, pattern: "^[A-Za-z][A-Za-z0-9.-]{0,14}$" }
+        url: { type: string, maxLength: 2000, description: "HTTPS public research URL. The server fetches it; the AI provider never browses." }
         dossierContext: { type: string, maxLength: 2000 }
         permittedEvidence:
           type: array
@@ -5644,6 +5655,7 @@ components:
         freshness: { type: string }
         confidence: { type: number }
         createdAt: { type: string, format: date-time }
+        retrievedAt: { type: ["string", "null"], format: date-time }
     FamilyOfficeSourceMarker:
       type: object
       required: [key, label]
@@ -5729,6 +5741,16 @@ components:
             pendingHumanApproval: { type: boolean, enum: [true] }
             agentSummaries: { type: array, items: { type: object, properties: { agent: { type: string }, thesis: { type: string }, confidence: { type: number } } } }
         evidenceIds: { type: array, items: { type: string } }
+        sourceRetrieval:
+          type: ["object", "null"]
+          properties:
+            finalUrl: { type: string }
+            retrievedAt: { type: string, format: date-time }
+            freshness: { type: string }
+            provenance: { type: string, enum: [PUBLIC_WEB_RETRIEVAL] }
+            title: { type: string }
+            status: { type: string }
+            accessLimitation: { type: ["string", "null"] }
         status: { type: string }
         createdAt: { type: string, format: date-time }
         reviewedAt: { type: ["string", "null"], format: date-time }
@@ -6103,6 +6125,13 @@ components:
         run: { $ref: "#/components/schemas/FamilyOfficeRun" }
         proposal: { $ref: "#/components/schemas/FamilyOfficeProposal" }
         advisoryOnly: { type: boolean }
+        sourceRetrieval:
+          type: ["object", "null"]
+          properties:
+            finalUrl: { type: string }
+            retrievedAt: { type: string, format: date-time }
+            freshness: { type: string }
+            provenance: { type: string, enum: [PUBLIC_WEB_RETRIEVAL] }
     FamilyOfficeRefreshResult:
       type: object
       required: [refresh, accepted]
@@ -6116,6 +6145,13 @@ components:
         code:
           type: string
           enum:
+            - blocked
+            - inaccessible
+            - unsupported
+            - login_required
+            - paywall
+            - robots_denied
+            - ticker_required
             - AI_PROVIDER_DISABLED
             - AI_PROVIDER_TIMEOUT
             - AI_PROVIDER_AUTHENTICATION_FAILED
@@ -6129,6 +6165,8 @@ components:
         run: { $ref: "#/components/schemas/FamilyOfficeRun" }
         proposal: { type: "null" }
         advisoryOnly: { type: boolean }
+        fetchStatus: { type: ["string", "null"] }
+        accessLimitation: { type: ["string", "null"] }
     TaxLienCandidateInput:
       type: object
       required: [jurisdiction, county, parcelId, certificateNumber, propertyAddress, sourceKind, sourceFreshness, redemptionStatus, liveAvailability, faceAmount, estimatedTotalExposure, estimatedPropertyValue, householdSafeToDeploy, requiredReserveFloor]

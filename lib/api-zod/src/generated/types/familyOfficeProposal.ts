@@ -7,6 +7,7 @@
  */
 import type { FamilyOfficeProposalAdvisorySections } from './familyOfficeProposalAdvisorySections';
 import type { FamilyOfficeProposalMultiAgentSynthesis } from './familyOfficeProposalMultiAgentSynthesis';
+import type { FamilyOfficeProposalSourceRetrieval } from './familyOfficeProposalSourceRetrieval';
 
 export interface FamilyOfficeProposal {
   id: string;
@@ -25,6 +26,8 @@ export interface FamilyOfficeProposal {
   dossierKind: string;
   multiAgentSynthesis: FamilyOfficeProposalMultiAgentSynthesis;
   evidenceIds: string[];
+  /** @nullable */
+  sourceRetrieval?: FamilyOfficeProposalSourceRetrieval;
   status: string;
   createdAt: Date;
   /** @nullable */

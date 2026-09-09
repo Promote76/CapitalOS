@@ -2977,9 +2977,14 @@ export interface FamilyOfficeResearchInput {
      * @minLength 1
      * @maxLength 4000
      */
-  prompt: string;
+  prompt?: string;
   /** @pattern ^[A-Za-z][A-Za-z0-9.-]{0,14}$ */
-  ticker: string;
+  ticker?: string;
+  /**
+     * HTTPS public research URL. The server fetches it; the AI provider never browses.
+     * @maxLength 2000
+     */
+  url?: string;
   /** @maxLength 2000 */
   dossierContext?: string;
   /** @maxItems 20 */
@@ -2997,6 +3002,8 @@ export interface FamilyOfficeEvidence {
   freshness: string;
   confidence: number;
   createdAt: string;
+  /** @nullable */
+  retrievedAt?: string | null;
 }
 
 export type FamilyOfficeSourceMarkerKey = typeof FamilyOfficeSourceMarkerKey[keyof typeof FamilyOfficeSourceMarkerKey];
@@ -3125,6 +3132,27 @@ export type FamilyOfficeProposalMultiAgentSynthesis = {
   agentSummaries: FamilyOfficeProposalMultiAgentSynthesisAgentSummariesItem[];
 };
 
+export type FamilyOfficeProposalSourceRetrievalProvenance = typeof FamilyOfficeProposalSourceRetrievalProvenance[keyof typeof FamilyOfficeProposalSourceRetrievalProvenance];
+
+
+export const FamilyOfficeProposalSourceRetrievalProvenance = {
+  PUBLIC_WEB_RETRIEVAL: 'PUBLIC_WEB_RETRIEVAL',
+} as const;
+
+/**
+ * @nullable
+ */
+export type FamilyOfficeProposalSourceRetrieval = {
+  finalUrl?: string;
+  retrievedAt?: string;
+  freshness?: string;
+  provenance?: FamilyOfficeProposalSourceRetrievalProvenance;
+  title?: string;
+  status?: string;
+  /** @nullable */
+  accessLimitation?: string | null;
+} | null;
+
 export interface FamilyOfficeProposal {
   id: string;
   title: string;
@@ -3142,6 +3170,8 @@ export interface FamilyOfficeProposal {
   dossierKind: string;
   multiAgentSynthesis: FamilyOfficeProposalMultiAgentSynthesis;
   evidenceIds: string[];
+  /** @nullable */
+  sourceRetrieval?: FamilyOfficeProposalSourceRetrieval;
   status: string;
   createdAt: string;
   /** @nullable */
@@ -3686,10 +3716,29 @@ export interface FamilyOfficeSnapshot {
   summary: FamilyOfficeSnapshotSummary;
 }
 
+export type FamilyOfficeResearchResultSourceRetrievalProvenance = typeof FamilyOfficeResearchResultSourceRetrievalProvenance[keyof typeof FamilyOfficeResearchResultSourceRetrievalProvenance];
+
+
+export const FamilyOfficeResearchResultSourceRetrievalProvenance = {
+  PUBLIC_WEB_RETRIEVAL: 'PUBLIC_WEB_RETRIEVAL',
+} as const;
+
+/**
+ * @nullable
+ */
+export type FamilyOfficeResearchResultSourceRetrieval = {
+  finalUrl?: string;
+  retrievedAt?: string;
+  freshness?: string;
+  provenance?: FamilyOfficeResearchResultSourceRetrievalProvenance;
+} | null;
+
 export interface FamilyOfficeResearchResult {
   run: FamilyOfficeRun;
   proposal: FamilyOfficeProposal;
   advisoryOnly: boolean;
+  /** @nullable */
+  sourceRetrieval?: FamilyOfficeResearchResultSourceRetrieval;
 }
 
 export interface FamilyOfficeRefreshResult {
@@ -3701,6 +3750,13 @@ export type FamilyOfficeResearchFailureCode = typeof FamilyOfficeResearchFailure
 
 
 export const FamilyOfficeResearchFailureCode = {
+  blocked: 'blocked',
+  inaccessible: 'inaccessible',
+  unsupported: 'unsupported',
+  login_required: 'login_required',
+  paywall: 'paywall',
+  robots_denied: 'robots_denied',
+  ticker_required: 'ticker_required',
   AI_PROVIDER_DISABLED: 'AI_PROVIDER_DISABLED',
   AI_PROVIDER_TIMEOUT: 'AI_PROVIDER_TIMEOUT',
   AI_PROVIDER_AUTHENTICATION_FAILED: 'AI_PROVIDER_AUTHENTICATION_FAILED',
@@ -3720,6 +3776,10 @@ export interface FamilyOfficeResearchFailure {
   /** @nullable */
   proposal: null;
   advisoryOnly: boolean;
+  /** @nullable */
+  fetchStatus?: string | null;
+  /** @nullable */
+  accessLimitation?: string | null;
 }
 
 export type TaxLienCandidateInputJurisdiction = typeof TaxLienCandidateInputJurisdiction[keyof typeof TaxLienCandidateInputJurisdiction];

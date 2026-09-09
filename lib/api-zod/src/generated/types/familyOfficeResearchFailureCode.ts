@@ -10,6 +10,13 @@ export type FamilyOfficeResearchFailureCode = typeof FamilyOfficeResearchFailure
 
 
 export const FamilyOfficeResearchFailureCode = {
+  blocked: 'blocked',
+  inaccessible: 'inaccessible',
+  unsupported: 'unsupported',
+  login_required: 'login_required',
+  paywall: 'paywall',
+  robots_denied: 'robots_denied',
+  ticker_required: 'ticker_required',
   AI_PROVIDER_DISABLED: 'AI_PROVIDER_DISABLED',
   AI_PROVIDER_TIMEOUT: 'AI_PROVIDER_TIMEOUT',
   AI_PROVIDER_AUTHENTICATION_FAILED: 'AI_PROVIDER_AUTHENTICATION_FAILED',

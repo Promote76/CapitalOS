@@ -12,6 +12,8 @@ export const familyOfficeLabels = [
  * infer from these classes, but it may never relabel an inference as evidence. */
 export const researchProvenanceCategories = [
   "SIMPLY_WALL_ST_PERMITTED_EVIDENCE",
+  "SERVER_FETCHED_PUBLIC_RESEARCH",
+  "PUBLIC_WEB_RETRIEVAL",
   "SCHWAB_MARKET_OBSERVATION",
   "CAPITAL_OS_CALCULATION",
   "GROK_INFERENCE",
@@ -211,6 +213,20 @@ export type ResearchAdvisorySections = {
   evidenceQuality: ResearchAdvisorySection;
 };
 
+export function sanitizeProviderEvidence(output: ResearchOutput): ResearchOutput {
+  return { ...output, evidence: output.evidence.map((item) => ({ ...item, sourceKind: "GROK_INFERENCE" })) };
+}
+
+export function remapAdvisorySections(
+  sections: ResearchAdvisorySections,
+  idsByProvenance: Partial<Record<ResearchProvenanceCategory, string[]>>,
+): ResearchAdvisorySections {
+  return Object.fromEntries(Object.entries(sections).map(([key, section]) => {
+    const provenance = section.provenance.filter((category) => (idsByProvenance[category] ?? []).length > 0);
+    return [key, { ...section, provenance, evidenceIds: provenance.flatMap((category) => idsByProvenance[category] ?? []).slice(0, 20) }];
+  })) as ResearchAdvisorySections;
+}
+
 export type MultiAgentSynthesis = {
   agreements: string[];
   disagreements: string[];
@@ -229,7 +245,8 @@ export type PermittedResearchEvidence = {
 };
 
 export type InvestmentDossierInput = {
-  ticker: string;
+  ticker?: string;
+  url?: string;
   dossierContext?: string;
   permittedEvidence?: PermittedResearchEvidence[];
 };
@@ -244,7 +261,8 @@ export function validateInvestmentDossierInput(value: unknown): InvestmentDossie
   if (!value || typeof value !== "object") return null;
   const input = value as Record<string, unknown>;
   const ticker = normalizeTicker(input.ticker);
-  if (!ticker) return null;
+  const url = typeof input.url === "string" && input.url.trim().length <= 2000 ? input.url.trim() : undefined;
+  if (!ticker && !url) return null;
   const dossierContext = input.dossierContext === undefined ? undefined : boundedString(input.dossierContext, 2000) ?? undefined;
   if (input.dossierContext !== undefined && !dossierContext) return null;
   if (input.permittedEvidence !== undefined && (!Array.isArray(input.permittedEvidence) || input.permittedEvidence.length > 20)) return null;
@@ -258,7 +276,7 @@ export function validateInvestmentDossierInput(value: unknown): InvestmentDossie
     if (sourceUrl) try { new URL(sourceUrl); } catch { return null; }
     return { title, excerpt, ...(sourceUrl ? { sourceUrl } : {}), permissionConfirmed: true as const };
   });
-  return permittedEvidence.every(Boolean) ? { ticker, dossierContext, permittedEvidence: permittedEvidence as PermittedResearchEvidence[] } : null;
+  return permittedEvidence.every(Boolean) ? { ticker: ticker ?? undefined, url, dossierContext, permittedEvidence: permittedEvidence as PermittedResearchEvidence[] } : null;
 }
 
 export function capitalOsDossierContext() {

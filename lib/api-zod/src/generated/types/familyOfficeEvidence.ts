@@ -17,4 +17,6 @@ export interface FamilyOfficeEvidence {
   freshness: string;
   confidence: number;
   createdAt: Date;
+  /** @nullable */
+  retrievedAt?: Date | null;
 }

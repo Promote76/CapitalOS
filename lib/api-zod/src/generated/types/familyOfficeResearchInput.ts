@@ -19,9 +19,14 @@ export interface FamilyOfficeResearchInput {
      * @minLength 1
      * @maxLength 4000
      */
-  prompt: string;
+  prompt?: string;
   /** @pattern ^[A-Za-z][A-Za-z0-9.-]{0,14}$ */
-  ticker: string;
+  ticker?: string;
+  /**
+     * HTTPS public research URL. The server fetches it; the AI provider never browses.
+     * @maxLength 2000
+     */
+  url?: string;
   /** @maxLength 2000 */
   dossierContext?: string;
   /** @maxItems 20 */

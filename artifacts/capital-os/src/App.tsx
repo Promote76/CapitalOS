@@ -3752,6 +3752,27 @@ function ProposalCard({ proposal, onDecide }: { proposal: FamilyOfficeProposal, 
         {proposal.advisoryOnly && <div className="safety-inline" style={{ marginTop: '0.25rem' }}><Lock size={14} /> Protected capital notice: This is advisory analysis only. No real orders or allocations will be executed.</div>}
       </div>
 
+      {proposal.sourceRetrieval && (
+        <div style={{ marginTop: '1rem', padding: '0.75rem', border: '1px solid var(--border-soft)', borderRadius: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+            <strong style={{ fontSize: '0.875rem' }}>Public Web Retrieval</strong>
+            <span className={`status ${proposal.sourceRetrieval.status === 'extracted' ? '' : 'pending'}`}>{proposal.sourceRetrieval.status || 'Resolved'}</span>
+          </div>
+          <div className="logic-grid" style={{ gap: '0.5rem' }}>
+            <div><span>Source URL</span><p style={{ wordBreak: 'break-all' }}>{proposal.sourceRetrieval.finalUrl || 'Unknown'}</p></div>
+            <div><span>Retrieved At</span><p>{proposal.sourceRetrieval.retrievedAt ? new Date(proposal.sourceRetrieval.retrievedAt).toLocaleString() : 'Unknown'}</p></div>
+            <div><span>Freshness</span><p>{proposal.sourceRetrieval.freshness || 'Unknown'}</p></div>
+            <div><span>Provenance</span><p>{proposal.sourceRetrieval.provenance || 'Unknown'}</p></div>
+          </div>
+          {proposal.sourceRetrieval.title && <div style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}><strong>Title:</strong> {proposal.sourceRetrieval.title}</div>}
+          {proposal.sourceRetrieval.accessLimitation && (
+            <div className="operator-form-note warning" style={{ marginTop: '0.5rem' }}>
+              <AlertTriangle size={14} /> <span><strong>Access Limitation:</strong> {proposal.sourceRetrieval.accessLimitation}</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {proposal.advisorySections && Object.keys(proposal.advisorySections).length > 0 && (
         <div style={{ marginTop: '1rem' }}>
           <strong style={{ fontSize: '0.875rem' }}>Source-separated Advisory Sections</strong>
@@ -3787,7 +3808,10 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
   const createIntent = useCreateShadowIntent();
   const realEstateQuery = useGetRealEstateIntelligence();
   const createTaxLien = useCreateTaxLienCandidate();
-  const [researchDraft, setResearchDraft] = useState<FamilyOfficeResearchInput>({ scope: 'family office intelligence', prompt: '', analyst: 'CIO analyst', ticker: '', dossierContext: '', permittedEvidence: [] });
+  const [researchDraft, setResearchDraft] = useState<FamilyOfficeResearchInput>({ scope: 'family office intelligence', prompt: '', analyst: 'CIO analyst', ticker: '', url: '', dossierContext: '', permittedEvidence: [] });
+  const [researchFailure, setResearchFailure] = useState<FamilyOfficeResearchFailure | null>(null);
+  const [latestSourceRetrieval, setLatestSourceRetrieval] = useState<NonNullable<FamilyOfficeProposal['sourceRetrieval']> | null>(null);
+
   const [newEvidence, setNewEvidence] = useState({ title: '', sourceUrl: '', excerpt: '', permissionConfirmed: false });
   const [portfolioDraft, setPortfolioDraft] = useState({ name: '', benchmark: 'SPY', strategy: '' });
   const [intentDraft, setIntentDraft] = useState({ proposalId: '', shadowPortfolioId: '', symbol: '', direction: 'neutral' as ShadowIntentInputDirection, hypotheticalQuantity: '1', hypotheticalNotional: '1000.00', referencePrice: '100', timeHorizon: '12 months' });
@@ -3832,18 +3856,52 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
   };
   const runResearch = async (event: FormEvent) => {
     event.preventDefault();
-    if (!researchDraft.prompt.trim()) return;
+
+    const hasUrl = !!researchDraft.url?.trim();
+    const hasTicker = !!researchDraft.ticker?.trim();
+    const hasPrompt = !!researchDraft.prompt?.trim();
+    const hasEvidence = researchDraft.permittedEvidence && researchDraft.permittedEvidence.length > 0;
+
+    if (!hasUrl && (!hasTicker || !hasPrompt || !hasEvidence)) {
+      onFeedback('Manual research requires a ticker, a research question, and at least one permitted evidence item if no URL is provided.');
+      return;
+    }
+
+    setResearchFailure(null);
+    setLatestSourceRetrieval(null);
+
     try {
-      await research.mutateAsync({ data: researchDraft });
-      setResearchDraft({ ...researchDraft, prompt: '', ticker: '', dossierContext: '', permittedEvidence: [] });
+      const data: FamilyOfficeResearchInput = {
+        scope: researchDraft.scope,
+        analyst: researchDraft.analyst?.trim() || undefined,
+        url: researchDraft.url?.trim() || undefined,
+        ticker: researchDraft.ticker?.trim() || undefined,
+        prompt: researchDraft.prompt?.trim() || undefined,
+        dossierContext: researchDraft.dossierContext?.trim() || undefined,
+        permittedEvidence: researchDraft.permittedEvidence?.map((ev) => ({
+          ...ev,
+          sourceUrl: ev.sourceUrl?.trim() || undefined
+        }))
+      };
+
+      const result = await research.mutateAsync({ data });
+
+      if (result.sourceRetrieval || result.proposal?.sourceRetrieval) {
+        setLatestSourceRetrieval(result.sourceRetrieval || result.proposal?.sourceRetrieval || null);
+      }
+
+      setResearchDraft({ scope: 'family office intelligence', prompt: '', analyst: 'CIO analyst', ticker: '', url: '', dossierContext: '', permittedEvidence: [] });
+
+      // Update cache in-place if possible, but refresh will pick it up
       await refresh();
       onFeedback('Research completed as advisory evidence. No order or capital action was created.');
     } catch (error) {
       const failure = typeof error === 'object' && error !== null && 'data' in error
         ? (error as { data?: FamilyOfficeResearchFailure }).data
         : undefined;
+      setResearchFailure(failure || null);
       await refresh();
-      onFeedback(failure?.message ?? (error instanceof Error ? error.message : 'Family Office research is unavailable. The blocked run was retained for review.'));
+      onFeedback(failure?.message ?? (error instanceof Error ? error.message : 'Family Office research is unavailable.'));
     }
   };
   const decideWithReverification = useProviderProtectedAction((proposalId: string, decision: FamilyOfficeProposalDecisionInputDecision) =>
@@ -4050,18 +4108,38 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
     </section>
 
     <section className="section-grid page-section">
-      <section className="card card-pad animate-in delay-2" style={{ gridColumn: '1 / -1' }}>
-        <CardTitle title="Ticker dossier & advisory research" subtitle="Research via permitted sources. Capital OS does not scrape external sites autonomously." action={<Sparkles size={17} color="var(--ink-soft)" />} />
+      <section id="ticker-dossier" className="card card-pad animate-in delay-2" style={{ gridColumn: '1 / -1' }}>
+        <CardTitle title="Ticker dossier & advisory research" subtitle="Submit a public URL for transparent, controlled intelligence ingestion. Capital OS does not scrape paywalled or private sites." action={<Sparkles size={17} color="var(--ink-soft)" />} />
+
         <form className="account-form" onSubmit={runResearch}>
-          <div className="field"><label>Scope</label><input required maxLength={120} value={researchDraft.scope} onChange={(event) => setResearchDraft({ ...researchDraft, scope: event.target.value })} /></div>
+          <div className="field" style={{ gridColumn: '1 / -1' }}>
+            <label>Public URL</label>
+            <input maxLength={2000} type="url" value={researchDraft.url || ''} onChange={(event) => setResearchDraft({ ...researchDraft, url: event.target.value })} placeholder="https://..." />
+            <div className="field-help" style={{ marginTop: '0.25rem' }}>No paywall, login, or anti-bot bypass. No arbitrary web browsing. Human approval required. No trading or capital actions.</div>
+          </div>
+          <div className="field"><label>Ticker <span style={{ textTransform:'none', letterSpacing:0 }}>(optional)</span></label><input pattern="^[A-Za-z][A-Za-z0-9.-]{0,14}$" maxLength={15} value={researchDraft.ticker || ''} onChange={(event) => setResearchDraft({ ...researchDraft, ticker: event.target.value })} placeholder="AAPL" /></div>
           <div className="field"><label>Analyst</label><input maxLength={80} value={researchDraft.analyst} onChange={(event) => setResearchDraft({ ...researchDraft, analyst: event.target.value })} /></div>
-          <div className="field"><label>Ticker</label><input required pattern="^[A-Za-z][A-Za-z0-9.-]{0,14}$" maxLength={15} value={researchDraft.ticker} onChange={(event) => setResearchDraft({ ...researchDraft, ticker: event.target.value })} placeholder="AAPL" /></div>
-          <div className="field" style={{ gridColumn: '1 / -1' }}><label>Research question / prompt</label><textarea required maxLength={4000} rows={3} value={researchDraft.prompt} onChange={(event) => setResearchDraft({ ...researchDraft, prompt: event.target.value })} placeholder="Evaluate the thesis for..." /></div>
+          <div className="field" style={{ gridColumn: '1 / -1' }}><label>Research question / prompt <span style={{ textTransform:'none', letterSpacing:0 }}>(optional)</span></label><textarea maxLength={4000} rows={2} value={researchDraft.prompt || ''} onChange={(event) => setResearchDraft({ ...researchDraft, prompt: event.target.value })} placeholder="Evaluate the thesis for..." /></div>
           <div className="field" style={{ gridColumn: '1 / -1' }}><label>Dossier context <span style={{ textTransform:'none', letterSpacing:0 }}>(optional)</span></label><textarea maxLength={2000} rows={2} value={researchDraft.dossierContext} onChange={(event) => setResearchDraft({ ...researchDraft, dossierContext: event.target.value })} placeholder="Internal notes or context..." /></div>
 
+          {researchFailure && (
+            <div className="operator-form-note warning" style={{ gridColumn: '1 / -1' }}>
+              <AlertTriangle size={14} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <strong>Research Fetch Failed</strong>
+                <span>{researchFailure.message}</span>
+                {researchFailure.fetchStatus && <span>Status: {researchFailure.fetchStatus}</span>}
+                {researchFailure.accessLimitation && <span>Limitation: {researchFailure.accessLimitation}</span>}
+                {researchDraft.url?.includes('simplywall.st') && (
+                  <span style={{ marginTop: '0.5rem', fontWeight: 500 }}>For Simply Wall St failures, please use the authorized excerpt fallback below.</span>
+                )}
+              </div>
+            </div>
+          )}
+
           <div style={{ gridColumn: '1 / -1' }}>
-            <div className="card-title-row"><div><h4>Permitted Simply Wall St Evidence</h4></div></div>
-            <p className="field-help" style={{ marginBottom: '0.75rem' }}>Attach excerpts from Simply Wall St. You must explicitly confirm permission to use this excerpt; Capital OS will not autonomously scrape the URL.</p>
+            <div className="card-title-row"><div><h4>Authorized Excerpt Fallback</h4></div></div>
+            <p className="field-help" style={{ marginBottom: '0.75rem' }}>Manually attach permitted excerpts if automated fetching is blocked by an access policy.</p>
             <div className="review-list">
               {researchDraft.permittedEvidence?.map((ev: any, idx: number) => (
                 <div className="review-row" key={idx}>
@@ -4079,7 +4157,7 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
                  <div className="field" style={{ gridColumn: '1 / -1' }}><label>Excerpt</label><textarea rows={2} value={newEvidence.excerpt} onChange={e => setNewEvidence({...newEvidence, excerpt: e.target.value})} placeholder="Paste the permitted excerpt here..." /></div>
                  <label className="checkbox-label" style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
                    <input type="checkbox" checked={newEvidence.permissionConfirmed} onChange={e => setNewEvidence({...newEvidence, permissionConfirmed: e.target.checked})} />
-                   I confirm I have permission to provide this Simply Wall St excerpt for advisory analysis.
+                   I confirm I have permission to provide this excerpt for advisory analysis.
                  </label>
                  <button type="button" className="btn" style={{ gridColumn: '1 / -1', justifySelf: 'start' }} onClick={() => {
                    if (!newEvidence.title || !newEvidence.excerpt || !newEvidence.permissionConfirmed) {
@@ -4095,7 +4173,29 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
                </div>
             </div>
           </div>
-          <button className="btn btn-primary" style={{ gridColumn: '1 / -1' }} type="submit" disabled={research.isPending || snapshot.provider.state === 'disabled'}><Sparkles size={14} /> {research.isPending ? 'Researching…' : 'Run advisory research'}</button>
+
+          {latestSourceRetrieval && (
+            <div className="card card-pad" style={{ gridColumn: '1 / -1', marginTop: '0.75rem', background: 'var(--bg-inset)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                <strong style={{ fontSize: '0.875rem' }}>Latest Web Retrieval</strong>
+                <span className={`status ${latestSourceRetrieval.status === 'extracted' ? '' : 'pending'}`}>{latestSourceRetrieval.status || 'Resolved'}</span>
+              </div>
+              <div className="logic-grid" style={{ gap: '0.5rem' }}>
+                <div><span>Source URL</span><p style={{ wordBreak: 'break-all' }}>{latestSourceRetrieval.finalUrl || 'Unknown'}</p></div>
+                <div><span>Retrieved At</span><p>{latestSourceRetrieval.retrievedAt ? new Date(latestSourceRetrieval.retrievedAt).toLocaleString() : 'Unknown'}</p></div>
+                <div><span>Freshness</span><p>{latestSourceRetrieval.freshness || 'Unknown'}</p></div>
+                <div><span>Provenance</span><p>{latestSourceRetrieval.provenance || 'Unknown'}</p></div>
+              </div>
+            </div>
+          )}
+
+          <div style={{ gridColumn: '1 / -1', fontSize: '0.875rem', color: 'var(--ink-soft)' }}>
+             The request may validate the public URL, check access policy, extract public evidence, and run advisory agents.
+          </div>
+          <button className="btn btn-primary" style={{ gridColumn: '1 / -1' }} type="submit" disabled={research.isPending || snapshot.provider.state === 'disabled'}>
+            <Sparkles size={14} />
+            {research.isPending ? 'Fetching permitted content & running advisory analysis…' : 'Fetch & Analyze'}
+          </button>
         </form>
       </section>
       <section className="card card-pad animate-in delay-2">

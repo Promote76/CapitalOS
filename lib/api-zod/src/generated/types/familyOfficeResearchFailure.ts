@@ -17,4 +17,8 @@ export interface FamilyOfficeResearchFailure {
   /** @nullable */
   proposal: null;
   advisoryOnly: boolean;
+  /** @nullable */
+  fetchStatus?: string | null;
+  /** @nullable */
+  accessLimitation?: string | null;
 }

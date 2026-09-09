@@ -2541,6 +2541,15 @@ export const GetFamilyOfficeResponse = zod.object({
 }))
 }),
   "evidenceIds": zod.array(zod.string()),
+  "sourceRetrieval": zod.object({
+  "finalUrl": zod.string().optional(),
+  "retrievedAt": zod.coerce.date().optional(),
+  "freshness": zod.string().optional(),
+  "provenance": zod.enum(['PUBLIC_WEB_RETRIEVAL']).optional(),
+  "title": zod.string().optional(),
+  "status": zod.string().optional(),
+  "accessLimitation": zod.string().nullish()
+}).nullish(),
   "status": zod.string(),
   "createdAt": zod.coerce.date(),
   "reviewedAt": zod.coerce.date().nullable(),
@@ -2579,6 +2588,15 @@ export const GetFamilyOfficeResponse = zod.object({
 }))
 }),
   "evidenceIds": zod.array(zod.string()),
+  "sourceRetrieval": zod.object({
+  "finalUrl": zod.string().optional(),
+  "retrievedAt": zod.coerce.date().optional(),
+  "freshness": zod.string().optional(),
+  "provenance": zod.enum(['PUBLIC_WEB_RETRIEVAL']).optional(),
+  "title": zod.string().optional(),
+  "status": zod.string().optional(),
+  "accessLimitation": zod.string().nullish()
+}).nullish(),
   "status": zod.string(),
   "createdAt": zod.coerce.date(),
   "reviewedAt": zod.coerce.date().nullable(),
@@ -2617,6 +2635,15 @@ export const GetFamilyOfficeResponse = zod.object({
 }))
 }),
   "evidenceIds": zod.array(zod.string()),
+  "sourceRetrieval": zod.object({
+  "finalUrl": zod.string().optional(),
+  "retrievedAt": zod.coerce.date().optional(),
+  "freshness": zod.string().optional(),
+  "provenance": zod.enum(['PUBLIC_WEB_RETRIEVAL']).optional(),
+  "title": zod.string().optional(),
+  "status": zod.string().optional(),
+  "accessLimitation": zod.string().nullish()
+}).nullish(),
   "status": zod.string(),
   "createdAt": zod.coerce.date(),
   "reviewedAt": zod.coerce.date().nullable(),
@@ -2655,6 +2682,15 @@ export const GetFamilyOfficeResponse = zod.object({
 }))
 }),
   "evidenceIds": zod.array(zod.string()),
+  "sourceRetrieval": zod.object({
+  "finalUrl": zod.string().optional(),
+  "retrievedAt": zod.coerce.date().optional(),
+  "freshness": zod.string().optional(),
+  "provenance": zod.enum(['PUBLIC_WEB_RETRIEVAL']).optional(),
+  "title": zod.string().optional(),
+  "status": zod.string().optional(),
+  "accessLimitation": zod.string().nullish()
+}).nullish(),
   "status": zod.string(),
   "createdAt": zod.coerce.date(),
   "reviewedAt": zod.coerce.date().nullable(),
@@ -2712,6 +2748,15 @@ export const GetFamilyOfficeResponse = zod.object({
 }))
 }),
   "evidenceIds": zod.array(zod.string()),
+  "sourceRetrieval": zod.object({
+  "finalUrl": zod.string().optional(),
+  "retrievedAt": zod.coerce.date().optional(),
+  "freshness": zod.string().optional(),
+  "provenance": zod.enum(['PUBLIC_WEB_RETRIEVAL']).optional(),
+  "title": zod.string().optional(),
+  "status": zod.string().optional(),
+  "accessLimitation": zod.string().nullish()
+}).nullish(),
   "status": zod.string(),
   "createdAt": zod.coerce.date(),
   "reviewedAt": zod.coerce.date().nullable(),
@@ -3157,9 +3202,12 @@ export const createFamilyOfficeResearchBodyAnalystMax = 80;
 
 export const createFamilyOfficeResearchBodyScopeMax = 120;
 
+export const createFamilyOfficeResearchBodyPromptDefault = `Provide general investment analysis.`;
 export const createFamilyOfficeResearchBodyPromptMax = 4000;
 
 export const createFamilyOfficeResearchBodyTickerRegExp = new RegExp('^[A-Za-z][A-Za-z0-9.-]{0,14}$');
+export const createFamilyOfficeResearchBodyUrlMax = 2000;
+
 export const createFamilyOfficeResearchBodyDossierContextMax = 2000;
 
 export const createFamilyOfficeResearchBodyPermittedEvidenceItemTitleMax = 180;
@@ -3175,8 +3223,9 @@ export const createFamilyOfficeResearchBodyPermittedEvidenceMax = 20;
 export const CreateFamilyOfficeResearchBody = zod.object({
   "analyst": zod.string().max(createFamilyOfficeResearchBodyAnalystMax).optional(),
   "scope": zod.string().min(1).max(createFamilyOfficeResearchBodyScopeMax),
-  "prompt": zod.string().min(1).max(createFamilyOfficeResearchBodyPromptMax),
-  "ticker": zod.string().regex(createFamilyOfficeResearchBodyTickerRegExp),
+  "prompt": zod.string().min(1).max(createFamilyOfficeResearchBodyPromptMax).default(createFamilyOfficeResearchBodyPromptDefault),
+  "ticker": zod.string().regex(createFamilyOfficeResearchBodyTickerRegExp).optional(),
+  "url": zod.string().max(createFamilyOfficeResearchBodyUrlMax).optional().describe('HTTPS public research URL. The server fetches it; the AI provider never browses.'),
   "dossierContext": zod.string().max(createFamilyOfficeResearchBodyDossierContextMax).optional(),
   "permittedEvidence": zod.array(zod.object({
   "title": zod.string().min(1).max(createFamilyOfficeResearchBodyPermittedEvidenceItemTitleMax),
@@ -3238,6 +3287,15 @@ export const CreateFamilyOfficeResearchResponse = zod.object({
 }))
 }),
   "evidenceIds": zod.array(zod.string()),
+  "sourceRetrieval": zod.object({
+  "finalUrl": zod.string().optional(),
+  "retrievedAt": zod.coerce.date().optional(),
+  "freshness": zod.string().optional(),
+  "provenance": zod.enum(['PUBLIC_WEB_RETRIEVAL']).optional(),
+  "title": zod.string().optional(),
+  "status": zod.string().optional(),
+  "accessLimitation": zod.string().nullish()
+}).nullish(),
   "status": zod.string(),
   "createdAt": zod.coerce.date(),
   "reviewedAt": zod.coerce.date().nullable(),
@@ -3245,7 +3303,13 @@ export const CreateFamilyOfficeResearchResponse = zod.object({
   "advisoryOnly": zod.boolean(),
   "executionAuthorization": zod.boolean()
 }),
-  "advisoryOnly": zod.boolean()
+  "advisoryOnly": zod.boolean(),
+  "sourceRetrieval": zod.object({
+  "finalUrl": zod.string().optional(),
+  "retrievedAt": zod.coerce.date().optional(),
+  "freshness": zod.string().optional(),
+  "provenance": zod.enum(['PUBLIC_WEB_RETRIEVAL']).optional()
+}).nullish()
 })
 
 
@@ -3296,6 +3360,15 @@ export const DecideFamilyOfficeProposalResponse = zod.object({
 }))
 }),
   "evidenceIds": zod.array(zod.string()),
+  "sourceRetrieval": zod.object({
+  "finalUrl": zod.string().optional(),
+  "retrievedAt": zod.coerce.date().optional(),
+  "freshness": zod.string().optional(),
+  "provenance": zod.enum(['PUBLIC_WEB_RETRIEVAL']).optional(),
+  "title": zod.string().optional(),
+  "status": zod.string().optional(),
+  "accessLimitation": zod.string().nullish()
+}).nullish(),
   "status": zod.string(),
   "createdAt": zod.coerce.date(),
   "reviewedAt": zod.coerce.date().nullable(),

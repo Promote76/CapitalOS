@@ -6,10 +6,13 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { FamilyOfficeProposal } from './familyOfficeProposal';
+import type { FamilyOfficeResearchResultSourceRetrieval } from './familyOfficeResearchResultSourceRetrieval';
 import type { FamilyOfficeRun } from './familyOfficeRun';
 
 export interface FamilyOfficeResearchResult {
   run: FamilyOfficeRun;
   proposal: FamilyOfficeProposal;
   advisoryOnly: boolean;
+  /** @nullable */
+  sourceRetrieval?: FamilyOfficeResearchResultSourceRetrieval;
 }

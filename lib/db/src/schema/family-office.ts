@@ -8,6 +8,7 @@ import {
   text,
   timestamp,
   uuid,
+  unique,
   uniqueIndex,
   foreignKey,
   check,
@@ -38,7 +39,7 @@ export const familyOfficeRuns = pgTable(
   (table) => ({
     householdIdx: index("family_office_runs_household_idx").on(table.householdId),
     createdIdx: index("family_office_runs_created_idx").on(table.createdAt),
-      householdIdUnique: uniqueIndex("family_office_runs_id_household_unique").on(table.id, table.householdId),
+    householdIdUnique: unique("family_office_runs_id_household_unique").on(table.id, table.householdId),
   }),
 );
 

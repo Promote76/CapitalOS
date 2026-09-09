@@ -330,6 +330,13 @@
       "when": 1788932549740,
       "tag": "0046_stormy_black_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1788933682343,
+      "tag": "0047_regular_hitman",
+      "breakpoints": true
     }
   ]
 }

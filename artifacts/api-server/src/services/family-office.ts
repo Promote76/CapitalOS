@@ -24,6 +24,7 @@ import { parseMoneyToCents } from "../domain/finance";
 import {
   assertShadowOnlyDecision,
   classifyDataFreshness,
+  familyOfficeLabels,
   familyOfficeProviderStatus,
   reviewTaxLienCandidate,
   shadowGuardrails,
@@ -84,6 +85,64 @@ function boundedSourceMarkers(markers: readonly FamilyOfficeSourceMarkerKey[] | 
 
 function sourceMarkerViews(markers: readonly FamilyOfficeSourceMarkerKey[]) {
   return boundedSourceMarkers(markers).map((key) => ({ key, label: sourceMarkerLabels[key] }));
+}
+
+type ProposalSynthesisView = {
+  agreements: string[];
+  disagreements: string[];
+  evidenceGaps: string[];
+  recommendation: ResearchOutput["label"];
+  advisoryOnly: true;
+  pendingHumanApproval: true;
+  agentSummaries: Array<{ agent?: string; thesis?: string; confidence?: number }>;
+};
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isAgentSummaries(value: unknown): value is ProposalSynthesisView["agentSummaries"] {
+  return Array.isArray(value) && value.every((item) => (
+    typeof item === "object"
+    && item !== null
+    && (!("agent" in item) || typeof item.agent === "string")
+    && (!("thesis" in item) || typeof item.thesis === "string")
+    && (!("confidence" in item) || typeof item.confidence === "number")
+  ));
+}
+
+export function normalizeProposalSynthesis(value: unknown): ProposalSynthesisView {
+  if (
+    typeof value === "object"
+    && value !== null
+    && "agreements" in value
+    && isStringArray(value.agreements)
+    && "disagreements" in value
+    && isStringArray(value.disagreements)
+    && "evidenceGaps" in value
+    && isStringArray(value.evidenceGaps)
+    && "recommendation" in value
+    && typeof value.recommendation === "string"
+    && familyOfficeLabels.includes(value.recommendation as ResearchOutput["label"])
+    && "advisoryOnly" in value
+    && value.advisoryOnly === true
+    && "pendingHumanApproval" in value
+    && value.pendingHumanApproval === true
+    && "agentSummaries" in value
+    && isAgentSummaries(value.agentSummaries)
+  ) {
+    return value as ProposalSynthesisView;
+  }
+
+  return {
+    agreements: [],
+    disagreements: [],
+    evidenceGaps: ["Historical proposal has no complete multi-agent synthesis."],
+    recommendation: "INSUFFICIENT_EVIDENCE",
+    advisoryOnly: true,
+    pendingHumanApproval: true,
+    agentSummaries: [],
+  };
 }
 
 function runView(run: typeof familyOfficeRuns.$inferSelect) {
@@ -163,7 +222,7 @@ function proposalView(proposal: typeof familyOfficeProposals.$inferSelect) {
     advisorySections: proposal.advisorySections,
     ticker: proposal.ticker,
     dossierKind: proposal.dossierKind,
-    multiAgentSynthesis: proposal.multiAgentSynthesis,
+    multiAgentSynthesis: normalizeProposalSynthesis(proposal.multiAgentSynthesis),
     sourceRetrieval: proposal.sourceRetrieval,
     digestionSummary: proposal.digestionSummary,
     evidenceIds: proposal.evidenceIds,

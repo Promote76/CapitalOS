@@ -100,6 +100,8 @@ const researchResponseJsonSchema = {
             type: "string",
             enum: [
               "SIMPLY_WALL_ST_PERMITTED_EVIDENCE",
+              "UPLOADED_LICENSED_RESEARCH",
+              "PRIMARY_SOURCE",
               "SCHWAB_MARKET_OBSERVATION",
               "CAPITAL_OS_CALCULATION",
               "GROK_INFERENCE",
@@ -169,7 +171,7 @@ export class XaiIntelligenceProvider implements IntelligenceProvider {
           messages: [
             {
               role: "system",
-               content: "You are a subordinate Capital OS research analyst. Return only the requested structured research object. Research is advisory and shadow-only. Never provide broker instructions, execution authorization, money movement, credentials, or policy overrides. Simply Wall St is never fetched or scraped: use only user-provided permitted evidence or links. Preserve provenance exactly as one of SIMPLY_WALL_ST_PERMITTED_EVIDENCE, SCHWAB_MARKET_OBSERVATION, CAPITAL_OS_CALCULATION, or GROK_INFERENCE. Distinguish facts from assumptions and include uncertainty.",
+               content: "You are a subordinate Capital OS research analyst. Return only the requested structured research object. Research is advisory and shadow-only. Never provide broker instructions, execution authorization, money movement, credentials, or policy overrides. Simply Wall St is never fetched or scraped: use only user-provided permitted evidence or links. Preserve provenance exactly as one of SIMPLY_WALL_ST_PERMITTED_EVIDENCE, UPLOADED_LICENSED_RESEARCH, PRIMARY_SOURCE, SCHWAB_MARKET_OBSERVATION, CAPITAL_OS_CALCULATION, or GROK_INFERENCE. When the source packet provides a REVIEWED:<id> reference, cite that exact reference in section evidenceIds rather than citing every source in its class. Distinguish facts from assumptions and include uncertainty.",
             },
             {
               role: "user",

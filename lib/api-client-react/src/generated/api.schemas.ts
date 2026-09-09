@@ -3154,6 +3154,8 @@ export type FamilyOfficeProposalAdvisorySectionsProvenanceItem = typeof FamilyOf
 
 export const FamilyOfficeProposalAdvisorySectionsProvenanceItem = {
   SIMPLY_WALL_ST_PERMITTED_EVIDENCE: 'SIMPLY_WALL_ST_PERMITTED_EVIDENCE',
+  UPLOADED_LICENSED_RESEARCH: 'UPLOADED_LICENSED_RESEARCH',
+  PRIMARY_SOURCE: 'PRIMARY_SOURCE',
   SCHWAB_MARKET_OBSERVATION: 'SCHWAB_MARKET_OBSERVATION',
   CAPITAL_OS_CALCULATION: 'CAPITAL_OS_CALCULATION',
   STRUCTURED_RESEARCH_DIGESTION: 'STRUCTURED_RESEARCH_DIGESTION',
@@ -3796,6 +3798,293 @@ export interface FamilyOfficeSnapshot {
   reports: FamilyOfficeReport[];
   realEstate: FamilyOfficeRealEstateSnapshot;
   summary: FamilyOfficeSnapshotSummary;
+}
+
+export type ResearchEvidenceUploadRequestContentType = typeof ResearchEvidenceUploadRequestContentType[keyof typeof ResearchEvidenceUploadRequestContentType];
+
+
+export const ResearchEvidenceUploadRequestContentType = {
+  'application/pdf': 'application/pdf',
+  'text/plain': 'text/plain',
+} as const;
+
+export interface ResearchEvidenceUploadRequest {
+  contentType: ResearchEvidenceUploadRequestContentType;
+  /**
+     * @minimum 1
+     * @maximum 10485760
+     */
+  size: number;
+}
+
+export interface ResearchEvidenceUploadResponse {
+  uploadURL: string;
+  objectPath: string;
+  uploadGrant: string;
+}
+
+export type RegisterResearchEvidenceRequestMimeType = typeof RegisterResearchEvidenceRequestMimeType[keyof typeof RegisterResearchEvidenceRequestMimeType];
+
+
+export const RegisterResearchEvidenceRequestMimeType = {
+  'application/pdf': 'application/pdf',
+  'text/plain': 'text/plain',
+} as const;
+
+export type RegisterResearchEvidenceRequestProvenanceClass = typeof RegisterResearchEvidenceRequestProvenanceClass[keyof typeof RegisterResearchEvidenceRequestProvenanceClass];
+
+
+export const RegisterResearchEvidenceRequestProvenanceClass = {
+  UPLOADED_LICENSED_RESEARCH: 'UPLOADED_LICENSED_RESEARCH',
+  PRIMARY_SOURCE: 'PRIMARY_SOURCE',
+} as const;
+
+export interface RegisterResearchEvidenceRequest {
+  /** @maxLength 240 */
+  title: string;
+  objectPath: string;
+  /**
+     * @minimum 1
+     * @maximum 10485760
+     */
+  byteLength: number;
+  mimeType: RegisterResearchEvidenceRequestMimeType;
+  uploadGrant: string;
+  provenanceClass: RegisterResearchEvidenceRequestProvenanceClass;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  financialDocumentId?: string;
+}
+
+export type ReviewResearchEvidenceRequestStatus = typeof ReviewResearchEvidenceRequestStatus[keyof typeof ReviewResearchEvidenceRequestStatus];
+
+
+export const ReviewResearchEvidenceRequestStatus = {
+  REVIEWED: 'REVIEWED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface ReviewResearchEvidenceRequest {
+  status: ReviewResearchEvidenceRequestStatus;
+}
+
+export type ResearchEvidenceProvenanceClass = typeof ResearchEvidenceProvenanceClass[keyof typeof ResearchEvidenceProvenanceClass];
+
+
+export const ResearchEvidenceProvenanceClass = {
+  UPLOADED_LICENSED_RESEARCH: 'UPLOADED_LICENSED_RESEARCH',
+  PRIMARY_SOURCE: 'PRIMARY_SOURCE',
+} as const;
+
+export interface ResearchEvidence {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  householdId: string;
+  title: string;
+  provenanceClass: ResearchEvidenceProvenanceClass;
+  reviewStatus: string;
+  mimeType: string;
+  objectPath: string;
+  byteLength: number;
+  /** @pattern ^[a-f0-9]{64}$ */
+  sha256: string;
+  extractionStatus: string;
+  advisoryOnly: boolean;
+}
+
+export interface ResearchDossier {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  householdId: string;
+  ticker: string;
+  title: string;
+  /** @items.pattern ^[0-9a-fA-F-]{36}$ */
+  evidenceIds: string[];
+  reviewStatus: string;
+  createdAt: string;
+  reportStatus: string;
+  proposal: FamilyOfficeProposal | null;
+  advisoryOnly: true;
+  executionAuthority: 'none';
+  noCapitalSideEffects: true;
+}
+
+export type CapabilityReadinessQuote = typeof CapabilityReadinessQuote[keyof typeof CapabilityReadinessQuote];
+
+
+export const CapabilityReadinessQuote = {
+  implemented: 'implemented',
+} as const;
+
+export type CapabilityReadinessMarketHours = typeof CapabilityReadinessMarketHours[keyof typeof CapabilityReadinessMarketHours];
+
+
+export const CapabilityReadinessMarketHours = {
+  implemented: 'implemented',
+} as const;
+
+export type CapabilityReadinessPortfolioPosition = typeof CapabilityReadinessPortfolioPosition[keyof typeof CapabilityReadinessPortfolioPosition];
+
+
+export const CapabilityReadinessPortfolioPosition = {
+  implemented: 'implemented',
+} as const;
+
+export type CapabilityReadinessInstrumentMetadata = typeof CapabilityReadinessInstrumentMetadata[keyof typeof CapabilityReadinessInstrumentMetadata];
+
+
+export const CapabilityReadinessInstrumentMetadata = {
+  PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+} as const;
+
+export type CapabilityReadinessFundamentals = typeof CapabilityReadinessFundamentals[keyof typeof CapabilityReadinessFundamentals];
+
+
+export const CapabilityReadinessFundamentals = {
+  PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+} as const;
+
+export type CapabilityReadinessPriceHistory = typeof CapabilityReadinessPriceHistory[keyof typeof CapabilityReadinessPriceHistory];
+
+
+export const CapabilityReadinessPriceHistory = {
+  PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+} as const;
+
+export type CapabilityReadinessMovers = typeof CapabilityReadinessMovers[keyof typeof CapabilityReadinessMovers];
+
+
+export const CapabilityReadinessMovers = {
+  PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+} as const;
+
+export type CapabilityReadinessOptions = typeof CapabilityReadinessOptions[keyof typeof CapabilityReadinessOptions];
+
+
+export const CapabilityReadinessOptions = {
+  PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+} as const;
+
+export type CapabilityReadinessStreaming = typeof CapabilityReadinessStreaming[keyof typeof CapabilityReadinessStreaming];
+
+
+export const CapabilityReadinessStreaming = {
+  PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+} as const;
+
+export type CapabilityReadinessNews = typeof CapabilityReadinessNews[keyof typeof CapabilityReadinessNews];
+
+
+export const CapabilityReadinessNews = {
+  PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+} as const;
+
+export type CapabilityReadinessTaxData = typeof CapabilityReadinessTaxData[keyof typeof CapabilityReadinessTaxData];
+
+
+export const CapabilityReadinessTaxData = {
+  PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+} as const;
+
+export type CapabilityReadinessSchwabReports = typeof CapabilityReadinessSchwabReports[keyof typeof CapabilityReadinessSchwabReports];
+
+
+export const CapabilityReadinessSchwabReports = {
+  PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+} as const;
+
+export type CapabilityReadinessExecution = typeof CapabilityReadinessExecution[keyof typeof CapabilityReadinessExecution];
+
+
+export const CapabilityReadinessExecution = {
+  DISABLED_NOT_IN_SCOPE: 'DISABLED_NOT_IN_SCOPE',
+} as const;
+
+export type CapabilityReadinessOrder = typeof CapabilityReadinessOrder[keyof typeof CapabilityReadinessOrder];
+
+
+export const CapabilityReadinessOrder = {
+  DISABLED_NOT_IN_SCOPE: 'DISABLED_NOT_IN_SCOPE',
+} as const;
+
+export type CapabilityReadinessTransfer = typeof CapabilityReadinessTransfer[keyof typeof CapabilityReadinessTransfer];
+
+
+export const CapabilityReadinessTransfer = {
+  DISABLED_NOT_IN_SCOPE: 'DISABLED_NOT_IN_SCOPE',
+} as const;
+
+export type CapabilityReadinessWithdrawal = typeof CapabilityReadinessWithdrawal[keyof typeof CapabilityReadinessWithdrawal];
+
+
+export const CapabilityReadinessWithdrawal = {
+  DISABLED_NOT_IN_SCOPE: 'DISABLED_NOT_IN_SCOPE',
+} as const;
+
+export type CapabilityReadinessMicroLive = typeof CapabilityReadinessMicroLive[keyof typeof CapabilityReadinessMicroLive];
+
+
+export const CapabilityReadinessMicroLive = {
+  DISABLED_NOT_IN_SCOPE: 'DISABLED_NOT_IN_SCOPE',
+} as const;
+
+export type CapabilityReadinessCapitalAllocation = typeof CapabilityReadinessCapitalAllocation[keyof typeof CapabilityReadinessCapitalAllocation];
+
+
+export const CapabilityReadinessCapitalAllocation = {
+  DISABLED_NOT_IN_SCOPE: 'DISABLED_NOT_IN_SCOPE',
+} as const;
+
+export type CapabilityReadinessReasons = {[key: string]: string};
+
+export interface CapabilityReadiness {
+  quote: CapabilityReadinessQuote;
+  market_hours: CapabilityReadinessMarketHours;
+  portfolio_position: CapabilityReadinessPortfolioPosition;
+  instrument_metadata: CapabilityReadinessInstrumentMetadata;
+  fundamentals: CapabilityReadinessFundamentals;
+  price_history: CapabilityReadinessPriceHistory;
+  movers: CapabilityReadinessMovers;
+  options: CapabilityReadinessOptions;
+  streaming: CapabilityReadinessStreaming;
+  news: CapabilityReadinessNews;
+  tax_data: CapabilityReadinessTaxData;
+  schwab_reports: CapabilityReadinessSchwabReports;
+  execution: CapabilityReadinessExecution;
+  order: CapabilityReadinessOrder;
+  transfer: CapabilityReadinessTransfer;
+  withdrawal: CapabilityReadinessWithdrawal;
+  micro_live: CapabilityReadinessMicroLive;
+  capital_allocation: CapabilityReadinessCapitalAllocation;
+  reasons: CapabilityReadinessReasons;
+}
+
+export interface ResearchDossierListResponse {
+  evidence: ResearchEvidence[];
+  dossiers: ResearchDossier[];
+  capabilityReadiness: CapabilityReadiness;
+  advisoryOnly: true;
+}
+
+export interface CreateResearchDossierRequest {
+  /** @maxLength 16 */
+  ticker: string;
+  /** @maxLength 240 */
+  title: string;
+  /**
+     * @maxItems 25
+     * @items.pattern ^[0-9a-fA-F-]{36}$
+     */
+  evidenceIds: string[];
+  /** @maxLength 102400 */
+  digestionPayload: string;
+}
+
+export interface ResearchDossierCreateResult {
+  dossier: ResearchDossier;
+  proposal: FamilyOfficeProposal | null;
+  refresh: ResearchDossierListResponse;
 }
 
 export type FamilyOfficeResearchResultSourceRetrievalProvenance = typeof FamilyOfficeResearchResultSourceRetrievalProvenance[keyof typeof FamilyOfficeResearchResultSourceRetrievalProvenance];

@@ -26,6 +26,7 @@ tags:
   - name: observability
   - name: family-office
   - name: schwab
+  - name: research-dossier
 paths:
   /internal/metrics:
     get:
@@ -1205,6 +1206,68 @@ paths:
                   - $ref: "#/components/schemas/FamilyOfficeResearchDigestionValidationError"
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+  /family-office/research-evidence/upload-url:
+    post:
+      operationId: requestResearchEvidenceUpload
+      tags: [research-dossier]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResearchEvidenceUploadRequest" }
+      responses:
+        "201":
+          description: Private upload grant bound to the authenticated household and user
+          content: { application/json: { schema: { $ref: "#/components/schemas/ResearchEvidenceUploadResponse" } } }
+  /family-office/research-evidence:
+    post:
+      operationId: registerResearchEvidence
+      tags: [research-dossier]
+      summary: Register bounded private PDF or plain-text research evidence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterResearchEvidenceRequest" }
+      responses:
+        "201":
+          description: Registered evidence with server-computed exact hash and extraction status
+          content: { application/json: { schema: { $ref: "#/components/schemas/ResearchEvidence" } } }
+  /family-office/research-evidence/{evidenceId}/review:
+    post:
+      operationId: reviewResearchEvidence
+      tags: [research-dossier]
+      parameters:
+        - { name: evidenceId, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReviewResearchEvidenceRequest" }
+      responses:
+        "200":
+          description: Human review disposition
+          content: { application/json: { schema: { $ref: "#/components/schemas/ResearchEvidence" } } }
+  /family-office/research-dossiers:
+    get:
+      operationId: listResearchDossiers
+      tags: [research-dossier]
+      responses:
+        "200":
+          description: Household-scoped advisory dossier snapshot and capability readiness
+          content: { application/json: { schema: { $ref: "#/components/schemas/ResearchDossierListResponse" } } }
+    post:
+      operationId: createResearchDossier
+      tags: [research-dossier]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateResearchDossierRequest" }
+      responses:
+        "201":
+          description: Created advisory dossier/proposal and refreshed list data
+          content: { application/json: { schema: { $ref: "#/components/schemas/ResearchDossierCreateResult" } } }
   /family-office/research/digestion/preview:
     post:
       operationId: previewFamilyOfficeResearchDigestion
@@ -5828,7 +5891,7 @@ components:
                 type: array
                 items:
                   type: string
-                  enum: [SIMPLY_WALL_ST_PERMITTED_EVIDENCE, SCHWAB_MARKET_OBSERVATION, CAPITAL_OS_CALCULATION, STRUCTURED_RESEARCH_DIGESTION, USER_SUPPLIED_INFERENCE, GROK_INFERENCE]
+                  enum: [SIMPLY_WALL_ST_PERMITTED_EVIDENCE, UPLOADED_LICENSED_RESEARCH, PRIMARY_SOURCE, SCHWAB_MARKET_OBSERVATION, CAPITAL_OS_CALCULATION, STRUCTURED_RESEARCH_DIGESTION, USER_SUPPLIED_INFERENCE, GROK_INFERENCE]
         ticker: { type: ["string", "null"] }
         dossierKind: { type: string }
         multiAgentSynthesis:
@@ -6229,6 +6292,115 @@ components:
             shadowOnly: { type: boolean }
             outcomesWithAttribution: { type: number, minimum: 0 }
             confidenceCalibration: { type: [number, "null"], minimum: 0, maximum: 100 }
+    ResearchEvidenceUploadRequest:
+      type: object
+      required: [contentType, size]
+      properties:
+        contentType: { type: string, enum: [application/pdf, text/plain] }
+        size: { type: number, multipleOf: 1, minimum: 1, maximum: 10485760 }
+    ResearchEvidenceUploadResponse:
+      type: object
+      required: [uploadURL, objectPath, uploadGrant]
+      properties:
+        uploadURL: { type: string }
+        objectPath: { type: string }
+        uploadGrant: { type: string }
+    RegisterResearchEvidenceRequest:
+      type: object
+      required: [title, objectPath, byteLength, mimeType, uploadGrant, provenanceClass]
+      properties:
+        title: { type: string, maxLength: 240 }
+        objectPath: { type: string }
+        byteLength: { type: number, multipleOf: 1, minimum: 1, maximum: 10485760 }
+        mimeType: { type: string, enum: [application/pdf, text/plain] }
+        uploadGrant: { type: string }
+        provenanceClass: { type: string, enum: [UPLOADED_LICENSED_RESEARCH, PRIMARY_SOURCE] }
+        financialDocumentId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+    ReviewResearchEvidenceRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [REVIEWED, REJECTED] }
+    ResearchEvidence:
+      type: object
+      required: [id, householdId, title, provenanceClass, reviewStatus, mimeType, objectPath, byteLength, sha256, extractionStatus, advisoryOnly]
+      properties:
+        id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        householdId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        title: { type: string }
+        provenanceClass: { type: string, enum: [UPLOADED_LICENSED_RESEARCH, PRIMARY_SOURCE] }
+        reviewStatus: { type: string }
+        mimeType: { type: string }
+        objectPath: { type: string }
+        byteLength: { type: number, multipleOf: 1 }
+        sha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+        extractionStatus: { type: string }
+        advisoryOnly: { type: boolean, default: true }
+    ResearchDossier:
+      type: object
+      required: [id, householdId, ticker, title, evidenceIds, reviewStatus, createdAt, reportStatus, proposal, advisoryOnly, executionAuthority, noCapitalSideEffects]
+      properties:
+        id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        householdId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        ticker: { type: string }
+        title: { type: string }
+        evidenceIds: { type: array, items: { type: string, pattern: "^[0-9a-fA-F-]{36}$" } }
+        reviewStatus: { type: string }
+        createdAt: { type: string, format: date-time }
+        reportStatus: { type: string }
+        proposal: { allOf: [{ $ref: "#/components/schemas/FamilyOfficeProposal" }], nullable: true }
+        advisoryOnly: { type: boolean, const: true }
+        executionAuthority: { type: string, const: none }
+        noCapitalSideEffects: { type: boolean, const: true }
+    CapabilityReadiness:
+      type: object
+      required: [quote, market_hours, portfolio_position, instrument_metadata, fundamentals, price_history, movers, options, streaming, news, tax_data, schwab_reports, execution, order, transfer, withdrawal, micro_live, capital_allocation, reasons]
+      properties:
+        quote: { type: string, enum: [implemented] }
+        market_hours: { type: string, enum: [implemented] }
+        portfolio_position: { type: string, enum: [implemented] }
+        instrument_metadata: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION] }
+        fundamentals: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION] }
+        price_history: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION] }
+        movers: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION] }
+        options: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION] }
+        streaming: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION] }
+        news: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION] }
+        tax_data: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION] }
+        schwab_reports: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION] }
+        execution: { type: string, enum: [DISABLED_NOT_IN_SCOPE] }
+        order: { type: string, enum: [DISABLED_NOT_IN_SCOPE] }
+        transfer: { type: string, enum: [DISABLED_NOT_IN_SCOPE] }
+        withdrawal: { type: string, enum: [DISABLED_NOT_IN_SCOPE] }
+        micro_live: { type: string, enum: [DISABLED_NOT_IN_SCOPE] }
+        capital_allocation: { type: string, enum: [DISABLED_NOT_IN_SCOPE] }
+        reasons: { type: object, additionalProperties: { type: string } }
+    ResearchDossierListResponse:
+      type: object
+      required: [evidence, dossiers, capabilityReadiness, advisoryOnly]
+      properties:
+        evidence: { type: array, items: { $ref: "#/components/schemas/ResearchEvidence" } }
+        dossiers: { type: array, items: { $ref: "#/components/schemas/ResearchDossier" } }
+        capabilityReadiness: { $ref: "#/components/schemas/CapabilityReadiness" }
+        advisoryOnly: { type: boolean, const: true }
+    CreateResearchDossierRequest:
+      type: object
+      required: [ticker, title, evidenceIds, digestionPayload]
+      properties:
+        ticker: { type: string, maxLength: 16 }
+        title: { type: string, maxLength: 240 }
+        evidenceIds: { type: array, maxItems: 25, items: { type: string, pattern: "^[0-9a-fA-F-]{36}$" } }
+        digestionPayload: { type: string, maxLength: 102400 }
+    ResearchDossierCreateResult:
+      type: object
+      required: [dossier, proposal, refresh]
+      properties:
+        dossier: { $ref: "#/components/schemas/ResearchDossier" }
+        proposal:
+          oneOf:
+            - { $ref: "#/components/schemas/FamilyOfficeProposal" }
+            - { type: "null" }
+        refresh: { $ref: "#/components/schemas/ResearchDossierListResponse" }
     FamilyOfficeResearchResult:
       type: object
       required: [run, proposal, advisoryOnly]

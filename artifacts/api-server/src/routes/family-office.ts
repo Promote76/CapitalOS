@@ -20,6 +20,15 @@ import {
   type FamilyOfficeResearchFailure,
   PreviewFamilyOfficeResearchDigestionBody,
   PreviewFamilyOfficeResearchDigestionResponse,
+  RequestResearchEvidenceUploadBody,
+  RequestResearchEvidenceUploadResponse,
+  RegisterResearchEvidenceBody,
+  RegisterResearchEvidenceResponse,
+  ReviewResearchEvidenceBody,
+  ReviewResearchEvidenceResponse,
+  ListResearchDossiersResponse,
+  CreateResearchDossierBody,
+  CreateResearchDossierResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
@@ -36,8 +45,37 @@ import {
 import type { ResearchOptions } from "../services/family-office";
 import { ingestPublicResearchUrl } from "../services/public-research-ingestion";
 import { parseResearchDigestion, type NormalizedResearchDigestion } from "../domain/research-digestion";
+import { createInvestmentResearchDossier, listResearchDossiers, registerResearchEvidence, requestResearchEvidenceUpload, reviewResearchEvidence } from "../services/research-dossier";
 
 const router: IRouter = Router();
+
+router.post("/family-office/research-evidence/upload-url", asyncRoute(async (req, res) => {
+  assertPermission(actorFrom(res).role, "contribute");
+  const body = RequestResearchEvidenceUploadBody.parse(req.body);
+  res.status(201).json(RequestResearchEvidenceUploadResponse.parse(await requestResearchEvidenceUpload(actorFrom(res), body)));
+}));
+
+router.get("/family-office/research-dossiers", asyncRoute(async (_req, res) => {
+  res.json(ListResearchDossiersResponse.parse(await listResearchDossiers(actorFrom(res))));
+}));
+
+router.post("/family-office/research-evidence", asyncRoute(async (req, res) => {
+  assertPermission(actorFrom(res).role, "contribute");
+  const body = RegisterResearchEvidenceBody.parse(req.body);
+  res.status(201).json(RegisterResearchEvidenceResponse.parse(await registerResearchEvidence(actorFrom(res), body)));
+}));
+
+router.post("/family-office/research-evidence/:evidenceId/review", asyncRoute(async (req, res) => {
+  assertPermission(actorFrom(res).role, "contribute");
+  const body = ReviewResearchEvidenceBody.parse(req.body);
+  res.json(ReviewResearchEvidenceResponse.parse(await reviewResearchEvidence(actorFrom(res), String(req.params.evidenceId), body.status)));
+}));
+
+router.post("/family-office/research-dossiers", asyncRoute(async (req, res) => {
+  assertPermission(actorFrom(res).role, "contribute");
+  const body = CreateResearchDossierBody.parse(req.body);
+  res.status(201).json(CreateResearchDossierResponse.parse(await createInvestmentResearchDossier(actorFrom(res), body)));
+}));
 
 function isFamilyOfficeFailureCode(value: unknown): value is FamilyOfficeResearchFailure["code"] {
   return typeof value === "string" && [

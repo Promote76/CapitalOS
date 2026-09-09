@@ -34,3 +34,24 @@ test("structured citations map exact claim references without cross-claim expans
   assert.ok(!mapped.fundamentals.evidenceIds.includes("claim-b-uuid"));
   assert.match(mapped.evidenceQuality.content.at(-1) ?? "", /unresolved/);
 });
+
+test("uploaded research citations map only the exact reviewed evidence item", () => {
+  const section = {
+    content: ["Reviewed filing supports this section."],
+    evidenceIds: ["REVIEWED:evidence-a"],
+    provenance: ["PRIMARY_SOURCE"],
+  };
+  const empty = { content: [], evidenceIds: [], provenance: [] };
+  const sections = Object.fromEntries(
+    ["fundamentals", "valuation", "catalysts", "risks", "downsideCase", "peerContext", "portfolioFit", "concentrationLiquidityRisk", "thesisInvalidationConditions", "evidenceQuality"]
+      .map((name) => [name, name === "fundamentals" ? section : empty]),
+  ) as ResearchAdvisorySections;
+  const mapped = remapAdvisorySections(
+    sections,
+    { PRIMARY_SOURCE: ["persisted-a", "persisted-b"] },
+    { "REVIEWED:evidence-a": "persisted-a", "REVIEWED:evidence-b": "persisted-b" },
+    { "REVIEWED:evidence-a": "PRIMARY_SOURCE", "REVIEWED:evidence-b": "PRIMARY_SOURCE" },
+  );
+  assert.deepEqual(mapped.fundamentals.evidenceIds, ["persisted-a"]);
+  assert.deepEqual(mapped.fundamentals.provenance, ["PRIMARY_SOURCE"]);
+});

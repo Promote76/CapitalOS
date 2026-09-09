@@ -17,3 +17,4 @@ export * from "./reliability.ts";
 export * from "./family-office.ts";
 export * from "./capital-governor.ts";
 export * from "./schwab.ts";
+export * from "./research-dossier.ts";

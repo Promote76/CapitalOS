@@ -102,6 +102,7 @@ import type {
   ContributionScenario,
   ContributionSummary,
   CreatePropertyCandidateInput,
+  CreateResearchDossierRequest,
   CreateResearchJournalEntryInput,
   CreateResearchStrategyInput,
   CreateStrategyVersionInput,
@@ -233,9 +234,16 @@ import type {
   RecommendationFeedback,
   RecommendationSummary,
   RecoverMissedOperationsSchedules200,
+  RegisterResearchEvidenceRequest,
   ReportDescriptor,
+  ResearchDossierCreateResult,
+  ResearchDossierListResponse,
+  ResearchEvidence,
+  ResearchEvidenceUploadRequest,
+  ResearchEvidenceUploadResponse,
   ResearchJournalEntry,
   ResearchStrategyCreated,
+  ReviewResearchEvidenceRequest,
   ReviewedFinancialTransaction,
   RiskSummary,
   RunStrategyExperimentInput,
@@ -5692,6 +5700,344 @@ export const useCreateFamilyOfficeResearch = <TError = ErrorType<ErrorResponse |
         TContext
       > => {
       return useMutation(getCreateFamilyOfficeResearchMutationOptions(options));
+    }
+
+export const getRequestResearchEvidenceUploadUrl = () => {
+
+
+
+
+  return `/api/family-office/research-evidence/upload-url`
+}
+
+export const requestResearchEvidenceUpload = async (researchEvidenceUploadRequest: ResearchEvidenceUploadRequest, options?: Parameters<typeof customFetch>[1]): Promise<ResearchEvidenceUploadResponse> => {
+
+  return customFetch<ResearchEvidenceUploadResponse>(getRequestResearchEvidenceUploadUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(researchEvidenceUploadRequest)
+  }
+);}
+
+
+
+
+
+export const getRequestResearchEvidenceUploadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestResearchEvidenceUpload>>, TError,{data: BodyType<ResearchEvidenceUploadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestResearchEvidenceUpload>>, TError,{data: BodyType<ResearchEvidenceUploadRequest>}, TContext> => {
+
+const mutationKey = ['requestResearchEvidenceUpload'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestResearchEvidenceUpload>>, {data: BodyType<ResearchEvidenceUploadRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestResearchEvidenceUpload(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestResearchEvidenceUploadMutationResult = NonNullable<Awaited<ReturnType<typeof requestResearchEvidenceUpload>>>
+    export type RequestResearchEvidenceUploadMutationBody = BodyType<ResearchEvidenceUploadRequest>
+    export type RequestResearchEvidenceUploadMutationError = ErrorType<unknown>
+
+    export const useRequestResearchEvidenceUpload = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestResearchEvidenceUpload>>, TError,{data: BodyType<ResearchEvidenceUploadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestResearchEvidenceUpload>>,
+        TError,
+        {data: BodyType<ResearchEvidenceUploadRequest>},
+        TContext
+      > => {
+      return useMutation(getRequestResearchEvidenceUploadMutationOptions(options));
+    }
+
+export const getRegisterResearchEvidenceUrl = () => {
+
+
+
+
+  return `/api/family-office/research-evidence`
+}
+
+/**
+ * @summary Register bounded private PDF or plain-text research evidence
+ */
+export const registerResearchEvidence = async (registerResearchEvidenceRequest: RegisterResearchEvidenceRequest, options?: Parameters<typeof customFetch>[1]): Promise<ResearchEvidence> => {
+
+  return customFetch<ResearchEvidence>(getRegisterResearchEvidenceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(registerResearchEvidenceRequest)
+  }
+);}
+
+
+
+
+
+export const getRegisterResearchEvidenceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerResearchEvidence>>, TError,{data: BodyType<RegisterResearchEvidenceRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof registerResearchEvidence>>, TError,{data: BodyType<RegisterResearchEvidenceRequest>}, TContext> => {
+
+const mutationKey = ['registerResearchEvidence'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerResearchEvidence>>, {data: BodyType<RegisterResearchEvidenceRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  registerResearchEvidence(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegisterResearchEvidenceMutationResult = NonNullable<Awaited<ReturnType<typeof registerResearchEvidence>>>
+    export type RegisterResearchEvidenceMutationBody = BodyType<RegisterResearchEvidenceRequest>
+    export type RegisterResearchEvidenceMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Register bounded private PDF or plain-text research evidence
+ */
+export const useRegisterResearchEvidence = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerResearchEvidence>>, TError,{data: BodyType<RegisterResearchEvidenceRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof registerResearchEvidence>>,
+        TError,
+        {data: BodyType<RegisterResearchEvidenceRequest>},
+        TContext
+      > => {
+      return useMutation(getRegisterResearchEvidenceMutationOptions(options));
+    }
+
+export const getReviewResearchEvidenceUrl = (evidenceId: string,) => {
+
+
+
+
+  return `/api/family-office/research-evidence/${evidenceId}/review`
+}
+
+export const reviewResearchEvidence = async (evidenceId: string,
+    reviewResearchEvidenceRequest: ReviewResearchEvidenceRequest, options?: Parameters<typeof customFetch>[1]): Promise<ResearchEvidence> => {
+
+  return customFetch<ResearchEvidence>(getReviewResearchEvidenceUrl(evidenceId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reviewResearchEvidenceRequest)
+  }
+);}
+
+
+
+
+
+export const getReviewResearchEvidenceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewResearchEvidence>>, TError,{evidenceId: string;data: BodyType<ReviewResearchEvidenceRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewResearchEvidence>>, TError,{evidenceId: string;data: BodyType<ReviewResearchEvidenceRequest>}, TContext> => {
+
+const mutationKey = ['reviewResearchEvidence'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewResearchEvidence>>, {evidenceId: string;data: BodyType<ReviewResearchEvidenceRequest>}> = (props) => {
+          const {evidenceId,data} = props ?? {};
+
+          return  reviewResearchEvidence(evidenceId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewResearchEvidenceMutationResult = NonNullable<Awaited<ReturnType<typeof reviewResearchEvidence>>>
+    export type ReviewResearchEvidenceMutationBody = BodyType<ReviewResearchEvidenceRequest>
+    export type ReviewResearchEvidenceMutationError = ErrorType<unknown>
+
+    export const useReviewResearchEvidence = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewResearchEvidence>>, TError,{evidenceId: string;data: BodyType<ReviewResearchEvidenceRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewResearchEvidence>>,
+        TError,
+        {evidenceId: string;data: BodyType<ReviewResearchEvidenceRequest>},
+        TContext
+      > => {
+      return useMutation(getReviewResearchEvidenceMutationOptions(options));
+    }
+
+export const getListResearchDossiersUrl = () => {
+
+
+
+
+  return `/api/family-office/research-dossiers`
+}
+
+export const listResearchDossiers = async ( options?: Parameters<typeof customFetch>[1]): Promise<ResearchDossierListResponse> => {
+
+  return customFetch<ResearchDossierListResponse>(getListResearchDossiersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListResearchDossiersQueryKey = () => {
+    return [
+    `/api/family-office/research-dossiers`
+    ] as const;
+    }
+
+
+export const getListResearchDossiersQueryOptions = <TData = Awaited<ReturnType<typeof listResearchDossiers>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listResearchDossiers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListResearchDossiersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listResearchDossiers>>> = ({ signal }) => listResearchDossiers({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listResearchDossiers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListResearchDossiersQueryResult = NonNullable<Awaited<ReturnType<typeof listResearchDossiers>>>
+export type ListResearchDossiersQueryError = ErrorType<unknown>
+
+
+
+export function useListResearchDossiers<TData = Awaited<ReturnType<typeof listResearchDossiers>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listResearchDossiers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListResearchDossiersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateResearchDossierUrl = () => {
+
+
+
+
+  return `/api/family-office/research-dossiers`
+}
+
+export const createResearchDossier = async (createResearchDossierRequest: CreateResearchDossierRequest, options?: Parameters<typeof customFetch>[1]): Promise<ResearchDossierCreateResult> => {
+
+  return customFetch<ResearchDossierCreateResult>(getCreateResearchDossierUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createResearchDossierRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateResearchDossierMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createResearchDossier>>, TError,{data: BodyType<CreateResearchDossierRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createResearchDossier>>, TError,{data: BodyType<CreateResearchDossierRequest>}, TContext> => {
+
+const mutationKey = ['createResearchDossier'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createResearchDossier>>, {data: BodyType<CreateResearchDossierRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createResearchDossier(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateResearchDossierMutationResult = NonNullable<Awaited<ReturnType<typeof createResearchDossier>>>
+    export type CreateResearchDossierMutationBody = BodyType<CreateResearchDossierRequest>
+    export type CreateResearchDossierMutationError = ErrorType<unknown>
+
+    export const useCreateResearchDossier = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createResearchDossier>>, TError,{data: BodyType<CreateResearchDossierRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createResearchDossier>>,
+        TError,
+        {data: BodyType<CreateResearchDossierRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateResearchDossierMutationOptions(options));
     }
 
 export const getPreviewFamilyOfficeResearchDigestionUrl = () => {

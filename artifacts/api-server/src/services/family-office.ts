@@ -52,6 +52,7 @@ export type ResearchOptions = {
   structuredResearchDigestion?: NormalizedResearchDigestion;
   /** Test seam only; production callers leave this undefined. */
   provider?: Pick<XaiIntelligenceProvider, "research" | "status">;
+  reviewedResearchEvidence?: Array<{ id: string; title: string; provenanceClass: "UPLOADED_LICENSED_RESEARCH" | "PRIMARY_SOURCE"; excerpt: string }>;
 };
 type RefreshTrigger = "on_demand" | "hourly" | "daily";
 type RefreshContextFreshness = "fresh" | "stale" | "unknown";
@@ -206,6 +207,48 @@ function nextEligibleAt(refreshes: typeof familyOfficeRefreshes.$inferSelect[]) 
     latestDaily ? new Date(latestDaily.requestedAt).getTime() + refreshWindows.daily : null,
   ].filter((value): value is number => value !== null);
   return candidates.length ? new Date(Math.min(...candidates)) : null;
+}
+
+type SchwabResearchObservationInput = {
+  ticker: string;
+  positions?: unknown;
+  quotes?: unknown;
+  marketClock?: unknown;
+  freshness?: unknown;
+  asOf?: unknown;
+};
+
+/**
+ * Project the read-only Schwab observation into the provider source packet.
+ * Keep this boundary deliberately small: provider/account identifiers and
+ * credentials must never be forwarded to the research provider.
+ */
+export function projectSchwabResearchObservation(input: SchwabResearchObservationInput) {
+  const ticker = input.ticker.toUpperCase();
+  const matching = (value: unknown, keys: readonly string[]) => {
+    const rows = Array.isArray(value) ? value : [];
+    return rows.filter((row): row is Record<string, unknown> => (
+      !!row && typeof row === "object"
+      && String((row as Record<string, unknown>).symbol ?? (row as Record<string, unknown>).ticker ?? "").toUpperCase() === ticker
+    )).map((row) => {
+      const projected: Record<string, unknown> = {};
+      for (const key of keys) {
+        if (row[key] !== undefined) projected[key] = row[key];
+      }
+      return projected;
+    });
+  };
+
+  return {
+    ticker: input.ticker,
+    positions: matching(input.positions, ["symbol", "price", "lastPrice", "bid", "ask", "quantity", "marketValue", "costBasis", "asOf"]),
+    quotes: matching(input.quotes, [
+      "symbol", "assetType", "marketPrice", "providerTimestamp", "receivedAt", "dataFreshness",
+    ]),
+    marketClock: input.marketClock ?? {},
+    freshness: input.freshness ?? "UNKNOWN",
+    asOf: input.asOf ?? null,
+  };
 }
 
 function proposalView(proposal: typeof familyOfficeProposals.$inferSelect) {
@@ -757,15 +800,6 @@ export async function runFamilyOfficeResearch(
   const snapshot = latestSnapshot[0];
   const symbol = dossier.ticker;
   if (!symbol) throw new GovernanceError("INVALID_STATE", "A ticker is required for research");
-  const matching = (rows: Record<string, unknown>[]) => rows.filter((row) =>
-    String(row.symbol ?? row.ticker ?? "").toUpperCase() === symbol,
-  ).map((row) => {
-    const allowed: Record<string, unknown> = {};
-    for (const key of ["symbol", "price", "lastPrice", "bid", "ask", "quantity", "marketValue", "costBasis", "asOf"]) {
-      if (row[key] !== undefined) allowed[key] = row[key];
-    }
-    return allowed;
-  });
   const sourcePacket = JSON.stringify({
     structuredResearchDigestion: options.structuredResearchDigestion ? {
       ticker: options.structuredResearchDigestion.ticker,
@@ -788,14 +822,17 @@ export async function runFamilyOfficeResearch(
       freshness: options.publicWebEvidence.freshness,
     } : null,
     permittedEvidence: dossier.permittedEvidence,
-    schwabMarketObservation: {
+    reviewedResearchEvidence: options.reviewedResearchEvidence?.map((item) => ({
+      referenceId: `REVIEWED:${item.id}`, title: item.title, provenanceClass: item.provenanceClass, excerpt: item.excerpt.slice(0, 4000),
+    })) ?? [],
+    schwabMarketObservation: projectSchwabResearchObservation({
       ticker: symbol,
-      positions: matching(snapshot?.positions ?? []),
-      quotes: matching(snapshot?.quotes ?? []),
-      marketClock: snapshot?.marketClock ?? {},
-      freshness: snapshot?.freshness ?? "UNKNOWN",
-      asOf: snapshot?.createdAt ?? null,
-    },
+      positions: snapshot?.positions,
+      quotes: snapshot?.quotes,
+      marketClock: snapshot?.marketClock,
+      freshness: snapshot?.freshness,
+      asOf: snapshot?.createdAt,
+    }),
     capitalOsCalculation: capitalOsDossierContext(),
   });
   try {
@@ -917,8 +954,21 @@ export async function runFamilyOfficeResearch(
           classification: "user_permitted_excerpt", freshness: "unknown", confidence: "100",
         }))).returning({ id: familyOfficeEvidence.id })
         : [];
+      const reviewedResearchRows = options.reviewedResearchEvidence?.length
+        ? await tx.insert(familyOfficeEvidence).values(options.reviewedResearchEvidence.map((item) => ({
+          householdId: actor.householdId, runId: run.id, sourceKind: item.provenanceClass,
+          title: item.title, excerpt: item.excerpt.slice(0, 3000),
+          classification: "reviewed_uploaded_evidence", freshness: "unknown", confidence: "100",
+        }))).returning({ id: familyOfficeEvidence.id })
+        : [];
+      const projectedSchwabObservation = projectSchwabResearchObservation({
+        ticker: symbol,
+        positions: snapshot?.positions,
+        quotes: snapshot?.quotes,
+      });
       const matchedObservations = {
-        positions: matching(snapshot?.positions ?? []), quotes: matching(snapshot?.quotes ?? []),
+        positions: projectedSchwabObservation.positions,
+        quotes: projectedSchwabObservation.quotes,
       };
       const schwabEvidenceRows = matchedObservations.positions.length || matchedObservations.quotes.length
         ? await tx.insert(familyOfficeEvidence).values({
@@ -954,6 +1004,8 @@ export async function runFamilyOfficeResearch(
       const idsByProvenance: Record<string, string[]> = {
         PUBLIC_WEB_RETRIEVAL: publicEvidenceRows.map((x) => x.id),
         SIMPLY_WALL_ST_PERMITTED_EVIDENCE: manualEvidenceRows.map((x) => x.id),
+        UPLOADED_LICENSED_RESEARCH: reviewedResearchRows.filter((_x, i) => options.reviewedResearchEvidence?.[i]?.provenanceClass === "UPLOADED_LICENSED_RESEARCH").map((x) => x.id),
+        PRIMARY_SOURCE: reviewedResearchRows.filter((_x, i) => options.reviewedResearchEvidence?.[i]?.provenanceClass === "PRIMARY_SOURCE").map((x) => x.id),
         SCHWAB_MARKET_OBSERVATION: schwabEvidenceRows.map((x) => x.id),
         CAPITAL_OS_CALCULATION: capitalEvidenceRows.map((x) => x.id),
         STRUCTURED_RESEARCH_DIGESTION: structuredClaimRows.map((x) => x.id),
@@ -963,7 +1015,11 @@ export async function runFamilyOfficeResearch(
       const exactReferenceIds = Object.fromEntries([
         ...(digestion?.sourceClaims ?? []).map((claim, index) => [`STRUCTURED:${claim.sourceId}:${index}`, structuredClaimRows[index]?.id]),
         ...(digestion?.inferences ?? []).map((_inference, index) => [`INFERENCE:${index}`, inferenceRows[index]?.id]),
+        ...(options.reviewedResearchEvidence ?? []).map((item, index) => [`REVIEWED:${item.id}`, reviewedResearchRows[index]?.id]),
       ].filter((entry): entry is [string, string] => Boolean(entry[1])));
+      const exactReferenceProvenance = Object.fromEntries(
+        (options.reviewedResearchEvidence ?? []).map((item) => [`REVIEWED:${item.id}`, item.provenanceClass]),
+      );
       const [proposal] = await tx.insert(familyOfficeProposals).values({
         householdId: actor.householdId,
         runId: run.id,
@@ -975,11 +1031,11 @@ export async function runFamilyOfficeResearch(
         facts: output.facts,
         assumptions: output.assumptions,
         risks: output.risks,
-        advisorySections: remapAdvisorySections(output.sections, idsByProvenance, exactReferenceIds),
+        advisorySections: remapAdvisorySections(output.sections, idsByProvenance, exactReferenceIds, exactReferenceProvenance),
         ticker: dossier.ticker,
         dossierKind: "investment",
         multiAgentSynthesis,
-        evidenceIds: [...manualEvidenceRows, ...evidenceRows, ...publicEvidenceRows, ...schwabEvidenceRows, ...capitalEvidenceRows, ...structuredClaimRows, ...inferenceRows].map((evidence) => evidence.id),
+        evidenceIds: [...manualEvidenceRows, ...reviewedResearchRows, ...evidenceRows, ...publicEvidenceRows, ...schwabEvidenceRows, ...capitalEvidenceRows, ...structuredClaimRows, ...inferenceRows].map((evidence) => evidence.id),
         sourceRetrieval: options.publicWebEvidence ? {
           finalUrl: options.publicWebEvidence.finalUrl, retrievedAt: options.publicWebEvidence.retrievedAt,
           freshness: options.publicWebEvidence.freshness, provenance: "PUBLIC_WEB_RETRIEVAL" as const,

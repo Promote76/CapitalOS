@@ -12,6 +12,8 @@ export const familyOfficeLabels = [
  * infer from these classes, but it may never relabel an inference as evidence. */
 export const researchProvenanceCategories = [
   "SIMPLY_WALL_ST_PERMITTED_EVIDENCE",
+  "UPLOADED_LICENSED_RESEARCH",
+  "PRIMARY_SOURCE",
   "SERVER_FETCHED_PUBLIC_RESEARCH",
   "PUBLIC_WEB_RETRIEVAL",
   "SCHWAB_MARKET_OBSERVATION",
@@ -223,21 +225,25 @@ export function remapAdvisorySections(
   sections: ResearchAdvisorySections,
   idsByProvenance: Partial<Record<ResearchProvenanceCategory, string[]>>,
   exactReferenceIds: Readonly<Record<string, string>> = {},
+  exactReferenceProvenance: Readonly<Record<string, ResearchProvenanceCategory>> = {},
 ): ResearchAdvisorySections {
   let unresolved = 0;
   const mapped = Object.fromEntries(Object.entries(sections).map(([key, section]) => {
-    const exactRequested = section.evidenceIds.filter((id) => id.startsWith("STRUCTURED:") || id.startsWith("INFERENCE:"));
+    const exactRequested = section.evidenceIds.filter((id) => id.startsWith("STRUCTURED:") || id.startsWith("INFERENCE:") || id.startsWith("REVIEWED:"));
     const exactIds = exactRequested.map((id) => exactReferenceIds[id]).filter((id): id is string => Boolean(id));
     unresolved += exactRequested.length - exactIds.length;
     const provenance = section.provenance.filter((category) => {
       if (category === "STRUCTURED_RESEARCH_DIGESTION") return exactRequested.some((id) => id.startsWith("STRUCTURED:") && Boolean(exactReferenceIds[id]));
       if (category === "USER_SUPPLIED_INFERENCE") return exactRequested.some((id) => id.startsWith("INFERENCE:") && Boolean(exactReferenceIds[id]));
+      if (category === "UPLOADED_LICENSED_RESEARCH" || category === "PRIMARY_SOURCE") {
+        return exactRequested.some((id) => exactReferenceProvenance[id] === category && Boolean(exactReferenceIds[id]));
+      }
       return (idsByProvenance[category] ?? []).length > 0;
     });
     const categoryIds = provenance
-      .filter((category) => category !== "STRUCTURED_RESEARCH_DIGESTION" && category !== "USER_SUPPLIED_INFERENCE")
+      .filter((category) => !["STRUCTURED_RESEARCH_DIGESTION", "USER_SUPPLIED_INFERENCE", "UPLOADED_LICENSED_RESEARCH", "PRIMARY_SOURCE"].includes(category))
       .flatMap((category) => idsByProvenance[category] ?? []);
-    return [key, { ...section, provenance, evidenceIds: [...exactIds, ...categoryIds].slice(0, 20) }];
+    return [key, { ...section, provenance, evidenceIds: [...new Set([...exactIds, ...categoryIds])].slice(0, 20) }];
   })) as ResearchAdvisorySections;
   if (unresolved > 0) mapped.evidenceQuality = {
     ...mapped.evidenceQuality,

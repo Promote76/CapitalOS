@@ -2528,7 +2528,7 @@ export const GetFamilyOfficeResponse = zod.object({
   "advisorySections": zod.record(zod.string(), zod.object({
   "content": zod.array(zod.string()),
   "evidenceIds": zod.array(zod.string()),
-  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
+  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
 })).describe('Source-attributed advisory-only dossier sections.'),
   "ticker": zod.string().nullable(),
   "dossierKind": zod.string(),
@@ -2583,7 +2583,7 @@ export const GetFamilyOfficeResponse = zod.object({
   "advisorySections": zod.record(zod.string(), zod.object({
   "content": zod.array(zod.string()),
   "evidenceIds": zod.array(zod.string()),
-  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
+  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
 })).describe('Source-attributed advisory-only dossier sections.'),
   "ticker": zod.string().nullable(),
   "dossierKind": zod.string(),
@@ -2638,7 +2638,7 @@ export const GetFamilyOfficeResponse = zod.object({
   "advisorySections": zod.record(zod.string(), zod.object({
   "content": zod.array(zod.string()),
   "evidenceIds": zod.array(zod.string()),
-  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
+  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
 })).describe('Source-attributed advisory-only dossier sections.'),
   "ticker": zod.string().nullable(),
   "dossierKind": zod.string(),
@@ -2693,7 +2693,7 @@ export const GetFamilyOfficeResponse = zod.object({
   "advisorySections": zod.record(zod.string(), zod.object({
   "content": zod.array(zod.string()),
   "evidenceIds": zod.array(zod.string()),
-  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
+  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
 })).describe('Source-attributed advisory-only dossier sections.'),
   "ticker": zod.string().nullable(),
   "dossierKind": zod.string(),
@@ -2767,7 +2767,7 @@ export const GetFamilyOfficeResponse = zod.object({
   "advisorySections": zod.record(zod.string(), zod.object({
   "content": zod.array(zod.string()),
   "evidenceIds": zod.array(zod.string()),
-  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
+  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
 })).describe('Source-attributed advisory-only dossier sections.'),
   "ticker": zod.string().nullable(),
   "dossierKind": zod.string(),
@@ -3318,7 +3318,7 @@ export const CreateFamilyOfficeResearchResponse = zod.object({
   "advisorySections": zod.record(zod.string(), zod.object({
   "content": zod.array(zod.string()),
   "evidenceIds": zod.array(zod.string()),
-  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
+  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
 })).describe('Source-attributed advisory-only dossier sections.'),
   "ticker": zod.string().nullable(),
   "dossierKind": zod.string(),
@@ -3367,6 +3367,482 @@ export const CreateFamilyOfficeResearchResponse = zod.object({
   "freshness": zod.string().optional(),
   "provenance": zod.enum(['PUBLIC_WEB_RETRIEVAL']).optional()
 }).nullish()
+})
+
+
+export const requestResearchEvidenceUploadBodySizeMax = 10485760;
+export const requestResearchEvidenceUploadBodySizeMultipleOf = 1;
+
+
+
+export const RequestResearchEvidenceUploadBody = zod.object({
+  "contentType": zod.enum(['application/pdf', 'text/plain']),
+  "size": zod.number().min(1).max(requestResearchEvidenceUploadBodySizeMax).multipleOf(requestResearchEvidenceUploadBodySizeMultipleOf)
+})
+
+export const RequestResearchEvidenceUploadResponse = zod.object({
+  "uploadURL": zod.string(),
+  "objectPath": zod.string(),
+  "uploadGrant": zod.string()
+})
+
+
+/**
+ * @summary Register bounded private PDF or plain-text research evidence
+ */
+export const registerResearchEvidenceBodyTitleMax = 240;
+
+export const registerResearchEvidenceBodyByteLengthMax = 10485760;
+export const registerResearchEvidenceBodyByteLengthMultipleOf = 1;
+
+export const registerResearchEvidenceBodyFinancialDocumentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const RegisterResearchEvidenceBody = zod.object({
+  "title": zod.string().max(registerResearchEvidenceBodyTitleMax),
+  "objectPath": zod.string(),
+  "byteLength": zod.number().min(1).max(registerResearchEvidenceBodyByteLengthMax).multipleOf(registerResearchEvidenceBodyByteLengthMultipleOf),
+  "mimeType": zod.enum(['application/pdf', 'text/plain']),
+  "uploadGrant": zod.string(),
+  "provenanceClass": zod.enum(['UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE']),
+  "financialDocumentId": zod.string().regex(registerResearchEvidenceBodyFinancialDocumentIdRegExp).optional()
+})
+
+export const registerResearchEvidenceResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const registerResearchEvidenceResponseHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const registerResearchEvidenceResponseByteLengthMultipleOf = 1;
+
+export const registerResearchEvidenceResponseSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+export const registerResearchEvidenceResponseAdvisoryOnlyDefault = true;
+
+export const RegisterResearchEvidenceResponse = zod.object({
+  "id": zod.string().regex(registerResearchEvidenceResponseIdRegExp),
+  "householdId": zod.string().regex(registerResearchEvidenceResponseHouseholdIdRegExp),
+  "title": zod.string(),
+  "provenanceClass": zod.enum(['UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE']),
+  "reviewStatus": zod.string(),
+  "mimeType": zod.string(),
+  "objectPath": zod.string(),
+  "byteLength": zod.number().multipleOf(registerResearchEvidenceResponseByteLengthMultipleOf),
+  "sha256": zod.string().regex(registerResearchEvidenceResponseSha256RegExp),
+  "extractionStatus": zod.string(),
+  "advisoryOnly": zod.boolean().default(registerResearchEvidenceResponseAdvisoryOnlyDefault)
+})
+
+
+export const ReviewResearchEvidenceParams = zod.object({
+  "evidenceId": zod.coerce.string()
+})
+
+export const ReviewResearchEvidenceBody = zod.object({
+  "status": zod.enum(['REVIEWED', 'REJECTED'])
+})
+
+export const reviewResearchEvidenceResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reviewResearchEvidenceResponseHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reviewResearchEvidenceResponseByteLengthMultipleOf = 1;
+
+export const reviewResearchEvidenceResponseSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+export const reviewResearchEvidenceResponseAdvisoryOnlyDefault = true;
+
+export const ReviewResearchEvidenceResponse = zod.object({
+  "id": zod.string().regex(reviewResearchEvidenceResponseIdRegExp),
+  "householdId": zod.string().regex(reviewResearchEvidenceResponseHouseholdIdRegExp),
+  "title": zod.string(),
+  "provenanceClass": zod.enum(['UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE']),
+  "reviewStatus": zod.string(),
+  "mimeType": zod.string(),
+  "objectPath": zod.string(),
+  "byteLength": zod.number().multipleOf(reviewResearchEvidenceResponseByteLengthMultipleOf),
+  "sha256": zod.string().regex(reviewResearchEvidenceResponseSha256RegExp),
+  "extractionStatus": zod.string(),
+  "advisoryOnly": zod.boolean().default(reviewResearchEvidenceResponseAdvisoryOnlyDefault)
+})
+
+
+export const listResearchDossiersResponseEvidenceItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listResearchDossiersResponseEvidenceItemHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listResearchDossiersResponseEvidenceItemByteLengthMultipleOf = 1;
+
+export const listResearchDossiersResponseEvidenceItemSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+export const listResearchDossiersResponseEvidenceItemAdvisoryOnlyDefault = true;
+export const listResearchDossiersResponseDossiersItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listResearchDossiersResponseDossiersItemHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listResearchDossiersResponseDossiersItemEvidenceIdsItemRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listResearchDossiersResponseDossiersItemProposalOneDigestionSummaryFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const ListResearchDossiersResponse = zod.object({
+  "evidence": zod.array(zod.object({
+  "id": zod.string().regex(listResearchDossiersResponseEvidenceItemIdRegExp),
+  "householdId": zod.string().regex(listResearchDossiersResponseEvidenceItemHouseholdIdRegExp),
+  "title": zod.string(),
+  "provenanceClass": zod.enum(['UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE']),
+  "reviewStatus": zod.string(),
+  "mimeType": zod.string(),
+  "objectPath": zod.string(),
+  "byteLength": zod.number().multipleOf(listResearchDossiersResponseEvidenceItemByteLengthMultipleOf),
+  "sha256": zod.string().regex(listResearchDossiersResponseEvidenceItemSha256RegExp),
+  "extractionStatus": zod.string(),
+  "advisoryOnly": zod.boolean().default(listResearchDossiersResponseEvidenceItemAdvisoryOnlyDefault)
+})),
+  "dossiers": zod.array(zod.object({
+  "id": zod.string().regex(listResearchDossiersResponseDossiersItemIdRegExp),
+  "householdId": zod.string().regex(listResearchDossiersResponseDossiersItemHouseholdIdRegExp),
+  "ticker": zod.string(),
+  "title": zod.string(),
+  "evidenceIds": zod.array(zod.string().regex(listResearchDossiersResponseDossiersItemEvidenceIdsItemRegExp)),
+  "reviewStatus": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "reportStatus": zod.string(),
+  "proposal": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "thesis": zod.string(),
+  "label": zod.string(),
+  "analyticalDirection": zod.string(),
+  "confidence": zod.number(),
+  "facts": zod.array(zod.string()),
+  "assumptions": zod.array(zod.string()),
+  "risks": zod.array(zod.string()),
+  "advisorySections": zod.record(zod.string(), zod.object({
+  "content": zod.array(zod.string()),
+  "evidenceIds": zod.array(zod.string()),
+  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
+})).describe('Source-attributed advisory-only dossier sections.'),
+  "ticker": zod.string().nullable(),
+  "dossierKind": zod.string(),
+  "multiAgentSynthesis": zod.object({
+  "agreements": zod.array(zod.string()),
+  "disagreements": zod.array(zod.string()),
+  "evidenceGaps": zod.array(zod.string()),
+  "recommendation": zod.enum(['RESEARCH_ONLY', 'WATCH', 'REVIEW_CANDIDATE', 'INVESTMENT_CANDIDATE', 'AVOID', 'RISK_REVIEW_REQUIRED', 'INSUFFICIENT_EVIDENCE']),
+  "advisoryOnly": zod.literal(true),
+  "pendingHumanApproval": zod.literal(true),
+  "agentSummaries": zod.array(zod.object({
+  "agent": zod.string().optional(),
+  "thesis": zod.string().optional(),
+  "confidence": zod.number().optional()
+}))
+}),
+  "evidenceIds": zod.array(zod.string()),
+  "sourceRetrieval": zod.object({
+  "finalUrl": zod.string().optional(),
+  "retrievedAt": zod.coerce.date().optional(),
+  "freshness": zod.string().optional(),
+  "provenance": zod.enum(['PUBLIC_WEB_RETRIEVAL']).optional(),
+  "title": zod.string().optional(),
+  "status": zod.string().optional(),
+  "accessLimitation": zod.string().nullish()
+}).nullish(),
+  "digestionSummary": zod.object({
+  "ticker": zod.string().optional(),
+  "company": zod.string().optional(),
+  "sourceCount": zod.number().optional(),
+  "sourceClaimCount": zod.number().optional(),
+  "inferenceCount": zod.number().optional(),
+  "fingerprint": zod.string().regex(listResearchDossiersResponseDossiersItemProposalOneDigestionSummaryFingerprintRegExp).optional()
+}).nullish(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "reviewReason": zod.string().nullable(),
+  "advisoryOnly": zod.boolean(),
+  "executionAuthorization": zod.boolean()
+}).nullable(),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthority": zod.literal("none"),
+  "noCapitalSideEffects": zod.literal(true)
+})),
+  "capabilityReadiness": zod.object({
+  "quote": zod.enum(['implemented']),
+  "market_hours": zod.enum(['implemented']),
+  "portfolio_position": zod.enum(['implemented']),
+  "instrument_metadata": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "fundamentals": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "price_history": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "movers": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "options": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "streaming": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "news": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "tax_data": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "schwab_reports": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "execution": zod.enum(['DISABLED_NOT_IN_SCOPE']),
+  "order": zod.enum(['DISABLED_NOT_IN_SCOPE']),
+  "transfer": zod.enum(['DISABLED_NOT_IN_SCOPE']),
+  "withdrawal": zod.enum(['DISABLED_NOT_IN_SCOPE']),
+  "micro_live": zod.enum(['DISABLED_NOT_IN_SCOPE']),
+  "capital_allocation": zod.enum(['DISABLED_NOT_IN_SCOPE']),
+  "reasons": zod.record(zod.string(), zod.string())
+}),
+  "advisoryOnly": zod.literal(true)
+})
+
+
+export const createResearchDossierBodyTickerMax = 16;
+
+export const createResearchDossierBodyTitleMax = 240;
+
+export const createResearchDossierBodyEvidenceIdsItemRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierBodyEvidenceIdsMax = 25;
+
+export const createResearchDossierBodyDigestionPayloadMax = 102400;
+
+
+
+export const CreateResearchDossierBody = zod.object({
+  "ticker": zod.string().max(createResearchDossierBodyTickerMax),
+  "title": zod.string().max(createResearchDossierBodyTitleMax),
+  "evidenceIds": zod.array(zod.string().regex(createResearchDossierBodyEvidenceIdsItemRegExp)).max(createResearchDossierBodyEvidenceIdsMax),
+  "digestionPayload": zod.string().max(createResearchDossierBodyDigestionPayloadMax)
+})
+
+export const createResearchDossierResponseDossierIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierResponseDossierHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierResponseDossierEvidenceIdsItemRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierResponseDossierProposalOneDigestionSummaryFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const createResearchDossierResponseProposalOneDigestionSummaryFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+export const createResearchDossierResponseRefreshEvidenceItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierResponseRefreshEvidenceItemHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierResponseRefreshEvidenceItemByteLengthMultipleOf = 1;
+
+export const createResearchDossierResponseRefreshEvidenceItemSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+export const createResearchDossierResponseRefreshEvidenceItemAdvisoryOnlyDefault = true;
+export const createResearchDossierResponseRefreshDossiersItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierResponseRefreshDossiersItemHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierResponseRefreshDossiersItemEvidenceIdsItemRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierResponseRefreshDossiersItemProposalOneDigestionSummaryFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const CreateResearchDossierResponse = zod.object({
+  "dossier": zod.object({
+  "id": zod.string().regex(createResearchDossierResponseDossierIdRegExp),
+  "householdId": zod.string().regex(createResearchDossierResponseDossierHouseholdIdRegExp),
+  "ticker": zod.string(),
+  "title": zod.string(),
+  "evidenceIds": zod.array(zod.string().regex(createResearchDossierResponseDossierEvidenceIdsItemRegExp)),
+  "reviewStatus": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "reportStatus": zod.string(),
+  "proposal": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "thesis": zod.string(),
+  "label": zod.string(),
+  "analyticalDirection": zod.string(),
+  "confidence": zod.number(),
+  "facts": zod.array(zod.string()),
+  "assumptions": zod.array(zod.string()),
+  "risks": zod.array(zod.string()),
+  "advisorySections": zod.record(zod.string(), zod.object({
+  "content": zod.array(zod.string()),
+  "evidenceIds": zod.array(zod.string()),
+  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
+})).describe('Source-attributed advisory-only dossier sections.'),
+  "ticker": zod.string().nullable(),
+  "dossierKind": zod.string(),
+  "multiAgentSynthesis": zod.object({
+  "agreements": zod.array(zod.string()),
+  "disagreements": zod.array(zod.string()),
+  "evidenceGaps": zod.array(zod.string()),
+  "recommendation": zod.enum(['RESEARCH_ONLY', 'WATCH', 'REVIEW_CANDIDATE', 'INVESTMENT_CANDIDATE', 'AVOID', 'RISK_REVIEW_REQUIRED', 'INSUFFICIENT_EVIDENCE']),
+  "advisoryOnly": zod.literal(true),
+  "pendingHumanApproval": zod.literal(true),
+  "agentSummaries": zod.array(zod.object({
+  "agent": zod.string().optional(),
+  "thesis": zod.string().optional(),
+  "confidence": zod.number().optional()
+}))
+}),
+  "evidenceIds": zod.array(zod.string()),
+  "sourceRetrieval": zod.object({
+  "finalUrl": zod.string().optional(),
+  "retrievedAt": zod.coerce.date().optional(),
+  "freshness": zod.string().optional(),
+  "provenance": zod.enum(['PUBLIC_WEB_RETRIEVAL']).optional(),
+  "title": zod.string().optional(),
+  "status": zod.string().optional(),
+  "accessLimitation": zod.string().nullish()
+}).nullish(),
+  "digestionSummary": zod.object({
+  "ticker": zod.string().optional(),
+  "company": zod.string().optional(),
+  "sourceCount": zod.number().optional(),
+  "sourceClaimCount": zod.number().optional(),
+  "inferenceCount": zod.number().optional(),
+  "fingerprint": zod.string().regex(createResearchDossierResponseDossierProposalOneDigestionSummaryFingerprintRegExp).optional()
+}).nullish(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "reviewReason": zod.string().nullable(),
+  "advisoryOnly": zod.boolean(),
+  "executionAuthorization": zod.boolean()
+}).nullable(),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthority": zod.literal("none"),
+  "noCapitalSideEffects": zod.literal(true)
+}),
+  "proposal": zod.union([zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "thesis": zod.string(),
+  "label": zod.string(),
+  "analyticalDirection": zod.string(),
+  "confidence": zod.number(),
+  "facts": zod.array(zod.string()),
+  "assumptions": zod.array(zod.string()),
+  "risks": zod.array(zod.string()),
+  "advisorySections": zod.record(zod.string(), zod.object({
+  "content": zod.array(zod.string()),
+  "evidenceIds": zod.array(zod.string()),
+  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
+})).describe('Source-attributed advisory-only dossier sections.'),
+  "ticker": zod.string().nullable(),
+  "dossierKind": zod.string(),
+  "multiAgentSynthesis": zod.object({
+  "agreements": zod.array(zod.string()),
+  "disagreements": zod.array(zod.string()),
+  "evidenceGaps": zod.array(zod.string()),
+  "recommendation": zod.enum(['RESEARCH_ONLY', 'WATCH', 'REVIEW_CANDIDATE', 'INVESTMENT_CANDIDATE', 'AVOID', 'RISK_REVIEW_REQUIRED', 'INSUFFICIENT_EVIDENCE']),
+  "advisoryOnly": zod.literal(true),
+  "pendingHumanApproval": zod.literal(true),
+  "agentSummaries": zod.array(zod.object({
+  "agent": zod.string().optional(),
+  "thesis": zod.string().optional(),
+  "confidence": zod.number().optional()
+}))
+}),
+  "evidenceIds": zod.array(zod.string()),
+  "sourceRetrieval": zod.object({
+  "finalUrl": zod.string().optional(),
+  "retrievedAt": zod.coerce.date().optional(),
+  "freshness": zod.string().optional(),
+  "provenance": zod.enum(['PUBLIC_WEB_RETRIEVAL']).optional(),
+  "title": zod.string().optional(),
+  "status": zod.string().optional(),
+  "accessLimitation": zod.string().nullish()
+}).nullish(),
+  "digestionSummary": zod.object({
+  "ticker": zod.string().optional(),
+  "company": zod.string().optional(),
+  "sourceCount": zod.number().optional(),
+  "sourceClaimCount": zod.number().optional(),
+  "inferenceCount": zod.number().optional(),
+  "fingerprint": zod.string().regex(createResearchDossierResponseProposalOneDigestionSummaryFingerprintRegExp).optional()
+}).nullish(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "reviewReason": zod.string().nullable(),
+  "advisoryOnly": zod.boolean(),
+  "executionAuthorization": zod.boolean()
+}),zod.null()]),
+  "refresh": zod.object({
+  "evidence": zod.array(zod.object({
+  "id": zod.string().regex(createResearchDossierResponseRefreshEvidenceItemIdRegExp),
+  "householdId": zod.string().regex(createResearchDossierResponseRefreshEvidenceItemHouseholdIdRegExp),
+  "title": zod.string(),
+  "provenanceClass": zod.enum(['UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE']),
+  "reviewStatus": zod.string(),
+  "mimeType": zod.string(),
+  "objectPath": zod.string(),
+  "byteLength": zod.number().multipleOf(createResearchDossierResponseRefreshEvidenceItemByteLengthMultipleOf),
+  "sha256": zod.string().regex(createResearchDossierResponseRefreshEvidenceItemSha256RegExp),
+  "extractionStatus": zod.string(),
+  "advisoryOnly": zod.boolean().default(createResearchDossierResponseRefreshEvidenceItemAdvisoryOnlyDefault)
+})),
+  "dossiers": zod.array(zod.object({
+  "id": zod.string().regex(createResearchDossierResponseRefreshDossiersItemIdRegExp),
+  "householdId": zod.string().regex(createResearchDossierResponseRefreshDossiersItemHouseholdIdRegExp),
+  "ticker": zod.string(),
+  "title": zod.string(),
+  "evidenceIds": zod.array(zod.string().regex(createResearchDossierResponseRefreshDossiersItemEvidenceIdsItemRegExp)),
+  "reviewStatus": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "reportStatus": zod.string(),
+  "proposal": zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "thesis": zod.string(),
+  "label": zod.string(),
+  "analyticalDirection": zod.string(),
+  "confidence": zod.number(),
+  "facts": zod.array(zod.string()),
+  "assumptions": zod.array(zod.string()),
+  "risks": zod.array(zod.string()),
+  "advisorySections": zod.record(zod.string(), zod.object({
+  "content": zod.array(zod.string()),
+  "evidenceIds": zod.array(zod.string()),
+  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
+})).describe('Source-attributed advisory-only dossier sections.'),
+  "ticker": zod.string().nullable(),
+  "dossierKind": zod.string(),
+  "multiAgentSynthesis": zod.object({
+  "agreements": zod.array(zod.string()),
+  "disagreements": zod.array(zod.string()),
+  "evidenceGaps": zod.array(zod.string()),
+  "recommendation": zod.enum(['RESEARCH_ONLY', 'WATCH', 'REVIEW_CANDIDATE', 'INVESTMENT_CANDIDATE', 'AVOID', 'RISK_REVIEW_REQUIRED', 'INSUFFICIENT_EVIDENCE']),
+  "advisoryOnly": zod.literal(true),
+  "pendingHumanApproval": zod.literal(true),
+  "agentSummaries": zod.array(zod.object({
+  "agent": zod.string().optional(),
+  "thesis": zod.string().optional(),
+  "confidence": zod.number().optional()
+}))
+}),
+  "evidenceIds": zod.array(zod.string()),
+  "sourceRetrieval": zod.object({
+  "finalUrl": zod.string().optional(),
+  "retrievedAt": zod.coerce.date().optional(),
+  "freshness": zod.string().optional(),
+  "provenance": zod.enum(['PUBLIC_WEB_RETRIEVAL']).optional(),
+  "title": zod.string().optional(),
+  "status": zod.string().optional(),
+  "accessLimitation": zod.string().nullish()
+}).nullish(),
+  "digestionSummary": zod.object({
+  "ticker": zod.string().optional(),
+  "company": zod.string().optional(),
+  "sourceCount": zod.number().optional(),
+  "sourceClaimCount": zod.number().optional(),
+  "inferenceCount": zod.number().optional(),
+  "fingerprint": zod.string().regex(createResearchDossierResponseRefreshDossiersItemProposalOneDigestionSummaryFingerprintRegExp).optional()
+}).nullish(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "reviewReason": zod.string().nullable(),
+  "advisoryOnly": zod.boolean(),
+  "executionAuthorization": zod.boolean()
+}).nullable(),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthority": zod.literal("none"),
+  "noCapitalSideEffects": zod.literal(true)
+})),
+  "capabilityReadiness": zod.object({
+  "quote": zod.enum(['implemented']),
+  "market_hours": zod.enum(['implemented']),
+  "portfolio_position": zod.enum(['implemented']),
+  "instrument_metadata": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "fundamentals": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "price_history": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "movers": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "options": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "streaming": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "news": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "tax_data": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "schwab_reports": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "execution": zod.enum(['DISABLED_NOT_IN_SCOPE']),
+  "order": zod.enum(['DISABLED_NOT_IN_SCOPE']),
+  "transfer": zod.enum(['DISABLED_NOT_IN_SCOPE']),
+  "withdrawal": zod.enum(['DISABLED_NOT_IN_SCOPE']),
+  "micro_live": zod.enum(['DISABLED_NOT_IN_SCOPE']),
+  "capital_allocation": zod.enum(['DISABLED_NOT_IN_SCOPE']),
+  "reasons": zod.record(zod.string(), zod.string())
+}),
+  "advisoryOnly": zod.literal(true)
+})
 })
 
 
@@ -3448,7 +3924,7 @@ export const DecideFamilyOfficeProposalResponse = zod.object({
   "advisorySections": zod.record(zod.string(), zod.object({
   "content": zod.array(zod.string()),
   "evidenceIds": zod.array(zod.string()),
-  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
+  "provenance": zod.array(zod.enum(['SIMPLY_WALL_ST_PERMITTED_EVIDENCE', 'UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE', 'SCHWAB_MARKET_OBSERVATION', 'CAPITAL_OS_CALCULATION', 'STRUCTURED_RESEARCH_DIGESTION', 'USER_SUPPLIED_INFERENCE', 'GROK_INFERENCE']))
 })).describe('Source-attributed advisory-only dossier sections.'),
   "ticker": zod.string().nullable(),
   "dossierKind": zod.string(),

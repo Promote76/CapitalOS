@@ -146,6 +146,22 @@ Additional context for the advisory reviewers.`);
   assert.equal(readableInline.success, true);
 });
 
+test("plain-text research accepts a private uploaded source without a public URL", () => {
+  const result = parseResearchDigestion(`Company: Test Research Corp
+Ticker: TST
+Source Title: Uploaded primary filing
+Source Facts:
+- Revenue was reported for the period.
+Risks:
+- Evidence remains limited.`);
+  assert.equal(result.success, true);
+  if (result.success) {
+    assert.equal(result.data.sources[0]?.title, "Uploaded primary filing");
+    assert.equal(result.data.sources[0]?.url, undefined);
+    assert.equal(result.data.sourceClaims[0]?.statement, "Revenue was reported for the period.");
+  }
+});
+
 test("plain-text research rejects duplicate source IDs and conflicting security metadata", () => {
   const duplicateSource = parseResearchDigestion(`Company: Example Corp
 Ticker: EXM

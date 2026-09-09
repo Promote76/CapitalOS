@@ -246,6 +246,7 @@ import SchwabIntegrationPage from '@/pages/schwab-integration';
 import FinancingPage from '@/pages/financing';
 import BudgetCompletionPage from '@/pages/budget';
 import DocumentsPage from '@/pages/documents';
+import InvestmentResearchPage from '@/pages/investment-research';
 import { Link, Redirect, Route, Switch, Router as WouterRouter, useLocation } from 'wouter';
 
 const queryClient = new QueryClient();
@@ -535,6 +536,7 @@ const primaryNav = [
   { href: '/micro-live', label: 'Micro-Live', icon: Activity },
   { href: '/treasury', label: 'Treasury', icon: WalletCards },
   { href: '/portfolio', label: 'Portfolio', icon: BarChart3 },
+  { href: '/investment-research', label: 'Research', icon: FlaskConical },
   { href: '/properties', label: 'Properties', icon: Building2 },
   { href: '/financing', label: 'Financing', icon: CircleDollarSign },
   { href: '/business', label: 'Business', icon: BriefcaseBusiness },
@@ -4599,6 +4601,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, dashboardSta
     <Route path="/portfolio" component={() => <PortfolioPage onFeedback={onFeedback} />} />
     <Route path="/properties" component={() => <PropertiesPage onAction={onAction} />} />
     <Route path="/financing" component={() => <FinancingPage onFeedback={onFeedback} />} />
+    <Route path="/investment-research" component={() => <InvestmentResearchPage />} />
     <Route path="/risk" component={() => <RiskPage onFeedback={onFeedback} />} />
     <Route path="/settings" component={() => <SettingsPage onFeedback={onFeedback} />} />
     <Route path="/integrations/schwab" component={() => <SchwabIntegrationPage onFeedback={onFeedback} />} />

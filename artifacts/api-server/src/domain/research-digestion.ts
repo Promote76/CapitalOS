@@ -388,9 +388,16 @@ function parsePlainTextResearch(payload: string, issues: DigestionIssue[]): Reco
           company = value;
         }
       }
-      else if (field === "source title") pendingSourceTitle = value;
+      else if (field === "source title") addSource(value, lineNumber);
       else if (field === "source") addSource(value, lineNumber);
-      else if (field === "source url") addSource(`${pendingSourceTitle ?? ""} ${value}`, lineNumber);
+      else if (field === "source url") {
+        if (sources.length && !sources[sources.length - 1].url) {
+          sources[sources.length - 1].url = value;
+          if (value.startsWith("http://")) issue(issues, `$.text.line${lineNumber}`, "unsafe_url", "Source URLs must use HTTPS.");
+        } else {
+          addSource(`${pendingSourceTitle ?? ""} ${value}`, lineNumber);
+        }
+      }
       else if (field === "publisher" && sources.length) sources[sources.length - 1].publisher = value;
       else if ((field === "as of" || field === "source date") && sources.length) sources[sources.length - 1].asOf = value;
       return;

@@ -2989,6 +2989,71 @@ export interface FamilyOfficeResearchInput {
   dossierContext?: string;
   /** @maxItems 20 */
   permittedEvidence?: FamilyOfficeResearchInputPermittedEvidenceItem[];
+  /**
+     * Bounded JSON text containing advisory structured research digestion
+     * @maxLength 102400
+     */
+  digestionPayload?: string;
+}
+
+export interface FamilyOfficeResearchDigestionPreviewInput {
+  /** @maxLength 102400 */
+  digestionPayload: string;
+}
+
+export type FamilyOfficeResearchDigestionValidationErrorIssuesItem = {
+  path: string;
+  code: string;
+  message: string;
+};
+
+export interface FamilyOfficeResearchDigestionValidationError {
+  code: string;
+  message: string;
+  advisoryOnly: boolean;
+  issues: FamilyOfficeResearchDigestionValidationErrorIssuesItem[];
+}
+
+export type FamilyOfficeResearchDigestionPreviewSourcesItem = {
+  id?: string;
+  title?: string;
+  /** @nullable */
+  url?: string | null;
+  /** @nullable */
+  publisher?: string | null;
+  /** @nullable */
+  sourceType?: string | null;
+  /** @nullable */
+  asOf?: string | null;
+};
+
+export type FamilyOfficeResearchDigestionPreviewSourceClaimsItem = {
+  sourceId?: string;
+  statement?: string;
+};
+
+export type FamilyOfficeResearchDigestionPreviewInferencesItem = {
+  statement?: string;
+  basisSourceIds?: string[];
+  confidence?: number;
+  author?: string;
+  model?: string;
+};
+
+export interface FamilyOfficeResearchDigestionPreview {
+  ticker: string;
+  company: string;
+  sources: FamilyOfficeResearchDigestionPreviewSourcesItem[];
+  sourceCount: number;
+  sourceClaimCount: number;
+  inferenceCount: number;
+  sourceClaims: FamilyOfficeResearchDigestionPreviewSourceClaimsItem[];
+  inferences: FamilyOfficeResearchDigestionPreviewInferencesItem[];
+  warnings: string[];
+  unverifiedThirdPartyAuthority: boolean;
+  /** @pattern ^[a-f0-9]{64}$ */
+  fingerprint: string;
+  advisoryOnly: boolean;
 }
 
 export interface FamilyOfficeEvidence {
@@ -3091,6 +3156,8 @@ export const FamilyOfficeProposalAdvisorySectionsProvenanceItem = {
   SIMPLY_WALL_ST_PERMITTED_EVIDENCE: 'SIMPLY_WALL_ST_PERMITTED_EVIDENCE',
   SCHWAB_MARKET_OBSERVATION: 'SCHWAB_MARKET_OBSERVATION',
   CAPITAL_OS_CALCULATION: 'CAPITAL_OS_CALCULATION',
+  STRUCTURED_RESEARCH_DIGESTION: 'STRUCTURED_RESEARCH_DIGESTION',
+  USER_SUPPLIED_INFERENCE: 'USER_SUPPLIED_INFERENCE',
   GROK_INFERENCE: 'GROK_INFERENCE',
 } as const;
 
@@ -3153,6 +3220,19 @@ export type FamilyOfficeProposalSourceRetrieval = {
   accessLimitation?: string | null;
 } | null;
 
+/**
+ * @nullable
+ */
+export type FamilyOfficeProposalDigestionSummary = {
+  ticker?: string;
+  company?: string;
+  sourceCount?: number;
+  sourceClaimCount?: number;
+  inferenceCount?: number;
+  /** @pattern ^[a-f0-9]{64}$ */
+  fingerprint?: string;
+} | null;
+
 export interface FamilyOfficeProposal {
   id: string;
   title: string;
@@ -3172,6 +3252,8 @@ export interface FamilyOfficeProposal {
   evidenceIds: string[];
   /** @nullable */
   sourceRetrieval?: FamilyOfficeProposalSourceRetrieval;
+  /** @nullable */
+  digestionSummary?: FamilyOfficeProposalDigestionSummary;
   status: string;
   createdAt: string;
   /** @nullable */

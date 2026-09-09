@@ -18,6 +18,8 @@ import {
   GetFamilyOfficeResponse,
   GetRealEstateIntelligenceResponse,
   type FamilyOfficeResearchFailure,
+  PreviewFamilyOfficeResearchDigestionBody,
+  PreviewFamilyOfficeResearchDigestionResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
@@ -33,6 +35,7 @@ import {
 } from "../services/family-office";
 import type { ResearchOptions } from "../services/family-office";
 import { ingestPublicResearchUrl } from "../services/public-research-ingestion";
+import { parseResearchDigestion, type NormalizedResearchDigestion } from "../domain/research-digestion";
 
 const router: IRouter = Router();
 
@@ -65,7 +68,18 @@ router.post("/family-office/refresh", asyncRoute(async (req, res) => {
 router.post("/family-office/research", asyncRoute(async (req, res) => {
   assertPermission(actorFrom(res).role, "contribute");
   const body = CreateFamilyOfficeResearchBody.parse(req.body);
+  const digestionPayload = (req.body as Record<string, unknown>).digestionPayload;
+  let normalizedDigestion: NormalizedResearchDigestion | undefined;
   let researchInput = body;
+  if (digestionPayload !== undefined) {
+    const parsed = parseResearchDigestion(digestionPayload as string);
+    if (!parsed.success) {
+      res.status(422).json({ code: "DIGESTION_VALIDATION_FAILED", message: "Structured research digestion is invalid.", issues: parsed.issues, advisoryOnly: true });
+      return;
+    }
+    normalizedDigestion = parsed.data;
+    researchInput = { ...body, ticker: body.ticker ?? parsed.data.ticker, prompt: body.prompt ?? "Provide general investment analysis.", digestionPayload: digestionPayload as string };
+  }
   let publicWebEvidence: ResearchOptions["publicWebEvidence"];
   let sourceRetrieval: { finalUrl: string; retrievedAt: string; freshness: "fresh" | "stale" | "unknown"; provenance: "PUBLIC_WEB_RETRIEVAL" } | null = null;
   if (body.url) {
@@ -106,7 +120,7 @@ router.post("/family-office/research", asyncRoute(async (req, res) => {
     };
     researchInput = { ...body, ticker: body.ticker ?? fetched.ticker!, prompt: body.prompt ?? "Provide general investment analysis." };
   }
-  const result = await runFamilyOfficeResearch(actorFrom(res), researchInput, { publicWebEvidence });
+  const result = await runFamilyOfficeResearch(actorFrom(res), researchInput, { publicWebEvidence, structuredResearchDigestion: normalizedDigestion });
   if (result.run.status !== "completed" || !result.proposal) {
     const code = isFamilyOfficeFailureCode(result.run.errorCode)
       ? result.run.errorCode
@@ -126,6 +140,31 @@ router.post("/family-office/research", asyncRoute(async (req, res) => {
     ...result,
     sourceRetrieval,
   }));
+}));
+
+router.post("/family-office/research/digestion/preview", asyncRoute(async (req, res) => {
+  assertPermission(actorFrom(res).role, "contribute");
+  const previewBody = PreviewFamilyOfficeResearchDigestionBody.parse(req.body);
+  const parsed = parseResearchDigestion(previewBody.digestionPayload);
+  if (!parsed.success) {
+    res.status(422).json({ code: "DIGESTION_VALIDATION_FAILED", message: "Structured research digestion is invalid.", issues: parsed.issues, advisoryOnly: true });
+    return;
+  }
+  const d = parsed.data;
+  res.status(200).json(PreviewFamilyOfficeResearchDigestionResponse.parse({
+    ticker: d.ticker,
+    company: d.company,
+    sources: d.sources.map(({ id, title, url, publisher, sourceType, asOf }) => ({ id, title, url: url ?? null, publisher: publisher ?? null, sourceType: sourceType ?? null, asOf: asOf ?? null })),
+    sourceCount: d.sources.length,
+    sourceClaimCount: d.sourceClaims.length,
+    inferenceCount: d.inferences?.length ?? 0,
+    sourceClaims: d.sourceClaims,
+    inferences: d.inferences ?? [],
+    warnings: ["Structured digestion is advisory only.", "Third-party source claims are unverified and do not receive authority elevation.", "Inferences are kept separate from source claims."],
+    unverifiedThirdPartyAuthority: true,
+    fingerprint: d.fingerprint,
+     advisoryOnly: true,
+   }));
 }));
 
 router.post("/family-office/proposals/:proposalId/decision", asyncRoute(async (req, res) => {

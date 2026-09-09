@@ -19,3 +19,18 @@ test("section IDs come only from supported persisted provenance", () => {
   assert.deepEqual(mapped.fundamentals.provenance, ["PUBLIC_WEB_RETRIEVAL", "GROK_INFERENCE"]);
   assert.deepEqual(mapped.fundamentals.evidenceIds, ["web-id", "grok-id"]);
 });
+
+test("structured citations map exact claim references without cross-claim expansion", () => {
+  const section = { content: ["claim A"], evidenceIds: ["STRUCTURED:s1:0", "STRUCTURED:missing:9"], provenance: ["STRUCTURED_RESEARCH_DIGESTION"] };
+  const empty = { content: [], evidenceIds: [], provenance: [] };
+  const sections = Object.fromEntries(["fundamentals", "valuation", "catalysts", "risks", "downsideCase", "peerContext", "portfolioFit", "concentrationLiquidityRisk", "thesisInvalidationConditions", "evidenceQuality"].map((name) => [name, name === "fundamentals" ? section : empty])) as ResearchAdvisorySections;
+  const mapped = remapAdvisorySections(
+    sections,
+    { STRUCTURED_RESEARCH_DIGESTION: ["claim-a-uuid", "claim-b-uuid"] },
+    { "STRUCTURED:s1:0": "claim-a-uuid", "STRUCTURED:s2:1": "claim-b-uuid" },
+  );
+  assert.deepEqual(mapped.fundamentals.evidenceIds, ["claim-a-uuid"]);
+  assert.deepEqual(mapped.fundamentals.provenance, ["STRUCTURED_RESEARCH_DIGESTION"]);
+  assert.ok(!mapped.fundamentals.evidenceIds.includes("claim-b-uuid"));
+  assert.match(mapped.evidenceQuality.content.at(-1) ?? "", /unresolved/);
+});

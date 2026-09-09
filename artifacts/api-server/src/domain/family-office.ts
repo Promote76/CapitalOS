@@ -16,6 +16,8 @@ export const researchProvenanceCategories = [
   "PUBLIC_WEB_RETRIEVAL",
   "SCHWAB_MARKET_OBSERVATION",
   "CAPITAL_OS_CALCULATION",
+  "STRUCTURED_RESEARCH_DIGESTION",
+  "USER_SUPPLIED_INFERENCE",
   "GROK_INFERENCE",
 ] as const;
 export type ResearchProvenanceCategory = (typeof researchProvenanceCategories)[number];
@@ -220,11 +222,28 @@ export function sanitizeProviderEvidence(output: ResearchOutput): ResearchOutput
 export function remapAdvisorySections(
   sections: ResearchAdvisorySections,
   idsByProvenance: Partial<Record<ResearchProvenanceCategory, string[]>>,
+  exactReferenceIds: Readonly<Record<string, string>> = {},
 ): ResearchAdvisorySections {
-  return Object.fromEntries(Object.entries(sections).map(([key, section]) => {
-    const provenance = section.provenance.filter((category) => (idsByProvenance[category] ?? []).length > 0);
-    return [key, { ...section, provenance, evidenceIds: provenance.flatMap((category) => idsByProvenance[category] ?? []).slice(0, 20) }];
+  let unresolved = 0;
+  const mapped = Object.fromEntries(Object.entries(sections).map(([key, section]) => {
+    const exactRequested = section.evidenceIds.filter((id) => id.startsWith("STRUCTURED:") || id.startsWith("INFERENCE:"));
+    const exactIds = exactRequested.map((id) => exactReferenceIds[id]).filter((id): id is string => Boolean(id));
+    unresolved += exactRequested.length - exactIds.length;
+    const provenance = section.provenance.filter((category) => {
+      if (category === "STRUCTURED_RESEARCH_DIGESTION") return exactRequested.some((id) => id.startsWith("STRUCTURED:") && Boolean(exactReferenceIds[id]));
+      if (category === "USER_SUPPLIED_INFERENCE") return exactRequested.some((id) => id.startsWith("INFERENCE:") && Boolean(exactReferenceIds[id]));
+      return (idsByProvenance[category] ?? []).length > 0;
+    });
+    const categoryIds = provenance
+      .filter((category) => category !== "STRUCTURED_RESEARCH_DIGESTION" && category !== "USER_SUPPLIED_INFERENCE")
+      .flatMap((category) => idsByProvenance[category] ?? []);
+    return [key, { ...section, provenance, evidenceIds: [...exactIds, ...categoryIds].slice(0, 20) }];
   })) as ResearchAdvisorySections;
+  if (unresolved > 0) mapped.evidenceQuality = {
+    ...mapped.evidenceQuality,
+    content: [...mapped.evidenceQuality.content, `${unresolved} structured evidence reference(s) were unresolved and removed.`].slice(0, 20),
+  };
+  return mapped;
 }
 
 export type MultiAgentSynthesis = {

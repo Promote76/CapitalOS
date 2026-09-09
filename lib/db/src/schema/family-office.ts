@@ -8,7 +8,11 @@ import {
   text,
   timestamp,
   uuid,
+  uniqueIndex,
+  foreignKey,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { households, users } from "./households.ts";
 
 export const familyOfficeSourceMarkerKeys = ["accounting", "treasury", "operations"] as const;
@@ -34,6 +38,7 @@ export const familyOfficeRuns = pgTable(
   (table) => ({
     householdIdx: index("family_office_runs_household_idx").on(table.householdId),
     createdIdx: index("family_office_runs_created_idx").on(table.createdAt),
+      householdIdUnique: uniqueIndex("family_office_runs_id_household_unique").on(table.id, table.householdId),
   }),
 );
 
@@ -85,6 +90,43 @@ export const familyOfficeEvidence = pgTable(
   }),
 );
 
+/** Immutable, advisory-only record of a server-accepted structured research digest. */
+export const familyOfficeResearchDigestions = pgTable(
+  "family_office_research_digestions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+    runId: uuid("run_id").notNull().references(() => familyOfficeRuns.id, { onDelete: "cascade" }),
+    canonicalPayload: text("canonical_payload").notNull(),
+    fingerprint: text("fingerprint").notNull(),
+    originalPayload: text("original_payload").notNull(),
+    originalFingerprint: text("original_fingerprint").notNull(),
+    canonicalFingerprint: text("canonical_fingerprint").notNull(),
+    ticker: text("ticker").notNull(),
+    company: text("company").notNull(),
+    sourceMetadata: jsonb("source_metadata").$type<unknown[]>().notNull().default([]),
+    sourceClaims: jsonb("source_claims").$type<unknown[]>().notNull().default([]),
+    inferences: jsonb("inferences").$type<unknown[]>().notNull().default([]),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    advisoryOnly: boolean("advisory_only").notNull().default(true),
+    verifiedFinancialAuthority: boolean("verified_financial_authority").notNull().default(false),
+  },
+  (table) => ({
+    householdIdx: index("family_office_research_digestions_household_idx").on(table.householdId),
+    runIdx: index("family_office_research_digestions_run_idx").on(table.runId),
+    fingerprintIdx: index("family_office_research_digestions_fingerprint_idx").on(table.householdId, table.fingerprint),
+    runHouseholdFk: foreignKey({
+      columns: [table.runId, table.householdId],
+      foreignColumns: [familyOfficeRuns.id, familyOfficeRuns.householdId],
+      name: "family_office_research_digestions_run_household_fk",
+    }).onDelete("cascade"),
+    onePerRun: uniqueIndex("family_office_research_digestions_run_unique").on(table.runId),
+    advisoryOnlyCheck: check("family_office_research_digestions_advisory_only_check", sql`${table.advisoryOnly} = true`),
+    authorityCheck: check("family_office_research_digestions_verified_authority_check", sql`${table.verifiedFinancialAuthority} = false`),
+  }),
+);
+
 export const familyOfficeProposals = pgTable(
   "family_office_proposals",
   {
@@ -107,6 +149,7 @@ export const familyOfficeProposals = pgTable(
       finalUrl: string; retrievedAt: string; freshness: string; provenance: "PUBLIC_WEB_RETRIEVAL";
       title: string; status: string; accessLimitation: string | null;
     } | null>(),
+    digestionSummary: jsonb("digestion_summary").$type<{ ticker: string; company: string; sourceCount: number; sourceClaimCount: number; inferenceCount: number; fingerprint: string } | null>(),
     evidenceIds: jsonb("evidence_ids").$type<string[]>().notNull().default([]),
     status: text("status").notNull().default("proposed"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -343,6 +386,7 @@ export const taxLienCandidates = pgTable(
 
 export type FamilyOfficeRun = typeof familyOfficeRuns.$inferSelect;
 export type FamilyOfficeEvidence = typeof familyOfficeEvidence.$inferSelect;
+export type FamilyOfficeResearchDigestion = typeof familyOfficeResearchDigestions.$inferSelect;
 export type FamilyOfficeProposal = typeof familyOfficeProposals.$inferSelect;
 export type ShadowPortfolio = typeof shadowPortfolios.$inferSelect;
 export type ShadowOrderIntent = typeof shadowOrderIntents.$inferSelect;

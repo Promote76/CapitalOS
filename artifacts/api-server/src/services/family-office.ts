@@ -5,6 +5,7 @@ import {
   db,
   familyOfficeAnalystScorecards,
   familyOfficeEvidence,
+  familyOfficeResearchDigestions,
   familyOfficeProposals,
   familyOfficeRefreshes,
   familyOfficeReports,
@@ -39,10 +40,18 @@ import { reviewPropertyIntelligence } from "../domain/property-underwriting";
 import { ProviderUnavailableError, safeProviderModel, XaiIntelligenceProvider } from "./family-office-provider";
 import { getPropertyUnderwriting } from "./property-underwriting";
 import type { Actor } from "./capital-os";
+import { parseResearchDigestion, type NormalizedResearchDigestion } from "../domain/research-digestion";
 
-type ResearchInput = { analyst?: string; scope: string; prompt?: string; ticker?: string; url?: string; dossierContext?: string; permittedEvidence?: Array<{ title: string; sourceUrl?: string; excerpt: string; permissionConfirmed: true }> };
+type ResearchInput = { analyst?: string; scope: string; prompt?: string; ticker?: string; url?: string; digestionPayload?: string; dossierContext?: string; permittedEvidence?: Array<{ title: string; sourceUrl?: string; excerpt: string; permissionConfirmed: true }> };
 export type PublicWebEvidence = { title: string; finalUrl: string; excerpt: string; retrievedAt: string; freshness: string; status: "extracted"; accessLimitation: null };
-export type ResearchOptions = { refreshId?: string; sourceMarkers?: readonly FamilyOfficeSourceMarkerKey[]; publicWebEvidence?: PublicWebEvidence };
+export type ResearchOptions = {
+  refreshId?: string;
+  sourceMarkers?: readonly FamilyOfficeSourceMarkerKey[];
+  publicWebEvidence?: PublicWebEvidence;
+  structuredResearchDigestion?: NormalizedResearchDigestion;
+  /** Test seam only; production callers leave this undefined. */
+  provider?: Pick<XaiIntelligenceProvider, "research" | "status">;
+};
 type RefreshTrigger = "on_demand" | "hourly" | "daily";
 type RefreshContextFreshness = "fresh" | "stale" | "unknown";
 
@@ -156,6 +165,7 @@ function proposalView(proposal: typeof familyOfficeProposals.$inferSelect) {
     dossierKind: proposal.dossierKind,
     multiAgentSynthesis: proposal.multiAgentSynthesis,
     sourceRetrieval: proposal.sourceRetrieval,
+    digestionSummary: proposal.digestionSummary,
     evidenceIds: proposal.evidenceIds,
     status: proposal.status,
     createdAt: proposal.createdAt,
@@ -612,6 +622,23 @@ export async function runFamilyOfficeResearch(
   options: ResearchOptions = {},
 ) {
   assertPermission(actor.role, "contribute");
+  if (input.digestionPayload) {
+    const suppliedDigestion = options.structuredResearchDigestion;
+    const reparsed = parseResearchDigestion(input.digestionPayload);
+    if (!reparsed.success) throw new GovernanceError("INVALID_STATE", "Invalid structured research digestion");
+    if (suppliedDigestion && suppliedDigestion.fingerprint !== reparsed.data.fingerprint) {
+      throw new GovernanceError("INVALID_STATE", "Structured research digestion fingerprint mismatch");
+    }
+    options = { ...options, structuredResearchDigestion: reparsed.data };
+    input = { ...input, ticker: input.ticker ?? reparsed.data.ticker };
+  }
+  if (options.structuredResearchDigestion && !input.digestionPayload) {
+    throw new GovernanceError("INVALID_STATE", "Structured research digestion requires its original JSON payload");
+  }
+  const originalDigestionPayload = input.digestionPayload;
+  if (options.structuredResearchDigestion && input.ticker && input.ticker.trim().toUpperCase() !== options.structuredResearchDigestion.ticker) {
+    throw new GovernanceError("INVALID_STATE", "Ticker conflicts with structured research digestion");
+  }
   const dossier = validateInvestmentDossierInput(input);
   if (!dossier) throw new GovernanceError("INVALID_STATE", "Invalid investment dossier input");
   await ensureFamilyOfficeWorkspace(actor.householdId);
@@ -656,7 +683,7 @@ export async function runFamilyOfficeResearch(
     }
     return { scorecard: currentScorecard, run: currentRun };
   });
-  const provider = new XaiIntelligenceProvider();
+  const provider = options.provider ?? new XaiIntelligenceProvider();
   let output: ResearchOutput;
   let multiAgentSynthesis: Record<string, unknown> = {};
   const latestSnapshot = await db.select({
@@ -681,6 +708,21 @@ export async function runFamilyOfficeResearch(
     return allowed;
   });
   const sourcePacket = JSON.stringify({
+    structuredResearchDigestion: options.structuredResearchDigestion ? {
+      ticker: options.structuredResearchDigestion.ticker,
+      company: options.structuredResearchDigestion.company,
+      sources: options.structuredResearchDigestion.sources,
+      sourceClaims: options.structuredResearchDigestion.sourceClaims.map((claim, index) => ({
+        reference: `STRUCTURED:${claim.sourceId}:${index}`,
+        sourceId: claim.sourceId,
+        statement: claim.statement,
+      })),
+      inferences: (options.structuredResearchDigestion.inferences ?? []).map((inference, index) => ({
+        reference: `INFERENCE:${index}`,
+        ...inference,
+      })),
+      authority: "unverified_third_party_claims; advisory only; do not browse or elevate authority",
+    } : null,
     publicWebRetrieval: options.publicWebEvidence ? {
       title: options.publicWebEvidence.title, finalUrl: options.publicWebEvidence.finalUrl,
       excerpt: options.publicWebEvidence.excerpt, retrievedAt: options.publicWebEvidence.retrievedAt,
@@ -722,6 +764,19 @@ export async function runFamilyOfficeResearch(
         errorCode,
         completedAt: new Date(),
       }).where(and(eq(familyOfficeRuns.id, run.id), eq(familyOfficeRuns.householdId, actor.householdId))).returning();
+      if (options.structuredResearchDigestion) {
+        const d = options.structuredResearchDigestion;
+        const { fingerprint: _fingerprint, ...canonical } = d;
+        await tx.insert(familyOfficeResearchDigestions).values({
+          householdId: actor.householdId, runId: run.id,
+           canonicalPayload: JSON.stringify(canonical), fingerprint: d.fingerprint, canonicalFingerprint: d.fingerprint,
+          originalPayload: originalDigestionPayload!,
+          originalFingerprint: createHash("sha256").update(originalDigestionPayload!).digest("hex"),
+          ticker: d.ticker, company: d.company, sourceMetadata: d.sources,
+          sourceClaims: d.sourceClaims, inferences: d.inferences ?? [],
+          createdBy: actor.userId, advisoryOnly: true, verifiedFinancialAuthority: false,
+        });
+      }
       if (options.refreshId) {
         await tx.update(familyOfficeRefreshes).set({
           status: "failed",
@@ -756,6 +811,24 @@ export async function runFamilyOfficeResearch(
 
   try {
     return await db.transaction(async (tx) => {
+      const digestion = options.structuredResearchDigestion;
+      const canonicalDigestion = digestion ? (() => {
+        const { fingerprint: _fingerprint, ...canonical } = digestion;
+        return canonical;
+      })() : null;
+      if (digestion) {
+        await tx.insert(familyOfficeResearchDigestions).values({
+          householdId: actor.householdId, runId: run.id,
+          canonicalPayload: JSON.stringify(canonicalDigestion),
+          fingerprint: digestion.fingerprint, canonicalFingerprint: digestion.fingerprint,
+          originalPayload: originalDigestionPayload!,
+          originalFingerprint: createHash("sha256").update(originalDigestionPayload!).digest("hex"),
+          ticker: digestion.ticker, company: digestion.company,
+          sourceMetadata: digestion.sources, sourceClaims: digestion.sourceClaims,
+          inferences: digestion.inferences ?? [], createdBy: actor.userId,
+          advisoryOnly: true, verifiedFinancialAuthority: false,
+        });
+      }
       const evidenceRows = output.evidence.length
         ? await tx.insert(familyOfficeEvidence).values(output.evidence.map((evidence) => ({
           householdId: actor.householdId,
@@ -800,13 +873,38 @@ export async function runFamilyOfficeResearch(
         title: "Capital OS advisory calculation", excerpt: JSON.stringify(capitalOsDossierContext()).slice(0, 3000),
         classification: "deterministic_calculation", freshness: "current", confidence: "100",
       }).returning({ id: familyOfficeEvidence.id });
+      const structuredClaimRows = digestion?.sourceClaims.length
+        ? await tx.insert(familyOfficeEvidence).values(digestion.sourceClaims.map((claim) => {
+          const source = digestion.sources.find((item) => item.id === claim.sourceId);
+          return {
+            householdId: actor.householdId, runId: run.id, sourceKind: "STRUCTURED_RESEARCH_DIGESTION",
+            title: source?.title ?? claim.sourceId, sourceUrl: source?.url,
+            excerpt: claim.statement, classification: "unverified_third_party_claim",
+            freshness: "unknown", confidence: "0",
+          };
+        })).returning({ id: familyOfficeEvidence.id })
+        : [];
+      const inferenceRows = digestion?.inferences?.length
+        ? await tx.insert(familyOfficeEvidence).values(digestion.inferences.map((inference) => ({
+          householdId: actor.householdId, runId: run.id, sourceKind: "USER_SUPPLIED_INFERENCE",
+          title: "Structured research inference", excerpt: inference.statement,
+          classification: "advisory_inference", freshness: "unknown",
+          confidence: inference.confidence.toFixed(2),
+        }))).returning({ id: familyOfficeEvidence.id })
+        : [];
       const idsByProvenance: Record<string, string[]> = {
         PUBLIC_WEB_RETRIEVAL: publicEvidenceRows.map((x) => x.id),
         SIMPLY_WALL_ST_PERMITTED_EVIDENCE: manualEvidenceRows.map((x) => x.id),
         SCHWAB_MARKET_OBSERVATION: schwabEvidenceRows.map((x) => x.id),
         CAPITAL_OS_CALCULATION: capitalEvidenceRows.map((x) => x.id),
+        STRUCTURED_RESEARCH_DIGESTION: structuredClaimRows.map((x) => x.id),
+        USER_SUPPLIED_INFERENCE: inferenceRows.map((x) => x.id),
         GROK_INFERENCE: evidenceRows.map((x) => x.id),
       };
+      const exactReferenceIds = Object.fromEntries([
+        ...(digestion?.sourceClaims ?? []).map((claim, index) => [`STRUCTURED:${claim.sourceId}:${index}`, structuredClaimRows[index]?.id]),
+        ...(digestion?.inferences ?? []).map((_inference, index) => [`INFERENCE:${index}`, inferenceRows[index]?.id]),
+      ].filter((entry): entry is [string, string] => Boolean(entry[1])));
       const [proposal] = await tx.insert(familyOfficeProposals).values({
         householdId: actor.householdId,
         runId: run.id,
@@ -818,15 +916,20 @@ export async function runFamilyOfficeResearch(
         facts: output.facts,
         assumptions: output.assumptions,
         risks: output.risks,
-        advisorySections: remapAdvisorySections(output.sections, idsByProvenance),
+        advisorySections: remapAdvisorySections(output.sections, idsByProvenance, exactReferenceIds),
         ticker: dossier.ticker,
         dossierKind: "investment",
         multiAgentSynthesis,
-        evidenceIds: [...manualEvidenceRows, ...evidenceRows, ...publicEvidenceRows, ...schwabEvidenceRows, ...capitalEvidenceRows].map((evidence) => evidence.id),
+        evidenceIds: [...manualEvidenceRows, ...evidenceRows, ...publicEvidenceRows, ...schwabEvidenceRows, ...capitalEvidenceRows, ...structuredClaimRows, ...inferenceRows].map((evidence) => evidence.id),
         sourceRetrieval: options.publicWebEvidence ? {
           finalUrl: options.publicWebEvidence.finalUrl, retrievedAt: options.publicWebEvidence.retrievedAt,
           freshness: options.publicWebEvidence.freshness, provenance: "PUBLIC_WEB_RETRIEVAL" as const,
           title: options.publicWebEvidence.title, status: options.publicWebEvidence.status, accessLimitation: null,
+        } : null,
+        digestionSummary: digestion ? {
+          ticker: digestion.ticker, company: digestion.company,
+          sourceCount: digestion.sources.length, sourceClaimCount: digestion.sourceClaims.length,
+          inferenceCount: digestion.inferences?.length ?? 0, fingerprint: digestion.fingerprint,
         } : null,
       }).returning();
       const [updated] = await tx.update(familyOfficeRuns).set({
@@ -863,7 +966,15 @@ export async function runFamilyOfficeResearch(
         entity: "family_office_run",
         entityId: run.id,
         reason: "Advisory research completed; proposal remains human-reviewed and shadow-only.",
-        metadata: { advisoryOnly: true, executionAuthorization: false },
+        metadata: {
+          advisoryOnly: true, executionAuthorization: false,
+          ...(digestion ? {
+            digestionFingerprint: digestion.fingerprint,
+            digestionSourceCount: digestion.sources.length,
+            digestionSourceClaimCount: digestion.sourceClaims.length,
+            digestionInferenceCount: digestion.inferences?.length ?? 0,
+          } : {}),
+        },
       });
       return { run: runView(updated), proposal: proposalView(proposal), advisoryOnly: true };
     });

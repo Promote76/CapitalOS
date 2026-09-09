@@ -150,6 +150,7 @@ import {
   useCreateShadowIntent,
   useGetRealEstateIntelligence,
   useCreateTaxLienCandidate,
+  usePreviewFamilyOfficeResearchDigestion,
   getGetRealEstateIntelligenceQueryKey,
   getGetFamilyOfficeQueryKey,
   type FamilyOfficeProposal,
@@ -158,6 +159,8 @@ import {
   type FamilyOfficeResearchFailure,
   type ShadowIntentInputDirection,
   type TaxLienCandidateInput,
+  type FamilyOfficeResearchDigestionPreview,
+  type FamilyOfficeResearchDigestionValidationError,
   useListFinancialDocuments,
   useRequestFinancialDocumentUploadUrl,
   useIngestFinancialDocument,
@@ -3773,6 +3776,23 @@ function ProposalCard({ proposal, onDecide }: { proposal: FamilyOfficeProposal, 
         </div>
       )}
 
+      {proposal.digestionSummary && (
+        <div style={{ marginTop: '1rem', padding: '0.75rem', border: '1px solid var(--border-soft)', borderRadius: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+            <strong style={{ fontSize: '0.875rem' }}>Structured Digestion Overview</strong>
+            <span className="status">Advisory only</span>
+          </div>
+          <div className="logic-grid" style={{ gap: '0.5rem' }}>
+            {proposal.digestionSummary.company && <div><span>Company</span><p>{proposal.digestionSummary.company}</p></div>}
+            {proposal.digestionSummary.ticker && <div><span>Ticker</span><p>{proposal.digestionSummary.ticker}</p></div>}
+            <div><span>Sources</span><p>{proposal.digestionSummary.sourceCount ?? 0}</p></div>
+            <div><span>Claims</span><p>{proposal.digestionSummary.sourceClaimCount ?? 0}</p></div>
+            <div><span>Inferences</span><p>{proposal.digestionSummary.inferenceCount ?? 0}</p></div>
+            {proposal.digestionSummary.fingerprint && <div><span>Fingerprint</span><p style={{ fontFamily: 'monospace', fontSize: '0.75rem', wordBreak: 'break-all' }}>{proposal.digestionSummary.fingerprint}</p></div>}
+          </div>
+        </div>
+      )}
+
       {proposal.advisorySections && Object.keys(proposal.advisorySections).length > 0 && (
         <div style={{ marginTop: '1rem' }}>
           <strong style={{ fontSize: '0.875rem' }}>Source-separated Advisory Sections</strong>
@@ -3808,9 +3828,15 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
   const createIntent = useCreateShadowIntent();
   const realEstateQuery = useGetRealEstateIntelligence();
   const createTaxLien = useCreateTaxLienCandidate();
-  const [researchDraft, setResearchDraft] = useState<FamilyOfficeResearchInput>({ scope: 'family office intelligence', prompt: '', analyst: 'CIO analyst', ticker: '', url: '', dossierContext: '', permittedEvidence: [] });
+  const previewDigestion = usePreviewFamilyOfficeResearchDigestion();
+
+  const [researchDraft, setResearchDraft] = useState<FamilyOfficeResearchInput>({ scope: 'family office intelligence', prompt: '', analyst: 'CIO analyst', ticker: '', url: '', dossierContext: '', permittedEvidence: [], digestionPayload: '' });
   const [researchFailure, setResearchFailure] = useState<FamilyOfficeResearchFailure | null>(null);
   const [latestSourceRetrieval, setLatestSourceRetrieval] = useState<NonNullable<FamilyOfficeProposal['sourceRetrieval']> | null>(null);
+
+  const [digestionPayloadDraft, setDigestionPayloadDraft] = useState('');
+  const [digestionPreview, setDigestionPreview] = useState<FamilyOfficeResearchDigestionPreview | null>(null);
+  const [digestionValidationErrors, setDigestionValidationErrors] = useState<FamilyOfficeResearchDigestionValidationError | null>(null);
 
   const [newEvidence, setNewEvidence] = useState({ title: '', sourceUrl: '', excerpt: '', permissionConfirmed: false });
   const [portfolioDraft, setPortfolioDraft] = useState({ name: '', benchmark: 'SPY', strategy: '' });
@@ -3854,6 +3880,30 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
       queryClient.invalidateQueries({ queryKey: getGetRealEstateIntelligenceQueryKey() }),
     ]);
   };
+  const handleValidateDigestion = async () => {
+    if (!digestionPayloadDraft.trim()) {
+      onFeedback("Please enter a JSON digestion payload to preview.");
+      return;
+    }
+    try {
+      setDigestionValidationErrors(null);
+      const result = await previewDigestion.mutateAsync({ data: { digestionPayload: digestionPayloadDraft } });
+      setDigestionPreview(result);
+    } catch (error) {
+      if (typeof error === 'object' && error !== null && 'data' in error) {
+        setDigestionValidationErrors((error as { data?: FamilyOfficeResearchDigestionValidationError }).data || null);
+      } else {
+        onFeedback(error instanceof Error ? error.message : 'Validation failed.');
+      }
+    }
+  };
+
+  const handleDigestionPayloadChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    setDigestionPayloadDraft(e.target.value);
+    setDigestionPreview(null);
+    setDigestionValidationErrors(null);
+  };
+
   const runResearch = async (event: FormEvent) => {
     event.preventDefault();
 
@@ -3861,9 +3911,15 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
     const hasTicker = !!researchDraft.ticker?.trim();
     const hasPrompt = !!researchDraft.prompt?.trim();
     const hasEvidence = researchDraft.permittedEvidence && researchDraft.permittedEvidence.length > 0;
+    const hasDigestion = !!digestionPayloadDraft?.trim();
 
-    if (!hasUrl && (!hasTicker || !hasPrompt || !hasEvidence)) {
-      onFeedback('Manual research requires a ticker, a research question, and at least one permitted evidence item if no URL is provided.');
+    if (hasDigestion && !digestionPreview) {
+      onFeedback('Please Validate & Preview the digestion payload before analyzing.');
+      return;
+    }
+
+    if (!hasUrl && !hasDigestion && (!hasTicker || !hasPrompt || !hasEvidence)) {
+      onFeedback('Manual research requires a ticker, a research question, and at least one permitted evidence item if no URL or Digestion Payload is provided.');
       return;
     }
 
@@ -3878,6 +3934,7 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
         ticker: researchDraft.ticker?.trim() || undefined,
         prompt: researchDraft.prompt?.trim() || undefined,
         dossierContext: researchDraft.dossierContext?.trim() || undefined,
+        digestionPayload: hasDigestion ? digestionPayloadDraft.trim() : undefined,
         permittedEvidence: researchDraft.permittedEvidence?.map((ev) => ({
           ...ev,
           sourceUrl: ev.sourceUrl?.trim() || undefined
@@ -3891,6 +3948,9 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
       }
 
       setResearchDraft({ scope: 'family office intelligence', prompt: '', analyst: 'CIO analyst', ticker: '', url: '', dossierContext: '', permittedEvidence: [] });
+      setDigestionPayloadDraft('');
+      setDigestionPreview(null);
+      setDigestionValidationErrors(null);
 
       // Update cache in-place if possible, but refresh will pick it up
       await refresh();
@@ -4138,6 +4198,101 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
           )}
 
           <div style={{ gridColumn: '1 / -1' }}>
+            <div className="card-title-row"><div><h4>Research Digestion Box</h4></div></div>
+            <p className="field-help" style={{ marginBottom: '0.75rem' }}>Controlled parsing of user-provided third-party structured research.</p>
+            <div className="field" style={{ gridColumn: '1 / -1' }}>
+              <label>JSON Digestion Payload <span style={{ textTransform:'none', letterSpacing:0 }}>(ticker, company, sources, sourceClaims, optional inferences)</span></label>
+              <textarea
+                maxLength={102400}
+                rows={6}
+                value={digestionPayloadDraft}
+                onChange={handleDigestionPayloadChange}
+                placeholder='{ "company": "Apple Inc.", ... }'
+                style={{ fontFamily: 'monospace' }}
+              />
+            </div>
+
+            {digestionValidationErrors && (
+              <div className="operator-form-note warning" style={{ marginTop: '0.75rem' }}>
+                <AlertTriangle size={14} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <strong>{digestionValidationErrors.message} ({digestionValidationErrors.code})</strong>
+                  {digestionValidationErrors.issues?.map((issue, idx) => (
+                    <span key={idx}>• {issue.path}: {issue.message}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {digestionPreview && (
+              <div className="card card-pad" style={{ marginTop: '0.75rem', background: 'var(--bg-inset)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                  <strong style={{ fontSize: '0.875rem' }}>Preview: {digestionPreview.company} ({digestionPreview.ticker})</strong>
+                  <span className="status pending">{digestionPreview.advisoryOnly ? 'Advisory only' : 'Analysis'}</span>
+                </div>
+                {digestionPreview.unverifiedThirdPartyAuthority && (
+                  <div className="operator-form-note warning" style={{ marginBottom: '0.75rem' }}>
+                     <AlertTriangle size={14} /> <span><strong>Third-party claims unverified:</strong> This payload relies on external authority. Human review required.</span>
+                  </div>
+                )}
+                <div className="logic-grid" style={{ gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <div><span>Sources</span><p>{digestionPreview.sourceCount}</p></div>
+                  <div><span>Claims</span><p>{digestionPreview.sourceClaimCount}</p></div>
+                  <div><span>Inferences</span><p>{digestionPreview.inferenceCount}</p></div>
+                  <div><span>Fingerprint</span><p style={{ fontFamily: 'monospace', fontSize: '0.75rem', wordBreak: 'break-all' }}>{digestionPreview.fingerprint}</p></div>
+                </div>
+
+                {digestionPreview.sources.length > 0 && (
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <strong style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>Sources</strong>
+                    {digestionPreview.sources.map((s, i) => (
+                      <div key={i} style={{ fontSize: '0.8rem', padding: '0.25rem 0' }}>
+                        {s.title} {s.publisher && `(${s.publisher})`} {s.url && <a href={s.url} target="_blank" rel="noreferrer" style={{ marginLeft: '0.25rem' }}>🔗</a>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {digestionPreview.sourceClaims.length > 0 && (
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <strong style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>Source Claims</strong>
+                    <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem' }}>
+                      {digestionPreview.sourceClaims.map((claim, idx) => (
+                        <li key={idx} style={{ marginBottom: '0.25rem' }}>{claim.statement} {claim.sourceId && <span style={{ color: 'var(--ink-soft)' }}>[{claim.sourceId}]</span>}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {digestionPreview.inferences.length > 0 && (
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <strong style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>Advisory Inferences</strong>
+                    <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem' }}>
+                      {digestionPreview.inferences.map((inf, idx) => (
+                         <li key={idx} style={{ marginBottom: '0.25rem' }}>
+                           {inf.statement}
+                           {inf.confidence != null && <span style={{ marginLeft: '0.25rem', color: 'var(--ink-soft)' }}>({(inf.confidence * 100).toFixed(0)}%)</span>}
+                           {inf.basisSourceIds && inf.basisSourceIds.length > 0 && <div style={{ color: 'var(--ink-soft)', fontSize: '0.8rem', marginTop: '0.125rem' }}>Based on: {inf.basisSourceIds.join(', ')}</div>}
+                         </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {digestionPreview.warnings.length > 0 && (
+                  <div style={{ marginTop: '0.5rem', color: 'var(--color-danger)', fontSize: '0.8rem' }}>
+                    <strong>Warnings:</strong> {digestionPreview.warnings.join(' · ')}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button type="button" className="btn" style={{ marginTop: '0.75rem' }} onClick={handleValidateDigestion} disabled={previewDigestion.isPending}>
+               <CheckCircle2 size={14} /> Validate & Preview
+            </button>
+          </div>
+
+          <div style={{ gridColumn: '1 / -1' }}>
             <div className="card-title-row"><div><h4>Authorized Excerpt Fallback</h4></div></div>
             <p className="field-help" style={{ marginBottom: '0.75rem' }}>Manually attach permitted excerpts if automated fetching is blocked by an access policy.</p>
             <div className="review-list">
@@ -4192,9 +4347,9 @@ function FamilyOfficePage({ onFeedback }: { onFeedback: (message: string) => voi
           <div style={{ gridColumn: '1 / -1', fontSize: '0.875rem', color: 'var(--ink-soft)' }}>
              The request may validate the public URL, check access policy, extract public evidence, and run advisory agents.
           </div>
-          <button className="btn btn-primary" style={{ gridColumn: '1 / -1' }} type="submit" disabled={research.isPending || snapshot.provider.state === 'disabled'}>
+          <button className="btn btn-primary" style={{ gridColumn: '1 / -1' }} type="submit" disabled={research.isPending || snapshot.provider.state === 'disabled' || (!!digestionPayloadDraft.trim() && !digestionPreview)}>
             <Sparkles size={14} />
-            {research.isPending ? 'Fetching permitted content & running advisory analysis…' : 'Fetch & Analyze'}
+            {research.isPending ? 'Processing…' : (digestionPayloadDraft.trim() ? 'Analyze Digestion' : 'Fetch & Analyze')}
           </button>
         </form>
       </section>

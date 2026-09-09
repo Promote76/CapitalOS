@@ -31,4 +31,9 @@ export interface FamilyOfficeResearchInput {
   dossierContext?: string;
   /** @maxItems 20 */
   permittedEvidence?: FamilyOfficeResearchInputPermittedEvidenceItem[];
+  /**
+     * Bounded JSON text containing advisory structured research digestion
+     * @maxLength 102400
+     */
+  digestionPayload?: string;
 }

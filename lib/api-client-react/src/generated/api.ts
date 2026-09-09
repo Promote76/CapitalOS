@@ -119,6 +119,9 @@ import type {
   FamilyOfficeProposalDecisionInput,
   FamilyOfficeRefreshInput,
   FamilyOfficeRefreshResult,
+  FamilyOfficeResearchDigestionPreview,
+  FamilyOfficeResearchDigestionPreviewInput,
+  FamilyOfficeResearchDigestionValidationError,
   FamilyOfficeResearchFailure,
   FamilyOfficeResearchInput,
   FamilyOfficeResearchResult,
@@ -5646,7 +5649,7 @@ export const createFamilyOfficeResearch = async (familyOfficeResearchInput: Fami
 
 
 
-export const getCreateFamilyOfficeResearchMutationOptions = <TError = ErrorType<FamilyOfficeResearchFailure>,
+export const getCreateFamilyOfficeResearchMutationOptions = <TError = ErrorType<ErrorResponse | FamilyOfficeResearchFailure | UnauthorizedResponse | ForbiddenResponse | FamilyOfficeResearchDigestionValidationError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFamilyOfficeResearch>>, TError,{data: BodyType<FamilyOfficeResearchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createFamilyOfficeResearch>>, TError,{data: BodyType<FamilyOfficeResearchInput>}, TContext> => {
 
@@ -5675,12 +5678,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateFamilyOfficeResearchMutationResult = NonNullable<Awaited<ReturnType<typeof createFamilyOfficeResearch>>>
     export type CreateFamilyOfficeResearchMutationBody = BodyType<FamilyOfficeResearchInput>
-    export type CreateFamilyOfficeResearchMutationError = ErrorType<FamilyOfficeResearchFailure>
+    export type CreateFamilyOfficeResearchMutationError = ErrorType<ErrorResponse | FamilyOfficeResearchFailure | UnauthorizedResponse | ForbiddenResponse | FamilyOfficeResearchDigestionValidationError>
 
     /**
  * @summary Run advisory Family Office research
  */
-export const useCreateFamilyOfficeResearch = <TError = ErrorType<FamilyOfficeResearchFailure>,
+export const useCreateFamilyOfficeResearch = <TError = ErrorType<ErrorResponse | FamilyOfficeResearchFailure | UnauthorizedResponse | ForbiddenResponse | FamilyOfficeResearchDigestionValidationError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFamilyOfficeResearch>>, TError,{data: BodyType<FamilyOfficeResearchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createFamilyOfficeResearch>>,
@@ -5689,6 +5692,77 @@ export const useCreateFamilyOfficeResearch = <TError = ErrorType<FamilyOfficeRes
         TContext
       > => {
       return useMutation(getCreateFamilyOfficeResearchMutationOptions(options));
+    }
+
+export const getPreviewFamilyOfficeResearchDigestionUrl = () => {
+
+
+
+
+  return `/api/family-office/research/digestion/preview`
+}
+
+/**
+ * @summary Validate and preview advisory structured investment research digestion
+ */
+export const previewFamilyOfficeResearchDigestion = async (familyOfficeResearchDigestionPreviewInput: FamilyOfficeResearchDigestionPreviewInput, options?: Parameters<typeof customFetch>[1]): Promise<FamilyOfficeResearchDigestionPreview> => {
+
+  return customFetch<FamilyOfficeResearchDigestionPreview>(getPreviewFamilyOfficeResearchDigestionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(familyOfficeResearchDigestionPreviewInput)
+  }
+);}
+
+
+
+
+
+export const getPreviewFamilyOfficeResearchDigestionMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | FamilyOfficeResearchDigestionValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewFamilyOfficeResearchDigestion>>, TError,{data: BodyType<FamilyOfficeResearchDigestionPreviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof previewFamilyOfficeResearchDigestion>>, TError,{data: BodyType<FamilyOfficeResearchDigestionPreviewInput>}, TContext> => {
+
+const mutationKey = ['previewFamilyOfficeResearchDigestion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof previewFamilyOfficeResearchDigestion>>, {data: BodyType<FamilyOfficeResearchDigestionPreviewInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  previewFamilyOfficeResearchDigestion(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PreviewFamilyOfficeResearchDigestionMutationResult = NonNullable<Awaited<ReturnType<typeof previewFamilyOfficeResearchDigestion>>>
+    export type PreviewFamilyOfficeResearchDigestionMutationBody = BodyType<FamilyOfficeResearchDigestionPreviewInput>
+    export type PreviewFamilyOfficeResearchDigestionMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | FamilyOfficeResearchDigestionValidationError>
+
+    /**
+ * @summary Validate and preview advisory structured investment research digestion
+ */
+export const usePreviewFamilyOfficeResearchDigestion = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | FamilyOfficeResearchDigestionValidationError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof previewFamilyOfficeResearchDigestion>>, TError,{data: BodyType<FamilyOfficeResearchDigestionPreviewInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof previewFamilyOfficeResearchDigestion>>,
+        TError,
+        {data: BodyType<FamilyOfficeResearchDigestionPreviewInput>},
+        TContext
+      > => {
+      return useMutation(getPreviewFamilyOfficeResearchDigestionMutationOptions(options));
     }
 
 export const getDecideFamilyOfficeProposalUrl = (proposalId: string,) => {

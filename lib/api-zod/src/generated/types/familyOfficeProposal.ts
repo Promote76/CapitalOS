@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { FamilyOfficeProposalAdvisorySections } from './familyOfficeProposalAdvisorySections';
+import type { FamilyOfficeProposalDigestionSummary } from './familyOfficeProposalDigestionSummary';
 import type { FamilyOfficeProposalMultiAgentSynthesis } from './familyOfficeProposalMultiAgentSynthesis';
 import type { FamilyOfficeProposalSourceRetrieval } from './familyOfficeProposalSourceRetrieval';
 
@@ -28,6 +29,8 @@ export interface FamilyOfficeProposal {
   evidenceIds: string[];
   /** @nullable */
   sourceRetrieval?: FamilyOfficeProposalSourceRetrieval;
+  /** @nullable */
+  digestionSummary?: FamilyOfficeProposalDigestionSummary;
   status: string;
   createdAt: Date;
   /** @nullable */

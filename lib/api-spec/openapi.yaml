@@ -1188,15 +1188,47 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FamilyOfficeResearchFailure" }
         "400":
-          description: Public research URL requires a ticker or was blocked
+          description: Validation error, or a safe ticker/URL bad-request response
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/FamilyOfficeResearchFailure" }
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ErrorResponse"
+                  - $ref: "#/components/schemas/FamilyOfficeResearchFailure"
         "422":
-          description: Public research URL could not be safely retrieved
+          description: Public research URL or structured digestion could not be safely validated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/FamilyOfficeResearchFailure" }
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/FamilyOfficeResearchFailure"
+                  - $ref: "#/components/schemas/FamilyOfficeResearchDigestionValidationError"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /family-office/research/digestion/preview:
+    post:
+      operationId: previewFamilyOfficeResearchDigestion
+      tags: [family-office]
+      summary: Validate and preview advisory structured investment research digestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FamilyOfficeResearchDigestionPreviewInput" }
+      responses:
+        "200":
+          description: Normalized advisory preview with provenance separation and fingerprint
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyOfficeResearchDigestionPreview" }
+        "422":
+          description: Structured digestion validation issues
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FamilyOfficeResearchDigestionValidationError" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /family-office/proposals/{proposalId}/decision:
     post:
       operationId: decideFamilyOfficeProposal
@@ -5642,6 +5674,76 @@ components:
               sourceUrl: { type: string, maxLength: 2000 }
               excerpt: { type: string, minLength: 1, maxLength: 3000 }
               permissionConfirmed: { type: boolean, enum: [true] }
+        digestionPayload:
+          type: string
+          maxLength: 102400
+          description: Bounded JSON text containing advisory structured research digestion
+    FamilyOfficeResearchDigestionPreviewInput:
+      type: object
+      required: [digestionPayload]
+      additionalProperties: false
+      properties:
+        digestionPayload: { type: string, maxLength: 102400 }
+    FamilyOfficeResearchDigestionValidationError:
+      type: object
+      required: [code, message, issues, advisoryOnly]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        advisoryOnly: { type: boolean }
+        issues:
+          type: array
+          items:
+            type: object
+            required: [path, code, message]
+            properties:
+              path: { type: string }
+              code: { type: string }
+              message: { type: string }
+    FamilyOfficeResearchDigestionPreview:
+      type: object
+      required: [ticker, company, sources, sourceCount, sourceClaimCount, inferenceCount, sourceClaims, inferences, warnings, unverifiedThirdPartyAuthority, fingerprint, advisoryOnly]
+      properties:
+        ticker: { type: string }
+        company: { type: string }
+        sources:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id: { type: string }
+              title: { type: string }
+              url: { type: ["string", "null"] }
+              publisher: { type: ["string", "null"] }
+              sourceType: { type: ["string", "null"] }
+              asOf: { type: ["string", "null"] }
+        sourceCount: { type: number }
+        sourceClaimCount: { type: number }
+        inferenceCount: { type: number }
+        sourceClaims:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              sourceId: { type: string }
+              statement: { type: string }
+        inferences:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              statement: { type: string }
+              basisSourceIds: { type: array, items: { type: string } }
+              confidence: { type: number }
+              author: { type: string }
+              model: { type: string }
+        warnings: { type: array, items: { type: string } }
+        unverifiedThirdPartyAuthority: { type: boolean }
+        fingerprint: { type: string, pattern: "^[a-f0-9]{64}$" }
+        advisoryOnly: { type: boolean }
     FamilyOfficeEvidence:
       type: object
       required: [id, title, excerpt, sourceKind, classification, freshness, confidence, createdAt]
@@ -5726,7 +5828,7 @@ components:
                 type: array
                 items:
                   type: string
-                  enum: [SIMPLY_WALL_ST_PERMITTED_EVIDENCE, SCHWAB_MARKET_OBSERVATION, CAPITAL_OS_CALCULATION, GROK_INFERENCE]
+                  enum: [SIMPLY_WALL_ST_PERMITTED_EVIDENCE, SCHWAB_MARKET_OBSERVATION, CAPITAL_OS_CALCULATION, STRUCTURED_RESEARCH_DIGESTION, USER_SUPPLIED_INFERENCE, GROK_INFERENCE]
         ticker: { type: ["string", "null"] }
         dossierKind: { type: string }
         multiAgentSynthesis:
@@ -5751,6 +5853,15 @@ components:
             title: { type: string }
             status: { type: string }
             accessLimitation: { type: ["string", "null"] }
+        digestionSummary:
+          type: ["object", "null"]
+          properties:
+            ticker: { type: string }
+            company: { type: string }
+            sourceCount: { type: number }
+            sourceClaimCount: { type: number }
+            inferenceCount: { type: number }
+            fingerprint: { type: string, pattern: "^[a-f0-9]{64}$" }
         status: { type: string }
         createdAt: { type: string, format: date-time }
         reviewedAt: { type: ["string", "null"], format: date-time }

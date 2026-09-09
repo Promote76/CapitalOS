@@ -10,7 +10,6 @@ import {
   uuid,
   unique,
   uniqueIndex,
-  foreignKey,
   check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -117,11 +116,6 @@ export const familyOfficeResearchDigestions = pgTable(
     householdIdx: index("family_office_research_digestions_household_idx").on(table.householdId),
     runIdx: index("family_office_research_digestions_run_idx").on(table.runId),
     fingerprintIdx: index("family_office_research_digestions_fingerprint_idx").on(table.householdId, table.fingerprint),
-    runHouseholdFk: foreignKey({
-      columns: [table.runId, table.householdId],
-      foreignColumns: [familyOfficeRuns.id, familyOfficeRuns.householdId],
-      name: "family_office_research_digestions_run_household_fk",
-    }).onDelete("cascade"),
     onePerRun: uniqueIndex("family_office_research_digestions_run_unique").on(table.runId),
     advisoryOnlyCheck: check("family_office_research_digestions_advisory_only_check", sql`${table.advisoryOnly} = true`),
     authorityCheck: check("family_office_research_digestions_verified_authority_check", sql`${table.verifiedFinancialAuthority} = false`),

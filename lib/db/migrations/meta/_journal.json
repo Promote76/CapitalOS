@@ -337,6 +337,13 @@
       "when": 1788933682343,
       "tag": "0047_regular_hitman",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1788933826891,
+      "tag": "0048_classy_machine_man",
+      "breakpoints": true
     }
   ]
 }

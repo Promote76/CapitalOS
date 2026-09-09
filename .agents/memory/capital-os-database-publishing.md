@@ -26,3 +26,9 @@ positive proposal/portfolio state.
 
 **How to apply:** Run authenticated browser certification inside the guarded
 disposable-target command, not against an unverified shared `DATABASE_URL`.
+
+Publish may order a new composite foreign key before a new uniqueness prerequisite on an existing parent table, even when development introspection contains both. A standalone unique index can also be omitted from the generated production diff.
+
+**Why:** PostgreSQL rejects the foreign key immediately when the referenced columns are not yet covered by a production unique constraint; a later statement in the same generated diff cannot repair that ordering.
+
+**How to apply:** Declare referenced keys as explicit UNIQUE constraints. If the recomputed Publish diff still orders the foreign key first, use two Publish stages: establish the parent UNIQUE constraint first, then restore and publish the composite foreign key. Never truncate valid parent rows or add deploy-time DDL to force ordering.

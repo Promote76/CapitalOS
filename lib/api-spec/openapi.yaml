@@ -3438,7 +3438,7 @@ paths:
       security: []
       operationId: schwabOAuthCallback
       tags: [schwab]
-      summary: Complete server-side Schwab OAuth callback using single-use state
+      summary: Complete portfolio or Market Data Schwab OAuth using app-isolated single-use state
       parameters:
         - { name: code, in: query, required: true, schema: { type: string } }
         - { name: state, in: query, required: true, schema: { type: string } }
@@ -3466,7 +3466,7 @@ paths:
     get:
       operationId: getSchwabMarketData
       tags: [schwab]
-      summary: Read normalized Schwab quotes and equity market status
+      summary: Read normalized quotes and equity market status from the separate Market Data Production app
       parameters:
         - name: symbols
           in: query
@@ -3478,6 +3478,38 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "409": { $ref: "#/components/responses/Conflict" }
         "503": { description: Schwab Market Data Production request failed, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /integrations/schwab/market-data/status:
+    get:
+      operationId: getSchwabMarketDataStatus
+      tags: [schwab]
+      summary: Get the separate Market Data Production app connection status
+      responses:
+        "200": { description: Redacted Market Data Production status, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabMarketDataStatus" } } } }
+  /integrations/schwab/market-data/connect:
+    post:
+      operationId: initiateSchwabMarketDataConnect
+      tags: [schwab]
+      summary: Initiate OAuth for the separate Market Data Production app
+      responses:
+        "201": { description: Server-derived Market Data authorization URL, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabConnectResult" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /integrations/schwab/market-data/refresh:
+    post:
+      operationId: refreshSchwabMarketDataConnection
+      tags: [schwab]
+      summary: Refresh the separate Market Data Production token
+      responses:
+        "200": { description: Refreshed redacted connection state, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabRefreshResult" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /integrations/schwab/market-data/disconnect:
+    post:
+      operationId: disconnectSchwabMarketDataConnection
+      tags: [schwab]
+      summary: Remove only the separate Market Data Production authorization
+      responses:
+        "200": { description: Disconnected redacted Market Data connection state, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabDisconnectResult" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /integrations/schwab/disconnect:
     post:
       operationId: disconnectSchwabConnection
@@ -3618,9 +3650,10 @@ components:
       properties: { status: { type: string, enum: [SYNCED] }, dataMode: { type: string, enum: [LIVE_CONNECTED] } }
     SchwabMarketDataResult:
       type: object
-      required: [provider, readOnly, tradingEnabled, dataMode, quotes, marketClock]
+      required: [provider, product, readOnly, tradingEnabled, dataMode, quotes, marketClock]
       properties:
         provider: { type: string, enum: [schwab] }
+        product: { type: string, enum: [MARKET_DATA_PRODUCTION] }
         readOnly: { type: boolean, const: true }
         tradingEnabled: { type: boolean, const: false }
         dataMode: { type: string, enum: [LIVE_CONNECTED] }
@@ -3629,6 +3662,21 @@ components:
           maxItems: 500
           items: { $ref: "#/components/schemas/SchwabMarketQuote" }
         marketClock: { $ref: "#/components/schemas/SchwabMarketClock" }
+    SchwabMarketDataStatus:
+      type: object
+      required: [provider, product, readOnly, tradingEnabled, dataMode, credentialsConfigured, callbackUrl, connectionStatus, tokenHealth, tokenExpiresAt, lastSuccessfulReadAt]
+      properties:
+        provider: { type: string, enum: [schwab] }
+        product: { type: string, enum: [MARKET_DATA_PRODUCTION] }
+        readOnly: { type: boolean, const: true }
+        tradingEnabled: { type: boolean, const: false }
+        dataMode: { type: string, enum: [LIVE_CONNECTED, DISCONNECTED] }
+        credentialsConfigured: { type: boolean }
+        callbackUrl: { type: ["string", "null"] }
+        connectionStatus: { type: string, enum: [LIVE_CONNECTED, DISCONNECTED, CONFIGURATION_REQUIRED, ERROR] }
+        tokenHealth: { type: string, enum: [HEALTHY, EXPIRED, UNAVAILABLE] }
+        tokenExpiresAt: { type: ["string", "null"], format: date-time }
+        lastSuccessfulReadAt: { type: ["string", "null"], format: date-time }
     SchwabMarketQuote:
       type: object
       required: [symbol, assetType, marketPrice, providerTimestamp, receivedAt, dataFreshness]

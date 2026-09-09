@@ -7,11 +7,13 @@
  */
 import type { SchwabMarketClock } from './schwabMarketClock';
 import type { SchwabMarketDataResultDataMode } from './schwabMarketDataResultDataMode';
+import type { SchwabMarketDataResultProduct } from './schwabMarketDataResultProduct';
 import type { SchwabMarketDataResultProvider } from './schwabMarketDataResultProvider';
 import type { SchwabMarketQuote } from './schwabMarketQuote';
 
 export interface SchwabMarketDataResult {
   provider: SchwabMarketDataResultProvider;
+  product: SchwabMarketDataResultProduct;
   readOnly: true;
   tradingEnabled: false;
   dataMode: SchwabMarketDataResultDataMode;

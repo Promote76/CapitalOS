@@ -240,6 +240,7 @@ import type {
   SchwabConnectResult,
   SchwabDisconnectResult,
   SchwabMarketDataResult,
+  SchwabMarketDataStatus,
   SchwabOAuthCallbackParams,
   SchwabRefreshResult,
   SchwabStatus,
@@ -16526,7 +16527,7 @@ export const getSchwabOAuthCallbackUrl = (params: SchwabOAuthCallbackParams,) =>
 }
 
 /**
- * @summary Complete server-side Schwab OAuth callback using single-use state
+ * @summary Complete portfolio or Market Data Schwab OAuth using app-isolated single-use state
  */
 export const schwabOAuthCallback = async (params: SchwabOAuthCallbackParams, options?: Parameters<typeof customFetch>[1]): Promise<unknown> => {
 
@@ -16573,7 +16574,7 @@ export type SchwabOAuthCallbackQueryError = ErrorType<void>
 
 
 /**
- * @summary Complete server-side Schwab OAuth callback using single-use state
+ * @summary Complete portfolio or Market Data Schwab OAuth using app-isolated single-use state
  */
 
 export function useSchwabOAuthCallback<TData = Awaited<ReturnType<typeof schwabOAuthCallback>>, TError = ErrorType<void>>(
@@ -16752,7 +16753,7 @@ export const getGetSchwabMarketDataUrl = (params?: GetSchwabMarketDataParams,) =
 }
 
 /**
- * @summary Read normalized Schwab quotes and equity market status
+ * @summary Read normalized quotes and equity market status from the separate Market Data Production app
  */
 export const getSchwabMarketData = async (params?: GetSchwabMarketDataParams, options?: Parameters<typeof customFetch>[1]): Promise<SchwabMarketDataResult> => {
 
@@ -16799,7 +16800,7 @@ export type GetSchwabMarketDataQueryError = ErrorType<BadRequestResponse | Confl
 
 
 /**
- * @summary Read normalized Schwab quotes and equity market status
+ * @summary Read normalized quotes and equity market status from the separate Market Data Production app
  */
 
 export function useGetSchwabMarketData<TData = Awaited<ReturnType<typeof getSchwabMarketData>>, TError = ErrorType<BadRequestResponse | ConflictResponse | ErrorResponse>>(
@@ -16819,6 +16820,296 @@ export function useGetSchwabMarketData<TData = Awaited<ReturnType<typeof getSchw
 
 
 
+
+export const getGetSchwabMarketDataStatusUrl = () => {
+
+
+
+
+  return `/api/integrations/schwab/market-data/status`
+}
+
+/**
+ * @summary Get the separate Market Data Production app connection status
+ */
+export const getSchwabMarketDataStatus = async ( options?: Parameters<typeof customFetch>[1]): Promise<SchwabMarketDataStatus> => {
+
+  return customFetch<SchwabMarketDataStatus>(getGetSchwabMarketDataStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchwabMarketDataStatusQueryKey = () => {
+    return [
+    `/api/integrations/schwab/market-data/status`
+    ] as const;
+    }
+
+
+export const getGetSchwabMarketDataStatusQueryOptions = <TData = Awaited<ReturnType<typeof getSchwabMarketDataStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchwabMarketDataStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchwabMarketDataStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchwabMarketDataStatus>>> = ({ signal }) => getSchwabMarketDataStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchwabMarketDataStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchwabMarketDataStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getSchwabMarketDataStatus>>>
+export type GetSchwabMarketDataStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the separate Market Data Production app connection status
+ */
+
+export function useGetSchwabMarketDataStatus<TData = Awaited<ReturnType<typeof getSchwabMarketDataStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchwabMarketDataStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchwabMarketDataStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getInitiateSchwabMarketDataConnectUrl = () => {
+
+
+
+
+  return `/api/integrations/schwab/market-data/connect`
+}
+
+/**
+ * @summary Initiate OAuth for the separate Market Data Production app
+ */
+export const initiateSchwabMarketDataConnect = async ( options?: Parameters<typeof customFetch>[1]): Promise<SchwabConnectResult> => {
+
+  return customFetch<SchwabConnectResult>(getInitiateSchwabMarketDataConnectUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getInitiateSchwabMarketDataConnectMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initiateSchwabMarketDataConnect>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof initiateSchwabMarketDataConnect>>, TError,void, TContext> => {
+
+const mutationKey = ['initiateSchwabMarketDataConnect'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof initiateSchwabMarketDataConnect>>, void> = () => {
+
+
+          return  initiateSchwabMarketDataConnect(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InitiateSchwabMarketDataConnectMutationResult = NonNullable<Awaited<ReturnType<typeof initiateSchwabMarketDataConnect>>>
+
+    export type InitiateSchwabMarketDataConnectMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Initiate OAuth for the separate Market Data Production app
+ */
+export const useInitiateSchwabMarketDataConnect = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initiateSchwabMarketDataConnect>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof initiateSchwabMarketDataConnect>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getInitiateSchwabMarketDataConnectMutationOptions(options));
+    }
+
+export const getRefreshSchwabMarketDataConnectionUrl = () => {
+
+
+
+
+  return `/api/integrations/schwab/market-data/refresh`
+}
+
+/**
+ * @summary Refresh the separate Market Data Production token
+ */
+export const refreshSchwabMarketDataConnection = async ( options?: Parameters<typeof customFetch>[1]): Promise<SchwabRefreshResult> => {
+
+  return customFetch<SchwabRefreshResult>(getRefreshSchwabMarketDataConnectionUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRefreshSchwabMarketDataConnectionMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshSchwabMarketDataConnection>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof refreshSchwabMarketDataConnection>>, TError,void, TContext> => {
+
+const mutationKey = ['refreshSchwabMarketDataConnection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof refreshSchwabMarketDataConnection>>, void> = () => {
+
+
+          return  refreshSchwabMarketDataConnection(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RefreshSchwabMarketDataConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof refreshSchwabMarketDataConnection>>>
+
+    export type RefreshSchwabMarketDataConnectionMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Refresh the separate Market Data Production token
+ */
+export const useRefreshSchwabMarketDataConnection = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof refreshSchwabMarketDataConnection>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof refreshSchwabMarketDataConnection>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRefreshSchwabMarketDataConnectionMutationOptions(options));
+    }
+
+export const getDisconnectSchwabMarketDataConnectionUrl = () => {
+
+
+
+
+  return `/api/integrations/schwab/market-data/disconnect`
+}
+
+/**
+ * @summary Remove only the separate Market Data Production authorization
+ */
+export const disconnectSchwabMarketDataConnection = async ( options?: Parameters<typeof customFetch>[1]): Promise<SchwabDisconnectResult> => {
+
+  return customFetch<SchwabDisconnectResult>(getDisconnectSchwabMarketDataConnectionUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getDisconnectSchwabMarketDataConnectionMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectSchwabMarketDataConnection>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof disconnectSchwabMarketDataConnection>>, TError,void, TContext> => {
+
+const mutationKey = ['disconnectSchwabMarketDataConnection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof disconnectSchwabMarketDataConnection>>, void> = () => {
+
+
+          return  disconnectSchwabMarketDataConnection(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DisconnectSchwabMarketDataConnectionMutationResult = NonNullable<Awaited<ReturnType<typeof disconnectSchwabMarketDataConnection>>>
+
+    export type DisconnectSchwabMarketDataConnectionMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Remove only the separate Market Data Production authorization
+ */
+export const useDisconnectSchwabMarketDataConnection = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof disconnectSchwabMarketDataConnection>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof disconnectSchwabMarketDataConnection>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDisconnectSchwabMarketDataConnectionMutationOptions(options));
+    }
 
 export const getDisconnectSchwabConnectionUrl = () => {
 

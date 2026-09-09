@@ -57,6 +57,13 @@ export const SchwabMarketDataResultProvider = {
   schwab: 'schwab',
 } as const;
 
+export type SchwabMarketDataResultProduct = typeof SchwabMarketDataResultProduct[keyof typeof SchwabMarketDataResultProduct];
+
+
+export const SchwabMarketDataResultProduct = {
+  MARKET_DATA_PRODUCTION: 'MARKET_DATA_PRODUCTION',
+} as const;
+
 export type SchwabMarketDataResultDataMode = typeof SchwabMarketDataResultDataMode[keyof typeof SchwabMarketDataResultDataMode];
 
 
@@ -104,12 +111,71 @@ export interface SchwabMarketClock {
 
 export interface SchwabMarketDataResult {
   provider: SchwabMarketDataResultProvider;
+  product: SchwabMarketDataResultProduct;
   readOnly: true;
   tradingEnabled: false;
   dataMode: SchwabMarketDataResultDataMode;
   /** @maxItems 500 */
   quotes: SchwabMarketQuote[];
   marketClock: SchwabMarketClock;
+}
+
+export type SchwabMarketDataStatusProvider = typeof SchwabMarketDataStatusProvider[keyof typeof SchwabMarketDataStatusProvider];
+
+
+export const SchwabMarketDataStatusProvider = {
+  schwab: 'schwab',
+} as const;
+
+export type SchwabMarketDataStatusProduct = typeof SchwabMarketDataStatusProduct[keyof typeof SchwabMarketDataStatusProduct];
+
+
+export const SchwabMarketDataStatusProduct = {
+  MARKET_DATA_PRODUCTION: 'MARKET_DATA_PRODUCTION',
+} as const;
+
+export type SchwabMarketDataStatusDataMode = typeof SchwabMarketDataStatusDataMode[keyof typeof SchwabMarketDataStatusDataMode];
+
+
+export const SchwabMarketDataStatusDataMode = {
+  LIVE_CONNECTED: 'LIVE_CONNECTED',
+  DISCONNECTED: 'DISCONNECTED',
+} as const;
+
+export type SchwabMarketDataStatusConnectionStatus = typeof SchwabMarketDataStatusConnectionStatus[keyof typeof SchwabMarketDataStatusConnectionStatus];
+
+
+export const SchwabMarketDataStatusConnectionStatus = {
+  LIVE_CONNECTED: 'LIVE_CONNECTED',
+  DISCONNECTED: 'DISCONNECTED',
+  CONFIGURATION_REQUIRED: 'CONFIGURATION_REQUIRED',
+  ERROR: 'ERROR',
+} as const;
+
+export type SchwabMarketDataStatusTokenHealth = typeof SchwabMarketDataStatusTokenHealth[keyof typeof SchwabMarketDataStatusTokenHealth];
+
+
+export const SchwabMarketDataStatusTokenHealth = {
+  HEALTHY: 'HEALTHY',
+  EXPIRED: 'EXPIRED',
+  UNAVAILABLE: 'UNAVAILABLE',
+} as const;
+
+export interface SchwabMarketDataStatus {
+  provider: SchwabMarketDataStatusProvider;
+  product: SchwabMarketDataStatusProduct;
+  readOnly: true;
+  tradingEnabled: false;
+  dataMode: SchwabMarketDataStatusDataMode;
+  credentialsConfigured: boolean;
+  /** @nullable */
+  callbackUrl: string | null;
+  connectionStatus: SchwabMarketDataStatusConnectionStatus;
+  tokenHealth: SchwabMarketDataStatusTokenHealth;
+  /** @nullable */
+  tokenExpiresAt: string | null;
+  /** @nullable */
+  lastSuccessfulReadAt: string | null;
 }
 
 export type SchwabDisconnectResultStatus = typeof SchwabDisconnectResultStatus[keyof typeof SchwabDisconnectResultStatus];

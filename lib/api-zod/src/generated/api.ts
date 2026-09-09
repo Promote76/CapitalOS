@@ -10262,7 +10262,7 @@ export const InitiateSchwabConnectResponse = zod.object({
 
 
 /**
- * @summary Complete server-side Schwab OAuth callback using single-use state
+ * @summary Complete portfolio or Market Data Schwab OAuth using app-isolated single-use state
  */
 export const SchwabOAuthCallbackQueryParams = zod.object({
   "code": zod.coerce.string(),
@@ -10291,7 +10291,7 @@ export const SyncSchwabObservationsResponse = zod.object({
 
 
 /**
- * @summary Read normalized Schwab quotes and equity market status
+ * @summary Read normalized quotes and equity market status from the separate Market Data Production app
  */
 export const getSchwabMarketDataQuerySymbolsMax = 15499;
 
@@ -10307,6 +10307,7 @@ export const getSchwabMarketDataResponseQuotesMax = 500;
 
 export const GetSchwabMarketDataResponse = zod.object({
   "provider": zod.enum(['schwab']),
+  "product": zod.enum(['MARKET_DATA_PRODUCTION']),
   "readOnly": zod.literal(true),
   "tradingEnabled": zod.literal(false),
   "dataMode": zod.enum(['LIVE_CONNECTED']),
@@ -10324,6 +10325,54 @@ export const GetSchwabMarketDataResponse = zod.object({
   "receivedAt": zod.coerce.date(),
   "dataFreshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN'])
 })
+})
+
+
+/**
+ * @summary Get the separate Market Data Production app connection status
+ */
+export const GetSchwabMarketDataStatusResponse = zod.object({
+  "provider": zod.enum(['schwab']),
+  "product": zod.enum(['MARKET_DATA_PRODUCTION']),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "dataMode": zod.enum(['LIVE_CONNECTED', 'DISCONNECTED']),
+  "credentialsConfigured": zod.boolean(),
+  "callbackUrl": zod.string().nullable(),
+  "connectionStatus": zod.enum(['LIVE_CONNECTED', 'DISCONNECTED', 'CONFIGURATION_REQUIRED', 'ERROR']),
+  "tokenHealth": zod.enum(['HEALTHY', 'EXPIRED', 'UNAVAILABLE']),
+  "tokenExpiresAt": zod.coerce.date().nullable(),
+  "lastSuccessfulReadAt": zod.coerce.date().nullable()
+})
+
+
+/**
+ * @summary Initiate OAuth for the separate Market Data Production app
+ */
+export const InitiateSchwabMarketDataConnectResponse = zod.object({
+  "authorizationUrl": zod.string(),
+  "callbackUrl": zod.string(),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false)
+})
+
+
+/**
+ * @summary Refresh the separate Market Data Production token
+ */
+export const RefreshSchwabMarketDataConnectionResponse = zod.object({
+  "status": zod.enum(['LIVE_CONNECTED']),
+  "tokenHealth": zod.enum(['HEALTHY'])
+})
+
+
+/**
+ * @summary Remove only the separate Market Data Production authorization
+ */
+export const DisconnectSchwabMarketDataConnectionResponse = zod.object({
+  "status": zod.enum(['DISCONNECTED']),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false)
 })
 
 

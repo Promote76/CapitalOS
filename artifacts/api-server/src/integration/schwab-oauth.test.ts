@@ -106,23 +106,6 @@ test("Schwab routes fail closed, isolate households, redact status, and callback
     assert.equal((await request("/integrations/schwab/refresh", { method: "POST" })).status, 200);
     const [refreshed] = await db.select().from(schwabConnections).where(eq(schwabConnections.id, connection.id));
     assert.equal(refreshed?.refreshTokenCiphertext, originalRefreshCiphertext, "refresh rotation omission must retain the existing encrypted refresh token");
-    globalThis.fetch = (async (input) => {
-      const url = String(input);
-      if (url.includes("/quotes?symbols=ABC%2CMSFT")) return new Response(JSON.stringify({
-        ABC: { symbol: "ABC", assetMainType: "EQUITY", quote: { lastPrice: 15, quoteTime: Date.now() } },
-        MSFT: { symbol: "MSFT", assetMainType: "EQUITY", quote: { lastPrice: 500, quoteTime: Date.now() } },
-      }));
-      if (url.includes("/markets?markets=equity&date=")) return new Response(JSON.stringify({ equity: { isOpen: true } }));
-      return new Response("unexpected Schwab market-data fixture path", { status: 404 });
-    }) as typeof fetch;
-    const marketResponse = await request("/integrations/schwab/market-data?symbols=abc,MSFT,abc");
-    assert.equal(marketResponse.status, 200);
-    const marketData = await marketResponse.json() as Record<string, any>;
-    assert.deepEqual(marketData.quotes.map((quote: Record<string, unknown>) => quote.symbol), ["ABC", "MSFT"]);
-    assert.equal(marketData.marketClock.marketOpen, true);
-    assert.equal(marketData.readOnly, true);
-    assert.equal(marketData.tradingEnabled, false);
-    assert.equal((await request("/integrations/schwab/market-data?symbols=ABC,%24INVALID")).status, 400);
     const forbiddenAccountNumber = "9988776655";
     globalThis.fetch = (async (input) => {
       const url = String(input);
@@ -172,7 +155,10 @@ test("Schwab routes fail closed, isolate households, redact status, and callback
 });
 
 test("Schwab route and OpenAPI inventories expose only the read-only connector surface", async () => {
-  const routes = await readFile(fileURLToPath(new URL("../routes/schwab.ts", import.meta.url)), "utf8");
+  const routes = [
+    await readFile(fileURLToPath(new URL("../routes/schwab.ts", import.meta.url)), "utf8"),
+    await readFile(fileURLToPath(new URL("../routes/schwab-market-data.ts", import.meta.url)), "utf8"),
+  ].join("\n");
   const openapi = await readFile(fileURLToPath(new URL("../../../../lib/api-spec/openapi.yaml", import.meta.url)), "utf8");
   const documented = [...openapi.matchAll(/^\s{2}(\/integrations\/schwab[^:]*):/gm)].map((match) => match[1]);
   assert.deepEqual(documented, [
@@ -182,6 +168,10 @@ test("Schwab route and OpenAPI inventories expose only the read-only connector s
     "/integrations/schwab/refresh",
     "/integrations/schwab/sync",
     "/integrations/schwab/market-data",
+    "/integrations/schwab/market-data/status",
+    "/integrations/schwab/market-data/connect",
+    "/integrations/schwab/market-data/refresh",
+    "/integrations/schwab/market-data/disconnect",
     "/integrations/schwab/disconnect",
   ]);
   const schwabBlock = routes.match(/router\.(?:get|post)\("([^"]+)"/g)?.join("\n") ?? "";

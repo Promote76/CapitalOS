@@ -11,10 +11,13 @@ import {
   encryptSchwabOAuthValue, exchangeSchwabToken, SchwabOAuthConfigurationError,
   SchwabOAuthStateError, schwabAuthorizationUrl, schwabCallbackUrl, fetchSchwabObservation,
 } from "../services/schwab-oauth";
+import { completeSchwabMarketDataOAuthCallback } from "../services/schwab-market-data-oauth";
 
 const router: IRouter = Router();
 const audit = (householdId: string, actor: string, eventType: string, entityId = householdId) =>
   db.insert(auditEvents).values({ householdId, actor, eventType, entity: "schwab_connection", entityId, metadata: { provider: "schwab", readOnly: true } });
+const marketDataAudit = (householdId: string, actor: string, eventType: string, entityId = householdId) =>
+  db.insert(auditEvents).values({ householdId, actor, eventType, entity: "schwab_market_data_connection", entityId, metadata: { provider: "schwab", product: "market_data_production", readOnly: true } });
 const configured = () => Boolean(process.env.SCHWAB_APP_KEY && process.env.SCHWAB_APP_SECRET);
 const lifecycleLock = (householdId: string) => sql`select pg_advisory_xact_lock(hashtextextended(${`schwab-lifecycle:${householdId}`}, 0))`;
 const schwabBrowserCookie = "__Host-capitalos_schwab_oauth";
@@ -27,13 +30,6 @@ const observationWindow = (now = new Date()) => ({
   to: now.toISOString(),
   date: now.toISOString().slice(0, 10),
 });
-const parseMarketDataSymbols = (input: unknown): string[] | null => {
-  if (input === undefined) return [];
-  if (typeof input !== "string") return null;
-  const symbols = [...new Set(input.split(",").map((symbol) => symbol.trim().toUpperCase()).filter(Boolean))];
-  if (symbols.length > 500 || symbols.some((symbol) => !/^[A-Z0-9._-]{1,30}$/.test(symbol))) return null;
-  return symbols;
-};
 
 router.get("/integrations/schwab/status", asyncRoute(async (_req, res) => {
   const actor = actorFrom(res);
@@ -65,6 +61,21 @@ router.post("/integrations/schwab/connect", asyncRoute(async (_req, res) => {
 router.get("/integrations/schwab/oauth/callback", asyncRoute(async (req, res) => {
   const state = typeof req.query.state === "string" ? req.query.state : "";
   const code = typeof req.query.code === "string" ? req.query.code : "";
+  const marketDataBrowserBinding = cookieValue(req.headers.cookie, "__Host-capitalos_schwab_market_data_oauth");
+  if (marketDataBrowserBinding) {
+    let marketBinding: Awaited<ReturnType<typeof completeSchwabMarketDataOAuthCallback>> | undefined;
+    try {
+      marketBinding = await completeSchwabMarketDataOAuthCallback({ state, code, browserBinding: marketDataBrowserBinding });
+      await marketDataAudit(marketBinding.householdId, marketBinding.actorUserId, "schwab_market_data_oauth_succeeded");
+      res.setHeader("Set-Cookie", `__Host-capitalos_schwab_market_data_oauth=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`);
+      res.redirect(303, "/integrations/schwab?market_data_oauth=connected");
+    } catch (error) {
+      if (marketBinding) await marketDataAudit(marketBinding.householdId, marketBinding.actorUserId, "schwab_market_data_oauth_failed");
+      res.setHeader("Set-Cookie", `__Host-capitalos_schwab_market_data_oauth=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`);
+      res.redirect(303, `/integrations/schwab?market_data_oauth=${error instanceof SchwabOAuthConfigurationError ? "configuration_required" : "failed"}`);
+    }
+    return;
+  }
   const browserBinding = cookieValue(req.headers.cookie, schwabBrowserCookie);
   let binding: { householdId: string; actorUserId: string; createdAt: Date; lifecycleGeneration: string } | undefined;
   try {
@@ -198,58 +209,6 @@ router.post("/integrations/schwab/sync", asyncRoute(async (_req, res) => {
     return;
   }
   await audit(actor.householdId, actor.userId, "schwab_sync_succeeded", connection.id); res.json({ status: "SYNCED", dataMode: "LIVE_CONNECTED" });
-}));
-
-router.get("/integrations/schwab/market-data", asyncRoute(async (req, res) => {
-  const actor = actorFrom(res);
-  const symbols = parseMarketDataSymbols(req.query.symbols);
-  if (!symbols) {
-    res.status(400).json({ code: "INVALID_SYMBOLS", message: "Symbols must be a comma-separated list of at most 500 ticker symbols." });
-    return;
-  }
-  const [connection] = await db.select().from(schwabConnections).where(eq(schwabConnections.householdId, actor.householdId)).limit(1);
-  if (!connection?.accessTokenExpiresAt || connection.accessTokenExpiresAt <= new Date() || connection.status !== "LIVE_CONNECTED") {
-    res.status(409).json({ code: "DISCONNECTED_OR_EXPIRED" });
-    return;
-  }
-  try {
-    const token = decryptSchwabOAuthValue({
-      ciphertext: connection.accessTokenCiphertext!, nonce: connection.accessTokenNonce!, authTag: connection.accessTokenAuthTag!,
-    });
-    const date = new Date().toISOString().slice(0, 10);
-    const [quotes, marketClock] = await Promise.all([
-      symbols.length
-        ? fetchSchwabObservation(`/marketdata/v1/quotes?symbols=${encodeURIComponent(symbols.join(","))}`, token).then(normalizeSchwabQuotes)
-        : Promise.resolve([]),
-      fetchSchwabObservation(`/marketdata/v1/markets?markets=equity&date=${date}`, token).then(normalizeSchwabMarketClock),
-    ]);
-    const [current] = await db.select({
-      id: schwabConnections.id,
-      status: schwabConnections.status,
-      accessTokenCiphertext: schwabConnections.accessTokenCiphertext,
-      accessTokenExpiresAt: schwabConnections.accessTokenExpiresAt,
-    }).from(schwabConnections).where(eq(schwabConnections.householdId, actor.householdId)).limit(1);
-    if (current?.id !== connection.id || current.status !== "LIVE_CONNECTED" || current.accessTokenCiphertext !== connection.accessTokenCiphertext || !current.accessTokenExpiresAt || current.accessTokenExpiresAt <= new Date()) {
-      res.status(409).json({ code: "CONNECTION_CHANGED" });
-      return;
-    }
-    await audit(actor.householdId, actor.userId, "schwab_market_data_read", connection.id);
-    res.json({ provider: "schwab", readOnly: true, tradingEnabled: false, dataMode: "LIVE_CONNECTED", quotes, marketClock });
-  } catch {
-    const markedFailed = await db.transaction(async (tx) => {
-      await tx.execute(lifecycleLock(actor.householdId));
-      const [current] = await tx.select().from(schwabConnections).where(eq(schwabConnections.householdId, actor.householdId)).limit(1);
-      if (current?.id !== connection.id || current.status !== "LIVE_CONNECTED" || current.accessTokenCiphertext !== connection.accessTokenCiphertext) return false;
-      await tx.update(schwabConnections).set({ status: "ERROR", lastErrorCode: "MARKET_DATA_READ_FAILED", updatedAt: new Date() }).where(eq(schwabConnections.id, connection.id));
-      return true;
-    });
-    if (markedFailed) {
-      await audit(actor.householdId, actor.userId, "schwab_market_data_failed", connection.id);
-      res.status(503).json({ code: "MARKET_DATA_FAILED" });
-    } else {
-      res.status(409).json({ code: "CONNECTION_CHANGED" });
-    }
-  }
 }));
 
 router.post("/integrations/schwab/disconnect", asyncRoute(async (_req, res) => {

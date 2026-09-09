@@ -12,6 +12,11 @@ OAuth state must be single-use, expiring, household/actor scoped, bound to an
 unpredictable host-only HttpOnly browser cookie, and tied to a durable lifecycle
 generation shared by connect, callback, refresh, sync, and disconnect.
 
+The portfolio and Market Data Schwab apps share one registered callback URL.
+Dispatch the callback by each app's separate browser-binding cookie and
+single-use state table; never merge their credentials, tokens, lifecycle
+generations, status, refresh, read, or disconnect authority.
+
 **Why:** State alone prevents guessing and replay but not account-linking CSRF
 from a valid authorization URL opened in another browser. A lifecycle lock
 without a durable generation also lets stale callbacks or syncs overwrite a
@@ -20,4 +25,5 @@ newer disconnect/reconnect decision.
 **How to apply:** Keep trading disabled and fail closed unless OAuth is healthy.
 Reject any callback whose browser binding or lifecycle generation differs, and
 conditionally commit sync results only while the same live token generation is
-current. Do not claim provider certification until real OAuth evidence exists.
+current. A shared callback path must not imply shared app authorization. Do not
+claim provider certification until real OAuth evidence exists.

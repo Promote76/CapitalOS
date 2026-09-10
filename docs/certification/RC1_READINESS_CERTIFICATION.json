@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "releaseCandidate": "RC1",
   "result": "PASS_WITH_BLOCKER",
-  "generatedAt": "2026-09-10T21:12:30.092Z",
+  "generatedAt": "2026-09-10T21:58:31.641Z",
   "source": {
-    "baseCommit": "fd983bd2715baa0842ead6b421586c1838aeaafd",
-    "sourceSha256": "9f1b84ebff8a10fd054333d65e8816276495cc63caaa2e6d97725d955492d139",
+    "baseCommit": "a4d107b3b33a1115a828ddd2ac3e0f086caa5106",
+    "sourceSha256": "54507c4219ebed1c4e26f30190b5a42cd357c00b49271fe7c1b6ee1b39f47f6b",
     "inputCount": 1085,
     "inputs": [
       "artifacts/api-server/.replit-artifact/artifact.toml",
@@ -1135,5 +1135,5 @@
     "venueExecution": "DISABLED",
     "moneyMovement": "DISABLED"
   },
-  "evidenceLog": "docs/certification/operations-recovery-runs/operations-recovery-2026-09-10T21-11-29Z.log"
+  "evidenceLog": "docs/certification/operations-recovery-runs/operations-recovery-2026-09-10T21-57-38Z.log"
 }

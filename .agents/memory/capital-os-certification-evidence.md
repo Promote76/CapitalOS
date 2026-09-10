@@ -9,6 +9,19 @@ Release gates must close only from observed execution against isolated certifica
 
 **How to apply:** Keep the release decision NOT READY while any required gate is unexecuted. Certification wrappers should report a successful guarded migration as closed and list only the genuinely remaining external gates.
 
+Exact-source certification gates must bind authority to the complete source
+content hash while treating the recorded Git commit as an ancestor anchor, not
+as a requirement that deployment `HEAD` be identical.
+
+**Why:** Replit creates a new publish/checkpoint commit after certification.
+Requiring exact `HEAD` equality rejected unchanged certified source during every
+publish, even though the full release-input hash still matched.
+
+**How to apply:** Require the current full source hash to equal the certified
+hash, require the manifest and evidence to name the same certification base
+commit, and require that base to be an ancestor of current `HEAD`. Any source
+change still invalidates the gate.
+
 The Operations Recovery suite must prove all OR-01 through OR-24 behaviors against a fresh disposable PostgreSQL target; the repository now provisions that target automatically for the guarded certification command.
 
 **Why:** The fail-closed operations runner intentionally refuses to treat an ambient development `DATABASE_URL` as isolated certification infrastructure, while manual target setup made repeatable evidence unnecessarily dependent on environment state.

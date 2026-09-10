@@ -12163,6 +12163,7 @@ export const ListSecFilingsResponse = zod.object({
   "ticker": zod.string(),
   "filingForm": zod.string(),
   "filingDate": zod.string(),
+  "filingAgeStatus": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN']),
   "accession": zod.string(),
   "sourceUrl": zod.string(),
   "content": zod.object({
@@ -12721,7 +12722,8 @@ export const ListSecFilingsResponse = zod.object({
   "accession": zod.string(),
   "sourceUrl": zod.string()
 })),
-  "filingPriority": zod.string()
+  "filingPriority": zod.string(),
+  "filingAgeStatus": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN'])
 }),
   "provenance": zod.object({
   "provider": zod.string(),
@@ -12777,6 +12779,7 @@ export const RetrieveSecFilingResponse = zod.object({
   "ticker": zod.string(),
   "filingForm": zod.string(),
   "filingDate": zod.string(),
+  "filingAgeStatus": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN']),
   "accession": zod.string(),
   "sourceUrl": zod.string(),
   "content": zod.object({
@@ -13335,7 +13338,8 @@ export const RetrieveSecFilingResponse = zod.object({
   "accession": zod.string(),
   "sourceUrl": zod.string()
 })),
-  "filingPriority": zod.string()
+  "filingPriority": zod.string(),
+  "filingAgeStatus": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN'])
 }),
   "provenance": zod.object({
   "provider": zod.string(),
@@ -13380,6 +13384,7 @@ export const ReviewSecFilingResponse = zod.object({
   "ticker": zod.string(),
   "filingForm": zod.string(),
   "filingDate": zod.string(),
+  "filingAgeStatus": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN']),
   "accession": zod.string(),
   "sourceUrl": zod.string(),
   "content": zod.object({
@@ -13938,7 +13943,8 @@ export const ReviewSecFilingResponse = zod.object({
   "accession": zod.string(),
   "sourceUrl": zod.string()
 })),
-  "filingPriority": zod.string()
+  "filingPriority": zod.string(),
+  "filingAgeStatus": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN'])
 }),
   "provenance": zod.object({
   "provider": zod.string(),

@@ -6711,12 +6711,13 @@ components:
         earningsTrend: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
     SecFilingContent:
       type: object
-      required: [ticker, metrics, filings, filingPriority]
+      required: [ticker, metrics, filings, filingPriority, filingAgeStatus]
       properties:
         ticker: { type: string }
         metrics: { $ref: "#/components/schemas/SecBankMetrics" }
         filings: { type: array, items: { $ref: "#/components/schemas/SecFilingReference" } }
         filingPriority: { type: string }
+        filingAgeStatus: { type: string, enum: [CURRENT, AGING, STALE, UNKNOWN] }
     SecFilingProvenance:
       type: object
       required: [provider, issuerCik, sourceUrls, citations, accessedAt]
@@ -6742,13 +6743,14 @@ components:
         sourceUrl: { type: string, nullable: true }
     SecFilingDraft:
       type: object
-      required: [id, householdId, ticker, filingForm, filingDate, accession, sourceUrl, content, provenance, missingFields, evidenceQuality, extractionTimestamp, reviewStatus]
+      required: [id, householdId, ticker, filingForm, filingDate, filingAgeStatus, accession, sourceUrl, content, provenance, missingFields, evidenceQuality, extractionTimestamp, reviewStatus]
       properties:
         id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
         householdId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
         ticker: { type: string }
         filingForm: { type: string }
         filingDate: { type: string }
+        filingAgeStatus: { type: string, enum: [CURRENT, AGING, STALE, UNKNOWN] }
         accession: { type: string }
         sourceUrl: { type: string }
         content: { $ref: "#/components/schemas/SecFilingContent" }

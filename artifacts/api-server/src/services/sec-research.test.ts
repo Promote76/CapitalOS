@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeSecFilingPayloads, resolveSecIssuer, SEC_BANK_METRIC_NAMES } from "./sec-research";
+import { getSecFilingAgeStatus, normalizeSecFilingPayloads, resolveSecIssuer, SEC_BANK_METRIC_NAMES } from "./sec-research";
 
 const accessionQ = "0000000001-26-000010";
 const accessionK = "0000000001-25-000020";
@@ -38,6 +38,7 @@ test("SEC normalization retains exact accession provenance and supplements only 
   assert.equal(normalized.content.metrics.totalAssets?.value, 100);
   assert.equal(normalized.content.metrics.totalAssets?.unit, "USD");
   assert.equal(normalized.content.metrics.totalAssets?.accession, accessionQ);
+  assert.equal(normalized.filingAgeStatus, "CURRENT");
   assert.equal(normalized.content.metrics.totalLiabilities?.value, 80);
   assert.equal(normalized.content.metrics.totalLiabilities?.accession, accessionK);
   assert.equal(normalized.content.metrics.netIncome, null);
@@ -49,6 +50,15 @@ test("SEC normalization retains exact accession provenance and supplements only 
   assert.ok(normalized.missingFields.includes("earningsTrend"));
   assert.ok(normalized.missingFields.includes("dividendPayout"));
   assert.ok(normalized.content.metrics.totalAssets?.sourceUrl?.startsWith("https://www.sec.gov/Archives/"));
+});
+
+test("SEC filing age status distinguishes current, aging, stale, and missing dates", () => {
+  const asOf = "2026-09-10T00:00:00.000Z";
+  assert.equal(getSecFilingAgeStatus("2026-08-01", asOf), "CURRENT");
+  assert.equal(getSecFilingAgeStatus("2026-01-01", asOf), "AGING");
+  assert.equal(getSecFilingAgeStatus("2023-08-01", asOf), "STALE");
+  assert.equal(getSecFilingAgeStatus(null, asOf), "UNKNOWN");
+  assert.equal(getSecFilingAgeStatus("not-a-date", asOf), "UNKNOWN");
 });
 
 test("SEC normalization never fills unsupported bank metrics", () => {

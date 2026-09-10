@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { SecBankMetrics } from './secBankMetrics';
+import type { SecFilingContentFilingAgeStatus } from './secFilingContentFilingAgeStatus';
 import type { SecFilingReference } from './secFilingReference';
 
 export interface SecFilingContent {
@@ -13,4 +14,5 @@ export interface SecFilingContent {
   metrics: SecBankMetrics;
   filings: SecFilingReference[];
   filingPriority: string;
+  filingAgeStatus: SecFilingContentFilingAgeStatus;
 }

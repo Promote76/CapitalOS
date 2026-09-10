@@ -4246,6 +4246,16 @@ export interface SecBankMetrics {
   earningsTrend: SecFact | null;
 }
 
+export type SecFilingContentFilingAgeStatus = typeof SecFilingContentFilingAgeStatus[keyof typeof SecFilingContentFilingAgeStatus];
+
+
+export const SecFilingContentFilingAgeStatus = {
+  CURRENT: 'CURRENT',
+  AGING: 'AGING',
+  STALE: 'STALE',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
 export interface SecFilingReference {
   form: string;
   filingDate: string;
@@ -4258,6 +4268,7 @@ export interface SecFilingContent {
   metrics: SecBankMetrics;
   filings: SecFilingReference[];
   filingPriority: string;
+  filingAgeStatus: SecFilingContentFilingAgeStatus;
 }
 
 export interface SecCitation {
@@ -4272,6 +4283,16 @@ export interface SecFilingProvenance {
   citations: SecCitation[];
   accessedAt: string;
 }
+
+export type SecFilingDraftFilingAgeStatus = typeof SecFilingDraftFilingAgeStatus[keyof typeof SecFilingDraftFilingAgeStatus];
+
+
+export const SecFilingDraftFilingAgeStatus = {
+  CURRENT: 'CURRENT',
+  AGING: 'AGING',
+  STALE: 'STALE',
+  UNKNOWN: 'UNKNOWN',
+} as const;
 
 export type SecFilingDraftEvidenceQuality = typeof SecFilingDraftEvidenceQuality[keyof typeof SecFilingDraftEvidenceQuality];
 
@@ -4299,6 +4320,7 @@ export interface SecFilingDraft {
   ticker: string;
   filingForm: string;
   filingDate: string;
+  filingAgeStatus: SecFilingDraftFilingAgeStatus;
   accession: string;
   sourceUrl: string;
   content: SecFilingContent;

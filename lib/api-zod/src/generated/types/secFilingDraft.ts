@@ -7,6 +7,7 @@
  */
 import type { SecFilingContent } from './secFilingContent';
 import type { SecFilingDraftEvidenceQuality } from './secFilingDraftEvidenceQuality';
+import type { SecFilingDraftFilingAgeStatus } from './secFilingDraftFilingAgeStatus';
 import type { SecFilingDraftReviewStatus } from './secFilingDraftReviewStatus';
 import type { SecFilingProvenance } from './secFilingProvenance';
 
@@ -18,6 +19,7 @@ export interface SecFilingDraft {
   ticker: string;
   filingForm: string;
   filingDate: string;
+  filingAgeStatus: SecFilingDraftFilingAgeStatus;
   accession: string;
   sourceUrl: string;
   content: SecFilingContent;

@@ -22,6 +22,27 @@ export const SEC_BANK_METRIC_TAGS: Record<string, string[]> = {
   depositRetention: [], earningsTrend: [],
 };
 export const SEC_BANK_METRIC_NAMES = Object.keys(SEC_BANK_METRIC_TAGS);
+export const secFilingAgeStatuses = ["CURRENT", "AGING", "STALE", "UNKNOWN"] as const;
+export type SecFilingAgeStatus = (typeof secFilingAgeStatuses)[number];
+
+const SEC_FILING_AGING_AFTER_DAYS = 180;
+const SEC_FILING_STALE_AFTER_DAYS = 365;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function getSecFilingAgeStatus(
+  filingDate: string | null | undefined,
+  asOf: string | Date,
+): SecFilingAgeStatus {
+  if (!filingDate) return "UNKNOWN";
+  const filedAt = new Date(`${filingDate}T00:00:00.000Z`);
+  const observedAt = asOf instanceof Date ? asOf : new Date(asOf);
+  if (Number.isNaN(filedAt.getTime()) || Number.isNaN(observedAt.getTime())) return "UNKNOWN";
+  const ageDays = Math.floor(Math.max(0, observedAt.getTime() - filedAt.getTime()) / DAY_MS);
+  if (ageDays <= SEC_FILING_AGING_AFTER_DAYS) return "CURRENT";
+  if (ageDays <= SEC_FILING_STALE_AFTER_DAYS) return "AGING";
+  return "STALE";
+}
+
 type SecFact = {
   tag: string;
   unit: string | null;
@@ -124,14 +145,32 @@ export function normalizeSecFilingPayloads(input: {
       sourceUrl: filings.find((filing) => filing.accession.replaceAll("-", "") === String(fact.accession).replaceAll("-", ""))?.sourceUrl ?? null,
     } : null,
   ]));
-  const content = { ticker: symbol, metrics, filings, filingPriority: "LATEST_10Q_THEN_10K_ONLY_FOR_MISSING_FIELDS" };
+  const content = {
+    ticker: symbol,
+    metrics,
+    filings,
+    filingPriority: "LATEST_10Q_THEN_10K_ONLY_FOR_MISSING_FIELDS",
+    filingAgeStatus: getSecFilingAgeStatus(latestQ.filed, input.accessedAt),
+  };
   const provenance = {
     provider: "SEC EDGAR", issuerCik: cik, sourceUrls: filings.map((item) => item.sourceUrl),
     citations: SEC_BANK_METRIC_NAMES.map((name) => ({ field: name, sourceUrl: metrics[name] ? filings.find((f) => f.accession.replaceAll("-", "") === String((metrics[name] as any).accession).replaceAll("-", ""))?.sourceUrl ?? null : null })),
     accessedAt: input.accessedAt,
   };
   const evidenceQuality = missingFields.length === 0 ? "HIGH" : missingFields.length <= 3 ? "MEDIUM" : "LOW";
-  return { symbol, cik, latestQ, content, provenance, missingFields, evidenceQuality };
+  return { symbol, cik, latestQ, content, filingAgeStatus: content.filingAgeStatus, provenance, missingFields, evidenceQuality };
+}
+
+function withSecFilingAgeStatus(row: typeof secFilingSnapshots.$inferSelect) {
+  const content = row.content;
+  const recordedStatus = content.filingAgeStatus;
+  const filingAgeStatus = secFilingAgeStatuses.includes(recordedStatus as SecFilingAgeStatus)
+    ? recordedStatus as SecFilingAgeStatus
+    : getSecFilingAgeStatus(
+      row.filingDate,
+      typeof row.provenance.accessedAt === "string" ? row.provenance.accessedAt : row.extractionTimestamp,
+    );
+  return { ...row, filingAgeStatus, content: { ...content, filingAgeStatus } };
 }
 
 export async function retrieveSecFiling(actor: Actor, input: { ticker: string }) {
@@ -164,28 +203,29 @@ export async function retrieveSecFiling(actor: Actor, input: { ticker: string })
   }).onConflictDoNothing().returning();
   if (!row) throw new Error("SEC filing accession already collected for this household");
   await db.insert(auditEvents).values({ householdId: actor.householdId, actor: actor.userId, eventType: "sec_filing_draft_created", entity: "sec_filing_snapshot", entityId: row.id, reason: "Normalized official SEC filing evidence pending human review", metadata: { ticker: symbol, accession: row.accession, missingFields: normalized.missingFields, evidenceQuality: normalized.evidenceQuality } });
-  return { ...row, advisoryOnly: true, readOnly: true, tradingEnabled: false, executionAuthority: "none" };
+  return { ...row, filingAgeStatus: normalized.filingAgeStatus, advisoryOnly: true, readOnly: true, tradingEnabled: false, executionAuthority: "none" };
 }
 
 export async function listSecFilings(actor: Actor) {
   const drafts = await db.select().from(secFilingSnapshots).where(eq(secFilingSnapshots.householdId, actor.householdId)).orderBy(desc(secFilingSnapshots.createdAt));
   const approved = await db.select().from(reviewedSecFilingEvidence).where(eq(reviewedSecFilingEvidence.householdId, actor.householdId)).orderBy(desc(reviewedSecFilingEvidence.approvedAt));
-  return { drafts, approved };
+  return { drafts: drafts.map(withSecFilingAgeStatus), approved };
 }
 
 export async function reviewSecFiling(actor: Actor, id: string, disposition: "APPROVE" | "REJECT") {
   return db.transaction(async (tx) => {
     const [draft] = await tx.select().from(secFilingSnapshots).where(and(eq(secFilingSnapshots.id, id), eq(secFilingSnapshots.householdId, actor.householdId))).limit(1);
     if (!draft || draft.reviewStatus !== "PENDING_HUMAN_REVIEW") throw new Error("SEC filing draft not found or already reviewed");
+    const draftWithStatus = withSecFilingAgeStatus(draft);
     const [updated] = await tx.update(secFilingSnapshots).set({ reviewStatus: disposition === "APPROVE" ? "APPROVED" : "REJECTED", reviewedBy: actor.userId, reviewedAt: new Date() }).where(and(eq(secFilingSnapshots.id, id), eq(secFilingSnapshots.reviewStatus, "PENDING_HUMAN_REVIEW"))).returning();
     if (!updated) throw new Error("SEC filing review was concurrent");
     let evidence: any = null;
     if (disposition === "APPROVE") {
-      const canonicalContent = { ...draft.content, provenance: draft.provenance, missingFields: draft.missingFields, evidenceQuality: draft.evidenceQuality, readOnly: true, tradingEnabled: false, executionAuthority: "none" };
+      const canonicalContent = { ...draftWithStatus.content, provenance: draft.provenance, missingFields: draft.missingFields, evidenceQuality: draft.evidenceQuality, readOnly: true, tradingEnabled: false, executionAuthority: "none" };
       const canonicalSha256 = createHash("sha256").update(canonical(canonicalContent)).digest("hex");
       [evidence] = await tx.insert(reviewedSecFilingEvidence).values({ householdId: actor.householdId, snapshotId: draft.id, ticker: draft.ticker, canonicalContent, canonicalSha256, provenance: draft.provenance, approvedBy: actor.userId }).returning();
     }
     await tx.insert(auditEvents).values({ householdId: actor.householdId, actor: actor.userId, eventType: "sec_filing_reviewed", entity: "sec_filing_snapshot", entityId: draft.id, reason: `Human disposition: ${disposition}`, metadata: { digest: evidence?.canonicalSha256 ?? null } });
-    return { snapshot: updated, evidence };
+    return { snapshot: { ...updated, filingAgeStatus: draftWithStatus.filingAgeStatus, content: draftWithStatus.content }, evidence };
   });
 }

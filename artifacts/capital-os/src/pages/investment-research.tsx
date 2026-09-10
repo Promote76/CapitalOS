@@ -550,7 +550,25 @@ Research Notes:
           {secQuery.data?.drafts.map((draft) => (
             <article key={draft.id} className="forecast-row p-4">
               <div className="flex justify-between gap-3"><strong>{draft.ticker} · {draft.filingForm}</strong><span className="status pending">{draft.reviewStatus}</span></div>
-              <div className="text-xs mt-2">Accession {draft.accession} · filed {draft.filingDate} · quality {draft.evidenceQuality}</div>
+              <div className="text-xs mt-2">Accession {draft.accession} · latest filing date {draft.filingDate} · filing age {draft.filingAgeStatus} · quality {draft.evidenceQuality}</div>
+              {draft.filingAgeStatus === "STALE" && (
+                <div className="document-boundary mt-3" role="alert" style={{ marginBottom: 0 }}>
+                  <AlertTriangle size={16} />
+                  <div>
+                    <strong>Stale SEC evidence</strong>
+                    <span>The latest filing date is more than one year old. Confirm whether a newer SEC filing exists before approving this historical evidence.</span>
+                  </div>
+                </div>
+              )}
+              {draft.filingAgeStatus === "UNKNOWN" && (
+                <div className="document-boundary mt-3" role="alert" style={{ marginBottom: 0 }}>
+                  <AlertTriangle size={16} />
+                  <div>
+                    <strong>SEC filing age is unknown</strong>
+                    <span>The filing date was not supplied. Verify the source before approving this evidence.</span>
+                  </div>
+                </div>
+              )}
               <div className="text-xs mt-1">Missing: {draft.missingFields.length ? draft.missingFields.join(", ") : "none reported"}</div>
               {draft.reviewStatus === "PENDING_HUMAN_REVIEW" && <div className="flex gap-2 mt-3"><button className="btn btn-primary" onClick={() => { void handleSecReview(draft.id, "APPROVE"); }}>Approve evidence</button><button className="btn" onClick={() => { void handleSecReview(draft.id, "REJECT"); }}>Reject</button></div>}
             </article>

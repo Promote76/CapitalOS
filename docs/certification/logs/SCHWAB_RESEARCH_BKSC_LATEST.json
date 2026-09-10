@@ -1,0 +1,206 @@
+{
+  "runner": "certify-schwab-research",
+  "version": "2026-09-10.published-origin.v1",
+  "observedAt": "2026-09-10T00:59:57.543Z",
+  "publishedOrigin": "https://capital-os-fund.replit.app",
+  "symbol": "BKSC",
+  "sessionProvided": true,
+  "targetHouseholdConfigured": false,
+  "authentication": {
+    "routeStatus": 401,
+    "authStrength": null,
+    "membershipCount": 0,
+    "activeMembershipCount": 0,
+    "targetMembershipMatched": false,
+    "responseFields": [
+      "code",
+      "correlationId",
+      "message"
+    ]
+  },
+  "routes": [
+    {
+      "id": "instrument-fundamental",
+      "capability": "INSTRUMENT_FUNDAMENTAL",
+      "path": "/api/research/schwab/instruments",
+      "requestParameterNames": [
+        "projection",
+        "symbol"
+      ],
+      "routeStatus": 401,
+      "providerGetCount": 0,
+      "responseFields": [
+        "code",
+        "correlationId",
+        "message"
+      ],
+      "providerSafeHeaders": {
+        "providerRequestId": null,
+        "providerStatus": null,
+        "rateLimit": {
+          "limit": null,
+          "remaining": null,
+          "resetAt": null,
+          "retryAfterSeconds": null
+        }
+      },
+      "fieldInventory": [],
+      "freshness": {
+        "providerAsOf": null,
+        "freshness": null,
+        "realtime": null,
+        "delayed": null
+      }
+    },
+    {
+      "id": "current-quote",
+      "capability": "CURRENT_QUOTE",
+      "path": "/api/research/schwab/quotes/BKSC",
+      "requestParameterNames": [],
+      "routeStatus": 401,
+      "providerGetCount": 0,
+      "responseFields": [
+        "code",
+        "correlationId",
+        "message"
+      ],
+      "providerSafeHeaders": {
+        "providerRequestId": null,
+        "providerStatus": null,
+        "rateLimit": {
+          "limit": null,
+          "remaining": null,
+          "resetAt": null,
+          "retryAfterSeconds": null
+        }
+      },
+      "fieldInventory": [],
+      "freshness": {
+        "providerAsOf": null,
+        "freshness": null,
+        "realtime": null,
+        "delayed": null
+      }
+    },
+    {
+      "id": "daily-price-history",
+      "capability": "DAILY_PRICE_HISTORY",
+      "path": "/api/research/schwab/price-history",
+      "requestParameterNames": [
+        "endDate",
+        "startDate",
+        "symbol"
+      ],
+      "routeStatus": 401,
+      "providerGetCount": 0,
+      "responseFields": [
+        "code",
+        "correlationId",
+        "message"
+      ],
+      "providerSafeHeaders": {
+        "providerRequestId": null,
+        "providerStatus": null,
+        "rateLimit": {
+          "limit": null,
+          "remaining": null,
+          "resetAt": null,
+          "retryAfterSeconds": null
+        }
+      },
+      "fieldInventory": [],
+      "freshness": {
+        "providerAsOf": null,
+        "freshness": null,
+        "realtime": null,
+        "delayed": null
+      }
+    }
+  ],
+  "providerGetCounts": {
+    "expectedPerRoute": 1,
+    "expectedTotal": 3,
+    "observedByRoute": {
+      "instrument-fundamental": 0,
+      "current-quote": 0,
+      "daily-price-history": 0
+    },
+    "observedTotal": 0
+  },
+  "checks": [
+    {
+      "id": "SW-00-published-origin",
+      "status": "PASS",
+      "detail": "A published HTTPS origin is required."
+    },
+    {
+      "id": "SW-00-session",
+      "status": "PASS",
+      "detail": "A pre-approved Clerk operator session cookie is required; its value is never printed or persisted."
+    },
+    {
+      "id": "SW-01-authenticated-clerk-session",
+      "status": "BLOCKED",
+      "detail": "The published origin returned an authenticated Clerk session with an active household membership."
+    },
+    {
+      "id": "SW-instrument-fundamental-route",
+      "status": "BLOCKED",
+      "detail": "The published research route returned HTTP 401 (AUTHENTICATION_REQUIRED)."
+    },
+    {
+      "id": "SW-instrument-fundamental-freshness",
+      "status": "BLOCKED",
+      "detail": "No provider freshness evidence was returned because the route did not produce a research envelope."
+    },
+    {
+      "id": "SW-instrument-fundamental-provider-get-count",
+      "status": "PASS",
+      "detail": "Provider GET count is recorded from the route contract without exposing provider payloads."
+    },
+    {
+      "id": "SW-current-quote-route",
+      "status": "BLOCKED",
+      "detail": "The published research route returned HTTP 401 (AUTHENTICATION_REQUIRED)."
+    },
+    {
+      "id": "SW-current-quote-freshness",
+      "status": "BLOCKED",
+      "detail": "No provider freshness evidence was returned because the route did not produce a research envelope."
+    },
+    {
+      "id": "SW-current-quote-provider-get-count",
+      "status": "PASS",
+      "detail": "Provider GET count is recorded from the route contract without exposing provider payloads."
+    },
+    {
+      "id": "SW-daily-price-history-route",
+      "status": "BLOCKED",
+      "detail": "The published research route returned HTTP 401 (AUTHENTICATION_REQUIRED)."
+    },
+    {
+      "id": "SW-daily-price-history-freshness",
+      "status": "BLOCKED",
+      "detail": "No provider freshness evidence was returned because the route did not produce a research envelope."
+    },
+    {
+      "id": "SW-daily-price-history-provider-get-count",
+      "status": "PASS",
+      "detail": "Provider GET count is recorded from the route contract without exposing provider payloads."
+    },
+    {
+      "id": "SW-05-no-dossier-or-execution-routes",
+      "status": "PASS",
+      "detail": "Only the authenticated preflight and three fixed Schwab research paths were requested."
+    },
+    {
+      "id": "SW-06-exactly-three-provider-gets",
+      "status": "BLOCKED",
+      "detail": "Each research capability must account for exactly one provider GET."
+    }
+  ],
+  "containsCredentials": false,
+  "executionAuthority": "none",
+  "dossierAccess": false,
+  "result": "BLOCKED"
+}

@@ -393,6 +393,93 @@ export type SchwabResearchPriceHistoryEnvelope = SchwabResearchEnvelopeBase & {
   data: SchwabResearchPriceHistory;
 };
 
+export interface SchwabResearchCertificationRateLimit {
+  /** @nullable */
+  providerRequestId: string | null;
+  /** @nullable */
+  limit: number | null;
+  /** @nullable */
+  remaining: number | null;
+  /** @nullable */
+  resetAt: string | null;
+  /** @nullable */
+  retryAfterSeconds: number | null;
+}
+
+export type SchwabResearchCertificationCapabilityCapability = typeof SchwabResearchCertificationCapabilityCapability[keyof typeof SchwabResearchCertificationCapabilityCapability];
+
+
+export const SchwabResearchCertificationCapabilityCapability = {
+  INSTRUMENT_FUNDAMENTAL: 'INSTRUMENT_FUNDAMENTAL',
+  CURRENT_QUOTE: 'CURRENT_QUOTE',
+  DAILY_PRICE_HISTORY: 'DAILY_PRICE_HISTORY',
+} as const;
+
+export type SchwabResearchCertificationCapabilityStatus = typeof SchwabResearchCertificationCapabilityStatus[keyof typeof SchwabResearchCertificationCapabilityStatus];
+
+
+export const SchwabResearchCertificationCapabilityStatus = {
+  CONFIRMED: 'CONFIRMED',
+  PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+} as const;
+
+export type SchwabResearchCertificationCapabilityCandleDateRange = {
+  start: string;
+  end: string;
+} | null;
+
+export interface SchwabResearchCertificationCapability {
+  capability: SchwabResearchCertificationCapabilityCapability;
+  status: SchwabResearchCertificationCapabilityStatus;
+  /** @nullable */
+  providerHttpStatus: number | null;
+  /** @nullable */
+  providerRequestId: string | null;
+  /** @nullable */
+  realtime: boolean | null;
+  /** @nullable */
+  delayed: boolean | null;
+  /** @nullable */
+  freshness: string | null;
+  fieldInventory: string[];
+  nullFields: string[];
+  /** @nullable */
+  candlesReturned: number | null;
+  candleDateRange: SchwabResearchCertificationCapabilityCandleDateRange;
+  entitlementError: boolean;
+  tokenRefreshRequired: boolean;
+  /** @nullable */
+  errorCode: string | null;
+  rateLimit: SchwabResearchCertificationRateLimit;
+}
+
+export type SchwabResearchCertificationResult = typeof SchwabResearchCertificationResult[keyof typeof SchwabResearchCertificationResult];
+
+
+export const SchwabResearchCertificationResult = {
+  PASS: 'PASS',
+  BLOCKED: 'BLOCKED',
+} as const;
+
+export interface SchwabResearchCertification {
+  id: string;
+  symbol: 'BKSC';
+  result: SchwabResearchCertificationResult;
+  requestedAt: string;
+  completedAt: string;
+  providerGetCount: number;
+  capabilities: SchwabResearchCertificationCapability[];
+  readOnly: true;
+  tradingEnabled: false;
+  executionAuthority: 'none';
+  noTradingOrMoneyMovement: true;
+  createdAt: string;
+}
+
+export interface SchwabResearchCertificationResponse {
+  certification: SchwabResearchCertification | null;
+}
+
 export type SchwabDisconnectResultStatus = typeof SchwabDisconnectResultStatus[keyof typeof SchwabDisconnectResultStatus];
 
 
@@ -4151,6 +4238,7 @@ export type CapabilityReadinessInstrumentMetadata = typeof CapabilityReadinessIn
 
 export const CapabilityReadinessInstrumentMetadata = {
   PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+  CONFIRMED: 'CONFIRMED',
 } as const;
 
 export type CapabilityReadinessFundamentals = typeof CapabilityReadinessFundamentals[keyof typeof CapabilityReadinessFundamentals];
@@ -4158,6 +4246,7 @@ export type CapabilityReadinessFundamentals = typeof CapabilityReadinessFundamen
 
 export const CapabilityReadinessFundamentals = {
   PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+  CONFIRMED: 'CONFIRMED',
 } as const;
 
 export type CapabilityReadinessPriceHistory = typeof CapabilityReadinessPriceHistory[keyof typeof CapabilityReadinessPriceHistory];
@@ -4165,6 +4254,7 @@ export type CapabilityReadinessPriceHistory = typeof CapabilityReadinessPriceHis
 
 export const CapabilityReadinessPriceHistory = {
   PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+  CONFIRMED: 'CONFIRMED',
 } as const;
 
 export type CapabilityReadinessMovers = typeof CapabilityReadinessMovers[keyof typeof CapabilityReadinessMovers];

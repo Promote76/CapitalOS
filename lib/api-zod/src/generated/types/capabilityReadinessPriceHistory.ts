@@ -11,4 +11,5 @@ export type CapabilityReadinessPriceHistory = typeof CapabilityReadinessPriceHis
 
 export const CapabilityReadinessPriceHistory = {
   PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+  CONFIRMED: 'CONFIRMED',
 } as const;

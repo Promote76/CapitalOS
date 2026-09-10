@@ -256,6 +256,8 @@ import type {
   SchwabMarketDataStatus,
   SchwabOAuthCallbackParams,
   SchwabRefreshResult,
+  SchwabResearchCertification,
+  SchwabResearchCertificationResponse,
   SchwabResearchInstrumentEnvelope,
   SchwabResearchPriceHistoryEnvelope,
   SchwabResearchQuoteEnvelope,
@@ -17780,6 +17782,154 @@ export function useGetSchwabResearchPriceHistory<TData = Awaited<ReturnType<type
 
 
 
+
+export const getGetSchwabResearchCertificationUrl = () => {
+
+
+
+
+  return `/api/research/schwab/certification`
+}
+
+/**
+ * @summary Read the latest household-scoped BKSC research certification
+ */
+export const getSchwabResearchCertification = async ( options?: Parameters<typeof customFetch>[1]): Promise<SchwabResearchCertificationResponse> => {
+
+  return customFetch<SchwabResearchCertificationResponse>(getGetSchwabResearchCertificationUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchwabResearchCertificationQueryKey = () => {
+    return [
+    `/api/research/schwab/certification`
+    ] as const;
+    }
+
+
+export const getGetSchwabResearchCertificationQueryOptions = <TData = Awaited<ReturnType<typeof getSchwabResearchCertification>>, TError = ErrorType<ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchwabResearchCertification>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchwabResearchCertificationQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchwabResearchCertification>>> = ({ signal }) => getSchwabResearchCertification({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchwabResearchCertification>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchwabResearchCertificationQueryResult = NonNullable<Awaited<ReturnType<typeof getSchwabResearchCertification>>>
+export type GetSchwabResearchCertificationQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary Read the latest household-scoped BKSC research certification
+ */
+
+export function useGetSchwabResearchCertification<TData = Awaited<ReturnType<typeof getSchwabResearchCertification>>, TError = ErrorType<ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchwabResearchCertification>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchwabResearchCertificationQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRunSchwabResearchCertificationUrl = () => {
+
+
+
+
+  return `/api/research/schwab/certification`
+}
+
+/**
+ * @summary Run exactly three read-only BKSC Schwab Market Data requests
+ */
+export const runSchwabResearchCertification = async ( options?: Parameters<typeof customFetch>[1]): Promise<SchwabResearchCertification> => {
+
+  return customFetch<SchwabResearchCertification>(getRunSchwabResearchCertificationUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRunSchwabResearchCertificationMutationOptions = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runSchwabResearchCertification>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runSchwabResearchCertification>>, TError,void, TContext> => {
+
+const mutationKey = ['runSchwabResearchCertification'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runSchwabResearchCertification>>, void> = () => {
+
+
+          return  runSchwabResearchCertification(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunSchwabResearchCertificationMutationResult = NonNullable<Awaited<ReturnType<typeof runSchwabResearchCertification>>>
+
+    export type RunSchwabResearchCertificationMutationError = ErrorType<ForbiddenResponse>
+
+    /**
+ * @summary Run exactly three read-only BKSC Schwab Market Data requests
+ */
+export const useRunSchwabResearchCertification = <TError = ErrorType<ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runSchwabResearchCertification>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runSchwabResearchCertification>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRunSchwabResearchCertificationMutationOptions(options));
+    }
 
 export const getDisconnectSchwabConnectionUrl = () => {
 

@@ -1,7 +1,8 @@
 # Schwab BKSC research certification — 2026-09-10
 
-**Decision:** **BLOCKED — production operator authentication stopped the run
-before Schwab**
+**Decision:** **BLOCKED — the prior published-origin runner stopped at
+production authentication; the authenticated in-app certification is now the
+required path for live evidence**
 
 **Published origin:** `https://capital-os-fund.replit.app`  
 **Symbol:** `BKSC`  
@@ -85,6 +86,34 @@ GET boundary exits non-zero and keeps the certification `BLOCKED` or `FAIL`.
 The runner does not request dossier, order, transfer, withdrawal, execution-
 control, or Micro-Live routes.
 
+## Authenticated in-app certification
+
+The Research page now exposes **Run BKSC Research Certification**. This is the
+required live path because it uses the existing Clerk browser session and the
+household's encrypted Schwab Market Data connection; it does not accept a
+copied Clerk cookie or a workspace session secret. The protected token refresh
+action uses the existing Clerk reverification flow when the Market Data access
+token is expired.
+
+The server action performs, in order, exactly one fixed HTTPS `GET` for each:
+
+1. BKSC instrument lookup with the fundamental projection;
+2. one BKSC current quote;
+3. one bounded recent daily price-history request.
+
+It persists only a redacted certification record containing provider HTTP
+outcomes, safe request/rate-limit headers, field and null-field inventories,
+realtime/delayed and freshness states, entitlement/token-refresh states, and
+history count/date range. Raw provider payloads, tokens, and account
+identifiers are not persisted. A capability changes from
+`PENDING_PROVIDER_CONFIRMATION` to `CONFIRMED` only after its provider request
+and normalizer/schema validation succeed.
+
+The certification response includes explicit `readOnly=true`,
+`tradingEnabled=false`, `executionAuthority=none`, and
+`noTradingOrMoneyMovement=true`. It does not call dossier, Grok, order,
+transfer, execution-control, or Micro-Live routes.
+
 ## Boundary checks
 
 No production evidence in this run touched or exposed:
@@ -104,10 +133,9 @@ run.
 ## Pending capabilities
 
 Instrument fundamentals and daily price history remain **PENDING** until a
-real authenticated production session reaches Schwab and confirms the
-provider response schemas and entitlements. The quote route is also not
-live-certified because the authentication boundary prevented provider
-access. No BKSC research result from this run may be used in a dossier.
+real authenticated operator runs the in-app action and confirms the provider
+response schemas and entitlements. No BKSC research result from this report may
+be used in a dossier until that action produces a successful redacted record.
 
 ## Verification
 
@@ -121,7 +149,7 @@ scripts/node_modules/.bin/tsx --test \
 pnpm --filter @workspace/api-server test
 ```
 
-The API contract check reported 238 route/method pairs. The full API test
+The API contract check reported 240 route/method pairs. The full API test
 suite passed (235 tests passed, 50 skipped, 0 failed); the dedicated research
 adapter suite passed (6 tests), and the Schwab Market Data integration route
 fixture passed (1 test).

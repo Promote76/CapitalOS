@@ -3558,9 +3558,9 @@ export const ListResearchDossiersResponse = zod.object({
   "quote": zod.enum(['implemented']),
   "market_hours": zod.enum(['implemented']),
   "portfolio_position": zod.enum(['implemented']),
-  "instrument_metadata": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
-  "fundamentals": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
-  "price_history": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "instrument_metadata": zod.enum(['PENDING_PROVIDER_CONFIRMATION', 'CONFIRMED']),
+  "fundamentals": zod.enum(['PENDING_PROVIDER_CONFIRMATION', 'CONFIRMED']),
+  "price_history": zod.enum(['PENDING_PROVIDER_CONFIRMATION', 'CONFIRMED']),
   "movers": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
   "options": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
   "streaming": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
@@ -3824,9 +3824,9 @@ export const CreateResearchDossierResponse = zod.object({
   "quote": zod.enum(['implemented']),
   "market_hours": zod.enum(['implemented']),
   "portfolio_position": zod.enum(['implemented']),
-  "instrument_metadata": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
-  "fundamentals": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
-  "price_history": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
+  "instrument_metadata": zod.enum(['PENDING_PROVIDER_CONFIRMATION', 'CONFIRMED']),
+  "fundamentals": zod.enum(['PENDING_PROVIDER_CONFIRMATION', 'CONFIRMED']),
+  "price_history": zod.enum(['PENDING_PROVIDER_CONFIRMATION', 'CONFIRMED']),
   "movers": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
   "options": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
   "streaming": zod.enum(['PENDING_PROVIDER_CONFIRMATION']),
@@ -11493,6 +11493,96 @@ export const GetSchwabResearchPriceHistoryResponse = zod.object({
 })
 })
 }))
+
+
+/**
+ * @summary Read the latest household-scoped BKSC research certification
+ */
+export const GetSchwabResearchCertificationResponse = zod.object({
+  "certification": zod.union([zod.object({
+  "id": zod.string(),
+  "symbol": zod.literal("BKSC"),
+  "result": zod.enum(['PASS', 'BLOCKED']),
+  "requestedAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date(),
+  "providerGetCount": zod.number(),
+  "capabilities": zod.array(zod.object({
+  "capability": zod.enum(['INSTRUMENT_FUNDAMENTAL', 'CURRENT_QUOTE', 'DAILY_PRICE_HISTORY']),
+  "status": zod.enum(['CONFIRMED', 'PENDING_PROVIDER_CONFIRMATION']),
+  "providerHttpStatus": zod.number().nullable(),
+  "providerRequestId": zod.string().nullable(),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable(),
+  "freshness": zod.string().nullable(),
+  "fieldInventory": zod.array(zod.string()),
+  "nullFields": zod.array(zod.string()),
+  "candlesReturned": zod.number().nullable(),
+  "candleDateRange": zod.union([zod.null(),zod.object({
+  "start": zod.coerce.date(),
+  "end": zod.coerce.date()
+})]),
+  "entitlementError": zod.boolean(),
+  "tokenRefreshRequired": zod.boolean(),
+  "errorCode": zod.string().nullable(),
+  "rateLimit": zod.object({
+  "providerRequestId": zod.string().nullable(),
+  "limit": zod.number().nullable(),
+  "remaining": zod.number().nullable(),
+  "resetAt": zod.string().nullable(),
+  "retryAfterSeconds": zod.number().nullable()
+})
+})),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "executionAuthority": zod.literal("none"),
+  "noTradingOrMoneyMovement": zod.literal(true),
+  "createdAt": zod.coerce.date()
+}),zod.null()])
+})
+
+
+/**
+ * @summary Run exactly three read-only BKSC Schwab Market Data requests
+ */
+export const RunSchwabResearchCertificationResponse = zod.object({
+  "id": zod.string(),
+  "symbol": zod.literal("BKSC"),
+  "result": zod.enum(['PASS', 'BLOCKED']),
+  "requestedAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date(),
+  "providerGetCount": zod.number(),
+  "capabilities": zod.array(zod.object({
+  "capability": zod.enum(['INSTRUMENT_FUNDAMENTAL', 'CURRENT_QUOTE', 'DAILY_PRICE_HISTORY']),
+  "status": zod.enum(['CONFIRMED', 'PENDING_PROVIDER_CONFIRMATION']),
+  "providerHttpStatus": zod.number().nullable(),
+  "providerRequestId": zod.string().nullable(),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable(),
+  "freshness": zod.string().nullable(),
+  "fieldInventory": zod.array(zod.string()),
+  "nullFields": zod.array(zod.string()),
+  "candlesReturned": zod.number().nullable(),
+  "candleDateRange": zod.union([zod.null(),zod.object({
+  "start": zod.coerce.date(),
+  "end": zod.coerce.date()
+})]),
+  "entitlementError": zod.boolean(),
+  "tokenRefreshRequired": zod.boolean(),
+  "errorCode": zod.string().nullable(),
+  "rateLimit": zod.object({
+  "providerRequestId": zod.string().nullable(),
+  "limit": zod.number().nullable(),
+  "remaining": zod.number().nullable(),
+  "resetAt": zod.string().nullable(),
+  "retryAfterSeconds": zod.number().nullable()
+})
+})),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "executionAuthority": zod.literal("none"),
+  "noTradingOrMoneyMovement": zod.literal(true),
+  "createdAt": zod.coerce.date()
+})
 
 
 /**

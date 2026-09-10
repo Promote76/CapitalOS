@@ -2,7 +2,7 @@
 
 **Evidence date:** 2026-09-10
 **Decision:** **IN-HOUSE ONLY — READY FOR CONTROLLED INTERNAL USE**
-<!-- tenant-route-inventory: 238 -->
+<!-- tenant-route-inventory: 240 -->
 
 This index distinguishes executable evidence from source review and blocked infrastructure evidence. It must not be used to check a release-gate item unless the referenced evidence actually exists.
 The route count marker is checked against the authoritative route inventory during
@@ -19,7 +19,7 @@ API contract certification; stale evidence fails that release check.
 | Migration / restore | Disposable schema setup only; provider recovery controls are not exercised by this task | No production migration, backup restore, or PITR claim was independently proven by this certification. | OPEN |
 | Browser E2E | `docs/certification/household-privacy-runs/household-privacy-2026-09-07T01-17-55Z.log` | Authenticated Clerk browser fixture passed Family Office disabled-provider, loading, provider-error, proposal-review, Shadow-portfolio, hypothetical-intent, and secret/non-execution checks. Contribution-specific certification remains blocked. | PASS for Family Office slice; contribution browser BLOCKED |
 | Grok/xAI provider | `docs/certification/XAI_PROVIDER_CERTIFICATION_2026-09-07.md`; `docs/certification/household-privacy-runs/household-privacy-2026-09-07T01-58-16Z.log` | The authenticated model catalog and strict-schema adapter passed in development. Production health/origin probes passed, and a normal authenticated production session completed one advisory research run with provider status ready and retained output. Automated Clerk reverification certification remains separate. | PASS for controlled development activation, production public boundary, and authenticated production provider runtime |
-| Schwab BKSC research | `docs/certification/SCHWAB_RESEARCH_BKSC_CERTIFICATION_2026-09-10.md` | The controlled published-origin probe reached all three read-only routes once, but production authentication returned 401 before Schwab. The local fixture proves one HTTPS GET per capability and safe projection boundaries; no live provider payload was accepted as dossier evidence. | OPEN — live provider certification blocked at authentication; fundamentals and price history remain pending |
+| Schwab BKSC research | `docs/certification/SCHWAB_RESEARCH_BKSC_CERTIFICATION_2026-09-10.md` | The authenticated Capital OS Research page now provides the protected `Run BKSC Research Certification` action. It uses the household’s encrypted Market Data connection, requests the three fixed read-only capabilities exactly once, persists redacted provider evidence, and keeps failed or unvalidated capabilities pending. A live operator run is still required before any payload can be used as dossier evidence. | OPEN — live provider certification requires the authenticated in-app run; fundamentals and price history remain pending |
 | Accounting | Exact-cent and empty-ledger domain tests | Empty evidence no longer reports reconciled; cross-view accounting remains partial | OPEN |
 | Operations | `operations-recovery-2026-09-06T22-53-10Z.log` | OR-01..OR-24 passed (29 tests); safe operations remain prepare-only | PASS |
 | Micro-Live | Domain safety tests and disabled adapter boundary | Real transmission remains disabled; full persistence-failure drill absent | PARTIAL |
@@ -27,8 +27,8 @@ API contract certification; stale evidence fails that release check.
 
 ## Latest matrix execution
 
-All 238 route/method pairs are in the current executable surface; the
-certification checklist included the 238-route tenant preflight target, while the
+All 240 route/method pairs are in the current executable surface; the
+certification checklist included the 240-route tenant preflight target, while the
 referenced certification run predates the Daily Ops routes and covered the prior
 170-route surface. The clean guarded
 replay covered the complete inventory. The run passed with 393 probes,

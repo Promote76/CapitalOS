@@ -351,6 +351,13 @@
       "when": 1788994936493,
       "tag": "0049_gifted_kylun",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1789003089504,
+      "tag": "0050_sudden_grim_reaper",
+      "breakpoints": true
     }
   ]
 }

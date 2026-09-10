@@ -9,6 +9,7 @@ import {
   schwabConnections,
   schwabMarketDataConnections,
   schwabMarketDataOAuthStates,
+  schwabResearchCertifications,
   users,
 } from "@workspace/db";
 import {
@@ -166,6 +167,52 @@ test("separate Schwab Market Data app keeps OAuth, tokens, reads, and disconnect
     assert.equal(researchCalls.length, 3);
     assert.ok(researchCalls.every(({ url }) => !/orders|transfers|micro-live|execution-control/.test(url)));
 
+    researchCalls.length = 0;
+    const certification = await request("/research/schwab/certification", { method: "POST" });
+    assert.equal(certification.status, 200);
+    const certificationBody = await certification.json() as Record<string, any>;
+    assert.equal(certificationBody.result, "PASS");
+    assert.equal(certificationBody.symbol, "BKSC");
+    assert.equal(certificationBody.providerGetCount, 3);
+    assert.equal(certificationBody.capabilities.length, 3);
+    assert.ok(certificationBody.capabilities.every((item: Record<string, unknown>) => item.status === "CONFIRMED"));
+    assert.ok(certificationBody.capabilities.every((item: Record<string, unknown>) => item.providerHttpStatus === 200));
+    assert.equal(certificationBody.readOnly, true);
+    assert.equal(certificationBody.tradingEnabled, false);
+    assert.equal(certificationBody.executionAuthority, "none");
+    assert.equal(certificationBody.noTradingOrMoneyMovement, true);
+    assert.doesNotMatch(JSON.stringify(certificationBody), /market-access-secret|market-refresh-secret/);
+    assert.equal(researchCalls.length, 3);
+    const [savedCertification] = await db.select().from(schwabResearchCertifications)
+      .where(eq(schwabResearchCertifications.householdId, household.id));
+    assert.ok(savedCertification);
+    assert.equal(savedCertification.result, "PASS");
+    assert.doesNotMatch(JSON.stringify(savedCertification.record), /market-access-secret|market-refresh-secret/);
+    assert.ok(researchCalls.every(({ method }) => method === "GET"));
+    assert.deepEqual(researchCalls.map(({ url }) => new URL(url).pathname).sort(), [
+      "/marketdata/v1/instruments",
+      "/marketdata/v1/pricehistory",
+      "/marketdata/v1/quotes",
+    ]);
+    const certificationHistoryRequest = researchCalls.find(({ url }) => url.includes("/pricehistory"));
+    assert.ok(certificationHistoryRequest);
+    const certificationHistoryUrl = new URL(certificationHistoryRequest.url);
+    assert.equal(certificationHistoryUrl.searchParams.get("symbol"), "BKSC");
+    assert.ok(Number(certificationHistoryUrl.searchParams.get("endDate")) < Date.now());
+    assert.ok(Number(certificationHistoryUrl.searchParams.get("endDate")) - Number(certificationHistoryUrl.searchParams.get("startDate")) <= 30 * 86_400_000);
+
+    await db.update(schwabMarketDataConnections)
+      .set({ accessTokenExpiresAt: new Date(Date.now() - 1_000) })
+      .where(eq(schwabMarketDataConnections.householdId, household.id));
+    researchCalls.length = 0;
+    const expiredCertification = await request("/research/schwab/certification", { method: "POST" });
+    assert.equal(expiredCertification.status, 200);
+    const expiredCertificationBody = await expiredCertification.json() as Record<string, any>;
+    assert.equal(expiredCertificationBody.result, "BLOCKED");
+    assert.equal(expiredCertificationBody.providerGetCount, 0);
+    assert.ok(expiredCertificationBody.capabilities.every((item: Record<string, unknown>) => item.tokenRefreshRequired === true));
+    assert.equal(researchCalls.length, 0);
+
     const [otherUser] = await db.insert(users).values({ email: `schwab-market-other-${randomUUID()}@capitalos.test`, displayName: "Other household", status: "active" }).returning({ id: users.id });
     const [otherHousehold] = await db.insert(households).values({ name: `Other Market Data ${randomUUID()}` }).returning({ id: households.id });
     await db.insert(householdMembers).values({ householdId: otherHousehold.id, userId: otherUser.id, role: "owner", permissions: ["read"], active: true });
@@ -174,7 +221,7 @@ test("separate Schwab Market Data app keeps OAuth, tokens, reads, and disconnect
     });
     assert.equal(isolated.status, 409);
     assert.equal((await isolated.json() as Record<string, unknown>).code, "MARKET_DATA_DISCONNECTED");
-    assert.equal(researchCalls.length, 3);
+    assert.equal(researchCalls.length, 0);
 
     assert.equal((await request("/integrations/schwab/market-data/disconnect", { method: "POST" })).status, 200);
     const [portfolio] = await db.select().from(schwabConnections).where(eq(schwabConnections.householdId, household.id));

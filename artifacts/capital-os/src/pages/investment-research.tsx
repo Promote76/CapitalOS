@@ -5,10 +5,18 @@ import {
   useRegisterResearchEvidence,
   useReviewResearchEvidence,
   useCreateResearchDossier,
+  useGetSchwabResearchCertification,
+  useRunSchwabResearchCertification,
+  useRefreshSchwabMarketDataConnection,
+  getGetSchwabResearchCertificationQueryKey,
+  getListResearchDossiersQueryKey,
   type ResearchEvidence,
+  type SchwabResearchCertification,
 } from "@workspace/api-client-react";
 import { AlertCircle, FilePlus2, X, FileText, CheckCircle2, FlaskConical, Clock, Beaker, FileSearch } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useProviderProtectedAction } from "@/lib/reverification";
+import { useQueryClient } from "@tanstack/react-query";
 
 const PageHeading = ({ eyebrow, title, description, actions }: { eyebrow: string; title: ReactNode; description?: string; actions?: ReactNode }) => (
   <div className="page-heading animate-in">
@@ -30,9 +38,68 @@ const CardTitle = ({ title, subtitle }: { title: ReactNode; subtitle?: ReactNode
   </div>
 );
 
+function certificationCapabilityLabel(capability: string) {
+  if (capability === "INSTRUMENT_FUNDAMENTAL") return "Instrument fundamentals";
+  if (capability === "CURRENT_QUOTE") return "Current quote";
+  return "Daily price history";
+}
+
+function CertificationCapability({ item }: { item: SchwabResearchCertification["capabilities"][number] }) {
+  const hasRateLimit = Object.values(item.rateLimit).some((value) => value !== null);
+  return (
+    <article className="forecast-row" style={{ padding: 14 }}>
+      <div className="flex items-center justify-between gap-3">
+        <strong>{certificationCapabilityLabel(item.capability)}</strong>
+        <span className={item.status === "CONFIRMED" ? "status text-green-500 bg-green-500/10" : "status pending"}>
+          {item.status === "CONFIRMED" ? "Confirmed" : "Pending"}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-xs">
+        <div><span className="text-[var(--ink-light)] block">Provider HTTP</span><strong>{item.providerHttpStatus ?? "Not reached"}</strong></div>
+        <div><span className="text-[var(--ink-light)] block">Request ID</span><strong className="font-mono">{item.providerRequestId ?? "Not supplied"}</strong></div>
+        <div><span className="text-[var(--ink-light)] block">Realtime / delayed</span><strong>{item.realtime === null ? "—" : item.realtime ? "Yes" : "No"} / {item.delayed === null ? "—" : item.delayed ? "Yes" : "No"}</strong></div>
+        <div><span className="text-[var(--ink-light)] block">Freshness</span><strong>{item.freshness ?? "Not available"}</strong></div>
+      </div>
+      {item.capability === "DAILY_PRICE_HISTORY" && (
+        <div className="mt-3 text-xs">
+          <span className="text-[var(--ink-light)]">Candles: </span>
+          <strong>{item.candlesReturned ?? "Not reached"}</strong>
+          {item.candleDateRange && <span> · {new Date(item.candleDateRange.start).toLocaleDateString()} – {new Date(item.candleDateRange.end).toLocaleDateString()}</span>}
+        </div>
+      )}
+      <div className="mt-3 text-xs">
+        <span className="text-[var(--ink-light)] block">Fields returned</span>
+        <span>{item.fieldInventory.length ? item.fieldInventory.join(", ") : "None"}</span>
+      </div>
+      <div className="mt-2 text-xs">
+        <span className="text-[var(--ink-light)] block">Missing / null fields</span>
+        <span>{item.nullFields.length ? item.nullFields.join(", ") : "None observed"}</span>
+      </div>
+      {(item.entitlementError || item.tokenRefreshRequired || item.errorCode) && (
+        <div className="mt-3 text-xs" style={{ color: item.tokenRefreshRequired ? "#9b6b18" : "#a43a2e" }}>
+          {item.entitlementError && <span className="block">Entitlement error returned.</span>}
+          {item.tokenRefreshRequired && <span className="block">Token refresh required.</span>}
+          {item.errorCode && <span className="block">State: {item.errorCode}</span>}
+        </div>
+      )}
+      {hasRateLimit && (
+        <div className="mt-3 text-xs text-[var(--ink-light)]">
+          Rate limit: {item.rateLimit.remaining ?? "—"} remaining of {item.rateLimit.limit ?? "—"}
+          {item.rateLimit.retryAfterSeconds !== null && ` · retry after ${item.rateLimit.retryAfterSeconds}s`}
+        </div>
+      )}
+    </article>
+  );
+}
+
 export default function InvestmentResearchPage() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const dossiersQuery = useListResearchDossiers();
+  const certificationQuery = useGetSchwabResearchCertification();
+  const runCertification = useRunSchwabResearchCertification();
+  const marketDataRefresh = useRefreshSchwabMarketDataConnection();
+  const protectedMarketDataRefresh = useProviderProtectedAction(() => marketDataRefresh.mutateAsync());
   
   const requestUpload = useRequestResearchEvidenceUpload();
   const registerEvidence = useRegisterResearchEvidence();
@@ -48,6 +115,34 @@ export default function InvestmentResearchPage() {
   const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<Set<string>>(new Set());
   const [researchText, setResearchText] = useState("");
   const lastTemplateRef = useRef("");
+  const [isRefreshingForCertification, setIsRefreshingForCertification] = useState(false);
+
+  const handleRunCertification = async () => {
+    try {
+      let result = await runCertification.mutateAsync();
+      if (result.capabilities.some((item) => item.tokenRefreshRequired)) {
+        setIsRefreshingForCertification(true);
+        await protectedMarketDataRefresh();
+        result = await runCertification.mutateAsync();
+      }
+      await queryClient.invalidateQueries({ queryKey: getGetSchwabResearchCertificationQueryKey() });
+      await queryClient.invalidateQueries({ queryKey: getListResearchDossiersQueryKey() });
+      toast({
+        title: result.result === "PASS" ? "BKSC certification confirmed" : "BKSC certification remains pending",
+        description: result.result === "PASS"
+          ? "All three read-only Schwab Market Data schemas passed validation."
+          : "No trading or money movement occurred. Review the capability results below.",
+      });
+    } catch (error) {
+      toast({
+        title: "BKSC certification failed",
+        description: error instanceof Error ? error.message : "The read-only certification could not complete.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshingForCertification(false);
+    }
+  };
 
   const generateTemplate = (title: string, ticker: string, evIds: Set<string>, evList: ResearchEvidence[]) => {
     const selectedList = evList.filter(ev => evIds.has(ev.id));
@@ -189,6 +284,8 @@ Research Notes:
   if (isError || !data) return <main className="content"><PageHeading eyebrow="Investment Research" title={<>Workspace<br/><em>unavailable.</em></>} description="Could not load the research workspace." /><section className="card card-pad empty-state"><AlertCircle size={19} /><div><strong>Data unavailable</strong><p>Please try again later.</p></div></section></main>;
 
   const { dossiers, evidence, capabilityReadiness } = data;
+  const certification = certificationQuery.data?.certification;
+  const certificationBusy = runCertification.isPending || isRefreshingForCertification || marketDataRefresh.isPending;
 
   const getCapabilityClass = (status: string) => {
     if (status === "implemented") return "status text-green-500 bg-green-500/10";
@@ -215,9 +312,9 @@ Research Notes:
           </div>
           <div className="flex flex-col gap-3">
             <h3 className="font-medium text-sm">Pending Confirmation</h3>
-            <div className="flex flex-col gap-2"><span className="text-xs text-[var(--ink-light)] uppercase tracking-wider">Fundamentals</span><span className={getCapabilityClass(capabilityReadiness.fundamentals)}>Pending</span></div>
-            <div className="flex flex-col gap-2"><span className="text-xs text-[var(--ink-light)] uppercase tracking-wider">Instrument Metadata</span><span className={getCapabilityClass(capabilityReadiness.instrument_metadata)}>Pending</span></div>
-            <div className="flex flex-col gap-2"><span className="text-xs text-[var(--ink-light)] uppercase tracking-wider">Price History</span><span className={getCapabilityClass(capabilityReadiness.price_history)}>Pending</span></div>
+            <div className="flex flex-col gap-2"><span className="text-xs text-[var(--ink-light)] uppercase tracking-wider">Fundamentals</span><span className={getCapabilityClass(capabilityReadiness.fundamentals)}>{capabilityReadiness.fundamentals === "CONFIRMED" ? "Confirmed" : "Pending"}</span></div>
+            <div className="flex flex-col gap-2"><span className="text-xs text-[var(--ink-light)] uppercase tracking-wider">Instrument Metadata</span><span className={getCapabilityClass(capabilityReadiness.instrument_metadata)}>{capabilityReadiness.instrument_metadata === "CONFIRMED" ? "Confirmed" : "Pending"}</span></div>
+            <div className="flex flex-col gap-2"><span className="text-xs text-[var(--ink-light)] uppercase tracking-wider">Price History</span><span className={getCapabilityClass(capabilityReadiness.price_history)}>{capabilityReadiness.price_history === "CONFIRMED" ? "Confirmed" : "Pending"}</span></div>
             <div className="flex flex-col gap-2"><span className="text-xs text-[var(--ink-light)] uppercase tracking-wider">Movers</span><span className={getCapabilityClass(capabilityReadiness.movers)}>Pending</span></div>
             <div className="flex flex-col gap-2"><span className="text-xs text-[var(--ink-light)] uppercase tracking-wider">Options</span><span className={getCapabilityClass(capabilityReadiness.options)}>Pending</span></div>
             <div className="flex flex-col gap-2"><span className="text-xs text-[var(--ink-light)] uppercase tracking-wider">Streaming</span><span className={getCapabilityClass(capabilityReadiness.streaming)}>Pending</span></div>
@@ -235,6 +332,43 @@ Research Notes:
             <div className="flex flex-col gap-2"><span className="text-xs text-[var(--ink-light)] uppercase tracking-wider">Capital Allocation</span><span className={getCapabilityClass(capabilityReadiness.capital_allocation)}>Disabled</span></div>
           </div>
         </div>
+      </section>
+
+      <section className="card card-pad animate-in delay-2 mt-8" data-testid="schwab-research-certification">
+        <CardTitle
+          title="Schwab / Research"
+          subtitle="Controlled BKSC provider certification using the current household connection"
+        />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-5">
+          <p className="text-sm" style={{ color: 'var(--ink-light)', maxWidth: 680 }}>
+            Runs one instrument fundamentals request, one current quote, and one bounded daily history request.
+            Schwab Market Data is read-only; this action cannot trade, transfer, withdraw, allocate, or change Micro-Live state.
+          </p>
+          <button className="btn btn-primary" onClick={() => { void handleRunCertification(); }} disabled={certificationBusy}>
+            <FlaskConical size={16} />
+            {isRefreshingForCertification ? "Refreshing token..." : runCertification.isPending ? "Certifying..." : "Run BKSC Research Certification"}
+          </button>
+        </div>
+        {certificationQuery.isLoading && <div className="loading-skeleton mt-5" style={{ height: 120 }} />}
+        {certification && (
+          <div className="mt-6">
+            <div className="flex flex-wrap items-center gap-3 mb-4 text-sm">
+              <span className={certification.result === "PASS" ? "status text-green-500 bg-green-500/10" : "status pending"}>{certification.result}</span>
+              <span>Provider GETs: {certification.providerGetCount} / 3</span>
+              <span className="text-[var(--ink-light)]">Completed {new Date(certification.completedAt).toLocaleString()}</span>
+            </div>
+            <div className="flex flex-col gap-3">
+              {certification.capabilities.map((item) => <CertificationCapability key={item.capability} item={item} />)}
+            </div>
+            <div className="document-boundary mt-4" style={{ marginBottom: 0 }}>
+              <CheckCircle2 size={16} />
+              <div>
+                <strong>No trading or money movement occurred</strong>
+                <span>readOnly=true · tradingEnabled=false · executionAuthority=none</span>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="card card-pad animate-in delay-2 mt-8">

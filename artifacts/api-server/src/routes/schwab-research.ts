@@ -17,6 +17,10 @@ import {
   SchwabResearchError,
   type SchwabResearchCapability,
 } from "../services/schwab-research-adapter";
+import {
+  getLatestSchwabResearchCertification,
+  runSchwabResearchCertification,
+} from "../services/schwab-research-certification";
 
 const router: IRouter = Router();
 
@@ -79,5 +83,17 @@ const handle = (capability: SchwabResearchCapability) => asyncRoute(async (req, 
 router.get("/research/schwab/instruments", handle("INSTRUMENT_FUNDAMENTAL"));
 router.get("/research/schwab/quotes/:symbol", handle("CURRENT_QUOTE"));
 router.get("/research/schwab/price-history", handle("DAILY_PRICE_HISTORY"));
+
+router.get("/research/schwab/certification", asyncRoute(async (_req, res) => {
+  const actor = actorFrom(res);
+  assertPermission(actor.role, "read");
+  res.json({ certification: await getLatestSchwabResearchCertification(actor) });
+}));
+
+router.post("/research/schwab/certification", asyncRoute(async (_req, res) => {
+  const actor = actorFrom(res);
+  assertPermission(actor.role, "read");
+  res.json(await runSchwabResearchCertification(actor));
+}));
 
 export default router;

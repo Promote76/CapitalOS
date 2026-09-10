@@ -11,4 +11,5 @@ export type CapabilityReadinessFundamentals = typeof CapabilityReadinessFundamen
 
 export const CapabilityReadinessFundamentals = {
   PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+  CONFIRMED: 'CONFIRMED',
 } as const;

@@ -3666,6 +3666,21 @@ paths:
         "429": { description: Schwab research rate limit reached, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
         "502": { description: Invalid Schwab provider response, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
         "503": { description: Schwab research provider unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /research/schwab/certification:
+    get:
+      operationId: getSchwabResearchCertification
+      tags: [schwab]
+      summary: Read the latest household-scoped BKSC research certification
+      responses:
+        "200": { description: Latest redacted certification result, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabResearchCertificationResponse" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: runSchwabResearchCertification
+      tags: [schwab]
+      summary: Run exactly three read-only BKSC Schwab Market Data requests
+      responses:
+        "200": { description: Redacted certification result, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabResearchCertification" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /integrations/schwab/disconnect:
     post:
       operationId: disconnectSchwabConnection
@@ -3983,6 +3998,65 @@ components:
       allOf:
         - { $ref: "#/components/schemas/SchwabResearchEnvelopeBase" }
         - { type: object, required: [data], properties: { data: { $ref: "#/components/schemas/SchwabResearchPriceHistory" } } }
+    SchwabResearchCertificationRateLimit:
+      type: object
+      required: [providerRequestId, limit, remaining, resetAt, retryAfterSeconds]
+      properties:
+        providerRequestId: { type: ["string", "null"] }
+        limit: { type: ["number", "null"] }
+        remaining: { type: ["number", "null"] }
+        resetAt: { type: ["string", "null"] }
+        retryAfterSeconds: { type: ["number", "null"] }
+    SchwabResearchCertificationCapability:
+      type: object
+      required: [capability, status, providerHttpStatus, providerRequestId, realtime, delayed, freshness, fieldInventory, nullFields, candlesReturned, candleDateRange, entitlementError, tokenRefreshRequired, errorCode, rateLimit]
+      properties:
+        capability: { type: string, enum: [INSTRUMENT_FUNDAMENTAL, CURRENT_QUOTE, DAILY_PRICE_HISTORY] }
+        status: { type: string, enum: [CONFIRMED, PENDING_PROVIDER_CONFIRMATION] }
+        providerHttpStatus: { type: ["number", "null"] }
+        providerRequestId: { type: ["string", "null"] }
+        realtime: { type: ["boolean", "null"] }
+        delayed: { type: ["boolean", "null"] }
+        freshness: { type: ["string", "null"] }
+        fieldInventory: { type: array, items: { type: string } }
+        nullFields: { type: array, items: { type: string } }
+        candlesReturned: { type: ["number", "null"] }
+        candleDateRange:
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [start, end]
+              properties:
+                start: { type: string, format: date-time }
+                end: { type: string, format: date-time }
+        entitlementError: { type: boolean }
+        tokenRefreshRequired: { type: boolean }
+        errorCode: { type: ["string", "null"] }
+        rateLimit: { $ref: "#/components/schemas/SchwabResearchCertificationRateLimit" }
+    SchwabResearchCertification:
+      type: object
+      required: [id, symbol, result, requestedAt, completedAt, providerGetCount, capabilities, readOnly, tradingEnabled, executionAuthority, noTradingOrMoneyMovement, createdAt]
+      properties:
+        id: { type: string }
+        symbol: { type: string, const: BKSC }
+        result: { type: string, enum: [PASS, BLOCKED] }
+        requestedAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time }
+        providerGetCount: { type: number }
+        capabilities: { type: array, items: { $ref: "#/components/schemas/SchwabResearchCertificationCapability" } }
+        readOnly: { type: boolean, const: true }
+        tradingEnabled: { type: boolean, const: false }
+        executionAuthority: { type: string, const: none }
+        noTradingOrMoneyMovement: { type: boolean, const: true }
+        createdAt: { type: string, format: date-time }
+    SchwabResearchCertificationResponse:
+      type: object
+      required: [certification]
+      properties:
+        certification:
+          oneOf:
+            - { $ref: "#/components/schemas/SchwabResearchCertification" }
+            - type: "null"
     SchwabDisconnectResult:
       type: object
       required: [status, readOnly, tradingEnabled]
@@ -6539,9 +6613,9 @@ components:
         quote: { type: string, enum: [implemented] }
         market_hours: { type: string, enum: [implemented] }
         portfolio_position: { type: string, enum: [implemented] }
-        instrument_metadata: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION] }
-        fundamentals: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION] }
-        price_history: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION] }
+        instrument_metadata: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION, CONFIRMED] }
+        fundamentals: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION, CONFIRMED] }
+        price_history: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION, CONFIRMED] }
         movers: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION] }
         options: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION] }
         streaming: { type: string, enum: [PENDING_PROVIDER_CONFIRMATION] }

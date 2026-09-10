@@ -24,7 +24,7 @@ export class SchwabResearchError extends Error {
   }
 }
 
-type SafeHeaders = {
+export type SchwabResearchSafeHeaders = {
   providerRequestId: string | null;
   limit: number | null;
   remaining: number | null;
@@ -32,11 +32,12 @@ type SafeHeaders = {
   retryAfterSeconds: number | null;
 };
 
-type ProviderResult = {
+export type SchwabResearchProviderResult = {
   payload: unknown;
   requestedAt: string;
   receivedAt: string;
-  headers: SafeHeaders;
+  providerStatus: number;
+  headers: SchwabResearchSafeHeaders;
 };
 
 const decimal = (value: unknown): string | null =>
@@ -108,7 +109,7 @@ export function buildSchwabResearchPath(
   return `/marketdata/v1/pricehistory?${query}`;
 }
 
-function safeHeaders(headers: Headers): SafeHeaders {
+function safeHeaders(headers: Headers): SchwabResearchSafeHeaders {
   return {
     providerRequestId: headers.get("x-request-id") ?? headers.get("request-id") ?? headers.get("schwab-request-id"),
     limit: headerNumber(headers.get("x-ratelimit-limit")),
@@ -118,8 +119,12 @@ function safeHeaders(headers: Headers): SafeHeaders {
   };
 }
 
-function providerError(status: number, headers: SafeHeaders): SchwabResearchError {
-  const metadata = { providerStatus: status, providerRequestId: headers.providerRequestId, retryAfterSeconds: headers.retryAfterSeconds };
+function providerError(status: number, headers: SchwabResearchSafeHeaders): SchwabResearchError {
+  const metadata = {
+    providerStatus: status,
+    providerRequestId: headers.providerRequestId,
+    providerSafeHeaders: headers,
+  };
   if (status === 401) return new SchwabResearchError("TOKEN_REFRESH_REQUIRED", 409, "Schwab access token must be refreshed", metadata);
   if (status === 403) return new SchwabResearchError("PROVIDER_ENTITLEMENT_REQUIRED", 403, "Schwab entitlement does not permit this research capability", metadata);
   if (status === 404) return new SchwabResearchError("SYMBOL_NOT_FOUND", 404, "Schwab did not find the requested symbol", metadata);
@@ -133,7 +138,7 @@ export async function requestSchwabResearch(
   accessToken: string,
   env: NodeJS.ProcessEnv = process.env,
   fetcher: typeof fetch = fetch,
-): Promise<ProviderResult> {
+): Promise<SchwabResearchProviderResult> {
   const base = env.SCHWAB_API_BASE_URL ?? "https://api.schwabapi.com";
   const allowedPaths = ["/marketdata/v1/instruments", "/marketdata/v1/quotes", "/marketdata/v1/pricehistory"];
   let url: URL;
@@ -155,10 +160,10 @@ export async function requestSchwabResearch(
   const headers = safeHeaders(response.headers);
   if (!response.ok) throw providerError(response.status, headers);
   const payload = await response.json().catch(() => { throw new SchwabResearchError("INVALID_PROVIDER_RESPONSE", 502, "Schwab research response is not valid JSON"); });
-  return { payload, requestedAt, receivedAt: new Date().toISOString(), headers };
+  return { payload, requestedAt, receivedAt: new Date().toISOString(), providerStatus: response.status, headers };
 }
 
-function freshness(providerAsOf: string | null, receivedAt: string, realtime: boolean | null, delayed: boolean | null) {
+export function researchFreshness(providerAsOf: string | null, receivedAt: string, realtime: boolean | null, delayed: boolean | null) {
   if (delayed === true) return "DELAYED" as const;
   if (realtime === true) return "REALTIME" as const;
   if (!providerAsOf) return "UNKNOWN" as const;
@@ -285,7 +290,7 @@ export function researchEnvelope<T>(
   capability: SchwabResearchCapability,
   symbol: string,
   path: string,
-  result: ProviderResult,
+  result: SchwabResearchProviderResult,
   normalized: { data: T; providerAsOf: string | null; realtime: boolean | null; delayed: boolean | null },
 ) {
   const query = new URL(path, "https://provider.invalid").searchParams;
@@ -298,7 +303,7 @@ export function researchEnvelope<T>(
     requestedAt: result.requestedAt,
     receivedAt: result.receivedAt,
     providerAsOf: normalized.providerAsOf,
-    freshness: freshness(normalized.providerAsOf, result.receivedAt, normalized.realtime, normalized.delayed),
+    freshness: researchFreshness(normalized.providerAsOf, result.receivedAt, normalized.realtime, normalized.delayed),
     realtime: normalized.realtime,
     delayed: normalized.delayed,
     provenance: {

@@ -11,4 +11,5 @@ export type CapabilityReadinessInstrumentMetadata = typeof CapabilityReadinessIn
 
 export const CapabilityReadinessInstrumentMetadata = {
   PENDING_PROVIDER_CONFIRMATION: 'PENDING_PROVIDER_CONFIRMATION',
+  CONFIRMED: 'CONFIRMED',
 } as const;

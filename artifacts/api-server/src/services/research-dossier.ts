@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { spawn } from "node:child_process";
-import { db, auditEvents, investmentResearchDossiers, researchEvidence } from "@workspace/db";
+import { db, auditEvents, investmentResearchDossiers, researchEvidence, schwabResearchCertifications } from "@workspace/db";
 import type { Actor } from "./capital-os";
 import { assertDocumentUploadGrant, assertPrivateObjectPath, createDocumentUploadGrant, downloadBusinessDocument, requestBusinessDocumentUpload } from "../lib/business-document-storage";
 import { parseResearchDigestion } from "../domain/research-digestion";
@@ -121,10 +121,24 @@ function snapshotDossier(row: typeof investmentResearchDossiers.$inferSelect) {
 export async function listResearchDossiers(actor: Actor) {
   const rows = await db.select().from(investmentResearchDossiers).where(eq(investmentResearchDossiers.householdId, actor.householdId)).orderBy(desc(investmentResearchDossiers.createdAt));
   const evidence = await db.select().from(researchEvidence).where(eq(researchEvidence.householdId, actor.householdId)).orderBy(desc(researchEvidence.createdAt));
+  const [latestCertification] = await db.select().from(schwabResearchCertifications)
+    .where(eq(schwabResearchCertifications.householdId, actor.householdId))
+    .orderBy(desc(schwabResearchCertifications.createdAt))
+    .limit(1);
+  const certifiedCapabilities = new Set(
+    Array.isArray(latestCertification?.record?.capabilities)
+      ? latestCertification.record.capabilities
+        .filter((item): item is { capability: string; status: string } => Boolean(item && typeof item === "object" && "capability" in item && "status" in item))
+        .filter((item) => item.status === "CONFIRMED")
+        .map((item) => item.capability)
+      : [],
+  );
   return { evidence: evidence.map((item) => ({ ...item, advisoryOnly: true })), dossiers: rows.map(snapshotDossier), capabilityReadiness: {
     quote: "implemented", market_hours: "implemented", portfolio_position: "implemented",
-    instrument_metadata: "PENDING_PROVIDER_CONFIRMATION", fundamentals: "PENDING_PROVIDER_CONFIRMATION",
-    price_history: "PENDING_PROVIDER_CONFIRMATION", movers: "PENDING_PROVIDER_CONFIRMATION",
+    instrument_metadata: certifiedCapabilities.has("INSTRUMENT_FUNDAMENTAL") ? "CONFIRMED" : "PENDING_PROVIDER_CONFIRMATION",
+    fundamentals: certifiedCapabilities.has("INSTRUMENT_FUNDAMENTAL") ? "CONFIRMED" : "PENDING_PROVIDER_CONFIRMATION",
+    price_history: certifiedCapabilities.has("DAILY_PRICE_HISTORY") ? "CONFIRMED" : "PENDING_PROVIDER_CONFIRMATION",
+    movers: "PENDING_PROVIDER_CONFIRMATION",
     options: "PENDING_PROVIDER_CONFIRMATION", streaming: "PENDING_PROVIDER_CONFIRMATION",
     news: "PENDING_PROVIDER_CONFIRMATION", tax_data: "PENDING_PROVIDER_CONFIRMATION",
     schwab_reports: "PENDING_PROVIDER_CONFIRMATION",

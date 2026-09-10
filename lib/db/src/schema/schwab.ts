@@ -80,6 +80,18 @@ export const schwabMarketDataConnections = pgTable("schwab_market_data_connectio
   householdStatusIdx: index("schwab_market_data_connections_household_status_idx").on(table.householdId, table.status),
 }));
 
+export const schwabResearchCertifications = pgTable("schwab_research_certifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+  actorUserId: uuid("actor_user_id").notNull().references(() => users.id),
+  symbol: text("symbol").notNull(),
+  result: text("result").notNull(),
+  record: jsonb("record").$type<Record<string, unknown>>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  householdCreatedIdx: index("schwab_research_certifications_household_created_idx").on(table.householdId, table.createdAt),
+}));
+
 export const schwabMarketDataOAuthStates = pgTable("schwab_market_data_oauth_states", {
   id: uuid("id").defaultRandom().primaryKey(),
   stateHash: text("state_hash").notNull(),
@@ -115,5 +127,6 @@ export const schwabObservationSnapshots = pgTable("schwab_observation_snapshots"
 export type SchwabConnection = typeof schwabConnections.$inferSelect;
 export type SchwabOAuthState = typeof schwabOAuthStates.$inferSelect;
 export type SchwabMarketDataConnection = typeof schwabMarketDataConnections.$inferSelect;
+export type SchwabResearchCertification = typeof schwabResearchCertifications.$inferSelect;
 export type SchwabMarketDataOAuthState = typeof schwabMarketDataOAuthStates.$inferSelect;
 export type SchwabObservationSnapshot = typeof schwabObservationSnapshots.$inferSelect;

@@ -17,6 +17,10 @@ import {
   type ResearchEvidence,
    type ResearchDossierPrefill,
   type SchwabResearchCertification,
+  useListSecFilings,
+  useRetrieveSecFiling,
+  useReviewSecFiling,
+  getListSecFilingsQueryKey,
 } from "@workspace/api-client-react";
 import { AlertCircle, AlertTriangle, FilePlus2, X, FileText, CheckCircle2, FlaskConical, Clock, Beaker, FileSearch, Database, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -60,6 +64,9 @@ export function buildReviewedPrefillText(
     const quality = prefill.warnings.qualityFlags.length > 0
       ? prefill.warnings.qualityFlags.join(", ")
       : "none reported";
+    const sourceFacts = (prefill.sourceFacts ?? []).map((fact) =>
+      `- ${source} SEC fact ${fact.field}: ${fact.value}${fact.unit ? ` ${fact.unit}` : ""}; form ${present(fact.filingType)}; filed ${present(fact.filingDate)}; period ${present(fact.periodStart)} through ${present(fact.periodEnd)}; accession ${present(fact.accession)}; XBRL tag ${present(fact.tag)}; source ${present(fact.sourceUrl)}; evidence ID ${fact.evidenceId}.`,
+    );
     return [
       `- ${source} Provenance: provider ${prefill.source.provider}; class ${prefill.source.provenanceClass}; requested ${present(prefill.source.requestedAt)}; retrieved ${present(prefill.source.retrievedAt)}; reviewed ${prefill.source.reviewedAt}; content digest ${prefill.source.contentDigest}.`,
       `- ${source} Instrument identity: ${prefill.instrument.symbol}; ${present(prefill.instrument.description)}; asset type ${present(prefill.instrument.assetType)}; exchange ${present(prefill.instrument.exchange)}.`,
@@ -68,6 +75,7 @@ export function buildReviewedPrefillText(
       `- ${source} Bounded ${history.frequency.toLowerCase()} history: ${history.candleCount} candles from ${present(history.firstMarketDate)} through ${present(history.lastMarketDate)}; period open ${present(history.periodOpen)}; high ${present(history.periodHigh)}; low ${present(history.periodLow)}; close ${present(history.periodClose)}. Recent closes: ${recentCloses}.`,
       `- ${source} Freshness: ${prefill.freshness.label}; market date ${present(prefill.freshness.marketDate)}; provider as of ${present(prefill.freshness.providerAsOf)}; realtime ${prefill.freshness.realtime === null ? "unknown" : String(prefill.freshness.realtime)}; delayed ${prefill.freshness.delayed === null ? "unknown" : String(prefill.freshness.delayed)}.`,
       `- ${source} Data warnings: missing fields ${missing}; quality flags ${quality}.`,
+      ...sourceFacts,
       `- ${source} Safety boundary: reviewed normalized evidence only; advisory-only; read-only; trading disabled; execution authority none; no trading or money movement.`,
     ];
   }).join("\n");
@@ -182,9 +190,13 @@ export default function InvestmentResearchPage() {
   const marketSnapshotsQuery = useListMarketSnapshots();
   const createSnapshot = useCreateMarketSnapshot();
   const reviewSnapshot = useReviewMarketSnapshot();
+  const secQuery = useListSecFilings();
+  const retrieveSec = useRetrieveSecFiling();
+  const reviewSec = useReviewSecFiling();
 
   const [snapshotTicker, setSnapshotTicker] = useState("");
   const [snapshotReasons, setSnapshotReasons] = useState<Record<string, string>>({});
+  const [secTicker, setSecTicker] = useState("");
 
   const handleSnapshotReasonChange = (id: string, val: string) => setSnapshotReasons(p => ({...p, [id]: val}));
 
@@ -224,6 +236,27 @@ export default function InvestmentResearchPage() {
       await queryClient.invalidateQueries({ queryKey: getListResearchDossiersQueryKey() });
     } catch (e) {
        toast({ title: "Review failed", description: e instanceof Error ? e.message : "Failed to review snapshot.", variant: "destructive" });
+    }
+  };
+
+  const handleSecRetrieve = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      await retrieveSec.mutateAsync({ data: { ticker: secTicker } });
+      setSecTicker("");
+      await queryClient.invalidateQueries({ queryKey: getListSecFilingsQueryKey() });
+      toast({ title: "SEC filing draft collected", description: "Latest 10-Q prioritized; unsupported fields remain explicitly missing." });
+    } catch (error) {
+      toast({ title: "SEC retrieval failed", description: error instanceof Error ? error.message : "Official SEC evidence was not collected.", variant: "destructive" });
+    }
+  };
+  const handleSecReview = async (filingId: string, disposition: "APPROVE" | "REJECT") => {
+    try {
+      await reviewSec.mutateAsync({ filingId, data: { disposition } });
+      await queryClient.invalidateQueries({ queryKey: getListSecFilingsQueryKey() });
+      await queryClient.invalidateQueries({ queryKey: getListResearchDossiersQueryKey() });
+    } catch (error) {
+      toast({ title: "SEC review failed", description: error instanceof Error ? error.message : "Review could not be recorded.", variant: "destructive" });
     }
   };
 
@@ -504,6 +537,25 @@ Research Notes:
             <div className="flex flex-col gap-2"><span className="text-xs text-[var(--ink-light)] uppercase tracking-wider">Withdrawals</span><span className={getCapabilityClass(capabilityReadiness.withdrawal)}>Disabled</span></div>
             <div className="flex flex-col gap-2"><span className="text-xs text-[var(--ink-light)] uppercase tracking-wider">Capital Allocation</span><span className={getCapabilityClass(capabilityReadiness.capital_allocation)}>Disabled</span></div>
           </div>
+        </div>
+      </section>
+
+      <section className="card card-pad animate-in delay-2 mt-8" data-testid="sec-research">
+        <CardTitle title="SEC EDGAR / Primary evidence" subtitle="Official normalized filing facts; drafts require human approval" />
+        <form onSubmit={(event) => { void handleSecRetrieve(event); }} className="flex gap-3 mt-5">
+          <input className="input uppercase" value={secTicker} onChange={(event) => setSecTicker(event.target.value.toUpperCase())} placeholder="Ticker (e.g. BKSC)" required />
+          <button className="btn btn-primary" disabled={retrieveSec.isPending}>Retrieve latest 10-Q</button>
+        </form>
+        <div className="mt-5 space-y-3">
+          {secQuery.data?.drafts.map((draft) => (
+            <article key={draft.id} className="forecast-row p-4">
+              <div className="flex justify-between gap-3"><strong>{draft.ticker} · {draft.filingForm}</strong><span className="status pending">{draft.reviewStatus}</span></div>
+              <div className="text-xs mt-2">Accession {draft.accession} · filed {draft.filingDate} · quality {draft.evidenceQuality}</div>
+              <div className="text-xs mt-1">Missing: {draft.missingFields.length ? draft.missingFields.join(", ") : "none reported"}</div>
+              {draft.reviewStatus === "PENDING_HUMAN_REVIEW" && <div className="flex gap-2 mt-3"><button className="btn btn-primary" onClick={() => { void handleSecReview(draft.id, "APPROVE"); }}>Approve evidence</button><button className="btn" onClick={() => { void handleSecReview(draft.id, "REJECT"); }}>Reject</button></div>}
+            </article>
+          ))}
+          {secQuery.data?.approved.map((item) => <article key={item.id} className="forecast-row p-4"><strong>{item.ticker} · approved SEC evidence</strong><div className="text-xs mt-1">Digest {item.canonicalSha256}</div></article>)}
         </div>
       </section>
 

@@ -6,11 +6,10 @@
  * OpenAPI spec version: 0.3.0
  */
 
-export type ResearchEvidenceEvidenceKind = typeof ResearchEvidenceEvidenceKind[keyof typeof ResearchEvidenceEvidenceKind];
+export type ResearchDossierPrefillKind = typeof ResearchDossierPrefillKind[keyof typeof ResearchDossierPrefillKind];
 
 
-export const ResearchEvidenceEvidenceKind = {
-  UPLOADED_DOCUMENT: 'UPLOADED_DOCUMENT',
+export const ResearchDossierPrefillKind = {
   SCHWAB_MARKET_SNAPSHOT: 'SCHWAB_MARKET_SNAPSHOT',
   SEC_FILING: 'SEC_FILING',
 } as const;

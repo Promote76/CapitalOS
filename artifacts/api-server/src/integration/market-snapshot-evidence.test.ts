@@ -16,10 +16,13 @@ import {
   households,
   investmentResearchDossiers,
   reviewedResearchEvidence,
+  reviewedSecFilingEvidence,
   schwabMarketSnapshots,
+  secFilingSnapshots,
   users,
 } from "@workspace/db";
-import { createInvestmentResearchDossier, listResearchDossiers, listSchwabMarketSnapshots, projectReviewedSnapshotForAgents, projectReviewedSnapshotPrefill, reviewSchwabMarketSnapshot } from "../services/research-dossier";
+import { createInvestmentResearchDossier, listResearchDossiers, listSchwabMarketSnapshots, projectReviewedSecForAgents, projectReviewedSnapshotForAgents, projectReviewedSnapshotPrefill, reviewSchwabMarketSnapshot } from "../services/research-dossier";
+import { reviewSecFiling } from "../services/sec-research";
 import { assertPermission } from "../domain/governance";
 import { readFile } from "node:fs/promises";
 
@@ -180,6 +183,52 @@ test("approved snapshot evidence list never exposes another household", { skip: 
   assert.equal(ownDossierEvidence[0]!.extractionStatus, "complete");
   assert.equal(ownDossierEvidence[0]!.evidenceKind, "SCHWAB_MARKET_SNAPSHOT");
   assert.equal(ownDossierEvidence[0]!.dossierPrefill.ticker, "BKSC");
+});
+
+test("SEC facts require household-scoped human approval and retain multi-source citations without execution authority", { skip: !enabled }, async () => {
+  const f = await fixture();
+  const [marketSnapshot] = await db.insert(schwabMarketSnapshots).values({
+    householdId: f.a.householdId, ticker: "BKSC",
+    content: { ticker: "BKSC", instrument: { symbol: "BKSC" }, capabilities: [] },
+    provenance: { provider: "schwab" },
+    requestedAt: new Date("2026-08-02T00:00:00Z"), retrievedAt: new Date("2026-08-02T00:00:01Z"),
+    freshness: "CURRENT", createdBy: f.a.userId, reviewStatus: "APPROVED",
+    reviewedBy: f.a.userId, reviewedAt: new Date("2026-08-02T00:01:00Z"),
+  }).returning();
+  await db.insert(reviewedResearchEvidence).values({
+    householdId: f.a.householdId, snapshotId: marketSnapshot.id, ticker: "BKSC",
+    canonicalContent: { ticker: "BKSC" }, canonicalSha256: createHash("sha256").update(randomUUID()).digest("hex"),
+    provenance: { provider: "schwab" }, approvedBy: f.a.userId,
+  });
+  const secContent = {
+    ticker: "BKSC",
+    filingPriority: "LATEST_10Q_THEN_10K_ONLY_FOR_MISSING_FIELDS",
+    filings: [{ form: "10-Q", filingDate: "2026-08-01", accession: "0000000001-26-000010", sourceUrl: "https://www.sec.gov/Archives/edgar/data/1/000000000126000010/q.htm" }],
+    metrics: { totalAssets: { tag: "Assets", unit: "USD", value: 100, start: null, end: "2026-06-30", accession: "0000000001-26-000010", form: "10-Q", filed: "2026-08-01", sourceUrl: "https://www.sec.gov/Archives/edgar/data/1/000000000126000010/q.htm" } },
+  };
+  const [draft] = await db.insert(secFilingSnapshots).values({
+    householdId: f.a.householdId, ticker: "BKSC", filingForm: "10-Q", filingDate: "2026-08-01",
+    accession: `0000000001-26-${randomUUID().slice(0, 6)}`, sourceUrl: "https://www.sec.gov/Archives/edgar/data/1/000000000126000010/q.htm",
+    content: secContent, provenance: { provider: "SEC EDGAR", accessedAt: "2026-09-10T00:00:00Z" },
+    missingFields: ["uninsuredDeposits"], evidenceQuality: "LOW", extractionTimestamp: new Date("2026-09-10T00:00:00Z"), createdBy: f.a.userId,
+  }).returning();
+
+  assert.equal((await listResearchDossiers(f.a)).evidence.some((item) => item.evidenceKind === "SEC_FILING"), false);
+  await assert.rejects(() => reviewSecFiling(f.b, draft.id, "APPROVE"));
+  const reviewed = await reviewSecFiling(f.a, draft.id, "APPROVE");
+  assert.equal(reviewed.evidence.readOnly, true);
+  assert.equal(reviewed.evidence.tradingEnabled, false);
+  assert.equal(reviewed.evidence.executionAuthority, "none");
+  const listed = (await listResearchDossiers(f.a)).evidence;
+  assert.equal(listed.filter((item) => item.evidenceKind === "SCHWAB_MARKET_SNAPSHOT").length, 1);
+  const sec = listed.find((item) => item.evidenceKind === "SEC_FILING");
+  assert.ok(sec?.dossierPrefill.sourceFacts.some((fact) => fact.evidenceId === reviewed.evidence.id && fact.accession === "0000000001-26-000010"));
+  assert.equal((await listResearchDossiers(f.b)).evidence.some((item) => item.evidenceKind === "SEC_FILING"), false);
+  const [stored] = await db.select().from(reviewedSecFilingEvidence).where(eq(reviewedSecFilingEvidence.id, reviewed.evidence.id));
+  const projection = projectReviewedSecForAgents(stored);
+  assert.equal(projection.excerpt.includes("\"value\":100"), true);
+  assert.equal(projection.excerpt.includes("accessedAt"), false);
+  assert.equal(projection.excerpt.includes("executionAuthority\":\"none"), true);
 });
 
 test("invalid dossier digestion stops before dossier or Research Chair side effects", { skip: !enabled }, async () => {

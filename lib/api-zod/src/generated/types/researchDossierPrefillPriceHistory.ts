@@ -6,9 +6,10 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { ResearchDossierPrefillCandle } from './researchDossierPrefillCandle';
+import type { ResearchDossierPrefillPriceHistoryFrequency } from './researchDossierPrefillPriceHistoryFrequency';
 
 export interface ResearchDossierPrefillPriceHistory {
-  frequency: 'DAILY';
+  frequency: ResearchDossierPrefillPriceHistoryFrequency;
   requestedStart: string | null;
   requestedEnd: string | null;
   /**

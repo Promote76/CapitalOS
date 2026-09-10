@@ -16,4 +16,5 @@ export const ResearchDossierPrefillFreshnessLabel = {
   DELAYED: 'DELAYED',
   REALTIME: 'REALTIME',
   UNKNOWN: 'UNKNOWN',
+  AS_FILED: 'AS_FILED',
 } as const;

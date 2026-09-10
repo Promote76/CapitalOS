@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
-import { db, auditEvents, investmentResearchDossiers, researchEvidence, schwabResearchCertifications, schwabMarketSnapshots, reviewedResearchEvidence } from "@workspace/db";
+import { db, auditEvents, investmentResearchDossiers, researchEvidence, schwabResearchCertifications, schwabMarketSnapshots, reviewedResearchEvidence, reviewedSecFilingEvidence } from "@workspace/db";
 import type { Actor } from "./capital-os";
 import { assertDocumentUploadGrant, assertPrivateObjectPath, createDocumentUploadGrant, downloadBusinessDocument, requestBusinessDocumentUpload } from "../lib/business-document-storage";
 import { parseResearchDigestion } from "../domain/research-digestion";
@@ -271,6 +271,30 @@ export function projectReviewedSnapshotForAgents(
   };
 }
 
+export function projectReviewedSecForAgents(
+  item: typeof reviewedSecFilingEvidence.$inferSelect,
+) {
+  const content = record(item.canonicalContent);
+  return {
+    id: item.id,
+    title: `SEC ${item.ticker} filing`,
+    provenanceClass: "PRIMARY_SOURCE" as const,
+    excerpt: JSON.stringify({
+      kind: "SEC_FILING",
+      ticker: item.ticker,
+      filings: Array.isArray(content.filings) ? content.filings : [],
+      metrics: record(content.metrics),
+      missingFields: Array.isArray(content.missingFields) ? content.missingFields : [],
+      evidenceQuality: nullableText(content.evidenceQuality),
+      reviewedContentDigest: item.canonicalSha256,
+      advisoryOnly: true,
+      readOnly: true,
+      tradingEnabled: false,
+      executionAuthority: "none",
+    }),
+  };
+}
+
 export async function listSchwabMarketSnapshots(actor: Actor) {
   const snapshots = await db.select().from(schwabMarketSnapshots).where(eq(schwabMarketSnapshots.householdId, actor.householdId)).orderBy(desc(schwabMarketSnapshots.createdAt));
   const evidence = await db.select().from(reviewedResearchEvidence).where(eq(reviewedResearchEvidence.householdId, actor.householdId)).orderBy(desc(reviewedResearchEvidence.createdAt));
@@ -347,12 +371,15 @@ export async function createInvestmentResearchDossier(actor: Actor, input: { tic
   if (!parsed.success) throw new Error("Research digestion failed validation");
   const uploadedEvidence = input.evidenceIds.length ? await db.select().from(researchEvidence).where(and(eq(researchEvidence.householdId, actor.householdId), inArray(researchEvidence.id, input.evidenceIds))) : [];
   const reviewedSnapshots = input.evidenceIds.length ? await db.select().from(reviewedResearchEvidence).where(and(eq(reviewedResearchEvidence.householdId, actor.householdId), inArray(reviewedResearchEvidence.id, input.evidenceIds))) : [];
+  const reviewedSec = input.evidenceIds.length ? await db.select().from(reviewedSecFilingEvidence).where(and(eq(reviewedSecFilingEvidence.householdId, actor.householdId), inArray(reviewedSecFilingEvidence.id, input.evidenceIds))) : [];
   if (reviewedSnapshots.some((item) => item.ticker !== ticker)) {
     throw new Error("Reviewed market snapshot evidence must match the dossier ticker");
   }
+  if (reviewedSec.some((item) => item.ticker !== ticker)) throw new Error("Reviewed SEC evidence must match the dossier ticker");
   const evidence = [
     ...uploadedEvidence.map((item) => ({ ...item, evidenceText: item.extractedText })),
     ...reviewedSnapshots.map((item) => ({ id: item.id, title: `Schwab ${item.ticker} market snapshot`, provenanceClass: "PRIMARY_SOURCE", reviewStatus: "APPROVED", extractionStatus: "complete", extractedText: JSON.stringify(item.canonicalContent), evidenceText: JSON.stringify(item.canonicalContent) })),
+    ...reviewedSec.map((item) => ({ id: item.id, title: `SEC ${item.ticker} filing`, provenanceClass: "PRIMARY_SOURCE", reviewStatus: "APPROVED", extractionStatus: "complete", extractedText: JSON.stringify(item.canonicalContent), evidenceText: JSON.stringify(item.canonicalContent) })),
   ];
   if (evidence.length !== input.evidenceIds.length || evidence.some((item) => !review.has(item.reviewStatus) || item.extractionStatus !== "complete")) throw new Error("Only reviewed, completely extracted evidence from this household may be selected");
   const [row] = await db.insert(investmentResearchDossiers).values({
@@ -378,6 +405,7 @@ export async function createInvestmentResearchDossier(actor: Actor, input: { tic
           excerpt: item.extractedText!.slice(0, 4000),
         })),
         ...reviewedSnapshots.map(projectReviewedSnapshotForAgents),
+        ...reviewedSec.map(projectReviewedSecForAgents),
       ] });
     const [completed] = await db.update(investmentResearchDossiers).set({ report: result as unknown as Record<string, unknown>, reviewStatus: "PENDING_HUMAN_REVIEW" }).where(and(eq(investmentResearchDossiers.id, row.id), eq(investmentResearchDossiers.householdId, actor.householdId))).returning();
     const dossier = snapshotDossier(completed ?? row);
@@ -405,6 +433,7 @@ export async function listResearchDossiers(actor: Actor) {
   const rows = await db.select().from(investmentResearchDossiers).where(eq(investmentResearchDossiers.householdId, actor.householdId)).orderBy(desc(investmentResearchDossiers.createdAt));
   const evidence = await db.select().from(researchEvidence).where(eq(researchEvidence.householdId, actor.householdId)).orderBy(desc(researchEvidence.createdAt));
   const approvedSnapshotEvidence = await db.select().from(reviewedResearchEvidence).where(eq(reviewedResearchEvidence.householdId, actor.householdId)).orderBy(desc(reviewedResearchEvidence.createdAt));
+  const approvedSecEvidence = await db.select().from(reviewedSecFilingEvidence).where(eq(reviewedSecFilingEvidence.householdId, actor.householdId)).orderBy(desc(reviewedSecFilingEvidence.approvedAt));
   const [latestCertification] = await db.select().from(schwabResearchCertifications)
     .where(eq(schwabResearchCertifications.householdId, actor.householdId))
     .orderBy(desc(schwabResearchCertifications.createdAt))
@@ -427,6 +456,40 @@ export async function listResearchDossiers(actor: Actor) {
       createdAt: item.createdAt, reviewedBy: item.approvedBy, reviewedAt: item.approvedAt,
       evidenceKind: "SCHWAB_MARKET_SNAPSHOT" as const,
       dossierPrefill: projectReviewedSnapshotPrefill(item),
+    })),
+    ...approvedSecEvidence.map((item) => ({
+      id: item.id, householdId: item.householdId, title: `SEC ${item.ticker} filing`,
+      provenanceClass: "PRIMARY_SOURCE", reviewStatus: "APPROVED", mimeType: "application/json", objectPath: "",
+      byteLength: Buffer.byteLength(JSON.stringify(item.canonicalContent)), sha256: item.canonicalSha256,
+      extractionStatus: "complete", advisoryOnly: true, metadata: item.provenance,
+      createdAt: item.approvedAt, reviewedBy: item.approvedBy, reviewedAt: item.approvedAt,
+      evidenceKind: "SEC_FILING" as const,
+      dossierPrefill: {
+        kind: "SEC_FILING", ticker: item.ticker, suggestedTitle: `${item.ticker} Investment Research`,
+        instrument: { symbol: item.ticker, description: null, assetType: "EQUITY", exchange: null },
+        fundamentals: { asOf: null, marketCap: null, sharesOutstanding: null, epsTrailingTwelveMonths: null, peRatio: null, dividendAmount: null, dividendYield: null, dividendPayDate: null, beta: null, high52Week: null, low52Week: null },
+        quote: { asOf: null, bidPrice: null, askPrice: null, lastPrice: null, markPrice: null, closePrice: null, openPrice: null, highPrice: null, lowPrice: null, netChange: null, netPercentChange: null, totalVolume: null },
+        priceHistory: { frequency: "ANNUAL", requestedStart: null, requestedEnd: null, candleCount: 0, firstMarketDate: null, lastMarketDate: null, periodOpen: null, periodHigh: null, periodLow: null, periodClose: null, recentCloses: [] },
+        freshness: { label: "AS_FILED", providerAsOf: null, marketDate: null, realtime: null, delayed: null },
+        warnings: { missingFields: Array.isArray((item.canonicalContent as any).missingFields) ? (item.canonicalContent as any).missingFields : [], qualityFlags: [`EVIDENCE_QUALITY_${String((item.canonicalContent as any).evidenceQuality ?? "UNKNOWN")}`] },
+        source: { provider: "SEC EDGAR", title: `SEC ${item.ticker} filing`, provenanceClass: "PRIMARY_SOURCE", requestedAt: null, retrievedAt: String((item.provenance as any).accessedAt ?? ""), reviewedAt: item.approvedAt.toISOString(), contentDigest: item.canonicalSha256 },
+        sourceFacts: Object.entries(record((item.canonicalContent as any).metrics))
+          .filter((entry): entry is [string, Record<string, unknown>] => Boolean(entry[1] && typeof entry[1] === "object"))
+          .map(([field, fact]) => ({
+            evidenceId: item.id,
+            field,
+            value: String(fact.value),
+            unit: nullableText(fact.unit),
+            filingType: nullableText(fact.form),
+            filingDate: nullableText(fact.filed),
+            accession: nullableText(fact.accession),
+            sourceUrl: nullableText(fact.sourceUrl),
+            periodStart: nullableText(fact.start),
+            periodEnd: nullableText(fact.end),
+            tag: nullableText(fact.tag),
+          })),
+        advisoryOnly: true, readOnly: true, tradingEnabled: false, executionAuthority: "none", noTradingOrMoneyMovement: true,
+      },
     })),
   ], dossiers: rows.map(snapshotDossier), capabilityReadiness: {
     quote: "implemented", market_hours: "implemented", portfolio_position: "implemented",

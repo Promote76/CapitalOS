@@ -268,6 +268,11 @@ import type {
   SchwabResearchQuoteEnvelope,
   SchwabStatus,
   SchwabSyncResult,
+  SecFilingDraft,
+  SecFilingListResponse,
+  SecFilingRetrievalRequest,
+  SecFilingReviewRequest,
+  SecFilingReviewResult,
   SettlementDocumentInput,
   ShadowIntent,
   ShadowIntentInput,
@@ -17934,6 +17939,226 @@ export const useCreateMarketSnapshot = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateMarketSnapshotMutationOptions(options));
+    }
+
+export const getListSecFilingsUrl = () => {
+
+
+
+
+  return `/api/research/sec/filings`
+}
+
+/**
+ * @summary List household-scoped normalized SEC filing drafts and approved evidence
+ */
+export const listSecFilings = async ( options?: Parameters<typeof customFetch>[1]): Promise<SecFilingListResponse> => {
+
+  return customFetch<SecFilingListResponse>(getListSecFilingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListSecFilingsQueryKey = () => {
+    return [
+    `/api/research/sec/filings`
+    ] as const;
+    }
+
+
+export const getListSecFilingsQueryOptions = <TData = Awaited<ReturnType<typeof listSecFilings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSecFilings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListSecFilingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listSecFilings>>> = ({ signal }) => listSecFilings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listSecFilings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListSecFilingsQueryResult = NonNullable<Awaited<ReturnType<typeof listSecFilings>>>
+export type ListSecFilingsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List household-scoped normalized SEC filing drafts and approved evidence
+ */
+
+export function useListSecFilings<TData = Awaited<ReturnType<typeof listSecFilings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listSecFilings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListSecFilingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRetrieveSecFilingUrl = () => {
+
+
+
+
+  return `/api/research/sec/filings`
+}
+
+/**
+ * @summary Retrieve latest 10-Q and only missing fields from latest 10-K from official SEC sources
+ */
+export const retrieveSecFiling = async (secFilingRetrievalRequest: SecFilingRetrievalRequest, options?: Parameters<typeof customFetch>[1]): Promise<SecFilingDraft> => {
+
+  return customFetch<SecFilingDraft>(getRetrieveSecFilingUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(secFilingRetrievalRequest)
+  }
+);}
+
+
+
+
+
+export const getRetrieveSecFilingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retrieveSecFiling>>, TError,{data: BodyType<SecFilingRetrievalRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retrieveSecFiling>>, TError,{data: BodyType<SecFilingRetrievalRequest>}, TContext> => {
+
+const mutationKey = ['retrieveSecFiling'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retrieveSecFiling>>, {data: BodyType<SecFilingRetrievalRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  retrieveSecFiling(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetrieveSecFilingMutationResult = NonNullable<Awaited<ReturnType<typeof retrieveSecFiling>>>
+    export type RetrieveSecFilingMutationBody = BodyType<SecFilingRetrievalRequest>
+    export type RetrieveSecFilingMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Retrieve latest 10-Q and only missing fields from latest 10-K from official SEC sources
+ */
+export const useRetrieveSecFiling = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retrieveSecFiling>>, TError,{data: BodyType<SecFilingRetrievalRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof retrieveSecFiling>>,
+        TError,
+        {data: BodyType<SecFilingRetrievalRequest>},
+        TContext
+      > => {
+      return useMutation(getRetrieveSecFilingMutationOptions(options));
+    }
+
+export const getReviewSecFilingUrl = (filingId: string,) => {
+
+
+
+
+  return `/api/research/sec/filings/${filingId}/review`
+}
+
+/**
+ * @summary Approve or reject an SEC filing draft; approval emits immutable evidence
+ */
+export const reviewSecFiling = async (filingId: string,
+    secFilingReviewRequest: SecFilingReviewRequest, options?: Parameters<typeof customFetch>[1]): Promise<SecFilingReviewResult> => {
+
+  return customFetch<SecFilingReviewResult>(getReviewSecFilingUrl(filingId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(secFilingReviewRequest)
+  }
+);}
+
+
+
+
+
+export const getReviewSecFilingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewSecFiling>>, TError,{filingId: string;data: BodyType<SecFilingReviewRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewSecFiling>>, TError,{filingId: string;data: BodyType<SecFilingReviewRequest>}, TContext> => {
+
+const mutationKey = ['reviewSecFiling'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewSecFiling>>, {filingId: string;data: BodyType<SecFilingReviewRequest>}> = (props) => {
+          const {filingId,data} = props ?? {};
+
+          return  reviewSecFiling(filingId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewSecFilingMutationResult = NonNullable<Awaited<ReturnType<typeof reviewSecFiling>>>
+    export type ReviewSecFilingMutationBody = BodyType<SecFilingReviewRequest>
+    export type ReviewSecFilingMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Approve or reject an SEC filing draft; approval emits immutable evidence
+ */
+export const useReviewSecFiling = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewSecFiling>>, TError,{filingId: string;data: BodyType<SecFilingReviewRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewSecFiling>>,
+        TError,
+        {filingId: string;data: BodyType<SecFilingReviewRequest>},
+        TContext
+      > => {
+      return useMutation(getReviewSecFilingMutationOptions(options));
     }
 
 export const getReviewMarketSnapshotUrl = (snapshotId: string,) => {

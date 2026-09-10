@@ -3421,6 +3421,23 @@ export const registerResearchEvidenceResponseDossierPrefillOnePriceHistoryCandle
 export const registerResearchEvidenceResponseDossierPrefillOnePriceHistoryRecentClosesMax = 5;
 
 export const registerResearchEvidenceResponseDossierPrefillOneSourceContentDigestRegExp = new RegExp('^[a-f0-9]{64}$');
+export const registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemEvidenceIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemFieldMax = 100;
+
+export const registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemValueMax = 100;
+
+export const registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemUnitMax = 40;
+
+export const registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemAccessionMax = 32;
+
+export const registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemSourceUrlMax = 2000;
+
+
+export const registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemSourceUrlRegExp = new RegExp('^https://(www\\.)?sec\\.gov');
+export const registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemTagMax = 160;
+
+export const registerResearchEvidenceResponseDossierPrefillOneSourceFactsMax = 50;
+
 
 
 export const RegisterResearchEvidenceResponse = zod.object({
@@ -3435,9 +3452,9 @@ export const RegisterResearchEvidenceResponse = zod.object({
   "sha256": zod.string().regex(registerResearchEvidenceResponseSha256RegExp),
   "extractionStatus": zod.string(),
   "advisoryOnly": zod.boolean().default(registerResearchEvidenceResponseAdvisoryOnlyDefault),
-  "evidenceKind": zod.enum(['UPLOADED_DOCUMENT', 'SCHWAB_MARKET_SNAPSHOT']),
+  "evidenceKind": zod.enum(['UPLOADED_DOCUMENT', 'SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
   "dossierPrefill": zod.object({
-  "kind": zod.literal("SCHWAB_MARKET_SNAPSHOT"),
+  "kind": zod.enum(['SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
   "ticker": zod.string(),
   "suggestedTitle": zod.string(),
   "instrument": zod.object({
@@ -3474,7 +3491,7 @@ export const RegisterResearchEvidenceResponse = zod.object({
   "totalVolume": zod.string().nullable()
 }),
   "priceHistory": zod.object({
-  "frequency": zod.literal("DAILY"),
+  "frequency": zod.enum(['DAILY', 'ANNUAL']),
   "requestedStart": zod.string().nullable(),
   "requestedEnd": zod.string().nullable(),
   "candleCount": zod.number().min(registerResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMin).max(registerResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMax).multipleOf(registerResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMultipleOf),
@@ -3491,7 +3508,7 @@ export const RegisterResearchEvidenceResponse = zod.object({
 })).max(registerResearchEvidenceResponseDossierPrefillOnePriceHistoryRecentClosesMax)
 }),
   "freshness": zod.object({
-  "label": zod.enum(['CURRENT', 'AGING', 'STALE', 'DELAYED', 'REALTIME', 'UNKNOWN']),
+  "label": zod.enum(['CURRENT', 'AGING', 'STALE', 'DELAYED', 'REALTIME', 'UNKNOWN', 'AS_FILED']),
   "providerAsOf": zod.string().nullable(),
   "marketDate": zod.string().nullable(),
   "realtime": zod.boolean().nullable(),
@@ -3502,7 +3519,7 @@ export const RegisterResearchEvidenceResponse = zod.object({
   "qualityFlags": zod.array(zod.string())
 }),
   "source": zod.object({
-  "provider": zod.literal("Schwab Market Data"),
+  "provider": zod.enum(['Schwab Market Data', 'SEC EDGAR']),
   "title": zod.string(),
   "provenanceClass": zod.literal("PRIMARY_SOURCE"),
   "requestedAt": zod.coerce.date().nullable(),
@@ -3510,6 +3527,19 @@ export const RegisterResearchEvidenceResponse = zod.object({
   "reviewedAt": zod.coerce.date(),
   "contentDigest": zod.string().regex(registerResearchEvidenceResponseDossierPrefillOneSourceContentDigestRegExp)
 }),
+  "sourceFacts": zod.array(zod.object({
+  "evidenceId": zod.string().regex(registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemEvidenceIdRegExp),
+  "field": zod.string().min(1).max(registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemFieldMax),
+  "value": zod.string().min(1).max(registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemValueMax),
+  "unit": zod.string().max(registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemUnitMax).nullable(),
+  "filingType": zod.union([zod.literal('10-Q'),zod.literal('10-K'),zod.literal(null)]).nullable(),
+  "filingDate": zod.coerce.date().nullable(),
+  "accession": zod.string().max(registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemAccessionMax).nullable(),
+  "sourceUrl": zod.string().max(registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemSourceUrlMax).regex(registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemSourceUrlRegExp).nullable(),
+  "periodStart": zod.coerce.date().nullable(),
+  "periodEnd": zod.coerce.date().nullable(),
+  "tag": zod.string().max(registerResearchEvidenceResponseDossierPrefillOneSourceFactsItemTagMax).nullable()
+})).max(registerResearchEvidenceResponseDossierPrefillOneSourceFactsMax).optional(),
   "advisoryOnly": zod.literal(true),
   "readOnly": zod.literal(true),
   "tradingEnabled": zod.literal(false),
@@ -3540,6 +3570,23 @@ export const reviewResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCo
 export const reviewResearchEvidenceResponseDossierPrefillOnePriceHistoryRecentClosesMax = 5;
 
 export const reviewResearchEvidenceResponseDossierPrefillOneSourceContentDigestRegExp = new RegExp('^[a-f0-9]{64}$');
+export const reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemEvidenceIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemFieldMax = 100;
+
+export const reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemValueMax = 100;
+
+export const reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemUnitMax = 40;
+
+export const reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemAccessionMax = 32;
+
+export const reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemSourceUrlMax = 2000;
+
+
+export const reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemSourceUrlRegExp = new RegExp('^https://(www\\.)?sec\\.gov');
+export const reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemTagMax = 160;
+
+export const reviewResearchEvidenceResponseDossierPrefillOneSourceFactsMax = 50;
+
 
 
 export const ReviewResearchEvidenceResponse = zod.object({
@@ -3554,9 +3601,9 @@ export const ReviewResearchEvidenceResponse = zod.object({
   "sha256": zod.string().regex(reviewResearchEvidenceResponseSha256RegExp),
   "extractionStatus": zod.string(),
   "advisoryOnly": zod.boolean().default(reviewResearchEvidenceResponseAdvisoryOnlyDefault),
-  "evidenceKind": zod.enum(['UPLOADED_DOCUMENT', 'SCHWAB_MARKET_SNAPSHOT']),
+  "evidenceKind": zod.enum(['UPLOADED_DOCUMENT', 'SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
   "dossierPrefill": zod.object({
-  "kind": zod.literal("SCHWAB_MARKET_SNAPSHOT"),
+  "kind": zod.enum(['SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
   "ticker": zod.string(),
   "suggestedTitle": zod.string(),
   "instrument": zod.object({
@@ -3593,7 +3640,7 @@ export const ReviewResearchEvidenceResponse = zod.object({
   "totalVolume": zod.string().nullable()
 }),
   "priceHistory": zod.object({
-  "frequency": zod.literal("DAILY"),
+  "frequency": zod.enum(['DAILY', 'ANNUAL']),
   "requestedStart": zod.string().nullable(),
   "requestedEnd": zod.string().nullable(),
   "candleCount": zod.number().min(reviewResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMin).max(reviewResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMax).multipleOf(reviewResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMultipleOf),
@@ -3610,7 +3657,7 @@ export const ReviewResearchEvidenceResponse = zod.object({
 })).max(reviewResearchEvidenceResponseDossierPrefillOnePriceHistoryRecentClosesMax)
 }),
   "freshness": zod.object({
-  "label": zod.enum(['CURRENT', 'AGING', 'STALE', 'DELAYED', 'REALTIME', 'UNKNOWN']),
+  "label": zod.enum(['CURRENT', 'AGING', 'STALE', 'DELAYED', 'REALTIME', 'UNKNOWN', 'AS_FILED']),
   "providerAsOf": zod.string().nullable(),
   "marketDate": zod.string().nullable(),
   "realtime": zod.boolean().nullable(),
@@ -3621,7 +3668,7 @@ export const ReviewResearchEvidenceResponse = zod.object({
   "qualityFlags": zod.array(zod.string())
 }),
   "source": zod.object({
-  "provider": zod.literal("Schwab Market Data"),
+  "provider": zod.enum(['Schwab Market Data', 'SEC EDGAR']),
   "title": zod.string(),
   "provenanceClass": zod.literal("PRIMARY_SOURCE"),
   "requestedAt": zod.coerce.date().nullable(),
@@ -3629,6 +3676,19 @@ export const ReviewResearchEvidenceResponse = zod.object({
   "reviewedAt": zod.coerce.date(),
   "contentDigest": zod.string().regex(reviewResearchEvidenceResponseDossierPrefillOneSourceContentDigestRegExp)
 }),
+  "sourceFacts": zod.array(zod.object({
+  "evidenceId": zod.string().regex(reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemEvidenceIdRegExp),
+  "field": zod.string().min(1).max(reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemFieldMax),
+  "value": zod.string().min(1).max(reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemValueMax),
+  "unit": zod.string().max(reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemUnitMax).nullable(),
+  "filingType": zod.union([zod.literal('10-Q'),zod.literal('10-K'),zod.literal(null)]).nullable(),
+  "filingDate": zod.coerce.date().nullable(),
+  "accession": zod.string().max(reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemAccessionMax).nullable(),
+  "sourceUrl": zod.string().max(reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemSourceUrlMax).regex(reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemSourceUrlRegExp).nullable(),
+  "periodStart": zod.coerce.date().nullable(),
+  "periodEnd": zod.coerce.date().nullable(),
+  "tag": zod.string().max(reviewResearchEvidenceResponseDossierPrefillOneSourceFactsItemTagMax).nullable()
+})).max(reviewResearchEvidenceResponseDossierPrefillOneSourceFactsMax).optional(),
   "advisoryOnly": zod.literal(true),
   "readOnly": zod.literal(true),
   "tradingEnabled": zod.literal(false),
@@ -3651,6 +3711,23 @@ export const listResearchDossiersResponseEvidenceItemDossierPrefillOnePriceHisto
 export const listResearchDossiersResponseEvidenceItemDossierPrefillOnePriceHistoryRecentClosesMax = 5;
 
 export const listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceContentDigestRegExp = new RegExp('^[a-f0-9]{64}$');
+export const listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemEvidenceIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemFieldMax = 100;
+
+export const listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemValueMax = 100;
+
+export const listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemUnitMax = 40;
+
+export const listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemAccessionMax = 32;
+
+export const listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemSourceUrlMax = 2000;
+
+
+export const listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemSourceUrlRegExp = new RegExp('^https://(www\\.)?sec\\.gov');
+export const listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemTagMax = 160;
+
+export const listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsMax = 50;
+
 export const listResearchDossiersResponseDossiersItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const listResearchDossiersResponseDossiersItemHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const listResearchDossiersResponseDossiersItemEvidenceIdsItemRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
@@ -3672,9 +3749,9 @@ export const ListResearchDossiersResponse = zod.object({
   "sha256": zod.string().regex(listResearchDossiersResponseEvidenceItemSha256RegExp),
   "extractionStatus": zod.string(),
   "advisoryOnly": zod.boolean().default(listResearchDossiersResponseEvidenceItemAdvisoryOnlyDefault),
-  "evidenceKind": zod.enum(['UPLOADED_DOCUMENT', 'SCHWAB_MARKET_SNAPSHOT']),
+  "evidenceKind": zod.enum(['UPLOADED_DOCUMENT', 'SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
   "dossierPrefill": zod.object({
-  "kind": zod.literal("SCHWAB_MARKET_SNAPSHOT"),
+  "kind": zod.enum(['SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
   "ticker": zod.string(),
   "suggestedTitle": zod.string(),
   "instrument": zod.object({
@@ -3711,7 +3788,7 @@ export const ListResearchDossiersResponse = zod.object({
   "totalVolume": zod.string().nullable()
 }),
   "priceHistory": zod.object({
-  "frequency": zod.literal("DAILY"),
+  "frequency": zod.enum(['DAILY', 'ANNUAL']),
   "requestedStart": zod.string().nullable(),
   "requestedEnd": zod.string().nullable(),
   "candleCount": zod.number().min(listResearchDossiersResponseEvidenceItemDossierPrefillOnePriceHistoryCandleCountMin).max(listResearchDossiersResponseEvidenceItemDossierPrefillOnePriceHistoryCandleCountMax).multipleOf(listResearchDossiersResponseEvidenceItemDossierPrefillOnePriceHistoryCandleCountMultipleOf),
@@ -3728,7 +3805,7 @@ export const ListResearchDossiersResponse = zod.object({
 })).max(listResearchDossiersResponseEvidenceItemDossierPrefillOnePriceHistoryRecentClosesMax)
 }),
   "freshness": zod.object({
-  "label": zod.enum(['CURRENT', 'AGING', 'STALE', 'DELAYED', 'REALTIME', 'UNKNOWN']),
+  "label": zod.enum(['CURRENT', 'AGING', 'STALE', 'DELAYED', 'REALTIME', 'UNKNOWN', 'AS_FILED']),
   "providerAsOf": zod.string().nullable(),
   "marketDate": zod.string().nullable(),
   "realtime": zod.boolean().nullable(),
@@ -3739,7 +3816,7 @@ export const ListResearchDossiersResponse = zod.object({
   "qualityFlags": zod.array(zod.string())
 }),
   "source": zod.object({
-  "provider": zod.literal("Schwab Market Data"),
+  "provider": zod.enum(['Schwab Market Data', 'SEC EDGAR']),
   "title": zod.string(),
   "provenanceClass": zod.literal("PRIMARY_SOURCE"),
   "requestedAt": zod.coerce.date().nullable(),
@@ -3747,6 +3824,19 @@ export const ListResearchDossiersResponse = zod.object({
   "reviewedAt": zod.coerce.date(),
   "contentDigest": zod.string().regex(listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceContentDigestRegExp)
 }),
+  "sourceFacts": zod.array(zod.object({
+  "evidenceId": zod.string().regex(listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemEvidenceIdRegExp),
+  "field": zod.string().min(1).max(listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemFieldMax),
+  "value": zod.string().min(1).max(listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemValueMax),
+  "unit": zod.string().max(listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemUnitMax).nullable(),
+  "filingType": zod.union([zod.literal('10-Q'),zod.literal('10-K'),zod.literal(null)]).nullable(),
+  "filingDate": zod.coerce.date().nullable(),
+  "accession": zod.string().max(listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemAccessionMax).nullable(),
+  "sourceUrl": zod.string().max(listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemSourceUrlMax).regex(listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemSourceUrlRegExp).nullable(),
+  "periodStart": zod.coerce.date().nullable(),
+  "periodEnd": zod.coerce.date().nullable(),
+  "tag": zod.string().max(listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsItemTagMax).nullable()
+})).max(listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFactsMax).optional(),
   "advisoryOnly": zod.literal(true),
   "readOnly": zod.literal(true),
   "tradingEnabled": zod.literal(false),
@@ -3886,6 +3976,23 @@ export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOnePr
 export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOnePriceHistoryRecentClosesMax = 5;
 
 export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceContentDigestRegExp = new RegExp('^[a-f0-9]{64}$');
+export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemEvidenceIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemFieldMax = 100;
+
+export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemValueMax = 100;
+
+export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemUnitMax = 40;
+
+export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemAccessionMax = 32;
+
+export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemSourceUrlMax = 2000;
+
+
+export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemSourceUrlRegExp = new RegExp('^https://(www\\.)?sec\\.gov');
+export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemTagMax = 160;
+
+export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsMax = 50;
+
 export const createResearchDossierResponseRefreshDossiersItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const createResearchDossierResponseRefreshDossiersItemHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const createResearchDossierResponseRefreshDossiersItemEvidenceIdsItemRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
@@ -4032,9 +4139,9 @@ export const CreateResearchDossierResponse = zod.object({
   "sha256": zod.string().regex(createResearchDossierResponseRefreshEvidenceItemSha256RegExp),
   "extractionStatus": zod.string(),
   "advisoryOnly": zod.boolean().default(createResearchDossierResponseRefreshEvidenceItemAdvisoryOnlyDefault),
-  "evidenceKind": zod.enum(['UPLOADED_DOCUMENT', 'SCHWAB_MARKET_SNAPSHOT']),
+  "evidenceKind": zod.enum(['UPLOADED_DOCUMENT', 'SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
   "dossierPrefill": zod.object({
-  "kind": zod.literal("SCHWAB_MARKET_SNAPSHOT"),
+  "kind": zod.enum(['SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
   "ticker": zod.string(),
   "suggestedTitle": zod.string(),
   "instrument": zod.object({
@@ -4071,7 +4178,7 @@ export const CreateResearchDossierResponse = zod.object({
   "totalVolume": zod.string().nullable()
 }),
   "priceHistory": zod.object({
-  "frequency": zod.literal("DAILY"),
+  "frequency": zod.enum(['DAILY', 'ANNUAL']),
   "requestedStart": zod.string().nullable(),
   "requestedEnd": zod.string().nullable(),
   "candleCount": zod.number().min(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOnePriceHistoryCandleCountMin).max(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOnePriceHistoryCandleCountMax).multipleOf(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOnePriceHistoryCandleCountMultipleOf),
@@ -4088,7 +4195,7 @@ export const CreateResearchDossierResponse = zod.object({
 })).max(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOnePriceHistoryRecentClosesMax)
 }),
   "freshness": zod.object({
-  "label": zod.enum(['CURRENT', 'AGING', 'STALE', 'DELAYED', 'REALTIME', 'UNKNOWN']),
+  "label": zod.enum(['CURRENT', 'AGING', 'STALE', 'DELAYED', 'REALTIME', 'UNKNOWN', 'AS_FILED']),
   "providerAsOf": zod.string().nullable(),
   "marketDate": zod.string().nullable(),
   "realtime": zod.boolean().nullable(),
@@ -4099,7 +4206,7 @@ export const CreateResearchDossierResponse = zod.object({
   "qualityFlags": zod.array(zod.string())
 }),
   "source": zod.object({
-  "provider": zod.literal("Schwab Market Data"),
+  "provider": zod.enum(['Schwab Market Data', 'SEC EDGAR']),
   "title": zod.string(),
   "provenanceClass": zod.literal("PRIMARY_SOURCE"),
   "requestedAt": zod.coerce.date().nullable(),
@@ -4107,6 +4214,19 @@ export const CreateResearchDossierResponse = zod.object({
   "reviewedAt": zod.coerce.date(),
   "contentDigest": zod.string().regex(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceContentDigestRegExp)
 }),
+  "sourceFacts": zod.array(zod.object({
+  "evidenceId": zod.string().regex(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemEvidenceIdRegExp),
+  "field": zod.string().min(1).max(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemFieldMax),
+  "value": zod.string().min(1).max(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemValueMax),
+  "unit": zod.string().max(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemUnitMax).nullable(),
+  "filingType": zod.union([zod.literal('10-Q'),zod.literal('10-K'),zod.literal(null)]).nullable(),
+  "filingDate": zod.coerce.date().nullable(),
+  "accession": zod.string().max(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemAccessionMax).nullable(),
+  "sourceUrl": zod.string().max(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemSourceUrlMax).regex(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemSourceUrlRegExp).nullable(),
+  "periodStart": zod.coerce.date().nullable(),
+  "periodEnd": zod.coerce.date().nullable(),
+  "tag": zod.string().max(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsItemTagMax).nullable()
+})).max(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceFactsMax).optional(),
   "advisoryOnly": zod.literal(true),
   "readOnly": zod.literal(true),
   "tradingEnabled": zod.literal(false),
@@ -12025,6 +12145,386 @@ export const CreateMarketSnapshotResponse = zod.object({
   "executionAuthority": zod.literal("none"),
   "noTradingOrMoneyMovement": zod.literal(true),
   "nonAuthoritative": zod.literal(true)
+})
+
+
+/**
+ * @summary List household-scoped normalized SEC filing drafts and approved evidence
+ */
+export const listSecFilingsResponseDraftsItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listSecFilingsResponseDraftsItemHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listSecFilingsResponseApprovedItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ListSecFilingsResponse = zod.object({
+  "drafts": zod.array(zod.object({
+  "id": zod.string().regex(listSecFilingsResponseDraftsItemIdRegExp),
+  "householdId": zod.string().regex(listSecFilingsResponseDraftsItemHouseholdIdRegExp),
+  "ticker": zod.string(),
+  "filingForm": zod.string(),
+  "filingDate": zod.string(),
+  "accession": zod.string(),
+  "sourceUrl": zod.string(),
+  "content": zod.object({
+  "ticker": zod.string(),
+  "metrics": zod.object({
+  "totalAssets": zod.object({
+  "tag": zod.string(),
+  "unit": zod.string().nullable(),
+  "value": zod.number(),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "accession": zod.string(),
+  "form": zod.string(),
+  "filed": zod.string().nullable(),
+  "fiscalYear": zod.number().nullable(),
+  "fiscalPeriod": zod.string().nullable(),
+  "frame": zod.string().nullable(),
+  "sourceUrl": zod.string().nullable()
+}).optional(),
+  "totalLiabilities": zod.object({
+  "tag": zod.string(),
+  "unit": zod.string().nullable(),
+  "value": zod.number(),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "accession": zod.string(),
+  "form": zod.string(),
+  "filed": zod.string().nullable(),
+  "fiscalYear": zod.number().nullable(),
+  "fiscalPeriod": zod.string().nullable(),
+  "frame": zod.string().nullable(),
+  "sourceUrl": zod.string().nullable()
+}).optional(),
+  "netIncome": zod.object({
+  "tag": zod.string(),
+  "unit": zod.string().nullable(),
+  "value": zod.number(),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "accession": zod.string(),
+  "form": zod.string(),
+  "filed": zod.string().nullable(),
+  "fiscalYear": zod.number().nullable(),
+  "fiscalPeriod": zod.string().nullable(),
+  "frame": zod.string().nullable(),
+  "sourceUrl": zod.string().nullable()
+}).optional(),
+  "deposits": zod.object({
+  "tag": zod.string(),
+  "unit": zod.string().nullable(),
+  "value": zod.number(),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "accession": zod.string(),
+  "form": zod.string(),
+  "filed": zod.string().nullable(),
+  "fiscalYear": zod.number().nullable(),
+  "fiscalPeriod": zod.string().nullable(),
+  "frame": zod.string().nullable(),
+  "sourceUrl": zod.string().nullable()
+}).optional(),
+  "stockholdersEquity": zod.object({
+  "tag": zod.string(),
+  "unit": zod.string().nullable(),
+  "value": zod.number(),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "accession": zod.string(),
+  "form": zod.string(),
+  "filed": zod.string().nullable(),
+  "fiscalYear": zod.number().nullable(),
+  "fiscalPeriod": zod.string().nullable(),
+  "frame": zod.string().nullable(),
+  "sourceUrl": zod.string().nullable()
+}).optional()
+}).describe('Exact SEC XBRL facts; unsupported fields are null and listed in missingFields.'),
+  "filings": zod.array(zod.object({
+  "form": zod.string(),
+  "filingDate": zod.string(),
+  "accession": zod.string(),
+  "sourceUrl": zod.string()
+})),
+  "filingPriority": zod.string()
+}),
+  "provenance": zod.object({
+  "provider": zod.string(),
+  "issuerCik": zod.string(),
+  "sourceUrls": zod.array(zod.string()),
+  "citations": zod.array(zod.object({
+  "field": zod.string(),
+  "sourceUrl": zod.string().nullable()
+})),
+  "accessedAt": zod.string()
+}),
+  "missingFields": zod.array(zod.string()),
+  "evidenceQuality": zod.enum(['HIGH', 'MEDIUM', 'LOW']),
+  "extractionTimestamp": zod.coerce.date(),
+  "reviewStatus": zod.enum(['PENDING_HUMAN_REVIEW', 'APPROVED', 'REJECTED'])
+})),
+  "approved": zod.array(zod.object({
+  "id": zod.string().regex(listSecFilingsResponseApprovedItemIdRegExp),
+  "ticker": zod.string(),
+  "canonicalSha256": zod.string(),
+  "provenance": zod.string(),
+  "approvedAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Retrieve latest 10-Q and only missing fields from latest 10-K from official SEC sources
+ */
+export const retrieveSecFilingBodyTickerRegExp = new RegExp('^[A-Za-z][A-Za-z0-9.-]{0,14}$');
+
+
+export const RetrieveSecFilingBody = zod.object({
+  "ticker": zod.string().regex(retrieveSecFilingBodyTickerRegExp)
+})
+
+export const retrieveSecFilingResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const retrieveSecFilingResponseHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const RetrieveSecFilingResponse = zod.object({
+  "id": zod.string().regex(retrieveSecFilingResponseIdRegExp),
+  "householdId": zod.string().regex(retrieveSecFilingResponseHouseholdIdRegExp),
+  "ticker": zod.string(),
+  "filingForm": zod.string(),
+  "filingDate": zod.string(),
+  "accession": zod.string(),
+  "sourceUrl": zod.string(),
+  "content": zod.object({
+  "ticker": zod.string(),
+  "metrics": zod.object({
+  "totalAssets": zod.object({
+  "tag": zod.string(),
+  "unit": zod.string().nullable(),
+  "value": zod.number(),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "accession": zod.string(),
+  "form": zod.string(),
+  "filed": zod.string().nullable(),
+  "fiscalYear": zod.number().nullable(),
+  "fiscalPeriod": zod.string().nullable(),
+  "frame": zod.string().nullable(),
+  "sourceUrl": zod.string().nullable()
+}).optional(),
+  "totalLiabilities": zod.object({
+  "tag": zod.string(),
+  "unit": zod.string().nullable(),
+  "value": zod.number(),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "accession": zod.string(),
+  "form": zod.string(),
+  "filed": zod.string().nullable(),
+  "fiscalYear": zod.number().nullable(),
+  "fiscalPeriod": zod.string().nullable(),
+  "frame": zod.string().nullable(),
+  "sourceUrl": zod.string().nullable()
+}).optional(),
+  "netIncome": zod.object({
+  "tag": zod.string(),
+  "unit": zod.string().nullable(),
+  "value": zod.number(),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "accession": zod.string(),
+  "form": zod.string(),
+  "filed": zod.string().nullable(),
+  "fiscalYear": zod.number().nullable(),
+  "fiscalPeriod": zod.string().nullable(),
+  "frame": zod.string().nullable(),
+  "sourceUrl": zod.string().nullable()
+}).optional(),
+  "deposits": zod.object({
+  "tag": zod.string(),
+  "unit": zod.string().nullable(),
+  "value": zod.number(),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "accession": zod.string(),
+  "form": zod.string(),
+  "filed": zod.string().nullable(),
+  "fiscalYear": zod.number().nullable(),
+  "fiscalPeriod": zod.string().nullable(),
+  "frame": zod.string().nullable(),
+  "sourceUrl": zod.string().nullable()
+}).optional(),
+  "stockholdersEquity": zod.object({
+  "tag": zod.string(),
+  "unit": zod.string().nullable(),
+  "value": zod.number(),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "accession": zod.string(),
+  "form": zod.string(),
+  "filed": zod.string().nullable(),
+  "fiscalYear": zod.number().nullable(),
+  "fiscalPeriod": zod.string().nullable(),
+  "frame": zod.string().nullable(),
+  "sourceUrl": zod.string().nullable()
+}).optional()
+}).describe('Exact SEC XBRL facts; unsupported fields are null and listed in missingFields.'),
+  "filings": zod.array(zod.object({
+  "form": zod.string(),
+  "filingDate": zod.string(),
+  "accession": zod.string(),
+  "sourceUrl": zod.string()
+})),
+  "filingPriority": zod.string()
+}),
+  "provenance": zod.object({
+  "provider": zod.string(),
+  "issuerCik": zod.string(),
+  "sourceUrls": zod.array(zod.string()),
+  "citations": zod.array(zod.object({
+  "field": zod.string(),
+  "sourceUrl": zod.string().nullable()
+})),
+  "accessedAt": zod.string()
+}),
+  "missingFields": zod.array(zod.string()),
+  "evidenceQuality": zod.enum(['HIGH', 'MEDIUM', 'LOW']),
+  "extractionTimestamp": zod.coerce.date(),
+  "reviewStatus": zod.enum(['PENDING_HUMAN_REVIEW', 'APPROVED', 'REJECTED'])
+})
+
+
+/**
+ * @summary Approve or reject an SEC filing draft; approval emits immutable evidence
+ */
+export const reviewSecFilingPathFilingIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ReviewSecFilingParams = zod.object({
+  "filingId": zod.coerce.string().regex(reviewSecFilingPathFilingIdRegExp)
+})
+
+export const ReviewSecFilingBody = zod.object({
+  "disposition": zod.enum(['APPROVE', 'REJECT'])
+})
+
+export const reviewSecFilingResponseSnapshotIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reviewSecFilingResponseSnapshotHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reviewSecFilingResponseEvidenceIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ReviewSecFilingResponse = zod.object({
+  "snapshot": zod.object({
+  "id": zod.string().regex(reviewSecFilingResponseSnapshotIdRegExp),
+  "householdId": zod.string().regex(reviewSecFilingResponseSnapshotHouseholdIdRegExp),
+  "ticker": zod.string(),
+  "filingForm": zod.string(),
+  "filingDate": zod.string(),
+  "accession": zod.string(),
+  "sourceUrl": zod.string(),
+  "content": zod.object({
+  "ticker": zod.string(),
+  "metrics": zod.object({
+  "totalAssets": zod.object({
+  "tag": zod.string(),
+  "unit": zod.string().nullable(),
+  "value": zod.number(),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "accession": zod.string(),
+  "form": zod.string(),
+  "filed": zod.string().nullable(),
+  "fiscalYear": zod.number().nullable(),
+  "fiscalPeriod": zod.string().nullable(),
+  "frame": zod.string().nullable(),
+  "sourceUrl": zod.string().nullable()
+}).optional(),
+  "totalLiabilities": zod.object({
+  "tag": zod.string(),
+  "unit": zod.string().nullable(),
+  "value": zod.number(),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "accession": zod.string(),
+  "form": zod.string(),
+  "filed": zod.string().nullable(),
+  "fiscalYear": zod.number().nullable(),
+  "fiscalPeriod": zod.string().nullable(),
+  "frame": zod.string().nullable(),
+  "sourceUrl": zod.string().nullable()
+}).optional(),
+  "netIncome": zod.object({
+  "tag": zod.string(),
+  "unit": zod.string().nullable(),
+  "value": zod.number(),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "accession": zod.string(),
+  "form": zod.string(),
+  "filed": zod.string().nullable(),
+  "fiscalYear": zod.number().nullable(),
+  "fiscalPeriod": zod.string().nullable(),
+  "frame": zod.string().nullable(),
+  "sourceUrl": zod.string().nullable()
+}).optional(),
+  "deposits": zod.object({
+  "tag": zod.string(),
+  "unit": zod.string().nullable(),
+  "value": zod.number(),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "accession": zod.string(),
+  "form": zod.string(),
+  "filed": zod.string().nullable(),
+  "fiscalYear": zod.number().nullable(),
+  "fiscalPeriod": zod.string().nullable(),
+  "frame": zod.string().nullable(),
+  "sourceUrl": zod.string().nullable()
+}).optional(),
+  "stockholdersEquity": zod.object({
+  "tag": zod.string(),
+  "unit": zod.string().nullable(),
+  "value": zod.number(),
+  "start": zod.string().nullable(),
+  "end": zod.string().nullable(),
+  "accession": zod.string(),
+  "form": zod.string(),
+  "filed": zod.string().nullable(),
+  "fiscalYear": zod.number().nullable(),
+  "fiscalPeriod": zod.string().nullable(),
+  "frame": zod.string().nullable(),
+  "sourceUrl": zod.string().nullable()
+}).optional()
+}).describe('Exact SEC XBRL facts; unsupported fields are null and listed in missingFields.'),
+  "filings": zod.array(zod.object({
+  "form": zod.string(),
+  "filingDate": zod.string(),
+  "accession": zod.string(),
+  "sourceUrl": zod.string()
+})),
+  "filingPriority": zod.string()
+}),
+  "provenance": zod.object({
+  "provider": zod.string(),
+  "issuerCik": zod.string(),
+  "sourceUrls": zod.array(zod.string()),
+  "citations": zod.array(zod.object({
+  "field": zod.string(),
+  "sourceUrl": zod.string().nullable()
+})),
+  "accessedAt": zod.string()
+}),
+  "missingFields": zod.array(zod.string()),
+  "evidenceQuality": zod.enum(['HIGH', 'MEDIUM', 'LOW']),
+  "extractionTimestamp": zod.coerce.date(),
+  "reviewStatus": zod.enum(['PENDING_HUMAN_REVIEW', 'APPROVED', 'REJECTED'])
+}),
+  "evidence": zod.object({
+  "id": zod.string().regex(reviewSecFilingResponseEvidenceIdRegExp),
+  "ticker": zod.string(),
+  "canonicalSha256": zod.string(),
+  "provenance": zod.string(),
+  "approvedAt": zod.string()
+})
 })
 
 

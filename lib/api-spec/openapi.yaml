@@ -3684,6 +3684,39 @@ paths:
             schema: { $ref: "#/components/schemas/CreateMarketSnapshotRequest" }
       responses:
         "201": { description: Snapshot pending human review, content: { application/json: { schema: { $ref: "#/components/schemas/MarketSnapshot" } } } }
+  /research/sec/filings:
+    get:
+      operationId: listSecFilings
+      tags: [research-dossier]
+      summary: List household-scoped normalized SEC filing drafts and approved evidence
+      responses:
+        "200": { description: SEC filing evidence, content: { application/json: { schema: { $ref: "#/components/schemas/SecFilingListResponse" } } } }
+    post:
+      operationId: retrieveSecFiling
+      tags: [research-dossier]
+      summary: Retrieve latest 10-Q and only missing fields from latest 10-K from official SEC sources
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SecFilingRetrievalRequest" }
+      responses:
+        "201": { description: Normalized SEC draft pending human review, content: { application/json: { schema: { $ref: "#/components/schemas/SecFilingDraft" } } } }
+  /research/sec/filings/{filingId}/review:
+    post:
+      operationId: reviewSecFiling
+      tags: [research-dossier]
+      summary: Approve or reject an SEC filing draft; approval emits immutable evidence
+      parameters:
+        - { name: filingId, in: path, required: true, schema: { type: string, pattern: "^[0-9a-fA-F-]{36}$" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SecFilingReviewRequest"
+      responses:
+        "200": { description: Human disposition and immutable evidence, content: { application/json: { schema: { $ref: "#/components/schemas/SecFilingReviewResult" } } } }
   /research/schwab/market-snapshots/{snapshotId}/review:
     post:
       operationId: reviewMarketSnapshot
@@ -6606,6 +6639,110 @@ components:
       required: [status]
       properties:
         status: { type: string, enum: [REVIEWED, REJECTED] }
+    SecFilingRetrievalRequest:
+      type: object
+      required: [ticker]
+      properties:
+        ticker: { type: string, pattern: "^[A-Za-z][A-Za-z0-9.-]{0,14}$" }
+    SecFilingReviewRequest:
+      type: object
+      required: [disposition]
+      properties:
+        disposition: { type: string, enum: [APPROVE, REJECT] }
+    SecFact:
+      type: object
+      required: [tag, unit, value, start, end, accession, form, filed, fiscalYear, fiscalPeriod, frame, sourceUrl]
+      properties:
+        tag: { type: string }
+        unit: { type: string, nullable: true }
+        value: { type: number }
+        start: { type: string, nullable: true }
+        end: { type: string, nullable: true }
+        accession: { type: string }
+        form: { type: string }
+        filed: { type: string, nullable: true }
+        fiscalYear: { type: number, nullable: true }
+        fiscalPeriod: { type: string, nullable: true }
+        frame: { type: string, nullable: true }
+        sourceUrl: { type: string, nullable: true }
+    SecBankMetrics:
+      type: object
+      description: Exact SEC XBRL facts; unsupported fields are null and listed in missingFields.
+      properties:
+        totalAssets: { $ref: "#/components/schemas/SecFact" }
+        totalLiabilities: { $ref: "#/components/schemas/SecFact" }
+        netIncome: { $ref: "#/components/schemas/SecFact" }
+        deposits: { $ref: "#/components/schemas/SecFact" }
+        stockholdersEquity: { $ref: "#/components/schemas/SecFact" }
+    SecFilingContent:
+      type: object
+      required: [ticker, metrics, filings, filingPriority]
+      properties:
+        ticker: { type: string }
+        metrics: { $ref: "#/components/schemas/SecBankMetrics" }
+        filings: { type: array, items: { $ref: "#/components/schemas/SecFilingReference" } }
+        filingPriority: { type: string }
+    SecFilingProvenance:
+      type: object
+      required: [provider, issuerCik, sourceUrls, citations, accessedAt]
+      properties:
+        provider: { type: string }
+        issuerCik: { type: string }
+        sourceUrls: { type: array, items: { type: string } }
+        citations: { type: array, items: { $ref: "#/components/schemas/SecCitation" } }
+        accessedAt: { type: string }
+    SecFilingReference:
+      type: object
+      required: [form, filingDate, accession, sourceUrl]
+      properties:
+        form: { type: string }
+        filingDate: { type: string }
+        accession: { type: string }
+        sourceUrl: { type: string }
+    SecCitation:
+      type: object
+      required: [field, sourceUrl]
+      properties:
+        field: { type: string }
+        sourceUrl: { type: string, nullable: true }
+    SecFilingDraft:
+      type: object
+      required: [id, householdId, ticker, filingForm, filingDate, accession, sourceUrl, content, provenance, missingFields, evidenceQuality, extractionTimestamp, reviewStatus]
+      properties:
+        id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        householdId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        ticker: { type: string }
+        filingForm: { type: string }
+        filingDate: { type: string }
+        accession: { type: string }
+        sourceUrl: { type: string }
+        content: { $ref: "#/components/schemas/SecFilingContent" }
+        provenance: { $ref: "#/components/schemas/SecFilingProvenance" }
+        missingFields: { type: array, items: { type: string } }
+        evidenceQuality: { type: string, enum: [HIGH, MEDIUM, LOW] }
+        extractionTimestamp: { type: string, format: date-time }
+        reviewStatus: { type: string, enum: [PENDING_HUMAN_REVIEW, APPROVED, REJECTED] }
+    SecFilingListResponse:
+      type: object
+      required: [drafts, approved]
+      properties:
+        drafts: { type: array, items: { $ref: "#/components/schemas/SecFilingDraft" } }
+        approved: { type: array, items: { $ref: "#/components/schemas/SecFilingApprovedEvidence" } }
+    SecFilingApprovedEvidence:
+      type: object
+      required: [id, ticker, canonicalSha256, provenance, approvedAt]
+      properties:
+        id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        ticker: { type: string }
+        canonicalSha256: { type: string }
+        provenance: { type: string }
+        approvedAt: { type: string }
+    SecFilingReviewResult:
+      type: object
+      required: [snapshot, evidence]
+      properties:
+        snapshot: { $ref: "#/components/schemas/SecFilingDraft" }
+        evidence: { $ref: "#/components/schemas/SecFilingApprovedEvidence" }
     CreateMarketSnapshotRequest:
       type: object
       required: [ticker, startDate, endDate]
@@ -6730,7 +6867,7 @@ components:
         sha256: { type: string, pattern: "^[a-f0-9]{64}$" }
         extractionStatus: { type: string }
         advisoryOnly: { type: boolean, default: true }
-        evidenceKind: { type: string, enum: [UPLOADED_DOCUMENT, SCHWAB_MARKET_SNAPSHOT] }
+        evidenceKind: { type: string, enum: [UPLOADED_DOCUMENT, SCHWAB_MARKET_SNAPSHOT, SEC_FILING] }
         dossierPrefill:
           allOf: [{ $ref: "#/components/schemas/ResearchDossierPrefill" }]
           nullable: true
@@ -6738,7 +6875,7 @@ components:
       type: object
       required: [kind, ticker, suggestedTitle, instrument, fundamentals, quote, priceHistory, freshness, warnings, source, advisoryOnly, readOnly, tradingEnabled, executionAuthority, noTradingOrMoneyMovement]
       properties:
-        kind: { type: string, const: SCHWAB_MARKET_SNAPSHOT }
+        kind: { type: string, enum: [SCHWAB_MARKET_SNAPSHOT, SEC_FILING] }
         ticker: { type: string }
         suggestedTitle: { type: string }
         instrument: { $ref: "#/components/schemas/ResearchDossierPrefillInstrument" }
@@ -6748,6 +6885,10 @@ components:
         freshness: { $ref: "#/components/schemas/ResearchDossierPrefillFreshness" }
         warnings: { $ref: "#/components/schemas/ResearchDossierPrefillWarnings" }
         source: { $ref: "#/components/schemas/ResearchDossierPrefillSource" }
+        sourceFacts:
+          type: array
+          maxItems: 50
+          items: { $ref: "#/components/schemas/ResearchDossierPrefillSourceFact" }
         advisoryOnly: { type: boolean, const: true }
         readOnly: { type: boolean, const: true }
         tradingEnabled: { type: boolean, const: false }
@@ -6796,7 +6937,7 @@ components:
       type: object
       required: [frequency, requestedStart, requestedEnd, candleCount, firstMarketDate, lastMarketDate, periodOpen, periodHigh, periodLow, periodClose, recentCloses]
       properties:
-        frequency: { type: string, const: DAILY }
+        frequency: { type: string, enum: [DAILY, ANNUAL] }
         requestedStart: { type: string, nullable: true }
         requestedEnd: { type: string, nullable: true }
         candleCount: { type: number, multipleOf: 1, minimum: 0, maximum: 100 }
@@ -6821,11 +6962,26 @@ components:
       type: object
       required: [label, providerAsOf, marketDate, realtime, delayed]
       properties:
-        label: { type: string, enum: [CURRENT, AGING, STALE, DELAYED, REALTIME, UNKNOWN] }
+        label: { type: string, enum: [CURRENT, AGING, STALE, DELAYED, REALTIME, UNKNOWN, AS_FILED] }
         providerAsOf: { type: string, nullable: true }
         marketDate: { type: string, nullable: true }
         realtime: { type: boolean, nullable: true }
         delayed: { type: boolean, nullable: true }
+    ResearchDossierPrefillSourceFact:
+      type: object
+      required: [evidenceId, field, value, unit, filingType, filingDate, accession, sourceUrl, periodStart, periodEnd, tag]
+      properties:
+        evidenceId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        field: { type: string, minLength: 1, maxLength: 100 }
+        value: { type: string, minLength: 1, maxLength: 100 }
+        unit: { type: ["string", "null"], maxLength: 40 }
+        filingType: { type: ["string", "null"], enum: [10-Q, 10-K, null] }
+        filingDate: { type: ["string", "null"], format: date }
+        accession: { type: ["string", "null"], maxLength: 32 }
+        sourceUrl: { type: ["string", "null"], pattern: "^https://(www\\.)?sec\\.gov/", maxLength: 2000 }
+        periodStart: { type: ["string", "null"], format: date }
+        periodEnd: { type: ["string", "null"], format: date }
+        tag: { type: ["string", "null"], maxLength: 160 }
     ResearchDossierPrefillWarnings:
       type: object
       required: [missingFields, qualityFlags]
@@ -6836,7 +6992,7 @@ components:
       type: object
       required: [provider, title, provenanceClass, requestedAt, retrievedAt, reviewedAt, contentDigest]
       properties:
-        provider: { type: string, const: Schwab Market Data }
+        provider: { type: string, enum: [Schwab Market Data, SEC EDGAR] }
         title: { type: string }
         provenanceClass: { type: string, const: PRIMARY_SOURCE }
         requestedAt: { type: string, format: date-time, nullable: true }

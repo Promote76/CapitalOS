@@ -25,6 +25,7 @@ import financialDocumentsRouter from "./financial-documents";
 import schwabRouter from "./schwab";
 import schwabMarketDataRouter from "./schwab-market-data";
 import schwabResearchRouter from "./schwab-research";
+import secResearchRouter from "./sec-research";
 
 const router: IRouter = Router();
 
@@ -54,5 +55,6 @@ router.use(financialDocumentsRouter);
 router.use(schwabRouter);
 router.use(schwabMarketDataRouter);
 router.use(schwabResearchRouter);
+router.use(secResearchRouter);
 
 export default router;

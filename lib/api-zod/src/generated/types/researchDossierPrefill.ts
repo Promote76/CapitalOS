@@ -8,13 +8,15 @@
 import type { ResearchDossierPrefillFreshness } from './researchDossierPrefillFreshness';
 import type { ResearchDossierPrefillFundamentals } from './researchDossierPrefillFundamentals';
 import type { ResearchDossierPrefillInstrument } from './researchDossierPrefillInstrument';
+import type { ResearchDossierPrefillKind } from './researchDossierPrefillKind';
 import type { ResearchDossierPrefillPriceHistory } from './researchDossierPrefillPriceHistory';
 import type { ResearchDossierPrefillQuote } from './researchDossierPrefillQuote';
 import type { ResearchDossierPrefillSource } from './researchDossierPrefillSource';
+import type { ResearchDossierPrefillSourceFact } from './researchDossierPrefillSourceFact';
 import type { ResearchDossierPrefillWarnings } from './researchDossierPrefillWarnings';
 
 export interface ResearchDossierPrefill {
-  kind: 'SCHWAB_MARKET_SNAPSHOT';
+  kind: ResearchDossierPrefillKind;
   ticker: string;
   suggestedTitle: string;
   instrument: ResearchDossierPrefillInstrument;
@@ -24,6 +26,8 @@ export interface ResearchDossierPrefill {
   freshness: ResearchDossierPrefillFreshness;
   warnings: ResearchDossierPrefillWarnings;
   source: ResearchDossierPrefillSource;
+  /** @maxItems 50 */
+  sourceFacts?: ResearchDossierPrefillSourceFact[];
   advisoryOnly: true;
   readOnly: true;
   tradingEnabled: false;

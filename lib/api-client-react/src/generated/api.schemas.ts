@@ -4169,6 +4169,131 @@ export interface ReviewResearchEvidenceRequest {
   status: ReviewResearchEvidenceRequestStatus;
 }
 
+export interface SecFilingRetrievalRequest {
+  /** @pattern ^[A-Za-z][A-Za-z0-9.-]{0,14}$ */
+  ticker: string;
+}
+
+export type SecFilingReviewRequestDisposition = typeof SecFilingReviewRequestDisposition[keyof typeof SecFilingReviewRequestDisposition];
+
+
+export const SecFilingReviewRequestDisposition = {
+  APPROVE: 'APPROVE',
+  REJECT: 'REJECT',
+} as const;
+
+export interface SecFilingReviewRequest {
+  disposition: SecFilingReviewRequestDisposition;
+}
+
+export interface SecFact {
+  tag: string;
+  unit: string | null;
+  value: number;
+  start: string | null;
+  end: string | null;
+  accession: string;
+  form: string;
+  filed: string | null;
+  fiscalYear: number | null;
+  fiscalPeriod: string | null;
+  frame: string | null;
+  sourceUrl: string | null;
+}
+
+/**
+ * Exact SEC XBRL facts; unsupported fields are null and listed in missingFields.
+ */
+export interface SecBankMetrics {
+  totalAssets?: SecFact;
+  totalLiabilities?: SecFact;
+  netIncome?: SecFact;
+  deposits?: SecFact;
+  stockholdersEquity?: SecFact;
+}
+
+export interface SecFilingReference {
+  form: string;
+  filingDate: string;
+  accession: string;
+  sourceUrl: string;
+}
+
+export interface SecFilingContent {
+  ticker: string;
+  metrics: SecBankMetrics;
+  filings: SecFilingReference[];
+  filingPriority: string;
+}
+
+export interface SecCitation {
+  field: string;
+  sourceUrl: string | null;
+}
+
+export interface SecFilingProvenance {
+  provider: string;
+  issuerCik: string;
+  sourceUrls: string[];
+  citations: SecCitation[];
+  accessedAt: string;
+}
+
+export type SecFilingDraftEvidenceQuality = typeof SecFilingDraftEvidenceQuality[keyof typeof SecFilingDraftEvidenceQuality];
+
+
+export const SecFilingDraftEvidenceQuality = {
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW',
+} as const;
+
+export type SecFilingDraftReviewStatus = typeof SecFilingDraftReviewStatus[keyof typeof SecFilingDraftReviewStatus];
+
+
+export const SecFilingDraftReviewStatus = {
+  PENDING_HUMAN_REVIEW: 'PENDING_HUMAN_REVIEW',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export interface SecFilingDraft {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  householdId: string;
+  ticker: string;
+  filingForm: string;
+  filingDate: string;
+  accession: string;
+  sourceUrl: string;
+  content: SecFilingContent;
+  provenance: SecFilingProvenance;
+  missingFields: string[];
+  evidenceQuality: SecFilingDraftEvidenceQuality;
+  extractionTimestamp: string;
+  reviewStatus: SecFilingDraftReviewStatus;
+}
+
+export interface SecFilingApprovedEvidence {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  ticker: string;
+  canonicalSha256: string;
+  provenance: string;
+  approvedAt: string;
+}
+
+export interface SecFilingListResponse {
+  drafts: SecFilingDraft[];
+  approved: SecFilingApprovedEvidence[];
+}
+
+export interface SecFilingReviewResult {
+  snapshot: SecFilingDraft;
+  evidence: SecFilingApprovedEvidence;
+}
+
 export interface CreateMarketSnapshotRequest {
   /** @maxLength 15 */
   ticker: string;
@@ -4340,6 +4465,15 @@ export type ResearchEvidenceEvidenceKind = typeof ResearchEvidenceEvidenceKind[k
 export const ResearchEvidenceEvidenceKind = {
   UPLOADED_DOCUMENT: 'UPLOADED_DOCUMENT',
   SCHWAB_MARKET_SNAPSHOT: 'SCHWAB_MARKET_SNAPSHOT',
+  SEC_FILING: 'SEC_FILING',
+} as const;
+
+export type ResearchDossierPrefillKind = typeof ResearchDossierPrefillKind[keyof typeof ResearchDossierPrefillKind];
+
+
+export const ResearchDossierPrefillKind = {
+  SCHWAB_MARKET_SNAPSHOT: 'SCHWAB_MARKET_SNAPSHOT',
+  SEC_FILING: 'SEC_FILING',
 } as const;
 
 export interface ResearchDossierPrefillInstrument {
@@ -4378,6 +4512,14 @@ export interface ResearchDossierPrefillQuote {
   totalVolume: string | null;
 }
 
+export type ResearchDossierPrefillPriceHistoryFrequency = typeof ResearchDossierPrefillPriceHistoryFrequency[keyof typeof ResearchDossierPrefillPriceHistoryFrequency];
+
+
+export const ResearchDossierPrefillPriceHistoryFrequency = {
+  DAILY: 'DAILY',
+  ANNUAL: 'ANNUAL',
+} as const;
+
 export interface ResearchDossierPrefillCandle {
   marketDate: string | null;
   close: string | null;
@@ -4385,7 +4527,7 @@ export interface ResearchDossierPrefillCandle {
 }
 
 export interface ResearchDossierPrefillPriceHistory {
-  frequency: 'DAILY';
+  frequency: ResearchDossierPrefillPriceHistoryFrequency;
   requestedStart: string | null;
   requestedEnd: string | null;
   /**
@@ -4413,6 +4555,7 @@ export const ResearchDossierPrefillFreshnessLabel = {
   DELAYED: 'DELAYED',
   REALTIME: 'REALTIME',
   UNKNOWN: 'UNKNOWN',
+  AS_FILED: 'AS_FILED',
 } as const;
 
 export interface ResearchDossierPrefillFreshness {
@@ -4428,8 +4571,16 @@ export interface ResearchDossierPrefillWarnings {
   qualityFlags: string[];
 }
 
+export type ResearchDossierPrefillSourceProvider = typeof ResearchDossierPrefillSourceProvider[keyof typeof ResearchDossierPrefillSourceProvider];
+
+
+export const ResearchDossierPrefillSourceProvider = {
+  Schwab_Market_Data: 'Schwab Market Data',
+  SEC_EDGAR: 'SEC EDGAR',
+} as const;
+
 export interface ResearchDossierPrefillSource {
-  provider: 'Schwab Market Data';
+  provider: ResearchDossierPrefillSourceProvider;
   title: string;
   provenanceClass: 'PRIMARY_SOURCE';
   requestedAt: string | null;
@@ -4439,8 +4590,63 @@ export interface ResearchDossierPrefillSource {
   contentDigest: string;
 }
 
+/**
+ * @nullable
+ */
+export type ResearchDossierPrefillSourceFactFilingType = typeof ResearchDossierPrefillSourceFactFilingType[keyof typeof ResearchDossierPrefillSourceFactFilingType] | null;
+
+
+export const ResearchDossierPrefillSourceFactFilingType = {
+  '10-Q': '10-Q',
+  '10-K': '10-K',
+} as const;
+
+export interface ResearchDossierPrefillSourceFact {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  evidenceId: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  field: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  value: string;
+  /**
+     * @maxLength 40
+     * @nullable
+     */
+  unit: string | null;
+  /** @nullable */
+  filingType: ResearchDossierPrefillSourceFactFilingType;
+  /** @nullable */
+  filingDate: string | null;
+  /**
+     * @maxLength 32
+     * @nullable
+     */
+  accession: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     * @pattern ^https://(www\.)?sec\.gov/
+     */
+  sourceUrl: string | null;
+  /** @nullable */
+  periodStart: string | null;
+  /** @nullable */
+  periodEnd: string | null;
+  /**
+     * @maxLength 160
+     * @nullable
+     */
+  tag: string | null;
+}
+
 export interface ResearchDossierPrefill {
-  kind: 'SCHWAB_MARKET_SNAPSHOT';
+  kind: ResearchDossierPrefillKind;
   ticker: string;
   suggestedTitle: string;
   instrument: ResearchDossierPrefillInstrument;
@@ -4450,6 +4656,8 @@ export interface ResearchDossierPrefill {
   freshness: ResearchDossierPrefillFreshness;
   warnings: ResearchDossierPrefillWarnings;
   source: ResearchDossierPrefillSource;
+  /** @maxItems 50 */
+  sourceFacts?: ResearchDossierPrefillSourceFact[];
   advisoryOnly: true;
   readOnly: true;
   tradingEnabled: false;

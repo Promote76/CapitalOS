@@ -5,9 +5,10 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { ResearchDossierPrefillSourceProvider } from './researchDossierPrefillSourceProvider';
 
 export interface ResearchDossierPrefillSource {
-  provider: 'Schwab Market Data';
+  provider: ResearchDossierPrefillSourceProvider;
   title: string;
   provenanceClass: 'PRIMARY_SOURCE';
   requestedAt: Date | null;

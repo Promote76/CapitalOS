@@ -15,11 +15,11 @@ persisting the session value. `GET /api/auth/me` returned `401
 AUTHENTICATION_REQUIRED`. The three research routes were each requested once,
 and each returned the same fail-closed `401 AUTHENTICATION_REQUIRED` response:
 
-| Capability | Route HTTP result | Provider request | Provider safe headers | Research fields |
-|---|---:|---|---|---|
-| Instrument fundamentals | 401 | **not attempted** | No provider headers returned | No provider envelope |
-| Current quote | 401 | **not attempted** | No provider headers returned | No provider envelope |
-| Daily price history | 401 | **not attempted** | No provider headers returned | No provider envelope |
+| Capability              | Route HTTP result | Provider request  | Provider safe headers        | Research fields      |
+| ----------------------- | ----------------: | ----------------- | ---------------------------- | -------------------- |
+| Instrument fundamentals |               401 | **not attempted** | No provider headers returned | No provider envelope |
+| Current quote           |               401 | **not attempted** | No provider headers returned | No provider envelope |
+| Daily price history     |               401 | **not attempted** | No provider headers returned | No provider envelope |
 
 The application responses contained only the safe error shape:
 `code`, `message`, and `correlationId`. The responses included
@@ -56,6 +56,34 @@ the fixed instrument, quote, and price-history endpoints. It also checks:
 
 This fixture is local evidence only and is not substituted for live Schwab
 evidence.
+
+## Repeatable live runner
+
+The checked-in published-origin runner repeats the approved session flow without
+accepting a credential as a command-line argument or printing the session value.
+It calls `GET /api/auth/me` first, then makes exactly one request to each of the
+three fixed BKSC research routes. It writes mode `0600` JSON evidence to
+`docs/certification/logs/SCHWAB_RESEARCH_BKSC_LATEST.json` by default. The
+evidence contains route status, provider-safe request/rate-limit headers,
+response and data field inventories, freshness/realtime/delayed indicators, and
+provider GET counts; it never stores provider payloads, account identifiers,
+session values, or raw error bodies.
+
+Run it only with the approved published origin and session flow:
+
+```text
+CAPITAL_OS_PUBLISHED_ORIGIN=https://<published-origin> \
+pnpm run certify:schwab-research
+```
+
+The runner reads `CAPITAL_OS_PRODUCTION_OPERATOR_SESSION_COOKIE` from the
+approved workspace environment; do not paste its value into chat, source, or
+the evidence file. The shell value is consumed by the runner and is never
+included in console output or evidence. Missing Clerk authentication, household access, provider
+entitlement, response schema, freshness evidence, or the exactly-one-provider-
+GET boundary exits non-zero and keeps the certification `BLOCKED` or `FAIL`.
+The runner does not request dossier, order, transfer, withdrawal, execution-
+control, or Micro-Live routes.
 
 ## Boundary checks
 

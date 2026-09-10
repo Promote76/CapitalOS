@@ -22,6 +22,7 @@
     "certify:financial-integrity": "node scripts/certify-financial-integrity.mjs",
     "certify:browser-auth": "node scripts/certify-browser-auth.mjs",
     "certify:schwab-read-only": "node scripts/certify-schwab-read-only.mjs",
+    "certify:schwab-research": "node scripts/certify-schwab-research.mjs",
     "certify:migrations": "node scripts/certify-migrations.mjs",
     "certify:internal-reliability": "node scripts/certify-internal-reliability.mjs",
     "certify:variable-budget": "node scripts/certify-variable-budget.mjs",

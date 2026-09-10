@@ -65,6 +65,31 @@ test("Simply Wall St evidence requires explicit permission and keeps source cate
   assert.equal(researchOutputSchema.safeParse({ ...output("BULLISH", "WATCH"), evidence: [{ ...output("BULLISH", "WATCH").evidence[0], sourceKind: "SIMPLY_WALL_ST_PERMITTED_EVIDENCE", classification: "GROK_INFERENCE" }] }).success, true);
 });
 
+test("research response diagnostics identify bounded fields without retaining rejected values", () => {
+  const base = output("BULLISH", "WATCH");
+  const cases: Array<[unknown, string, string]> = [
+    [{ ...base, title: "x".repeat(181) }, "$.title", "max_length"],
+    [{ ...base, thesis: "x".repeat(4001) }, "$.thesis", "max_length"],
+    [{ ...base, facts: ["x".repeat(1001)] }, "$.facts[0]", "max_length"],
+    [{ ...base, assumptions: ["x".repeat(1001)] }, "$.assumptions[0]", "max_length"],
+    [{ ...base, risks: ["x".repeat(1001)] }, "$.risks[0]", "max_length"],
+    [{ ...base, evidence: [{ ...base.evidence[0], title: "x".repeat(181) }] }, "$.evidence[0].title", "max_length"],
+    [{ ...base, evidence: [{ ...base.evidence[0], excerpt: "x".repeat(1501) }] }, "$.evidence[0].excerpt", "max_length"],
+    [{ ...base, evidence: [{ ...base.evidence[0], classification: "x".repeat(81) }] }, "$.evidence[0].classification", "max_length"],
+    [{ ...base, evidence: [{ ...base.evidence[0], freshness: "x".repeat(81) }] }, "$.evidence[0].freshness", "max_length"],
+    [{ ...base, evidence: [{ ...base.evidence[0], sourceUrl: "not a url" }] }, "$.evidence[0].sourceUrl", "invalid_url"],
+  ];
+  for (const [value, path, code] of cases) {
+    const result = researchOutputSchema.safeParse(value);
+    assert.equal(result.success, false);
+    if (!result.success) {
+      assert.equal(result.issues[0]?.path, path);
+      assert.equal(result.issues[0]?.code, code);
+      assert.equal(JSON.stringify(result.issues).includes("xxxx"), false);
+    }
+  }
+});
+
 test("multi-agent synthesis exposes disagreements, gaps, agreements, and only allowed labels", () => {
   const synthesis = synthesizeResearch([
     output("BULLISH", "INVESTMENT_CANDIDATE"),

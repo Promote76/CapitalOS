@@ -853,11 +853,22 @@ export async function runFamilyOfficeResearch(
     output = { ...output, thesis: `${output.thesis} Multi-agent synthesis: ${JSON.stringify(synthesis)}` };
   } catch (error) {
     const errorCode = error instanceof ProviderUnavailableError ? error.code : "AI_PROVIDER_UPSTREAM_ERROR";
+    const diagnostic = error instanceof ProviderUnavailableError ? error.diagnostic : undefined;
+    const safeBlockSummary = diagnostic
+      ? [
+          `Analyst: ${diagnostic.analyst}`,
+          `stage: ${diagnostic.stage}`,
+          diagnostic.path ? `path: ${diagnostic.path}` : null,
+          diagnostic.code ? `code: ${diagnostic.code}` : null,
+          diagnostic.expected ? `expected: ${diagnostic.expected}` : null,
+        ].filter(Boolean).join(" · ").slice(0, 600)
+      : null;
     const updated = await db.transaction(async (tx) => {
       const [blockedRun] = await tx.update(familyOfficeRuns).set({
         status: "blocked",
         providerStatus: "unavailable",
         errorCode,
+        outputSummary: safeBlockSummary,
         completedAt: new Date(),
       }).where(and(eq(familyOfficeRuns.id, run.id), eq(familyOfficeRuns.householdId, actor.householdId))).returning();
       if (options.structuredResearchDigestion) {
@@ -898,7 +909,12 @@ export async function runFamilyOfficeResearch(
         entity: "family_office_run",
         entityId: run.id,
         reason: "Provider unavailable or response invalid; no research was fabricated.",
-        metadata: { advisoryOnly: true, executionAuthorization: false, errorCode },
+        metadata: {
+          advisoryOnly: true,
+          executionAuthorization: false,
+          errorCode,
+          ...(diagnostic ? { providerDiagnostic: diagnostic } : {}),
+        },
       });
       return blockedRun;
     });

@@ -863,6 +863,16 @@ Research Notes:
                     </div>
                   </div>
                 )}
+
+                {dossier.reportStatus === "blocked" && dossier.blockDiagnostic && (
+                  <div className="p-4 rounded-md flex items-start gap-3 mt-2" style={{ backgroundColor: 'var(--bg-active)' }}>
+                    <AlertTriangle size={16} style={{ color: 'var(--warning)', marginTop: '2px', flexShrink: 0 }} />
+                    <div>
+                      <strong className="block text-sm mb-1">Research response rejected safely</strong>
+                      <p className="text-sm" style={{ color: 'var(--ink-light)' }}>{dossier.blockDiagnostic}</p>
+                    </div>
+                  </div>
+                )}
                 
                 {dossier.reportStatus !== "PENDING_PROVIDER" && dossier.proposal && (
                   <div className="logic-grid mt-2">

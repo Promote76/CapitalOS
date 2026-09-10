@@ -135,7 +135,7 @@ test("plain-text research calls all three advisory agents and persists the exact
   const [stored] = await db.select().from(familyOfficeResearchDigestions).where(eq(familyOfficeResearchDigestions.runId, result.run.id));
   assert.equal(stored.originalPayload, plainOriginal);
   assert.equal(stored.originalFingerprint, createHash("sha256").update(plainOriginal).digest("hex"));
-  assert.equal((stored.canonicalPayload as { schemaVersion?: string }).schemaVersion, "plain-text-v1");
+  assert.equal((JSON.parse(stored.canonicalPayload) as { schemaVersion?: string }).schemaVersion, "plain-text-v1");
   assert.deepEqual(await Promise.all([count(shadowOrderIntents, f.household.id), count(orderIntents, f.household.id), count(ledgerTransactions, f.household.id), count(capitalRequests, f.household.id)]), before);
 });
 
@@ -153,6 +153,37 @@ test("provider failure retains blocked immutable digestion audit without proposa
   assert.equal((await db.select().from(familyOfficeEvidence).where(eq(familyOfficeEvidence.runId, result.run.id))).length, 0);
   assert.equal((await db.select().from(auditEvents).where(and(eq(auditEvents.householdId, f.household.id), eq(auditEvents.entityId, result.run.id)))).length, 1);
   assert.deepEqual(await Promise.all([count(shadowOrderIntents, f.household.id), count(orderIntents, f.household.id), count(ledgerTransactions, f.household.id), count(capitalRequests, f.household.id)]), before);
+});
+
+test("invalid provider response stores only bounded diagnostic metadata and accepts no partial analyst output", { skip: !enabled }, async () => {
+  const f = await fixture();
+  const d = digestion();
+  let calls = 0;
+  const result = await runFamilyOfficeResearch(f.actor, { scope: "investment", ticker: "ACME", digestionPayload: original }, {
+    structuredResearchDigestion: d,
+    provider: {
+      status: { enabled: true, state: "configured", model: "diagnostic-test" },
+      research: async ({ analyst }) => {
+        calls++;
+        if (analyst === "risk-downside") {
+          throw new ProviderUnavailableError("AI_PROVIDER_INVALID_RESPONSE", {
+            analyst,
+            stage: "schema_mismatch",
+            path: "$.evidence[0].sourceUrl",
+            code: "invalid_url",
+            expected: "valid URL up to 2000 characters",
+          });
+        }
+        return output();
+      },
+    },
+  });
+  assert.equal(calls, 3);
+  assert.equal(result.run.status, "blocked");
+  assert.match(result.run.outputSummary ?? "", /Analyst: risk-downside/);
+  assert.match(result.run.outputSummary ?? "", /stage: schema_mismatch/);
+  assert.equal((await db.select().from(familyOfficeProposals).where(eq(familyOfficeProposals.runId, result.run.id))).length, 0);
+  assert.equal((await db.select().from(familyOfficeEvidence).where(eq(familyOfficeEvidence.runId, result.run.id))).length, 0);
 });
 
 test("mismatched supplied digestion is rejected before workspace, provider, or audit side effects", { skip: !enabled }, async () => {

@@ -4488,6 +4488,11 @@ export interface ResearchDossier {
   reviewStatus: string;
   createdAt: string;
   reportStatus: string;
+  /**
+     * @maxLength 600
+     * @nullable
+     */
+  blockDiagnostic: string | null;
   proposal: FamilyOfficeProposal | null;
   advisoryOnly: true;
   executionAuthority: 'none';

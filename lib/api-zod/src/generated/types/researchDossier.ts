@@ -19,6 +19,11 @@ export interface ResearchDossier {
   reviewStatus: string;
   createdAt: Date;
   reportStatus: string;
+  /**
+     * @maxLength 600
+     * @nullable
+     */
+  blockDiagnostic: string | null;
   proposal: FamilyOfficeProposal | null;
   advisoryOnly: true;
   executionAuthority: 'none';

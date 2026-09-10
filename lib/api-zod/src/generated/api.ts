@@ -3654,6 +3654,8 @@ export const listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceCont
 export const listResearchDossiersResponseDossiersItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const listResearchDossiersResponseDossiersItemHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const listResearchDossiersResponseDossiersItemEvidenceIdsItemRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listResearchDossiersResponseDossiersItemBlockDiagnosticMax = 600;
+
 export const listResearchDossiersResponseDossiersItemProposalOneDigestionSummaryFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
 
 
@@ -3761,6 +3763,7 @@ export const ListResearchDossiersResponse = zod.object({
   "reviewStatus": zod.string(),
   "createdAt": zod.coerce.date(),
   "reportStatus": zod.string(),
+  "blockDiagnostic": zod.string().max(listResearchDossiersResponseDossiersItemBlockDiagnosticMax).nullable(),
   "proposal": zod.object({
   "id": zod.string(),
   "title": zod.string(),
@@ -3866,6 +3869,8 @@ export const CreateResearchDossierBody = zod.object({
 export const createResearchDossierResponseDossierIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const createResearchDossierResponseDossierHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const createResearchDossierResponseDossierEvidenceIdsItemRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierResponseDossierBlockDiagnosticMax = 600;
+
 export const createResearchDossierResponseDossierProposalOneDigestionSummaryFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
 export const createResearchDossierResponseProposalOneDigestionSummaryFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
 export const createResearchDossierResponseRefreshEvidenceItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
@@ -3884,6 +3889,8 @@ export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSo
 export const createResearchDossierResponseRefreshDossiersItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const createResearchDossierResponseRefreshDossiersItemHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const createResearchDossierResponseRefreshDossiersItemEvidenceIdsItemRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierResponseRefreshDossiersItemBlockDiagnosticMax = 600;
+
 export const createResearchDossierResponseRefreshDossiersItemProposalOneDigestionSummaryFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
 
 
@@ -3897,6 +3904,7 @@ export const CreateResearchDossierResponse = zod.object({
   "reviewStatus": zod.string(),
   "createdAt": zod.coerce.date(),
   "reportStatus": zod.string(),
+  "blockDiagnostic": zod.string().max(createResearchDossierResponseDossierBlockDiagnosticMax).nullable(),
   "proposal": zod.object({
   "id": zod.string(),
   "title": zod.string(),
@@ -4115,6 +4123,7 @@ export const CreateResearchDossierResponse = zod.object({
   "reviewStatus": zod.string(),
   "createdAt": zod.coerce.date(),
   "reportStatus": zod.string(),
+  "blockDiagnostic": zod.string().max(createResearchDossierResponseRefreshDossiersItemBlockDiagnosticMax).nullable(),
   "proposal": zod.object({
   "id": zod.string(),
   "title": zod.string(),

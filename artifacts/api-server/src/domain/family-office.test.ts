@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ProviderUnavailableError, safeProviderModel, XaiIntelligenceProvider } from "../services/family-office-provider.ts";
+import { ProviderUnavailableError, researchResponseJsonSchema, safeProviderModel, XaiIntelligenceProvider } from "../services/family-office-provider.ts";
 import {
   assertShadowOnlyDecision,
   familyOfficeProviderStatus,
+  researchOutputConstraints,
   reviewTaxLienCandidate,
   safeResearchPrompt,
   sourcePriorityFor,
@@ -87,6 +88,24 @@ test("provider rejects malformed output and sanitizes control characters in prom
   assert.equal(requestBody.includes("\u001b"), false);
 });
 
+test("provider-facing response bounds match the application parser", () => {
+  const properties = researchResponseJsonSchema.properties;
+  assert.equal(properties.title.maxLength, researchOutputConstraints.titleMaxLength);
+  assert.equal(properties.thesis.maxLength, researchOutputConstraints.thesisMaxLength);
+  for (const key of ["facts", "assumptions", "risks"] as const) {
+    assert.equal(properties[key].maxItems, researchOutputConstraints.listMaxItems);
+    assert.equal(properties[key].items.maxLength, researchOutputConstraints.listItemMaxLength);
+  }
+  const evidence = properties.evidence;
+  assert.equal(evidence.maxItems, researchOutputConstraints.listMaxItems);
+  assert.equal(evidence.items.properties.title.maxLength, researchOutputConstraints.evidenceTitleMaxLength);
+  assert.equal(evidence.items.properties.excerpt.maxLength, researchOutputConstraints.evidenceExcerptMaxLength);
+  assert.equal(evidence.items.properties.classification.maxLength, researchOutputConstraints.evidenceClassificationMaxLength);
+  assert.equal(evidence.items.properties.freshness.maxLength, researchOutputConstraints.evidenceFreshnessMaxLength);
+  assert.equal(evidence.items.properties.sourceUrl.maxLength, researchOutputConstraints.evidenceSourceUrlMaxLength);
+  assert.equal(evidence.items.properties.sourceUrl.format, "uri");
+});
+
 test("provider classifies rate limits and invalid structured output without exposing payloads", async () => {
   const env = {
     GROK_INTELLIGENCE_ENABLED: "true",
@@ -103,8 +122,33 @@ test("provider classifies rate limits and invalid structured output without expo
   }), { status: 200 }));
   await assert.rejects(
     invalid.research({ analyst: "CIO", scope: "research", prompt: "test" }),
-    (error: unknown) => error instanceof ProviderUnavailableError && error.code === "AI_PROVIDER_INVALID_RESPONSE",
+    (error: unknown) => error instanceof ProviderUnavailableError
+      && error.code === "AI_PROVIDER_INVALID_RESPONSE"
+      && error.diagnostic?.analyst === "CIO"
+      && error.diagnostic.stage === "schema_mismatch"
+      && error.diagnostic.path === "$.title"
+      && error.diagnostic.code === "required"
+      && !JSON.stringify(error.diagnostic).includes("{}"),
   );
+});
+
+test("provider diagnostics classify envelope, content, and JSON failures without retaining payloads", async () => {
+  const env = { GROK_INTELLIGENCE_ENABLED: "true", XAI_ENABLED: "true", XAI_API_KEY: "server-only" };
+  const cases = [
+    ["invalid_api_envelope", new Response("private raw body", { status: 200 })],
+    ["missing_text_content", new Response(JSON.stringify({ choices: [{ message: {} }], private: "payload" }), { status: 200 })],
+    ["non_json_content", new Response(JSON.stringify({ choices: [{ message: { content: "private non-json content" } }] }), { status: 200 })],
+  ] as const;
+  for (const [stage, response] of cases) {
+    const provider = new XaiIntelligenceProvider(env, async () => response);
+    await assert.rejects(
+      provider.research({ analyst: "risk-downside", scope: "research", prompt: "private prompt" }),
+      (error: unknown) => error instanceof ProviderUnavailableError
+        && error.diagnostic?.stage === stage
+        && error.diagnostic.analyst === "risk-downside"
+        && !JSON.stringify(error.diagnostic).includes("private"),
+    );
+  }
 });
 
 test("provider classifies aborted requests as timeouts", async () => {

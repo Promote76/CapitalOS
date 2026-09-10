@@ -6845,7 +6845,7 @@ components:
         contentDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
     ResearchDossier:
       type: object
-      required: [id, householdId, ticker, title, evidenceIds, reviewStatus, createdAt, reportStatus, proposal, advisoryOnly, executionAuthority, noCapitalSideEffects]
+      required: [id, householdId, ticker, title, evidenceIds, reviewStatus, createdAt, reportStatus, blockDiagnostic, proposal, advisoryOnly, executionAuthority, noCapitalSideEffects]
       properties:
         id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
         householdId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
@@ -6855,6 +6855,7 @@ components:
         reviewStatus: { type: string }
         createdAt: { type: string, format: date-time }
         reportStatus: { type: string }
+        blockDiagnostic: { type: [string, "null"], maxLength: 600 }
         proposal: { allOf: [{ $ref: "#/components/schemas/FamilyOfficeProposal" }], nullable: true }
         advisoryOnly: { type: boolean, const: true }
         executionAuthority: { type: string, const: none }

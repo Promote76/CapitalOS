@@ -367,22 +367,71 @@ function boundedStringArray(value: unknown, maxLength: number, maxItemLength: nu
   return items.every((item): item is string => Boolean(item)) ? items : null;
 }
 
-function parseResearchOutput(value: unknown): ResearchOutput | null {
-  if (!value || typeof value !== "object") return null;
+export type ResearchOutputValidationIssue = {
+  path: string;
+  code: "required" | "invalid_type" | "invalid_enum" | "out_of_range" | "max_items" | "max_length" | "invalid_url";
+  expected: string;
+};
+
+export const researchOutputConstraints = {
+  titleMaxLength: 180,
+  thesisMaxLength: 4000,
+  listMaxItems: 20,
+  listItemMaxLength: 1000,
+  evidenceTitleMaxLength: 180,
+  evidenceExcerptMaxLength: 1500,
+  evidenceClassificationMaxLength: 80,
+  evidenceFreshnessMaxLength: 80,
+  evidenceSourceUrlMaxLength: 2000,
+} as const;
+
+function invalid(path: string, code: ResearchOutputValidationIssue["code"], expected: string) {
+  return { success: false as const, issues: [{ path, code, expected }] };
+}
+
+function parseResearchOutput(value: unknown): { success: true; data: ResearchOutput } | { success: false; issues: ResearchOutputValidationIssue[] } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return invalid("$", "invalid_type", "object");
   const record = value as Record<string, unknown>;
-  const title = boundedString(record.title, 180);
-  const thesis = boundedString(record.thesis, 4000);
+  if (record.title === undefined) return invalid("$.title", "required", `non-empty string up to ${researchOutputConstraints.titleMaxLength} characters`);
+  if (typeof record.title !== "string") return invalid("$.title", "invalid_type", "string");
+  const title = boundedString(record.title, researchOutputConstraints.titleMaxLength);
+  if (!title) return invalid("$.title", "max_length", `non-empty string up to ${researchOutputConstraints.titleMaxLength} characters`);
+  if (record.thesis === undefined) return invalid("$.thesis", "required", `non-empty string up to ${researchOutputConstraints.thesisMaxLength} characters`);
+  if (typeof record.thesis !== "string") return invalid("$.thesis", "invalid_type", "string");
+  const thesis = boundedString(record.thesis, researchOutputConstraints.thesisMaxLength);
+  if (!thesis) return invalid("$.thesis", "max_length", `non-empty string up to ${researchOutputConstraints.thesisMaxLength} characters`);
   const label = familyOfficeLabels.includes(record.label as (typeof familyOfficeLabels)[number]) ? record.label as ResearchOutput["label"] : null;
+  if (!label) return invalid("$.label", record.label === undefined ? "required" : "invalid_enum", "approved research label");
   const analyticalDirection = analyticalDirections.includes(record.analyticalDirection as (typeof analyticalDirections)[number])
     ? record.analyticalDirection as ResearchOutput["analyticalDirection"]
     : null;
+  if (!analyticalDirection) return invalid("$.analyticalDirection", record.analyticalDirection === undefined ? "required" : "invalid_enum", "BULLISH, NEUTRAL, or BEARISH");
   const confidence = typeof record.confidence === "number" && Number.isFinite(record.confidence) && record.confidence >= 0 && record.confidence <= 100
     ? record.confidence
     : null;
-  const facts = boundedStringArray(record.facts, 20, 1000);
-  const assumptions = boundedStringArray(record.assumptions, 20, 1000);
-  const risks = boundedStringArray(record.risks, 20, 1000);
-  if (!title || !thesis || !label || !analyticalDirection || confidence === null || !facts || !assumptions || !risks) return null;
+  if (confidence === null) return invalid("$.confidence", typeof record.confidence === "number" ? "out_of_range" : record.confidence === undefined ? "required" : "invalid_type", "finite number from 0 through 100");
+  const parseList = (key: "facts" | "assumptions" | "risks") => {
+    const value = record[key];
+    if (value === undefined) return invalid(`$.${key}`, "required", `array of up to ${researchOutputConstraints.listMaxItems} strings`);
+    if (!Array.isArray(value)) return invalid(`$.${key}`, "invalid_type", "array");
+    if (value.length > researchOutputConstraints.listMaxItems) return invalid(`$.${key}`, "max_items", `at most ${researchOutputConstraints.listMaxItems} items`);
+    for (let index = 0; index < value.length; index++) {
+      if (typeof value[index] !== "string") return invalid(`$.${key}[${index}]`, "invalid_type", "string");
+      if (!boundedString(value[index], researchOutputConstraints.listItemMaxLength)) {
+        return invalid(`$.${key}[${index}]`, "max_length", `non-empty string up to ${researchOutputConstraints.listItemMaxLength} characters`);
+      }
+    }
+    return { success: true as const, data: value.map((item) => String(item).trim()) };
+  };
+  const factsResult = parseList("facts");
+  if (!factsResult.success) return factsResult;
+  const assumptionsResult = parseList("assumptions");
+  if (!assumptionsResult.success) return assumptionsResult;
+  const risksResult = parseList("risks");
+  if (!risksResult.success) return risksResult;
+  const facts = factsResult.data;
+  const assumptions = assumptionsResult.data;
+  const risks = risksResult.data;
   const sections = sectionNames.reduce((result, name) => {
     const parsed = parseSection((record.sections as Record<string, unknown> | undefined)?.[name]);
     if (parsed) result[name] = parsed;
@@ -392,33 +441,47 @@ function parseResearchOutput(value: unknown): ResearchOutput | null {
   for (const name of sectionNames) {
     sections[name] ??= { content: name === "risks" ? risks : [], evidenceIds: [], provenance: [] };
   }
-  if (!Array.isArray(record.evidence) || record.evidence.length > 20) return null;
-  const evidence = record.evidence.map((raw) => {
-    if (!raw || typeof raw !== "object") return null;
+  if (!Array.isArray(record.evidence)) return invalid("$.evidence", record.evidence === undefined ? "required" : "invalid_type", "array");
+  if (record.evidence.length > researchOutputConstraints.listMaxItems) return invalid("$.evidence", "max_items", `at most ${researchOutputConstraints.listMaxItems} items`);
+  const evidence: ResearchOutput["evidence"] = [];
+  for (let index = 0; index < record.evidence.length; index++) {
+    const raw = record.evidence[index];
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return invalid(`$.evidence[${index}]`, "invalid_type", "object");
     const item = raw as Record<string, unknown>;
-    const itemTitle = boundedString(item.title, 180);
-    const excerpt = boundedString(item.excerpt, 1500);
+    if (typeof item.title !== "string") return invalid(`$.evidence[${index}].title`, item.title === undefined ? "required" : "invalid_type", "string");
+    const itemTitle = boundedString(item.title, researchOutputConstraints.evidenceTitleMaxLength);
+    if (!itemTitle) return invalid(`$.evidence[${index}].title`, "max_length", `non-empty string up to ${researchOutputConstraints.evidenceTitleMaxLength} characters`);
+    if (typeof item.excerpt !== "string") return invalid(`$.evidence[${index}].excerpt`, item.excerpt === undefined ? "required" : "invalid_type", "string");
+    const excerpt = boundedString(item.excerpt, researchOutputConstraints.evidenceExcerptMaxLength);
+    if (!excerpt) return invalid(`$.evidence[${index}].excerpt`, "max_length", `non-empty string up to ${researchOutputConstraints.evidenceExcerptMaxLength} characters`);
     const sourceKind = researchProvenanceCategories.includes(item.sourceKind as ResearchProvenanceCategory)
       ? item.sourceKind as ResearchProvenanceCategory
       : null;
-    const classification = boundedString(item.classification ?? "unverified", 80);
-    const freshness = boundedString(item.freshness ?? "unknown", 80);
+    if (!sourceKind) return invalid(`$.evidence[${index}].sourceKind`, item.sourceKind === undefined ? "required" : "invalid_enum", "approved provenance category");
+    if (typeof item.classification !== "string") return invalid(`$.evidence[${index}].classification`, item.classification === undefined ? "required" : "invalid_type", "string");
+    const classification = boundedString(item.classification, researchOutputConstraints.evidenceClassificationMaxLength);
+    if (!classification) return invalid(`$.evidence[${index}].classification`, "max_length", `non-empty string up to ${researchOutputConstraints.evidenceClassificationMaxLength} characters`);
+    if (typeof item.freshness !== "string") return invalid(`$.evidence[${index}].freshness`, item.freshness === undefined ? "required" : "invalid_type", "string");
+    const freshness = boundedString(item.freshness, researchOutputConstraints.evidenceFreshnessMaxLength);
+    if (!freshness) return invalid(`$.evidence[${index}].freshness`, "max_length", `non-empty string up to ${researchOutputConstraints.evidenceFreshnessMaxLength} characters`);
     const itemConfidence = typeof item.confidence === "number" && Number.isFinite(item.confidence) && item.confidence >= 0 && item.confidence <= 100 ? item.confidence : 0;
-    const sourceUrl = item.sourceUrl === undefined ? undefined : boundedString(item.sourceUrl, 2000);
-    if (!itemTitle || !excerpt || !sourceKind || !classification || !freshness || (item.sourceUrl !== undefined && !sourceUrl)) return null;
-    if (sourceUrl) {
-      try { new URL(sourceUrl); } catch { return null; }
+    if (typeof item.confidence !== "number" || !Number.isFinite(item.confidence) || item.confidence < 0 || item.confidence > 100) {
+      return invalid(`$.evidence[${index}].confidence`, typeof item.confidence === "number" ? "out_of_range" : item.confidence === undefined ? "required" : "invalid_type", "finite number from 0 through 100");
     }
-    return { title: itemTitle, sourceKind, sourceUrl: sourceUrl ?? undefined, excerpt, classification, freshness, confidence: itemConfidence };
-  });
-  if (!evidence.every((item): item is NonNullable<typeof item> => Boolean(item))) return null;
-  return { title, thesis, label, analyticalDirection, confidence, facts, assumptions, risks, sections: sections as ResearchAdvisorySections, evidence };
+    const sourceUrl = item.sourceUrl === undefined ? undefined : boundedString(item.sourceUrl, researchOutputConstraints.evidenceSourceUrlMaxLength);
+    if (item.sourceUrl !== undefined && typeof item.sourceUrl !== "string") return invalid(`$.evidence[${index}].sourceUrl`, "invalid_type", "URL string");
+    if (item.sourceUrl !== undefined && !sourceUrl) return invalid(`$.evidence[${index}].sourceUrl`, "max_length", `valid URL up to ${researchOutputConstraints.evidenceSourceUrlMaxLength} characters`);
+    if (sourceUrl) {
+      try { new URL(sourceUrl); } catch { return invalid(`$.evidence[${index}].sourceUrl`, "invalid_url", `valid URL up to ${researchOutputConstraints.evidenceSourceUrlMaxLength} characters`); }
+    }
+    evidence.push({ title: itemTitle, sourceKind, sourceUrl: sourceUrl ?? undefined, excerpt, classification, freshness, confidence: itemConfidence });
+  }
+  return { success: true, data: { title, thesis, label, analyticalDirection, confidence, facts, assumptions, risks, sections: sections as ResearchAdvisorySections, evidence } };
 }
 
 export const researchOutputSchema = {
-  safeParse(value: unknown): { success: true; data: ResearchOutput } | { success: false } {
-    const data = parseResearchOutput(value);
-    return data ? { success: true, data } : { success: false };
+  safeParse(value: unknown): { success: true; data: ResearchOutput } | { success: false; issues: ResearchOutputValidationIssue[] } {
+    return parseResearchOutput(value);
   },
 };
 

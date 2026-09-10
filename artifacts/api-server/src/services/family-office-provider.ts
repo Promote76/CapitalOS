@@ -1,5 +1,6 @@
 import {
   familyOfficeProviderStatus,
+  researchOutputConstraints,
   researchOutputSchema,
   safeResearchPrompt,
   type FamilyOfficeProviderStatus,
@@ -19,19 +20,36 @@ export type ProviderFailureCode =
   | "AI_PROVIDER_UPSTREAM_ERROR"
   | "AI_PROVIDER_INVALID_RESPONSE";
 
+export type ProviderResponseFailureStage =
+  | "invalid_api_envelope"
+  | "missing_text_content"
+  | "non_json_content"
+  | "schema_mismatch";
+
+export type SafeProviderDiagnostic = {
+  analyst: string;
+  stage: ProviderResponseFailureStage;
+  path?: string;
+  code?: string;
+  expected?: string;
+};
+
 export function safeProviderModel(model: string) {
   const normalized = model.trim();
   return /^[A-Za-z0-9._:/-]{1,120}$/.test(normalized) ? normalized : "unrecognized-model";
 }
 
 export class ProviderUnavailableError extends Error {
-  constructor(public readonly code: ProviderFailureCode = "AI_PROVIDER_UPSTREAM_ERROR") {
+  constructor(
+    public readonly code: ProviderFailureCode = "AI_PROVIDER_UPSTREAM_ERROR",
+    public readonly diagnostic?: SafeProviderDiagnostic,
+  ) {
     super("Family Office intelligence provider is unavailable");
     this.name = "ProviderUnavailableError";
   }
 }
 
-const researchResponseJsonSchema = {
+export const researchResponseJsonSchema = {
   type: "object",
   additionalProperties: false,
   required: [
@@ -46,8 +64,8 @@ const researchResponseJsonSchema = {
     "evidence",
   ],
   properties: {
-    title: { type: "string" },
-    thesis: { type: "string" },
+    title: { type: "string", minLength: 1, maxLength: researchOutputConstraints.titleMaxLength },
+    thesis: { type: "string", minLength: 1, maxLength: researchOutputConstraints.thesisMaxLength },
     label: {
       type: "string",
       enum: [
@@ -68,17 +86,17 @@ const researchResponseJsonSchema = {
     facts: {
       type: "array",
       maxItems: 20,
-      items: { type: "string" },
+      items: { type: "string", minLength: 1, maxLength: researchOutputConstraints.listItemMaxLength },
     },
     assumptions: {
       type: "array",
       maxItems: 20,
-      items: { type: "string" },
+      items: { type: "string", minLength: 1, maxLength: researchOutputConstraints.listItemMaxLength },
     },
     risks: {
       type: "array",
       maxItems: 20,
-      items: { type: "string" },
+      items: { type: "string", minLength: 1, maxLength: researchOutputConstraints.listItemMaxLength },
     },
     evidence: {
       type: "array",
@@ -95,7 +113,7 @@ const researchResponseJsonSchema = {
           "confidence",
         ],
         properties: {
-          title: { type: "string" },
+          title: { type: "string", minLength: 1, maxLength: researchOutputConstraints.evidenceTitleMaxLength },
           sourceKind: {
             type: "string",
             enum: [
@@ -107,10 +125,10 @@ const researchResponseJsonSchema = {
               "GROK_INFERENCE",
             ],
           },
-          sourceUrl: { type: "string" },
-          excerpt: { type: "string" },
-          classification: { type: "string" },
-          freshness: { type: "string" },
+          sourceUrl: { type: "string", format: "uri", maxLength: researchOutputConstraints.evidenceSourceUrlMaxLength },
+          excerpt: { type: "string", minLength: 1, maxLength: researchOutputConstraints.evidenceExcerptMaxLength },
+          classification: { type: "string", minLength: 1, maxLength: researchOutputConstraints.evidenceClassificationMaxLength },
+          freshness: { type: "string", minLength: 1, maxLength: researchOutputConstraints.evidenceFreshnessMaxLength },
           confidence: { type: "number", minimum: 0, maximum: 100 },
         },
       },
@@ -197,18 +215,36 @@ export class XaiIntelligenceProvider implements IntelligenceProvider {
       try {
         payload = await response.json();
       } catch {
-        throw new ProviderUnavailableError("AI_PROVIDER_INVALID_RESPONSE");
+        throw new ProviderUnavailableError("AI_PROVIDER_INVALID_RESPONSE", {
+          analyst: safeResearchPrompt(input.analyst).slice(0, 80),
+          stage: "invalid_api_envelope",
+        });
       }
       const content = extractContent(payload);
-      if (!content) throw new ProviderUnavailableError("AI_PROVIDER_INVALID_RESPONSE");
+      if (!content) throw new ProviderUnavailableError("AI_PROVIDER_INVALID_RESPONSE", {
+        analyst: safeResearchPrompt(input.analyst).slice(0, 80),
+        stage: "missing_text_content",
+      });
       let parsed: unknown;
       try {
         parsed = JSON.parse(content);
       } catch {
-        throw new ProviderUnavailableError("AI_PROVIDER_INVALID_RESPONSE");
+        throw new ProviderUnavailableError("AI_PROVIDER_INVALID_RESPONSE", {
+          analyst: safeResearchPrompt(input.analyst).slice(0, 80),
+          stage: "non_json_content",
+        });
       }
       const result = researchOutputSchema.safeParse(parsed);
-      if (!result.success) throw new ProviderUnavailableError("AI_PROVIDER_INVALID_RESPONSE");
+      if (!result.success) {
+        const issue = result.issues[0];
+        throw new ProviderUnavailableError("AI_PROVIDER_INVALID_RESPONSE", {
+          analyst: safeResearchPrompt(input.analyst).slice(0, 80),
+          stage: "schema_mismatch",
+          path: issue?.path.slice(0, 160),
+          code: issue?.code,
+          expected: issue?.expected.slice(0, 160),
+        });
+      }
       return result.data;
     } catch (error) {
       if (error instanceof ProviderUnavailableError) throw error;

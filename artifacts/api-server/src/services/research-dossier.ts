@@ -394,8 +394,11 @@ function snapshotDossier(row: typeof investmentResearchDossiers.$inferSelect) {
   const reportStatus = typeof run.status === "string"
     ? run.status
     : typeof run.providerStatus === "string" ? run.providerStatus : "PENDING_PROVIDER";
+  const blockDiagnostic = reportStatus === "blocked" && typeof run.outputSummary === "string"
+    ? run.outputSummary.slice(0, 600)
+    : null;
   const { report: _report, digestion: _digestion, ...safe } = row;
-  return { ...safe, createdAt: row.createdAt, reportStatus, proposal, advisoryOnly: true, executionAuthority: "none", noCapitalSideEffects: true };
+  return { ...safe, createdAt: row.createdAt, reportStatus, blockDiagnostic, proposal, advisoryOnly: true, executionAuthority: "none", noCapitalSideEffects: true };
 }
 
 export async function listResearchDossiers(actor: Actor) {

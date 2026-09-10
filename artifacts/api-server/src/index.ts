@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { ensureSeedData } from "./services/seed";
 import { startOperationsWorker } from "./services/operations-worker";
 import { startOperationsScheduler } from "./services/operations-scheduler";
+import { ensureObservabilityDefaults } from "./services/observability-alerts";
 
 const rawPort = process.env["PORT"];
 
@@ -27,6 +28,11 @@ const server = app.listen(port, (err) => {
 });
 const stopOperationsWorker = startOperationsWorker();
 const stopOperationsScheduler = startOperationsScheduler();
+// Policy/destination bootstrap is idempotent and database-only. It never
+// contacts Slack or sends an alert while the process is starting.
+void ensureObservabilityDefaults().catch((error) => {
+  logger.error({ err: error }, "Observability defaults bootstrap failed");
+});
 const shutdown = () => {
   stopOperationsWorker();
   stopOperationsScheduler();

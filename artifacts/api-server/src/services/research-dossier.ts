@@ -14,6 +14,17 @@ const mime = new Set(["application/pdf", "text/plain"]);
 const review = new Set(["REVIEWED", "APPROVED"]);
 const MAX_EXTRACTED = 100 * 1024;
 
+export class ResearchDossierError extends Error {
+  constructor(
+    public readonly code: "VALIDATION_ERROR" | "CONFLICT" | "UPSTREAM_ERROR",
+    message: string,
+    public readonly status = code === "CONFLICT" ? 409 : code === "UPSTREAM_ERROR" ? 503 : 400,
+  ) {
+    super(message);
+    this.name = "ResearchDossierError";
+  }
+}
+
 function canonicalize(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonicalize).join(",")}]`;
   if (value && typeof value === "object") {
@@ -203,12 +214,12 @@ export async function createSchwabMarketSnapshot(actor: Actor, input: {
 export async function reviewSchwabMarketSnapshot(actor: Actor, snapshotId: string, disposition: "APPROVE" | "REJECT", reason?: string) {
   const result = await db.transaction(async (tx) => {
     const [snapshot] = await tx.select().from(schwabMarketSnapshots).where(and(eq(schwabMarketSnapshots.id, snapshotId), eq(schwabMarketSnapshots.householdId, actor.householdId))).limit(1);
-    if (!snapshot) throw new Error("Market snapshot not found in this household");
-    if (snapshot.reviewStatus !== "PENDING_HUMAN_REVIEW") throw new Error("Market snapshot review disposition is immutable");
+    if (!snapshot) throw new ResearchDossierError("VALIDATION_ERROR", "Market snapshot not found in this household");
+    if (snapshot.reviewStatus !== "PENDING_HUMAN_REVIEW") throw new ResearchDossierError("CONFLICT", "Market snapshot review disposition is immutable");
     const [updated] = await tx.update(schwabMarketSnapshots).set({
       reviewStatus: disposition === "APPROVE" ? "APPROVED" : "REJECTED", reviewedBy: actor.userId, reviewedAt: new Date(), reviewReason: reason ?? null,
     }).where(and(eq(schwabMarketSnapshots.id, snapshotId), eq(schwabMarketSnapshots.householdId, actor.householdId), eq(schwabMarketSnapshots.reviewStatus, "PENDING_HUMAN_REVIEW"))).returning();
-    if (!updated) throw new Error("Market snapshot was reviewed concurrently");
+    if (!updated) throw new ResearchDossierError("CONFLICT", "Market snapshot was reviewed concurrently");
     let evidence: typeof reviewedResearchEvidence.$inferSelect | null = null;
     if (disposition === "APPROVE") {
       const canonicalContent = {
@@ -317,7 +328,7 @@ async function extractPdf(bytes: Buffer) {
 
 export async function requestResearchEvidenceUpload(actor: Actor, input: { contentType: string; size: number }) {
   if (!mime.has(input.contentType) || !Number.isSafeInteger(input.size) || input.size <= 0 || input.size > MAX_BYTES) {
-    throw new Error("Research evidence must be a bounded PDF or plain-text upload");
+    throw new ResearchDossierError("VALIDATION_ERROR", "Research evidence must be a bounded PDF or plain-text upload");
   }
   const target = await requestBusinessDocumentUpload();
   return {
@@ -327,7 +338,7 @@ export async function requestResearchEvidenceUpload(actor: Actor, input: { conte
 }
 
 function requiredText(value: unknown, max: number, name: string) {
-  if (typeof value !== "string" || !value.trim() || value.length > max) throw new Error(`${name} is required and bounded`);
+  if (typeof value !== "string" || !value.trim() || value.length > max) throw new ResearchDossierError("VALIDATION_ERROR", `${name} is required and bounded`);
   return value.trim();
 }
 
@@ -336,13 +347,13 @@ export async function registerResearchEvidence(actor: Actor, input: {
   provenanceClass: string; financialDocumentId?: string;
 }) {
   const title = requiredText(input.title, 240, "title");
-  if (!provenance.has(input.provenanceClass)) throw new Error("Unsupported provenance class");
-  if (!mime.has(input.mimeType)) throw new Error("Research evidence must be PDF or plain text");
-  if (!Number.isSafeInteger(input.byteLength) || input.byteLength <= 0 || input.byteLength > MAX_BYTES) throw new Error("Evidence exceeds the bounded download limit");
+  if (!provenance.has(input.provenanceClass)) throw new ResearchDossierError("VALIDATION_ERROR", "Unsupported provenance class");
+  if (!mime.has(input.mimeType)) throw new ResearchDossierError("VALIDATION_ERROR", "Research evidence must be PDF or plain text");
+  if (!Number.isSafeInteger(input.byteLength) || input.byteLength <= 0 || input.byteLength > MAX_BYTES) throw new ResearchDossierError("VALIDATION_ERROR", "Evidence exceeds the bounded download limit");
   assertPrivateObjectPath(input.objectPath);
   assertDocumentUploadGrant(input.uploadGrant, { householdId: actor.householdId, userId: actor.userId, objectPath: input.objectPath, contentType: input.mimeType, size: input.byteLength });
   const stored = await downloadBusinessDocument(input.objectPath, { maxBytes: MAX_BYTES, expectedBytes: input.byteLength, expectedContentType: input.mimeType });
-  const extraction = input.mimeType === "application/pdf" ? await extractPdf(stored.bytes) : { text: (() => { const text = stored.bytes.toString("utf8"); if (Buffer.byteLength(text, "utf8") > MAX_TEXT || text.includes("\uFFFD")) throw new Error("Plain-text extraction failed or exceeded bounds"); return text; })(), status: "complete" };
+  const extraction = input.mimeType === "application/pdf" ? await extractPdf(stored.bytes) : { text: (() => { const text = stored.bytes.toString("utf8"); if (Buffer.byteLength(text, "utf8") > MAX_TEXT || text.includes("\uFFFD")) throw new ResearchDossierError("VALIDATION_ERROR", "Plain-text extraction failed or exceeded bounds"); return text; })(), status: "complete" };
   const extractedText = extraction.text;
   const existing = await db.select().from(researchEvidence).where(and(eq(researchEvidence.householdId, actor.householdId), eq(researchEvidence.sha256, stored.sha256))).limit(1);
   if (existing[0]) return { ...existing[0], duplicate: true, advisoryOnly: true, evidenceKind: "UPLOADED_DOCUMENT" as const };
@@ -358,30 +369,30 @@ export async function registerResearchEvidence(actor: Actor, input: {
 
 export async function reviewResearchEvidence(actor: Actor, evidenceId: string, status: "REVIEWED" | "REJECTED") {
   const [row] = await db.update(researchEvidence).set({ reviewStatus: status, reviewedBy: actor.userId, reviewedAt: new Date() }).where(and(eq(researchEvidence.id, evidenceId), eq(researchEvidence.householdId, actor.householdId), eq(researchEvidence.reviewStatus, "PENDING_HUMAN_REVIEW"))).returning();
-  if (!row) throw new Error("Research evidence not found in this household");
+  if (!row) throw new ResearchDossierError("VALIDATION_ERROR", "Research evidence not found in this household");
   await db.insert(auditEvents).values({ householdId: actor.householdId, actor: actor.userId, eventType: "research_evidence_reviewed", entity: "research_evidence", entityId: evidenceId, reason: `Human review status: ${status}`, metadata: { status } });
   return { ...row, advisoryOnly: true, evidenceKind: "UPLOADED_DOCUMENT" as const };
 }
 
 export async function createInvestmentResearchDossier(actor: Actor, input: { ticker: string; title: string; evidenceIds: string[]; digestionPayload: string }) {
   const ticker = requiredText(input.ticker, 16, "ticker").toUpperCase();
-  if (!/^[A-Z][A-Z0-9.-]{0,14}$/.test(ticker)) throw new Error("Invalid ticker");
-  if (!Array.isArray(input.evidenceIds) || input.evidenceIds.length > 25) throw new Error("At most 25 evidence items may be selected");
+  if (!/^[A-Z][A-Z0-9.-]{0,14}$/.test(ticker)) throw new ResearchDossierError("VALIDATION_ERROR", "Invalid ticker");
+  if (!Array.isArray(input.evidenceIds) || input.evidenceIds.length > 25) throw new ResearchDossierError("VALIDATION_ERROR", "At most 25 evidence items may be selected");
   const parsed = parseResearchDigestion(input.digestionPayload);
-  if (!parsed.success) throw new Error("Research digestion failed validation");
+  if (!parsed.success) throw new ResearchDossierError("VALIDATION_ERROR", "Research digestion failed validation");
   const uploadedEvidence = input.evidenceIds.length ? await db.select().from(researchEvidence).where(and(eq(researchEvidence.householdId, actor.householdId), inArray(researchEvidence.id, input.evidenceIds))) : [];
   const reviewedSnapshots = input.evidenceIds.length ? await db.select().from(reviewedResearchEvidence).where(and(eq(reviewedResearchEvidence.householdId, actor.householdId), inArray(reviewedResearchEvidence.id, input.evidenceIds))) : [];
   const reviewedSec = input.evidenceIds.length ? await db.select().from(reviewedSecFilingEvidence).where(and(eq(reviewedSecFilingEvidence.householdId, actor.householdId), inArray(reviewedSecFilingEvidence.id, input.evidenceIds))) : [];
   if (reviewedSnapshots.some((item) => item.ticker !== ticker)) {
-    throw new Error("Reviewed market snapshot evidence must match the dossier ticker");
+    throw new ResearchDossierError("VALIDATION_ERROR", "Reviewed market snapshot evidence must match the dossier ticker");
   }
-  if (reviewedSec.some((item) => item.ticker !== ticker)) throw new Error("Reviewed SEC evidence must match the dossier ticker");
+  if (reviewedSec.some((item) => item.ticker !== ticker)) throw new ResearchDossierError("VALIDATION_ERROR", "Reviewed SEC evidence must match the dossier ticker");
   const evidence = [
     ...uploadedEvidence.map((item) => ({ ...item, evidenceText: item.extractedText })),
     ...reviewedSnapshots.map((item) => ({ id: item.id, title: `Schwab ${item.ticker} market snapshot`, provenanceClass: "PRIMARY_SOURCE", reviewStatus: "APPROVED", extractionStatus: "complete", extractedText: JSON.stringify(item.canonicalContent), evidenceText: JSON.stringify(item.canonicalContent) })),
     ...reviewedSec.map((item) => ({ id: item.id, title: `SEC ${item.ticker} filing`, provenanceClass: "PRIMARY_SOURCE", reviewStatus: "APPROVED", extractionStatus: "complete", extractedText: JSON.stringify(item.canonicalContent), evidenceText: JSON.stringify(item.canonicalContent) })),
   ];
-  if (evidence.length !== input.evidenceIds.length || evidence.some((item) => !review.has(item.reviewStatus) || item.extractionStatus !== "complete")) throw new Error("Only reviewed, completely extracted evidence from this household may be selected");
+  if (evidence.length !== input.evidenceIds.length || evidence.some((item) => !review.has(item.reviewStatus) || item.extractionStatus !== "complete")) throw new ResearchDossierError("VALIDATION_ERROR", "Only reviewed, completely extracted evidence from this household may be selected");
   const [row] = await db.insert(investmentResearchDossiers).values({
     householdId: actor.householdId, ticker, title: requiredText(input.title, 240, "title"), evidenceIds: input.evidenceIds,
      digestion: { ...parsed.data, uploadedEvidence: evidence.filter((e) => review.has(e.reviewStatus) && e.extractionStatus === "complete").map((e) => ({ id: e.id, title: e.title, text: e.evidenceText })) } as unknown as Record<string, unknown>, createdBy: actor.userId,

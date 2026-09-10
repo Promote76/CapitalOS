@@ -27,6 +27,33 @@ export const GetObservabilityHealthResponse = zod.unknown()
 
 
 /**
+ * @summary List configured observability destinations without credentials
+ */
+export const ListObservabilityDestinationsResponseItem = zod.object({
+  "name": zod.string(),
+  "kind": zod.string(),
+  "enabled": zod.boolean(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListObservabilityDestinationsResponse = zod.array(ListObservabilityDestinationsResponseItem)
+
+
+/**
+ * @summary List deterministic operator alert rules
+ */
+export const ListObservabilityRulesResponseItem = zod.object({
+  "ruleKey": zod.string(),
+  "metric": zod.string(),
+  "severity": zod.string(),
+  "threshold": zod.number(),
+  "dedupeWindowSeconds": zod.number(),
+  "enabled": zod.boolean(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListObservabilityRulesResponse = zod.array(ListObservabilityRulesResponseItem)
+
+
+/**
  * @summary List safe persisted delivery receipts for an actor-scoped incident
  */
 export const listObservabilityIncidentDeliveriesPathIncidentIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
@@ -96,6 +123,10 @@ export const HealthReadyResponse = zod.unknown()
 /**
  * @summary Resolve the authenticated Clerk user and household memberships
  */
+export const GetAuthMeHeader = zod.object({
+  "X-Capital-OS-Household-Id": zod.string().optional().describe('Server-validated active household selection for users with multiple active memberships')
+})
+
 export const GetAuthMeResponse = zod.unknown()
 
 
@@ -7831,6 +7862,35 @@ export const ListOperationsJobsResponseItem = zod.object({
   "completedAt": zod.coerce.date().nullable()
 })
 export const ListOperationsJobsResponse = zod.array(ListOperationsJobsResponseItem)
+
+
+/**
+ * @summary List immutable archived audit events for the household
+ */
+export const listOperationsAuditArchiveQueryLimitDefault = 200;
+export const listOperationsAuditArchiveQueryLimitMax = 500;
+
+
+
+export const ListOperationsAuditArchiveQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(listOperationsAuditArchiveQueryLimitMax).default(listOperationsAuditArchiveQueryLimitDefault)
+})
+
+export const ListOperationsAuditArchiveResponseItem = zod.object({
+  "eventId": zod.string(),
+  "householdId": zod.string(),
+  "eventType": zod.string(),
+  "actor": zod.string(),
+  "entity": zod.string(),
+  "entityId": zod.string(),
+  "beforeState": zod.record(zod.string(), zod.unknown()).nullish(),
+  "afterState": zod.record(zod.string(), zod.unknown()).nullish(),
+  "reason": zod.string().nullish(),
+  "metadata": zod.record(zod.string(), zod.unknown()),
+  "eventTimestamp": zod.coerce.date(),
+  "archivedAt": zod.coerce.date()
+})
+export const ListOperationsAuditArchiveResponse = zod.array(ListOperationsAuditArchiveResponseItem)
 
 
 /**

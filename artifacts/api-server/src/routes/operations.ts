@@ -42,7 +42,7 @@ import {
   getOperationsMetrics,
   listOperationsJobs, listOperationsWorkerHealth, reprocessOperationsJob,
   listOperationsSchedulers, acquireOperationsSchedulerLeadership, recoverMissedOperationsSchedules,
-  getOperationsSchedulerMetrics,
+  getOperationsSchedulerMetrics, listOperationsAuditArchive,
   listDailyOpsHistory,
   exportDailyOpsHistory,
   createDailyOpsJournalEntry,
@@ -62,6 +62,10 @@ router.get("/operations/schedulers/metrics", asyncRoute(async (_req, res) => {
   res.json(await getOperationsSchedulerMetrics(actorFrom(res).householdId));
 }));
 router.get("/operations/jobs", asyncRoute(async (_req, res) => res.json(await listOperationsJobs(actorFrom(res)))));
+router.get("/operations/audit-archive", asyncRoute(async (req, res) => {
+  const rawLimit = Number(req.query.limit);
+  res.json(await listOperationsAuditArchive(actorFrom(res), Number.isFinite(rawLimit) ? rawLimit : 200));
+}));
 router.get("/operations/workers", asyncRoute(async (_req, res) => res.json(await listOperationsWorkerHealth(actorFrom(res)))));
 router.post("/operations/jobs/:jobId/reprocess", asyncRoute(async (req, res) => res.json(await reprocessOperationsJob(actorFrom(res), String(req.params.jobId)))));
 router.get("/operations/schedulers", asyncRoute(async (_req, res) => res.json(await listOperationsSchedulers(actorFrom(res)))));

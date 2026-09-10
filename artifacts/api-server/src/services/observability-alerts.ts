@@ -50,6 +50,23 @@ export async function ensureObservabilityRules() {
   }
 }
 
+/**
+ * Safe runtime bootstrap: rules are policy rows, while a destination is only
+ * created when an operator explicitly supplied its non-secret channel ID.
+ * Never call the provider during startup and never persist credentials.
+ */
+export async function ensureObservabilityDefaults() {
+  await ensureObservabilityRules();
+  const configuredTarget = process.env.CAPITAL_OS_ALERT_SLACK_CHANNEL_ID?.trim();
+  if (!configuredTarget) return { rules: true, destinationConfigured: false };
+  await db.insert(observabilityAlertDestinations).values({
+    name: "slack-critical",
+    kind: "slack",
+    target: configuredTarget,
+  }).onConflictDoNothing({ target: observabilityAlertDestinations.name });
+  return { rules: true, destinationConfigured: true };
+}
+
 async function slackTarget() {
   const configured = process.env.CAPITAL_OS_ALERT_SLACK_CHANNEL_ID?.trim();
   if (configured) return configured;
@@ -301,6 +318,29 @@ export async function listObservabilityIncidents(actor: Actor) {
       resolutionNote: incident.note,
     };
   });
+}
+
+export async function listObservabilityDestinations(actor: Actor) {
+  assertPermission(actor.role, "read");
+  return db.select({
+    name: observabilityAlertDestinations.name,
+    kind: observabilityAlertDestinations.kind,
+    enabled: observabilityAlertDestinations.enabled,
+    updatedAt: observabilityAlertDestinations.updatedAt,
+  }).from(observabilityAlertDestinations);
+}
+
+export async function listObservabilityRules(actor: Actor) {
+  assertPermission(actor.role, "read");
+  return db.select({
+    ruleKey: observabilityAlertRules.ruleKey,
+    metric: observabilityAlertRules.metric,
+    severity: observabilityAlertRules.severity,
+    threshold: observabilityAlertRules.threshold,
+    dedupeWindowSeconds: observabilityAlertRules.dedupeWindowSeconds,
+    enabled: observabilityAlertRules.enabled,
+    updatedAt: observabilityAlertRules.updatedAt,
+  }).from(observabilityAlertRules);
 }
 
 export async function listObservabilityDeliveries(

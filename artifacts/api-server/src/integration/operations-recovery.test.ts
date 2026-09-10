@@ -45,6 +45,17 @@ suite("durable operations recovery (isolated PostgreSQL)", () => {
     await cleanupHousehold(home.id);
   });
 
+  it("does not resurrect a stale job after its attempt budget is exhausted", async () => {
+    const [home] = await db.insert(households).values({ name: `operations-cert-${randomUUID()}` }).returning({ id: households.id });
+    const job = await enqueueOperationsJob({ householdId: home.id, kind: "ADVISORY", maxAttempts: 1, jobKey: randomUUID() });
+    assert.equal((await claimNextOperationsJob(home.id, "worker-budget"))?.id, job.id);
+    await db.update(operationsJobs).set({ leaseExpiresAt: new Date(Date.now() - 6 * 60_000) }).where(eq(operationsJobs.id, job.id));
+    const recovered = await recoverStaleOperationsJobs(home.id);
+    assert.equal(recovered[0]?.status, "DEAD_LETTER");
+    assert.equal((await claimNextOperationsJob(home.id, "replacement-worker")), null);
+    await cleanupHousehold(home.id);
+  });
+
   it("replays one Guided Run action under concurrent retries and rejects key reuse", async () => {
     const [home] = await db.insert(households).values({ name: `operations-cert-${randomUUID()}` }).returning({ id: households.id });
     const [user] = await db.insert(users).values({

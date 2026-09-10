@@ -433,17 +433,53 @@ function OnboardingPage({ onComplete }: { onComplete: () => void }) {
   );
 }
 
+function HouseholdSelectionPage({ memberships, onSelect }: {
+  memberships: Array<{ householdId: string; householdName: string; role: string }>;
+  onSelect: (householdId: string) => void;
+}) {
+  return (
+    <div className="auth-landing">
+      <div className="auth-landing-card onboarding-card">
+        <div className="auth-landing-kicker">Multiple secure workspaces</div>
+        <h1>Choose your household.</h1>
+        <p>Select the household you want to access. Your membership and role are checked by the server.</p>
+        <div className="onboarding-form">
+          {memberships.map((membership) => (
+            <button
+              className="button button-secondary"
+              type="button"
+              key={membership.householdId}
+              onClick={() => onSelect(membership.householdId)}
+            >
+              {membership.householdName} · {membership.role}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TenantGate() {
   const [state, setState] = useState<'loading' | 'onboarding' | 'ready' | 'error'>('loading');
   const [error, setError] = useState('');
+  const [memberships, setMemberships] = useState<Array<{ householdId: string; householdName: string; role: string }>>([]);
+  const [selectionRequired, setSelectionRequired] = useState(false);
   useEffect(() => {
     let active = true;
-    fetch('/api/auth/me', { credentials: 'same-origin' })
+    const activeHouseholdId = window.localStorage.getItem('capital-os-active-household');
+    fetch('/api/auth/me', {
+      credentials: 'same-origin',
+      headers: activeHouseholdId ? { 'X-Capital-OS-Household-Id': activeHouseholdId } : undefined,
+    })
       .then(async (response) => {
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.message || 'Your secure workspace could not be loaded.');
         if (!active) return;
-        setState(payload.memberships?.length ? 'ready' : 'onboarding');
+        const activeMemberships = (payload.memberships ?? []).filter((membership: { active?: boolean }) => membership.active !== false);
+        setMemberships(activeMemberships);
+        setSelectionRequired(Boolean(payload.selectionRequired));
+        setState(activeMemberships.length ? (payload.selectionRequired ? 'onboarding' : 'ready') : 'onboarding');
       })
       .catch((requestError) => {
         if (!active) return;
@@ -453,6 +489,14 @@ function TenantGate() {
     return () => { active = false; };
   }, []);
   if (state === 'ready') return <AppContent />;
+  if (state === 'onboarding' && selectionRequired) {
+    return <HouseholdSelectionPage memberships={memberships} onSelect={(householdId) => {
+      window.localStorage.setItem('capital-os-active-household', householdId);
+      setSelectionRequired(false);
+      setState('ready');
+      queryClient.clear();
+    }} />;
+  }
   if (state === 'onboarding') return <OnboardingPage onComplete={() => setState('ready')} />;
   if (state === 'error') return <div className="auth-loading">{error}</div>;
   return <div className="auth-loading">Preparing your secure workspace…</div>;
@@ -622,8 +666,8 @@ function AppShell({
             ))}
           </nav>
           <div className="top-actions">
-            <button className="icon-btn" aria-label="Search" data-testid="button-search" onClick={() => onFeedback('Search is ready when your workspace grows.') }><Search size={16} /></button>
-            <button className="icon-btn" aria-label="Notifications" data-testid="button-notifications" onClick={() => onFeedback('No new plan reminders. You are clear for this week.')}><Bell size={16} /></button>
+            <button className="icon-btn feedback-only-control" aria-label="Search (coming soon)" title="Search is coming soon" disabled data-testid="button-search"><Search size={16} /></button>
+            <button className="icon-btn feedback-only-control" aria-label="Notifications (coming soon)" title="Notifications are coming soon" disabled data-testid="button-notifications"><Bell size={16} /></button>
             <div className="avatar" data-testid="avatar-account">AM</div>
           </div>
         </header>
@@ -780,7 +824,7 @@ function Dashboard({ onAction, onFeedback, transactions, dashboard, dashboardSta
   }
   const movementState = contributionsLoading ? 'loading' : contributionsUnavailable ? 'unavailable' : transactions.length ? 'ready' : 'empty';
   return <main className="content">
-    <PageHeading eyebrow="Household overview" title={<>Make room for the<br /><em>long view.</em></>} description="Review the household data and decisions that have been recorded." actions={<><button className="btn" data-testid="button-dashboard-export" onClick={() => onFeedback('Local-only preview: no server report was created.')}><ArrowDownLeft size={15} /> Export view</button><button className="btn btn-primary" data-testid="button-dashboard-contribution" onClick={() => onAction('contribution')}><Plus size={15} /> Record contribution</button></>} />
+    <PageHeading eyebrow="Household overview" title={<>Make room for the<br /><em>long view.</em></>} description="Review the household data and decisions that have been recorded." actions={<><button className="btn feedback-only-control" data-testid="button-dashboard-export" title="Export is coming soon" disabled><ArrowDownLeft size={15} /> Export view <span className="feedback-only-label">coming soon</span></button><button className="btn btn-primary" data-testid="button-dashboard-contribution" onClick={() => onAction('contribution')}><Plus size={15} /> Record contribution</button></>} />
     <div className="dashboard-grid">
       <section className="hero-card card animate-in delay-1">
         <div className="eyebrow" style={{ color: '#58766a' }}>Primary goal / 01</div>
@@ -790,12 +834,12 @@ function Dashboard({ onAction, onFeedback, transactions, dashboard, dashboardSta
         <div className="hero-progress"><div className="hero-progress-meta"><span>{goal ? `${goal.progressPercent.toFixed(1)}% funded` : 'Funding not available'}</span><span>Target: {displayDate(goal?.targetDate, 'Not set')}</span></div><Progress value={goal?.progressPercent ?? 0} /></div>
       </section>
       <section className="card card-pad weekly-card animate-in delay-1">
-        <CardTitle title="This week’s allocation" subtitle="Server-defined household rule" action={<button className="icon-btn" data-testid="button-allocation-menu" onClick={() => onFeedback('The current household allocation is server-defined.')}><MoreHorizontal size={16} /></button>} />
+        <CardTitle title="This week’s allocation" subtitle="Server-defined household rule" action={<button className="icon-btn feedback-only-control" data-testid="button-allocation-menu" aria-label="Allocation options (coming soon)" title="Allocation options are coming soon" disabled><MoreHorizontal size={16} /></button>} />
         <div className="weekly-amount" data-testid="text-weekly-total">{displayMoney(allocation?.totalWeekly, '—')} <span>/ week</span></div>
         <div className="allocation-list">
         {allocation && [['Duplex Reserve', displayMoney(allocation.duplexReserve, '—'), 'var(--color-protected)'], ['Capital OS', displayMoney(allocation.capitalOs, '—'), 'var(--color-primary)'], ['Opportunity Reserve', displayMoney(allocation.opportunityReserve, '—'), 'var(--color-opportunity)']].map(([name, value, color]) => <div className="allocation-row" key={name}><i className="allocation-dot" style={{ background: color }} /><span className="allocation-name">{name}</span><span className="allocation-value">{value}</span></div>)}
         </div>
-        <button className="btn" style={{ width: '100%', marginTop: 22 }} data-testid="button-edit-allocation" onClick={() => onAction('contribution')}><Pencil size={14} /> Edit allocation</button>
+        <button className="btn feedback-only-control" style={{ width: '100%', marginTop: 22 }} data-testid="button-edit-allocation" title="Allocation editing is coming soon" disabled><Pencil size={14} /> Edit allocation <span className="feedback-only-label">coming soon</span></button>
       </section>
     </div>
     <QuickActions onAction={onAction} />
@@ -963,7 +1007,7 @@ function StrategiesPage({ onFeedback }: { onFeedback: (message: string) => void 
 
 function PortfolioPage({ onFeedback }: { onFeedback: (message: string) => void }) {
   return <main className="content">
-    <PageHeading eyebrow="Plan / portfolio" title={<>Know what is<br /><em>carrying the load.</em></>} description="A composed view of where your family capital sits today—not a screen that asks you to react." actions={<button className="btn" data-testid="button-portfolio-export" onClick={() => onFeedback('Local-only preview: no server report was created.')}><ArrowDownLeft size={15} /> Export snapshot</button>} />
+    <PageHeading eyebrow="Plan / portfolio" title={<>Know what is<br /><em>carrying the load.</em></>} description="A composed view of where your family capital sits today—not a screen that asks you to react." actions={<button className="btn feedback-only-control" data-testid="button-portfolio-export" title="Export is coming soon" disabled><ArrowDownLeft size={15} /> Export snapshot <span className="feedback-only-label">coming soon</span></button>} />
     <div className="portfolio-split">
       <section className="card card-pad animate-in delay-1"><CardTitle title="Capital composition" subtitle="Total tracked capital · $56,280" /><div className="donut-wrap"><div className="donut"><div className="donut-center"><strong>$56.3k</strong><span>total capital</span></div></div><div className="holding-list">{[['Duplex Reserve','63%','var(--color-primary)'],['Opportunity Reserve','20%','var(--color-opportunity)'],['Capital OS','11%','var(--color-protected)'],['Other cash','6%','var(--color-warning)']].map(([name, pct, color]) => <div className="holding-row" key={name}><i style={{ background:color }} /><span>{name}</span><b>{pct}</b></div>)}</div></div></section>
       <section className="card card-pad animate-in delay-1"><CardTitle title="Resilience check" subtitle="How the plan behaves in three ordinary scenarios." /><div className="activity-list">{[['Emergency buffer', '8.4 months of core expenses', 'Strong', 'var(--ink)'], ['Acquisition liquidity', '100% available within 5 days', 'Ready', 'var(--marigold)'], ['Single-account exposure', 'Largest account is 63% of total', 'Watch', 'var(--clay)']].map(([label, desc, status, color]) => <div className="activity-item" key={label}><div className="activity-icon" style={{ background: 'var(--secondary)', color }}><ShieldCheck size={14} /></div><div className="activity-copy"><strong>{label}</strong><span>{desc}</span></div><span className="status" style={{ color, background: 'var(--secondary)' }}>{status}</span></div>)}</div></section>

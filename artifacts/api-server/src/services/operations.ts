@@ -14,6 +14,7 @@ import {
   operationsSchedulerLeases,
   operationsMetrics,
   auditEvents,
+  auditEventArchive,
   operationsRuns,
   operationsTasks,
   operationsDecisionJournalEntries,
@@ -568,14 +569,18 @@ export async function failOperationsJob(jobId: string, householdId: string, work
 
 export async function recoverStaleOperationsJobs(householdId: string, staleAfterMs = 5 * 60_000) {
   const cutoff = new Date(Date.now() - staleAfterMs);
+  // Do not resurrect a job which has already exhausted its bounded attempts.
+  // The status transition is fenced by the lease expiry and is therefore safe
+  // to run from more than one worker.
   const recovered = await db.update(operationsJobs).set({
-    status: "RETRY_PENDING",
+    status: sql`case when ${operationsJobs.attempts} >= ${operationsJobs.maxAttempts} then 'DEAD_LETTER' else 'RETRY_PENDING' end`,
     claimedAt: null,
     claimedBy: null,
     leaseOwner: null,
     leaseExpiresAt: null,
     startedAt: null,
     availableAt: new Date(),
+    deadLetterReason: sql`case when ${operationsJobs.attempts} >= ${operationsJobs.maxAttempts} then 'Lease expired after maximum attempts' else null end`,
     updatedAt: new Date(),
   }).where(and(
     eq(operationsJobs.householdId, householdId),
@@ -583,11 +588,12 @@ export async function recoverStaleOperationsJobs(householdId: string, staleAfter
     lte(operationsJobs.leaseExpiresAt, cutoff),
   )).returning();
   for (const job of recovered) {
-    await db.update(operationsJobAttempts).set({ status: "RECOVERED", finishedAt: new Date() }).where(and(
+    const terminal = job.status === "DEAD_LETTER";
+    await db.update(operationsJobAttempts).set({ status: terminal ? "DEAD_LETTER" : "RECOVERED", finishedAt: new Date() }).where(and(
       eq(operationsJobAttempts.jobId, job.id),
       eq(operationsJobAttempts.attempt, job.attempts),
     ));
-    await db.insert(auditEvents).values({ householdId, eventType: "operations_job_recovered", actor: "system", entity: "operations_job", entityId: job.id, reason: "Lease expired before completion", metadata: { attempt: job.attempts } });
+    await db.insert(auditEvents).values({ householdId, eventType: terminal ? "operations_job_dead_lettered" : "operations_job_recovered", actor: "system", entity: "operations_job", entityId: job.id, reason: terminal ? "Lease expired after maximum attempts" : "Lease expired before completion", metadata: { attempt: job.attempts, recovery: true } });
   }
   return recovered;
 }
@@ -704,6 +710,16 @@ export async function listOperationsJobs(actor: Actor) {
   assertPermission(actor.role, "read");
   const jobs = await db.select().from(operationsJobs).where(eq(operationsJobs.householdId, actor.householdId)).orderBy(desc(operationsJobs.createdAt)).limit(200);
   return jobs.map(operationsJobResponse);
+}
+
+/** Read-only, household-scoped view of the immutable audit archive. */
+export async function listOperationsAuditArchive(actor: Actor, limit = 200) {
+  assertPermission(actor.role, "read");
+  const safeLimit = Math.min(Math.max(Math.trunc(limit) || 200, 1), 500);
+  return db.select().from(auditEventArchive)
+    .where(eq(auditEventArchive.householdId, actor.householdId))
+    .orderBy(desc(auditEventArchive.eventTimestamp))
+    .limit(safeLimit);
 }
 
 export async function listOperationsWorkerHealth(actor: Actor) {

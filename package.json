@@ -28,7 +28,9 @@
     "certify:variable-budget": "node scripts/certify-variable-budget.mjs",
     "certify:capital-governor-v2": "node scripts/certify-capital-governor-v2.mjs",
     "certify:financial-planning-completion": "node scripts/certify-financial-planning-completion.mjs",
-    "certify:document-budget-bridge": "node scripts/certify-document-budget-bridge.mjs"
+    "certify:document-budget-bridge": "node scripts/certify-document-budget-bridge.mjs",
+    "generate:production-readiness-manifest": "node scripts/generate-production-readiness-manifest.mjs",
+    "check:production-readiness-manifest": "node scripts/check-production-readiness-manifest.mjs"
   },
   "private": true,
   "dependencies": {

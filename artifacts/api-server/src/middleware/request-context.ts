@@ -18,6 +18,41 @@ import {
 import { hasProviderReverification } from "./reverification";
 
 const roles = new Set<HouseholdRole>(["owner", "partner", "viewer", "advisor"]);
+/**
+ * The active household is deliberately request-scoped rather than inferred
+ * from a client-side route.  A Clerk session can belong to more than one
+ * household, so callers must send this value once selection is required.
+ */
+export const ACTIVE_HOUSEHOLD_HEADER = "X-Capital-OS-Household-Id";
+
+export function requestedHouseholdId(req: Request) {
+  return req.header(ACTIVE_HOUSEHOLD_HEADER) ?? req.header("X-Household-Id") ?? null;
+}
+
+export class HouseholdSelectionRequired extends Error {
+  readonly code = "HOUSEHOLD_SELECTION_REQUIRED";
+  constructor() {
+    super("Select a Capital OS household before accessing workspace data.");
+    this.name = "HouseholdSelectionRequired";
+  }
+}
+
+export function selectActiveMembership<T extends { householdId: string }>(
+  memberships: T[],
+  selectedHouseholdId: string | null,
+): T {
+  if (memberships.length > 1 && !selectedHouseholdId) throw new HouseholdSelectionRequired();
+  const selected = memberships.length === 1
+    ? memberships[0]
+    : memberships.find((membership) => membership.householdId === selectedHouseholdId);
+  if (!selected) {
+    throw new GovernanceError(
+      "FORBIDDEN",
+      "Your authenticated account is not a member of the selected Capital OS household.",
+    );
+  }
+  return selected;
+}
 
 function requiresRecentAuthentication(req: Request) {
   if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return false;
@@ -123,7 +158,7 @@ async function authenticatedContext(req: Request): Promise<RequestSecurityContex
   const identity = await resolveClerkIdentity(req);
   if (!identity) return null;
 
-  const [existingMembership] = await db
+  const memberships = await db
     .select({
       householdId: householdMembers.householdId,
       role: householdMembers.role,
@@ -131,12 +166,17 @@ async function authenticatedContext(req: Request): Promise<RequestSecurityContex
     })
     .from(householdMembers)
     .where(and(eq(householdMembers.userId, identity.userId), eq(householdMembers.active, true)))
-    .orderBy(asc(householdMembers.createdAt))
-    .limit(1);
+    .orderBy(asc(householdMembers.createdAt));
 
-  const membership = existingMembership ?? await db.transaction(async (tx) => {
+  let membership = memberships.length === 1 ? memberships[0] : undefined;
+  if (memberships.length > 1) {
+    const selectedHouseholdId = requestedHouseholdId(req);
+    membership = selectActiveMembership(memberships, selectedHouseholdId);
+  }
+
+  membership = membership ?? await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`household-provision:${identity.userId}`}))`);
-    const [raceSafeMembership] = await tx
+    const raceSafeMemberships = await tx
       .select({
         householdId: householdMembers.householdId,
         role: householdMembers.role,
@@ -145,7 +185,12 @@ async function authenticatedContext(req: Request): Promise<RequestSecurityContex
       .from(householdMembers)
       .where(and(eq(householdMembers.userId, identity.userId), eq(householdMembers.active, true)))
       .orderBy(asc(householdMembers.createdAt))
-      .limit(1);
+      .limit(2);
+    if (raceSafeMemberships.length > 1) {
+      const selectedHouseholdId = requestedHouseholdId(req);
+      return selectActiveMembership(raceSafeMemberships, selectedHouseholdId);
+    }
+    const raceSafeMembership = raceSafeMemberships[0];
     if (raceSafeMembership) return raceSafeMembership;
 
     const [household] = await tx.insert(households).values({
@@ -302,6 +347,14 @@ export async function requestContext(req: Request, res: Response, next: NextFunc
     setLocals(res, fallbackContext);
     runWithSecurityContext(fallbackContext, next);
   } catch (error) {
+    if (error instanceof HouseholdSelectionRequired) {
+      res.status(409).json({
+        code: error.code,
+        message: error.message,
+        correlationId: res.locals.correlationId,
+      });
+      return;
+    }
     next(error);
   }
 }

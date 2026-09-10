@@ -337,6 +337,14 @@ export async function customFetch<T = unknown>(
 
   const headers = mergeHeaders(isRequest(input) ? input.headers : undefined, headersInit);
 
+  // The server validates this selection against the Clerk session. Keeping it
+  // in a browser-scoped setting lets generated API callers share the same
+  // active household without adding household IDs to every endpoint input.
+  if (typeof window !== "undefined" && !headers.has("x-capital-os-household-id")) {
+    const activeHouseholdId = window.localStorage.getItem("capital-os-active-household");
+    if (activeHouseholdId) headers.set("x-capital-os-household-id", activeHouseholdId);
+  }
+
   if (
     typeof init.body === "string" &&
     !headers.has("content-type") &&

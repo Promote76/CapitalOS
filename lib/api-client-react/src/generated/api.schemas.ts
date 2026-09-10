@@ -5200,6 +5200,53 @@ export interface AuditEventSummary {
   reason?: string | null;
 }
 
+/**
+ * @nullable
+ */
+export type AuditEventArchiveBeforeState = { [key: string]: unknown } | null;
+
+/**
+ * @nullable
+ */
+export type AuditEventArchiveAfterState = { [key: string]: unknown } | null;
+
+export type AuditEventArchiveMetadata = { [key: string]: unknown };
+
+export interface AuditEventArchive {
+  eventId: string;
+  householdId: string;
+  eventType: string;
+  actor: string;
+  entity: string;
+  entityId: string;
+  /** @nullable */
+  beforeState?: AuditEventArchiveBeforeState;
+  /** @nullable */
+  afterState?: AuditEventArchiveAfterState;
+  /** @nullable */
+  reason?: string | null;
+  metadata: AuditEventArchiveMetadata;
+  eventTimestamp: string;
+  archivedAt: string;
+}
+
+export interface ObservabilityDestination {
+  name: string;
+  kind: string;
+  enabled: boolean;
+  updatedAt: string;
+}
+
+export interface ObservabilityRule {
+  ruleKey: string;
+  metric: string;
+  severity: string;
+  threshold: number;
+  dedupeWindowSeconds: number;
+  enabled: boolean;
+  updatedAt: string;
+}
+
 export type BlockchainStatusChainsItem = {
   name: string;
   chainId: number;
@@ -8745,6 +8792,14 @@ export type ReceiveReadOnlyBankWebhook202 = {
   accepted: boolean;
   duplicate: boolean;
   eventId: string;
+};
+
+export type ListOperationsAuditArchiveParams = {
+/**
+ * @minimum 1
+ * @maximum 500
+ */
+limit?: number;
 };
 
 export type RecoverMissedOperationsSchedules200 = {

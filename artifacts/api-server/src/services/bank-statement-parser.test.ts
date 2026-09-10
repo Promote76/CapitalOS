@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseBankStatement } from "./bank-statement-parser";
+import { BANK_STATEMENT_PARSER_LIMITS, parseBankStatement } from "./bank-statement-parser";
 
 function representativePdf(pages: string[]) {
   const objects: string[] = ["<< /Type /Catalog /Pages 2 0 R >>", `<< /Type /Pages /Kids [${pages.map((_, index) => `${3 + index * 2} 0 R`).join(" ")}] /Count ${pages.length} >>`];
@@ -72,4 +72,22 @@ test("distinguishes legitimate repeated rows while keeping fingerprints stable a
   const replay = await parseBankStatement(bytes, "text/csv");
   assert.notEqual(first.rows[0].evidenceFingerprint, first.rows[1].evidenceFingerprint);
   assert.deepEqual(first.rows.map((row) => row.evidenceFingerprint), replay.rows.map((row) => row.evidenceFingerprint));
+});
+
+test("rejects oversized structured evidence before XLSX/CSV parsing", async () => {
+  const parsed = await parseBankStatement(
+    Buffer.alloc(BANK_STATEMENT_PARSER_LIMITS.maxInputBytes + 1),
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  );
+  assert.match(parsed.errors[0], /safe parser size limit/i);
+  assert.deepEqual(parsed.rows, []);
+});
+
+test("keeps vulnerable XLSX parsing disabled for RC1", async () => {
+  const parsed = await parseBankStatement(
+    Buffer.from("PK\u0003\u0004not-opened-by-the-api"),
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  );
+  assert.deepEqual(parsed.rows, []);
+  assert.match(parsed.errors[0], /XLSX parsing is disabled for RC1/i);
 });

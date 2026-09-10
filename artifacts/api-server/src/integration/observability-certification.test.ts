@@ -24,6 +24,7 @@ import {
 } from "../observability/metrics";
 import {
   ensureObservabilityRules,
+  ensureObservabilityDefaults,
   evaluateObservabilityMetric,
   listObservabilityDeliveries,
   listObservabilityIncidents,
@@ -196,6 +197,20 @@ test(
       await ensureObservabilityRules();
       const rules = await db.select().from(observabilityAlertRules);
       assert.ok(rules.length >= 13);
+      const previousTarget = process.env.CAPITAL_OS_ALERT_SLACK_CHANNEL_ID;
+      process.env.CAPITAL_OS_ALERT_SLACK_CHANNEL_ID = "C-certified-operator";
+      try {
+        const first = await ensureObservabilityDefaults();
+        const second = await ensureObservabilityDefaults();
+        assert.equal(first.destinationConfigured, true);
+        assert.equal(second.destinationConfigured, true);
+        const destinations = await db.select().from(observabilityAlertDestinations);
+        assert.equal(destinations.filter((row) => row.name === "slack-critical").length, 1);
+        assert.ok(destinations.find((row) => row.name === "slack-critical")?.target);
+      } finally {
+        if (previousTarget === undefined) delete process.env.CAPITAL_OS_ALERT_SLACK_CHANNEL_ID;
+        else process.env.CAPITAL_OS_ALERT_SLACK_CHANNEL_ID = previousTarget;
+      }
     });
     await t.test("OB-11 deterministic database alert evaluation", async () => {
       process.env.CAPITAL_OS_ALERT_DELIVERY_MODE = "fail";

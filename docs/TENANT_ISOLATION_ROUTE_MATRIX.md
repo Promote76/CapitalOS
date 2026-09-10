@@ -2,8 +2,8 @@
 
 **Inventory date:** 2026-09-10
 **Source:** `artifacts/api-server/src/integration/tenant-route-inventory.mjs` (authoritative), `artifacts/api-server/src/routes`, and `artifacts/api-server/src/integration/p0-http.test.ts`
-<!-- tenant-route-inventory: 246 -->
-**Inventory result:** 246 Express route/method pairs match the executable route inventory.
+<!-- tenant-route-inventory: 249 -->
+**Inventory result:** 249 Express route/method pairs match the executable route inventory.
 
 The machine-readable count above is checked by the route parity release check; adding
 an endpoint without refreshing this evidence fails certification with a stale-count
@@ -11,8 +11,8 @@ error.
 
 This is an evidence index, not a source-review substitute. `PASS` means the isolated
 database-backed fixture exercised the applicable route and identifier/body boundary.
-The full 246-route preflight target is defined below. The latest clean guarded
-replay passed on 2026-09-07: 393 executed probes, 58 scoped collection reads,
+The full 249-route preflight target is defined below. The latest clean guarded
+replay passed the prior 246-route surface on 2026-09-07: 393 executed probes, 58 scoped collection reads,
 58 cross-household rejections, and 58 malformed rejections (12 tests passed,
 0 failed/skipped). This supersedes the historical 163-route replay and the
 focused seven-route Family Office replay. Public health and auth routes are
@@ -51,6 +51,6 @@ object routes.
 - The two-household fixture proves a foreign goal ID is rejected before a contribution is created.
 - The same fixture provisions Owner, Partner, Advisor, and Viewer memberships in both households and passes the role-header regression, partner contribution allow, advisor/viewer contribution denial, and contribution mass-assignment assertions on isolated Neon PostgreSQL.
 - The same fixture passes recent-auth denial, parallel transfer overdraft prevention, 100-request contention, transfer replay, persisted household/actor attribution, and ledger debit/credit reconciliation on isolated Neon PostgreSQL.
-- The route preflight discovers and asserts exactly 246 route/method pairs, compares household-scoped collection reads, sends same-household, foreign, and malformed path identifiers, injects mass-assignment fields into applicable generic write probes, and fails on unexpected server errors. The inventory includes the fixed-path SEC and Schwab research reads, SEC filing and Market Snapshot review lifecycles, and certification action alongside the existing Document-to-Budget Bridge, Financial Evidence deletion, Financial Document Inbox, Business Income, Daily Ops, Family Office, and Schwab observation-only routes.
+- The route preflight discovers and asserts exactly 249 route/method pairs, compares household-scoped collection reads, sends same-household, foreign, and malformed path identifiers, injects mass-assignment fields into applicable generic write probes, and fails on unexpected server errors. The inventory includes the fixed-path SEC and Schwab research reads, SEC filing and Market Snapshot review lifecycles, certification action, and the new read-only audit-archive, observability-rule, and observability-destination routes. The last executed replay covered the prior 246-route surface; the RC1 manifest therefore remains not certified.
 - Parameterized routes require non-error same-household behavior, reject foreign identifiers without a successful write/read response, and reject malformed identifiers with a 4xx response. Parameterless writes must not return another household's identifiers after body tampering.
 - The latest executed preflight on the disposable target on 2026-09-07 had zero failures: 393 total probes, 58 scoped collection-read comparisons, 58 cross-household rejections, and 58 malformed-identifier rejections. The same run passed the role, recent-auth, malformed-input, mass-assignment, Shadow-only, and no-execution assertions for the complete current surface.

@@ -4,7 +4,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { db, householdMembers, households, householdSettings, auditEvents } from "@workspace/db";
 import { OnboardHouseholdBody } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
-import { resolveClerkIdentity } from "../middleware/request-context";
+import { requestedHouseholdId, resolveClerkIdentity } from "../middleware/request-context";
 
 const router: IRouter = Router();
 
@@ -36,6 +36,10 @@ router.get("/auth/me", asyncRoute(async (req, res) => {
     .where(eq(householdMembers.userId, identity.userId))
     .orderBy(asc(householdMembers.createdAt));
 
+  const activeMemberships = memberships.filter((membership) => membership.active);
+  const requestedId = requestedHouseholdId(req);
+  const selectedMembership = activeMemberships.find((membership) => membership.householdId === requestedId);
+
   res.json({
     user: {
       id: identity.userId,
@@ -44,6 +48,8 @@ router.get("/auth/me", asyncRoute(async (req, res) => {
       displayName: identity.displayName,
     },
     memberships,
+    activeHouseholdId: selectedMembership?.householdId ?? (activeMemberships.length === 1 ? activeMemberships[0].householdId : null),
+    selectionRequired: activeMemberships.length > 1 && !selectedMembership,
     authStrength: "clerk_session",
   });
 }));

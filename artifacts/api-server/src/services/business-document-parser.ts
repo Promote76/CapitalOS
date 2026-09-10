@@ -1,6 +1,12 @@
 import { spawn } from "node:child_process";
 import { classifySettlementLine, type SettlementEconomicTreatment } from "../domain/business-income";
 
+export const BUSINESS_DOCUMENT_PARSER_LIMITS = {
+  maxInputBytes: 50 * 1024 * 1024,
+  maxPdfOutputBytes: 50 * 1024 * 1024,
+  pdfTimeoutMs: 15_000,
+} as const;
+
 export type ParsedBusinessDocument = {
   kind: "settlement" | "profit_loss";
   extractionStatus: "complete" | "ambiguous" | "failed";
@@ -110,10 +116,24 @@ async function extractPdfText(bytes: Buffer) {
     const child = spawn("pdftotext", ["-layout", "-", "-"]);
     const stdout: Buffer[] = [];
     const stderr: Buffer[] = [];
-    child.stdout.on("data", (chunk: Buffer) => stdout.push(chunk));
+    let outputBytes = 0;
+    const timeout = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(new Error("PDF text extraction exceeded the resource limit"));
+    }, BUSINESS_DOCUMENT_PARSER_LIMITS.pdfTimeoutMs);
+    child.stdout.on("data", (chunk: Buffer) => {
+      outputBytes += chunk.length;
+      if (outputBytes > BUSINESS_DOCUMENT_PARSER_LIMITS.maxPdfOutputBytes) {
+        child.kill("SIGKILL");
+        reject(new Error("PDF text extraction exceeded the resource limit"));
+        return;
+      }
+      stdout.push(chunk);
+    });
     child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
-    child.on("error", reject);
+    child.on("error", (error) => { clearTimeout(timeout); reject(error); });
     child.on("close", (code) => {
+      clearTimeout(timeout);
       if (code !== 0) {
         reject(new Error(stderr.length ? Buffer.concat(stderr).toString("utf8").trim() : "PDF text extraction failed"));
         return;
@@ -144,6 +164,9 @@ export async function parseBusinessPdf(bytes: Buffer, kind: "settlement" | "prof
     deductionLines: [],
     lines: [],
   };
+  if (bytes.length > BUSINESS_DOCUMENT_PARSER_LIMITS.maxInputBytes) {
+    return { ...base, reason: "The PDF exceeds the safe parser size limit; manual review is required." };
+  }
   if (bytes.length < 5 || bytes.subarray(0, 5).toString("ascii") !== "%PDF-") {
     return { ...base, reason: "Unsupported document: only PDF files are accepted." };
   }

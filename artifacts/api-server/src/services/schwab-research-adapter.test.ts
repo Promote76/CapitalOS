@@ -99,6 +99,31 @@ test("provider failures map to stable safe errors and retain only safe headers",
   }
 });
 
+test("read-only Schwab calls retry one bounded transient failure, but not validation failures", async () => {
+  let transientCalls = 0;
+  const result = await requestSchwabResearch("/marketdata/v1/quotes?symbols=BKSC", "token", {}, async () => {
+    transientCalls += 1;
+    return transientCalls === 1
+      ? new Response("temporarily unavailable", { status: 503 })
+      : new Response(JSON.stringify({ BKSC: { symbol: "BKSC", quote: {} } }), {
+          status: 200,
+          headers: { "x-request-id": "second-attempt" },
+        });
+  });
+  assert.equal(transientCalls, 2);
+  assert.equal(result.headers.providerRequestId, "second-attempt");
+
+  let invalidCalls = 0;
+  await assert.rejects(
+    requestSchwabResearch("/marketdata/v1/quotes?symbols=BKSC", "token", {}, async () => {
+      invalidCalls += 1;
+      return new Response("not allowed", { status: 403 });
+    }),
+    { code: "PROVIDER_ENTITLEMENT_REQUIRED" },
+  );
+  assert.equal(invalidCalls, 1);
+});
+
 test("adapter source has no callable execution capability", async () => {
   const source = await import("node:fs/promises").then((fs) => fs.readFile(new URL("./schwab-research-adapter.ts", import.meta.url), "utf8"));
   for (const forbidden of ["/orders", "/transfers", "micro-live", "execution-control", "execute_micro_live_order"]) {

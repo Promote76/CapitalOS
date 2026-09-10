@@ -59,6 +59,32 @@ paths:
       responses:
         "200": { description: Live aggregate observability health }
         "403": { $ref: "#/components/responses/Forbidden" }
+  /observability/destinations:
+    get:
+      operationId: listObservabilityDestinations
+      tags: [observability]
+      summary: List configured observability destinations without credentials
+      responses:
+        "200":
+          description: Named operator destinations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ObservabilityDestination" }
+  /observability/rules:
+    get:
+      operationId: listObservabilityRules
+      tags: [observability]
+      summary: List deterministic operator alert rules
+      responses:
+        "200":
+          description: Operator-visible alert rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ObservabilityRule" }
   /observability/incidents/{incidentId}/deliveries:
     get:
       operationId: listObservabilityIncidentDeliveries
@@ -147,11 +173,19 @@ paths:
       operationId: getAuthMe
       tags: [auth]
       summary: Resolve the authenticated Clerk user and household memberships
+      parameters:
+        - in: header
+          name: X-Capital-OS-Household-Id
+          required: false
+          schema: { type: string }
+          description: Server-validated active household selection for users with multiple active memberships
       responses:
         "200":
           description: Internal identity and memberships
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: An active household must be selected before workspace access
   /auth/onboard:
     post:
       operationId: onboardHousehold
@@ -2450,6 +2484,24 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/OperationsJob" }
+  /operations/audit-archive:
+    get:
+      operationId: listOperationsAuditArchive
+      tags: [operations]
+      summary: List immutable archived audit events for the household
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 500, default: 200 }
+      responses:
+        "200":
+          description: Archived audit events
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AuditEventArchive" }
   /operations/jobs/metrics:
     get:
       operationId: getOperationsJobMetrics
@@ -7268,6 +7320,41 @@ components:
         entityId: { type: string }
         timestamp: { type: string, format: date-time }
         reason: { type: ["string", "null"] }
+    AuditEventArchive:
+      type: object
+      required: [eventId, householdId, eventType, actor, entity, entityId, metadata, eventTimestamp, archivedAt]
+      properties:
+        eventId: { type: string }
+        householdId: { type: string }
+        eventType: { type: string }
+        actor: { type: string }
+        entity: { type: string }
+        entityId: { type: string }
+        beforeState: { type: ["object", "null"], additionalProperties: true }
+        afterState: { type: ["object", "null"], additionalProperties: true }
+        reason: { type: ["string", "null"] }
+        metadata: { type: object, additionalProperties: true }
+        eventTimestamp: { type: string, format: date-time }
+        archivedAt: { type: string, format: date-time }
+    ObservabilityDestination:
+      type: object
+      required: [name, kind, enabled, updatedAt]
+      properties:
+        name: { type: string }
+        kind: { type: string }
+        enabled: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+    ObservabilityRule:
+      type: object
+      required: [ruleKey, metric, severity, threshold, dedupeWindowSeconds, enabled, updatedAt]
+      properties:
+        ruleKey: { type: string }
+        metric: { type: string }
+        severity: { type: string }
+        threshold: { type: number }
+        dedupeWindowSeconds: { type: number }
+        enabled: { type: boolean }
+        updatedAt: { type: string, format: date-time }
     BlockchainStatus:
       type: object
       required: [enabled, preferredChain, chains, privateDataOffChain, liveTransactionsEnabled]

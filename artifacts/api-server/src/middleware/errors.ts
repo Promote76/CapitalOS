@@ -3,6 +3,8 @@ import { GovernanceError } from "../domain/governance";
 import { logger } from "../lib/logger";
 import { recordMetric } from "../observability/metrics";
 import { SchwabResearchError } from "../services/schwab-research-adapter";
+import { ProviderUnavailableError } from "../services/family-office-provider";
+import { ResearchDossierError } from "../services/research-dossier";
 
 export function asyncRoute(handler: RequestHandler): RequestHandler {
   return (req, res, next) => {
@@ -34,6 +36,29 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   const correlationId = res.locals.correlationId;
   if (error instanceof SchwabResearchError) {
     res.status(error.status).json({ code: error.code, message: error.message, ...error.metadata, correlationId });
+    return;
+  }
+  if (error instanceof ProviderUnavailableError) {
+    const status = error.code === "AI_PROVIDER_RATE_LIMITED" ? 429
+      : error.code === "AI_PROVIDER_TIMEOUT" ? 504
+        : error.code === "AI_PROVIDER_DISABLED" ? 503
+          : error.code === "AI_PROVIDER_AUTHENTICATION_FAILED" || error.code === "AI_PROVIDER_MODEL_UNAVAILABLE" ? 502
+            : error.code === "AI_PROVIDER_INVALID_RESPONSE" ? 502 : 503;
+    res.status(status).json({
+      code: error.code,
+      message: "Research provider did not return a usable result",
+      ...(error.diagnostic ? { diagnostic: {
+        analyst: error.diagnostic.analyst,
+        stage: error.diagnostic.stage,
+        ...(error.diagnostic.path ? { path: error.diagnostic.path } : {}),
+        ...(error.diagnostic.code ? { providerCode: error.diagnostic.code } : {}),
+      } } : {}),
+      correlationId,
+    });
+    return;
+  }
+  if (error instanceof ResearchDossierError) {
+    res.status(error.status).json({ code: error.code, message: error.message, correlationId });
     return;
   }
   if (isValidationError(error)) {

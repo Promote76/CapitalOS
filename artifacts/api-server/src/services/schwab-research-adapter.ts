@@ -146,17 +146,29 @@ export async function requestSchwabResearch(
   if (url.protocol !== "https:" || url.origin !== new URL(base).origin || !allowedPaths.includes(url.pathname)) {
     throw new SchwabResearchError("INVALID_RESEARCH_REQUEST", 400, "Research endpoint is not allowlisted");
   }
-  let response: Response;
+  let response: Response | undefined;
   const requestedAt = new Date().toISOString();
-  try {
-    response = await fetcher(url, {
-      method: "GET",
-      headers: { authorization: `Bearer ${accessToken}`, accept: "application/json" },
-      signal: AbortSignal.timeout(10_000),
-    });
-  } catch {
-    throw new SchwabResearchError("PROVIDER_UNAVAILABLE", 503, "Schwab research service is unavailable");
+  // This is a read-only GET. Retry at most once, and only for transient
+  // transport/provider failures; never retry authorization, validation, or
+  // symbol/entitlement failures.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      response = await fetcher(url, {
+        method: "GET",
+        headers: { authorization: `Bearer ${accessToken}`, accept: "application/json" },
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch {
+      if (attempt === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        continue;
+      }
+      throw new SchwabResearchError("PROVIDER_UNAVAILABLE", 503, "Schwab research service is unavailable");
+    }
+    if (response.ok || (response.status < 500 && response.status !== 429) || attempt === 1) break;
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
+  if (!response) throw new SchwabResearchError("PROVIDER_UNAVAILABLE", 503, "Schwab research service is unavailable");
   const headers = safeHeaders(response.headers);
   if (!response.ok) throw providerError(response.status, headers);
   const payload = await response.json().catch(() => { throw new SchwabResearchError("INVALID_PROVIDER_RESPONSE", 502, "Schwab research response is not valid JSON"); });

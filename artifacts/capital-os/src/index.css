@@ -672,6 +672,16 @@ button {
   background: var(--paper-deep);
   transform: translateY(-1px);
 }
+.feedback-only-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+.feedback-only-label {
+  color: var(--ink-soft);
+  font: 500 9px var(--app-font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .avatar {
   width: 34px;
   height: 34px;
@@ -2062,6 +2072,12 @@ button {
 /* Strategy Lab — a research room, not a trading terminal */
 .strategy-lab-page {
   max-width: 1500px;
+  min-width: 0;
+}
+.strategy-lab-page .card,
+.strategy-lab-page section,
+.strategy-lab-page article {
+  min-width: 0;
 }
 .lab-safety-banner {
   display: flex;
@@ -2159,6 +2175,7 @@ button {
   align-items: center;
   justify-content: center;
   padding: 0 5px;
+  overflow-wrap: anywhere;
   border: 1px solid #d9e0d8;
   border-radius: 7px;
   background: #f8f7f1;
@@ -2660,12 +2677,36 @@ button {
   .strategy-score-grid {
     grid-template-columns: repeat(3, 1fr);
   }
+  .lab-detail-header {
+    display: grid;
+    gap: 10px;
+  }
+  .lab-detail-header h2 {
+    font-size: 28px;
+  }
   .graduation-gates {
     grid-template-columns: 1fr;
   }
   .journal-list article {
     grid-template-columns: 1fr;
     gap: 7px;
+  }
+}
+
+@media (max-width: 380px) {
+  .strategy-score-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .lab-stage-track {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .accounting-hero {
+    padding: 18px;
+  }
+  .accounting-period-bar,
+  .accounting-page .card-pad {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
 
@@ -8573,6 +8614,12 @@ body {
 /* Accounting / the monthly review surface */
 .accounting-page {
   max-width: 1440px;
+  min-width: 0;
+}
+.accounting-page .card,
+.accounting-page section,
+.accounting-page article {
+  min-width: 0;
 }
 .accounting-hero {
   display: grid;
@@ -9277,6 +9324,7 @@ body {
 }
 .accounting-account-table {
   overflow-x: auto;
+  max-width: 100%;
 }
 .accounting-account-header,
 .accounting-account-row {
@@ -9495,6 +9543,9 @@ body {
   }
 }
 @media (max-width: 700px) {
+  .accounting-page {
+    overflow-x: hidden;
+  }
   .accounting-hero {
     padding: 23px;
     min-height: 0;
@@ -9511,6 +9562,18 @@ body {
   }
   .accounting-period-bar .btn {
     width: 100%;
+  }
+  .accounting-hero-copy,
+  .accounting-hero-value,
+  .accounting-period-bar > div,
+  .accounting-section-heading > div,
+  .accounting-tax-copy {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .accounting-formula span,
+  .accounting-formula strong {
+    overflow-wrap: anywhere;
   }
   .accounting-metric-grid,
   .accounting-review-grid,

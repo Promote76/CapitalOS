@@ -1,8 +1,18 @@
-import * as XLSX from "xlsx";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 
 export const BANK_STATEMENT_PARSER_VERSION = "bank-statement-v1";
+// Structured statement parsing is limited to CSV for RC1. XLSX remains accepted
+// as review evidence by the upload boundary, but is not opened by the API until
+// a maintained parser can replace the vulnerable SheetJS npm release.
+export const BANK_STATEMENT_PARSER_LIMITS = {
+  maxInputBytes: 20 * 1024 * 1024,
+  maxCsvCharacters: 20 * 1024 * 1024,
+  maxRows: 100_000,
+  maxPdfPages: 10_000,
+  maxPdfOutputBytes: 50 * 1024 * 1024,
+  pdfTimeoutMs: 15_000,
+} as const;
 type Direction = "deposit" | "withdrawal";
 export type ParsedStatementRow = { postedDate: string; description: string; amount: string; direction: Direction; runningBalance: string | null; reference: string | null; sourcePage: number | null; sourceLine: number; sourceRegion: string; originalValue: Record<string, unknown>; evidenceFingerprint: string };
 export type ParsedStatement = { rows: ParsedStatementRow[]; errors: string[]; openingBalance: string | null; closingBalance: string | null; totalDeposits: string | null; totalWithdrawals: string | null };
@@ -90,14 +100,33 @@ function distinguishRepeatedRows(parsed: ParsedStatement): ParsedStatement {
 async function pdfText(bytes: Buffer) {
   return new Promise<string>((resolve, reject) => {
     const child = spawn("pdftotext", ["-layout", "-", "-"]); const output: Buffer[] = []; const errors: Buffer[] = [];
-    child.stdout.on("data", (chunk: Buffer) => output.push(chunk)); child.stderr.on("data", (chunk: Buffer) => errors.push(chunk));
-    child.on("error", reject); child.on("close", (code) => code === 0 ? resolve(Buffer.concat(output).toString("utf8")) : reject(new Error(Buffer.concat(errors).toString("utf8"))));
+    let outputBytes = 0;
+    const timeout = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(new Error("PDF text extraction exceeded the resource limit"));
+    }, BANK_STATEMENT_PARSER_LIMITS.pdfTimeoutMs);
+    const append = (target: Buffer[], chunk: Buffer) => {
+      outputBytes += chunk.length;
+      if (outputBytes > BANK_STATEMENT_PARSER_LIMITS.maxPdfOutputBytes) {
+        child.kill("SIGKILL");
+        reject(new Error("PDF text extraction exceeded the resource limit"));
+        return;
+      }
+      target.push(chunk);
+    };
+    child.stdout.on("data", (chunk: Buffer) => append(output, chunk)); child.stderr.on("data", (chunk: Buffer) => errors.push(chunk));
+    child.on("error", (error) => { clearTimeout(timeout); reject(error); });
+    child.on("close", (code) => {
+      clearTimeout(timeout);
+      code === 0 ? resolve(Buffer.concat(output).toString("utf8")) : reject(new Error(Buffer.concat(errors).toString("utf8")));
+    });
     child.stdin.end(bytes);
   });
 }
 function pdfStatement(text: string): ParsedStatement {
   const result: ParsedStatement = { rows: [], errors: [], openingBalance: null, closingBalance: null, totalDeposits: null, totalWithdrawals: null };
   const pages = text.split("\f");
+  if (pages.length > BANK_STATEMENT_PARSER_LIMITS.maxPdfPages) return { ...result, errors: ["PDF contains too many pages for safe parsing; manual review is required."] };
   const hasIdentifier = /(?:account|statement\s*period|from\s+\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}\s+(?:to|through)\s+\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4})/i.test(text);
   if (!hasIdentifier) return { ...result, errors: ["PDF is missing a statement period or account identifier; manual review is required."] };
   for (let page = 0; page < pages.length; page += 1) {
@@ -165,24 +194,35 @@ function pdfStatement(text: string): ParsedStatement {
   return result;
 }
 export async function parseBankStatement(bytes: Buffer, contentType: string): Promise<ParsedStatement> {
+  if (bytes.length > BANK_STATEMENT_PARSER_LIMITS.maxInputBytes) return { rows: [], errors: ["Statement exceeds the safe parser size limit."], openingBalance: null, closingBalance: null, totalDeposits: null, totalWithdrawals: null };
   if (contentType === "application/pdf") {
     if (bytes.subarray(0, 5).toString("ascii") !== "%PDF-") return { rows: [], errors: ["File is not a valid PDF bank statement."], openingBalance: null, closingBalance: null, totalDeposits: null, totalWithdrawals: null };
     try { return distinguishRepeatedRows(pdfStatement(await pdfText(bytes))); } catch { return { rows: [], errors: ["PDF text extraction failed; encrypted, image-only, or corrupt statements require manual review."], openingBalance: null, closingBalance: null, totalDeposits: null, totalWithdrawals: null }; }
   }
+  if (contentType !== "text/csv") {
+    return {
+      rows: [],
+      errors: ["XLSX parsing is disabled for RC1 security hardening; upload CSV or PDF, or complete manual review."],
+      openingBalance: null,
+      closingBalance: null,
+      totalDeposits: null,
+      totalWithdrawals: null,
+    };
+  }
   try {
-    if (contentType === "text/csv") return distinguishRepeatedRows(parseRows(csvMatrix(bytes.toString("utf8"))));
-    const workbook = XLSX.read(bytes, { type: "buffer", raw: false });
-    if (workbook.SheetNames.length !== 1) return { rows: [], errors: ["XLSX must contain exactly one transaction worksheet."], openingBalance: null, closingBalance: null, totalDeposits: null, totalWithdrawals: null };
-    return distinguishRepeatedRows(parseRows(XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: "" }) as unknown[][]));
-  } catch { return { rows: [], errors: ["Statement file could not be parsed as structured CSV/XLSX."] , openingBalance: null, closingBalance: null, totalDeposits: null, totalWithdrawals: null }; }
+    return distinguishRepeatedRows(parseRows(csvMatrix(bytes.toString("utf8"))));
+  } catch {
+    return { rows: [], errors: ["Statement file could not be parsed as structured CSV."], openingBalance: null, closingBalance: null, totalDeposits: null, totalWithdrawals: null };
+  }
 }
 function csvMatrix(text: string): string[][] {
+  if (text.length > BANK_STATEMENT_PARSER_LIMITS.maxCsvCharacters) throw new Error("CSV exceeds the safe parser size limit");
   const rows: string[][] = []; let row: string[] = []; let cell = ""; let quoted = false;
   for (let i = 0; i < text.length; i += 1) {
     const char = text[i];
     if (char === "\"") { if (quoted && text[i + 1] === "\"") { cell += char; i += 1; } else quoted = !quoted; }
     else if (char === "," && !quoted) { row.push(cell); cell = ""; }
-    else if ((char === "\n" || char === "\r") && !quoted) { if (char === "\r" && text[i + 1] === "\n") i += 1; row.push(cell); rows.push(row); row = []; cell = ""; }
+    else if ((char === "\n" || char === "\r") && !quoted) { if (rows.length >= BANK_STATEMENT_PARSER_LIMITS.maxRows) throw new Error("CSV contains too many rows"); if (char === "\r" && text[i + 1] === "\n") i += 1; row.push(cell); rows.push(row); row = []; cell = ""; }
     else cell += char;
   }
   if (quoted) throw new Error("Unterminated CSV quoted value");

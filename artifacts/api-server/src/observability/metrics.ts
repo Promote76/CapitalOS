@@ -66,6 +66,12 @@ export const OBSERVABILITY_METRIC_DEFINITIONS: ReadonlyArray<MetricDefinition> =
       kind: "gauge",
     },
     {
+      name: "readiness_blocked_total",
+      help: "Application readiness checks blocked by a required local component",
+      kind: "counter",
+      labels: ["component"],
+    },
+    {
       name: "database_errors_total",
       help: "Database failures",
       kind: "counter",

@@ -4,6 +4,8 @@ import { actorFrom } from "../middleware/request-context";
 import {
   listObservabilityDeliveries,
   listObservabilityIncidents,
+  listObservabilityDestinations,
+  listObservabilityRules,
   projectObservabilityMetrics,
   reprocessObservabilityAlert,
   resolveObservabilityAlert,
@@ -16,6 +18,18 @@ router.get(
   "/observability/incidents",
   asyncRoute(async (_req, res) => {
     res.json(await listObservabilityIncidents(actorFrom(res)));
+  }),
+);
+router.get(
+  "/observability/destinations",
+  asyncRoute(async (_req, res) => {
+    res.json(await listObservabilityDestinations(actorFrom(res)));
+  }),
+);
+router.get(
+  "/observability/rules",
+  asyncRoute(async (_req, res) => {
+    res.json(await listObservabilityRules(actorFrom(res)));
   }),
 );
 router.get(

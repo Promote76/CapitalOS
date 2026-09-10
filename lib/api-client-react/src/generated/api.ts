@@ -29,6 +29,7 @@ import type {
   AllocationSummary,
   ApproveMicroLiveFirstFillResume200,
   ArmMicroLive200,
+  AuditEventArchive,
   AuditEventSummary,
   BadRequestResponse,
   BankAccountLinkInput,
@@ -179,6 +180,7 @@ import type {
   IntelligenceScenarioInput,
   IntelligenceSnapshot,
   ListDailyOpsHistoryParams,
+  ListOperationsAuditArchiveParams,
   ListTransactionReviewQueueParams,
   ManualFinanceTransactionInput,
   ManualFinancialAccountInput,
@@ -203,6 +205,8 @@ import type {
   MicroLiveVenueReview,
   MicroLiveVenueReviewRequest,
   NotFoundResponse,
+  ObservabilityDestination,
+  ObservabilityRule,
   OnboardHouseholdInput,
   OperationsAlert,
   OperationsAlertUpdate,
@@ -560,6 +564,160 @@ export function useGetObservabilityHealth<TData = Awaited<ReturnType<typeof getO
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetObservabilityHealthQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListObservabilityDestinationsUrl = () => {
+
+
+
+
+  return `/api/observability/destinations`
+}
+
+/**
+ * @summary List configured observability destinations without credentials
+ */
+export const listObservabilityDestinations = async ( options?: Parameters<typeof customFetch>[1]): Promise<ObservabilityDestination[]> => {
+
+  return customFetch<ObservabilityDestination[]>(getListObservabilityDestinationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListObservabilityDestinationsQueryKey = () => {
+    return [
+    `/api/observability/destinations`
+    ] as const;
+    }
+
+
+export const getListObservabilityDestinationsQueryOptions = <TData = Awaited<ReturnType<typeof listObservabilityDestinations>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listObservabilityDestinations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListObservabilityDestinationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listObservabilityDestinations>>> = ({ signal }) => listObservabilityDestinations({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listObservabilityDestinations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListObservabilityDestinationsQueryResult = NonNullable<Awaited<ReturnType<typeof listObservabilityDestinations>>>
+export type ListObservabilityDestinationsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List configured observability destinations without credentials
+ */
+
+export function useListObservabilityDestinations<TData = Awaited<ReturnType<typeof listObservabilityDestinations>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listObservabilityDestinations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListObservabilityDestinationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListObservabilityRulesUrl = () => {
+
+
+
+
+  return `/api/observability/rules`
+}
+
+/**
+ * @summary List deterministic operator alert rules
+ */
+export const listObservabilityRules = async ( options?: Parameters<typeof customFetch>[1]): Promise<ObservabilityRule[]> => {
+
+  return customFetch<ObservabilityRule[]>(getListObservabilityRulesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListObservabilityRulesQueryKey = () => {
+    return [
+    `/api/observability/rules`
+    ] as const;
+    }
+
+
+export const getListObservabilityRulesQueryOptions = <TData = Awaited<ReturnType<typeof listObservabilityRules>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listObservabilityRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListObservabilityRulesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listObservabilityRules>>> = ({ signal }) => listObservabilityRules({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listObservabilityRules>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListObservabilityRulesQueryResult = NonNullable<Awaited<ReturnType<typeof listObservabilityRules>>>
+export type ListObservabilityRulesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List deterministic operator alert rules
+ */
+
+export function useListObservabilityRules<TData = Awaited<ReturnType<typeof listObservabilityRules>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listObservabilityRules>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListObservabilityRulesQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -1126,7 +1284,7 @@ export const getGetAuthMeQueryKey = () => {
     }
 
 
-export const getGetAuthMeQueryOptions = <TData = Awaited<ReturnType<typeof getAuthMe>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAuthMe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetAuthMeQueryOptions = <TData = Awaited<ReturnType<typeof getAuthMe>>, TError = ErrorType<UnauthorizedResponse | void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAuthMe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -1145,14 +1303,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetAuthMeQueryResult = NonNullable<Awaited<ReturnType<typeof getAuthMe>>>
-export type GetAuthMeQueryError = ErrorType<UnauthorizedResponse>
+export type GetAuthMeQueryError = ErrorType<UnauthorizedResponse | void>
 
 
 /**
  * @summary Resolve the authenticated Clerk user and household memberships
  */
 
-export function useGetAuthMe<TData = Awaited<ReturnType<typeof getAuthMe>>, TError = ErrorType<UnauthorizedResponse>>(
+export function useGetAuthMe<TData = Awaited<ReturnType<typeof getAuthMe>>, TError = ErrorType<UnauthorizedResponse | void>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAuthMe>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -11945,6 +12103,90 @@ export function useListOperationsJobs<TData = Awaited<ReturnType<typeof listOper
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListOperationsJobsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListOperationsAuditArchiveUrl = (params?: ListOperationsAuditArchiveParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/operations/audit-archive?${stringifiedParams}` : `/api/operations/audit-archive`
+}
+
+/**
+ * @summary List immutable archived audit events for the household
+ */
+export const listOperationsAuditArchive = async (params?: ListOperationsAuditArchiveParams, options?: Parameters<typeof customFetch>[1]): Promise<AuditEventArchive[]> => {
+
+  return customFetch<AuditEventArchive[]>(getListOperationsAuditArchiveUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOperationsAuditArchiveQueryKey = (params?: ListOperationsAuditArchiveParams,) => {
+    return [
+    `/api/operations/audit-archive`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListOperationsAuditArchiveQueryOptions = <TData = Awaited<ReturnType<typeof listOperationsAuditArchive>>, TError = ErrorType<unknown>>(params?: ListOperationsAuditArchiveParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsAuditArchive>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOperationsAuditArchiveQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOperationsAuditArchive>>> = ({ signal }) => listOperationsAuditArchive(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOperationsAuditArchive>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOperationsAuditArchiveQueryResult = NonNullable<Awaited<ReturnType<typeof listOperationsAuditArchive>>>
+export type ListOperationsAuditArchiveQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List immutable archived audit events for the household
+ */
+
+export function useListOperationsAuditArchive<TData = Awaited<ReturnType<typeof listOperationsAuditArchive>>, TError = ErrorType<unknown>>(
+ params?: ListOperationsAuditArchiveParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOperationsAuditArchive>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOperationsAuditArchiveQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

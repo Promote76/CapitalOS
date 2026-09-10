@@ -215,8 +215,8 @@ function AccountingOverviewContent({
           <Scale size={16} />
           <span>Net worth is the balance-sheet view. Liquidity is the operating view.</span>
         </div>
-        <button className="btn" type="button" onClick={() => onFeedback("Accounting view is prepared for review.")}>
-          <FileText size={14} /> Prepare review
+        <button className="btn feedback-only-control" type="button" disabled title="Review preparation is coming soon">
+          <FileText size={14} /> Prepare review <span className="feedback-only-label">coming soon</span>
         </button>
       </section>
 

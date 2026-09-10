@@ -24,6 +24,7 @@ import variableIncomeRouter from "./variable-income";
 import financialDocumentsRouter from "./financial-documents";
 import schwabRouter from "./schwab";
 import schwabMarketDataRouter from "./schwab-market-data";
+import schwabResearchRouter from "./schwab-research";
 
 const router: IRouter = Router();
 
@@ -52,5 +53,6 @@ router.use(variableIncomeRouter);
 router.use(financialDocumentsRouter);
 router.use(schwabRouter);
 router.use(schwabMarketDataRouter);
+router.use(schwabResearchRouter);
 
 export default router;

@@ -2,6 +2,7 @@ import type { ErrorRequestHandler, RequestHandler } from "express";
 import { GovernanceError } from "../domain/governance";
 import { logger } from "../lib/logger";
 import { recordMetric } from "../observability/metrics";
+import { SchwabResearchError } from "../services/schwab-research-adapter";
 
 export function asyncRoute(handler: RequestHandler): RequestHandler {
   return (req, res, next) => {
@@ -31,6 +32,10 @@ function isInvalidUuidError(error: unknown): boolean {
 
 export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
   const correlationId = res.locals.correlationId;
+  if (error instanceof SchwabResearchError) {
+    res.status(error.status).json({ code: error.code, message: error.message, ...error.metadata, correlationId });
+    return;
+  }
   if (isValidationError(error)) {
     res.status(400).json({
       code: "VALIDATION_ERROR",

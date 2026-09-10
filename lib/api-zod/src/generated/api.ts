@@ -11294,6 +11294,208 @@ export const DisconnectSchwabMarketDataConnectionResponse = zod.object({
 
 
 /**
+ * @summary Read one household-scoped Schwab instrument with fundamental projection
+ */
+export const getSchwabResearchInstrumentQuerySymbolRegExp = new RegExp('^[A-Za-z0-9._-]{1,15}$');
+
+
+export const GetSchwabResearchInstrumentQueryParams = zod.object({
+  "symbol": zod.coerce.string().regex(getSchwabResearchInstrumentQuerySymbolRegExp),
+  "projection": zod.enum(['fundamental'])
+})
+
+export const getSchwabResearchInstrumentResponseOneProvenancePayloadSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const GetSchwabResearchInstrumentResponse = zod.object({
+  "provider": zod.enum(['schwab']),
+  "providerProduct": zod.enum(['MARKET_DATA_PRODUCTION']),
+  "capability": zod.enum(['INSTRUMENT_FUNDAMENTAL', 'CURRENT_QUOTE', 'DAILY_PRICE_HISTORY']),
+  "symbol": zod.string(),
+  "requestedAt": zod.coerce.date(),
+  "receivedAt": zod.coerce.date(),
+  "providerAsOf": zod.coerce.date().nullable(),
+  "freshness": zod.enum(['REALTIME', 'DELAYED', 'CURRENT', 'AGING', 'STALE', 'UNKNOWN']),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable(),
+  "provenance": zod.object({
+  "sourceClass": zod.enum(['SCHWAB_MARKET_DATA']),
+  "providerEndpoint": zod.string(),
+  "retrievedAt": zod.coerce.date(),
+  "requestParameters": zod.record(zod.string(), zod.union([zod.string(),zod.number(),zod.boolean()])),
+  "payloadSha256": zod.string().regex(getSchwabResearchInstrumentResponseOneProvenancePayloadSha256RegExp),
+  "providerRequestId": zod.string().nullable()
+}),
+  "rateLimit": zod.object({
+  "limit": zod.number().nullable(),
+  "remaining": zod.number().nullable(),
+  "resetAt": zod.string().nullable(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "executionAuthority": zod.literal("none")
+}).and(zod.object({
+  "data": zod.object({
+  "symbol": zod.string(),
+  "description": zod.string().nullable(),
+  "assetType": zod.string().nullable(),
+  "exchange": zod.string().nullable(),
+  "cusip": zod.string().nullable(),
+  "fundamental": zod.union([zod.object({
+  "asOf": zod.coerce.date().nullable(),
+  "marketCap": zod.string().nullable(),
+  "sharesOutstanding": zod.string().nullable(),
+  "epsTrailingTwelveMonths": zod.string().nullable(),
+  "peRatio": zod.string().nullable(),
+  "dividendAmount": zod.string().nullable(),
+  "dividendYield": zod.string().nullable(),
+  "dividendPayDate": zod.coerce.date().nullable(),
+  "beta": zod.string().nullable(),
+  "high52Week": zod.string().nullable(),
+  "low52Week": zod.string().nullable()
+}),zod.null()])
+})
+}))
+
+
+/**
+ * @summary Read one current household-scoped Schwab quote
+ */
+export const getSchwabResearchQuotePathSymbolRegExp = new RegExp('^[A-Za-z0-9._-]{1,15}$');
+
+
+export const GetSchwabResearchQuoteParams = zod.object({
+  "symbol": zod.coerce.string().regex(getSchwabResearchQuotePathSymbolRegExp)
+})
+
+export const getSchwabResearchQuoteResponseOneProvenancePayloadSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const GetSchwabResearchQuoteResponse = zod.object({
+  "provider": zod.enum(['schwab']),
+  "providerProduct": zod.enum(['MARKET_DATA_PRODUCTION']),
+  "capability": zod.enum(['INSTRUMENT_FUNDAMENTAL', 'CURRENT_QUOTE', 'DAILY_PRICE_HISTORY']),
+  "symbol": zod.string(),
+  "requestedAt": zod.coerce.date(),
+  "receivedAt": zod.coerce.date(),
+  "providerAsOf": zod.coerce.date().nullable(),
+  "freshness": zod.enum(['REALTIME', 'DELAYED', 'CURRENT', 'AGING', 'STALE', 'UNKNOWN']),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable(),
+  "provenance": zod.object({
+  "sourceClass": zod.enum(['SCHWAB_MARKET_DATA']),
+  "providerEndpoint": zod.string(),
+  "retrievedAt": zod.coerce.date(),
+  "requestParameters": zod.record(zod.string(), zod.union([zod.string(),zod.number(),zod.boolean()])),
+  "payloadSha256": zod.string().regex(getSchwabResearchQuoteResponseOneProvenancePayloadSha256RegExp),
+  "providerRequestId": zod.string().nullable()
+}),
+  "rateLimit": zod.object({
+  "limit": zod.number().nullable(),
+  "remaining": zod.number().nullable(),
+  "resetAt": zod.string().nullable(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "executionAuthority": zod.literal("none")
+}).and(zod.object({
+  "data": zod.object({
+  "symbol": zod.string(),
+  "assetType": zod.string().nullable(),
+  "description": zod.string().nullable(),
+  "bidPrice": zod.string().nullable(),
+  "askPrice": zod.string().nullable(),
+  "lastPrice": zod.string().nullable(),
+  "markPrice": zod.string().nullable(),
+  "closePrice": zod.string().nullable(),
+  "openPrice": zod.string().nullable(),
+  "highPrice": zod.string().nullable(),
+  "lowPrice": zod.string().nullable(),
+  "netChange": zod.string().nullable(),
+  "netPercentChange": zod.string().nullable(),
+  "totalVolume": zod.string().nullable(),
+  "quoteTime": zod.coerce.date().nullable(),
+  "tradeTime": zod.coerce.date().nullable(),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable()
+})
+}))
+
+
+/**
+ * @summary Read bounded daily household-scoped Schwab price history
+ */
+export const getSchwabResearchPriceHistoryQuerySymbolRegExp = new RegExp('^[A-Za-z0-9._-]{1,15}$');
+export const getSchwabResearchPriceHistoryQueryStartDateRegExp = new RegExp('^[0-9]+$');
+export const getSchwabResearchPriceHistoryQueryEndDateRegExp = new RegExp('^[0-9]+$');
+
+
+export const GetSchwabResearchPriceHistoryQueryParams = zod.object({
+  "symbol": zod.coerce.string().regex(getSchwabResearchPriceHistoryQuerySymbolRegExp),
+  "startDate": zod.coerce.string().regex(getSchwabResearchPriceHistoryQueryStartDateRegExp),
+  "endDate": zod.coerce.string().regex(getSchwabResearchPriceHistoryQueryEndDateRegExp)
+})
+
+export const getSchwabResearchPriceHistoryResponseOneProvenancePayloadSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+export const getSchwabResearchPriceHistoryResponseTwoDataCandlesMax = 100;
+
+
+
+export const GetSchwabResearchPriceHistoryResponse = zod.object({
+  "provider": zod.enum(['schwab']),
+  "providerProduct": zod.enum(['MARKET_DATA_PRODUCTION']),
+  "capability": zod.enum(['INSTRUMENT_FUNDAMENTAL', 'CURRENT_QUOTE', 'DAILY_PRICE_HISTORY']),
+  "symbol": zod.string(),
+  "requestedAt": zod.coerce.date(),
+  "receivedAt": zod.coerce.date(),
+  "providerAsOf": zod.coerce.date().nullable(),
+  "freshness": zod.enum(['REALTIME', 'DELAYED', 'CURRENT', 'AGING', 'STALE', 'UNKNOWN']),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable(),
+  "provenance": zod.object({
+  "sourceClass": zod.enum(['SCHWAB_MARKET_DATA']),
+  "providerEndpoint": zod.string(),
+  "retrievedAt": zod.coerce.date(),
+  "requestParameters": zod.record(zod.string(), zod.union([zod.string(),zod.number(),zod.boolean()])),
+  "payloadSha256": zod.string().regex(getSchwabResearchPriceHistoryResponseOneProvenancePayloadSha256RegExp),
+  "providerRequestId": zod.string().nullable()
+}),
+  "rateLimit": zod.object({
+  "limit": zod.number().nullable(),
+  "remaining": zod.number().nullable(),
+  "resetAt": zod.string().nullable(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "executionAuthority": zod.literal("none")
+}).and(zod.object({
+  "data": zod.object({
+  "symbol": zod.string(),
+  "empty": zod.boolean(),
+  "previousClose": zod.string().nullable(),
+  "previousCloseDate": zod.coerce.date().nullable(),
+  "candles": zod.array(zod.object({
+  "timestamp": zod.coerce.date(),
+  "open": zod.string().nullable(),
+  "high": zod.string().nullable(),
+  "low": zod.string().nullable(),
+  "close": zod.string().nullable(),
+  "volume": zod.string().nullable()
+})).max(getSchwabResearchPriceHistoryResponseTwoDataCandlesMax),
+  "requestedRange": zod.object({
+  "start": zod.coerce.date(),
+  "end": zod.coerce.date(),
+  "frequency": zod.enum(['DAILY']),
+  "extendedHoursIncluded": zod.literal(false)
+})
+})
+}))
+
+
+/**
  * @summary Remove household-scoped Schwab authorization material
  */
 export const DisconnectSchwabConnectionResponse = zod.object({

@@ -95,6 +95,50 @@ test("separate Schwab Market Data app keeps OAuth, tokens, reads, and disconnect
     assert.equal(marketData.tradingEnabled, false);
     assert.equal((await request("/integrations/schwab/market-data?symbols=ABC,%24INVALID")).status, 400);
 
+    const researchCalls: string[] = [];
+    globalThis.fetch = (async (input) => {
+      const url = String(input);
+      researchCalls.push(url);
+      if (url.includes("/marketdata/v1/instruments?symbol=BKSC&projection=fundamental")) {
+        return new Response(JSON.stringify({ instruments: [{ symbol: "BKSC", assetType: "EQUITY", fundamental: { peRatio: 12.5 } }] }), {
+          headers: { "x-request-id": "instrument-safe-id" },
+        });
+      }
+      if (url.includes("/marketdata/v1/quotes?symbols=BKSC")) {
+        return new Response(JSON.stringify({ BKSC: { symbol: "BKSC", quote: { lastPrice: 31.5, isRealtime: true, quoteTime: Date.now() } } }));
+      }
+      if (url.includes("/marketdata/v1/pricehistory?")) {
+        return new Response(JSON.stringify({ symbol: "BKSC", candles: [{ datetime: Date.now() - 86_400_000, close: 31 }] }));
+      }
+      return new Response("unexpected path", { status: 404 });
+    }) as typeof fetch;
+    const instrument = await request("/research/schwab/instruments?symbol=BKSC&projection=fundamental");
+    assert.equal(instrument.status, 200);
+    const instrumentBody = await instrument.json() as Record<string, any>;
+    assert.equal(instrumentBody.data.fundamental.peRatio, "12.5");
+    assert.equal(instrumentBody.provenance.providerRequestId, "instrument-safe-id");
+    assert.equal(instrumentBody.tradingEnabled, false);
+    assert.equal(instrumentBody.executionAuthority, "none");
+    const quote = await request("/research/schwab/quotes/BKSC");
+    assert.equal(quote.status, 200);
+    assert.equal((await quote.json() as Record<string, any>).data.realtime, true);
+    const endDate = Date.now();
+    const history = await request(`/research/schwab/price-history?symbol=BKSC&startDate=${endDate - 30 * 86_400_000}&endDate=${endDate}`);
+    assert.equal(history.status, 200);
+    assert.equal((await history.json() as Record<string, any>).data.candles.length, 1);
+    assert.equal(researchCalls.length, 3);
+    assert.ok(researchCalls.every((url) => !/orders|transfers|micro-live|execution-control/.test(url)));
+
+    const [otherUser] = await db.insert(users).values({ email: `schwab-market-other-${randomUUID()}@capitalos.test`, displayName: "Other household", status: "active" }).returning({ id: users.id });
+    const [otherHousehold] = await db.insert(households).values({ name: `Other Market Data ${randomUUID()}` }).returning({ id: households.id });
+    await db.insert(householdMembers).values({ householdId: otherHousehold.id, userId: otherUser.id, role: "owner", permissions: ["read"], active: true });
+    const isolated = await realFetch(`${base}/research/schwab/quotes/BKSC`, {
+      headers: { "X-Test-User-Id": otherUser.id, "X-Test-Household-Id": otherHousehold.id },
+    });
+    assert.equal(isolated.status, 409);
+    assert.equal((await isolated.json() as Record<string, unknown>).code, "MARKET_DATA_DISCONNECTED");
+    assert.equal(researchCalls.length, 3);
+
     assert.equal((await request("/integrations/schwab/market-data/disconnect", { method: "POST" })).status, 200);
     const [portfolio] = await db.select().from(schwabConnections).where(eq(schwabConnections.householdId, household.id));
     assert.equal(portfolio.lifecycleGeneration, "portfolio-generation");

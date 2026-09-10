@@ -3615,6 +3615,57 @@ paths:
       responses:
         "200": { description: Disconnected redacted Market Data connection state, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabDisconnectResult" } } } }
         "403": { $ref: "#/components/responses/Forbidden" }
+  /research/schwab/instruments:
+    get:
+      operationId: getSchwabResearchInstrument
+      tags: [schwab]
+      summary: Read one household-scoped Schwab instrument with fundamental projection
+      parameters:
+        - { name: symbol, in: query, required: true, schema: { type: string, pattern: "^[A-Za-z0-9._-]{1,15}$" } }
+        - { name: projection, in: query, required: true, schema: { type: string, enum: [fundamental] } }
+      responses:
+        "200": { description: Normalized read-only instrument research, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabResearchInstrumentEnvelope" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { description: Schwab research rate limit reached, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "502": { description: Invalid Schwab provider response, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "503": { description: Schwab research provider unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /research/schwab/quotes/{symbol}:
+    get:
+      operationId: getSchwabResearchQuote
+      tags: [schwab]
+      summary: Read one current household-scoped Schwab quote
+      parameters:
+        - { name: symbol, in: path, required: true, schema: { type: string, pattern: "^[A-Za-z0-9._-]{1,15}$" } }
+      responses:
+        "200": { description: Normalized read-only quote research, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabResearchQuoteEnvelope" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { description: Schwab research rate limit reached, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "502": { description: Invalid Schwab provider response, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "503": { description: Schwab research provider unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /research/schwab/price-history:
+    get:
+      operationId: getSchwabResearchPriceHistory
+      tags: [schwab]
+      summary: Read bounded daily household-scoped Schwab price history
+      parameters:
+        - { name: symbol, in: query, required: true, schema: { type: string, pattern: "^[A-Za-z0-9._-]{1,15}$" } }
+        - { name: startDate, in: query, required: true, schema: { type: string, pattern: "^[0-9]+$" } }
+        - { name: endDate, in: query, required: true, schema: { type: string, pattern: "^[0-9]+$" } }
+      responses:
+        "200": { description: Normalized read-only daily price history, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabResearchPriceHistoryEnvelope" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { description: Schwab research rate limit reached, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "502": { description: Invalid Schwab provider response, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+        "503": { description: Schwab research provider unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
   /integrations/schwab/disconnect:
     post:
       operationId: disconnectSchwabConnection
@@ -3803,6 +3854,135 @@ components:
         providerTimestamp: { type: ["string", "null"], format: date-time }
         receivedAt: { type: string, format: date-time }
         dataFreshness: { type: string, enum: [CURRENT, AGING, STALE, UNKNOWN] }
+    SchwabResearchProvenance:
+      type: object
+      required: [sourceClass, providerEndpoint, retrievedAt, requestParameters, payloadSha256, providerRequestId]
+      properties:
+        sourceClass: { type: string, enum: [SCHWAB_MARKET_DATA] }
+        providerEndpoint: { type: string }
+        retrievedAt: { type: string, format: date-time }
+        requestParameters:
+          type: object
+          additionalProperties:
+            oneOf: [{ type: string }, { type: number }, { type: boolean }]
+        payloadSha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+        providerRequestId: { type: ["string", "null"] }
+    SchwabResearchRateLimit:
+      type: object
+      required: [limit, remaining, resetAt, retryAfterSeconds]
+      properties:
+        limit: { type: ["number", "null"] }
+        remaining: { type: ["number", "null"] }
+        resetAt: { type: ["string", "null"] }
+        retryAfterSeconds: { type: ["number", "null"] }
+    SchwabResearchEnvelopeBase:
+      type: object
+      required: [provider, providerProduct, capability, symbol, requestedAt, receivedAt, providerAsOf, freshness, realtime, delayed, provenance, rateLimit, readOnly, tradingEnabled, executionAuthority]
+      properties:
+        provider: { type: string, enum: [schwab] }
+        providerProduct: { type: string, enum: [MARKET_DATA_PRODUCTION] }
+        capability: { type: string, enum: [INSTRUMENT_FUNDAMENTAL, CURRENT_QUOTE, DAILY_PRICE_HISTORY] }
+        symbol: { type: string }
+        requestedAt: { type: string, format: date-time }
+        receivedAt: { type: string, format: date-time }
+        providerAsOf: { type: ["string", "null"], format: date-time }
+        freshness: { type: string, enum: [REALTIME, DELAYED, CURRENT, AGING, STALE, UNKNOWN] }
+        realtime: { type: ["boolean", "null"] }
+        delayed: { type: ["boolean", "null"] }
+        provenance: { $ref: "#/components/schemas/SchwabResearchProvenance" }
+        rateLimit: { $ref: "#/components/schemas/SchwabResearchRateLimit" }
+        readOnly: { type: boolean, const: true }
+        tradingEnabled: { type: boolean, const: false }
+        executionAuthority: { type: string, const: none }
+    SchwabResearchFundamental:
+      type: object
+      required: [asOf, marketCap, sharesOutstanding, epsTrailingTwelveMonths, peRatio, dividendAmount, dividendYield, dividendPayDate, beta, high52Week, low52Week]
+      properties:
+        asOf: { type: ["string", "null"], format: date-time }
+        marketCap: { type: ["string", "null"] }
+        sharesOutstanding: { type: ["string", "null"] }
+        epsTrailingTwelveMonths: { type: ["string", "null"] }
+        peRatio: { type: ["string", "null"] }
+        dividendAmount: { type: ["string", "null"] }
+        dividendYield: { type: ["string", "null"] }
+        dividendPayDate: { type: ["string", "null"], format: date-time }
+        beta: { type: ["string", "null"] }
+        high52Week: { type: ["string", "null"] }
+        low52Week: { type: ["string", "null"] }
+    SchwabResearchInstrument:
+      type: object
+      required: [symbol, description, assetType, exchange, cusip, fundamental]
+      properties:
+        symbol: { type: string }
+        description: { type: ["string", "null"] }
+        assetType: { type: ["string", "null"] }
+        exchange: { type: ["string", "null"] }
+        cusip: { type: ["string", "null"] }
+        fundamental:
+          oneOf:
+            - { $ref: "#/components/schemas/SchwabResearchFundamental" }
+            - { type: "null" }
+    SchwabResearchQuote:
+      type: object
+      required: [symbol, assetType, description, bidPrice, askPrice, lastPrice, markPrice, closePrice, openPrice, highPrice, lowPrice, netChange, netPercentChange, totalVolume, quoteTime, tradeTime, realtime, delayed]
+      properties:
+        symbol: { type: string }
+        assetType: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
+        bidPrice: { type: ["string", "null"] }
+        askPrice: { type: ["string", "null"] }
+        lastPrice: { type: ["string", "null"] }
+        markPrice: { type: ["string", "null"] }
+        closePrice: { type: ["string", "null"] }
+        openPrice: { type: ["string", "null"] }
+        highPrice: { type: ["string", "null"] }
+        lowPrice: { type: ["string", "null"] }
+        netChange: { type: ["string", "null"] }
+        netPercentChange: { type: ["string", "null"] }
+        totalVolume: { type: ["string", "null"] }
+        quoteTime: { type: ["string", "null"], format: date-time }
+        tradeTime: { type: ["string", "null"], format: date-time }
+        realtime: { type: ["boolean", "null"] }
+        delayed: { type: ["boolean", "null"] }
+    SchwabResearchCandle:
+      type: object
+      required: [timestamp, open, high, low, close, volume]
+      properties:
+        timestamp: { type: string, format: date-time }
+        open: { type: ["string", "null"] }
+        high: { type: ["string", "null"] }
+        low: { type: ["string", "null"] }
+        close: { type: ["string", "null"] }
+        volume: { type: ["string", "null"] }
+    SchwabResearchPriceHistory:
+      type: object
+      required: [symbol, empty, previousClose, previousCloseDate, candles, requestedRange]
+      properties:
+        symbol: { type: string }
+        empty: { type: boolean }
+        previousClose: { type: ["string", "null"] }
+        previousCloseDate: { type: ["string", "null"], format: date-time }
+        candles: { type: array, maxItems: 100, items: { $ref: "#/components/schemas/SchwabResearchCandle" } }
+        requestedRange:
+          type: object
+          required: [start, end, frequency, extendedHoursIncluded]
+          properties:
+            start: { type: string, format: date-time }
+            end: { type: string, format: date-time }
+            frequency: { type: string, enum: [DAILY] }
+            extendedHoursIncluded: { type: boolean, const: false }
+    SchwabResearchInstrumentEnvelope:
+      allOf:
+        - { $ref: "#/components/schemas/SchwabResearchEnvelopeBase" }
+        - { type: object, required: [data], properties: { data: { $ref: "#/components/schemas/SchwabResearchInstrument" } } }
+    SchwabResearchQuoteEnvelope:
+      allOf:
+        - { $ref: "#/components/schemas/SchwabResearchEnvelopeBase" }
+        - { type: object, required: [data], properties: { data: { $ref: "#/components/schemas/SchwabResearchQuote" } } }
+    SchwabResearchPriceHistoryEnvelope:
+      allOf:
+        - { $ref: "#/components/schemas/SchwabResearchEnvelopeBase" }
+        - { type: object, required: [data], properties: { data: { $ref: "#/components/schemas/SchwabResearchPriceHistory" } } }
     SchwabDisconnectResult:
       type: object
       required: [status, readOnly, tradingEnabled]

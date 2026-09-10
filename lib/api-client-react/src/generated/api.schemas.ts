@@ -178,6 +178,221 @@ export interface SchwabMarketDataStatus {
   lastSuccessfulReadAt: string | null;
 }
 
+export type SchwabResearchProvenanceSourceClass = typeof SchwabResearchProvenanceSourceClass[keyof typeof SchwabResearchProvenanceSourceClass];
+
+
+export const SchwabResearchProvenanceSourceClass = {
+  SCHWAB_MARKET_DATA: 'SCHWAB_MARKET_DATA',
+} as const;
+
+export type SchwabResearchProvenanceRequestParameters = {[key: string]: string | number | boolean};
+
+export interface SchwabResearchProvenance {
+  sourceClass: SchwabResearchProvenanceSourceClass;
+  providerEndpoint: string;
+  retrievedAt: string;
+  requestParameters: SchwabResearchProvenanceRequestParameters;
+  /** @pattern ^[a-f0-9]{64}$ */
+  payloadSha256: string;
+  /** @nullable */
+  providerRequestId: string | null;
+}
+
+export interface SchwabResearchRateLimit {
+  /** @nullable */
+  limit: number | null;
+  /** @nullable */
+  remaining: number | null;
+  /** @nullable */
+  resetAt: string | null;
+  /** @nullable */
+  retryAfterSeconds: number | null;
+}
+
+export type SchwabResearchEnvelopeBaseProvider = typeof SchwabResearchEnvelopeBaseProvider[keyof typeof SchwabResearchEnvelopeBaseProvider];
+
+
+export const SchwabResearchEnvelopeBaseProvider = {
+  schwab: 'schwab',
+} as const;
+
+export type SchwabResearchEnvelopeBaseProviderProduct = typeof SchwabResearchEnvelopeBaseProviderProduct[keyof typeof SchwabResearchEnvelopeBaseProviderProduct];
+
+
+export const SchwabResearchEnvelopeBaseProviderProduct = {
+  MARKET_DATA_PRODUCTION: 'MARKET_DATA_PRODUCTION',
+} as const;
+
+export type SchwabResearchEnvelopeBaseCapability = typeof SchwabResearchEnvelopeBaseCapability[keyof typeof SchwabResearchEnvelopeBaseCapability];
+
+
+export const SchwabResearchEnvelopeBaseCapability = {
+  INSTRUMENT_FUNDAMENTAL: 'INSTRUMENT_FUNDAMENTAL',
+  CURRENT_QUOTE: 'CURRENT_QUOTE',
+  DAILY_PRICE_HISTORY: 'DAILY_PRICE_HISTORY',
+} as const;
+
+export type SchwabResearchEnvelopeBaseFreshness = typeof SchwabResearchEnvelopeBaseFreshness[keyof typeof SchwabResearchEnvelopeBaseFreshness];
+
+
+export const SchwabResearchEnvelopeBaseFreshness = {
+  REALTIME: 'REALTIME',
+  DELAYED: 'DELAYED',
+  CURRENT: 'CURRENT',
+  AGING: 'AGING',
+  STALE: 'STALE',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export interface SchwabResearchEnvelopeBase {
+  provider: SchwabResearchEnvelopeBaseProvider;
+  providerProduct: SchwabResearchEnvelopeBaseProviderProduct;
+  capability: SchwabResearchEnvelopeBaseCapability;
+  symbol: string;
+  requestedAt: string;
+  receivedAt: string;
+  /** @nullable */
+  providerAsOf: string | null;
+  freshness: SchwabResearchEnvelopeBaseFreshness;
+  /** @nullable */
+  realtime: boolean | null;
+  /** @nullable */
+  delayed: boolean | null;
+  provenance: SchwabResearchProvenance;
+  rateLimit: SchwabResearchRateLimit;
+  readOnly: true;
+  tradingEnabled: false;
+  executionAuthority: 'none';
+}
+
+export interface SchwabResearchFundamental {
+  /** @nullable */
+  asOf: string | null;
+  /** @nullable */
+  marketCap: string | null;
+  /** @nullable */
+  sharesOutstanding: string | null;
+  /** @nullable */
+  epsTrailingTwelveMonths: string | null;
+  /** @nullable */
+  peRatio: string | null;
+  /** @nullable */
+  dividendAmount: string | null;
+  /** @nullable */
+  dividendYield: string | null;
+  /** @nullable */
+  dividendPayDate: string | null;
+  /** @nullable */
+  beta: string | null;
+  /** @nullable */
+  high52Week: string | null;
+  /** @nullable */
+  low52Week: string | null;
+}
+
+export interface SchwabResearchInstrument {
+  symbol: string;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  assetType: string | null;
+  /** @nullable */
+  exchange: string | null;
+  /** @nullable */
+  cusip: string | null;
+  fundamental: SchwabResearchFundamental | null;
+}
+
+export interface SchwabResearchQuote {
+  symbol: string;
+  /** @nullable */
+  assetType: string | null;
+  /** @nullable */
+  description: string | null;
+  /** @nullable */
+  bidPrice: string | null;
+  /** @nullable */
+  askPrice: string | null;
+  /** @nullable */
+  lastPrice: string | null;
+  /** @nullable */
+  markPrice: string | null;
+  /** @nullable */
+  closePrice: string | null;
+  /** @nullable */
+  openPrice: string | null;
+  /** @nullable */
+  highPrice: string | null;
+  /** @nullable */
+  lowPrice: string | null;
+  /** @nullable */
+  netChange: string | null;
+  /** @nullable */
+  netPercentChange: string | null;
+  /** @nullable */
+  totalVolume: string | null;
+  /** @nullable */
+  quoteTime: string | null;
+  /** @nullable */
+  tradeTime: string | null;
+  /** @nullable */
+  realtime: boolean | null;
+  /** @nullable */
+  delayed: boolean | null;
+}
+
+export interface SchwabResearchCandle {
+  timestamp: string;
+  /** @nullable */
+  open: string | null;
+  /** @nullable */
+  high: string | null;
+  /** @nullable */
+  low: string | null;
+  /** @nullable */
+  close: string | null;
+  /** @nullable */
+  volume: string | null;
+}
+
+export type SchwabResearchPriceHistoryRequestedRangeFrequency = typeof SchwabResearchPriceHistoryRequestedRangeFrequency[keyof typeof SchwabResearchPriceHistoryRequestedRangeFrequency];
+
+
+export const SchwabResearchPriceHistoryRequestedRangeFrequency = {
+  DAILY: 'DAILY',
+} as const;
+
+export type SchwabResearchPriceHistoryRequestedRange = {
+  start: string;
+  end: string;
+  frequency: SchwabResearchPriceHistoryRequestedRangeFrequency;
+  extendedHoursIncluded: false;
+};
+
+export interface SchwabResearchPriceHistory {
+  symbol: string;
+  empty: boolean;
+  /** @nullable */
+  previousClose: string | null;
+  /** @nullable */
+  previousCloseDate: string | null;
+  /** @maxItems 100 */
+  candles: SchwabResearchCandle[];
+  requestedRange: SchwabResearchPriceHistoryRequestedRange;
+}
+
+export type SchwabResearchInstrumentEnvelope = SchwabResearchEnvelopeBase & {
+  data: SchwabResearchInstrument;
+};
+
+export type SchwabResearchQuoteEnvelope = SchwabResearchEnvelopeBase & {
+  data: SchwabResearchQuote;
+};
+
+export type SchwabResearchPriceHistoryEnvelope = SchwabResearchEnvelopeBase & {
+  data: SchwabResearchPriceHistory;
+};
+
 export type SchwabDisconnectResultStatus = typeof SchwabDisconnectResultStatus[keyof typeof SchwabDisconnectResultStatus];
 
 
@@ -7985,5 +8200,35 @@ export type GetSchwabMarketDataParams = {
  * @maxLength 15499
  */
 symbols?: string;
+};
+
+export type GetSchwabResearchInstrumentParams = {
+/**
+ * @pattern ^[A-Za-z0-9._-]{1,15}$
+ */
+symbol: string;
+projection: GetSchwabResearchInstrumentProjection;
+};
+
+export type GetSchwabResearchInstrumentProjection = typeof GetSchwabResearchInstrumentProjection[keyof typeof GetSchwabResearchInstrumentProjection];
+
+
+export const GetSchwabResearchInstrumentProjection = {
+  fundamental: 'fundamental',
+} as const;
+
+export type GetSchwabResearchPriceHistoryParams = {
+/**
+ * @pattern ^[A-Za-z0-9._-]{1,15}$
+ */
+symbol: string;
+/**
+ * @pattern ^[0-9]+$
+ */
+startDate: string;
+/**
+ * @pattern ^[0-9]+$
+ */
+endDate: string;
 };
 

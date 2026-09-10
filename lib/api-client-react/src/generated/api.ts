@@ -162,6 +162,8 @@ import type {
   ForbiddenResponse,
   GetCapitalGovernorV2Params,
   GetSchwabMarketDataParams,
+  GetSchwabResearchInstrumentParams,
+  GetSchwabResearchPriceHistoryParams,
   GetVariableBudgetIntelligenceParams,
   GoalSummary,
   GuidedRunActionInput,
@@ -254,6 +256,9 @@ import type {
   SchwabMarketDataStatus,
   SchwabOAuthCallbackParams,
   SchwabRefreshResult,
+  SchwabResearchInstrumentEnvelope,
+  SchwabResearchPriceHistoryEnvelope,
+  SchwabResearchQuoteEnvelope,
   SchwabStatus,
   SchwabSyncResult,
   SettlementDocumentInput,
@@ -17530,6 +17535,251 @@ export const useDisconnectSchwabMarketDataConnection = <TError = ErrorType<Forbi
       > => {
       return useMutation(getDisconnectSchwabMarketDataConnectionMutationOptions(options));
     }
+
+export const getGetSchwabResearchInstrumentUrl = (params: GetSchwabResearchInstrumentParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/research/schwab/instruments?${stringifiedParams}` : `/api/research/schwab/instruments`
+}
+
+/**
+ * @summary Read one household-scoped Schwab instrument with fundamental projection
+ */
+export const getSchwabResearchInstrument = async (params: GetSchwabResearchInstrumentParams, options?: Parameters<typeof customFetch>[1]): Promise<SchwabResearchInstrumentEnvelope> => {
+
+  return customFetch<SchwabResearchInstrumentEnvelope>(getGetSchwabResearchInstrumentUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchwabResearchInstrumentQueryKey = (params?: GetSchwabResearchInstrumentParams,) => {
+    return [
+    `/api/research/schwab/instruments`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchwabResearchInstrumentQueryOptions = <TData = Awaited<ReturnType<typeof getSchwabResearchInstrument>>, TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | ErrorResponse>>(params: GetSchwabResearchInstrumentParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchwabResearchInstrument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchwabResearchInstrumentQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchwabResearchInstrument>>> = ({ signal }) => getSchwabResearchInstrument(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchwabResearchInstrument>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchwabResearchInstrumentQueryResult = NonNullable<Awaited<ReturnType<typeof getSchwabResearchInstrument>>>
+export type GetSchwabResearchInstrumentQueryError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | ErrorResponse>
+
+
+/**
+ * @summary Read one household-scoped Schwab instrument with fundamental projection
+ */
+
+export function useGetSchwabResearchInstrument<TData = Awaited<ReturnType<typeof getSchwabResearchInstrument>>, TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | ErrorResponse>>(
+ params: GetSchwabResearchInstrumentParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchwabResearchInstrument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchwabResearchInstrumentQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSchwabResearchQuoteUrl = (symbol: string,) => {
+
+
+
+
+  return `/api/research/schwab/quotes/${symbol}`
+}
+
+/**
+ * @summary Read one current household-scoped Schwab quote
+ */
+export const getSchwabResearchQuote = async (symbol: string, options?: Parameters<typeof customFetch>[1]): Promise<SchwabResearchQuoteEnvelope> => {
+
+  return customFetch<SchwabResearchQuoteEnvelope>(getGetSchwabResearchQuoteUrl(symbol),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchwabResearchQuoteQueryKey = (symbol: string,) => {
+    return [
+    `/api/research/schwab/quotes/${symbol}`
+    ] as const;
+    }
+
+
+export const getGetSchwabResearchQuoteQueryOptions = <TData = Awaited<ReturnType<typeof getSchwabResearchQuote>>, TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | ErrorResponse>>(symbol: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchwabResearchQuote>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchwabResearchQuoteQueryKey(symbol);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchwabResearchQuote>>> = ({ signal }) => getSchwabResearchQuote(symbol, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: symbol !== null && symbol !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchwabResearchQuote>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchwabResearchQuoteQueryResult = NonNullable<Awaited<ReturnType<typeof getSchwabResearchQuote>>>
+export type GetSchwabResearchQuoteQueryError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | ErrorResponse>
+
+
+/**
+ * @summary Read one current household-scoped Schwab quote
+ */
+
+export function useGetSchwabResearchQuote<TData = Awaited<ReturnType<typeof getSchwabResearchQuote>>, TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | ErrorResponse>>(
+ symbol: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchwabResearchQuote>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchwabResearchQuoteQueryOptions(symbol,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSchwabResearchPriceHistoryUrl = (params: GetSchwabResearchPriceHistoryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/research/schwab/price-history?${stringifiedParams}` : `/api/research/schwab/price-history`
+}
+
+/**
+ * @summary Read bounded daily household-scoped Schwab price history
+ */
+export const getSchwabResearchPriceHistory = async (params: GetSchwabResearchPriceHistoryParams, options?: Parameters<typeof customFetch>[1]): Promise<SchwabResearchPriceHistoryEnvelope> => {
+
+  return customFetch<SchwabResearchPriceHistoryEnvelope>(getGetSchwabResearchPriceHistoryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchwabResearchPriceHistoryQueryKey = (params?: GetSchwabResearchPriceHistoryParams,) => {
+    return [
+    `/api/research/schwab/price-history`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetSchwabResearchPriceHistoryQueryOptions = <TData = Awaited<ReturnType<typeof getSchwabResearchPriceHistory>>, TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | ErrorResponse>>(params: GetSchwabResearchPriceHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchwabResearchPriceHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchwabResearchPriceHistoryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchwabResearchPriceHistory>>> = ({ signal }) => getSchwabResearchPriceHistory(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchwabResearchPriceHistory>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSchwabResearchPriceHistoryQueryResult = NonNullable<Awaited<ReturnType<typeof getSchwabResearchPriceHistory>>>
+export type GetSchwabResearchPriceHistoryQueryError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | ErrorResponse>
+
+
+/**
+ * @summary Read bounded daily household-scoped Schwab price history
+ */
+
+export function useGetSchwabResearchPriceHistory<TData = Awaited<ReturnType<typeof getSchwabResearchPriceHistory>>, TError = ErrorType<BadRequestResponse | ForbiddenResponse | NotFoundResponse | ConflictResponse | ErrorResponse>>(
+ params: GetSchwabResearchPriceHistoryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSchwabResearchPriceHistory>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSchwabResearchPriceHistoryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getDisconnectSchwabConnectionUrl = () => {
 

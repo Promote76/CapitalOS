@@ -2,10 +2,10 @@
   "schemaVersion": 2,
   "generatedBy": "scripts/generate-production-readiness-manifest.mjs",
   "build": {
-    "id": "eacdea90df605be9509829bb4ea88c08e0896c14:42d63c1a3d10cfda",
-    "baseCommit": "eacdea90df605be9509829bb4ea88c08e0896c14",
-    "inputSha256": "42d63c1a3d10cfdab4a3fa2c90b3339a878c169e24b086604a27b3de9d200e8a",
-    "inputCount": 1085,
+    "id": "369acafee64a0ea35a39a71279d60ca55f142568:ea0898e40833dabc",
+    "baseCommit": "369acafee64a0ea35a39a71279d60ca55f142568",
+    "inputSha256": "ea0898e40833dabc5e2b9dfd9c0507d9059abfcb3e0e0371c3c3556df28f9d28",
+    "inputCount": 1086,
     "inputs": [
       "artifacts/api-server/.replit-artifact/artifact.toml",
       "artifacts/api-server/package.json",
@@ -1091,7 +1091,8 @@
       "scripts/check-api-contract.mjs",
       "scripts/check-production-readiness-manifest.mjs",
       "scripts/generate-production-readiness-manifest.mjs",
-      "scripts/lib/rc1-release-identity.mjs"
+      "scripts/lib/rc1-release-identity.mjs",
+      "scripts/post-merge.sh"
     ]
   },
   "releaseCandidate": "RC1",

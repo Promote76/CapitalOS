@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-09-10T22:22:00.000Z",
+  "scope": "RC1_AUDIT_ARCHIVE_PRODUCTION_REMEDIATION",
+  "result": "BLOCKED_PUBLISH_DIFF_OMITS_TRIGGER_FUNCTION_DDL",
+  "source": {
+    "baseCommit": "369acafee64a0ea35a39a71279d60ca55f142568",
+    "sourceSha256": "ea0898e40833dabc5e2b9dfd9c0507d9059abfcb3e0e0371c3c3556df28f9d28",
+    "inputCount": 1086
+  },
+  "development": {
+    "applicationPath": "CONFIGURED_POST_MERGE_DEVELOPMENT_HOOK",
+    "migration": "lib/db/migrations/0053_restore_audit_archive.sql",
+    "sourceRows": 1818,
+    "archiveRows": 1818,
+    "archiveInsertionTrigger": "PRESENT_ENABLED",
+    "sourceAppendOnlyTrigger": "PRESENT_ENABLED",
+    "archiveAppendOnlyTrigger": "PRESENT_ENABLED",
+    "directArchiveInsertGuard": "PRESENT_ENABLED"
+  },
+  "publishDiff": {
+    "hasDiff": false,
+    "statementsToExecute": 0,
+    "reason": "The managed development-to-production schema diff does not project PostgreSQL function or trigger differences."
+  },
+  "production": {
+    "sourceRows": 221,
+    "archiveRows": 0,
+    "archiveInsertionTrigger": "MISSING",
+    "sourceAppendOnlyTrigger": "MISSING",
+    "archiveAppendOnlyTrigger": "MISSING",
+    "directArchiveInsertGuard": "MISSING",
+    "readiness": "SCHEMA_NOT_READY"
+  },
+  "prohibitedFallbacksNotUsed": [
+    "MANUAL_PRODUCTION_SQL",
+    "DEPLOY_BUILD_DDL",
+    "STARTUP_DDL",
+    "PRODUCTION_CREDENTIAL_BYPASS"
+  ],
+  "stillUncertified": [
+    "PRODUCTION_ARCHIVE_BACKFILL",
+    "PRODUCTION_SYNCHRONOUS_ARCHIVAL",
+    "PRODUCTION_SOURCE_APPEND_ONLY_REJECTION",
+    "PRODUCTION_ARCHIVE_APPEND_ONLY_REJECTION",
+    "PRODUCTION_DIRECT_ARCHIVE_INSERT_REJECTION",
+    "PRODUCTION_OPERATIONAL_READINESS"
+  ]
+}

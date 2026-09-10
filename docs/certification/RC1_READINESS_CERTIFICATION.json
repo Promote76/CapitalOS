@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "releaseCandidate": "RC1",
   "result": "PASS_WITH_BLOCKER",
-  "generatedAt": "2026-09-10T22:06:38.851Z",
+  "generatedAt": "2026-09-10T22:27:43.342Z",
   "source": {
-    "baseCommit": "eacdea90df605be9509829bb4ea88c08e0896c14",
-    "sourceSha256": "42d63c1a3d10cfdab4a3fa2c90b3339a878c169e24b086604a27b3de9d200e8a",
-    "inputCount": 1085,
+    "baseCommit": "369acafee64a0ea35a39a71279d60ca55f142568",
+    "sourceSha256": "ea0898e40833dabc5e2b9dfd9c0507d9059abfcb3e0e0371c3c3556df28f9d28",
+    "inputCount": 1086,
     "inputs": [
       "artifacts/api-server/.replit-artifact/artifact.toml",
       "artifacts/api-server/package.json",
@@ -1092,7 +1092,8 @@
       "scripts/check-api-contract.mjs",
       "scripts/check-production-readiness-manifest.mjs",
       "scripts/generate-production-readiness-manifest.mjs",
-      "scripts/lib/rc1-release-identity.mjs"
+      "scripts/lib/rc1-release-identity.mjs",
+      "scripts/post-merge.sh"
     ]
   },
   "routeInventory": {
@@ -1135,5 +1136,5 @@
     "venueExecution": "DISABLED",
     "moneyMovement": "DISABLED"
   },
-  "evidenceLog": "docs/certification/operations-recovery-runs/operations-recovery-2026-09-10T22-05-48Z.log"
+  "evidenceLog": "docs/certification/operations-recovery-runs/operations-recovery-2026-09-10T22-26-47Z.log"
 }

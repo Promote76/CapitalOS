@@ -9,6 +9,19 @@ When Capital OS uses a manually stored external DATABASE_URL, publishing can dep
 
 **How to apply:** Before relying on Publish for production schema changes, confirm the external override is removed and the managed development schema is current. Use the managed development post-merge push and production Publish diff flow; keep generated Drizzle SQL for review/CI, but do not run a migration command from API startup, build hooks, deploy hooks, or directly against production.
 
+The managed development-to-production Publish diff does not project PostgreSQL
+functions or triggers, even when they exist in development.
+
+**Why:** After the reviewed audit-archive migration was applied through the
+configured development post-merge hook, development contained all functions,
+triggers, and backfilled rows, but the production diff still reported no
+statements while production lacked every trigger.
+
+**How to apply:** Do not claim that a trigger/function migration will reach
+production through the structural Publish diff. Keep production blocked rather
+than adding startup/build DDL or manual agent SQL; a platform-supported custom
+migration stage or explicit operator-controlled exception is required.
+
 Legacy rows can violate a newly tightened API response contract even when the database schema is valid. Normalize nullable historical JSON at the service boundary when the public contract requires an object, rather than making clients handle multiple shapes.
 
 **Why:** A contribution metadata contract exposed older null values during a normal preview read.

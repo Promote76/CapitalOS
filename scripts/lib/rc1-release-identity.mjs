@@ -21,6 +21,7 @@ const includedPrefixes = [
   "scripts/certify-operations-recovery.mjs",
   "scripts/generate-production-readiness-manifest.mjs",
   "scripts/lib/rc1-release-identity.mjs",
+  "scripts/post-merge.sh",
 ];
 
 function git(root, args) {

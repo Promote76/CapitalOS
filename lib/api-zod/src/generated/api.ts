@@ -3414,6 +3414,14 @@ export const registerResearchEvidenceResponseByteLengthMultipleOf = 1;
 
 export const registerResearchEvidenceResponseSha256RegExp = new RegExp('^[a-f0-9]{64}$');
 export const registerResearchEvidenceResponseAdvisoryOnlyDefault = true;
+export const registerResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMin = 0;
+export const registerResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMax = 100;
+export const registerResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMultipleOf = 1;
+
+export const registerResearchEvidenceResponseDossierPrefillOnePriceHistoryRecentClosesMax = 5;
+
+export const registerResearchEvidenceResponseDossierPrefillOneSourceContentDigestRegExp = new RegExp('^[a-f0-9]{64}$');
+
 
 export const RegisterResearchEvidenceResponse = zod.object({
   "id": zod.string().regex(registerResearchEvidenceResponseIdRegExp),
@@ -3426,7 +3434,88 @@ export const RegisterResearchEvidenceResponse = zod.object({
   "byteLength": zod.number().multipleOf(registerResearchEvidenceResponseByteLengthMultipleOf),
   "sha256": zod.string().regex(registerResearchEvidenceResponseSha256RegExp),
   "extractionStatus": zod.string(),
-  "advisoryOnly": zod.boolean().default(registerResearchEvidenceResponseAdvisoryOnlyDefault)
+  "advisoryOnly": zod.boolean().default(registerResearchEvidenceResponseAdvisoryOnlyDefault),
+  "evidenceKind": zod.enum(['UPLOADED_DOCUMENT', 'SCHWAB_MARKET_SNAPSHOT']),
+  "dossierPrefill": zod.object({
+  "kind": zod.literal("SCHWAB_MARKET_SNAPSHOT"),
+  "ticker": zod.string(),
+  "suggestedTitle": zod.string(),
+  "instrument": zod.object({
+  "symbol": zod.string(),
+  "description": zod.string().nullable(),
+  "assetType": zod.string().nullable(),
+  "exchange": zod.string().nullable()
+}),
+  "fundamentals": zod.object({
+  "asOf": zod.string().nullable(),
+  "marketCap": zod.string().nullable(),
+  "sharesOutstanding": zod.string().nullable(),
+  "epsTrailingTwelveMonths": zod.string().nullable(),
+  "peRatio": zod.string().nullable(),
+  "dividendAmount": zod.string().nullable(),
+  "dividendYield": zod.string().nullable(),
+  "dividendPayDate": zod.string().nullable(),
+  "beta": zod.string().nullable(),
+  "high52Week": zod.string().nullable(),
+  "low52Week": zod.string().nullable()
+}),
+  "quote": zod.object({
+  "asOf": zod.string().nullable(),
+  "bidPrice": zod.string().nullable(),
+  "askPrice": zod.string().nullable(),
+  "lastPrice": zod.string().nullable(),
+  "markPrice": zod.string().nullable(),
+  "closePrice": zod.string().nullable(),
+  "openPrice": zod.string().nullable(),
+  "highPrice": zod.string().nullable(),
+  "lowPrice": zod.string().nullable(),
+  "netChange": zod.string().nullable(),
+  "netPercentChange": zod.string().nullable(),
+  "totalVolume": zod.string().nullable()
+}),
+  "priceHistory": zod.object({
+  "frequency": zod.literal("DAILY"),
+  "requestedStart": zod.string().nullable(),
+  "requestedEnd": zod.string().nullable(),
+  "candleCount": zod.number().min(registerResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMin).max(registerResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMax).multipleOf(registerResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMultipleOf),
+  "firstMarketDate": zod.string().nullable(),
+  "lastMarketDate": zod.string().nullable(),
+  "periodOpen": zod.string().nullable(),
+  "periodHigh": zod.string().nullable(),
+  "periodLow": zod.string().nullable(),
+  "periodClose": zod.string().nullable(),
+  "recentCloses": zod.array(zod.object({
+  "marketDate": zod.string().nullable(),
+  "close": zod.string().nullable(),
+  "volume": zod.string().nullable()
+})).max(registerResearchEvidenceResponseDossierPrefillOnePriceHistoryRecentClosesMax)
+}),
+  "freshness": zod.object({
+  "label": zod.enum(['CURRENT', 'AGING', 'STALE', 'DELAYED', 'REALTIME', 'UNKNOWN']),
+  "providerAsOf": zod.string().nullable(),
+  "marketDate": zod.string().nullable(),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable()
+}),
+  "warnings": zod.object({
+  "missingFields": zod.array(zod.string()),
+  "qualityFlags": zod.array(zod.string())
+}),
+  "source": zod.object({
+  "provider": zod.literal("Schwab Market Data"),
+  "title": zod.string(),
+  "provenanceClass": zod.literal("PRIMARY_SOURCE"),
+  "requestedAt": zod.coerce.date().nullable(),
+  "retrievedAt": zod.coerce.date().nullable(),
+  "reviewedAt": zod.coerce.date(),
+  "contentDigest": zod.string().regex(registerResearchEvidenceResponseDossierPrefillOneSourceContentDigestRegExp)
+}),
+  "advisoryOnly": zod.literal(true),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "executionAuthority": zod.literal("none"),
+  "noTradingOrMoneyMovement": zod.literal(true)
+}).nullish()
 })
 
 
@@ -3444,6 +3533,14 @@ export const reviewResearchEvidenceResponseByteLengthMultipleOf = 1;
 
 export const reviewResearchEvidenceResponseSha256RegExp = new RegExp('^[a-f0-9]{64}$');
 export const reviewResearchEvidenceResponseAdvisoryOnlyDefault = true;
+export const reviewResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMin = 0;
+export const reviewResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMax = 100;
+export const reviewResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMultipleOf = 1;
+
+export const reviewResearchEvidenceResponseDossierPrefillOnePriceHistoryRecentClosesMax = 5;
+
+export const reviewResearchEvidenceResponseDossierPrefillOneSourceContentDigestRegExp = new RegExp('^[a-f0-9]{64}$');
+
 
 export const ReviewResearchEvidenceResponse = zod.object({
   "id": zod.string().regex(reviewResearchEvidenceResponseIdRegExp),
@@ -3456,7 +3553,88 @@ export const ReviewResearchEvidenceResponse = zod.object({
   "byteLength": zod.number().multipleOf(reviewResearchEvidenceResponseByteLengthMultipleOf),
   "sha256": zod.string().regex(reviewResearchEvidenceResponseSha256RegExp),
   "extractionStatus": zod.string(),
-  "advisoryOnly": zod.boolean().default(reviewResearchEvidenceResponseAdvisoryOnlyDefault)
+  "advisoryOnly": zod.boolean().default(reviewResearchEvidenceResponseAdvisoryOnlyDefault),
+  "evidenceKind": zod.enum(['UPLOADED_DOCUMENT', 'SCHWAB_MARKET_SNAPSHOT']),
+  "dossierPrefill": zod.object({
+  "kind": zod.literal("SCHWAB_MARKET_SNAPSHOT"),
+  "ticker": zod.string(),
+  "suggestedTitle": zod.string(),
+  "instrument": zod.object({
+  "symbol": zod.string(),
+  "description": zod.string().nullable(),
+  "assetType": zod.string().nullable(),
+  "exchange": zod.string().nullable()
+}),
+  "fundamentals": zod.object({
+  "asOf": zod.string().nullable(),
+  "marketCap": zod.string().nullable(),
+  "sharesOutstanding": zod.string().nullable(),
+  "epsTrailingTwelveMonths": zod.string().nullable(),
+  "peRatio": zod.string().nullable(),
+  "dividendAmount": zod.string().nullable(),
+  "dividendYield": zod.string().nullable(),
+  "dividendPayDate": zod.string().nullable(),
+  "beta": zod.string().nullable(),
+  "high52Week": zod.string().nullable(),
+  "low52Week": zod.string().nullable()
+}),
+  "quote": zod.object({
+  "asOf": zod.string().nullable(),
+  "bidPrice": zod.string().nullable(),
+  "askPrice": zod.string().nullable(),
+  "lastPrice": zod.string().nullable(),
+  "markPrice": zod.string().nullable(),
+  "closePrice": zod.string().nullable(),
+  "openPrice": zod.string().nullable(),
+  "highPrice": zod.string().nullable(),
+  "lowPrice": zod.string().nullable(),
+  "netChange": zod.string().nullable(),
+  "netPercentChange": zod.string().nullable(),
+  "totalVolume": zod.string().nullable()
+}),
+  "priceHistory": zod.object({
+  "frequency": zod.literal("DAILY"),
+  "requestedStart": zod.string().nullable(),
+  "requestedEnd": zod.string().nullable(),
+  "candleCount": zod.number().min(reviewResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMin).max(reviewResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMax).multipleOf(reviewResearchEvidenceResponseDossierPrefillOnePriceHistoryCandleCountMultipleOf),
+  "firstMarketDate": zod.string().nullable(),
+  "lastMarketDate": zod.string().nullable(),
+  "periodOpen": zod.string().nullable(),
+  "periodHigh": zod.string().nullable(),
+  "periodLow": zod.string().nullable(),
+  "periodClose": zod.string().nullable(),
+  "recentCloses": zod.array(zod.object({
+  "marketDate": zod.string().nullable(),
+  "close": zod.string().nullable(),
+  "volume": zod.string().nullable()
+})).max(reviewResearchEvidenceResponseDossierPrefillOnePriceHistoryRecentClosesMax)
+}),
+  "freshness": zod.object({
+  "label": zod.enum(['CURRENT', 'AGING', 'STALE', 'DELAYED', 'REALTIME', 'UNKNOWN']),
+  "providerAsOf": zod.string().nullable(),
+  "marketDate": zod.string().nullable(),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable()
+}),
+  "warnings": zod.object({
+  "missingFields": zod.array(zod.string()),
+  "qualityFlags": zod.array(zod.string())
+}),
+  "source": zod.object({
+  "provider": zod.literal("Schwab Market Data"),
+  "title": zod.string(),
+  "provenanceClass": zod.literal("PRIMARY_SOURCE"),
+  "requestedAt": zod.coerce.date().nullable(),
+  "retrievedAt": zod.coerce.date().nullable(),
+  "reviewedAt": zod.coerce.date(),
+  "contentDigest": zod.string().regex(reviewResearchEvidenceResponseDossierPrefillOneSourceContentDigestRegExp)
+}),
+  "advisoryOnly": zod.literal(true),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "executionAuthority": zod.literal("none"),
+  "noTradingOrMoneyMovement": zod.literal(true)
+}).nullish()
 })
 
 
@@ -3466,6 +3644,13 @@ export const listResearchDossiersResponseEvidenceItemByteLengthMultipleOf = 1;
 
 export const listResearchDossiersResponseEvidenceItemSha256RegExp = new RegExp('^[a-f0-9]{64}$');
 export const listResearchDossiersResponseEvidenceItemAdvisoryOnlyDefault = true;
+export const listResearchDossiersResponseEvidenceItemDossierPrefillOnePriceHistoryCandleCountMin = 0;
+export const listResearchDossiersResponseEvidenceItemDossierPrefillOnePriceHistoryCandleCountMax = 100;
+export const listResearchDossiersResponseEvidenceItemDossierPrefillOnePriceHistoryCandleCountMultipleOf = 1;
+
+export const listResearchDossiersResponseEvidenceItemDossierPrefillOnePriceHistoryRecentClosesMax = 5;
+
+export const listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceContentDigestRegExp = new RegExp('^[a-f0-9]{64}$');
 export const listResearchDossiersResponseDossiersItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const listResearchDossiersResponseDossiersItemHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const listResearchDossiersResponseDossiersItemEvidenceIdsItemRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
@@ -3484,7 +3669,88 @@ export const ListResearchDossiersResponse = zod.object({
   "byteLength": zod.number().multipleOf(listResearchDossiersResponseEvidenceItemByteLengthMultipleOf),
   "sha256": zod.string().regex(listResearchDossiersResponseEvidenceItemSha256RegExp),
   "extractionStatus": zod.string(),
-  "advisoryOnly": zod.boolean().default(listResearchDossiersResponseEvidenceItemAdvisoryOnlyDefault)
+  "advisoryOnly": zod.boolean().default(listResearchDossiersResponseEvidenceItemAdvisoryOnlyDefault),
+  "evidenceKind": zod.enum(['UPLOADED_DOCUMENT', 'SCHWAB_MARKET_SNAPSHOT']),
+  "dossierPrefill": zod.object({
+  "kind": zod.literal("SCHWAB_MARKET_SNAPSHOT"),
+  "ticker": zod.string(),
+  "suggestedTitle": zod.string(),
+  "instrument": zod.object({
+  "symbol": zod.string(),
+  "description": zod.string().nullable(),
+  "assetType": zod.string().nullable(),
+  "exchange": zod.string().nullable()
+}),
+  "fundamentals": zod.object({
+  "asOf": zod.string().nullable(),
+  "marketCap": zod.string().nullable(),
+  "sharesOutstanding": zod.string().nullable(),
+  "epsTrailingTwelveMonths": zod.string().nullable(),
+  "peRatio": zod.string().nullable(),
+  "dividendAmount": zod.string().nullable(),
+  "dividendYield": zod.string().nullable(),
+  "dividendPayDate": zod.string().nullable(),
+  "beta": zod.string().nullable(),
+  "high52Week": zod.string().nullable(),
+  "low52Week": zod.string().nullable()
+}),
+  "quote": zod.object({
+  "asOf": zod.string().nullable(),
+  "bidPrice": zod.string().nullable(),
+  "askPrice": zod.string().nullable(),
+  "lastPrice": zod.string().nullable(),
+  "markPrice": zod.string().nullable(),
+  "closePrice": zod.string().nullable(),
+  "openPrice": zod.string().nullable(),
+  "highPrice": zod.string().nullable(),
+  "lowPrice": zod.string().nullable(),
+  "netChange": zod.string().nullable(),
+  "netPercentChange": zod.string().nullable(),
+  "totalVolume": zod.string().nullable()
+}),
+  "priceHistory": zod.object({
+  "frequency": zod.literal("DAILY"),
+  "requestedStart": zod.string().nullable(),
+  "requestedEnd": zod.string().nullable(),
+  "candleCount": zod.number().min(listResearchDossiersResponseEvidenceItemDossierPrefillOnePriceHistoryCandleCountMin).max(listResearchDossiersResponseEvidenceItemDossierPrefillOnePriceHistoryCandleCountMax).multipleOf(listResearchDossiersResponseEvidenceItemDossierPrefillOnePriceHistoryCandleCountMultipleOf),
+  "firstMarketDate": zod.string().nullable(),
+  "lastMarketDate": zod.string().nullable(),
+  "periodOpen": zod.string().nullable(),
+  "periodHigh": zod.string().nullable(),
+  "periodLow": zod.string().nullable(),
+  "periodClose": zod.string().nullable(),
+  "recentCloses": zod.array(zod.object({
+  "marketDate": zod.string().nullable(),
+  "close": zod.string().nullable(),
+  "volume": zod.string().nullable()
+})).max(listResearchDossiersResponseEvidenceItemDossierPrefillOnePriceHistoryRecentClosesMax)
+}),
+  "freshness": zod.object({
+  "label": zod.enum(['CURRENT', 'AGING', 'STALE', 'DELAYED', 'REALTIME', 'UNKNOWN']),
+  "providerAsOf": zod.string().nullable(),
+  "marketDate": zod.string().nullable(),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable()
+}),
+  "warnings": zod.object({
+  "missingFields": zod.array(zod.string()),
+  "qualityFlags": zod.array(zod.string())
+}),
+  "source": zod.object({
+  "provider": zod.literal("Schwab Market Data"),
+  "title": zod.string(),
+  "provenanceClass": zod.literal("PRIMARY_SOURCE"),
+  "requestedAt": zod.coerce.date().nullable(),
+  "retrievedAt": zod.coerce.date().nullable(),
+  "reviewedAt": zod.coerce.date(),
+  "contentDigest": zod.string().regex(listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceContentDigestRegExp)
+}),
+  "advisoryOnly": zod.literal(true),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "executionAuthority": zod.literal("none"),
+  "noTradingOrMoneyMovement": zod.literal(true)
+}).nullish()
 })),
   "dossiers": zod.array(zod.object({
   "id": zod.string().regex(listResearchDossiersResponseDossiersItemIdRegExp),
@@ -3608,6 +3874,13 @@ export const createResearchDossierResponseRefreshEvidenceItemByteLengthMultipleO
 
 export const createResearchDossierResponseRefreshEvidenceItemSha256RegExp = new RegExp('^[a-f0-9]{64}$');
 export const createResearchDossierResponseRefreshEvidenceItemAdvisoryOnlyDefault = true;
+export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOnePriceHistoryCandleCountMin = 0;
+export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOnePriceHistoryCandleCountMax = 100;
+export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOnePriceHistoryCandleCountMultipleOf = 1;
+
+export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOnePriceHistoryRecentClosesMax = 5;
+
+export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceContentDigestRegExp = new RegExp('^[a-f0-9]{64}$');
 export const createResearchDossierResponseRefreshDossiersItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const createResearchDossierResponseRefreshDossiersItemHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const createResearchDossierResponseRefreshDossiersItemEvidenceIdsItemRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
@@ -3750,7 +4023,88 @@ export const CreateResearchDossierResponse = zod.object({
   "byteLength": zod.number().multipleOf(createResearchDossierResponseRefreshEvidenceItemByteLengthMultipleOf),
   "sha256": zod.string().regex(createResearchDossierResponseRefreshEvidenceItemSha256RegExp),
   "extractionStatus": zod.string(),
-  "advisoryOnly": zod.boolean().default(createResearchDossierResponseRefreshEvidenceItemAdvisoryOnlyDefault)
+  "advisoryOnly": zod.boolean().default(createResearchDossierResponseRefreshEvidenceItemAdvisoryOnlyDefault),
+  "evidenceKind": zod.enum(['UPLOADED_DOCUMENT', 'SCHWAB_MARKET_SNAPSHOT']),
+  "dossierPrefill": zod.object({
+  "kind": zod.literal("SCHWAB_MARKET_SNAPSHOT"),
+  "ticker": zod.string(),
+  "suggestedTitle": zod.string(),
+  "instrument": zod.object({
+  "symbol": zod.string(),
+  "description": zod.string().nullable(),
+  "assetType": zod.string().nullable(),
+  "exchange": zod.string().nullable()
+}),
+  "fundamentals": zod.object({
+  "asOf": zod.string().nullable(),
+  "marketCap": zod.string().nullable(),
+  "sharesOutstanding": zod.string().nullable(),
+  "epsTrailingTwelveMonths": zod.string().nullable(),
+  "peRatio": zod.string().nullable(),
+  "dividendAmount": zod.string().nullable(),
+  "dividendYield": zod.string().nullable(),
+  "dividendPayDate": zod.string().nullable(),
+  "beta": zod.string().nullable(),
+  "high52Week": zod.string().nullable(),
+  "low52Week": zod.string().nullable()
+}),
+  "quote": zod.object({
+  "asOf": zod.string().nullable(),
+  "bidPrice": zod.string().nullable(),
+  "askPrice": zod.string().nullable(),
+  "lastPrice": zod.string().nullable(),
+  "markPrice": zod.string().nullable(),
+  "closePrice": zod.string().nullable(),
+  "openPrice": zod.string().nullable(),
+  "highPrice": zod.string().nullable(),
+  "lowPrice": zod.string().nullable(),
+  "netChange": zod.string().nullable(),
+  "netPercentChange": zod.string().nullable(),
+  "totalVolume": zod.string().nullable()
+}),
+  "priceHistory": zod.object({
+  "frequency": zod.literal("DAILY"),
+  "requestedStart": zod.string().nullable(),
+  "requestedEnd": zod.string().nullable(),
+  "candleCount": zod.number().min(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOnePriceHistoryCandleCountMin).max(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOnePriceHistoryCandleCountMax).multipleOf(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOnePriceHistoryCandleCountMultipleOf),
+  "firstMarketDate": zod.string().nullable(),
+  "lastMarketDate": zod.string().nullable(),
+  "periodOpen": zod.string().nullable(),
+  "periodHigh": zod.string().nullable(),
+  "periodLow": zod.string().nullable(),
+  "periodClose": zod.string().nullable(),
+  "recentCloses": zod.array(zod.object({
+  "marketDate": zod.string().nullable(),
+  "close": zod.string().nullable(),
+  "volume": zod.string().nullable()
+})).max(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOnePriceHistoryRecentClosesMax)
+}),
+  "freshness": zod.object({
+  "label": zod.enum(['CURRENT', 'AGING', 'STALE', 'DELAYED', 'REALTIME', 'UNKNOWN']),
+  "providerAsOf": zod.string().nullable(),
+  "marketDate": zod.string().nullable(),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable()
+}),
+  "warnings": zod.object({
+  "missingFields": zod.array(zod.string()),
+  "qualityFlags": zod.array(zod.string())
+}),
+  "source": zod.object({
+  "provider": zod.literal("Schwab Market Data"),
+  "title": zod.string(),
+  "provenanceClass": zod.literal("PRIMARY_SOURCE"),
+  "requestedAt": zod.coerce.date().nullable(),
+  "retrievedAt": zod.coerce.date().nullable(),
+  "reviewedAt": zod.coerce.date(),
+  "contentDigest": zod.string().regex(createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSourceContentDigestRegExp)
+}),
+  "advisoryOnly": zod.literal(true),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "executionAuthority": zod.literal("none"),
+  "noTradingOrMoneyMovement": zod.literal(true)
+}).nullish()
 })),
   "dossiers": zod.array(zod.object({
   "id": zod.string().regex(createResearchDossierResponseRefreshDossiersItemIdRegExp),

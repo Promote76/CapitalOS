@@ -28,6 +28,133 @@ function collectMissing(value: unknown, path = "", out: string[] = []): string[]
   return out;
 }
 
+function record(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function nullableText(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function nullableBoolean(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
+export function projectReviewedSnapshotPrefill(
+  item: typeof reviewedResearchEvidence.$inferSelect,
+) {
+  const content = item.canonicalContent;
+  const instrument = record(content.instrument);
+  const fundamental = record(instrument.fundamental);
+  const quote = record(content.quote);
+  const dailyHistory = record(content.dailyHistory);
+  const snapshotContext = record(content.snapshotContext);
+  const requestedRange = record(dailyHistory.requestedRange);
+  const candles = Array.isArray(dailyHistory.candles)
+    ? dailyHistory.candles.map(record)
+    : [];
+  const firstCandle = candles[0] ?? {};
+  const lastCandle = candles.at(-1) ?? {};
+  const numericCandles = candles.map((candle) => ({
+    candle,
+    high: Number(candle.high),
+    low: Number(candle.low),
+  }));
+  const periodHigh = numericCandles
+    .filter((item) => Number.isFinite(item.high))
+    .sort((a, b) => b.high - a.high)[0]?.candle.high;
+  const periodLow = numericCandles
+    .filter((item) => Number.isFinite(item.low))
+    .sort((a, b) => a.low - b.low)[0]?.candle.low;
+
+  return {
+    kind: "SCHWAB_MARKET_SNAPSHOT" as const,
+    ticker: item.ticker,
+    suggestedTitle: `${item.ticker} Investment Research`,
+    instrument: {
+      symbol: nullableText(instrument.symbol) ?? item.ticker,
+      description: nullableText(instrument.description),
+      assetType: nullableText(instrument.assetType),
+      exchange: nullableText(instrument.exchange),
+    },
+    fundamentals: {
+      asOf: nullableText(fundamental.asOf),
+      marketCap: nullableText(fundamental.marketCap),
+      sharesOutstanding: nullableText(fundamental.sharesOutstanding),
+      epsTrailingTwelveMonths: nullableText(fundamental.epsTrailingTwelveMonths),
+      peRatio: nullableText(fundamental.peRatio),
+      dividendAmount: nullableText(fundamental.dividendAmount),
+      dividendYield: nullableText(fundamental.dividendYield),
+      dividendPayDate: nullableText(fundamental.dividendPayDate),
+      beta: nullableText(fundamental.beta),
+      high52Week: nullableText(fundamental.high52Week),
+      low52Week: nullableText(fundamental.low52Week),
+    },
+    quote: {
+      asOf: nullableText(quote.quoteTime) ?? nullableText(quote.tradeTime),
+      bidPrice: nullableText(quote.bidPrice),
+      askPrice: nullableText(quote.askPrice),
+      lastPrice: nullableText(quote.lastPrice),
+      markPrice: nullableText(quote.markPrice),
+      closePrice: nullableText(quote.closePrice),
+      openPrice: nullableText(quote.openPrice),
+      highPrice: nullableText(quote.highPrice),
+      lowPrice: nullableText(quote.lowPrice),
+      netChange: nullableText(quote.netChange),
+      netPercentChange: nullableText(quote.netPercentChange),
+      totalVolume: nullableText(quote.totalVolume),
+    },
+    priceHistory: {
+      frequency: "DAILY" as const,
+      requestedStart: nullableText(requestedRange.start),
+      requestedEnd: nullableText(requestedRange.end),
+      candleCount: candles.length,
+      firstMarketDate: nullableText(firstCandle.marketDate),
+      lastMarketDate: nullableText(lastCandle.marketDate),
+      periodOpen: nullableText(firstCandle.open),
+      periodHigh: nullableText(periodHigh),
+      periodLow: nullableText(periodLow),
+      periodClose: nullableText(lastCandle.close),
+      recentCloses: candles.slice(-5).map((candle) => ({
+        marketDate: nullableText(candle.marketDate),
+        close: nullableText(candle.close),
+        volume: nullableText(candle.volume),
+      })),
+    },
+    freshness: {
+      label: nullableText(snapshotContext.freshness) ?? "UNKNOWN",
+      providerAsOf: nullableText(snapshotContext.providerAsOf),
+      marketDate: nullableText(snapshotContext.marketDate),
+      realtime: nullableBoolean(snapshotContext.realtime),
+      delayed: nullableBoolean(snapshotContext.delayed),
+    },
+    warnings: {
+      missingFields: Array.isArray(snapshotContext.missingFlags)
+        ? snapshotContext.missingFlags.filter((value): value is string => typeof value === "string")
+        : [],
+      qualityFlags: Array.isArray(snapshotContext.qualityFlags)
+        ? snapshotContext.qualityFlags.filter((value): value is string => typeof value === "string")
+        : [],
+    },
+    source: {
+      provider: "Schwab Market Data" as const,
+      title: `Schwab ${item.ticker} market snapshot`,
+      provenanceClass: "PRIMARY_SOURCE" as const,
+      requestedAt: nullableText(snapshotContext.requestedAt),
+      retrievedAt: nullableText(snapshotContext.retrievedAt),
+      reviewedAt: item.approvedAt.toISOString(),
+      contentDigest: item.canonicalSha256,
+    },
+    advisoryOnly: true as const,
+    readOnly: true as const,
+    tradingEnabled: false as const,
+    executionAuthority: "none" as const,
+    noTradingOrMoneyMovement: true as const,
+  };
+}
+
 function projectMarketSnapshot(row: typeof schwabMarketSnapshots.$inferSelect) {
   return {
     ...row,
@@ -135,36 +262,12 @@ export async function reviewSchwabMarketSnapshot(actor: Actor, snapshotId: strin
 export function projectReviewedSnapshotForAgents(
   item: typeof reviewedResearchEvidence.$inferSelect,
 ) {
-  const content = item.canonicalContent;
-  const context = content.snapshotContext && typeof content.snapshotContext === "object"
-    ? content.snapshotContext as Record<string, unknown>
-    : {};
+  const prefill = projectReviewedSnapshotPrefill(item);
   return {
     id: item.id,
     title: `Schwab ${item.ticker} market snapshot`,
     provenanceClass: "PRIMARY_SOURCE" as const,
-    excerpt: JSON.stringify({
-      ticker: item.ticker,
-      instrument: content.instrument ?? null,
-      quote: content.quote ?? null,
-      dailyHistory: content.dailyHistory ?? null,
-      dataQuality: {
-        provider: "schwab",
-        reviewedAt: item.approvedAt.toISOString(),
-        contentDigest: item.canonicalSha256,
-        marketDate: context.marketDate ?? null,
-        providerAsOf: context.providerAsOf ?? null,
-        freshness: context.freshness ?? "UNKNOWN",
-        realtime: context.realtime ?? null,
-        delayed: context.delayed ?? null,
-        missingFlags: context.missingFlags ?? [],
-        qualityFlags: context.qualityFlags ?? [],
-        readOnly: true,
-        tradingEnabled: false,
-        executionAuthority: "none",
-        noTradingOrMoneyMovement: true,
-      },
-    }),
+    excerpt: JSON.stringify(prefill),
   };
 }
 
@@ -218,7 +321,7 @@ export async function registerResearchEvidence(actor: Actor, input: {
   const extraction = input.mimeType === "application/pdf" ? await extractPdf(stored.bytes) : { text: (() => { const text = stored.bytes.toString("utf8"); if (Buffer.byteLength(text, "utf8") > MAX_TEXT || text.includes("\uFFFD")) throw new Error("Plain-text extraction failed or exceeded bounds"); return text; })(), status: "complete" };
   const extractedText = extraction.text;
   const existing = await db.select().from(researchEvidence).where(and(eq(researchEvidence.householdId, actor.householdId), eq(researchEvidence.sha256, stored.sha256))).limit(1);
-  if (existing[0]) return { ...existing[0], duplicate: true, advisoryOnly: true };
+  if (existing[0]) return { ...existing[0], duplicate: true, advisoryOnly: true, evidenceKind: "UPLOADED_DOCUMENT" as const };
   const [row] = await db.insert(researchEvidence).values({
     householdId: actor.householdId, title, objectPath: input.objectPath, byteLength: input.byteLength,
     mimeType: input.mimeType, sha256: stored.sha256, provenanceClass: input.provenanceClass,
@@ -226,14 +329,14 @@ export async function registerResearchEvidence(actor: Actor, input: {
     extractionStatus: extraction.status,
   }).returning();
   await db.insert(auditEvents).values({ householdId: actor.householdId, actor: actor.userId, eventType: "research_evidence_registered", entity: "research_evidence", entityId: row.id, reason: "User-declared research provenance retained pending human review", metadata: { provenanceClass: input.provenanceClass, sha256: row.sha256 } });
-  return { ...row, duplicate: false, advisoryOnly: true };
+  return { ...row, duplicate: false, advisoryOnly: true, evidenceKind: "UPLOADED_DOCUMENT" as const };
 }
 
 export async function reviewResearchEvidence(actor: Actor, evidenceId: string, status: "REVIEWED" | "REJECTED") {
   const [row] = await db.update(researchEvidence).set({ reviewStatus: status, reviewedBy: actor.userId, reviewedAt: new Date() }).where(and(eq(researchEvidence.id, evidenceId), eq(researchEvidence.householdId, actor.householdId), eq(researchEvidence.reviewStatus, "PENDING_HUMAN_REVIEW"))).returning();
   if (!row) throw new Error("Research evidence not found in this household");
   await db.insert(auditEvents).values({ householdId: actor.householdId, actor: actor.userId, eventType: "research_evidence_reviewed", entity: "research_evidence", entityId: evidenceId, reason: `Human review status: ${status}`, metadata: { status } });
-  return { ...row, advisoryOnly: true };
+  return { ...row, advisoryOnly: true, evidenceKind: "UPLOADED_DOCUMENT" as const };
 }
 
 export async function createInvestmentResearchDossier(actor: Actor, input: { ticker: string; title: string; evidenceIds: string[]; digestionPayload: string }) {
@@ -312,13 +415,15 @@ export async function listResearchDossiers(actor: Actor) {
       : [],
   );
   return { evidence: [
-    ...evidence.map((item) => ({ ...item, advisoryOnly: true })),
+    ...evidence.map((item) => ({ ...item, advisoryOnly: true, evidenceKind: "UPLOADED_DOCUMENT" as const })),
     ...approvedSnapshotEvidence.map((item) => ({
       id: item.id, householdId: item.householdId, title: `Schwab ${item.ticker} market snapshot`,
       provenanceClass: "PRIMARY_SOURCE", reviewStatus: "APPROVED", mimeType: "application/json", objectPath: "",
       byteLength: Buffer.byteLength(JSON.stringify(item.canonicalContent)), sha256: item.canonicalSha256,
       extractionStatus: "complete", advisoryOnly: true, metadata: item.provenance,
       createdAt: item.createdAt, reviewedBy: item.approvedBy, reviewedAt: item.approvedAt,
+      evidenceKind: "SCHWAB_MARKET_SNAPSHOT" as const,
+      dossierPrefill: projectReviewedSnapshotPrefill(item),
     })),
   ], dossiers: rows.map(snapshotDossier), capabilityReadiness: {
     quote: "implemented", market_hours: "implemented", portfolio_position: "implemented",

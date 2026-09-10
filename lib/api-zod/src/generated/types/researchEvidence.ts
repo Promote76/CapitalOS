@@ -5,6 +5,8 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { ResearchDossierPrefill } from './researchDossierPrefill';
+import type { ResearchEvidenceEvidenceKind } from './researchEvidenceEvidenceKind';
 import type { ResearchEvidenceProvenanceClass } from './researchEvidenceProvenanceClass';
 
 export interface ResearchEvidence {
@@ -22,4 +24,6 @@ export interface ResearchEvidence {
   sha256: string;
   extractionStatus: string;
   advisoryOnly: boolean;
+  evidenceKind: ResearchEvidenceEvidenceKind;
+  dossierPrefill?: ResearchDossierPrefill | null;
 }

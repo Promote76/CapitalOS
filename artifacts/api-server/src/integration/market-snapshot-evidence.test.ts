@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import test from "node:test";
 import { and, eq } from "drizzle-orm";
 import { db, householdMembers, households, reviewedResearchEvidence, schwabMarketSnapshots, users } from "@workspace/db";
-import { listSchwabMarketSnapshots, projectReviewedSnapshotForAgents, reviewSchwabMarketSnapshot } from "../services/research-dossier";
+import { listResearchDossiers, listSchwabMarketSnapshots, projectReviewedSnapshotForAgents, projectReviewedSnapshotPrefill, reviewSchwabMarketSnapshot } from "../services/research-dossier";
 import { assertPermission } from "../domain/governance";
 import { readFile } from "node:fs/promises";
 
@@ -27,7 +27,7 @@ test("dossier service has no Schwab retrieval or execution seam", async () => {
 });
 
 test("Grok projection excludes provider transport metadata and raw capability envelopes", () => {
-  const projected = projectReviewedSnapshotForAgents({
+  const item = {
     id: randomUUID(),
     householdId: randomUUID(),
     snapshotId: randomUUID(),
@@ -39,6 +39,9 @@ test("Grok projection excludes provider transport metadata and raw capability en
       dailyHistory: { candles: [{ marketDate: "2026-01-02", close: "10.00" }] },
       capabilities: [{ providerRequestId: "forbidden-request-id", rateLimit: { remaining: 99 } }],
       snapshotContext: { freshness: "UNKNOWN", qualityFlags: ["FUNDAMENTAL_AS_OF_UNKNOWN"] },
+      rawPayload: "forbidden-raw-payload",
+      token: "forbidden-token",
+      connectionId: "forbidden-connection-id",
     },
     canonicalSha256: "c".repeat(64),
     provenance: {
@@ -51,12 +54,23 @@ test("Grok projection excludes provider transport metadata and raw capability en
     approvedBy: randomUUID(),
     approvedAt: new Date("2026-01-02T14:01:00Z"),
     createdAt: new Date("2026-01-02T14:01:00Z"),
-  });
+  };
+  const projected = projectReviewedSnapshotForAgents(item);
+  const prefill = projectReviewedSnapshotPrefill(item);
   assert.equal(projected.excerpt.includes("forbidden-request-id"), false);
   assert.equal(projected.excerpt.includes("rateLimit"), false);
   assert.equal(projected.excerpt.includes("/marketdata/"), false);
   assert.equal(projected.excerpt.includes("\"lastPrice\":\"10.00\""), true);
   assert.equal(projected.excerpt.includes("\"contentDigest\""), true);
+  assert.equal(JSON.stringify(prefill).includes("forbidden-request-id"), false);
+  assert.equal(JSON.stringify(prefill).includes("rateLimit"), false);
+  assert.equal(JSON.stringify(prefill).includes("forbidden-raw-payload"), false);
+  assert.equal(JSON.stringify(prefill).includes("forbidden-token"), false);
+  assert.equal(JSON.stringify(prefill).includes("forbidden-connection-id"), false);
+  assert.equal(prefill.ticker, "BKSC");
+  assert.equal(prefill.quote.lastPrice, "10.00");
+  assert.equal(prefill.priceHistory.candleCount, 1);
+  assert.deepEqual(prefill.warnings.qualityFlags, ["FUNDAMENTAL_AS_OF_UNKNOWN"]);
 });
 
 async function fixture() {
@@ -144,4 +158,10 @@ test("approved snapshot evidence list never exposes another household", { skip: 
     canonicalContent: { ticker: "BKSC" }, canonicalSha256: "b".repeat(64), provenance: { provider: "schwab" }, approvedBy: f.a.userId,
   });
   assert.equal((await listSchwabMarketSnapshots(f.b)).evidence.length, 0);
+  const ownDossierEvidence = (await listResearchDossiers(f.a)).evidence;
+  assert.equal(ownDossierEvidence.length, 1);
+  assert.equal(ownDossierEvidence[0]!.reviewStatus, "APPROVED");
+  assert.equal(ownDossierEvidence[0]!.extractionStatus, "complete");
+  assert.equal(ownDossierEvidence[0]!.evidenceKind, "SCHWAB_MARKET_SNAPSHOT");
+  assert.equal(ownDossierEvidence[0]!.dossierPrefill.ticker, "BKSC");
 });

@@ -6717,7 +6717,7 @@ components:
         advisoryOnly: { type: boolean, const: true }
     ResearchEvidence:
       type: object
-      required: [id, householdId, title, provenanceClass, reviewStatus, mimeType, objectPath, byteLength, sha256, extractionStatus, advisoryOnly]
+      required: [id, householdId, title, provenanceClass, reviewStatus, mimeType, objectPath, byteLength, sha256, extractionStatus, advisoryOnly, evidenceKind]
       properties:
         id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
         householdId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
@@ -6730,6 +6730,119 @@ components:
         sha256: { type: string, pattern: "^[a-f0-9]{64}$" }
         extractionStatus: { type: string }
         advisoryOnly: { type: boolean, default: true }
+        evidenceKind: { type: string, enum: [UPLOADED_DOCUMENT, SCHWAB_MARKET_SNAPSHOT] }
+        dossierPrefill:
+          allOf: [{ $ref: "#/components/schemas/ResearchDossierPrefill" }]
+          nullable: true
+    ResearchDossierPrefill:
+      type: object
+      required: [kind, ticker, suggestedTitle, instrument, fundamentals, quote, priceHistory, freshness, warnings, source, advisoryOnly, readOnly, tradingEnabled, executionAuthority, noTradingOrMoneyMovement]
+      properties:
+        kind: { type: string, const: SCHWAB_MARKET_SNAPSHOT }
+        ticker: { type: string }
+        suggestedTitle: { type: string }
+        instrument: { $ref: "#/components/schemas/ResearchDossierPrefillInstrument" }
+        fundamentals: { $ref: "#/components/schemas/ResearchDossierPrefillFundamentals" }
+        quote: { $ref: "#/components/schemas/ResearchDossierPrefillQuote" }
+        priceHistory: { $ref: "#/components/schemas/ResearchDossierPrefillPriceHistory" }
+        freshness: { $ref: "#/components/schemas/ResearchDossierPrefillFreshness" }
+        warnings: { $ref: "#/components/schemas/ResearchDossierPrefillWarnings" }
+        source: { $ref: "#/components/schemas/ResearchDossierPrefillSource" }
+        advisoryOnly: { type: boolean, const: true }
+        readOnly: { type: boolean, const: true }
+        tradingEnabled: { type: boolean, const: false }
+        executionAuthority: { type: string, const: none }
+        noTradingOrMoneyMovement: { type: boolean, const: true }
+    ResearchDossierPrefillInstrument:
+      type: object
+      required: [symbol, description, assetType, exchange]
+      properties:
+        symbol: { type: string }
+        description: { type: string, nullable: true }
+        assetType: { type: string, nullable: true }
+        exchange: { type: string, nullable: true }
+    ResearchDossierPrefillFundamentals:
+      type: object
+      required: [asOf, marketCap, sharesOutstanding, epsTrailingTwelveMonths, peRatio, dividendAmount, dividendYield, dividendPayDate, beta, high52Week, low52Week]
+      properties:
+        asOf: { type: string, nullable: true }
+        marketCap: { type: string, nullable: true }
+        sharesOutstanding: { type: string, nullable: true }
+        epsTrailingTwelveMonths: { type: string, nullable: true }
+        peRatio: { type: string, nullable: true }
+        dividendAmount: { type: string, nullable: true }
+        dividendYield: { type: string, nullable: true }
+        dividendPayDate: { type: string, nullable: true }
+        beta: { type: string, nullable: true }
+        high52Week: { type: string, nullable: true }
+        low52Week: { type: string, nullable: true }
+    ResearchDossierPrefillQuote:
+      type: object
+      required: [asOf, bidPrice, askPrice, lastPrice, markPrice, closePrice, openPrice, highPrice, lowPrice, netChange, netPercentChange, totalVolume]
+      properties:
+        asOf: { type: string, nullable: true }
+        bidPrice: { type: string, nullable: true }
+        askPrice: { type: string, nullable: true }
+        lastPrice: { type: string, nullable: true }
+        markPrice: { type: string, nullable: true }
+        closePrice: { type: string, nullable: true }
+        openPrice: { type: string, nullable: true }
+        highPrice: { type: string, nullable: true }
+        lowPrice: { type: string, nullable: true }
+        netChange: { type: string, nullable: true }
+        netPercentChange: { type: string, nullable: true }
+        totalVolume: { type: string, nullable: true }
+    ResearchDossierPrefillPriceHistory:
+      type: object
+      required: [frequency, requestedStart, requestedEnd, candleCount, firstMarketDate, lastMarketDate, periodOpen, periodHigh, periodLow, periodClose, recentCloses]
+      properties:
+        frequency: { type: string, const: DAILY }
+        requestedStart: { type: string, nullable: true }
+        requestedEnd: { type: string, nullable: true }
+        candleCount: { type: number, multipleOf: 1, minimum: 0, maximum: 100 }
+        firstMarketDate: { type: string, nullable: true }
+        lastMarketDate: { type: string, nullable: true }
+        periodOpen: { type: string, nullable: true }
+        periodHigh: { type: string, nullable: true }
+        periodLow: { type: string, nullable: true }
+        periodClose: { type: string, nullable: true }
+        recentCloses:
+          type: array
+          maxItems: 5
+          items: { $ref: "#/components/schemas/ResearchDossierPrefillCandle" }
+    ResearchDossierPrefillCandle:
+      type: object
+      required: [marketDate, close, volume]
+      properties:
+        marketDate: { type: string, nullable: true }
+        close: { type: string, nullable: true }
+        volume: { type: string, nullable: true }
+    ResearchDossierPrefillFreshness:
+      type: object
+      required: [label, providerAsOf, marketDate, realtime, delayed]
+      properties:
+        label: { type: string, enum: [CURRENT, AGING, STALE, DELAYED, REALTIME, UNKNOWN] }
+        providerAsOf: { type: string, nullable: true }
+        marketDate: { type: string, nullable: true }
+        realtime: { type: boolean, nullable: true }
+        delayed: { type: boolean, nullable: true }
+    ResearchDossierPrefillWarnings:
+      type: object
+      required: [missingFields, qualityFlags]
+      properties:
+        missingFields: { type: array, items: { type: string } }
+        qualityFlags: { type: array, items: { type: string } }
+    ResearchDossierPrefillSource:
+      type: object
+      required: [provider, title, provenanceClass, requestedAt, retrievedAt, reviewedAt, contentDigest]
+      properties:
+        provider: { type: string, const: Schwab Market Data }
+        title: { type: string }
+        provenanceClass: { type: string, const: PRIMARY_SOURCE }
+        requestedAt: { type: string, format: date-time, nullable: true }
+        retrievedAt: { type: string, format: date-time, nullable: true }
+        reviewedAt: { type: string, format: date-time }
+        contentDigest: { type: string, pattern: "^[a-f0-9]{64}$" }
     ResearchDossier:
       type: object
       required: [id, householdId, ticker, title, evidenceIds, reviewStatus, createdAt, reportStatus, proposal, advisoryOnly, executionAuthority, noCapitalSideEffects]

@@ -15,12 +15,80 @@ import {
   useReviewMarketSnapshot,
   getListMarketSnapshotsQueryKey,
   type ResearchEvidence,
+   type ResearchDossierPrefill,
   type SchwabResearchCertification,
 } from "@workspace/api-client-react";
 import { AlertCircle, AlertTriangle, FilePlus2, X, FileText, CheckCircle2, FlaskConical, Clock, Beaker, FileSearch, Database, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useProviderProtectedAction } from "@/lib/reverification";
 import { useQueryClient } from "@tanstack/react-query";
+
+export const isDossierEligibleEvidence = (evidence: ResearchEvidence) =>
+  (evidence.reviewStatus === "REVIEWED" || evidence.reviewStatus === "APPROVED")
+  && evidence.extractionStatus === "complete";
+
+export const isResearchContentReady = (
+  researchText: string,
+  placeholderTemplate: string,
+  hasReviewedPrefill: boolean,
+) => Boolean(researchText.trim())
+  && (researchText !== placeholderTemplate || hasReviewedPrefill);
+
+const present = (value: string | null) => value ?? "not supplied";
+
+export function buildReviewedPrefillText(
+  title: string,
+  ticker: string,
+  prefills: ResearchDossierPrefill[],
+) {
+  const primary = prefills[0];
+  const company = primary?.instrument.description ?? title;
+  const sources = prefills.map((prefill, index) =>
+    `- [source-${index + 1}] ${prefill.source.title} · ${prefill.source.provider} · ${prefill.source.provenanceClass} · requested ${present(prefill.source.requestedAt)} · retrieved ${present(prefill.source.retrievedAt)} · reviewed ${prefill.source.reviewedAt} · digest ${prefill.source.contentDigest}`,
+  ).join("\n");
+  const facts = prefills.flatMap((prefill, index) => {
+    const source = `[source-${index + 1}]`;
+    const fundamental = prefill.fundamentals;
+    const quote = prefill.quote;
+    const history = prefill.priceHistory;
+    const recentCloses = history.recentCloses.length > 0
+      ? history.recentCloses.map((candle) => `${present(candle.marketDate)} close ${present(candle.close)} volume ${present(candle.volume)}`).join("; ")
+      : "none supplied";
+    const missing = prefill.warnings.missingFields.length > 0
+      ? prefill.warnings.missingFields.join(", ")
+      : "none reported";
+    const quality = prefill.warnings.qualityFlags.length > 0
+      ? prefill.warnings.qualityFlags.join(", ")
+      : "none reported";
+    return [
+      `- ${source} Instrument identity: ${prefill.instrument.symbol}; ${present(prefill.instrument.description)}; asset type ${present(prefill.instrument.assetType)}; exchange ${present(prefill.instrument.exchange)}.`,
+      `- ${source} Fundamentals${fundamental.asOf ? ` as of ${fundamental.asOf}` : ""}: market cap ${present(fundamental.marketCap)}; shares outstanding ${present(fundamental.sharesOutstanding)}; trailing EPS ${present(fundamental.epsTrailingTwelveMonths)}; P/E ${present(fundamental.peRatio)}; dividend amount ${present(fundamental.dividendAmount)}; dividend yield ${present(fundamental.dividendYield)}; dividend pay date ${present(fundamental.dividendPayDate)}; beta ${present(fundamental.beta)}; 52-week high ${present(fundamental.high52Week)}; 52-week low ${present(fundamental.low52Week)}.`,
+      `- ${source} Current quote${quote.asOf ? ` as of ${quote.asOf}` : ""}: bid ${present(quote.bidPrice)}; ask ${present(quote.askPrice)}; last ${present(quote.lastPrice)}; mark ${present(quote.markPrice)}; open ${present(quote.openPrice)}; high ${present(quote.highPrice)}; low ${present(quote.lowPrice)}; close ${present(quote.closePrice)}; net change ${present(quote.netChange)}; net percent change ${present(quote.netPercentChange)}; volume ${present(quote.totalVolume)}.`,
+      `- ${source} Bounded ${history.frequency.toLowerCase()} history: ${history.candleCount} candles from ${present(history.firstMarketDate)} through ${present(history.lastMarketDate)}; period open ${present(history.periodOpen)}; high ${present(history.periodHigh)}; low ${present(history.periodLow)}; close ${present(history.periodClose)}. Recent closes: ${recentCloses}.`,
+      `- ${source} Freshness: ${prefill.freshness.label}; market date ${present(prefill.freshness.marketDate)}; provider as of ${present(prefill.freshness.providerAsOf)}; realtime ${prefill.freshness.realtime === null ? "unknown" : String(prefill.freshness.realtime)}; delayed ${prefill.freshness.delayed === null ? "unknown" : String(prefill.freshness.delayed)}.`,
+      `- ${source} Data warnings: missing fields ${missing}; quality flags ${quality}.`,
+      `- ${source} Safety boundary: reviewed normalized evidence only; advisory-only; read-only; trading disabled; execution authority none; no trading or money movement.`,
+    ];
+  }).join("\n");
+
+  return `Company: ${company}
+Ticker: ${ticker}
+Sources:
+${sources}
+
+Source Facts:
+${facts}
+External Verification:
+Fundamentals: Reviewed normalized Schwab Market Data evidence; missing values remain explicit.
+Valuation: Human interpretation required.
+Risks: Review freshness, delayed status, and missing-data warnings before relying on observations.
+Bull Case:
+Base Case:
+Bear Case:
+Evidence Quality: Exact reviewed content digests and freshness labels are cited above.
+Research Notes:
+- Advisory only. Human approval remains required. No execution or capital authority.`;
+}
 
 const PageHeading = ({ eyebrow, title, description, actions }: { eyebrow: string; title: ReactNode; description?: string; actions?: ReactNode }) => (
   <div className="page-heading animate-in">
@@ -167,6 +235,9 @@ export default function InvestmentResearchPage() {
   const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<Set<string>>(new Set());
   const [researchText, setResearchText] = useState("");
   const lastTemplateRef = useRef("");
+  const lastReviewedPrefillRef = useRef("");
+  const lastAutoTickerRef = useRef("");
+  const lastAutoTitleRef = useRef("");
   const [isRefreshingForCertification, setIsRefreshingForCertification] = useState(false);
 
   const handleRunCertification = async () => {
@@ -294,7 +365,10 @@ Research Notes:
 
   const handleCreateDossier = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!dossierTicker || !dossierTitle || selectedEvidenceIds.size === 0 || !researchText.trim() || researchText === lastTemplateRef.current) {
+    const hasReviewedPrefill = dossiersQuery.data?.evidence.some((item) =>
+      selectedEvidenceIds.has(item.id) && Boolean(item.dossierPrefill),
+    ) ?? false;
+    if (!dossierTicker || !dossierTitle || selectedEvidenceIds.size === 0 || !isResearchContentReady(researchText, lastTemplateRef.current, hasReviewedPrefill)) {
       toast({ title: "Research facts required", description: "Add source-linked facts or observations to the research text before compiling.", variant: "destructive" });
       return;
     }
@@ -323,10 +397,47 @@ Research Notes:
 
   useEffect(() => {
     if (data?.evidence) {
-      const newTemplate = generateTemplate(dossierTitle, dossierTicker, selectedEvidenceIds, data.evidence);
-      if (researchText === "" || researchText === lastTemplateRef.current) {
+      const selectedPrefills = data.evidence
+        .filter((item) => selectedEvidenceIds.has(item.id))
+        .flatMap((item) => item.dossierPrefill ? [item.dossierPrefill] : []);
+      if (selectedPrefills.length > 0) {
+        const primary = selectedPrefills[0]!;
+        const canAutoTicker = dossierTicker === "" || dossierTicker === lastAutoTickerRef.current;
+        const canAutoTitle = dossierTitle === "" || dossierTitle === lastAutoTitleRef.current;
+        const nextTicker = canAutoTicker ? primary.ticker : dossierTicker;
+        const nextTitle = canAutoTitle ? primary.suggestedTitle : dossierTitle;
+        if (canAutoTicker && dossierTicker !== nextTicker) {
+          lastAutoTickerRef.current = nextTicker;
+          setDossierTicker(nextTicker);
+        }
+        if (canAutoTitle && dossierTitle !== nextTitle) {
+          lastAutoTitleRef.current = nextTitle;
+          setDossierTitle(nextTitle);
+        }
+        const reviewedPrefill = buildReviewedPrefillText(nextTitle, nextTicker, selectedPrefills);
+        if (researchText === "" || researchText === lastTemplateRef.current || researchText === lastReviewedPrefillRef.current) {
+          setResearchText(reviewedPrefill);
+          lastReviewedPrefillRef.current = reviewedPrefill;
+        }
+        return;
+      }
+      const clearAutoTicker = dossierTicker !== "" && dossierTicker === lastAutoTickerRef.current;
+      const clearAutoTitle = dossierTitle !== "" && dossierTitle === lastAutoTitleRef.current;
+      const nextTicker = clearAutoTicker ? "" : dossierTicker;
+      const nextTitle = clearAutoTitle ? "" : dossierTitle;
+      if (clearAutoTicker) {
+        setDossierTicker("");
+        lastAutoTickerRef.current = "";
+      }
+      if (clearAutoTitle) {
+        setDossierTitle("");
+        lastAutoTitleRef.current = "";
+      }
+      const newTemplate = generateTemplate(nextTitle, nextTicker, selectedEvidenceIds, data.evidence);
+      if (researchText === "" || researchText === lastTemplateRef.current || researchText === lastReviewedPrefillRef.current) {
         setResearchText(newTemplate);
         lastTemplateRef.current = newTemplate;
+        lastReviewedPrefillRef.current = "";
       }
     }
   }, [dossierTitle, dossierTicker, selectedEvidenceIds, data?.evidence]);
@@ -336,6 +447,15 @@ Research Notes:
   if (isError || !data) return <main className="content"><PageHeading eyebrow="Investment Research" title={<>Workspace<br/><em>unavailable.</em></>} description="Could not load the research workspace." /><section className="card card-pad empty-state"><AlertCircle size={19} /><div><strong>Data unavailable</strong><p>Please try again later.</p></div></section></main>;
 
   const { dossiers, evidence, capabilityReadiness } = data;
+  const eligibleEvidence = evidence.filter(isDossierEligibleEvidence);
+  const hasSelectedReviewedPrefill = evidence.some((item) =>
+    selectedEvidenceIds.has(item.id) && Boolean(item.dossierPrefill),
+  );
+  const researchContentReady = isResearchContentReady(
+    researchText,
+    lastTemplateRef.current,
+    hasSelectedReviewedPrefill,
+  );
   const certification = certificationQuery.data?.certification;
   const certificationBusy = runCertification.isPending || isRefreshingForCertification || marketDataRefresh.isPending;
 
@@ -666,7 +786,7 @@ Research Notes:
           <div className="field">
             <label>Select reviewed evidence (max 25)</label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-              {evidence.filter((e) => e.reviewStatus === "REVIEWED" && e.extractionStatus === "complete").map((item) => (
+              {eligibleEvidence.map((item) => (
                 <label key={item.id} className="flex items-start gap-3 p-3 border rounded-md cursor-pointer transition-colors" style={{ backgroundColor: selectedEvidenceIds.has(item.id) ? 'var(--bg-active)' : 'var(--bg)', borderColor: selectedEvidenceIds.has(item.id) ? 'var(--ink)' : 'var(--border)' }}>
                   <input 
                     type="checkbox" 
@@ -681,7 +801,7 @@ Research Notes:
                   </div>
                 </label>
               ))}
-              {evidence.filter((e) => e.reviewStatus === "REVIEWED" && e.extractionStatus === "complete").length === 0 && (
+              {eligibleEvidence.length === 0 && (
                 <div className="text-sm italic col-span-2" style={{ color: 'var(--ink-light)' }}>No reviewed and fully extracted evidence available.</div>
               )}
             </div>
@@ -701,7 +821,7 @@ Research Notes:
           </div>
 
           <div className="flex justify-end mt-4">
-            <button type="submit" className="btn btn-primary" disabled={createDossier.isPending || selectedEvidenceIds.size === 0 || !dossierTicker || !dossierTitle || !researchText.trim() || researchText === lastTemplateRef.current}>
+            <button type="submit" className="btn btn-primary" disabled={createDossier.isPending || selectedEvidenceIds.size === 0 || !dossierTicker || !dossierTitle || !researchContentReady}>
               <FlaskConical size={16} /> Compile dossier
             </button>
           </div>

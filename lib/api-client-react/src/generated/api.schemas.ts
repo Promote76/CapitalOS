@@ -4334,6 +4334,129 @@ export const ResearchEvidenceProvenanceClass = {
   PRIMARY_SOURCE: 'PRIMARY_SOURCE',
 } as const;
 
+export type ResearchEvidenceEvidenceKind = typeof ResearchEvidenceEvidenceKind[keyof typeof ResearchEvidenceEvidenceKind];
+
+
+export const ResearchEvidenceEvidenceKind = {
+  UPLOADED_DOCUMENT: 'UPLOADED_DOCUMENT',
+  SCHWAB_MARKET_SNAPSHOT: 'SCHWAB_MARKET_SNAPSHOT',
+} as const;
+
+export interface ResearchDossierPrefillInstrument {
+  symbol: string;
+  description: string | null;
+  assetType: string | null;
+  exchange: string | null;
+}
+
+export interface ResearchDossierPrefillFundamentals {
+  asOf: string | null;
+  marketCap: string | null;
+  sharesOutstanding: string | null;
+  epsTrailingTwelveMonths: string | null;
+  peRatio: string | null;
+  dividendAmount: string | null;
+  dividendYield: string | null;
+  dividendPayDate: string | null;
+  beta: string | null;
+  high52Week: string | null;
+  low52Week: string | null;
+}
+
+export interface ResearchDossierPrefillQuote {
+  asOf: string | null;
+  bidPrice: string | null;
+  askPrice: string | null;
+  lastPrice: string | null;
+  markPrice: string | null;
+  closePrice: string | null;
+  openPrice: string | null;
+  highPrice: string | null;
+  lowPrice: string | null;
+  netChange: string | null;
+  netPercentChange: string | null;
+  totalVolume: string | null;
+}
+
+export interface ResearchDossierPrefillCandle {
+  marketDate: string | null;
+  close: string | null;
+  volume: string | null;
+}
+
+export interface ResearchDossierPrefillPriceHistory {
+  frequency: 'DAILY';
+  requestedStart: string | null;
+  requestedEnd: string | null;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  candleCount: number;
+  firstMarketDate: string | null;
+  lastMarketDate: string | null;
+  periodOpen: string | null;
+  periodHigh: string | null;
+  periodLow: string | null;
+  periodClose: string | null;
+  /** @maxItems 5 */
+  recentCloses: ResearchDossierPrefillCandle[];
+}
+
+export type ResearchDossierPrefillFreshnessLabel = typeof ResearchDossierPrefillFreshnessLabel[keyof typeof ResearchDossierPrefillFreshnessLabel];
+
+
+export const ResearchDossierPrefillFreshnessLabel = {
+  CURRENT: 'CURRENT',
+  AGING: 'AGING',
+  STALE: 'STALE',
+  DELAYED: 'DELAYED',
+  REALTIME: 'REALTIME',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export interface ResearchDossierPrefillFreshness {
+  label: ResearchDossierPrefillFreshnessLabel;
+  providerAsOf: string | null;
+  marketDate: string | null;
+  realtime: boolean | null;
+  delayed: boolean | null;
+}
+
+export interface ResearchDossierPrefillWarnings {
+  missingFields: string[];
+  qualityFlags: string[];
+}
+
+export interface ResearchDossierPrefillSource {
+  provider: 'Schwab Market Data';
+  title: string;
+  provenanceClass: 'PRIMARY_SOURCE';
+  requestedAt: string | null;
+  retrievedAt: string | null;
+  reviewedAt: string;
+  /** @pattern ^[a-f0-9]{64}$ */
+  contentDigest: string;
+}
+
+export interface ResearchDossierPrefill {
+  kind: 'SCHWAB_MARKET_SNAPSHOT';
+  ticker: string;
+  suggestedTitle: string;
+  instrument: ResearchDossierPrefillInstrument;
+  fundamentals: ResearchDossierPrefillFundamentals;
+  quote: ResearchDossierPrefillQuote;
+  priceHistory: ResearchDossierPrefillPriceHistory;
+  freshness: ResearchDossierPrefillFreshness;
+  warnings: ResearchDossierPrefillWarnings;
+  source: ResearchDossierPrefillSource;
+  advisoryOnly: true;
+  readOnly: true;
+  tradingEnabled: false;
+  executionAuthority: 'none';
+  noTradingOrMoneyMovement: true;
+}
+
 export interface ResearchEvidence {
   /** @pattern ^[0-9a-fA-F-]{36}$ */
   id: string;
@@ -4349,6 +4472,8 @@ export interface ResearchEvidence {
   sha256: string;
   extractionStatus: string;
   advisoryOnly: boolean;
+  evidenceKind: ResearchEvidenceEvidenceKind;
+  dossierPrefill?: ResearchDossierPrefill | null;
 }
 
 export interface ResearchDossier {

@@ -5,12 +5,13 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { SecFilingProvenance } from './secFilingProvenance';
 
 export interface SecFilingApprovedEvidence {
   /** @pattern ^[0-9a-fA-F-]{36}$ */
   id: string;
   ticker: string;
   canonicalSha256: string;
-  provenance: string;
-  approvedAt: string;
+  provenance: SecFilingProvenance;
+  approvedAt: Date;
 }

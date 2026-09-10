@@ -4205,11 +4205,45 @@ export interface SecFact {
  * Exact SEC XBRL facts; unsupported fields are null and listed in missingFields.
  */
 export interface SecBankMetrics {
-  totalAssets?: SecFact;
-  totalLiabilities?: SecFact;
-  netIncome?: SecFact;
-  deposits?: SecFact;
-  stockholdersEquity?: SecFact;
+  totalAssets: SecFact | null;
+  totalLiabilities: SecFact | null;
+  cashAndDueFromBanks: SecFact | null;
+  loansHeldForInvestment: SecFact | null;
+  commercialLoans: SecFact | null;
+  residentialRealEstateLoans: SecFact | null;
+  commercialRealEstateLoans: SecFact | null;
+  consumerLoans: SecFact | null;
+  agriculturalLoans: SecFact | null;
+  allowanceForCreditLosses: SecFact | null;
+  nonperformingLoans: SecFact | null;
+  nonperformingAssets: SecFact | null;
+  pastDueLoans: SecFact | null;
+  chargeOffs: SecFact | null;
+  recoveries: SecFact | null;
+  deposits: SecFact | null;
+  domesticDeposits: SecFact | null;
+  foreignDeposits: SecFact | null;
+  uninsuredDeposits: SecFact | null;
+  interestBearingDeposits: SecFact | null;
+  noninterestBearingDeposits: SecFact | null;
+  fundingCosts: SecFact | null;
+  netInterestMargin: SecFact | null;
+  rateSensitivity: SecFact | null;
+  interestIncome: SecFact | null;
+  netIncome: SecFact | null;
+  revenue: SecFact | null;
+  stockholdersEquity: SecFact | null;
+  bookValue: SecFact | null;
+  tangibleBookValue: SecFact | null;
+  commonEquityTier1Ratio: SecFact | null;
+  tier1CapitalRatio: SecFact | null;
+  totalRiskBasedCapitalRatio: SecFact | null;
+  leverageRatio: SecFact | null;
+  earningsPerShare: SecFact | null;
+  dividends: SecFact | null;
+  dividendPayout: SecFact | null;
+  depositRetention: SecFact | null;
+  earningsTrend: SecFact | null;
 }
 
 export interface SecFilingReference {
@@ -4280,7 +4314,7 @@ export interface SecFilingApprovedEvidence {
   id: string;
   ticker: string;
   canonicalSha256: string;
-  provenance: string;
+  provenance: SecFilingProvenance;
   approvedAt: string;
 }
 
@@ -4291,7 +4325,7 @@ export interface SecFilingListResponse {
 
 export interface SecFilingReviewResult {
   snapshot: SecFilingDraft;
-  evidence: SecFilingApprovedEvidence;
+  evidence: SecFilingApprovedEvidence | null;
 }
 
 export interface CreateMarketSnapshotRequest {

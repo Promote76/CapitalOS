@@ -16,7 +16,10 @@ export const SEC_BANK_METRIC_TAGS: Record<string, string[]> = {
   rateSensitivity: ["InterestRateSensitivity"], interestIncome: ["InterestIncomeExpenseNonoperatingNet"], netIncome: ["NetIncomeLoss"], revenue: ["Revenues"], stockholdersEquity: ["StockholdersEquity"], bookValue: ["StockholdersEquity"], tangibleBookValue: ["TangibleBookValue"],
   commonEquityTier1Ratio: ["CommonEquityTier1CapitalRatio"], tier1CapitalRatio: ["Tier1CapitalRatio"], totalRiskBasedCapitalRatio: ["TotalRiskBasedCapitalRatio"], leverageRatio: ["Tier1LeverageRatio"],
   earningsPerShare: ["EarningsPerShareBasic"], dividends: ["CommonStockDividendsPerShareDeclared"], dividendPayout: ["CommonStockDividendsPerShareCashPaid"],
-  depositRetention: ["Deposits"], earningsTrend: ["NetIncomeLoss"],
+  // These labels imply comparisons or calculations that this normalizer does
+  // not perform. Keep them explicitly missing rather than relabeling a raw
+  // point-in-time or single-period fact as a derived conclusion.
+  depositRetention: [], earningsTrend: [],
 };
 export const SEC_BANK_METRIC_NAMES = Object.keys(SEC_BANK_METRIC_TAGS);
 type SecFact = {
@@ -39,24 +42,40 @@ function ticker(value: string) {
   if (!/^[A-Z][A-Z0-9.-]{0,14}$/.test(normalized)) throw new Error("Invalid SEC ticker");
   return normalized;
 }
-async function secJson(url: string, maxBytes = MAX_BYTES): Promise<any> {
+async function secPayload(url: string, accept: string, maxBytes = MAX_BYTES): Promise<Buffer> {
   const parsed = new URL(url);
   if (parsed.protocol !== "https:" || !SEC_HOSTS.has(parsed.hostname)) throw new Error("SEC source host is not approved");
-  const response = await fetch(parsed, { redirect: "manual", signal: AbortSignal.timeout(15_000), headers: { "User-Agent": USER_AGENT, Accept: "application/json" } });
+  const response = await fetch(parsed, { redirect: "manual", signal: AbortSignal.timeout(15_000), headers: { "User-Agent": USER_AGENT, Accept: accept } });
   if (response.status >= 300 && response.status < 400) throw new Error("SEC redirect rejected");
   if (!response.ok) throw new Error(`SEC source unavailable (${response.status})`);
   const length = Number(response.headers.get("content-length") || 0);
   if (length > maxBytes) throw new Error("SEC response exceeds bounded limit");
   const bytes = Buffer.from(await response.arrayBuffer());
   if (bytes.length > maxBytes) throw new Error("SEC response exceeds bounded limit");
-  return JSON.parse(bytes.toString("utf8"));
+  return bytes;
+}
+async function secJson(url: string, maxBytes = MAX_BYTES): Promise<any> {
+  return JSON.parse((await secPayload(url, "application/json", maxBytes)).toString("utf8"));
+}
+async function secText(url: string, maxBytes = MAX_BYTES): Promise<string> {
+  return (await secPayload(url, "text/plain", maxBytes)).toString("utf8");
+}
+export function resolveSecIssuer(symbol: string, tickerMap: any, legacyTickerIndex?: string) {
+  const normalized = ticker(symbol);
+  const primary = Object.values(tickerMap ?? {}).find((row: any) => String(row.ticker).toUpperCase() === normalized) as any;
+  if (primary?.cik_str) return { ticker: normalized, cik: String(primary.cik_str).padStart(10, "0"), source: "company_tickers.json" as const };
+  const legacy = legacyTickerIndex?.split(/\r?\n/).map((line) => line.split("\t")).find(([listed]) => listed?.toUpperCase() === normalized);
+  if (legacy?.[1] && /^\d+$/.test(legacy[1])) return { ticker: normalized, cik: legacy[1].padStart(10, "0"), source: "ticker.txt" as const };
+  throw new Error("Ticker is not present in the SEC issuer index");
 }
 function firstFact(facts: any, tags: string[], form: string, accession: string): SecFact | null {
   for (const tag of tags) {
     const units = facts?.facts?.["us-gaap"]?.[tag]?.units;
     if (!units) continue;
     const normalizedAccession = accession.replaceAll("-", "");
-    const entries = Object.values(units).flat().filter((entry: any) => entry.form === form && String(entry.accn ?? "").replaceAll("-", "") === normalizedAccession) as any[];
+    const entries = Object.entries(units).flatMap(([unit, rows]) =>
+      (Array.isArray(rows) ? rows : []).map((entry: any) => ({ ...entry, unit })),
+    ).filter((entry: any) => entry.form === form && String(entry.accn ?? "").replaceAll("-", "") === normalizedAccession) as any[];
     const item = entries.at(-1);
     if (item && typeof item.val === "number") return { tag, unit: item.unit ?? null, value: item.val, start: item.start ?? null, end: item.end ?? null, accession: item.accn ?? accession, form: item.form ?? form, filed: item.filed ?? null, fiscalYear: item.fy ?? null, fiscalPeriod: item.fp ?? null, frame: item.frame ?? null };
   }
@@ -76,10 +95,7 @@ export function normalizeSecFilingPayloads(input: {
   accessedAt: string;
 }) {
   const symbol = ticker(input.symbol);
-  const tickerMap = input.tickerMap;
-  const match = Object.values(tickerMap).find((row: any) => String(row.ticker).toUpperCase() === symbol) as any;
-  if (!match?.cik_str) throw new Error("Ticker is not present in the SEC issuer index");
-  const cik = String(match.cik_str).padStart(10, "0");
+  const { cik } = resolveSecIssuer(symbol, input.tickerMap);
   const submissions = input.submissions;
   const recent = submissions.filings?.recent;
   if (!recent) throw new Error("SEC submissions index is unavailable");
@@ -121,16 +137,24 @@ export function normalizeSecFilingPayloads(input: {
 export async function retrieveSecFiling(actor: Actor, input: { ticker: string }) {
   const symbol = ticker(input.ticker);
   const tickerMap = await secJson("https://www.sec.gov/files/company_tickers.json", 5 * 1024 * 1024);
-  const match = Object.values(tickerMap).find((row: any) => String(row.ticker).toUpperCase() === symbol) as any;
-  if (!match?.cik_str) throw new Error("Ticker is not present in the SEC issuer index");
-  const cik = String(match.cik_str).padStart(10, "0");
+  let issuer;
+  try {
+    issuer = resolveSecIssuer(symbol, tickerMap);
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== "Ticker is not present in the SEC issuer index") throw error;
+    issuer = resolveSecIssuer(symbol, tickerMap, await secText("https://www.sec.gov/include/ticker.txt", 512 * 1024));
+  }
+  const cik = issuer.cik;
+  const normalizedTickerMap = Object.values(tickerMap).some((row: any) => String(row.ticker).toUpperCase() === symbol)
+    ? tickerMap
+    : { ...tickerMap, [`legacy-${symbol}`]: { ticker: symbol, cik_str: Number(cik), source: issuer.source } };
   const [submissions, facts] = await Promise.all([
     secJson(`https://data.sec.gov/submissions/CIK${cik}.json`, 4 * 1024 * 1024),
     secJson(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`, MAX_BYTES),
   ]);
   const extractionTimestamp = new Date();
   const normalized = normalizeSecFilingPayloads({
-    symbol, tickerMap, submissions, facts, accessedAt: extractionTimestamp.toISOString(),
+    symbol, tickerMap: normalizedTickerMap, submissions, facts, accessedAt: extractionTimestamp.toISOString(),
   });
   const [row] = await db.insert(secFilingSnapshots).values({
     householdId: actor.householdId, ticker: symbol, filingForm: normalized.content.filings.map((item) => item.form).join("+"),

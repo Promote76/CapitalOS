@@ -10,5 +10,5 @@ import type { SecFilingDraft } from './secFilingDraft';
 
 export interface SecFilingReviewResult {
   snapshot: SecFilingDraft;
-  evidence: SecFilingApprovedEvidence;
+  evidence: SecFilingApprovedEvidence | null;
 }

@@ -6668,12 +6668,47 @@ components:
     SecBankMetrics:
       type: object
       description: Exact SEC XBRL facts; unsupported fields are null and listed in missingFields.
+      required: [totalAssets, totalLiabilities, cashAndDueFromBanks, loansHeldForInvestment, commercialLoans, residentialRealEstateLoans, commercialRealEstateLoans, consumerLoans, agriculturalLoans, allowanceForCreditLosses, nonperformingLoans, nonperformingAssets, pastDueLoans, chargeOffs, recoveries, deposits, domesticDeposits, foreignDeposits, uninsuredDeposits, interestBearingDeposits, noninterestBearingDeposits, fundingCosts, netInterestMargin, rateSensitivity, interestIncome, netIncome, revenue, stockholdersEquity, bookValue, tangibleBookValue, commonEquityTier1Ratio, tier1CapitalRatio, totalRiskBasedCapitalRatio, leverageRatio, earningsPerShare, dividends, dividendPayout, depositRetention, earningsTrend]
       properties:
-        totalAssets: { $ref: "#/components/schemas/SecFact" }
-        totalLiabilities: { $ref: "#/components/schemas/SecFact" }
-        netIncome: { $ref: "#/components/schemas/SecFact" }
-        deposits: { $ref: "#/components/schemas/SecFact" }
-        stockholdersEquity: { $ref: "#/components/schemas/SecFact" }
+        totalAssets: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        totalLiabilities: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        cashAndDueFromBanks: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        loansHeldForInvestment: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        commercialLoans: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        residentialRealEstateLoans: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        commercialRealEstateLoans: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        consumerLoans: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        agriculturalLoans: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        allowanceForCreditLosses: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        nonperformingLoans: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        nonperformingAssets: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        pastDueLoans: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        chargeOffs: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        recoveries: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        deposits: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        domesticDeposits: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        foreignDeposits: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        uninsuredDeposits: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        interestBearingDeposits: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        noninterestBearingDeposits: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        fundingCosts: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        netInterestMargin: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        rateSensitivity: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        interestIncome: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        netIncome: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        revenue: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        stockholdersEquity: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        bookValue: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        tangibleBookValue: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        commonEquityTier1Ratio: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        tier1CapitalRatio: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        totalRiskBasedCapitalRatio: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        leverageRatio: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        earningsPerShare: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        dividends: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        dividendPayout: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        depositRetention: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
+        earningsTrend: { allOf: [{ $ref: "#/components/schemas/SecFact" }], nullable: true }
     SecFilingContent:
       type: object
       required: [ticker, metrics, filings, filingPriority]
@@ -6735,14 +6770,16 @@ components:
         id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
         ticker: { type: string }
         canonicalSha256: { type: string }
-        provenance: { type: string }
-        approvedAt: { type: string }
+        provenance: { $ref: "#/components/schemas/SecFilingProvenance" }
+        approvedAt: { type: string, format: date-time }
     SecFilingReviewResult:
       type: object
       required: [snapshot, evidence]
       properties:
         snapshot: { $ref: "#/components/schemas/SecFilingDraft" }
-        evidence: { $ref: "#/components/schemas/SecFilingApprovedEvidence" }
+        evidence:
+          allOf: [{ $ref: "#/components/schemas/SecFilingApprovedEvidence" }]
+          nullable: true
     CreateMarketSnapshotRequest:
       type: object
       required: [ticker, startDate, endDate]

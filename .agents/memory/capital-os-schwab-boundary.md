@@ -27,3 +27,17 @@ Reject any callback whose browser binding or lifecycle generation differs, and
 conditionally commit sync results only while the same live token generation is
 current. A shared callback path must not imply shared app authorization. Do not
 claim provider certification until real OAuth evidence exists.
+
+Live research certification must use an authenticated session from the
+published Clerk instance. A stored operator cookie that returns
+`AUTHENTICATION_REQUIRED`, or a published sign-in shell that cannot establish a
+session, is a pre-provider block—not Schwab evidence.
+
+**Why:** The API correctly stops before loading the household connection or
+making a provider request when production identity is unavailable. Treating
+that response as a provider result would falsely certify schemas, entitlements,
+freshness, or rate limits.
+
+**How to apply:** Record the route HTTP outcome and zero provider requests,
+keep all live research claims open, and rerun the three BKSC routes only after
+the approved production Clerk session is verified by `/api/auth/me`.

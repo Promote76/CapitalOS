@@ -95,20 +95,38 @@ test("separate Schwab Market Data app keeps OAuth, tokens, reads, and disconnect
     assert.equal(marketData.tradingEnabled, false);
     assert.equal((await request("/integrations/schwab/market-data?symbols=ABC,%24INVALID")).status, 400);
 
-    const researchCalls: string[] = [];
-    globalThis.fetch = (async (input) => {
+    const researchCalls: Array<{ url: string; method: string }> = [];
+    globalThis.fetch = (async (input, init) => {
       const url = String(input);
-      researchCalls.push(url);
+      researchCalls.push({ url, method: String(init?.method ?? "GET").toUpperCase() });
       if (url.includes("/marketdata/v1/instruments?symbol=BKSC&projection=fundamental")) {
         return new Response(JSON.stringify({ instruments: [{ symbol: "BKSC", assetType: "EQUITY", fundamental: { peRatio: 12.5 } }] }), {
-          headers: { "x-request-id": "instrument-safe-id" },
+          headers: {
+            "x-request-id": "instrument-safe-id",
+            "x-ratelimit-limit": "120",
+            "x-ratelimit-remaining": "119",
+            "x-ratelimit-reset": "2026-09-10T01:00:00Z",
+          },
         });
       }
       if (url.includes("/marketdata/v1/quotes?symbols=BKSC")) {
-        return new Response(JSON.stringify({ BKSC: { symbol: "BKSC", quote: { lastPrice: 31.5, isRealtime: true, quoteTime: Date.now() } } }));
+        return new Response(JSON.stringify({ BKSC: { symbol: "BKSC", quote: { lastPrice: 31.5, isRealtime: true, quoteTime: Date.now() } } }), {
+          headers: {
+            "x-request-id": "quote-safe-id",
+            "x-ratelimit-limit": "120",
+            "x-ratelimit-remaining": "118",
+            "retry-after": "0",
+          },
+        });
       }
       if (url.includes("/marketdata/v1/pricehistory?")) {
-        return new Response(JSON.stringify({ symbol: "BKSC", candles: [{ datetime: Date.now() - 86_400_000, close: 31 }] }));
+        return new Response(JSON.stringify({ symbol: "BKSC", candles: [{ datetime: Date.now() - 5 * 60_000, close: 31 }] }), {
+          headers: {
+            "x-request-id": "history-safe-id",
+            "x-ratelimit-limit": "120",
+            "x-ratelimit-remaining": "117",
+          },
+        });
       }
       return new Response("unexpected path", { status: 404 });
     }) as typeof fetch;
@@ -117,17 +135,36 @@ test("separate Schwab Market Data app keeps OAuth, tokens, reads, and disconnect
     const instrumentBody = await instrument.json() as Record<string, any>;
     assert.equal(instrumentBody.data.fundamental.peRatio, "12.5");
     assert.equal(instrumentBody.provenance.providerRequestId, "instrument-safe-id");
+    assert.equal(instrumentBody.rateLimit.limit, 120);
+    assert.equal(instrumentBody.rateLimit.remaining, 119);
+    assert.equal(instrumentBody.freshness, "UNKNOWN");
     assert.equal(instrumentBody.tradingEnabled, false);
     assert.equal(instrumentBody.executionAuthority, "none");
     const quote = await request("/research/schwab/quotes/BKSC");
     assert.equal(quote.status, 200);
-    assert.equal((await quote.json() as Record<string, any>).data.realtime, true);
+    const quoteBody = await quote.json() as Record<string, any>;
+    assert.equal(quoteBody.data.realtime, true);
+    assert.equal(quoteBody.realtime, true);
+    assert.equal(quoteBody.delayed, null);
+    assert.equal(quoteBody.freshness, "REALTIME");
+    assert.equal(quoteBody.provenance.providerRequestId, "quote-safe-id");
+    assert.equal(quoteBody.rateLimit.remaining, 118);
     const endDate = Date.now();
     const history = await request(`/research/schwab/price-history?symbol=BKSC&startDate=${endDate - 30 * 86_400_000}&endDate=${endDate}`);
     assert.equal(history.status, 200);
-    assert.equal((await history.json() as Record<string, any>).data.candles.length, 1);
+    const historyBody = await history.json() as Record<string, any>;
+    assert.equal(historyBody.data.candles.length, 1);
+    assert.equal(historyBody.provenance.providerRequestId, "history-safe-id");
+    assert.equal(historyBody.rateLimit.limit, 120);
+    assert.equal(historyBody.freshness, "CURRENT");
+    assert.deepEqual(researchCalls.map(({ url }) => new URL(url).pathname).sort(), [
+      "/marketdata/v1/instruments",
+      "/marketdata/v1/pricehistory",
+      "/marketdata/v1/quotes",
+    ]);
+    assert.ok(researchCalls.every(({ method }) => method === "GET"));
     assert.equal(researchCalls.length, 3);
-    assert.ok(researchCalls.every((url) => !/orders|transfers|micro-live|execution-control/.test(url)));
+    assert.ok(researchCalls.every(({ url }) => !/orders|transfers|micro-live|execution-control/.test(url)));
 
     const [otherUser] = await db.insert(users).values({ email: `schwab-market-other-${randomUUID()}@capitalos.test`, displayName: "Other household", status: "active" }).returning({ id: users.id });
     const [otherHousehold] = await db.insert(households).values({ name: `Other Market Data ${randomUUID()}` }).returning({ id: households.id });

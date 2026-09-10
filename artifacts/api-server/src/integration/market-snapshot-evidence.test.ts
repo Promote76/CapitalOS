@@ -2,8 +2,24 @@ import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import test from "node:test";
 import { and, eq } from "drizzle-orm";
-import { db, householdMembers, households, reviewedResearchEvidence, schwabMarketSnapshots, users } from "@workspace/db";
-import { listResearchDossiers, listSchwabMarketSnapshots, projectReviewedSnapshotForAgents, projectReviewedSnapshotPrefill, reviewSchwabMarketSnapshot } from "../services/research-dossier";
+import {
+  auditEvents,
+  db,
+  familyOfficeAnalystScorecards,
+  familyOfficeEvidence,
+  familyOfficeProposals,
+  familyOfficeRefreshes,
+  familyOfficeReports,
+  familyOfficeResearchDigestions,
+  familyOfficeRuns,
+  householdMembers,
+  households,
+  investmentResearchDossiers,
+  reviewedResearchEvidence,
+  schwabMarketSnapshots,
+  users,
+} from "@workspace/db";
+import { createInvestmentResearchDossier, listResearchDossiers, listSchwabMarketSnapshots, projectReviewedSnapshotForAgents, projectReviewedSnapshotPrefill, reviewSchwabMarketSnapshot } from "../services/research-dossier";
 import { assertPermission } from "../domain/governance";
 import { readFile } from "node:fs/promises";
 
@@ -164,4 +180,43 @@ test("approved snapshot evidence list never exposes another household", { skip: 
   assert.equal(ownDossierEvidence[0]!.extractionStatus, "complete");
   assert.equal(ownDossierEvidence[0]!.evidenceKind, "SCHWAB_MARKET_SNAPSHOT");
   assert.equal(ownDossierEvidence[0]!.dossierPrefill.ticker, "BKSC");
+});
+
+test("invalid dossier digestion stops before dossier or Research Chair side effects", { skip: !enabled }, async () => {
+  const f = await fixture();
+  await assert.rejects(
+    () => createInvestmentResearchDossier(f.a, {
+      ticker: "BKSC",
+      title: "BKSC Investment Research",
+      evidenceIds: [],
+      digestionPayload: "Company: Bank of South Carolina\nTicker: BKSC\nSources:\n- ",
+    }),
+    /Research digestion failed validation/,
+  );
+
+  const [
+    dossiers,
+    dossierAudits,
+    runs,
+    digestions,
+    chairEvidence,
+    proposals,
+    reports,
+    refreshes,
+    scorecards,
+  ] = await Promise.all([
+    db.select({ id: investmentResearchDossiers.id }).from(investmentResearchDossiers).where(eq(investmentResearchDossiers.householdId, f.a.householdId)),
+    db.select({ id: auditEvents.id }).from(auditEvents).where(and(eq(auditEvents.householdId, f.a.householdId), eq(auditEvents.eventType, "investment_research_dossier_created"))),
+    db.select({ id: familyOfficeRuns.id }).from(familyOfficeRuns).where(eq(familyOfficeRuns.householdId, f.a.householdId)),
+    db.select({ id: familyOfficeResearchDigestions.id }).from(familyOfficeResearchDigestions).where(eq(familyOfficeResearchDigestions.householdId, f.a.householdId)),
+    db.select({ id: familyOfficeEvidence.id }).from(familyOfficeEvidence).where(eq(familyOfficeEvidence.householdId, f.a.householdId)),
+    db.select({ id: familyOfficeProposals.id }).from(familyOfficeProposals).where(eq(familyOfficeProposals.householdId, f.a.householdId)),
+    db.select({ id: familyOfficeReports.id }).from(familyOfficeReports).where(eq(familyOfficeReports.householdId, f.a.householdId)),
+    db.select({ id: familyOfficeRefreshes.id }).from(familyOfficeRefreshes).where(eq(familyOfficeRefreshes.householdId, f.a.householdId)),
+    db.select({ id: familyOfficeAnalystScorecards.id }).from(familyOfficeAnalystScorecards).where(eq(familyOfficeAnalystScorecards.householdId, f.a.householdId)),
+  ]);
+  assert.deepEqual(
+    [dossiers, dossierAudits, runs, digestions, chairEvidence, proposals, reports, refreshes, scorecards].map((rows) => rows.length),
+    [0, 0, 0, 0, 0, 0, 0, 0, 0],
+  );
 });

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { ResearchDossierPrefill, ResearchEvidence } from "@workspace/api-client-react";
+import { parseResearchDigestion } from "../../api-server/src/domain/research-digestion";
 import {
   buildReviewedPrefillText,
   isDossierEligibleEvidence,
@@ -73,6 +74,15 @@ test("reviewed snapshot prefill is source-linked and valid without rewriting", (
   assert.match(text, /Bounded daily history/);
   assert.match(text, /Freshness: CURRENT/);
   assert.match(text, new RegExp(prefill.source.contentDigest));
+  const parsed = parseResearchDigestion(text);
+  assert.equal(parsed.success, true, parsed.success ? undefined : JSON.stringify(parsed.issues));
+  if (parsed.success) {
+    assert.equal(parsed.data.sources[0]?.title, prefill.source.title);
+    assert.ok(parsed.data.sourceClaims.some((claim) =>
+      claim.sourceId === "source-1"
+      && claim.statement.includes(prefill.source.contentDigest),
+    ));
+  }
   assert.equal(isResearchContentReady(text, "placeholder", true), true);
   assert.equal(isResearchContentReady("placeholder", "placeholder", false), false);
   assert.equal(isResearchContentReady("placeholder", "placeholder", true), true);

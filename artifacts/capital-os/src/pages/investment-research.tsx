@@ -44,7 +44,7 @@ export function buildReviewedPrefillText(
   const primary = prefills[0];
   const company = primary?.instrument.description ?? title;
   const sources = prefills.map((prefill, index) =>
-    `- [source-${index + 1}] ${prefill.source.title} · ${prefill.source.provider} · ${prefill.source.provenanceClass} · requested ${present(prefill.source.requestedAt)} · retrieved ${present(prefill.source.retrievedAt)} · reviewed ${prefill.source.reviewedAt} · digest ${prefill.source.contentDigest}`,
+    `- [source-${index + 1}] ${prefill.source.title}`,
   ).join("\n");
   const facts = prefills.flatMap((prefill, index) => {
     const source = `[source-${index + 1}]`;
@@ -61,6 +61,7 @@ export function buildReviewedPrefillText(
       ? prefill.warnings.qualityFlags.join(", ")
       : "none reported";
     return [
+      `- ${source} Provenance: provider ${prefill.source.provider}; class ${prefill.source.provenanceClass}; requested ${present(prefill.source.requestedAt)}; retrieved ${present(prefill.source.retrievedAt)}; reviewed ${prefill.source.reviewedAt}; content digest ${prefill.source.contentDigest}.`,
       `- ${source} Instrument identity: ${prefill.instrument.symbol}; ${present(prefill.instrument.description)}; asset type ${present(prefill.instrument.assetType)}; exchange ${present(prefill.instrument.exchange)}.`,
       `- ${source} Fundamentals${fundamental.asOf ? ` as of ${fundamental.asOf}` : ""}: market cap ${present(fundamental.marketCap)}; shares outstanding ${present(fundamental.sharesOutstanding)}; trailing EPS ${present(fundamental.epsTrailingTwelveMonths)}; P/E ${present(fundamental.peRatio)}; dividend amount ${present(fundamental.dividendAmount)}; dividend yield ${present(fundamental.dividendYield)}; dividend pay date ${present(fundamental.dividendPayDate)}; beta ${present(fundamental.beta)}; 52-week high ${present(fundamental.high52Week)}; 52-week low ${present(fundamental.low52Week)}.`,
       `- ${source} Current quote${quote.asOf ? ` as of ${quote.asOf}` : ""}: bid ${present(quote.bidPrice)}; ask ${present(quote.askPrice)}; last ${present(quote.lastPrice)}; mark ${present(quote.markPrice)}; open ${present(quote.openPrice)}; high ${present(quote.highPrice)}; low ${present(quote.lowPrice)}; close ${present(quote.closePrice)}; net change ${present(quote.netChange)}; net percent change ${present(quote.netPercentChange)}; volume ${present(quote.totalVolume)}.`,

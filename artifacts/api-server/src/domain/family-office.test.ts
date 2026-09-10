@@ -4,6 +4,7 @@ import { ProviderUnavailableError, researchResponseJsonSchema, safeProviderModel
 import {
   assertShadowOnlyDecision,
   familyOfficeProviderStatus,
+  researchEvidenceClassifications,
   researchOutputConstraints,
   reviewTaxLienCandidate,
   safeResearchPrompt,
@@ -101,9 +102,41 @@ test("provider-facing response bounds match the application parser", () => {
   assert.equal(evidence.items.properties.title.maxLength, researchOutputConstraints.evidenceTitleMaxLength);
   assert.equal(evidence.items.properties.excerpt.maxLength, researchOutputConstraints.evidenceExcerptMaxLength);
   assert.equal(evidence.items.properties.classification.maxLength, researchOutputConstraints.evidenceClassificationMaxLength);
+  assert.deepEqual(evidence.items.properties.classification.enum, researchEvidenceClassifications);
   assert.equal(evidence.items.properties.freshness.maxLength, researchOutputConstraints.evidenceFreshnessMaxLength);
   assert.equal(evidence.items.properties.sourceUrl.maxLength, researchOutputConstraints.evidenceSourceUrlMaxLength);
   assert.equal(evidence.items.properties.sourceUrl.format, "uri");
+});
+
+test("all three analyst roles receive the same fixed evidence classification contract", async () => {
+  const bodies: unknown[] = [];
+  const valid = {
+    title: "Research",
+    thesis: "Advisory analysis",
+    label: "RESEARCH_ONLY",
+    analyticalDirection: "NEUTRAL",
+    confidence: 50,
+    facts: [],
+    assumptions: [],
+    risks: [],
+    evidence: [],
+  };
+  const provider = new XaiIntelligenceProvider({
+    GROK_INTELLIGENCE_ENABLED: "true",
+    XAI_ENABLED: "true",
+    XAI_API_KEY: "server-only",
+  }, async (_input, init) => {
+    bodies.push(JSON.parse(String(init?.body)));
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(valid) } }] }), { status: 200 });
+  });
+  for (const analyst of ["fundamentals-valuation", "risk-downside", "portfolio-cio"]) {
+    await provider.research({ analyst, scope: "investment", prompt: "test" });
+  }
+  assert.equal(bodies.length, 3);
+  for (const body of bodies as Array<{ response_format: { json_schema: { schema: typeof researchResponseJsonSchema } }; messages: Array<{ content: string }> }>) {
+    assert.deepEqual(body.response_format.json_schema.schema.properties.evidence.items.properties.classification.enum, researchEvidenceClassifications);
+    assert.ok(researchEvidenceClassifications.every((classification) => body.messages[0]!.content.includes(classification)));
+  }
 });
 
 test("provider classifies rate limits and invalid structured output without exposing payloads", async () => {
@@ -129,6 +162,37 @@ test("provider classifies rate limits and invalid structured output without expo
       && error.diagnostic.path === "$.title"
       && error.diagnostic.code === "required"
       && !JSON.stringify(error.diagnostic).includes("{}"),
+  );
+  const invalidClassification = new XaiIntelligenceProvider(env, async () => new Response(JSON.stringify({
+    choices: [{ message: { content: JSON.stringify({
+      title: "Research",
+      thesis: "Advisory analysis",
+      label: "RESEARCH_ONLY",
+      analyticalDirection: "NEUTRAL",
+      confidence: 50,
+      facts: [],
+      assumptions: [],
+      risks: [],
+      evidence: [{
+        title: "Evidence",
+        sourceKind: "GROK_INFERENCE",
+        excerpt: "Bounded excerpt",
+        classification: "a verbose classification not in the approved taxonomy",
+        freshness: "current",
+        confidence: 50,
+      }],
+    }) } }],
+  }), { status: 200 }));
+  await assert.rejects(
+    invalidClassification.research({ analyst: "fundamentals-valuation", scope: "research", prompt: "test" }),
+    (error: unknown) => error instanceof ProviderUnavailableError
+      && error.code === "AI_PROVIDER_INVALID_RESPONSE"
+      && error.diagnostic?.analyst === "fundamentals-valuation"
+      && error.diagnostic.stage === "schema_mismatch"
+      && error.diagnostic.path === "$.evidence[0].classification"
+      && error.diagnostic.code === "invalid_enum"
+      && error.diagnostic.expected?.includes("source_fact") === true
+      && !JSON.stringify(error.diagnostic).includes("verbose"),
   );
 });
 

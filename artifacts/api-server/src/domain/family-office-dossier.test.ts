@@ -39,7 +39,7 @@ function output(direction: ResearchOutput["analyticalDirection"], label: Researc
       title: "Permitted user evidence",
       sourceKind: "SIMPLY_WALL_ST_PERMITTED_EVIDENCE",
       excerpt: "User-provided excerpt",
-      classification: "user_permitted",
+      classification: "reviewed_evidence",
       freshness: "current",
       confidence: 80,
     }],
@@ -62,7 +62,7 @@ test("Simply Wall St evidence requires explicit permission and keeps source cate
   const parsed = researchOutputSchema.safeParse(output("BULLISH", "WATCH"));
   assert.equal(parsed.success, true);
   assert.equal(researchOutputSchema.safeParse({ ...output("BULLISH", "WATCH"), evidence: [{ ...output("BULLISH", "WATCH").evidence[0], sourceKind: "SCHWAB_MARKET_OBSERVATION" }] }).success, true);
-  assert.equal(researchOutputSchema.safeParse({ ...output("BULLISH", "WATCH"), evidence: [{ ...output("BULLISH", "WATCH").evidence[0], sourceKind: "SIMPLY_WALL_ST_PERMITTED_EVIDENCE", classification: "GROK_INFERENCE" }] }).success, true);
+  assert.equal(researchOutputSchema.safeParse({ ...output("BULLISH", "WATCH"), evidence: [{ ...output("BULLISH", "WATCH").evidence[0], sourceKind: "SIMPLY_WALL_ST_PERMITTED_EVIDENCE", classification: "analyst_inference" }] }).success, true);
 });
 
 test("research response diagnostics identify bounded fields without retaining rejected values", () => {
@@ -76,6 +76,7 @@ test("research response diagnostics identify bounded fields without retaining re
     [{ ...base, evidence: [{ ...base.evidence[0], title: "x".repeat(181) }] }, "$.evidence[0].title", "max_length"],
     [{ ...base, evidence: [{ ...base.evidence[0], excerpt: "x".repeat(1501) }] }, "$.evidence[0].excerpt", "max_length"],
     [{ ...base, evidence: [{ ...base.evidence[0], classification: "x".repeat(81) }] }, "$.evidence[0].classification", "max_length"],
+    [{ ...base, evidence: [{ ...base.evidence[0], classification: "unsupported_label" }] }, "$.evidence[0].classification", "invalid_enum"],
     [{ ...base, evidence: [{ ...base.evidence[0], freshness: "x".repeat(81) }] }, "$.evidence[0].freshness", "max_length"],
     [{ ...base, evidence: [{ ...base.evidence[0], sourceUrl: "not a url" }] }, "$.evidence[0].sourceUrl", "invalid_url"],
   ];

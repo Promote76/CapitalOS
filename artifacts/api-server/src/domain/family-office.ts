@@ -385,6 +385,14 @@ export const researchOutputConstraints = {
   evidenceSourceUrlMaxLength: 2000,
 } as const;
 
+export const researchEvidenceClassifications = [
+  "source_fact",
+  "analyst_inference",
+  "unverified_claim",
+  "reviewed_evidence",
+  "provider_observation",
+] as const;
+
 function invalid(path: string, code: ResearchOutputValidationIssue["code"], expected: string) {
   return { success: false as const, issues: [{ path, code, expected }] };
 }
@@ -461,6 +469,9 @@ function parseResearchOutput(value: unknown): { success: true; data: ResearchOut
     if (typeof item.classification !== "string") return invalid(`$.evidence[${index}].classification`, item.classification === undefined ? "required" : "invalid_type", "string");
     const classification = boundedString(item.classification, researchOutputConstraints.evidenceClassificationMaxLength);
     if (!classification) return invalid(`$.evidence[${index}].classification`, "max_length", `non-empty string up to ${researchOutputConstraints.evidenceClassificationMaxLength} characters`);
+    if (!researchEvidenceClassifications.includes(classification as (typeof researchEvidenceClassifications)[number])) {
+      return invalid(`$.evidence[${index}].classification`, "invalid_enum", `one of ${researchEvidenceClassifications.join(", ")}`);
+    }
     if (typeof item.freshness !== "string") return invalid(`$.evidence[${index}].freshness`, item.freshness === undefined ? "required" : "invalid_type", "string");
     const freshness = boundedString(item.freshness, researchOutputConstraints.evidenceFreshnessMaxLength);
     if (!freshness) return invalid(`$.evidence[${index}].freshness`, "max_length", `non-empty string up to ${researchOutputConstraints.evidenceFreshnessMaxLength} characters`);

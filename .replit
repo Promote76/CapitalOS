@@ -61,3 +61,15 @@ CAPITAL_OS_TRUSTED_PROXY = "loopback,linklocal,uniquelocal"
 
 [userenv.development]
 CAPITAL_OS_ALLOWED_ORIGIN = "https://a275880a-7e86-4ab1-a13b-802e51c9d9ab-00-10p8dc0vsi6ft.spock.replit.dev"
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
+localPort = 25659
+externalPort = 80

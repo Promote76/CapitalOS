@@ -2,9 +2,9 @@
   "schemaVersion": 2,
   "generatedBy": "scripts/generate-production-readiness-manifest.mjs",
   "build": {
-    "id": "a4d107b3b33a1115a828ddd2ac3e0f086caa5106:54507c4219ebed1c",
-    "baseCommit": "a4d107b3b33a1115a828ddd2ac3e0f086caa5106",
-    "inputSha256": "54507c4219ebed1c4e26f30190b5a42cd357c00b49271fe7c1b6ee1b39f47f6b",
+    "id": "eacdea90df605be9509829bb4ea88c08e0896c14:42d63c1a3d10cfda",
+    "baseCommit": "eacdea90df605be9509829bb4ea88c08e0896c14",
+    "inputSha256": "42d63c1a3d10cfdab4a3fa2c90b3339a878c169e24b086604a27b3de9d200e8a",
     "inputCount": 1085,
     "inputs": [
       "artifacts/api-server/.replit-artifact/artifact.toml",

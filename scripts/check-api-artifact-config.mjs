@@ -26,8 +26,8 @@ assert.match(
 );
 assert.match(
   config,
-  /\[services\.production\.health\.startup\]\s+path = "\/api\/health\/ready"/m,
-  "Artifact startup health must use the fail-closed readiness endpoint.",
+  /\[services\.production\.health\.startup\]\s+path = "\/api\/health\/live"/m,
+  "Artifact startup health must use process liveness; operational readiness remains a separate fail-closed endpoint.",
 );
 assert.doesNotMatch(
   config,

@@ -12,6 +12,6 @@ Root workspace flags can appear correct in development while never reaching the
 deployed API runtime.
 
 **How to apply:** Put required worker and scheduler flags under the artifact's
-production run environment, keep the startup check on the fail-closed readiness
-endpoint, and validate the artifact manifest as part of the production build
-gate.
+production run environment. Use process liveness for the deployment startup
+probe, keep operational readiness as a separate fail-closed endpoint, and
+validate both expectations as part of the production build gate.

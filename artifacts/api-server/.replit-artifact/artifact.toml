@@ -31,4 +31,4 @@ OPERATIONS_WORKER_ENABLED = "1"
 OPERATIONS_SCHEDULER_ENABLED = "1"
 
 [services.production.health.startup]
-path = "/api/health/ready"
+path = "/api/health/live"

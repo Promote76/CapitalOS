@@ -3666,6 +3666,37 @@ paths:
         "429": { description: Schwab research rate limit reached, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
         "502": { description: Invalid Schwab provider response, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
         "503": { description: Schwab research provider unavailable, content: { application/json: { schema: { $ref: "#/components/schemas/ErrorResponse" } } } }
+  /research/schwab/market-snapshots:
+    get:
+      operationId: listMarketSnapshots
+      tags: [schwab, research-dossier]
+      summary: List household-scoped market snapshot drafts and approved evidence
+      responses:
+        "200": { description: Snapshot drafts and immutable reviewed evidence, content: { application/json: { schema: { $ref: "#/components/schemas/MarketSnapshotListResponse" } } } }
+    post:
+      operationId: createMarketSnapshot
+      tags: [schwab, research-dossier]
+      summary: Retrieve and persist a normalized Schwab market snapshot draft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateMarketSnapshotRequest" }
+      responses:
+        "201": { description: Snapshot pending human review, content: { application/json: { schema: { $ref: "#/components/schemas/MarketSnapshot" } } } }
+  /research/schwab/market-snapshots/{snapshotId}/review:
+    post:
+      operationId: reviewMarketSnapshot
+      tags: [schwab, research-dossier]
+      parameters:
+        - { name: snapshotId, in: path, required: true, schema: { type: string, pattern: "^[0-9a-fA-F-]{36}$" } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReviewMarketSnapshotRequest" }
+      responses:
+        "200": { description: Immutable human disposition, content: { application/json: { schema: { $ref: "#/components/schemas/MarketSnapshotReviewResult" } } } }
   /research/schwab/certification:
     get:
       operationId: getSchwabResearchCertification
@@ -6575,6 +6606,115 @@ components:
       required: [status]
       properties:
         status: { type: string, enum: [REVIEWED, REJECTED] }
+    CreateMarketSnapshotRequest:
+      type: object
+      required: [ticker, startDate, endDate]
+      properties:
+        ticker: { type: string, maxLength: 15, default: BKSC }
+        startDate: { type: string, pattern: "^[0-9]+$" }
+        endDate: { type: string, pattern: "^[0-9]+$" }
+    ReviewMarketSnapshotRequest:
+      type: object
+      required: [disposition]
+      properties:
+        disposition: { type: string, enum: [APPROVE, REJECT] }
+        reason: { type: string, maxLength: 1000 }
+    MarketSnapshot:
+      type: object
+      required: [id, householdId, ticker, content, provenance, requestedAt, retrievedAt, providerAsOf, marketDate, realtime, delayed, freshness, missingFlags, qualityFlags, reviewStatus, reviewedBy, reviewedAt, reviewReason, createdAt, advisoryOnly, nonAuthoritative, readOnly, tradingEnabled, executionAuthority, noTradingOrMoneyMovement]
+      properties:
+        id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        householdId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        ticker: { type: string }
+        content: { $ref: "#/components/schemas/MarketSnapshotCanonicalContent" }
+        provenance: { $ref: "#/components/schemas/MarketSnapshotProvenance" }
+        requestedAt: { type: string, format: date-time }
+        retrievedAt: { type: string, format: date-time }
+        providerAsOf: { type: string, format: date-time, nullable: true }
+        marketDate: { type: string, nullable: true }
+        realtime: { type: boolean, nullable: true }
+        delayed: { type: boolean, nullable: true }
+        freshness: { type: string }
+        missingFlags: { type: array, items: { type: string } }
+        qualityFlags: { type: array, items: { type: string } }
+        reviewStatus: { type: string, enum: [PENDING_HUMAN_REVIEW, APPROVED, REJECTED] }
+        reviewedBy: { type: string, nullable: true }
+        reviewedAt: { type: string, format: date-time, nullable: true }
+        reviewReason: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        advisoryOnly: { type: boolean, const: true }
+        readOnly: { type: boolean, const: true }
+        tradingEnabled: { type: boolean, const: false }
+        executionAuthority: { type: string, const: none }
+        noTradingOrMoneyMovement: { type: boolean, const: true }
+        nonAuthoritative: { type: boolean, const: true }
+    MarketSnapshotCanonicalContent:
+      type: object
+      required: [ticker, capabilities, readOnly, tradingEnabled, executionAuthority, noTradingOrMoneyMovement]
+      properties:
+        ticker: { type: string }
+        capabilities: { type: array, items: { $ref: "#/components/schemas/MarketSnapshotCapability" } }
+        instrument: { type: object, additionalProperties: true }
+        quote: { type: object, additionalProperties: true }
+        dailyHistory: { type: object, additionalProperties: true }
+        readOnly: { type: boolean, const: true }
+        tradingEnabled: { type: boolean, const: false }
+        executionAuthority: { type: string, const: none }
+        noTradingOrMoneyMovement: { type: boolean, const: true }
+    MarketSnapshotCapability:
+      type: object
+      required: [capability, data, requestedAt, receivedAt, freshness, realtime, delayed, providerRequestId, rateLimit, payloadSha256]
+      properties:
+        capability: { type: string, enum: [INSTRUMENT_FUNDAMENTAL, CURRENT_QUOTE, DAILY_PRICE_HISTORY] }
+        data: { type: object, additionalProperties: true }
+        requestedAt: { type: string, format: date-time }
+        receivedAt: { type: string, format: date-time }
+        providerAsOf: { type: string, format: date-time, nullable: true }
+        freshness: { type: string, enum: [CURRENT, AGING, STALE, DELAYED, REALTIME, UNKNOWN] }
+        realtime: { type: boolean, nullable: true }
+        delayed: { type: boolean, nullable: true }
+        providerRequestId: { type: string, nullable: true }
+        rateLimit: { $ref: "#/components/schemas/SchwabSafeRateLimit" }
+        payloadSha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+    SchwabSafeRateLimit:
+      type: object
+      required: [limit, remaining, resetAt, retryAfterSeconds]
+      properties:
+        limit: { type: number, nullable: true }
+        remaining: { type: number, nullable: true }
+        resetAt: { type: string, nullable: true }
+        retryAfterSeconds: { type: number, nullable: true }
+    MarketSnapshotProvenance:
+      type: object
+      required: [provider, providerProduct, capabilities, retrievedAt, requests]
+      properties:
+        provider: { type: string, const: schwab }
+        providerProduct: { type: string, const: MARKET_DATA_PRODUCTION }
+        capabilities: { type: array, items: { type: string } }
+        retrievedAt: { type: string, format: date-time }
+        requests: { type: array, items: { $ref: "#/components/schemas/MarketSnapshotProvenanceRequest" } }
+    MarketSnapshotProvenanceRequest:
+      type: object
+      required: [capability, endpoint, requestedAt, providerRequestId, payloadSha256]
+      properties:
+        capability: { type: string }
+        endpoint: { type: string }
+        requestedAt: { type: string, format: date-time }
+        providerRequestId: { type: string, nullable: true }
+        payloadSha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+    MarketSnapshotListResponse:
+      type: object
+      required: [snapshots, evidence]
+      properties:
+        snapshots: { type: array, items: { $ref: "#/components/schemas/MarketSnapshot" } }
+        evidence: { type: array, items: { type: object, additionalProperties: true } }
+    MarketSnapshotReviewResult:
+      type: object
+      required: [snapshot, evidence, advisoryOnly]
+      properties:
+        snapshot: { $ref: "#/components/schemas/MarketSnapshot" }
+        evidence: { type: object, nullable: true, additionalProperties: true }
+        advisoryOnly: { type: boolean, const: true }
     ResearchEvidence:
       type: object
       required: [id, householdId, title, provenanceClass, reviewStatus, mimeType, objectPath, byteLength, sha256, extractionStatus, advisoryOnly]

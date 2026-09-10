@@ -29,6 +29,56 @@ export const researchEvidence = pgTable("research_evidence", {
   byteLengthCheck: check("research_evidence_byte_length_check", sql`${table.byteLength} > 0 and ${table.byteLength} <= 10485760`),
 }));
 
+/** Provider-normalized market snapshot draft. Raw Schwab responses are never stored. */
+export const schwabMarketSnapshots = pgTable("schwab_market_snapshots", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+  ticker: text("ticker").notNull(),
+  content: jsonb("content").$type<Record<string, unknown>>().notNull(),
+  provenance: jsonb("provenance").$type<Record<string, unknown>>().notNull(),
+  requestedAt: timestamp("requested_at", { withTimezone: true }).notNull(),
+  retrievedAt: timestamp("retrieved_at", { withTimezone: true }).notNull(),
+  providerAsOf: timestamp("provider_as_of", { withTimezone: true }),
+  marketDate: text("market_date"),
+  realtime: boolean("realtime"),
+  delayed: boolean("delayed"),
+  freshness: text("freshness").notNull(),
+  missingFlags: jsonb("missing_flags").$type<string[]>().notNull().default([]),
+  qualityFlags: jsonb("quality_flags").$type<string[]>().notNull().default([]),
+  reviewStatus: text("review_status").notNull().default("PENDING_HUMAN_REVIEW"),
+  createdBy: uuid("created_by").notNull().references(() => users.id),
+  reviewedBy: uuid("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  reviewReason: text("review_reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  householdIdx: index("schwab_market_snapshots_household_created_idx").on(table.householdId, table.createdAt),
+  reviewCheck: check("schwab_market_snapshots_review_check", sql`${table.reviewStatus} in ('PENDING_HUMAN_REVIEW','APPROVED','REJECTED')`),
+}));
+
+/** Immutable canonical evidence emitted only by an APPROVE disposition. */
+export const reviewedResearchEvidence = pgTable("reviewed_research_evidence", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
+  snapshotId: uuid("snapshot_id").notNull().references(() => schwabMarketSnapshots.id),
+  ticker: text("ticker").notNull(),
+  canonicalContent: jsonb("canonical_content").$type<Record<string, unknown>>().notNull(),
+  canonicalSha256: text("canonical_sha256").notNull(),
+  provenance: jsonb("provenance").$type<Record<string, unknown>>().notNull(),
+  readOnly: boolean("read_only").notNull().default(true),
+  tradingEnabled: boolean("trading_enabled").notNull().default(false),
+  executionAuthority: text("execution_authority").notNull().default("none"),
+  nonAuthoritative: boolean("non_authoritative").notNull().default(false),
+  approvedBy: uuid("approved_by").notNull().references(() => users.id),
+  approvedAt: timestamp("approved_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  snapshotUnique: uniqueIndex("reviewed_research_evidence_snapshot_unique").on(table.snapshotId),
+  digestUnique: uniqueIndex("reviewed_research_evidence_household_digest_unique").on(table.householdId, table.canonicalSha256),
+  householdIdx: index("reviewed_research_evidence_household_created_idx").on(table.householdId, table.createdAt),
+  authorityCheck: check("reviewed_research_evidence_authority_check", sql`${table.readOnly} = true and ${table.tradingEnabled} = false and ${table.executionAuthority} = 'none' and ${table.nonAuthoritative} = false`),
+}));
+
 export const investmentResearchDossiers = pgTable("investment_research_dossiers", {
   id: uuid("id").defaultRandom().primaryKey(),
   householdId: uuid("household_id").notNull().references(() => households.id, { onDelete: "cascade" }),
@@ -49,4 +99,6 @@ export const investmentResearchDossiers = pgTable("investment_research_dossiers"
 }));
 
 export type ResearchEvidence = typeof researchEvidence.$inferSelect;
+export type SchwabMarketSnapshot = typeof schwabMarketSnapshots.$inferSelect;
+export type ReviewedResearchEvidence = typeof reviewedResearchEvidence.$inferSelect;
 export type InvestmentResearchDossier = typeof investmentResearchDossiers.$inferSelect;

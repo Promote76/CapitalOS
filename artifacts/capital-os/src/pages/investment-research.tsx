@@ -10,10 +10,14 @@ import {
   useRefreshSchwabMarketDataConnection,
   getGetSchwabResearchCertificationQueryKey,
   getListResearchDossiersQueryKey,
+  useListMarketSnapshots,
+  useCreateMarketSnapshot,
+  useReviewMarketSnapshot,
+  getListMarketSnapshotsQueryKey,
   type ResearchEvidence,
   type SchwabResearchCertification,
 } from "@workspace/api-client-react";
-import { AlertCircle, FilePlus2, X, FileText, CheckCircle2, FlaskConical, Clock, Beaker, FileSearch } from "lucide-react";
+import { AlertCircle, AlertTriangle, FilePlus2, X, FileText, CheckCircle2, FlaskConical, Clock, Beaker, FileSearch, Database, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useProviderProtectedAction } from "@/lib/reverification";
 import { useQueryClient } from "@tanstack/react-query";
@@ -100,12 +104,60 @@ export default function InvestmentResearchPage() {
   const runCertification = useRunSchwabResearchCertification();
   const marketDataRefresh = useRefreshSchwabMarketDataConnection();
   const protectedMarketDataRefresh = useProviderProtectedAction(() => marketDataRefresh.mutateAsync());
-  
+
   const requestUpload = useRequestResearchEvidenceUpload();
   const registerEvidence = useRegisterResearchEvidence();
   const reviewEvidence = useReviewResearchEvidence();
   const createDossier = useCreateResearchDossier();
   
+  const marketSnapshotsQuery = useListMarketSnapshots();
+  const createSnapshot = useCreateMarketSnapshot();
+  const reviewSnapshot = useReviewMarketSnapshot();
+
+  const [snapshotTicker, setSnapshotTicker] = useState("");
+  const [snapshotReasons, setSnapshotReasons] = useState<Record<string, string>>({});
+
+  const handleSnapshotReasonChange = (id: string, val: string) => setSnapshotReasons(p => ({...p, [id]: val}));
+
+  const handleCreateSnapshot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!snapshotTicker.toUpperCase().startsWith("BKSC")) {
+      toast({ title: "Invalid ticker", description: "Only BKSC and its variations are allowed for this test.", variant: "destructive" });
+      return;
+    }
+    try {
+      const endDate = Date.now();
+      const startDate = endDate - 30 * 24 * 60 * 60 * 1000;
+      await createSnapshot.mutateAsync({
+        data: {
+          ticker: snapshotTicker.toUpperCase(),
+          startDate: String(startDate),
+          endDate: String(endDate),
+        }
+      });
+      toast({ title: "Draft collected", description: "Market Snapshot created and pending review." });
+      setSnapshotTicker("");
+      void marketSnapshotsQuery.refetch();
+    } catch (e) {
+      toast({ title: "Snapshot failed", description: e instanceof Error ? e.message : "Failed to create snapshot.", variant: "destructive" });
+    }
+  };
+
+  const handleReviewSnapshot = async (snapshotId: string, disposition: "APPROVE" | "REJECT") => {
+    try {
+      await reviewSnapshot.mutateAsync({
+        snapshotId,
+        data: { disposition, reason: snapshotReasons[snapshotId] || undefined }
+      });
+      toast({ title: "Snapshot reviewed", description: `Market Snapshot was ${disposition.toLowerCase()}d.` });
+      setSnapshotReasons(p => { const next = {...p}; delete next[snapshotId]; return next; });
+      await queryClient.invalidateQueries({ queryKey: getListMarketSnapshotsQueryKey() });
+      await queryClient.invalidateQueries({ queryKey: getListResearchDossiersQueryKey() });
+    } catch (e) {
+       toast({ title: "Review failed", description: e instanceof Error ? e.message : "Failed to review snapshot.", variant: "destructive" });
+    }
+  };
+
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProvenance, setUploadProvenance] = useState<"UPLOADED_LICENSED_RESEARCH" | "PRIMARY_SOURCE">("PRIMARY_SOURCE");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -367,6 +419,139 @@ Research Notes:
                 <span>readOnly=true · tradingEnabled=false · executionAuthority=none</span>
               </div>
             </div>
+          </div>
+        )}
+      </section>
+
+      <section className="card card-pad animate-in delay-2 mt-8" data-testid="market-snapshots">
+        <CardTitle title="Market Snapshots" subtitle="Inspect and collect primary provider data before digesting" />
+
+        <form onSubmit={handleCreateSnapshot} className="flex flex-col sm:flex-row gap-4 mt-5 items-end">
+          <div className="field flex-1" style={{ maxWidth: 320 }}>
+            <label>Ticker (e.g. BKSC)</label>
+            <input type="text" className="input uppercase" value={snapshotTicker} onChange={e => setSnapshotTicker(e.target.value.toUpperCase())} placeholder="BKSC" required />
+          </div>
+          <button className="btn btn-primary h-[38px]" type="submit" disabled={createSnapshot.isPending}>
+            <Activity size={16} /> {createSnapshot.isPending ? "Collecting..." : "Collect Draft"}
+          </button>
+        </form>
+
+        {marketSnapshotsQuery.isLoading && <div className="loading-skeleton mt-6" style={{ height: 120 }} />}
+
+        {!marketSnapshotsQuery.isLoading && marketSnapshotsQuery.data?.snapshots.length === 0 && (
+          <div className="empty-state mt-6" style={{ padding: '2rem 1rem' }}>
+            <Database size={19} />
+            <strong className="block">No snapshot drafts</strong>
+            <span className="block mt-1">Collect a snapshot to review primary market data.</span>
+          </div>
+        )}
+
+        {marketSnapshotsQuery.data && marketSnapshotsQuery.data.snapshots.length > 0 && (
+          <div className="flex flex-col gap-6 mt-6">
+            {marketSnapshotsQuery.data.snapshots.map(snapshot => (
+              <article key={snapshot.id} className="document-boundary flex-col items-stretch" style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8, padding: '16px', margin: 0 }}>
+                <div className="flex justify-between items-start mb-3">
+                   <div>
+                      <strong className="text-sm">Market Snapshot: {snapshot.ticker}</strong>
+                      <span className="text-xs text-[var(--ink-light)] block mt-1">Requested: {new Date(snapshot.requestedAt).toLocaleString()}</span>
+                   </div>
+                   <span className={`status ${snapshot.reviewStatus === 'PENDING_HUMAN_REVIEW' ? 'pending' : snapshot.reviewStatus === 'APPROVED' ? 'text-green-500 bg-green-500/10' : 'text-red-500 bg-red-500/10'}`}>
+                      {snapshot.reviewStatus.replaceAll("_", " ")} {snapshot.nonAuthoritative ? "(Non-Authoritative)" : ""}
+                   </span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs mb-4">
+                   <div><span className="text-[var(--ink-light)] block mb-1">Market Date</span><strong className="font-mono">{snapshot.marketDate ?? "Unknown"}</strong></div>
+                   <div><span className="text-[var(--ink-light)] block mb-1">Freshness</span><strong>{snapshot.freshness}</strong></div>
+                   <div><span className="text-[var(--ink-light)] block mb-1">Provider As Of</span><strong>{snapshot.providerAsOf ? new Date(snapshot.providerAsOf).toLocaleString() : "Unknown"}</strong></div>
+                   <div><span className="text-[var(--ink-light)] block mb-1">Capabilities</span><strong>{snapshot.content.capabilities.length} included</strong></div>
+                </div>
+
+                {(snapshot.qualityFlags.length > 0 || snapshot.missingFlags.length > 0) && (
+                  <div className="document-boundary mb-4" style={{ marginBottom: 16 }}>
+                    <AlertTriangle size={16} />
+                    <div>
+                      <strong>Data quality requires review</strong>
+                      {snapshot.qualityFlags.length > 0 && (
+                        <span>Quality: {snapshot.qualityFlags.join(" · ")}</span>
+                      )}
+                      {snapshot.missingFlags.length > 0 && (
+                        <span>Null or missing: {snapshot.missingFlags.join(" · ")}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-3 mb-4">
+                   {snapshot.content.capabilities.map(cap => (
+                     <div key={cap.capability} className="p-3 border rounded bg-white/50 text-xs">
+                       <div className="flex justify-between items-center mb-2">
+                         <strong>{certificationCapabilityLabel(cap.capability)}</strong>
+                         <span className="status">{cap.freshness}</span>
+                       </div>
+                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[var(--ink-light)]">
+                         <span>Req ID: <span className="font-mono text-black">{cap.providerRequestId || "N/A"}</span></span>
+                         <span>Realtime: {cap.realtime ? "Yes" : cap.realtime === false ? "No" : "—"}</span>
+                         <span>Delayed: {cap.delayed ? "Yes" : cap.delayed === false ? "No" : "—"}</span>
+                         <span className="truncate" title={cap.payloadSha256}>Digest: {cap.payloadSha256.substring(0, 8)}...</span>
+                       </div>
+                     </div>
+                   ))}
+                </div>
+
+                {(snapshot.content.instrument || snapshot.content.quote || snapshot.content.dailyHistory) && (
+                  <div className="mb-4">
+                    <details className="text-xs group">
+                      <summary className="cursor-pointer font-medium text-[var(--ink)] mb-2 select-none">Inspect Content Digest Observations</summary>
+                      <div className="p-3 rounded bg-black/5 overflow-x-auto max-h-[300px]">
+                        <pre className="font-mono text-[10px]">
+                          {JSON.stringify({
+                            instrument: snapshot.content.instrument,
+                            quote: snapshot.content.quote,
+                            dailyHistory: snapshot.content.dailyHistory
+                          }, null, 2)}
+                        </pre>
+                      </div>
+                    </details>
+                  </div>
+                )}
+
+                <div className="mb-4">
+                  <details className="text-xs group">
+                    <summary className="cursor-pointer font-medium text-[var(--ink)] mb-2 select-none">Inspect Provider Provenance</summary>
+                    <div className="p-3 rounded bg-black/5 overflow-x-auto max-h-[300px]">
+                      <pre className="font-mono text-[10px]">
+                        {JSON.stringify(snapshot.provenance, null, 2)}
+                      </pre>
+                    </div>
+                  </details>
+                </div>
+
+                {snapshot.reviewStatus === "PENDING_HUMAN_REVIEW" && (
+                   <div className="mt-4 pt-4 border-t border-[var(--line)] flex flex-col sm:flex-row items-center gap-3">
+                     <input type="text" className="input text-sm flex-1" placeholder="Optional reason for approval/rejection..." value={snapshotReasons[snapshot.id] || ""} onChange={e => handleSnapshotReasonChange(snapshot.id, e.target.value)} />
+                     <div className="flex gap-2 w-full sm:w-auto">
+                       <button className="btn flex-1 sm:flex-none justify-center h-[36px]" style={{ background: '#edf4ee', color: '#2e594f', borderColor: '#cfddd1' }} onClick={() => handleReviewSnapshot(snapshot.id, "APPROVE")} disabled={reviewSnapshot.isPending}>Approve</button>
+                       <button className="btn flex-1 sm:flex-none justify-center h-[36px]" style={{ background: '#fbebe9', color: '#a43a2e', borderColor: '#e4c2be' }} onClick={() => handleReviewSnapshot(snapshot.id, "REJECT")} disabled={reviewSnapshot.isPending}>Reject</button>
+                     </div>
+                   </div>
+                )}
+
+                {snapshot.reviewStatus !== "PENDING_HUMAN_REVIEW" && (
+                  <div className="text-xs text-[var(--ink-light)] mt-2">
+                    Reviewed {snapshot.reviewedAt ? new Date(snapshot.reviewedAt).toLocaleString() : "at an unknown time"}
+                    {snapshot.reviewReason ? ` · ${snapshot.reviewReason}` : ""}
+                  </div>
+                )}
+
+                <div className="mt-4 pt-3 flex flex-wrap gap-4 text-[10px] text-[var(--ink-light)] uppercase tracking-wider border-t border-dashed border-[var(--line)]">
+                  <span className="flex items-center gap-1"><CheckCircle2 size={12} /> readOnly={snapshot.content.readOnly ? "true" : "false"}</span>
+                  <span className="flex items-center gap-1"><CheckCircle2 size={12} /> tradingEnabled={snapshot.content.tradingEnabled ? "true" : "false"}</span>
+                  <span className="flex items-center gap-1"><CheckCircle2 size={12} /> executionAuthority={snapshot.content.executionAuthority}</span>
+                   <span className="flex items-center gap-1"><CheckCircle2 size={12} /> noTradingOrMoneyMovement={snapshot.noTradingOrMoneyMovement ? "true" : "false"}</span>
+                </div>
+              </article>
+            ))}
           </div>
         )}
       </section>

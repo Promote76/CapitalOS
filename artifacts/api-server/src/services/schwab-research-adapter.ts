@@ -254,6 +254,7 @@ export function normalizePriceHistory(payload: unknown, symbol: string, range: {
     if (!candle || !at) throw new SchwabResearchError("INVALID_PROVIDER_RESPONSE", 502, "Schwab returned an invalid daily candle");
     return {
       timestamp: at,
+      marketDate: at.slice(0, 10),
       open: decimal(candle.open),
       high: decimal(candle.high),
       low: decimal(candle.low),
@@ -284,6 +285,12 @@ export function normalizePriceHistory(payload: unknown, symbol: string, range: {
     realtime: null,
     delayed: null,
   };
+}
+
+/** The session date is derived only from the normalized daily candle timestamps. */
+export function normalizeMarketDate(history: ReturnType<typeof normalizePriceHistory>): string | null {
+  const candle = history.data.candles.at(-1);
+  return candle ? candle.timestamp.slice(0, 10) : null;
 }
 
 export function researchEnvelope<T>(

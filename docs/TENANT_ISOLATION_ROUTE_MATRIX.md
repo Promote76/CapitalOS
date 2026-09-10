@@ -2,8 +2,8 @@
 
 **Inventory date:** 2026-09-10
 **Source:** `artifacts/api-server/src/integration/tenant-route-inventory.mjs` (authoritative), `artifacts/api-server/src/routes`, and `artifacts/api-server/src/integration/p0-http.test.ts`
-<!-- tenant-route-inventory: 240 -->
-**Inventory result:** 240 Express route/method pairs match the executable route inventory.
+<!-- tenant-route-inventory: 243 -->
+**Inventory result:** 243 Express route/method pairs match the executable route inventory.
 
 The machine-readable count above is checked by the route parity release check; adding
 an endpoint without refreshing this evidence fails certification with a stale-count
@@ -11,7 +11,7 @@ error.
 
 This is an evidence index, not a source-review substitute. `PASS` means the isolated
 database-backed fixture exercised the applicable route and identifier/body boundary.
-The full 240-route preflight target is defined below. The latest clean guarded
+The full 243-route preflight target is defined below. The latest clean guarded
 replay passed on 2026-09-07: 393 executed probes, 58 scoped collection reads,
 58 cross-household rejections, and 58 malformed rejections (12 tests passed,
 0 failed/skipped). This supersedes the historical 163-route replay and the
@@ -43,12 +43,13 @@ object routes.
 | Existing Schwab portfolio routes plus GET /integrations/schwab/market-data and /market-data/status; POST /market-data/connect, /refresh, /disconnect; shared GET /integrations/schwab/oauth/callback | OAuth callback state only; market-data accepts a bounded symbol list; no household or actor query/body fields | Authenticated actor household; both apps share the registered callback URL but use separate credentials, state, browser cookies, lifecycle generations, encrypted tokens, and disconnect boundaries | PASS | PASS | PASS | PASS |
 | GET /research/schwab/instruments; /quotes/:symbol; /price-history | One normalized symbol; fixed fundamental projection; bounded daily date range; no household, connection, account, or provider-path input | Active authenticated actor household resolves its own encrypted Market Data connection; foreign household fixture receives `MARKET_DATA_DISCONNECTED` without a provider call | PASS | PASS | PASS | PASS |
 | GET /research/schwab/certification; POST /research/schwab/certification | No caller-controlled household, connection, account, provider-path, trading, transfer, or execution fields | Authenticated actor household resolves its own encrypted Market Data connection; the POST runs exactly three fixed read-only GETs and persists only redacted provider evidence | PASS | PASS | PASS | PASS |
+| GET/POST /research/schwab/market-snapshots; POST /research/schwab/market-snapshots/:snapshotId/review | Ticker and bounded daily date range; snapshotId for immutable disposition; no household, connection, account, provider-path, or execution fields | Actor household resolves its own Market Data connection and snapshot rows; contribute collects a non-authoritative draft, approve records one immutable reviewed evidence row | PASS | PASS | PASS | PASS |
 
 ## Current executable evidence
 
 - The two-household fixture proves a foreign goal ID is rejected before a contribution is created.
 - The same fixture provisions Owner, Partner, Advisor, and Viewer memberships in both households and passes the role-header regression, partner contribution allow, advisor/viewer contribution denial, and contribution mass-assignment assertions on isolated Neon PostgreSQL.
 - The same fixture passes recent-auth denial, parallel transfer overdraft prevention, 100-request contention, transfer replay, persisted household/actor attribution, and ledger debit/credit reconciliation on isolated Neon PostgreSQL.
-- The route preflight discovers and asserts exactly 240 route/method pairs, compares household-scoped collection reads, sends same-household, foreign, and malformed path identifiers, injects mass-assignment fields into applicable generic write probes, and fails on unexpected server errors. The inventory includes the fixed-path Schwab research reads and certification action alongside the existing Document-to-Budget Bridge, Financial Evidence deletion, Financial Document Inbox, Business Income, Daily Ops, Family Office, and Schwab observation-only routes.
+- The route preflight discovers and asserts exactly 243 route/method pairs, compares household-scoped collection reads, sends same-household, foreign, and malformed path identifiers, injects mass-assignment fields into applicable generic write probes, and fails on unexpected server errors. The inventory includes the fixed-path Schwab research reads, certification action, and Market Snapshot review lifecycle alongside the existing Document-to-Budget Bridge, Financial Evidence deletion, Financial Document Inbox, Business Income, Daily Ops, Family Office, and Schwab observation-only routes.
 - Parameterized routes require non-error same-household behavior, reject foreign identifiers without a successful write/read response, and reject malformed identifiers with a 4xx response. Parameterless writes must not return another household's identifiers after body tampering.
 - The latest executed preflight on the disposable target on 2026-09-07 had zero failures: 393 total probes, 58 scoped collection-read comparisons, 58 cross-household rejections, and 58 malformed-identifier rejections. The same run passed the role, recent-auth, malformed-input, mass-assignment, Shadow-only, and no-execution assertions for the complete current surface.

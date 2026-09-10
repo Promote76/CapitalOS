@@ -11496,6 +11496,270 @@ export const GetSchwabResearchPriceHistoryResponse = zod.object({
 
 
 /**
+ * @summary List household-scoped market snapshot drafts and approved evidence
+ */
+export const listMarketSnapshotsResponseSnapshotsItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listMarketSnapshotsResponseSnapshotsItemHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listMarketSnapshotsResponseSnapshotsItemContentCapabilitiesItemPayloadSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+export const listMarketSnapshotsResponseSnapshotsItemProvenanceRequestsItemPayloadSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const ListMarketSnapshotsResponse = zod.object({
+  "snapshots": zod.array(zod.object({
+  "id": zod.string().regex(listMarketSnapshotsResponseSnapshotsItemIdRegExp),
+  "householdId": zod.string().regex(listMarketSnapshotsResponseSnapshotsItemHouseholdIdRegExp),
+  "ticker": zod.string(),
+  "content": zod.object({
+  "ticker": zod.string(),
+  "capabilities": zod.array(zod.object({
+  "capability": zod.enum(['INSTRUMENT_FUNDAMENTAL', 'CURRENT_QUOTE', 'DAILY_PRICE_HISTORY']),
+  "data": zod.record(zod.string(), zod.unknown()),
+  "requestedAt": zod.coerce.date(),
+  "receivedAt": zod.coerce.date(),
+  "providerAsOf": zod.coerce.date().nullish(),
+  "freshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'DELAYED', 'REALTIME', 'UNKNOWN']),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable(),
+  "providerRequestId": zod.string().nullable(),
+  "rateLimit": zod.object({
+  "limit": zod.number().nullable(),
+  "remaining": zod.number().nullable(),
+  "resetAt": zod.string().nullable(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "payloadSha256": zod.string().regex(listMarketSnapshotsResponseSnapshotsItemContentCapabilitiesItemPayloadSha256RegExp)
+})),
+  "instrument": zod.record(zod.string(), zod.unknown()).optional(),
+  "quote": zod.record(zod.string(), zod.unknown()).optional(),
+  "dailyHistory": zod.record(zod.string(), zod.unknown()).optional(),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "executionAuthority": zod.literal("none"),
+  "noTradingOrMoneyMovement": zod.literal(true)
+}),
+  "provenance": zod.object({
+  "provider": zod.literal("schwab"),
+  "providerProduct": zod.literal("MARKET_DATA_PRODUCTION"),
+  "capabilities": zod.array(zod.string()),
+  "retrievedAt": zod.coerce.date(),
+  "requests": zod.array(zod.object({
+  "capability": zod.string(),
+  "endpoint": zod.string(),
+  "requestedAt": zod.coerce.date(),
+  "providerRequestId": zod.string().nullable(),
+  "payloadSha256": zod.string().regex(listMarketSnapshotsResponseSnapshotsItemProvenanceRequestsItemPayloadSha256RegExp)
+}))
+}),
+  "requestedAt": zod.coerce.date(),
+  "retrievedAt": zod.coerce.date(),
+  "providerAsOf": zod.coerce.date().nullable(),
+  "marketDate": zod.string().nullable(),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable(),
+  "freshness": zod.string(),
+  "missingFlags": zod.array(zod.string()),
+  "qualityFlags": zod.array(zod.string()),
+  "reviewStatus": zod.enum(['PENDING_HUMAN_REVIEW', 'APPROVED', 'REJECTED']),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "reviewReason": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "advisoryOnly": zod.literal(true),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "executionAuthority": zod.literal("none"),
+  "noTradingOrMoneyMovement": zod.literal(true),
+  "nonAuthoritative": zod.literal(true)
+})),
+  "evidence": zod.array(zod.record(zod.string(), zod.unknown()))
+})
+
+
+/**
+ * @summary Retrieve and persist a normalized Schwab market snapshot draft
+ */
+export const createMarketSnapshotBodyTickerDefault = `BKSC`;
+export const createMarketSnapshotBodyTickerMax = 15;
+
+export const createMarketSnapshotBodyStartDateRegExp = new RegExp('^[0-9]+$');
+export const createMarketSnapshotBodyEndDateRegExp = new RegExp('^[0-9]+$');
+
+
+export const CreateMarketSnapshotBody = zod.object({
+  "ticker": zod.string().max(createMarketSnapshotBodyTickerMax).default(createMarketSnapshotBodyTickerDefault),
+  "startDate": zod.string().regex(createMarketSnapshotBodyStartDateRegExp),
+  "endDate": zod.string().regex(createMarketSnapshotBodyEndDateRegExp)
+})
+
+export const createMarketSnapshotResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createMarketSnapshotResponseHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createMarketSnapshotResponseContentCapabilitiesItemPayloadSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+export const createMarketSnapshotResponseProvenanceRequestsItemPayloadSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const CreateMarketSnapshotResponse = zod.object({
+  "id": zod.string().regex(createMarketSnapshotResponseIdRegExp),
+  "householdId": zod.string().regex(createMarketSnapshotResponseHouseholdIdRegExp),
+  "ticker": zod.string(),
+  "content": zod.object({
+  "ticker": zod.string(),
+  "capabilities": zod.array(zod.object({
+  "capability": zod.enum(['INSTRUMENT_FUNDAMENTAL', 'CURRENT_QUOTE', 'DAILY_PRICE_HISTORY']),
+  "data": zod.record(zod.string(), zod.unknown()),
+  "requestedAt": zod.coerce.date(),
+  "receivedAt": zod.coerce.date(),
+  "providerAsOf": zod.coerce.date().nullish(),
+  "freshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'DELAYED', 'REALTIME', 'UNKNOWN']),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable(),
+  "providerRequestId": zod.string().nullable(),
+  "rateLimit": zod.object({
+  "limit": zod.number().nullable(),
+  "remaining": zod.number().nullable(),
+  "resetAt": zod.string().nullable(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "payloadSha256": zod.string().regex(createMarketSnapshotResponseContentCapabilitiesItemPayloadSha256RegExp)
+})),
+  "instrument": zod.record(zod.string(), zod.unknown()).optional(),
+  "quote": zod.record(zod.string(), zod.unknown()).optional(),
+  "dailyHistory": zod.record(zod.string(), zod.unknown()).optional(),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "executionAuthority": zod.literal("none"),
+  "noTradingOrMoneyMovement": zod.literal(true)
+}),
+  "provenance": zod.object({
+  "provider": zod.literal("schwab"),
+  "providerProduct": zod.literal("MARKET_DATA_PRODUCTION"),
+  "capabilities": zod.array(zod.string()),
+  "retrievedAt": zod.coerce.date(),
+  "requests": zod.array(zod.object({
+  "capability": zod.string(),
+  "endpoint": zod.string(),
+  "requestedAt": zod.coerce.date(),
+  "providerRequestId": zod.string().nullable(),
+  "payloadSha256": zod.string().regex(createMarketSnapshotResponseProvenanceRequestsItemPayloadSha256RegExp)
+}))
+}),
+  "requestedAt": zod.coerce.date(),
+  "retrievedAt": zod.coerce.date(),
+  "providerAsOf": zod.coerce.date().nullable(),
+  "marketDate": zod.string().nullable(),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable(),
+  "freshness": zod.string(),
+  "missingFlags": zod.array(zod.string()),
+  "qualityFlags": zod.array(zod.string()),
+  "reviewStatus": zod.enum(['PENDING_HUMAN_REVIEW', 'APPROVED', 'REJECTED']),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "reviewReason": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "advisoryOnly": zod.literal(true),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "executionAuthority": zod.literal("none"),
+  "noTradingOrMoneyMovement": zod.literal(true),
+  "nonAuthoritative": zod.literal(true)
+})
+
+
+export const reviewMarketSnapshotPathSnapshotIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
+export const ReviewMarketSnapshotParams = zod.object({
+  "snapshotId": zod.coerce.string().regex(reviewMarketSnapshotPathSnapshotIdRegExp)
+})
+
+export const reviewMarketSnapshotBodyReasonMax = 1000;
+
+
+
+export const ReviewMarketSnapshotBody = zod.object({
+  "disposition": zod.enum(['APPROVE', 'REJECT']),
+  "reason": zod.string().max(reviewMarketSnapshotBodyReasonMax).optional()
+})
+
+export const reviewMarketSnapshotResponseSnapshotIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reviewMarketSnapshotResponseSnapshotHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const reviewMarketSnapshotResponseSnapshotContentCapabilitiesItemPayloadSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+export const reviewMarketSnapshotResponseSnapshotProvenanceRequestsItemPayloadSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+
+
+export const ReviewMarketSnapshotResponse = zod.object({
+  "snapshot": zod.object({
+  "id": zod.string().regex(reviewMarketSnapshotResponseSnapshotIdRegExp),
+  "householdId": zod.string().regex(reviewMarketSnapshotResponseSnapshotHouseholdIdRegExp),
+  "ticker": zod.string(),
+  "content": zod.object({
+  "ticker": zod.string(),
+  "capabilities": zod.array(zod.object({
+  "capability": zod.enum(['INSTRUMENT_FUNDAMENTAL', 'CURRENT_QUOTE', 'DAILY_PRICE_HISTORY']),
+  "data": zod.record(zod.string(), zod.unknown()),
+  "requestedAt": zod.coerce.date(),
+  "receivedAt": zod.coerce.date(),
+  "providerAsOf": zod.coerce.date().nullish(),
+  "freshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'DELAYED', 'REALTIME', 'UNKNOWN']),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable(),
+  "providerRequestId": zod.string().nullable(),
+  "rateLimit": zod.object({
+  "limit": zod.number().nullable(),
+  "remaining": zod.number().nullable(),
+  "resetAt": zod.string().nullable(),
+  "retryAfterSeconds": zod.number().nullable()
+}),
+  "payloadSha256": zod.string().regex(reviewMarketSnapshotResponseSnapshotContentCapabilitiesItemPayloadSha256RegExp)
+})),
+  "instrument": zod.record(zod.string(), zod.unknown()).optional(),
+  "quote": zod.record(zod.string(), zod.unknown()).optional(),
+  "dailyHistory": zod.record(zod.string(), zod.unknown()).optional(),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "executionAuthority": zod.literal("none"),
+  "noTradingOrMoneyMovement": zod.literal(true)
+}),
+  "provenance": zod.object({
+  "provider": zod.literal("schwab"),
+  "providerProduct": zod.literal("MARKET_DATA_PRODUCTION"),
+  "capabilities": zod.array(zod.string()),
+  "retrievedAt": zod.coerce.date(),
+  "requests": zod.array(zod.object({
+  "capability": zod.string(),
+  "endpoint": zod.string(),
+  "requestedAt": zod.coerce.date(),
+  "providerRequestId": zod.string().nullable(),
+  "payloadSha256": zod.string().regex(reviewMarketSnapshotResponseSnapshotProvenanceRequestsItemPayloadSha256RegExp)
+}))
+}),
+  "requestedAt": zod.coerce.date(),
+  "retrievedAt": zod.coerce.date(),
+  "providerAsOf": zod.coerce.date().nullable(),
+  "marketDate": zod.string().nullable(),
+  "realtime": zod.boolean().nullable(),
+  "delayed": zod.boolean().nullable(),
+  "freshness": zod.string(),
+  "missingFlags": zod.array(zod.string()),
+  "qualityFlags": zod.array(zod.string()),
+  "reviewStatus": zod.enum(['PENDING_HUMAN_REVIEW', 'APPROVED', 'REJECTED']),
+  "reviewedBy": zod.string().nullable(),
+  "reviewedAt": zod.coerce.date().nullable(),
+  "reviewReason": zod.string().nullable(),
+  "createdAt": zod.coerce.date(),
+  "advisoryOnly": zod.literal(true),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "executionAuthority": zod.literal("none"),
+  "noTradingOrMoneyMovement": zod.literal(true),
+  "nonAuthoritative": zod.literal(true)
+}),
+  "evidence": zod.record(zod.string(), zod.unknown()).nullable(),
+  "advisoryOnly": zod.literal(true)
+})
+
+
+/**
  * @summary Read the latest household-scoped BKSC research certification
  */
 export const GetSchwabResearchCertificationResponse = zod.object({

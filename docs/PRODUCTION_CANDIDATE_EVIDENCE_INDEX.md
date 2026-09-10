@@ -2,7 +2,7 @@
 
 **Evidence date:** 2026-09-10
 **Decision:** **IN-HOUSE ONLY — READY FOR CONTROLLED INTERNAL USE**
-<!-- tenant-route-inventory: 240 -->
+<!-- tenant-route-inventory: 243 -->
 
 This index distinguishes executable evidence from source review and blocked infrastructure evidence. It must not be used to check a release-gate item unless the referenced evidence actually exists.
 The route count marker is checked against the authoritative route inventory during
@@ -27,8 +27,8 @@ API contract certification; stale evidence fails that release check.
 
 ## Latest matrix execution
 
-All 240 route/method pairs are in the current executable surface; the
-certification checklist included the 240-route tenant preflight target, while the
+All 243 route/method pairs are in the current executable surface; the
+certification checklist included the 243-route tenant preflight target, while the
 referenced certification run predates the Daily Ops routes and covered the prior
 170-route surface. The clean guarded
 replay covered the complete inventory. The run passed with 393 probes,

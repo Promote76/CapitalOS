@@ -4169,6 +4169,163 @@ export interface ReviewResearchEvidenceRequest {
   status: ReviewResearchEvidenceRequestStatus;
 }
 
+export interface CreateMarketSnapshotRequest {
+  /** @maxLength 15 */
+  ticker: string;
+  /** @pattern ^[0-9]+$ */
+  startDate: string;
+  /** @pattern ^[0-9]+$ */
+  endDate: string;
+}
+
+export type ReviewMarketSnapshotRequestDisposition = typeof ReviewMarketSnapshotRequestDisposition[keyof typeof ReviewMarketSnapshotRequestDisposition];
+
+
+export const ReviewMarketSnapshotRequestDisposition = {
+  APPROVE: 'APPROVE',
+  REJECT: 'REJECT',
+} as const;
+
+export interface ReviewMarketSnapshotRequest {
+  disposition: ReviewMarketSnapshotRequestDisposition;
+  /** @maxLength 1000 */
+  reason?: string;
+}
+
+export type MarketSnapshotReviewStatus = typeof MarketSnapshotReviewStatus[keyof typeof MarketSnapshotReviewStatus];
+
+
+export const MarketSnapshotReviewStatus = {
+  PENDING_HUMAN_REVIEW: 'PENDING_HUMAN_REVIEW',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const;
+
+export type MarketSnapshotCapabilityCapability = typeof MarketSnapshotCapabilityCapability[keyof typeof MarketSnapshotCapabilityCapability];
+
+
+export const MarketSnapshotCapabilityCapability = {
+  INSTRUMENT_FUNDAMENTAL: 'INSTRUMENT_FUNDAMENTAL',
+  CURRENT_QUOTE: 'CURRENT_QUOTE',
+  DAILY_PRICE_HISTORY: 'DAILY_PRICE_HISTORY',
+} as const;
+
+export type MarketSnapshotCapabilityFreshness = typeof MarketSnapshotCapabilityFreshness[keyof typeof MarketSnapshotCapabilityFreshness];
+
+
+export const MarketSnapshotCapabilityFreshness = {
+  CURRENT: 'CURRENT',
+  AGING: 'AGING',
+  STALE: 'STALE',
+  DELAYED: 'DELAYED',
+  REALTIME: 'REALTIME',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export interface SchwabSafeRateLimit {
+  limit: number | null;
+  remaining: number | null;
+  resetAt: string | null;
+  retryAfterSeconds: number | null;
+}
+
+export type MarketSnapshotCapabilityData = { [key: string]: unknown };
+
+export interface MarketSnapshotCapability {
+  capability: MarketSnapshotCapabilityCapability;
+  data: MarketSnapshotCapabilityData;
+  requestedAt: string;
+  receivedAt: string;
+  providerAsOf?: string | null;
+  freshness: MarketSnapshotCapabilityFreshness;
+  realtime: boolean | null;
+  delayed: boolean | null;
+  providerRequestId: string | null;
+  rateLimit: SchwabSafeRateLimit;
+  /** @pattern ^[a-f0-9]{64}$ */
+  payloadSha256: string;
+}
+
+export type MarketSnapshotCanonicalContentInstrument = { [key: string]: unknown };
+
+export type MarketSnapshotCanonicalContentQuote = { [key: string]: unknown };
+
+export type MarketSnapshotCanonicalContentDailyHistory = { [key: string]: unknown };
+
+export interface MarketSnapshotCanonicalContent {
+  ticker: string;
+  capabilities: MarketSnapshotCapability[];
+  instrument?: MarketSnapshotCanonicalContentInstrument;
+  quote?: MarketSnapshotCanonicalContentQuote;
+  dailyHistory?: MarketSnapshotCanonicalContentDailyHistory;
+  readOnly: true;
+  tradingEnabled: false;
+  executionAuthority: 'none';
+  noTradingOrMoneyMovement: true;
+}
+
+export interface MarketSnapshotProvenanceRequest {
+  capability: string;
+  endpoint: string;
+  requestedAt: string;
+  providerRequestId: string | null;
+  /** @pattern ^[a-f0-9]{64}$ */
+  payloadSha256: string;
+}
+
+export interface MarketSnapshotProvenance {
+  provider: 'schwab';
+  providerProduct: 'MARKET_DATA_PRODUCTION';
+  capabilities: string[];
+  retrievedAt: string;
+  requests: MarketSnapshotProvenanceRequest[];
+}
+
+export interface MarketSnapshot {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  householdId: string;
+  ticker: string;
+  content: MarketSnapshotCanonicalContent;
+  provenance: MarketSnapshotProvenance;
+  requestedAt: string;
+  retrievedAt: string;
+  providerAsOf: string | null;
+  marketDate: string | null;
+  realtime: boolean | null;
+  delayed: boolean | null;
+  freshness: string;
+  missingFlags: string[];
+  qualityFlags: string[];
+  reviewStatus: MarketSnapshotReviewStatus;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewReason: string | null;
+  createdAt: string;
+  advisoryOnly: true;
+  readOnly: true;
+  tradingEnabled: false;
+  executionAuthority: 'none';
+  noTradingOrMoneyMovement: true;
+  nonAuthoritative: true;
+}
+
+export type MarketSnapshotListResponseEvidenceItem = { [key: string]: unknown };
+
+export interface MarketSnapshotListResponse {
+  snapshots: MarketSnapshot[];
+  evidence: MarketSnapshotListResponseEvidenceItem[];
+}
+
+export type MarketSnapshotReviewResultEvidence = { [key: string]: unknown } | null;
+
+export interface MarketSnapshotReviewResult {
+  snapshot: MarketSnapshot;
+  evidence: MarketSnapshotReviewResultEvidence;
+  advisoryOnly: true;
+}
+
 export type ResearchEvidenceProvenanceClass = typeof ResearchEvidenceProvenanceClass[keyof typeof ResearchEvidenceProvenanceClass];
 
 

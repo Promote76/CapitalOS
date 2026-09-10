@@ -38,4 +38,5 @@
 - [Financial document integrity boundary](capital-os-financial-document-integrity.md) — classify from content, preserve source evidence, and require audited human decisions before parser authority changes.
 - [Production Clerk operator access](capital-os-production-clerk-operator.md) — production remediation needs a real session from the Clerk instance that owns the target household.
 - [Structured research digestion boundary](capital-os-structured-research-digestion.md) — persist exact and canonical payloads, separate claims from inference, and map citations only to exact evidence rows.
+- [Agent evidence projection boundary](capital-os-agent-evidence-projection.md) — send external research agents an explicit normalized allowlist, never the full canonical evidence object.
 - [Orval mixed parameter naming](orval-mixed-parameter-naming.md) — avoid operations with both path and query parameters when split Zod generation creates duplicate Params exports.

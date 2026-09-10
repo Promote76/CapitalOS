@@ -66,6 +66,7 @@ test("daily candles must be valid, bounded, and strictly ordered", () => {
   }, "BKSC", range);
   assert.equal(result.data.candles.length, 2);
   assert.equal(result.data.candles[0]?.close, "30.5");
+  assert.equal(result.data.candles[0]?.marketDate, new Date(1_788_000_000_000).toISOString().slice(0, 10));
   assert.throws(() => normalizePriceHistory({ candles: [{ datetime: 2 }, { datetime: 1 }] }, "BKSC", range), { code: "INVALID_PROVIDER_RESPONSE" });
   assert.throws(() => normalizePriceHistory({ candles: Array.from({ length: 101 }, (_, datetime) => ({ datetime })) }, "BKSC", range), { code: "INVALID_PROVIDER_RESPONSE" });
 });

@@ -101,6 +101,7 @@ import type {
   ContributionInput,
   ContributionScenario,
   ContributionSummary,
+  CreateMarketSnapshotRequest,
   CreatePropertyCandidateInput,
   CreateResearchDossierRequest,
   CreateResearchJournalEntryInput,
@@ -181,6 +182,9 @@ import type {
   ListTransactionReviewQueueParams,
   ManualFinanceTransactionInput,
   ManualFinancialAccountInput,
+  MarketSnapshot,
+  MarketSnapshotListResponse,
+  MarketSnapshotReviewResult,
   MicroLiveArmRequest,
   MicroLiveEnablementReview,
   MicroLiveFillSnapshot,
@@ -245,6 +249,7 @@ import type {
   ResearchEvidenceUploadResponse,
   ResearchJournalEntry,
   ResearchStrategyCreated,
+  ReviewMarketSnapshotRequest,
   ReviewResearchEvidenceRequest,
   ReviewedFinancialTransaction,
   RiskSummary,
@@ -17782,6 +17787,220 @@ export function useGetSchwabResearchPriceHistory<TData = Awaited<ReturnType<type
 
 
 
+
+export const getListMarketSnapshotsUrl = () => {
+
+
+
+
+  return `/api/research/schwab/market-snapshots`
+}
+
+/**
+ * @summary List household-scoped market snapshot drafts and approved evidence
+ */
+export const listMarketSnapshots = async ( options?: Parameters<typeof customFetch>[1]): Promise<MarketSnapshotListResponse> => {
+
+  return customFetch<MarketSnapshotListResponse>(getListMarketSnapshotsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMarketSnapshotsQueryKey = () => {
+    return [
+    `/api/research/schwab/market-snapshots`
+    ] as const;
+    }
+
+
+export const getListMarketSnapshotsQueryOptions = <TData = Awaited<ReturnType<typeof listMarketSnapshots>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMarketSnapshots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMarketSnapshotsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMarketSnapshots>>> = ({ signal }) => listMarketSnapshots({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMarketSnapshots>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMarketSnapshotsQueryResult = NonNullable<Awaited<ReturnType<typeof listMarketSnapshots>>>
+export type ListMarketSnapshotsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List household-scoped market snapshot drafts and approved evidence
+ */
+
+export function useListMarketSnapshots<TData = Awaited<ReturnType<typeof listMarketSnapshots>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMarketSnapshots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMarketSnapshotsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateMarketSnapshotUrl = () => {
+
+
+
+
+  return `/api/research/schwab/market-snapshots`
+}
+
+/**
+ * @summary Retrieve and persist a normalized Schwab market snapshot draft
+ */
+export const createMarketSnapshot = async (createMarketSnapshotRequest: CreateMarketSnapshotRequest, options?: Parameters<typeof customFetch>[1]): Promise<MarketSnapshot> => {
+
+  return customFetch<MarketSnapshot>(getCreateMarketSnapshotUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createMarketSnapshotRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateMarketSnapshotMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMarketSnapshot>>, TError,{data: BodyType<CreateMarketSnapshotRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMarketSnapshot>>, TError,{data: BodyType<CreateMarketSnapshotRequest>}, TContext> => {
+
+const mutationKey = ['createMarketSnapshot'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMarketSnapshot>>, {data: BodyType<CreateMarketSnapshotRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMarketSnapshot(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMarketSnapshotMutationResult = NonNullable<Awaited<ReturnType<typeof createMarketSnapshot>>>
+    export type CreateMarketSnapshotMutationBody = BodyType<CreateMarketSnapshotRequest>
+    export type CreateMarketSnapshotMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Retrieve and persist a normalized Schwab market snapshot draft
+ */
+export const useCreateMarketSnapshot = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMarketSnapshot>>, TError,{data: BodyType<CreateMarketSnapshotRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMarketSnapshot>>,
+        TError,
+        {data: BodyType<CreateMarketSnapshotRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateMarketSnapshotMutationOptions(options));
+    }
+
+export const getReviewMarketSnapshotUrl = (snapshotId: string,) => {
+
+
+
+
+  return `/api/research/schwab/market-snapshots/${snapshotId}/review`
+}
+
+export const reviewMarketSnapshot = async (snapshotId: string,
+    reviewMarketSnapshotRequest: ReviewMarketSnapshotRequest, options?: Parameters<typeof customFetch>[1]): Promise<MarketSnapshotReviewResult> => {
+
+  return customFetch<MarketSnapshotReviewResult>(getReviewMarketSnapshotUrl(snapshotId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(reviewMarketSnapshotRequest)
+  }
+);}
+
+
+
+
+
+export const getReviewMarketSnapshotMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewMarketSnapshot>>, TError,{snapshotId: string;data: BodyType<ReviewMarketSnapshotRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewMarketSnapshot>>, TError,{snapshotId: string;data: BodyType<ReviewMarketSnapshotRequest>}, TContext> => {
+
+const mutationKey = ['reviewMarketSnapshot'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewMarketSnapshot>>, {snapshotId: string;data: BodyType<ReviewMarketSnapshotRequest>}> = (props) => {
+          const {snapshotId,data} = props ?? {};
+
+          return  reviewMarketSnapshot(snapshotId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewMarketSnapshotMutationResult = NonNullable<Awaited<ReturnType<typeof reviewMarketSnapshot>>>
+    export type ReviewMarketSnapshotMutationBody = BodyType<ReviewMarketSnapshotRequest>
+    export type ReviewMarketSnapshotMutationError = ErrorType<unknown>
+
+    export const useReviewMarketSnapshot = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewMarketSnapshot>>, TError,{snapshotId: string;data: BodyType<ReviewMarketSnapshotRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewMarketSnapshot>>,
+        TError,
+        {snapshotId: string;data: BodyType<ReviewMarketSnapshotRequest>},
+        TContext
+      > => {
+      return useMutation(getReviewMarketSnapshotMutationOptions(options));
+    }
 
 export const getGetSchwabResearchCertificationUrl = () => {
 

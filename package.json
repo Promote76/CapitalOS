@@ -16,6 +16,7 @@
     "certify:micro-live": "node scripts/certify-micro-live.mjs",
     "certify:execution-control": "node scripts/certify-execution-control.mjs",
     "certify:operations-recovery": "node scripts/certify-operations-recovery.mjs",
+    "certify:rc1-readiness": "node scripts/certify-operations-recovery.mjs && node scripts/generate-production-readiness-manifest.mjs && node scripts/check-production-readiness-manifest.mjs",
     "certify:observability": "node scripts/certify-observability.mjs",
     "certify:household-privacy": "node scripts/certify-household-privacy.mjs",
     "certify:family-office": "CAPITAL_OS_TEST_NAME_PATTERN='P0-09 Family Office' CAPITAL_OS_RUN_BROWSER=1 node scripts/certify-household-privacy.mjs",
@@ -30,7 +31,8 @@
     "certify:financial-planning-completion": "node scripts/certify-financial-planning-completion.mjs",
     "certify:document-budget-bridge": "node scripts/certify-document-budget-bridge.mjs",
     "generate:production-readiness-manifest": "node scripts/generate-production-readiness-manifest.mjs",
-    "check:production-readiness-manifest": "node scripts/check-production-readiness-manifest.mjs"
+    "check:production-readiness-manifest": "node scripts/check-production-readiness-manifest.mjs",
+    "check:rc1-release": "node scripts/check-api-artifact-config.mjs && node scripts/check-api-contract.mjs && node scripts/check-production-readiness-manifest.mjs"
   },
   "private": true,
   "dependencies": {

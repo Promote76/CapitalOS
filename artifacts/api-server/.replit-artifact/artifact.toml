@@ -15,7 +15,7 @@ run = "pnpm --filter @workspace/api-server run dev"
 [services.production]
 
 [services.production.build]
-args = ["pnpm", "--filter", "@workspace/api-server", "run", "build"]
+args = ["sh", "-c", "pnpm run check:rc1-release && pnpm --filter @workspace/api-server run build"]
 
 [services.production.build.env]
 NODE_ENV = "production"
@@ -27,6 +27,8 @@ args = ["node", "--enable-source-maps", "artifacts/api-server/dist/index.mjs"]
 [services.production.run.env]
 PORT = "8080"
 NODE_ENV = "production"
+OPERATIONS_WORKER_ENABLED = "1"
+OPERATIONS_SCHEDULER_ENABLED = "1"
 
 [services.production.health.startup]
-path = "/api"
+path = "/api/health/ready"

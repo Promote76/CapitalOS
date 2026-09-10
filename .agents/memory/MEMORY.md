@@ -41,3 +41,4 @@
 - [Agent evidence projection boundary](capital-os-agent-evidence-projection.md) — send external research agents an explicit normalized allowlist, never the full canonical evidence object.
 - [Orval mixed parameter naming](orval-mixed-parameter-naming.md) — avoid operations with both path and query parameters when split Zod generation creates duplicate Params exports.
 - [SEC OTC issuer lookup](sec-otc-issuer-lookup.md) — SEC JSON ticker indexes may omit OTC issuers; use the official legacy ticker index and preserve units from companyfacts map keys.
+- [Artifact production runtime](artifact-production-runtime.md) — configure API production env and health gates in the artifact manifest; root workspace settings do not wire artifact deployments.

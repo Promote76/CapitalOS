@@ -11,8 +11,8 @@ API contract certification; stale evidence fails that release check.
 | Area | Evidence | Result | Gate state |
 |---|---|---|---|
 | Identity | Clerk middleware/provider source review; signed-out production-like request returns 401; authenticated Clerk browser run | Authenticated onboarding, persistence, sign-out, repeat sign-in, and isolation passed; provider-supported step-up remains open | PASS for P0-05; P1 step-up OPEN |
-| Tenant isolation | `docs/certification/household-privacy-runs/household-privacy-2026-09-07T01-25-33Z.log` | The current executable inventory contains 173 route/method pairs after adding Daily Ops journal and guided-run history. The referenced clean replay predates those three routes and remains evidence for the prior 170-route surface only. | OPEN |
-| Authorization | `docs/certification/household-privacy-runs/household-privacy-2026-09-07T01-25-33Z.log` and source review | The same complete replay passed role, recent-auth, malformed-input, mass-assignment, Shadow-only, and no-execution assertions across the current route surface. Middleware and service source review is recorded separately from executed evidence. | PASS for the isolated current surface |
+| Tenant route inventory | `docs/certification/RC1_READINESS_CERTIFICATION.json` | The exact-source RC1 gate executes the authoritative inventory check and records the current count. Historical 170-route and 246-route runs are not current evidence. | PASS only when the canonical RC1 evidence and manifest hashes match |
+| Authorization | Historical guarded route evidence and current source review | Historical role and isolation results remain useful but do not certify newly added routes or authenticated production behavior. | OPEN for a full authenticated current-surface replay |
 | Origin / CSRF | `scripts/certify-production-origin.mjs` and `src/middleware/safety.test.ts` | Five published-origin probes and the middleware matrix pass; full authenticated route matrix remains open | PASS for P0-02; broader route coverage OPEN |
 | Financial concurrency | Database-backed HTTP fixture | Targeted race, 100-request contention, balanced ledger totals, and transfer replay passed on isolated Neon PostgreSQL | PARTIAL |
 | Idempotency | Database-backed HTTP fixture and domain idempotency tests | Isolated fixture passes every current keyed economic write path, concurrent duplicates, and mismatched replay conflicts | PASS for P0-07 |
@@ -25,19 +25,17 @@ API contract certification; stale evidence fails that release check.
 | Micro-Live | Domain safety tests and disabled adapter boundary | Real transmission remains disabled; full persistence-failure drill absent | PARTIAL |
 | Build | Workspace typecheck, API/frontend builds, code generation, route parity | Passed | PASS |
 
-## Latest matrix execution
+## Current RC1 execution
 
-All 249 route/method pairs are in the current executable surface; the
-certification checklist included the 249-route tenant preflight target, while the
-latest clean guarded replay covered the prior 246-route surface and the
-referenced certification run predates the Daily Ops routes and covered the prior
-170-route surface. The clean guarded
-replay covered the complete inventory. The run passed with 393 probes,
-58 scoped collection reads, 58 cross-household rejections, and 58 malformed
-rejections (12 tests passed; none failed or skipped). P0-01, P0-06, and P0-08
-are current-surface PASS. The shared `DATABASE_URL` was not used as a destructive
-certification target. See
-`docs/certification/household-privacy-runs/household-privacy-2026-09-07T01-25-33Z.log`.
+All 249 route/method pairs are in the authoritative executable inventory. The
+exact-source certification included the 249-route tenant preflight target;
+execution status comes only from the canonical evidence named below.
+
+The sole current RC1 readiness record is
+`docs/certification/RC1_READINESS_CERTIFICATION.json`. It is accepted only when
+its base commit, complete release-input hash, migration list, and route count
+match `docs/production-readiness-manifest.json`. Older route logs remain
+historical and cannot close the current gate.
 
 ## Commands
 

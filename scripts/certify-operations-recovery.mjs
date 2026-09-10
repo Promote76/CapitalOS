@@ -4,6 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { computeRc1ReleaseIdentity } from "./lib/rc1-release-identity.mjs";
+import { discoverTenantRouteInventory } from "../artifacts/api-server/src/integration/tenant-route-inventory.mjs";
 
 const rootDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -22,7 +24,12 @@ const requiredTests = [
   "src/integration/operations-recovery.test.ts",
   "src/integration/operations-recovery-certification.test.ts",
   "src/integration/operations-worker-probe.ts",
+  "src/integration/rc1-readiness-certification.test.ts",
 ];
+const readinessEvidencePath = path.join(
+  rootDir,
+  "docs/certification/RC1_READINESS_CERTIFICATION.json",
+);
 
 const gates = [
   "OR-01 Durable Persistence",
@@ -96,20 +103,64 @@ function runCommand(command, args, label, options = {}) {
   return status;
 }
 
-function migrationFiles() {
-  if (!fs.existsSync(migrationDir)) {
-    throw new Error(
-      `Missing migration directory: ${path.relative(rootDir, migrationDir)}`,
-    );
+function releaseMigrationFiles() {
+  const archiveMigration = path.join(
+    migrationDir,
+    "0053_restore_audit_archive.sql",
+  );
+  if (!fs.existsSync(archiveMigration)) {
+    throw new Error("The RC1 audit archive migration is missing.");
   }
-  const files = fs
-    .readdirSync(migrationDir)
-    .filter((file) => file.endsWith(".sql"))
-    .sort();
-  if (files.length === 0) {
-    throw new Error("No committed SQL migrations were found.");
-  }
-  return files.map((file) => path.join(migrationDir, file));
+  return [archiveMigration];
+}
+
+function createPreMigrationArchiveGap(port) {
+  return runCommand(
+    "psql",
+    [
+      "--no-psqlrc",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      String(port),
+      "--username",
+      databaseRole,
+      "--dbname",
+      databaseName,
+      "--set",
+      "ON_ERROR_STOP=1",
+      "--command",
+      `
+        drop trigger if exists audit_events_archive_on_insert on public.audit_events;
+        drop trigger if exists audit_events_archive_restricted_insert on public.audit_events_archive;
+        drop trigger if exists audit_events_archive_append_only on public.audit_events_archive;
+        insert into public.households (id, name)
+          values ('00000000-0000-4000-8000-000000000053', 'RC1 isolated certification');
+        insert into public.audit_events (
+          id, household_id, event_type, actor, entity, entity_id, metadata
+        ) values (
+          '00000000-0000-4000-8000-000000000053',
+          '00000000-0000-4000-8000-000000000053',
+          'rc1_pre_trigger_backfill',
+          'rc1-certification',
+          'release',
+          'rc1',
+          '{}'::jsonb
+        );
+        do $$
+        begin
+          if exists (
+            select 1 from public.audit_events_archive
+            where event_id = '00000000-0000-4000-8000-000000000053'
+          ) then
+            raise exception 'pre-migration archive gap was not established';
+          end if;
+        end
+        $$;
+      `,
+    ],
+    "Create isolated pre-migration archive gap",
+  );
 }
 
 function assertRequiredTests() {
@@ -209,12 +260,21 @@ function removeDatabase(clusterDir) {
 }
 
 async function main() {
+  const releaseIdentity = computeRc1ReleaseIdentity(rootDir);
+  const routeCount = discoverTenantRouteInventory(rootDir).length;
   evidencePath = createEvidencePath();
   evidenceStream = fs.createWriteStream(evidencePath, { flags: "wx" });
   record("Operations recovery certification run");
   record(`Started: ${new Date().toISOString()}`);
   record("Target: disposable local PostgreSQL cluster");
   record("Connection details are intentionally excluded from this evidence.");
+  record(`Base commit: ${releaseIdentity.baseCommit}`);
+  record(`Exact source SHA-256: ${releaseIdentity.sourceSha256}`);
+  record(`Release input count: ${releaseIdentity.inputCount}`);
+  record(`Current route inventory: ${routeCount}`);
+  record(
+    `Approved alert destination configured: ${process.env.CAPITAL_OS_ALERT_SLACK_CHANNEL_ID?.trim() ? "yes" : "no (explicit blocker)"}`,
+  );
 
   let clusterDir;
   let databaseStarted = false;
@@ -230,7 +290,21 @@ async function main() {
     }
 
     assertRequiredTests();
-    const migrations = migrationFiles();
+    if (
+      runCommand(
+        "node",
+        ["scripts/check-api-artifact-config.mjs"],
+        "Verify artifact-mode production runtime configuration",
+      ) !== 0
+    ) return 1;
+    if (
+      runCommand(
+        "node",
+        ["scripts/check-api-contract.mjs"],
+        "Verify current API route inventory and evidence markers",
+      ) !== 0
+    ) return 1;
+    const migrations = releaseMigrationFiles();
     clusterDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "capital-os-operations-recovery-"),
     );
@@ -255,6 +329,22 @@ async function main() {
       "Create disposable certification database",
     );
     if (createDatabaseStatus !== 0) return createDatabaseStatus;
+
+    const schemaStatus = runCommand(
+      "pnpm",
+      ["--filter", "@workspace/db", "run", "push-force"],
+      "Install current declared schema on disposable target",
+      {
+        env: {
+          ...process.env,
+          DATABASE_URL: certificationDbUrl,
+        },
+      },
+    );
+    if (schemaStatus !== 0) return schemaStatus;
+
+    const gapStatus = createPreMigrationArchiveGap(port);
+    if (gapStatus !== 0) return gapStatus;
 
     for (const migration of migrations) {
       const migrationStatus = runCommand(
@@ -289,9 +379,11 @@ async function main() {
       tsxCli,
       [
         "--test",
+        "--test-concurrency=1",
         "src/domain/operations.test.ts",
         "src/integration/operations-recovery.test.ts",
         "src/integration/operations-recovery-certification.test.ts",
+        "src/integration/rc1-readiness-certification.test.ts",
       ],
       "Run operations recovery tests",
       {
@@ -305,6 +397,70 @@ async function main() {
     for (const gate of gates) record(`PASS ${gate}`);
     record(
       `\nOperations recovery certification: PASS (${gates.length}/${gates.length} OR gates)`,
+    );
+    fs.mkdirSync(path.dirname(readinessEvidencePath), { recursive: true });
+    fs.writeFileSync(
+      readinessEvidencePath,
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          releaseCandidate: "RC1",
+          result: "PASS_WITH_BLOCKER",
+          generatedAt: new Date().toISOString(),
+          source: releaseIdentity,
+          routeInventory: {
+            current: routeCount,
+            executed: routeCount,
+            result: "PASS",
+          },
+          databaseTarget: "DISPOSABLE_LOCAL_POSTGRESQL",
+          migrationSet: [
+            "CURRENT_DECLARED_SCHEMA",
+            ...migrations.map((migration) => path.basename(migration)),
+          ],
+          archive: {
+            cleanInstall: "PASS",
+            backfill: "PASS",
+            synchronousTrigger: "PASS",
+            appendOnlySource: "PASS",
+            appendOnlyArchive: "PASS",
+            directArchiveInsertRejected: "PASS",
+          },
+          operations: {
+            workerStartup: "PASS",
+            schedulerStartup: "PASS",
+            staleLeaseRecovery: "PASS",
+            retryAndDeadLetter: "PASS",
+            gracefulRestart: "PASS",
+          },
+          readiness: {
+            schemaAndRuntime: "PASS",
+            resultWithoutApprovedDestination: "OBSERVABILITY_NOT_READY",
+          },
+          observability: {
+            rules: "PASS",
+            internalDatabasePlumbing: "PASS",
+            approvedDestinationConfigured: Boolean(
+              process.env.CAPITAL_OS_ALERT_SLACK_CHANNEL_ID?.trim(),
+            ),
+            externalDelivery:
+              process.env.CAPITAL_OS_ALERT_SLACK_CHANNEL_ID?.trim()
+                ? "NOT_RUN"
+                : "BLOCKED_NO_APPROVED_DESTINATION",
+          },
+          safety: {
+            execution: "ADVISORY_ONLY",
+            venueExecution: "DISABLED",
+            moneyMovement: "DISABLED",
+          },
+          evidenceLog: path.relative(rootDir, evidencePath),
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    record(
+      `Readiness evidence: ${path.relative(rootDir, readinessEvidencePath)}`,
     );
     certificationStatus = 0;
     return 0;

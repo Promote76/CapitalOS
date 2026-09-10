@@ -1,45 +1,46 @@
 import fs from "node:fs";
 import path from "node:path";
-import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { computeRc1ReleaseIdentity } from "./lib/rc1-release-identity.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const manifestPath = path.join(root, "docs/production-readiness-manifest.json");
-const inputs = [
-  "package.json",
-  "pnpm-lock.yaml",
-  "artifacts/api-server/package.json",
-  "artifacts/api-server/src/services/bank-statement-parser.ts",
-  "artifacts/api-server/src/services/business-document-parser.ts",
-];
-const hash = crypto.createHash("sha256");
-for (const file of inputs) {
-  hash.update(file);
-  hash.update(fs.readFileSync(path.join(root, file)));
+const evidencePath = path.join(
+  root,
+  "docs/certification/RC1_READINESS_CERTIFICATION.json",
+);
+const evidence = JSON.parse(fs.readFileSync(evidencePath, "utf8"));
+const identity = computeRc1ReleaseIdentity(root);
+if (evidence.source?.sourceSha256 !== identity.sourceSha256) {
+  throw new Error(
+    "RC1 certification does not match the exact current release inputs.",
+  );
 }
 
 const manifest = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   generatedBy: "scripts/generate-production-readiness-manifest.mjs",
   build: {
-    id: process.env.BUILD_ID ?? process.env.GIT_COMMIT ?? "local-uncommitted",
-    inputSha256: hash.digest("hex"),
-    inputs,
+    id: `${identity.baseCommit}:${identity.sourceSha256.slice(0, 16)}`,
+    baseCommit: identity.baseCommit,
+    inputSha256: identity.sourceSha256,
+    inputCount: identity.inputCount,
+    inputs: identity.inputs,
   },
   releaseCandidate: "RC1",
   posture: "IN_HOUSE_ONLY",
   claims: {
-    workspaceBuild: "NOT_CERTIFIED",
+    workspaceBuild: "CERTIFIED_ISOLATED",
     authenticatedProductionFlows: "NOT_CERTIFIED",
     externalProviderFlows: "NOT_CERTIFIED",
     destructiveMigrationRestore: "NOT_CERTIFIED",
   },
   criticalFlows: {
-    operationsWorkerRecovery: "IMPLEMENTATION_VERIFIED",
-    operationsScheduler: "IMPLEMENTATION_VERIFIED",
-    auditArchiveDelivery: "NOT_CERTIFIED",
-    observabilityIncidentDelivery: "NOT_CERTIFIED",
-    applicationReadiness: "IMPLEMENTATION_VERIFIED",
+    operationsWorkerRecovery: "CERTIFIED_ISOLATED",
+    operationsScheduler: "CERTIFIED_ISOLATED",
+    auditArchiveDelivery: "CERTIFIED_ISOLATED",
+    observabilityIncidentDelivery: evidence.observability.externalDelivery,
+    applicationReadiness: "CERTIFIED_BLOCKED_NO_APPROVED_DESTINATION",
     researchErrorContracts: "IMPLEMENTATION_VERIFIED",
     schwabMarketDataReadOnlyRetry: "IMPLEMENTATION_VERIFIED",
     runtimeDependencyAudit: "IMPLEMENTATION_VERIFIED",
@@ -47,6 +48,17 @@ const manifest = {
     authenticatedProductionBrowser: "NOT_CERTIFIED",
     mobileAuthenticatedLayouts: "NOT_CERTIFIED",
     productionMigrationRestore: "NOT_CERTIFIED",
+  },
+  certification: {
+    evidence: path.relative(root, evidencePath),
+    result: evidence.result,
+    routeInventory: evidence.routeInventory,
+    migrationSet: evidence.migrationSet,
+    archive: evidence.archive,
+    operations: evidence.operations,
+    readiness: evidence.readiness,
+    observability: evidence.observability,
+    safety: evidence.safety,
   },
   parserBoundaries: {
     bankStatements: {

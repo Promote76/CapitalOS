@@ -1,15 +1,16 @@
 import fs from "node:fs";
 import path from "node:path";
-import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { computeRc1ReleaseIdentity } from "./lib/rc1-release-identity.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const manifestPath = path.join(root, "docs/production-readiness-manifest.json");
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-if (manifest.schemaVersion !== 1 || manifest.releaseCandidate !== "RC1") throw new Error("Unsupported or missing RC1 manifest schema.");
+if (manifest.schemaVersion !== 2 || manifest.releaseCandidate !== "RC1") throw new Error("Unsupported or missing RC1 manifest schema.");
 if (manifest.posture !== "IN_HOUSE_ONLY") throw new Error("Manifest posture must remain IN_HOUSE_ONLY.");
-for (const [name, value] of Object.entries(manifest.claims ?? {})) {
-  if (value !== "NOT_CERTIFIED") throw new Error(`Uncertified production claim is not permitted: ${name}=${value}`);
+if (manifest.claims?.workspaceBuild !== "CERTIFIED_ISOLATED") throw new Error("Workspace build must have exact isolated certification.");
+for (const name of ["authenticatedProductionFlows", "externalProviderFlows", "destructiveMigrationRestore"]) {
+  if (manifest.claims?.[name] !== "NOT_CERTIFIED") throw new Error(`Uncertified production claim is not permitted: ${name}`);
 }
 const requiredCriticalFlows = [
   "operationsWorkerRecovery",
@@ -27,17 +28,50 @@ const requiredCriticalFlows = [
 ];
 for (const flow of requiredCriticalFlows) {
   const status = manifest.criticalFlows?.[flow];
-  if (!["IMPLEMENTATION_VERIFIED", "NOT_CERTIFIED"].includes(status)) {
+  if (![
+    "IMPLEMENTATION_VERIFIED",
+    "NOT_CERTIFIED",
+    "CERTIFIED_ISOLATED",
+    "CERTIFIED_BLOCKED_NO_APPROVED_DESTINATION",
+    "BLOCKED_NO_APPROVED_DESTINATION",
+    "NOT_RUN",
+  ].includes(status)) {
     throw new Error(`Critical flow is missing a truthful RC1 status: ${flow}`);
   }
 }
-const hash = crypto.createHash("sha256");
-for (const file of manifest.build.inputs) {
-  hash.update(file);
-  hash.update(fs.readFileSync(path.join(root, file)));
-}
-if (hash.digest("hex") !== manifest.build.inputSha256) {
+const identity = computeRc1ReleaseIdentity(root);
+if (
+  identity.sourceSha256 !== manifest.build.inputSha256 ||
+  identity.baseCommit !== manifest.build.baseCommit ||
+  identity.inputCount !== manifest.build.inputCount
+) {
   throw new Error("Production-readiness manifest is stale; regenerate it from the exact build inputs.");
+}
+const evidencePath = path.join(root, manifest.certification?.evidence ?? "");
+const evidence = JSON.parse(fs.readFileSync(evidencePath, "utf8"));
+if (
+  evidence.source?.sourceSha256 !== identity.sourceSha256 ||
+  evidence.source?.baseCommit !== identity.baseCommit
+) {
+  throw new Error("RC1 evidence is not bound to this exact implementation.");
+}
+if (
+  evidence.routeInventory?.current !== evidence.routeInventory?.executed ||
+  evidence.routeInventory?.result !== "PASS"
+) {
+  throw new Error("Current route inventory was not executed by the RC1 certification.");
+}
+for (const result of Object.values(evidence.archive ?? {})) {
+  if (result !== "PASS") throw new Error("Audit archive certification is incomplete.");
+}
+for (const result of Object.values(evidence.operations ?? {})) {
+  if (result !== "PASS") throw new Error("Operations runtime certification is incomplete.");
+}
+if (
+  evidence.observability?.approvedDestinationConfigured !== false ||
+  evidence.observability?.externalDelivery !== "BLOCKED_NO_APPROVED_DESTINATION"
+) {
+  throw new Error("Missing approved observability destination must remain an explicit blocker.");
 }
 if (manifest.parserBoundaries.bankStatements.maxInputBytes !== 20971520 ||
     manifest.parserBoundaries.bankStatements.maxRows !== 100000 ||

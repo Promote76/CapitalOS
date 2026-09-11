@@ -2,10 +2,10 @@
   "schemaVersion": 2,
   "generatedBy": "scripts/generate-production-readiness-manifest.mjs",
   "build": {
-    "id": "32084e9b146755daa1eeb2e3ec0c1a6be02fb571:ed31a4d8f866174a",
-    "baseCommit": "32084e9b146755daa1eeb2e3ec0c1a6be02fb571",
-    "inputSha256": "ed31a4d8f866174a9ee7abfb14e4bc5cb71a8364f953b47884ed87619189485a",
-    "inputCount": 1097,
+    "id": "0846faff160f5f884c1c5ec1bbe242dbf8715c3f:0346573196e10c07",
+    "baseCommit": "0846faff160f5f884c1c5ec1bbe242dbf8715c3f",
+    "inputSha256": "0346573196e10c076a99659f73354ad888da9ee683747fb255a0a213a99db1ab",
+    "inputCount": 1098,
     "inputs": [
       "artifacts/api-server/.replit-artifact/artifact.toml",
       "artifacts/api-server/package.json",
@@ -871,6 +871,7 @@
       "lib/api-zod/src/generated/types/secFilingProvenance.ts",
       "lib/api-zod/src/generated/types/secFilingReference.ts",
       "lib/api-zod/src/generated/types/secFilingRetrievalRequest.ts",
+      "lib/api-zod/src/generated/types/secFilingRetrievalResult.ts",
       "lib/api-zod/src/generated/types/secFilingReviewRequest.ts",
       "lib/api-zod/src/generated/types/secFilingReviewRequestDisposition.ts",
       "lib/api-zod/src/generated/types/secFilingReviewResult.ts",

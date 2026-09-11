@@ -38,6 +38,63 @@ export const isResearchContentReady = (
 ) => Boolean(researchText.trim())
   && (researchText !== placeholderTemplate || hasReviewedPrefill);
 
+const RESEARCH_SELECTION_KEY = "capital-os:research:selected-evidence";
+
+/** Keep selection stable across query updates while removing IDs no longer usable. */
+export function reconcileSelectedEvidenceIds(selected: Iterable<string>, eligibleIds: Iterable<string>) {
+  const eligible = new Set(eligibleIds);
+  return new Set(Array.from(selected).filter((id) => eligible.has(id)));
+}
+
+export function loadResearchSelection(storage: Storage | undefined = typeof window === "undefined" ? undefined : window.sessionStorage) {
+  if (!storage) return new Set<string>();
+  try {
+    const parsed: unknown = JSON.parse(storage.getItem(RESEARCH_SELECTION_KEY) ?? "[]");
+    return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+export function stableEvidenceIds(selected: Iterable<string>, eligibleIds?: Iterable<string>) {
+  const ids = eligibleIds ? reconcileSelectedEvidenceIds(selected, eligibleIds) : new Set(selected);
+  return Array.from(ids).sort((a, b) => a.localeCompare(b));
+}
+
+type PersistedSource = { id: string; title: string; sourceKind: string; provenanceClass: string };
+type DossierLike = { ticker: string; createdAt: Date | string; id: string; reportStatus: string; evidenceIds?: string[]; sources?: PersistedSource[] };
+
+export function dossierEvidenceIds(dossier: DossierLike) {
+  return dossier.sources?.map((source) => source.id) ?? dossier.evidenceIds ?? [];
+}
+
+export function hasExactDossierEvidenceSet(dossiers: DossierLike[], ticker: string, evidenceIds: Iterable<string>) {
+  const wanted = stableEvidenceIds(evidenceIds);
+  return dossiers.some((dossier) =>
+    dossier.reportStatus.toLowerCase() === "completed"
+    && dossier.ticker.toUpperCase() === ticker.trim().toUpperCase()
+    && stableEvidenceIds(dossierEvidenceIds(dossier)).join("\u0000") === wanted.join("\u0000"),
+  );
+}
+
+export function groupDossiersByTicker<T extends DossierLike>(dossiers: T[]) {
+  const groups = new Map<string, { latest: T; history: T[] }>();
+  for (const dossier of dossiers) {
+    const key = dossier.ticker.toUpperCase();
+    const current = groups.get(key);
+    if (!current) groups.set(key, { latest: dossier, history: [] });
+    else if (new Date(dossier.createdAt).getTime() > new Date(current.latest.createdAt).getTime()) {
+      current.history.push(current.latest);
+      current.latest = dossier;
+    } else current.history.push(dossier);
+  }
+  return Array.from(groups.entries()).map(([ticker, group]) => ({
+    ticker,
+    latest: group.latest,
+    history: group.history.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+  }));
+}
+
 const present = (value: string | null) => value ?? "not supplied";
 
 export function buildReviewedPrefillText(
@@ -266,7 +323,7 @@ export default function InvestmentResearchPage() {
   
   const [dossierTitle, setDossierTitle] = useState("");
   const [dossierTicker, setDossierTicker] = useState("");
-  const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<Set<string>>(new Set());
+  const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<Set<string>>(() => loadResearchSelection());
   const [researchText, setResearchText] = useState("");
   const lastTemplateRef = useRef("");
   const lastReviewedPrefillRef = useRef("");
@@ -397,6 +454,30 @@ Research Notes:
     });
   };
 
+  const { data, isLoading, isError } = dossiersQuery;
+
+  useEffect(() => {
+    if (!data?.evidence) return;
+    const eligibleIds = data.evidence.filter(isDossierEligibleEvidence).map((item) => item.id);
+    setSelectedEvidenceIds((previous) => {
+      const reconciled = reconcileSelectedEvidenceIds(previous, eligibleIds);
+      try {
+        window.sessionStorage.setItem(RESEARCH_SELECTION_KEY, JSON.stringify(Array.from(reconciled).sort()));
+      } catch {
+        // Session storage can be unavailable in privacy-restricted browsers.
+      }
+      return reconciled;
+    });
+  }, [data?.evidence]);
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(RESEARCH_SELECTION_KEY, JSON.stringify(Array.from(selectedEvidenceIds).sort()));
+    } catch {
+      // Selection still works in memory when storage is unavailable.
+    }
+  }, [selectedEvidenceIds]);
+
   const handleCreateDossier = async (e: React.FormEvent) => {
     e.preventDefault();
     const hasReviewedPrefill = dossiersQuery.data?.evidence.some((item) =>
@@ -406,13 +487,17 @@ Research Notes:
       toast({ title: "Research facts required", description: "Add source-linked facts or observations to the research text before compiling.", variant: "destructive" });
       return;
     }
+    if (hasExactDossierEvidenceSet(dossiersQuery.data?.dossiers ?? [], dossierTicker, selectedEvidenceIds)) {
+      toast({ title: "Duplicate evidence set", description: "A completed dossier already contains these exact sources.", variant: "destructive" });
+      return;
+    }
 
     try {
       await createDossier.mutateAsync({
         data: {
           ticker: dossierTicker,
           title: dossierTitle,
-          evidenceIds: Array.from(selectedEvidenceIds),
+          evidenceIds: stableEvidenceIds(selectedEvidenceIds, eligibleEvidence.map((item) => item.id)),
           digestionPayload: researchText
         }
       });
@@ -420,14 +505,11 @@ Research Notes:
       setDossierTicker("");
       setDossierTitle("");
       setResearchText("");
-      setSelectedEvidenceIds(new Set());
       void dossiersQuery.refetch();
     } catch (e) {
       toast({ title: "Dossier creation failed", description: e instanceof Error ? e.message : "Failed to create dossier", variant: "destructive" });
     }
   };
-
-  const { data, isLoading, isError } = dossiersQuery;
 
   useEffect(() => {
     if (data?.evidence) {
@@ -482,6 +564,9 @@ Research Notes:
 
   const { dossiers, evidence, capabilityReadiness } = data;
   const eligibleEvidence = evidence.filter(isDossierEligibleEvidence);
+  const selectedEvidence = eligibleEvidence.filter((item) => selectedEvidenceIds.has(item.id));
+  const duplicateEvidenceSet = hasExactDossierEvidenceSet(dossiers, dossierTicker, selectedEvidenceIds);
+  const dossierGroups = groupDossiersByTicker(dossiers);
   const hasSelectedReviewedPrefill = evidence.some((item) =>
     selectedEvidenceIds.has(item.id) && Boolean(item.dossierPrefill),
   );
@@ -856,6 +941,17 @@ Research Notes:
           
           <div className="field">
             <label>Select reviewed evidence (max 25)</label>
+            <div className="document-boundary mt-3" role="status" aria-live="polite">
+              <FileSearch size={16} />
+              <div>
+                <strong>{selectedEvidence.length} source{selectedEvidence.length === 1 ? "" : "s"} selected</strong>
+                {selectedEvidence.length > 0 && (
+                  <span>
+                    {selectedEvidence.map((item) => `${item.title} (${item.evidenceKind.replaceAll("_", " ")} · ${item.provenanceClass.replaceAll("_", " ")})`).join(" · ")}
+                  </span>
+                )}
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
               {eligibleEvidence.map((item) => (
                 <label key={item.id} className="flex items-start gap-3 p-3 border rounded-md cursor-pointer transition-colors" style={{ backgroundColor: selectedEvidenceIds.has(item.id) ? 'var(--bg-active)' : 'var(--bg)', borderColor: selectedEvidenceIds.has(item.id) ? 'var(--ink)' : 'var(--border)' }}>
@@ -891,8 +987,18 @@ Research Notes:
             <span className="field-help">Replace the blank source-fact lines with exact facts. With multiple sources, keep each fact linked to its source ID.</span>
           </div>
 
+          {duplicateEvidenceSet && (
+            <div className="document-boundary" role="alert">
+              <AlertTriangle size={16} />
+              <div>
+                <strong>Exact evidence set already completed</strong>
+                <span>A completed dossier for {dossierTicker.toUpperCase()} already uses these exact evidence IDs. The backend will reject duplicate content; select different evidence before compiling.</span>
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end mt-4">
-            <button type="submit" className="btn btn-primary" disabled={createDossier.isPending || selectedEvidenceIds.size === 0 || !dossierTicker || !dossierTitle || !researchContentReady}>
+            <button type="submit" className="btn btn-primary" disabled={createDossier.isPending || selectedEvidenceIds.size === 0 || !dossierTicker || !dossierTitle || !researchContentReady || duplicateEvidenceSet}>
               <FlaskConical size={16} /> Compile dossier
             </button>
           </div>
@@ -907,22 +1013,36 @@ Research Notes:
             <strong>No active dossiers</strong>
             <span>Compile a dossier above to begin synthesis.</span>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {dossiers.map((dossier) => (
+          ) : (
+          <div className="flex flex-col gap-6">
+            {dossierGroups.map(({ ticker, latest, history }) => {
+              const renderDossier = (dossier: typeof latest) => {
+                const persistedSources = (dossier as DossierLike).sources ?? [];
+                return (
               <article key={dossier.id} className="card card-pad flex flex-col gap-4">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-semibold text-lg" style={{ lineHeight: 1.1 }}>{dossier.title}</h3>
                     <div className="flex items-center gap-2 mt-2">
                       <span className="status">{dossier.ticker}</span>
-                      <span className="text-xs" style={{ color: 'var(--ink-light)' }}>{new Date(dossier.createdAt).toLocaleDateString()}</span>
+                      <span className="text-xs" style={{ color: 'var(--ink-light)' }}>{new Date(dossier.createdAt).toLocaleString()}</span>
                     </div>
                   </div>
                   <span className={`status ${dossier.reportStatus === 'PENDING_PROVIDER' ? 'pending' : ''}`}>
                     {dossier.reportStatus?.replaceAll("_", " ")}
                   </span>
                 </div>
+
+                {persistedSources.length > 0 && (
+                  <div className="text-sm" data-testid={`sources-${dossier.id}`}>
+                    <strong className="text-xs uppercase tracking-wider block mb-1">Persisted sources</strong>
+                    <ul className="m-0 pl-4" style={{ listStyleType: "disc" }}>
+                      {persistedSources.map((source) => (
+                        <li key={source.id}>{source.title} <span className="text-[var(--ink-light)]">({source.sourceKind.replaceAll("_", " ")} · {source.provenanceClass.replaceAll("_", " ")})</span></li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 
                 {dossier.reportStatus === "PENDING_PROVIDER" && (
                   <div className="p-4 rounded-md flex items-start gap-3 mt-2" style={{ backgroundColor: 'var(--bg-active)' }}>
@@ -939,7 +1059,7 @@ Research Notes:
                     <AlertTriangle size={16} style={{ color: 'var(--warning)', marginTop: '2px', flexShrink: 0 }} />
                     <div>
                       <strong className="block text-sm mb-1">Research response rejected safely</strong>
-                      <p className="text-sm" style={{ color: 'var(--ink-light)' }}>{dossier.blockDiagnostic}</p>
+                      <p className="text-sm" style={{ color: 'var(--ink-light)' }}>{dossier.blockDiagnostic.slice(0, 600)}{dossier.blockDiagnostic.length > 600 ? "…" : ""}</p>
                     </div>
                   </div>
                 )}
@@ -974,7 +1094,22 @@ Research Notes:
                   </div>
                 )}
               </article>
-            ))}
+                );
+              };
+              return (
+                <section key={ticker} className="flex flex-col gap-3">
+                  {renderDossier(latest)}
+                  {history.length > 0 && (
+                    <details className="card card-pad">
+                      <summary className="cursor-pointer font-medium">Older {ticker} attempts ({history.length})</summary>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+                        {history.map((dossier) => renderDossier(dossier))}
+                      </div>
+                    </details>
+                  )}
+                </section>
+              );
+            })}
           </div>
         )}
       </section>

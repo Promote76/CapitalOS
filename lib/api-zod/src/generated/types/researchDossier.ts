@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { FamilyOfficeProposal } from './familyOfficeProposal';
+import type { ResearchDossierSource } from './researchDossierSource';
 
 export interface ResearchDossier {
   /** @pattern ^[0-9a-fA-F-]{36}$ */
@@ -16,6 +17,8 @@ export interface ResearchDossier {
   title: string;
   /** @items.pattern ^[0-9a-fA-F-]{36}$ */
   evidenceIds: string[];
+  /** @maxItems 25 */
+  sources: ResearchDossierSource[];
   reviewStatus: string;
   createdAt: Date;
   reportStatus: string;

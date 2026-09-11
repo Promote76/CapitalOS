@@ -12,6 +12,7 @@
     "fixture:budget-review-browser": "../../scripts/node_modules/.bin/tsx src/integration/budget-review-browser-fixture.ts",
     "test:budget-review-browser": "playwright test --config playwright.config.ts src/browser/budget-review-recovery.spec.ts",
     "test:family-office-browser": "playwright test --config playwright.config.ts src/browser/family-office-boundaries.spec.ts",
+    "test:research-browser": "playwright test --config playwright.config.ts src/browser/research-page-regression.spec.ts",
     "test:daily-ops-browser": "playwright test --config playwright.config.ts src/browser/daily-ops-certification.spec.ts src/browser/guided-run-journal-certification.spec.ts",
     "test:capital-governor-browser": "playwright test --config playwright.config.ts src/browser/capital-governor-certification.spec.ts",
     "certify:document-budget-bridge": "playwright test --config playwright.config.ts src/browser/document-budget-bridge-certification.spec.ts",

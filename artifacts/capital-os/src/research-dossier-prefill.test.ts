@@ -4,6 +4,11 @@ import type { ResearchDossierPrefill, ResearchEvidence } from "@workspace/api-cl
 import { parseResearchDigestion } from "../../api-server/src/domain/research-digestion";
 import {
   buildReviewedPrefillText,
+  groupDossiersByTicker,
+  hasExactDossierEvidenceSet,
+  loadResearchSelection,
+  reconcileSelectedEvidenceIds,
+  stableEvidenceIds,
   isDossierEligibleEvidence,
   isResearchContentReady,
 } from "./pages/investment-research";
@@ -86,4 +91,51 @@ test("reviewed snapshot prefill is source-linked and valid without rewriting", (
   assert.equal(isResearchContentReady(text, "placeholder", true), true);
   assert.equal(isResearchContentReady("placeholder", "placeholder", false), false);
   assert.equal(isResearchContentReady("placeholder", "placeholder", true), true);
+});
+
+test("selection survives storage, reconciles refetches, and produces stable multi-ID payloads", () => {
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => { values.set(key, value); },
+  } as Storage;
+  storage.setItem("capital-os:research:selected-evidence", JSON.stringify(["z-id", "a-id"]));
+  const loaded = loadResearchSelection(storage);
+  assert.deepEqual(Array.from(reconcileSelectedEvidenceIds(loaded, ["a-id", "z-id", "new-id"])), ["z-id", "a-id"]);
+  assert.deepEqual(stableEvidenceIds(loaded, ["z-id", "a-id", "new-id"]), ["a-id", "z-id"]);
+  assert.deepEqual(Array.from(reconcileSelectedEvidenceIds(loaded, ["a-id"])), ["a-id"]);
+});
+
+test("exact duplicate detection uses completed dossier sources, not source ordering", () => {
+  const dossier = {
+    id: "dossier-1", ticker: "BKSC", createdAt: "2026-09-10T00:00:00Z", reportStatus: "COMPLETED",
+    sources: [
+      { id: "z-id", title: "Zulu", sourceKind: "UPLOADED_DOCUMENT", provenanceClass: "PRIMARY_SOURCE" },
+      { id: "a-id", title: "Alpha", sourceKind: "SEC_FILING", provenanceClass: "PRIMARY_SOURCE" },
+    ],
+  };
+  assert.equal(hasExactDossierEvidenceSet([dossier], "bkSC", ["a-id", "z-id"]), true);
+  assert.equal(hasExactDossierEvidenceSet([dossier], "BKSC", ["a-id"]), false);
+  assert.equal(hasExactDossierEvidenceSet([{ ...dossier, reportStatus: "PENDING_PROVIDER" }], "BKSC", ["a-id", "z-id"]), false);
+});
+
+test("dossiers group by ticker with newest createdAt as latest", () => {
+  const dossiers = [
+    { id: "old", ticker: "BKSC", title: "Old", createdAt: "2026-09-01T00:00:00Z", reportStatus: "blocked" },
+    { id: "new", ticker: "BKSC", title: "New", createdAt: "2026-09-03T00:00:00Z", reportStatus: "COMPLETED" },
+    { id: "other", ticker: "AAPL", title: "Other", createdAt: "2026-09-02T00:00:00Z", reportStatus: "PENDING_PROVIDER" },
+  ];
+  const groups = groupDossiersByTicker(dossiers);
+  assert.equal(groups.find((group) => group.ticker === "BKSC")?.latest.id, "new");
+  assert.deepEqual(groups.find((group) => group.ticker === "BKSC")?.history.map((item) => item.id), ["old"]);
+});
+
+test("multiple reviewed prefills retain each exact source name and source-linked facts", () => {
+  const second = { ...prefill, source: { ...prefill.source, title: "Second reviewed source", contentDigest: "c".repeat(64) } };
+  const text = buildReviewedPrefillText(prefill.suggestedTitle, prefill.ticker, [prefill, second]);
+  assert.match(text, /Schwab BKSC market snapshot/);
+  assert.match(text, /Second reviewed source/);
+  assert.match(text, new RegExp(second.source.contentDigest));
+  assert.match(text, /\[source-1\]/);
+  assert.match(text, /\[source-2\]/);
 });

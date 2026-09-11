@@ -4740,6 +4740,32 @@ export interface ResearchEvidence {
   dossierPrefill?: ResearchDossierPrefill | null;
 }
 
+export type ResearchDossierSourceSourceKind = typeof ResearchDossierSourceSourceKind[keyof typeof ResearchDossierSourceSourceKind];
+
+
+export const ResearchDossierSourceSourceKind = {
+  UPLOADED_DOCUMENT: 'UPLOADED_DOCUMENT',
+  SCHWAB_MARKET_SNAPSHOT: 'SCHWAB_MARKET_SNAPSHOT',
+  SEC_FILING: 'SEC_FILING',
+} as const;
+
+export type ResearchDossierSourceProvenanceClass = typeof ResearchDossierSourceProvenanceClass[keyof typeof ResearchDossierSourceProvenanceClass];
+
+
+export const ResearchDossierSourceProvenanceClass = {
+  UPLOADED_LICENSED_RESEARCH: 'UPLOADED_LICENSED_RESEARCH',
+  PRIMARY_SOURCE: 'PRIMARY_SOURCE',
+} as const;
+
+export interface ResearchDossierSource {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  /** @maxLength 240 */
+  title: string;
+  sourceKind: ResearchDossierSourceSourceKind;
+  provenanceClass: ResearchDossierSourceProvenanceClass;
+}
+
 export interface ResearchDossier {
   /** @pattern ^[0-9a-fA-F-]{36}$ */
   id: string;
@@ -4749,6 +4775,8 @@ export interface ResearchDossier {
   title: string;
   /** @items.pattern ^[0-9a-fA-F-]{36}$ */
   evidenceIds: string[];
+  /** @maxItems 25 */
+  sources: ResearchDossierSource[];
   reviewStatus: string;
   createdAt: string;
   reportStatus: string;
@@ -4929,6 +4957,7 @@ export interface CreateResearchDossierRequest {
   /** @maxLength 240 */
   title: string;
   /**
+     * @minItems 1
      * @maxItems 25
      * @items.pattern ^[0-9a-fA-F-]{36}$
      */

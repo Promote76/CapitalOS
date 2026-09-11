@@ -4,6 +4,7 @@ import test from "node:test";
 import { and, eq } from "drizzle-orm";
 import {
   auditEvents,
+  capitalRequests,
   db,
   familyOfficeAnalystScorecards,
   familyOfficeEvidence,
@@ -15,21 +16,60 @@ import {
   householdMembers,
   households,
   investmentResearchDossiers,
+  ledgerTransactions,
+  orderIntents,
   reviewedResearchEvidence,
   reviewedSecFilingEvidence,
   schwabMarketSnapshots,
   secFilingSnapshots,
+  shadowOrderIntents,
   users,
 } from "@workspace/db";
 import { createInvestmentResearchDossier, listResearchDossiers, listSchwabMarketSnapshots, projectReviewedSecForAgents, projectReviewedSnapshotForAgents, projectReviewedSnapshotPrefill, reviewSchwabMarketSnapshot } from "../services/research-dossier";
 import { reviewSecFiling } from "../services/sec-research";
 import { assertPermission } from "../domain/governance";
+import type { ResearchAdvisorySections, ResearchOutput } from "../domain/family-office";
 import { readFile } from "node:fs/promises";
 
 const enabled = process.env.CAPITAL_OS_RUN_INTEGRATION === "1";
 const canonical = (v: unknown): string => Array.isArray(v) ? `[${v.map(canonical).join(",")}]` : v && typeof v === "object"
   ? `{${Object.keys(v as Record<string, unknown>).sort().map((k) => `${JSON.stringify(k)}:${canonical((v as Record<string, unknown>)[k])}`).join(",")}}`
   : JSON.stringify(v);
+
+function analystOutput(evidenceIds: string[]): ResearchOutput {
+  const empty = { content: [], evidenceIds: [], provenance: [] };
+  const sections = Object.fromEntries([
+    "fundamentals", "valuation", "catalysts", "risks", "downsideCase", "peerContext",
+    "portfolioFit", "concentrationLiquidityRisk", "thesisInvalidationConditions", "evidenceQuality",
+  ].map((name) => [name, name === "fundamentals"
+    ? { content: ["Reviewed Schwab and SEC evidence together."], evidenceIds, provenance: ["PRIMARY_SOURCE"] }
+    : empty])) as ResearchAdvisorySections;
+  return {
+    title: "BKSC combined-source research",
+    thesis: "Advisory analysis from both approved sources.",
+    label: "REVIEW_CANDIDATE",
+    analyticalDirection: "NEUTRAL",
+    confidence: 60,
+    facts: ["Both approved sources were supplied."],
+    assumptions: [],
+    risks: ["Human review remains required."],
+    sections,
+    evidence: [],
+  };
+}
+
+async function householdSafetyCounts(householdId: string) {
+  const count = async (table: typeof shadowOrderIntents | typeof orderIntents | typeof ledgerTransactions | typeof capitalRequests) => {
+    const rows = await db.select({ id: table.id }).from(table).where(eq(table.householdId, householdId));
+    return rows.length;
+  };
+  return Promise.all([
+    count(shadowOrderIntents),
+    count(orderIntents),
+    count(ledgerTransactions),
+    count(capitalRequests),
+  ]);
+}
 
 test("snapshot route permission contract is read/contribute/approve separated", () => {
   assert.throws(() => assertPermission("viewer", "contribute"));
@@ -42,7 +82,7 @@ test("dossier service has no Schwab retrieval or execution seam", async () => {
   assert.equal(source.includes("requestSchwabResearch"), false);
   assert.equal(source.includes("trader/v1/orders"), false);
   assert.equal(source.includes("executionAuthority: \"none\""), true);
-  assert.equal(source.includes("await tx.insert(auditEvents)"), true);
+  assert.equal(source.includes("appendAuditEvent"), true);
 });
 
 test("Grok projection excludes provider transport metadata and raw capability envelopes", () => {
@@ -238,6 +278,15 @@ test("invalid dossier digestion stops before dossier or Research Chair side effe
       ticker: "BKSC",
       title: "BKSC Investment Research",
       evidenceIds: [],
+      digestionPayload: "not parsed",
+    }),
+    /Between 1 and 25 evidence items/,
+  );
+  await assert.rejects(
+    () => createInvestmentResearchDossier(f.a, {
+      ticker: "BKSC",
+      title: "BKSC Investment Research",
+      evidenceIds: [randomUUID()],
       digestionPayload: "Company: Bank of South Carolina\nTicker: BKSC\nSources:\n- ",
     }),
     /Research digestion failed validation/,
@@ -268,4 +317,176 @@ test("invalid dossier digestion stops before dossier or Research Chair side effe
     [dossiers, dossierAudits, runs, digestions, chairEvidence, proposals, reports, refreshes, scorecards].map((rows) => rows.length),
     [0, 0, 0, 0, 0, 0, 0, 0, 0],
   );
+});
+
+test("dossier projection retains persisted mixed sources and bounded blocked diagnostics", { skip: !enabled }, async () => {
+  const f = await fixture();
+  const [row] = await db.insert(investmentResearchDossiers).values({
+    householdId: f.a.householdId,
+    ticker: "BKSC",
+    title: "BKSC Investment Research",
+    evidenceIds: [randomUUID(), randomUUID()],
+    digestion: {
+      fingerprint: "a".repeat(64),
+      persistedSources: [
+        { id: randomUUID(), title: "Schwab BKSC market snapshot", sourceKind: "SCHWAB_MARKET_SNAPSHOT", provenanceClass: "PRIMARY_SOURCE" },
+        { id: randomUUID(), title: "SEC BKSC filing", sourceKind: "SEC_FILING", provenanceClass: "PRIMARY_SOURCE" },
+      ],
+    },
+    report: {
+      run: {
+        status: "blocked",
+        outputSummary: "x".repeat(2_000),
+      },
+      advisoryOnly: true,
+      executionAuthority: "none",
+    },
+    createdBy: f.a.userId,
+  }).returning();
+  const listed = await listResearchDossiers(f.a);
+  const projected = listed.dossiers.find((dossier) => dossier.id === row.id);
+  assert.ok(projected);
+  assert.deepEqual(projected.sources.map((source) => source.sourceKind), ["SCHWAB_MARKET_SNAPSHOT", "SEC_FILING"]);
+  assert.equal(projected.sources[0]!.title, "Schwab BKSC market snapshot");
+  assert.equal(projected.sources[1]!.title, "SEC BKSC filing");
+  assert.equal(projected.reportStatus, "blocked");
+  assert.equal(projected.blockDiagnostic?.length, 600);
+  assert.equal(projected.executionAuthority, "none");
+});
+
+test("combined approved Schwab and SEC evidence reaches all three analysts once and blocks exact duplicate runs", { skip: !enabled }, async () => {
+  const f = await fixture();
+  const [marketSnapshot] = await db.insert(schwabMarketSnapshots).values({
+    householdId: f.a.householdId,
+    ticker: "BKSC",
+    content: { ticker: "BKSC", quote: { lastPrice: "18.75" } },
+    provenance: { provider: "schwab" },
+    requestedAt: new Date("2026-09-11T12:00:00Z"),
+    retrievedAt: new Date("2026-09-11T12:00:01Z"),
+    freshness: "CURRENT",
+    reviewStatus: "APPROVED",
+    createdBy: f.a.userId,
+    reviewedBy: f.a.userId,
+    reviewedAt: new Date("2026-09-11T12:01:00Z"),
+  }).returning();
+  const [schwabEvidence] = await db.insert(reviewedResearchEvidence).values({
+    householdId: f.a.householdId,
+    snapshotId: marketSnapshot.id,
+    ticker: "BKSC",
+    canonicalContent: { ticker: "BKSC", quote: { lastPrice: "18.75" } },
+    canonicalSha256: createHash("sha256").update(`schwab-${marketSnapshot.id}`).digest("hex"),
+    provenance: { provider: "schwab" },
+    approvedBy: f.a.userId,
+  }).returning();
+  const [secSnapshot] = await db.insert(secFilingSnapshots).values({
+    householdId: f.a.householdId,
+    ticker: "BKSC",
+    filingForm: "10-Q",
+    filingDate: "2026-08-01",
+    accession: `0001007273-26-${randomUUID().slice(0, 6)}`,
+    sourceUrl: "https://www.sec.gov/Archives/edgar/data/1007273/fixture.htm",
+    content: { ticker: "BKSC", metrics: { totalAssets: { value: 700_000_000, unit: "USD" } } },
+    provenance: { provider: "SEC EDGAR" },
+    evidenceQuality: "LOW",
+    extractionTimestamp: new Date("2026-09-11T12:00:00Z"),
+    reviewStatus: "APPROVED",
+    createdBy: f.a.userId,
+    reviewedBy: f.a.userId,
+    reviewedAt: new Date("2026-09-11T12:01:00Z"),
+  }).returning();
+  const [secEvidence] = await db.insert(reviewedSecFilingEvidence).values({
+    householdId: f.a.householdId,
+    snapshotId: secSnapshot.id,
+    ticker: "BKSC",
+    canonicalContent: { ticker: "BKSC", metrics: { totalAssets: { value: 700_000_000, unit: "USD" } } },
+    canonicalSha256: createHash("sha256").update(`sec-${secSnapshot.id}`).digest("hex"),
+    provenance: { provider: "SEC EDGAR" },
+    approvedBy: f.a.userId,
+  }).returning();
+  const evidenceIds = [schwabEvidence.id, secEvidence.id];
+  const references = evidenceIds.map((id) => `REVIEWED:${id}`);
+  const digestionPayload = JSON.stringify({
+    ticker: "BKSC",
+    company: "Bank of South Carolina",
+    sources: [
+      { id: "schwab", title: "Schwab BKSC market snapshot" },
+      { id: "sec", title: "SEC BKSC filing" },
+    ],
+    sourceClaims: [
+      { sourceId: "schwab", statement: "BKSC last price was observed at 18.75." },
+      { sourceId: "sec", statement: "BKSC reported total assets in its filing." },
+    ],
+    inferences: [],
+  });
+  const prompts: string[] = [];
+  const provider = {
+    status: { enabled: true, state: "configured" as const, model: "deterministic-research-certification" },
+    research: async ({ prompt }: { analyst: string; scope: string; prompt: string }) => {
+      prompts.push(prompt);
+      return analystOutput(references);
+    },
+  };
+  const safetyBefore = await householdSafetyCounts(f.a.householdId);
+  const result = await createInvestmentResearchDossier(f.a, {
+    ticker: "BKSC",
+    title: "BKSC combined-source certification",
+    evidenceIds,
+    digestionPayload,
+  }, { provider });
+
+  assert.equal(prompts.length, 3);
+  for (const prompt of prompts) {
+    assert.equal(prompt.includes(`REVIEWED:${schwabEvidence.id}`), true);
+    assert.equal(prompt.includes(`REVIEWED:${secEvidence.id}`), true);
+    assert.equal(prompt.includes("Schwab BKSC market snapshot"), true);
+    assert.equal(prompt.includes("SEC BKSC filing"), true);
+  }
+  assert.deepEqual(result.dossier.evidenceIds, evidenceIds);
+  assert.deepEqual(result.dossier.sources.map((source) => source.id), evidenceIds);
+  assert.deepEqual(result.dossier.sources.map((source) => source.sourceKind), ["SCHWAB_MARKET_SNAPSHOT", "SEC_FILING"]);
+  assert.equal(result.dossier.reportStatus, "completed");
+  const proposal = result.proposal as { multiAgentSynthesis?: { recommendation?: string } } | null;
+  assert.equal(proposal?.multiAgentSynthesis?.recommendation, "REVIEW_CANDIDATE");
+  assert.equal(result.dossier.executionAuthority, "none");
+  assert.equal(result.dossier.noCapitalSideEffects, true);
+  assert.deepEqual(await householdSafetyCounts(f.a.householdId), safetyBefore);
+
+  await assert.rejects(
+    () => createInvestmentResearchDossier(f.a, {
+      ticker: "BKSC",
+      title: "Same content, reversed sources",
+      evidenceIds: [...evidenceIds].reverse(),
+      digestionPayload,
+    }, { provider }),
+    /already pending or completed/,
+  );
+  assert.equal(prompts.length, 3);
+  const householdDossiers = await db.select().from(investmentResearchDossiers)
+    .where(eq(investmentResearchDossiers.householdId, f.a.householdId));
+  assert.equal(householdDossiers.length, 1);
+  assert.deepEqual(await householdSafetyCounts(f.a.householdId), safetyBefore);
+
+  const failed = await createInvestmentResearchDossier(f.a, {
+    ticker: "BKSC",
+    title: "BKSC fail-closed certification",
+    evidenceIds,
+    digestionPayload: digestionPayload.replace(
+      "BKSC reported total assets in its filing.",
+      "BKSC filing evidence remains subject to human review.",
+    ),
+  }, {
+    provider: {
+      status: { enabled: true, state: "configured", model: "malformed-provider-certification" },
+      research: async () => {
+        throw new Error("raw provider details must not escape");
+      },
+    },
+  });
+  assert.equal(failed.dossier.reportStatus, "blocked");
+  assert.equal(failed.dossier.blockDiagnostic?.length !== 0, true);
+  assert.equal(failed.dossier.blockDiagnostic?.length! <= 600, true);
+  assert.equal(failed.dossier.blockDiagnostic?.includes("raw provider details"), false);
+  assert.deepEqual(failed.dossier.sources.map((source) => source.id), evidenceIds);
+  assert.equal(failed.proposal, null);
+  assert.deepEqual(await householdSafetyCounts(f.a.householdId), safetyBefore);
 });

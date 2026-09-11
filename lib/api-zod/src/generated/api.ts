@@ -3762,6 +3762,11 @@ export const listResearchDossiersResponseEvidenceItemDossierPrefillOneSourceFact
 export const listResearchDossiersResponseDossiersItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const listResearchDossiersResponseDossiersItemHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const listResearchDossiersResponseDossiersItemEvidenceIdsItemRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listResearchDossiersResponseDossiersItemSourcesItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listResearchDossiersResponseDossiersItemSourcesItemTitleMax = 240;
+
+export const listResearchDossiersResponseDossiersItemSourcesMax = 25;
+
 export const listResearchDossiersResponseDossiersItemBlockDiagnosticMax = 600;
 
 export const listResearchDossiersResponseDossiersItemProposalOneDigestionSummaryFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
@@ -3881,6 +3886,12 @@ export const ListResearchDossiersResponse = zod.object({
   "ticker": zod.string(),
   "title": zod.string(),
   "evidenceIds": zod.array(zod.string().regex(listResearchDossiersResponseDossiersItemEvidenceIdsItemRegExp)),
+  "sources": zod.array(zod.object({
+  "id": zod.string().regex(listResearchDossiersResponseDossiersItemSourcesItemIdRegExp),
+  "title": zod.string().max(listResearchDossiersResponseDossiersItemSourcesItemTitleMax),
+  "sourceKind": zod.enum(['UPLOADED_DOCUMENT', 'SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
+  "provenanceClass": zod.enum(['UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE'])
+})).max(listResearchDossiersResponseDossiersItemSourcesMax),
   "reviewStatus": zod.string(),
   "createdAt": zod.coerce.date(),
   "reportStatus": zod.string(),
@@ -3983,13 +3994,18 @@ export const createResearchDossierBodyDigestionPayloadMax = 102400;
 export const CreateResearchDossierBody = zod.object({
   "ticker": zod.string().max(createResearchDossierBodyTickerMax),
   "title": zod.string().max(createResearchDossierBodyTitleMax),
-  "evidenceIds": zod.array(zod.string().regex(createResearchDossierBodyEvidenceIdsItemRegExp)).max(createResearchDossierBodyEvidenceIdsMax),
+  "evidenceIds": zod.array(zod.string().regex(createResearchDossierBodyEvidenceIdsItemRegExp)).min(1).max(createResearchDossierBodyEvidenceIdsMax),
   "digestionPayload": zod.string().max(createResearchDossierBodyDigestionPayloadMax)
 })
 
 export const createResearchDossierResponseDossierIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const createResearchDossierResponseDossierHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const createResearchDossierResponseDossierEvidenceIdsItemRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierResponseDossierSourcesItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierResponseDossierSourcesItemTitleMax = 240;
+
+export const createResearchDossierResponseDossierSourcesMax = 25;
+
 export const createResearchDossierResponseDossierBlockDiagnosticMax = 600;
 
 export const createResearchDossierResponseDossierProposalOneDigestionSummaryFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
@@ -4027,6 +4043,11 @@ export const createResearchDossierResponseRefreshEvidenceItemDossierPrefillOneSo
 export const createResearchDossierResponseRefreshDossiersItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const createResearchDossierResponseRefreshDossiersItemHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const createResearchDossierResponseRefreshDossiersItemEvidenceIdsItemRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierResponseRefreshDossiersItemSourcesItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchDossierResponseRefreshDossiersItemSourcesItemTitleMax = 240;
+
+export const createResearchDossierResponseRefreshDossiersItemSourcesMax = 25;
+
 export const createResearchDossierResponseRefreshDossiersItemBlockDiagnosticMax = 600;
 
 export const createResearchDossierResponseRefreshDossiersItemProposalOneDigestionSummaryFingerprintRegExp = new RegExp('^[a-f0-9]{64}$');
@@ -4039,6 +4060,12 @@ export const CreateResearchDossierResponse = zod.object({
   "ticker": zod.string(),
   "title": zod.string(),
   "evidenceIds": zod.array(zod.string().regex(createResearchDossierResponseDossierEvidenceIdsItemRegExp)),
+  "sources": zod.array(zod.object({
+  "id": zod.string().regex(createResearchDossierResponseDossierSourcesItemIdRegExp),
+  "title": zod.string().max(createResearchDossierResponseDossierSourcesItemTitleMax),
+  "sourceKind": zod.enum(['UPLOADED_DOCUMENT', 'SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
+  "provenanceClass": zod.enum(['UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE'])
+})).max(createResearchDossierResponseDossierSourcesMax),
   "reviewStatus": zod.string(),
   "createdAt": zod.coerce.date(),
   "reportStatus": zod.string(),
@@ -4271,6 +4298,12 @@ export const CreateResearchDossierResponse = zod.object({
   "ticker": zod.string(),
   "title": zod.string(),
   "evidenceIds": zod.array(zod.string().regex(createResearchDossierResponseRefreshDossiersItemEvidenceIdsItemRegExp)),
+  "sources": zod.array(zod.object({
+  "id": zod.string().regex(createResearchDossierResponseRefreshDossiersItemSourcesItemIdRegExp),
+  "title": zod.string().max(createResearchDossierResponseRefreshDossiersItemSourcesItemTitleMax),
+  "sourceKind": zod.enum(['UPLOADED_DOCUMENT', 'SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
+  "provenanceClass": zod.enum(['UPLOADED_LICENSED_RESEARCH', 'PRIMARY_SOURCE'])
+})).max(createResearchDossierResponseRefreshDossiersItemSourcesMax),
   "reviewStatus": zod.string(),
   "createdAt": zod.coerce.date(),
   "reportStatus": zod.string(),

@@ -12,6 +12,7 @@ export interface CreateResearchDossierRequest {
   /** @maxLength 240 */
   title: string;
   /**
+     * @minItems 1
      * @maxItems 25
      * @items.pattern ^[0-9a-fA-F-]{36}$
      */

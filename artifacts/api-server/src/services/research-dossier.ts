@@ -1,12 +1,12 @@
 import { appendAuditEvent, appendAuditEvents } from "./audit";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { db, auditEvents, investmentResearchDossiers, researchEvidence, schwabResearchCertifications, schwabMarketSnapshots, reviewedResearchEvidence, reviewedSecFilingEvidence } from "@workspace/db";
 import type { Actor } from "./capital-os";
 import { assertDocumentUploadGrant, assertPrivateObjectPath, createDocumentUploadGrant, downloadBusinessDocument, requestBusinessDocumentUpload } from "../lib/business-document-storage";
 import { parseResearchDigestion } from "../domain/research-digestion";
-import { runFamilyOfficeResearch } from "./family-office";
+import { runFamilyOfficeResearch, type ResearchOptions } from "./family-office";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_TEXT = 100 * 1024;
@@ -384,15 +384,23 @@ export async function reviewResearchEvidence(actor: Actor, evidenceId: string, s
   return { ...row, advisoryOnly: true, evidenceKind: "UPLOADED_DOCUMENT" as const };
 }
 
-export async function createInvestmentResearchDossier(actor: Actor, input: { ticker: string; title: string; evidenceIds: string[]; digestionPayload: string }) {
+export async function createInvestmentResearchDossier(
+  actor: Actor,
+  input: { ticker: string; title: string; evidenceIds: string[]; digestionPayload: string },
+  options: Pick<ResearchOptions, "provider"> = {},
+) {
   const ticker = requiredText(input.ticker, 16, "ticker").toUpperCase();
   if (!/^[A-Z][A-Z0-9.-]{0,14}$/.test(ticker)) throw new ResearchDossierError("VALIDATION_ERROR", "Invalid ticker");
-  if (!Array.isArray(input.evidenceIds) || input.evidenceIds.length > 25) throw new ResearchDossierError("VALIDATION_ERROR", "At most 25 evidence items may be selected");
+  if (!Array.isArray(input.evidenceIds) || input.evidenceIds.length === 0 || input.evidenceIds.length > 25) throw new ResearchDossierError("VALIDATION_ERROR", "Between 1 and 25 evidence items must be selected");
+  if (new Set(input.evidenceIds).size !== input.evidenceIds.length || input.evidenceIds.some((id) => typeof id !== "string" || !id.trim())) {
+    throw new ResearchDossierError("VALIDATION_ERROR", "Evidence items must be unique and nonempty");
+  }
+  const evidenceIds = [...input.evidenceIds];
   const parsed = parseResearchDigestion(input.digestionPayload);
   if (!parsed.success) throw new ResearchDossierError("VALIDATION_ERROR", "Research digestion failed validation");
-  const uploadedEvidence = input.evidenceIds.length ? await db.select().from(researchEvidence).where(and(eq(researchEvidence.householdId, actor.householdId), inArray(researchEvidence.id, input.evidenceIds))) : [];
-  const reviewedSnapshots = input.evidenceIds.length ? await db.select().from(reviewedResearchEvidence).where(and(eq(reviewedResearchEvidence.householdId, actor.householdId), inArray(reviewedResearchEvidence.id, input.evidenceIds))) : [];
-  const reviewedSec = input.evidenceIds.length ? await db.select().from(reviewedSecFilingEvidence).where(and(eq(reviewedSecFilingEvidence.householdId, actor.householdId), inArray(reviewedSecFilingEvidence.id, input.evidenceIds))) : [];
+  const uploadedEvidence = await db.select().from(researchEvidence).where(and(eq(researchEvidence.householdId, actor.householdId), inArray(researchEvidence.id, evidenceIds)));
+  const reviewedSnapshots = await db.select().from(reviewedResearchEvidence).where(and(eq(reviewedResearchEvidence.householdId, actor.householdId), inArray(reviewedResearchEvidence.id, evidenceIds)));
+  const reviewedSec = await db.select().from(reviewedSecFilingEvidence).where(and(eq(reviewedSecFilingEvidence.householdId, actor.householdId), inArray(reviewedSecFilingEvidence.id, evidenceIds)));
   if (reviewedSnapshots.some((item) => item.ticker !== ticker)) {
     throw new ResearchDossierError("VALIDATION_ERROR", "Reviewed market snapshot evidence must match the dossier ticker");
   }
@@ -402,12 +410,36 @@ export async function createInvestmentResearchDossier(actor: Actor, input: { tic
     ...reviewedSnapshots.map((item) => ({ id: item.id, title: `Schwab ${item.ticker} market snapshot`, provenanceClass: "PRIMARY_SOURCE", reviewStatus: "APPROVED", extractionStatus: "complete", extractedText: JSON.stringify(item.canonicalContent), evidenceText: JSON.stringify(item.canonicalContent) })),
     ...reviewedSec.map((item) => ({ id: item.id, title: `SEC ${item.ticker} filing`, provenanceClass: "PRIMARY_SOURCE", reviewStatus: "APPROVED", extractionStatus: "complete", extractedText: JSON.stringify(item.canonicalContent), evidenceText: JSON.stringify(item.canonicalContent) })),
   ];
-  if (evidence.length !== input.evidenceIds.length || evidence.some((item) => !review.has(item.reviewStatus) || item.extractionStatus !== "complete")) throw new ResearchDossierError("VALIDATION_ERROR", "Only reviewed, completely extracted evidence from this household may be selected");
+  if (evidence.length !== evidenceIds.length || evidence.some((item) => !review.has(item.reviewStatus) || item.extractionStatus !== "complete")) throw new ResearchDossierError("VALIDATION_ERROR", "Only reviewed, completely extracted evidence from this household may be selected");
+  const persistedSources = evidence.map((item) => ({
+    id: item.id,
+    title: item.title,
+    sourceKind: item.id === reviewedSnapshots.find((source) => source.id === item.id)?.id
+      ? "SCHWAB_MARKET_SNAPSHOT" as const
+      : item.id === reviewedSec.find((source) => source.id === item.id)?.id
+        ? "SEC_FILING" as const
+        : "UPLOADED_DOCUMENT" as const,
+    provenanceClass: item.provenanceClass,
+  }));
   const [row] = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`research-dossier:${actor.householdId}:${ticker}:${parsed.data.fingerprint}`}, 0))`);
+    const existingDossiers = await tx.select().from(investmentResearchDossiers).where(and(
+      eq(investmentResearchDossiers.householdId, actor.householdId),
+      eq(investmentResearchDossiers.ticker, ticker),
+    ));
+    const duplicate = existingDossiers.find((candidate) => {
+      const digestion = record(candidate.digestion);
+      const candidateIds = Array.isArray(candidate.evidenceIds) ? [...candidate.evidenceIds].sort() : [];
+      const status = snapshotDossier(candidate).reportStatus;
+      return digestion.fingerprint === parsed.data.fingerprint
+        && JSON.stringify(candidateIds) === JSON.stringify([...evidenceIds].sort())
+        && status !== "blocked";
+    });
+    if (duplicate) throw new ResearchDossierError("CONFLICT", "An identical research dossier is already pending or completed for this household and ticker");
     const [created] = await tx.insert(investmentResearchDossiers).values({
-    householdId: actor.householdId, ticker, title: requiredText(input.title, 240, "title"), evidenceIds: input.evidenceIds,
-     digestion: { ...parsed.data, uploadedEvidence: evidence.filter((e) => review.has(e.reviewStatus) && e.extractionStatus === "complete").map((e) => ({ id: e.id, title: e.title, text: e.evidenceText })) } as unknown as Record<string, unknown>, createdBy: actor.userId,
-    report: { status: "PENDING_PROVIDER", advisoryOnly: true, executionAuthority: "none", evidenceClasses: evidence.map((e) => e.provenanceClass) },
+    householdId: actor.householdId, ticker, title: requiredText(input.title, 240, "title"), evidenceIds,
+     digestion: { ...parsed.data, persistedSources, uploadedEvidence: evidence.map((e) => ({ id: e.id, title: e.title, text: e.evidenceText })) } as unknown as Record<string, unknown>, createdBy: actor.userId,
+     report: { status: "PENDING_PROVIDER", advisoryOnly: true, executionAuthority: "none", evidenceClasses: evidence.map((e) => e.provenanceClass) },
     }).returning();
     await appendAuditEvent({ householdId: actor.householdId, actor: actor.userId, eventType: "investment_research_dossier_created", entity: "investment_research_dossier", entityId: created.id, reason: "Advisory-only research dossier created from reviewed evidence", metadata: { advisoryOnly: true, executionAuthority: "none", evidenceIds: input.evidenceIds } }, tx);
     return [created] as const;
@@ -421,12 +453,12 @@ export async function createInvestmentResearchDossier(actor: Actor, input: { tic
       ticker,
       prompt: "Produce an advisory-only investment research report. Do not authorize execution or capital movement.",
       digestionPayload: input.digestionPayload,
-      }, { reviewedResearchEvidence: [
-        ...uploadedEvidence.map((item) => ({
+      }, { provider: options.provider, reviewedResearchEvidence: [
+       ...uploadedEvidence.map((item) => ({
           id: item.id,
           title: item.title,
           provenanceClass: item.provenanceClass as "UPLOADED_LICENSED_RESEARCH" | "PRIMARY_SOURCE",
-          excerpt: item.extractedText!.slice(0, 4000),
+           excerpt: (item.extractedText ?? "").slice(0, 4000),
         })),
         ...reviewedSnapshots.map(projectReviewedSnapshotForAgents),
         ...reviewedSec.map(projectReviewedSecForAgents),
@@ -435,7 +467,15 @@ export async function createInvestmentResearchDossier(actor: Actor, input: { tic
     const dossier = snapshotDossier(completed ?? row);
     return { dossier, proposal: (result as { proposal?: unknown }).proposal ?? null, refresh: await listResearchDossiers(actor) };
   } catch {
-    return { dossier: snapshotDossier(row), proposal: null, refresh: await listResearchDossiers(actor) };
+    const [blocked] = await db.update(investmentResearchDossiers).set({
+      report: {
+        status: "blocked",
+        advisoryOnly: true,
+        executionAuthority: "none",
+        run: { status: "blocked", providerStatus: "unavailable", outputSummary: "Research provider did not complete; no report was fabricated.".slice(0, 600) },
+      },
+    }).where(and(eq(investmentResearchDossiers.id, row.id), eq(investmentResearchDossiers.householdId, actor.householdId))).returning();
+    return { dossier: snapshotDossier(blocked ?? row), proposal: null, refresh: await listResearchDossiers(actor) };
   }
 }
 
@@ -446,11 +486,23 @@ function snapshotDossier(row: typeof investmentResearchDossiers.$inferSelect) {
   const reportStatus = typeof run.status === "string"
     ? run.status
     : typeof run.providerStatus === "string" ? run.providerStatus : "PENDING_PROVIDER";
-  const blockDiagnostic = reportStatus === "blocked" && typeof run.outputSummary === "string"
-    ? run.outputSummary.slice(0, 600)
+  const blockDiagnostic = reportStatus === "blocked"
+    ? typeof run.outputSummary === "string" && run.outputSummary.trim()
+      ? run.outputSummary.slice(0, 600)
+      : "Research provider did not complete; no report was fabricated."
     : null;
+  const digestion = row.digestion && typeof row.digestion === "object" ? row.digestion as Record<string, unknown> : {};
+  const sources = Array.isArray(digestion.persistedSources)
+    ? digestion.persistedSources.slice(0, 25).filter((source): source is Record<string, unknown> => Boolean(source && typeof source === "object"))
+      .map((source) => ({
+        id: typeof source.id === "string" ? source.id : "",
+        title: typeof source.title === "string" ? source.title.slice(0, 240) : "",
+        sourceKind: typeof source.sourceKind === "string" ? source.sourceKind : "UPLOADED_DOCUMENT",
+        provenanceClass: typeof source.provenanceClass === "string" ? source.provenanceClass : "PRIMARY_SOURCE",
+      }))
+  : [];
   const { report: _report, digestion: _digestion, ...safe } = row;
-  return { ...safe, createdAt: row.createdAt, reportStatus, blockDiagnostic, proposal, advisoryOnly: true, executionAuthority: "none", noCapitalSideEffects: true };
+  return { ...safe, sources, createdAt: row.createdAt, reportStatus, blockDiagnostic, proposal, advisoryOnly: true, executionAuthority: "none", noCapitalSideEffects: true };
 }
 
 export async function listResearchDossiers(actor: Actor) {

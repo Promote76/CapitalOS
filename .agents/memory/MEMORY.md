@@ -29,6 +29,7 @@
 - [Schwab read-only boundary](capital-os-schwab-boundary.md) — keep the observation-only contract disabled until an approved connector and real provider evidence exist.
 - [Daily Ops review history boundary](capital-os-daily-ops-history.md) — persist reasoned operator handoffs separately from financial authority and execution state.
 - [Daily Ops certification boundary](capital-os-daily-ops-certification.md) — certify authenticated tenant isolation and fail-closed source failures with disposable household-marked fixtures.
+- [Research browser certification](capital-os-research-certification.md) — route loading delays at API paths, compare stable advisory invariants, and clean disposable household audit dependencies.
 - [Saved brief provenance](capital-os-saved-brief-provenance.md) — brief history should expose only fixed, redacted authoritative workspace markers alongside provider context.
 - [Variable-income household budget](capital-os-variable-income-budget.md) — keep verified-income planning advisory, floor-first, and separate from business cash and Safe-to-Deploy authority.
 - [Capital Governor certification](capital-governor-certification.md) — refresh all tenant-route evidence markers before certifying additive Safe-to-Deploy routes.

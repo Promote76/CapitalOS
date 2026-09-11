@@ -4710,7 +4710,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, dashboardSta
      <Route path="/contributions" component={() => <UtilityPage kind="contributions" onAction={onAction} transactions={transactions} dashboard={dashboard} />} />
     <Route path="/reports" component={() => <UtilityPage kind="reports" onAction={onAction} transactions={transactions} />} />
      <Route path="/documents" component={CompletedDocumentsPage} />
-     <Route path="/insights" component={() => <IntelligencePage onFeedback={onFeedback} />} />
+    <Route path="/insights" component={FinanceInsightsPage} />
       <Route path="/family-office"><FamilyOfficePage onFeedback={onFeedback} /></Route>
     <Route component={NotFound} />
   </Switch>;

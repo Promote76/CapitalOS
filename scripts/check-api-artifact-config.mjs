@@ -26,6 +26,11 @@ assert.match(
 );
 assert.match(
   config,
+  /^paths = \["\/api\/health\/live", "\/api"\]$/m,
+  "API artifact service routing must probe the dependency-free liveness path before the broader API prefix.",
+);
+assert.match(
+  config,
   /\[services\.production\.health\.startup\]\s+path = "\/api\/health\/live"/m,
   "Artifact startup health must use process liveness; operational readiness remains a separate fail-closed endpoint.",
 );

@@ -87,6 +87,16 @@ test("RC1 exact-release readiness certification", async (t) => {
       assert.equal((await verifyAuditIntegrity()).status, "PASS");
       const address = server.address();
       assert.ok(address && typeof address !== "string");
+      const liveResponse = await fetch(
+        `http://127.0.0.1:${address.port}/api/health/live`,
+      );
+      assert.equal(liveResponse.status, 200);
+      assert.deepEqual(await liveResponse.json(), { status: "ok" });
+      const apiResponse = await fetch(
+        `http://127.0.0.1:${address.port}/api`,
+      );
+      assert.equal(apiResponse.status, 200);
+      assert.deepEqual(await apiResponse.json(), { status: "ok" });
       const response = await fetch(
         `http://127.0.0.1:${address.port}/api/health/ready`,
       );

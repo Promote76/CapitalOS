@@ -48,6 +48,7 @@ export const isResearchContentReady = (
   && (researchText !== placeholderTemplate || hasReviewedPrefill);
 
 const RESEARCH_SELECTION_KEY = "capital-os:research:selected-evidence";
+const RESEARCH_OPPORTUNITY_SELECTION_KEY = "capital-os:research:selected-opportunities";
 
 /** Keep selection stable across query updates while removing IDs no longer usable. */
 export function reconcileSelectedEvidenceIds(selected: Iterable<string>, eligibleIds: Iterable<string>) {
@@ -62,6 +63,16 @@ export function loadResearchSelection(storage: Storage | undefined = typeof wind
     return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
   } catch {
     return new Set<string>();
+  }
+}
+
+function loadResearchOpportunitySelection(storage: Storage | undefined = typeof window === "undefined" ? undefined : window.sessionStorage) {
+  if (!storage) return [];
+  try {
+    const parsed: unknown = JSON.parse(storage.getItem(RESEARCH_OPPORTUNITY_SELECTION_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((ticker): ticker is string => typeof ticker === "string") : [];
+  } catch {
+    return [];
   }
 }
 
@@ -266,7 +277,7 @@ export default function InvestmentResearchPage() {
   const [snapshotReasons, setSnapshotReasons] = useState<Record<string, string>>({});
   const [secTicker, setSecTicker] = useState("");
   const [researchView, setResearchView] = useState<ResearchView>("Balanced");
-  const [selectedOpportunityTickers, setSelectedOpportunityTickers] = useState<string[]>([]);
+  const [selectedOpportunityTickers, setSelectedOpportunityTickers] = useState<string[]>(() => loadResearchOpportunitySelection());
 
   const handleSnapshotReasonChange = (id: string, val: string) => setSnapshotReasons(p => ({...p, [id]: val}));
 
@@ -500,9 +511,21 @@ Research Notes:
   }, [selectedEvidenceIds]);
 
   useEffect(() => {
-    const available = new Set(opportunitiesQuery.data?.opportunities.map((item) => item.ticker) ?? []);
-    setSelectedOpportunityTickers((current) => current.filter((ticker) => available.has(ticker)));
-  }, [opportunitiesQuery.data?.opportunities]);
+    try {
+      window.sessionStorage.setItem(RESEARCH_OPPORTUNITY_SELECTION_KEY, JSON.stringify(selectedOpportunityTickers));
+    } catch {
+      // Selection still works in memory when storage is unavailable.
+    }
+  }, [selectedOpportunityTickers]);
+
+  useEffect(() => {
+    if (!opportunitiesQuery.data || opportunitiesQuery.isFetching) return;
+    const available = new Set(opportunitiesQuery.data.opportunities.map((item) => item.ticker));
+    setSelectedOpportunityTickers((current) => {
+      const reconciled = current.filter((ticker) => available.has(ticker));
+      return reconciled.length === current.length ? current : reconciled;
+    });
+  }, [opportunitiesQuery.data?.opportunities, opportunitiesQuery.isFetching]);
 
   const handleCreateDossier = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -636,7 +659,7 @@ Research Notes:
     : opportunitiesQuery.isError
       ? "error"
       : workflowOpportunities.length > 0
-        ? "ready"
+        ? (opportunitiesQuery.data?.excludedStaleOrUnreviewed ? "stale" : "ready")
         : "empty";
   const handleOpportunityAction = (action: ResearchManualAction, opportunity: WorkflowOpportunity) => {
     toast({
@@ -669,9 +692,10 @@ Research Notes:
         errorMessage="Approved research evidence could not be screened right now."
         lastUpdated={opportunitiesQuery.data?.generatedAt ? `Evidence checked ${new Date(opportunitiesQuery.data.generatedAt).toLocaleString()}` : "Evidence check pending"}
         onViewSelect={setResearchView}
-        onSelectCandidate={(ticker, selected) => setSelectedOpportunityTickers((current) => selected
-          ? current.includes(ticker) ? current : [...current, ticker]
-          : current.filter((item) => item !== ticker))}
+        onSelectCandidate={(ticker, selected) => setSelectedOpportunityTickers((current) =>
+          selected
+            ? current.includes(ticker) ? current : [...current, ticker]
+            : current.filter((item) => item !== ticker))}
         onCompare={(tickers) => toast({
           title: "Comparison ready",
           description: `${tickers.join(", ")} selected for side-by-side review. No capital or account state changed.`,

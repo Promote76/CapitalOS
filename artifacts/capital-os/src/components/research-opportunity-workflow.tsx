@@ -54,7 +54,7 @@ export type ResearchOpportunity = {
   noExecution: boolean;
 };
 
-export type ResearchWorkflowState = "idle" | "loading" | "error" | "ready" | "empty";
+export type ResearchWorkflowState = "idle" | "loading" | "error" | "ready" | "stale" | "empty";
 
 export type ResearchManualAction = "Skip" | "Watch" | "Shadow" | "Open in Schwab";
 
@@ -455,13 +455,24 @@ export function ResearchOpportunityWorkflow({
         </div>
 
         <div className="px-4 py-5 sm:px-6">
-          {state === "loading" && <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{[1, 2, 3, 4, 5, 6].map((item) => <SkeletonCard key={item} />)}</div>}
+          {state === "ready" && (
+            <div className="mb-4 rounded-xl border border-[#c3dccc] bg-[#edf6ef] p-3 text-[11px] leading-[1.5] text-[#236b59]" data-testid="status-research-current" role="status">
+              <strong className="font-semibold">Current approved evidence.</strong> Research results are advisory and ready for manual committee review only.
+            </div>
+          )}
+          {state === "loading" && <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="status-research-loading">{[1, 2, 3, 4, 5, 6].map((item) => <SkeletonCard key={item} />)}</div>}
           {state === "error" && (
             <div className="flex min-h-[280px] flex-col items-center justify-center rounded-xl border border-[#ebd3ce] bg-[#fff7f4] p-8 text-center" data-testid="status-research-error">
               <AlertCircle size={23} className="text-[#a14438]" />
               <h2 className="mt-3 text-[14px] font-semibold text-[#23463e]">The committee feed is unavailable</h2>
               <p className="mt-2 max-w-sm text-[12px] leading-[1.5] text-[#71877f]">{errorMessage}</p>
               {onRetry && <button type="button" onClick={onRetry} className="mt-4 rounded-lg border border-[#d5b6ae] bg-[#fffdfa] px-4 py-2 text-[11px] font-semibold text-[#a14438] transition-colors hover:bg-[#fdf0ed]" data-testid="button-retry-research"><ArrowUpRight size={13} className="mr-1 inline" /> Retry review</button>}
+            </div>
+          )}
+          {state === "stale" && (
+            <div className="mb-4 flex items-start gap-2 rounded-xl border border-[#ead6a4] bg-[#fff8e7] p-3 text-[11px] leading-[1.5] text-[#906722]" data-testid="status-research-stale" role="status">
+              <Clock3 size={14} className="mt-0.5 shrink-0" />
+              <span><strong className="font-semibold">Some evidence was excluded as stale or unreviewed.</strong> The cards below use only the current, approved evidence that remains eligible for manual review.</span>
             </div>
           )}
           {state === "empty" && (
@@ -471,14 +482,14 @@ export function ResearchOpportunityWorkflow({
               <p className="mt-2 max-w-sm text-[12px] leading-[1.5] text-[#71877f]">The screen stays quiet when evidence or portfolio fit is not strong enough. Try another research lens or check back after the next evidence refresh.</p>
             </div>
           )}
-          {state === "ready" && filteredOpportunities.length === 0 && (
+          {(state === "ready" || state === "stale") && filteredOpportunities.length === 0 && (
             <div className="flex min-h-[240px] flex-col items-center justify-center rounded-xl border border-dashed border-[#cfdccf] bg-[#fbfcf8] p-8 text-center" data-testid="status-research-no-match">
               <Search size={21} className="text-[#8ba098]" />
               <h2 className="mt-3 text-[14px] font-semibold text-[#23463e]">Nothing matches “{query}”</h2>
               <button type="button" onClick={() => updateQuery("")} className="mt-3 text-[11px] font-semibold text-[#236b59] underline underline-offset-4" data-testid="button-clear-no-match">Clear search</button>
             </div>
           )}
-          {state === "ready" && filteredOpportunities.length > 0 && (
+          {(state === "ready" || state === "stale") && filteredOpportunities.length > 0 && (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="research-opportunity-grid">
               {filteredOpportunities.slice(0, 25).map((opportunity) => (
                 <OpportunityCard

@@ -35,6 +35,41 @@ function source(id: string, title: string, sourceKind: "SCHWAB_MARKET_SNAPSHOT" 
 function dossier(id: string, title: string, createdAt: string, reportStatus: string, sources: ReturnType<typeof source>[], blockDiagnostic: string | null = null) {
   return { id, householdId: "55555555-5555-4555-8555-555555555555", ticker: "BKSC", title, evidenceIds: sources.map((s) => s.id), sources, reviewStatus: "APPROVED", createdAt, reportStatus, blockDiagnostic, proposal: null, advisoryOnly: true, executionAuthority: "none", noCapitalSideEffects: true };
 }
+function opportunity(ticker: string, category: "Income" | "Compounders") {
+  const evidence = {
+    id: randomUUID(),
+    title: `${ticker} approved market evidence`,
+    sourceKind: "SCHWAB_MARKET_SNAPSHOT",
+    reviewedAt: date,
+    freshness: "CURRENT",
+  };
+  const factors = { incomeQuality: 82, growthQuality: 78, earningsQuality: 84, balanceSheet: 80, valuation: 76, liquidity: 74, risk: 72, evidenceFreshness: 96, portfolioFit: 88 };
+  return {
+    ticker,
+    companyName: `${ticker} Research Company`,
+    platinumScore: 84,
+    category,
+    thesis: `${ticker} has a bounded, source-linked research thesis.`,
+    whyNow: "Approved evidence supports a fresh committee review.",
+    redFlags: ["Manual review remains required."],
+    evidenceFreshness: "CURRENT",
+    portfolioFit: "Constructive",
+    concentrationImpact: "Low at screened exposure",
+    maximumExposure: "5% maximum",
+    bullCase: "The thesis compounds as expected.",
+    baseCase: "The thesis develops within the reviewed range.",
+    bearCase: "The thesis is invalidated by the listed conditions.",
+    invalidationConditions: ["Fresh evidence contradicts the thesis."],
+    protectedCapitalStatus: "Protected-capital screen",
+    humanReviewStatus: "Human review required",
+    factorSubScores: factors,
+    sourceCount: 1,
+    advisoryOnly: true,
+    noExecution: true,
+    evidence: [evidence],
+    factors,
+  };
+}
 
 test("Research page preserves reviewed sources and stays read-only", async ({ page, context }) => {
   const email = process.env.BROWSER_TEST_EMAIL;
@@ -48,6 +83,9 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
   const initial = { evidence: [evidence(ids.schwab, "BKSC Schwab snapshot", "SCHWAB_MARKET_SNAPSHOT"), evidence(ids.sec, "BKSC SEC filing", "SEC_FILING")], dossiers: [blocked], capabilityReadiness: { quote: "implemented", market_hours: "implemented", portfolio_position: "implemented", instrument_metadata: "CONFIRMED", fundamentals: "CONFIRMED", price_history: "CONFIRMED", movers: "PENDING_PROVIDER_CONFIRMATION", options: "PENDING_PROVIDER_CONFIRMATION", streaming: "PENDING_PROVIDER_CONFIRMATION", news: "PENDING_PROVIDER_CONFIRMATION", tax_data: "PENDING_PROVIDER_CONFIRMATION", schwab_reports: "PENDING_PROVIDER_CONFIRMATION", execution: "DISABLED_NOT_IN_SCOPE", order: "DISABLED_NOT_IN_SCOPE", transfer: "DISABLED_NOT_IN_SCOPE", withdrawal: "DISABLED_NOT_IN_SCOPE", micro_live: "DISABLED_NOT_IN_SCOPE", capital_allocation: "DISABLED_NOT_IN_SCOPE", reasons: {} }, advisoryOnly: true };
   let created = false;
   let dossierState: "normal" | "error" | "empty" = "normal";
+  let opportunityState: "current" | "stale" | "loading" | "error" | "empty" = "current";
+  let releaseOpportunityLoading: (() => void) | undefined;
+  let opportunityLoadingGate: Promise<void> | undefined;
   const requests: string[] = [];
   const forbiddenRequests: string[] = [];
   try {
@@ -74,6 +112,31 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
     await page.route("**/api/research/schwab/market-snapshots", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshots: [] }) }));
     await page.route("**/api/research/sec/filings", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ drafts: [], approved: [] }) }));
     await page.route("**/api/research/schwab/certification", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ certification: null }) }));
+    await page.route("**/api/research/opportunities", async (route) => {
+      if (opportunityState === "loading") {
+        await opportunityLoadingGate;
+      }
+      if (opportunityState === "error") {
+        await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "opportunity fixture unavailable" }) });
+        return;
+      }
+      const opportunities = opportunityState === "empty" ? [] : [opportunity("INCM", "Income"), opportunity("CMPD", "Compounders")];
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          opportunities,
+          totalEligible: opportunities.length,
+          excludedStaleOrUnreviewed: opportunityState === "stale" ? 2 : 0,
+          generatedAt: date,
+          ranking: { method: "Browser fixture", factors: ["quality"], missingData: "Missing values remain explicit." },
+          advisoryOnly: true,
+          executionAuthorization: false,
+          householdCapitalIncluded: false,
+          noTradingOrMoneyMovement: true,
+        }),
+      });
+    });
     page.on("request", (request) => {
       if (/(order|trade|transfer|withdraw|allocation|money-movement)/i.test(new URL(request.url()).pathname)) forbiddenRequests.push(request.url());
     });
@@ -120,6 +183,68 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...initial, dossiers: created ? [dossier(ids.latest, "BKSC Research Chair", date, "completed", latestSources), blocked] : [blocked] }) });
     });
     await page.goto("/investment-research");
+    await expect(page.getByTestId("status-research-current")).toBeVisible();
+    await expect(page.getByTestId("card-opportunity-INCM")).toBeVisible();
+    await expect(page.getByTestId("card-opportunity-CMPD")).toBeVisible();
+    const firstOpportunity = page.getByTestId("checkbox-opportunity-INCM");
+    const secondOpportunity = page.getByTestId("checkbox-opportunity-CMPD");
+    await firstOpportunity.check();
+    await expect(firstOpportunity).toBeChecked();
+    await expect(page.getByTestId("button-compare-selected")).toHaveText(/Compare \(1\)/);
+    await secondOpportunity.check();
+    await expect(secondOpportunity).toBeChecked();
+    await expect(firstOpportunity).toBeChecked();
+    await expect(page.getByTestId("button-compare-selected")).toHaveText(/Compare \(2\)/);
+    await page.waitForTimeout(500);
+    await page.getByTestId("button-compare-selected").click({ force: true });
+    await expect(page.getByTestId("research-comparison")).toBeVisible();
+    await expect(page.getByTestId("comparison-INCM")).toBeVisible();
+    await expect(page.getByTestId("comparison-CMPD")).toBeVisible();
+    await page.getByTestId("comparison-INCM").click();
+    await expect(page.getByTestId("panel-decision-card-INCM")).toBeVisible();
+    for (const action of ["Skip", "Watch", "Shadow"] as const) {
+      await page.getByTestId(`button-${action.toLowerCase()}-INCM`).click();
+      await expect(page.getByText(`${action} queued for review`, { exact: true })).toBeVisible();
+    }
+    await page.getByTestId("button-open-schwab-INCM").click();
+    await expect(page.getByText("Open in Schwab queued for review", { exact: true })).toBeVisible();
+    await expect(page.locator('[data-component-name="ToastDescription"]').filter({ hasText: "No order or account action was sent." })).toBeVisible();
+    expect(forbiddenRequests).toEqual([]);
+
+    opportunityState = "stale";
+    await page.reload();
+    await expect(page.getByTestId("status-research-stale")).toContainText("excluded as stale or unreviewed");
+    await expect(page.getByTestId("card-opportunity-INCM")).toBeVisible();
+    await expect(page.getByTestId("panel-decision-card-INCM")).toHaveCount(0);
+    await page.getByTestId("card-opportunity-INCM").click();
+    await expect(page.getByTestId("button-skip-INCM")).toBeVisible();
+    await page.getByTestId("button-skip-INCM").dispatchEvent("click");
+    await expect(page.getByText("Skip queued for review", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("button-close-decision-card")).toBeVisible();
+    expect(forbiddenRequests).toEqual([]);
+
+    opportunityState = "loading";
+    opportunityLoadingGate = new Promise<void>((resolve) => {
+      releaseOpportunityLoading = resolve;
+    });
+    const loadingOpportunityNavigation = page.reload();
+    await expect(page.getByTestId("status-research-loading")).toBeVisible();
+    await expect(page.getByTestId("card-opportunity-INCM")).toHaveCount(0);
+    releaseOpportunityLoading?.();
+    await loadingOpportunityNavigation;
+
+    opportunityState = "error";
+    await page.reload();
+    await expect(page.getByTestId("status-research-error")).toContainText("committee feed is unavailable");
+    await expect(page.getByTestId("card-opportunity-INCM")).toHaveCount(0);
+    await expect(page.locator('[data-testid^="button-skip-"]')).toHaveCount(0);
+    opportunityState = "empty";
+    await page.reload();
+    await expect(page.getByTestId("status-research-empty")).toContainText("No opportunities meet this lens yet");
+    await expect(page.getByTestId("card-opportunity-INCM")).toHaveCount(0);
+    await expect(page.locator('[data-testid^="button-skip-"]')).toHaveCount(0);
+
+    opportunityState = "current";
     await expect(page.getByText("0 sources selected")).toBeVisible();
     const schwabCheckbox = page.locator("label").filter({ hasText: "BKSC Schwab snapshot" }).getByRole("checkbox");
     const secCheckbox = page.locator("label").filter({ hasText: "BKSC SEC filing" }).getByRole("checkbox");
@@ -167,6 +292,7 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
     await page.reload();
     await expect(page.getByPlaceholder("AAPL")).toBeVisible();
     await expect(page.getByRole("button", { name: /Compile dossier/i })).toBeVisible();
+    await expect(page.getByTestId("card-opportunity-INCM")).toBeVisible();
     expect(await page.evaluate(() => {
       const browser = globalThis as unknown as { document: { documentElement: { scrollWidth: number } }; innerWidth: number };
       return browser.document.documentElement.scrollWidth <= browser.innerWidth;

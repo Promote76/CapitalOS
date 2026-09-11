@@ -274,9 +274,9 @@ import type {
   SchwabResearchQuoteEnvelope,
   SchwabStatus,
   SchwabSyncResult,
-  SecFilingDraft,
   SecFilingListResponse,
   SecFilingRetrievalRequest,
+  SecFilingRetrievalResult,
   SecFilingReviewRequest,
   SecFilingReviewResult,
   SettlementDocumentInput,
@@ -18351,9 +18351,9 @@ export const getRetrieveSecFilingUrl = () => {
 /**
  * @summary Retrieve latest 10-Q and only missing fields from latest 10-K from official SEC sources
  */
-export const retrieveSecFiling = async (secFilingRetrievalRequest: SecFilingRetrievalRequest, options?: Parameters<typeof customFetch>[1]): Promise<SecFilingDraft> => {
+export const retrieveSecFiling = async (secFilingRetrievalRequest: SecFilingRetrievalRequest, options?: Parameters<typeof customFetch>[1]): Promise<SecFilingRetrievalResult> => {
 
-  return customFetch<SecFilingDraft>(getRetrieveSecFilingUrl(),
+  return customFetch<SecFilingRetrievalResult>(getRetrieveSecFilingUrl(),
   {
     ...options,
     method: 'POST',

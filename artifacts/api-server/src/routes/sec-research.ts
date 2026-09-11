@@ -13,7 +13,8 @@ router.get("/research/sec/filings", asyncRoute(async (_req, res) => {
 router.post("/research/sec/filings", asyncRoute(async (req, res) => {
   const actor = actorFrom(res); assertPermission(actor.role, "contribute");
   const body = RetrieveSecFilingBody.parse(req.body);
-  res.status(201).json(await retrieveSecFiling(actor, body));
+  const result = await retrieveSecFiling(actor, body);
+  res.status(result.alreadyCollected ? 200 : 201).json(result);
 }));
 router.post("/research/sec/filings/:filingId/review", asyncRoute(async (req, res) => {
   const actor = actorFrom(res); assertPermission(actor.role, "approve");

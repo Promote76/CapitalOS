@@ -93,6 +93,47 @@ test("reviewed snapshot prefill is source-linked and valid without rewriting", (
   assert.equal(isResearchContentReady("placeholder", "placeholder", true), true);
 });
 
+test("real Schwab and SEC two-source prefill satisfies the backend digestion contract", () => {
+  const secPrefill: ResearchDossierPrefill = {
+    ...prefill,
+    kind: "SEC_FILING",
+    source: {
+      ...prefill.source,
+      provider: "SEC EDGAR",
+      title: "SEC BKSC filing",
+      contentDigest: "c".repeat(64),
+    },
+    sourceFacts: [{
+      evidenceId: "22222222-2222-4222-8222-222222222222",
+      field: "Assets",
+      value: "700000000",
+      unit: "USD",
+      filingType: "10-Q",
+      filingDate: "2026-08-01",
+      accession: "0001007273-26-000001",
+      sourceUrl: "https://www.sec.gov/Archives/edgar/data/1007273/fixture.htm",
+      periodStart: "2026-04-01",
+      periodEnd: "2026-06-30",
+      tag: "Assets",
+    }],
+  };
+  const text = buildReviewedPrefillText("BKSC Investment Research", "BKSC", [prefill, secPrefill]);
+  assert.match(text, /\[source-1,source-2\]/);
+  const parsed = parseResearchDigestion(text);
+  assert.equal(parsed.success, true, parsed.success ? undefined : JSON.stringify(parsed.issues));
+  if (!parsed.success) {
+    assert.equal(parsed.issues.some((issue) => issue.code === "ambiguous_source_reference"), false);
+    assert.equal(parsed.issues.some((issue) => issue.code === "invalid_inference"), false);
+    return;
+  }
+  assert.deepEqual(parsed.data.sources.map((source) => source.title), [
+    "Schwab BKSC market snapshot",
+    "SEC BKSC filing",
+  ]);
+  assert.equal(parsed.data.sourceClaims.some((claim) => claim.sourceId === "source-1"), true);
+  assert.equal(parsed.data.sourceClaims.some((claim) => claim.sourceId === "source-2"), true);
+});
+
 test("selection survives storage, reconciles refetches, and produces stable multi-ID payloads", () => {
   const values = new Map<string, string>();
   const storage = {

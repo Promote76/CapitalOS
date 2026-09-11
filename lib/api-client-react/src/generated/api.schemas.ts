@@ -4345,6 +4345,12 @@ export interface SecFilingListResponse {
   approved: SecFilingApprovedEvidence[];
 }
 
+export interface SecFilingRetrievalResult {
+  snapshot: SecFilingDraft;
+  evidence: SecFilingApprovedEvidence | null;
+  alreadyCollected: boolean;
+}
+
 export interface SecFilingReviewResult {
   snapshot: SecFilingDraft;
   evidence: SecFilingApprovedEvidence | null;

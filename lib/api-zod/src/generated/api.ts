@@ -12876,13 +12876,15 @@ export const RetrieveSecFilingBody = zod.object({
   "ticker": zod.string().regex(retrieveSecFilingBodyTickerRegExp)
 })
 
-export const retrieveSecFilingResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
-export const retrieveSecFilingResponseHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const retrieveSecFilingResponseSnapshotIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const retrieveSecFilingResponseSnapshotHouseholdIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const retrieveSecFilingResponseEvidenceOneIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 
 
 export const RetrieveSecFilingResponse = zod.object({
-  "id": zod.string().regex(retrieveSecFilingResponseIdRegExp),
-  "householdId": zod.string().regex(retrieveSecFilingResponseHouseholdIdRegExp),
+  "snapshot": zod.object({
+  "id": zod.string().regex(retrieveSecFilingResponseSnapshotIdRegExp),
+  "householdId": zod.string().regex(retrieveSecFilingResponseSnapshotHouseholdIdRegExp),
   "ticker": zod.string(),
   "filingForm": zod.string(),
   "filingDate": zod.string(),
@@ -13462,6 +13464,24 @@ export const RetrieveSecFilingResponse = zod.object({
   "evidenceQuality": zod.enum(['HIGH', 'MEDIUM', 'LOW']),
   "extractionTimestamp": zod.coerce.date(),
   "reviewStatus": zod.enum(['PENDING_HUMAN_REVIEW', 'APPROVED', 'REJECTED'])
+}),
+  "evidence": zod.object({
+  "id": zod.string().regex(retrieveSecFilingResponseEvidenceOneIdRegExp),
+  "ticker": zod.string(),
+  "canonicalSha256": zod.string(),
+  "provenance": zod.object({
+  "provider": zod.string(),
+  "issuerCik": zod.string(),
+  "sourceUrls": zod.array(zod.string()),
+  "citations": zod.array(zod.object({
+  "field": zod.string(),
+  "sourceUrl": zod.string().nullable()
+})),
+  "accessedAt": zod.string()
+}),
+  "approvedAt": zod.coerce.date()
+}).nullable(),
+  "alreadyCollected": zod.boolean()
 })
 
 

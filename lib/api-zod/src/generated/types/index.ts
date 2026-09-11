@@ -671,6 +671,7 @@ export * from './secFilingListResponse';
 export * from './secFilingProvenance';
 export * from './secFilingReference';
 export * from './secFilingRetrievalRequest';
+export * from './secFilingRetrievalResult';
 export * from './secFilingReviewRequest';
 export * from './secFilingReviewRequestDisposition';
 export * from './secFilingReviewResult';

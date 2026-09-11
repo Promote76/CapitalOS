@@ -104,6 +104,7 @@ export function buildReviewedPrefillText(
 ) {
   const primary = prefills[0];
   const company = primary?.instrument.description ?? title;
+  const allSources = `[${prefills.map((_, index) => `source-${index + 1}`).join(",")}]`;
   const sources = prefills.map((prefill, index) =>
     `- [source-${index + 1}] ${prefill.source.title}`,
   ).join("\n");
@@ -145,15 +146,15 @@ ${sources}
 Source Facts:
 ${facts}
 External Verification:
-Fundamentals: Reviewed normalized Schwab Market Data evidence; missing values remain explicit.
-Valuation: Human interpretation required.
-Risks: Review freshness, delayed status, and missing-data warnings before relying on observations.
+Fundamentals: ${allSources} Reviewed normalized evidence; missing values remain explicit.
+Valuation: ${allSources} Human interpretation required.
+Risks: ${allSources} Review freshness, delayed status, and missing-data warnings before relying on observations.
 Bull Case:
 Base Case:
 Bear Case:
-Evidence Quality: Exact reviewed content digests and freshness labels are cited above.
+Evidence Quality: ${allSources} Exact reviewed content digests and freshness labels are cited above.
 Research Notes:
-- Advisory only. Human approval remains required. No execution or capital authority.`;
+- ${allSources} Advisory only. Human approval remains required. No execution or capital authority.`;
 }
 
 const PageHeading = ({ eyebrow, title, description, actions }: { eyebrow: string; title: ReactNode; description?: string; actions?: ReactNode }) => (
@@ -299,10 +300,15 @@ export default function InvestmentResearchPage() {
   const handleSecRetrieve = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
-      await retrieveSec.mutateAsync({ data: { ticker: secTicker } });
+      const result = await retrieveSec.mutateAsync({ data: { ticker: secTicker } });
       setSecTicker("");
       await queryClient.invalidateQueries({ queryKey: getListSecFilingsQueryKey() });
-      toast({ title: "SEC filing draft collected", description: "Latest 10-Q prioritized; unsupported fields remain explicitly missing." });
+      toast({
+        title: result.alreadyCollected ? "SEC filing already collected" : "SEC filing draft collected",
+        description: result.alreadyCollected
+          ? "The existing household-scoped filing and reviewed evidence were returned unchanged."
+          : "Latest 10-Q prioritized; unsupported fields remain explicitly missing.",
+      });
     } catch (error) {
       toast({ title: "SEC retrieval failed", description: error instanceof Error ? error.message : "Official SEC evidence was not collected.", variant: "destructive" });
     }

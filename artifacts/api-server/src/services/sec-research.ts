@@ -174,40 +174,70 @@ function withSecFilingAgeStatus(row: typeof secFilingSnapshots.$inferSelect) {
   return { ...row, filingAgeStatus, content: { ...content, filingAgeStatus } };
 }
 
-export async function retrieveSecFiling(actor: Actor, input: { ticker: string }) {
+type SecRetrievalDependencies = {
+  json?: typeof secJson;
+  text?: typeof secText;
+  now?: () => Date;
+};
+
+export async function retrieveSecFiling(
+  actor: Actor,
+  input: { ticker: string },
+  dependencies: SecRetrievalDependencies = {},
+) {
+  const getJson = dependencies.json ?? secJson;
+  const getText = dependencies.text ?? secText;
   const symbol = ticker(input.ticker);
-  const tickerMap = await secJson("https://www.sec.gov/files/company_tickers.json", 5 * 1024 * 1024);
+  const tickerMap = await getJson("https://www.sec.gov/files/company_tickers.json", 5 * 1024 * 1024);
   let issuer;
   try {
     issuer = resolveSecIssuer(symbol, tickerMap);
   } catch (error) {
     if (!(error instanceof Error) || error.message !== "Ticker is not present in the SEC issuer index") throw error;
-    issuer = resolveSecIssuer(symbol, tickerMap, await secText("https://www.sec.gov/include/ticker.txt", 512 * 1024));
+    issuer = resolveSecIssuer(symbol, tickerMap, await getText("https://www.sec.gov/include/ticker.txt", 512 * 1024));
   }
   const cik = issuer.cik;
   const normalizedTickerMap = Object.values(tickerMap).some((row: any) => String(row.ticker).toUpperCase() === symbol)
     ? tickerMap
     : { ...tickerMap, [`legacy-${symbol}`]: { ticker: symbol, cik_str: Number(cik), source: issuer.source } };
   const [submissions, facts] = await Promise.all([
-    secJson(`https://data.sec.gov/submissions/CIK${cik}.json`, 4 * 1024 * 1024),
-    secJson(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`, MAX_BYTES),
+    getJson(`https://data.sec.gov/submissions/CIK${cik}.json`, 4 * 1024 * 1024),
+    getJson(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`, MAX_BYTES),
   ]);
-  const extractionTimestamp = new Date();
+  const extractionTimestamp = dependencies.now?.() ?? new Date();
   const normalized = normalizeSecFilingPayloads({
     symbol, tickerMap: normalizedTickerMap, submissions, facts, accessedAt: extractionTimestamp.toISOString(),
   });
-  const [row] = await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
     const [created] = await tx.insert(secFilingSnapshots).values({
-    householdId: actor.householdId, ticker: symbol, filingForm: normalized.content.filings.map((item) => item.form).join("+"),
-    filingDate: normalized.latestQ.filed, accession: normalized.latestQ.accession,
-    sourceUrl: normalized.content.filings[0]!.sourceUrl, content: normalized.content, provenance: normalized.provenance,
-    missingFields: normalized.missingFields, evidenceQuality: normalized.evidenceQuality, extractionTimestamp, createdBy: actor.userId,
+      householdId: actor.householdId, ticker: symbol, filingForm: normalized.content.filings.map((item) => item.form).join("+"),
+      filingDate: normalized.latestQ.filed, accession: normalized.latestQ.accession,
+      sourceUrl: normalized.content.filings[0]!.sourceUrl, content: normalized.content, provenance: normalized.provenance,
+      missingFields: normalized.missingFields, evidenceQuality: normalized.evidenceQuality, extractionTimestamp, createdBy: actor.userId,
     }).onConflictDoNothing().returning();
-    if (created) await appendAuditEvent({ householdId: actor.householdId, actor: actor.userId, eventType: "sec_filing_draft_created", entity: "sec_filing_snapshot", entityId: created.id, reason: "Normalized official SEC filing evidence pending human review", metadata: { ticker: symbol, accession: created.accession, missingFields: normalized.missingFields, evidenceQuality: normalized.evidenceQuality } }, tx);
-    return [created] as const;
+    if (created) {
+      await appendAuditEvent({ householdId: actor.householdId, actor: actor.userId, eventType: "sec_filing_draft_created", entity: "sec_filing_snapshot", entityId: created.id, reason: "Normalized official SEC filing evidence pending human review", metadata: { ticker: symbol, accession: created.accession, missingFields: normalized.missingFields, evidenceQuality: normalized.evidenceQuality } }, tx);
+      return {
+        snapshot: withSecFilingAgeStatus(created),
+        evidence: null,
+        alreadyCollected: false,
+      };
+    }
+    const [existing] = await tx.select().from(secFilingSnapshots).where(and(
+      eq(secFilingSnapshots.householdId, actor.householdId),
+      eq(secFilingSnapshots.accession, normalized.latestQ.accession),
+    )).limit(1);
+    if (!existing) throw new Error("SEC filing duplicate could not be resolved for this household");
+    const [evidence] = await tx.select().from(reviewedSecFilingEvidence).where(and(
+      eq(reviewedSecFilingEvidence.householdId, actor.householdId),
+      eq(reviewedSecFilingEvidence.snapshotId, existing.id),
+    )).limit(1);
+    return {
+      snapshot: withSecFilingAgeStatus(existing),
+      evidence: evidence ?? null,
+      alreadyCollected: true,
+    };
   });
-  if (!row) throw new Error("SEC filing accession already collected for this household");
-  return { ...row, filingAgeStatus: normalized.filingAgeStatus, advisoryOnly: true, readOnly: true, tradingEnabled: false, executionAuthority: "none" };
 }
 
 export async function listSecFilings(actor: Actor) {

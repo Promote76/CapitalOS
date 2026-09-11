@@ -3775,7 +3775,8 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/SecFilingRetrievalRequest" }
       responses:
-        "201": { description: Normalized SEC draft pending human review, content: { application/json: { schema: { $ref: "#/components/schemas/SecFilingDraft" } } } }
+        "200": { description: Existing household-scoped immutable SEC filing and evidence returned unchanged, content: { application/json: { schema: { $ref: "#/components/schemas/SecFilingRetrievalResult" } } } }
+        "201": { description: Normalized SEC draft pending human review, content: { application/json: { schema: { $ref: "#/components/schemas/SecFilingRetrievalResult" } } } }
   /research/sec/filings/{filingId}/review:
     post:
       operationId: reviewSecFiling
@@ -6839,6 +6840,15 @@ components:
       properties:
         drafts: { type: array, items: { $ref: "#/components/schemas/SecFilingDraft" } }
         approved: { type: array, items: { $ref: "#/components/schemas/SecFilingApprovedEvidence" } }
+    SecFilingRetrievalResult:
+      type: object
+      required: [snapshot, evidence, alreadyCollected]
+      properties:
+        snapshot: { $ref: "#/components/schemas/SecFilingDraft" }
+        evidence:
+          allOf: [{ $ref: "#/components/schemas/SecFilingApprovedEvidence" }]
+          nullable: true
+        alreadyCollected: { type: boolean }
     SecFilingApprovedEvidence:
       type: object
       required: [id, ticker, canonicalSha256, provenance, approvedAt]

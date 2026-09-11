@@ -26,7 +26,7 @@ import {
   users,
 } from "@workspace/db";
 import { createInvestmentResearchDossier, listResearchDossiers, listSchwabMarketSnapshots, projectReviewedSecForAgents, projectReviewedSnapshotForAgents, projectReviewedSnapshotPrefill, reviewSchwabMarketSnapshot } from "../services/research-dossier";
-import { reviewSecFiling } from "../services/sec-research";
+import { retrieveSecFiling, reviewSecFiling } from "../services/sec-research";
 import { assertPermission } from "../domain/governance";
 import type { ResearchAdvisorySections, ResearchOutput } from "../domain/family-office";
 import { readFile } from "node:fs/promises";
@@ -148,6 +148,61 @@ async function fixture() {
     b: { householdId: hb.id, userId: b.id, role: "owner" as const, source: "test-database" as const },
   };
 }
+
+test("SEC retrieval returns the household's existing immutable snapshot and approved evidence", { skip: !enabled }, async () => {
+  const f = await fixture();
+  const accession = `0001007273-26-${randomUUID().slice(0, 6)}`;
+  const tickerMap = { 0: { ticker: "BKSC", cik_str: 1007273 } };
+  const submissions = { filings: { recent: {
+    form: ["10-Q"],
+    filingDate: ["2026-08-01"],
+    accessionNumber: [accession],
+    primaryDocument: ["fixture.htm"],
+  } } };
+  const facts = { facts: { "us-gaap": {
+    Assets: { units: { USD: [{
+      form: "10-Q", accn: accession, filed: "2026-08-01", fy: 2026, fp: "Q2",
+      start: "2026-04-01", end: "2026-06-30", val: 700_000_000,
+    }] } },
+  } } };
+  const dependencies = {
+    now: () => new Date("2026-09-11T12:00:00Z"),
+    text: async () => "",
+    json: async (url: string) => {
+      if (url.endsWith("company_tickers.json")) return tickerMap;
+      if (url.includes("/submissions/")) return submissions;
+      if (url.includes("/companyfacts/")) return facts;
+      throw new Error(`Unexpected SEC fixture URL: ${url}`);
+    },
+  };
+
+  const created = await retrieveSecFiling(f.a, { ticker: "BKSC" }, dependencies);
+  assert.equal(created.alreadyCollected, false);
+  assert.equal(created.evidence, null);
+  const reviewed = await reviewSecFiling(f.a, created.snapshot.id, "APPROVE");
+  assert.ok(reviewed.evidence);
+  const snapshotBefore = await db.select().from(secFilingSnapshots).where(eq(secFilingSnapshots.id, created.snapshot.id));
+  const evidenceBefore = await db.select().from(reviewedSecFilingEvidence).where(eq(reviewedSecFilingEvidence.snapshotId, created.snapshot.id));
+
+  const duplicate = await retrieveSecFiling(f.a, { ticker: "BKSC" }, dependencies);
+  assert.equal(duplicate.alreadyCollected, true);
+  assert.equal(duplicate.snapshot.id, created.snapshot.id);
+  assert.equal(duplicate.snapshot.reviewStatus, "APPROVED");
+  assert.equal(duplicate.evidence?.id, reviewed.evidence.id);
+  assert.deepEqual(
+    await db.select().from(secFilingSnapshots).where(eq(secFilingSnapshots.id, created.snapshot.id)),
+    snapshotBefore,
+  );
+  assert.deepEqual(
+    await db.select().from(reviewedSecFilingEvidence).where(eq(reviewedSecFilingEvidence.snapshotId, created.snapshot.id)),
+    evidenceBefore,
+  );
+
+  const otherHousehold = await retrieveSecFiling(f.b, { ticker: "BKSC" }, dependencies);
+  assert.equal(otherHousehold.alreadyCollected, false);
+  assert.notEqual(otherHousehold.snapshot.id, created.snapshot.id);
+  assert.equal(otherHousehold.evidence, null);
+});
 
 test("market snapshot list and review are household isolated, digest exact, and one-way", { skip: !enabled }, async () => {
   const f = await fixture();

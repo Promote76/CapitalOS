@@ -12,6 +12,13 @@ type StateSnapshot = {
   capitalGovernor: unknown;
   familyOffice: unknown;
   executionControl: unknown;
+  strategyLab: unknown;
+  treasury: unknown;
+  microLive: unknown;
+  allocationRules: unknown;
+  orderState: unknown;
+  transferState: unknown;
+  moneyMovementState: unknown;
 };
 
 async function readState(page: Page): Promise<StateSnapshot> {
@@ -22,18 +29,73 @@ async function readState(page: Page): Promise<StateSnapshot> {
       capitalGovernor: "/api/capital-governor/v2",
       familyOffice: "/api/family-office",
       executionControl: "/api/execution-control",
+      strategyLab: "/api/strategy-lab",
+      treasury: "/api/treasury",
+      microLive: "/api/micro-live",
+      dashboard: "/api/dashboard",
+      transferState: "/api/financial-transactions/review-queue",
+      contributions: "/api/contributions",
+      financeSnapshots: "/api/finance-snapshots",
     } as const;
+    const runtimeFields = new Set([
+      "createdAt",
+      "updatedAt",
+      "lastUpdated",
+      "lastHeartbeatAt",
+      "completedAt",
+      "expiresAt",
+      "timestamp",
+      "occurredAt",
+    ]);
+    const withoutRuntimeFields = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(withoutRuntimeFields);
+      if (!value || typeof value !== "object") return value;
+      return Object.fromEntries(Object.entries(value)
+        .filter(([key]) => !runtimeFields.has(key))
+        .map(([key, child]) => [key, withoutRuntimeFields(child)]));
+    };
     const entries = await Promise.all(Object.entries(paths).map(async ([key, path]) => {
       const response = await fetch(path);
       if (!response.ok) throw new Error(`${path} returned ${response.status}`);
-      const body = await response.json() as Record<string, unknown>;
-      if (key === "capitalGovernor") {
-        const { inputSnapshotId: _inputSnapshotId, waterfallRunId: _waterfallRunId, ...stableBody } = body;
-        return [key, stableBody] as const;
-      }
-      return [key, body] as const;
+      return [key, withoutRuntimeFields(await response.json())] as const;
     }));
-    return Object.fromEntries(entries) as StateSnapshot;
+    const state = Object.fromEntries(entries) as Record<string, any>;
+    const capitalGovernor = state.capitalGovernor as Record<string, unknown>;
+    delete capitalGovernor.inputSnapshotId;
+    delete capitalGovernor.waterfallRunId;
+    const dashboard = state.dashboard as Record<string, any>;
+    const strategyLab = state.strategyLab as Record<string, any>;
+    const microLive = state.microLive as Record<string, any>;
+    if (Array.isArray(microLive.venues)) {
+      microLive.venues = microLive.venues
+        .map(({ id: _id, ...venue }: Record<string, unknown>) => venue)
+        .sort((left: Record<string, unknown>, right: Record<string, unknown>) =>
+          String(left.adapterType ?? "").localeCompare(String(right.adapterType ?? "")),
+        );
+    }
+    return {
+      portfolio: state.portfolio,
+      safeToDeploy: state.safeToDeploy,
+      capitalGovernor,
+      familyOffice: state.familyOffice,
+      executionControl: state.executionControl,
+      strategyLab,
+      treasury: state.treasury,
+      microLive,
+      allocationRules: dashboard.allocation,
+      orderState: {
+        strategyPaperOrders: strategyLab.paperAccount?.virtualOrders,
+        microLiveOpenOrders: microLive.session?.openOrders,
+        microLiveEvents: microLive.events,
+      },
+      transferState: state.transferState,
+      moneyMovementState: {
+        contributions: state.contributions,
+        financeSnapshots: state.financeSnapshots,
+        treasuryRequests: state.treasury?.requests,
+        treasuryReservations: state.treasury?.reservations,
+      },
+    } satisfies StateSnapshot;
   });
 }
 
@@ -183,6 +245,13 @@ test("authenticated approved research stays isolated across Portfolio, Risk, and
     expect(after.safeToDeploy).toEqual(before.safeToDeploy);
     expect(after.capitalGovernor).toEqual(before.capitalGovernor);
     expect(after.executionControl).toEqual(before.executionControl);
+    expect(after.strategyLab).toEqual(before.strategyLab);
+    expect(after.treasury).toEqual(before.treasury);
+    expect(after.microLive).toEqual(before.microLive);
+    expect(after.allocationRules).toEqual(before.allocationRules);
+    expect(after.orderState).toEqual(before.orderState);
+    expect(after.transferState).toEqual(before.transferState);
+    expect(after.moneyMovementState).toEqual(before.moneyMovementState);
     const beforeShadow = (before.familyOffice as { shadowPortfolioProjection: { nonExecuting: boolean; createsPortfoliosOrIntents: boolean; householdCapitalIncluded: boolean } }).shadowPortfolioProjection;
     const afterShadow = (after.familyOffice as { shadowPortfolioProjection: { nonExecuting: boolean; createsPortfoliosOrIntents: boolean; householdCapitalIncluded: boolean } }).shadowPortfolioProjection;
     expect(afterShadow).toEqual(beforeShadow);

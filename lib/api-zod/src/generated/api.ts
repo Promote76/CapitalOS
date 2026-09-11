@@ -189,6 +189,20 @@ export const UpdatePrivacySettingsResponse = zod.object({
 /**
  * @summary Get the household dashboard snapshot
  */
+export const getDashboardResponsePortfolioResearchContextProjectionsItemConfidenceMin = 0;
+export const getDashboardResponsePortfolioResearchContextProjectionsItemConfidenceMax = 100;
+
+
+export const getDashboardResponsePortfolioResearchContextExcludedCountMin = 0;
+
+export const getDashboardResponseRiskResearchContextProjectionsItemConfidenceMin = 0;
+export const getDashboardResponseRiskResearchContextProjectionsItemConfidenceMax = 100;
+
+
+export const getDashboardResponseRiskResearchContextExcludedCountMin = 0;
+
+
+
 export const GetDashboardResponse = zod.object({
   "household": zod.object({
   "id": zod.string(),
@@ -243,7 +257,54 @@ export const GetDashboardResponse = zod.object({
   "label": zod.string(),
   "amount": zod.string(),
   "percent": zod.number()
+})),
+  "researchContext": zod.object({
+  "status": zod.enum(['available', 'empty']),
+  "projections": zod.array(zod.object({
+  "id": zod.string(),
+  "ticker": zod.string(),
+  "title": zod.string(),
+  "thesis": zod.string(),
+  "direction": zod.string(),
+  "confidence": zod.number().min(getDashboardResponsePortfolioResearchContextProjectionsItemConfidenceMin).max(getDashboardResponsePortfolioResearchContextProjectionsItemConfidenceMax),
+  "portfolioFit": zod.object({
+  "posture": zod.enum(['constructive', 'neutral', 'caution']),
+  "concentrationContext": zod.string(),
+  "suitability": zod.enum(['advisory_review'])
+}),
+  "thesisRisk": zod.object({
+  "risks": zod.array(zod.string()),
+  "reviewNeeded": zod.boolean()
+}),
+  "evidenceQuality": zod.object({
+  "level": zod.enum(['high', 'medium']),
+  "sourceCount": zod.number().min(1),
+  "freshness": zod.enum(['fresh']),
+  "reviewedAt": zod.coerce.date(),
+  "sources": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "sourceKind": zod.string(),
+  "freshness": zod.enum(['fresh'])
 }))
+}),
+  "monitoring": zod.object({
+  "signals": zod.array(zod.string()),
+  "changeDetected": zod.boolean(),
+  "deteriorationDetected": zod.boolean(),
+  "stale": zod.literal(false),
+  "lastReviewedAt": zod.coerce.date()
+}),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
+})),
+  "excludedCount": zod.number().min(getDashboardResponsePortfolioResearchContextExcludedCountMin),
+  "policy": zod.string(),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
+})
 }),
   "property": zod.object({
   "id": zod.string(),
@@ -292,7 +353,54 @@ export const GetDashboardResponse = zod.object({
   "name": zod.string(),
   "status": zod.string(),
   "message": zod.string()
+})),
+  "researchContext": zod.object({
+  "status": zod.enum(['available', 'empty']),
+  "projections": zod.array(zod.object({
+  "id": zod.string(),
+  "ticker": zod.string(),
+  "title": zod.string(),
+  "thesis": zod.string(),
+  "direction": zod.string(),
+  "confidence": zod.number().min(getDashboardResponseRiskResearchContextProjectionsItemConfidenceMin).max(getDashboardResponseRiskResearchContextProjectionsItemConfidenceMax),
+  "portfolioFit": zod.object({
+  "posture": zod.enum(['constructive', 'neutral', 'caution']),
+  "concentrationContext": zod.string(),
+  "suitability": zod.enum(['advisory_review'])
+}),
+  "thesisRisk": zod.object({
+  "risks": zod.array(zod.string()),
+  "reviewNeeded": zod.boolean()
+}),
+  "evidenceQuality": zod.object({
+  "level": zod.enum(['high', 'medium']),
+  "sourceCount": zod.number().min(1),
+  "freshness": zod.enum(['fresh']),
+  "reviewedAt": zod.coerce.date(),
+  "sources": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "sourceKind": zod.string(),
+  "freshness": zod.enum(['fresh'])
 }))
+}),
+  "monitoring": zod.object({
+  "signals": zod.array(zod.string()),
+  "changeDetected": zod.boolean(),
+  "deteriorationDetected": zod.boolean(),
+  "stale": zod.literal(false),
+  "lastReviewedAt": zod.coerce.date()
+}),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
+})),
+  "excludedCount": zod.number().min(getDashboardResponseRiskResearchContextExcludedCountMin),
+  "policy": zod.string(),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
+})
 }),
   "recommendation": zod.object({
   "id": zod.string(),
@@ -497,6 +605,14 @@ export const UpdateAllocationResponse = zod.object({
 /**
  * @summary Get portfolio composition and ledger health
  */
+export const getPortfolioResponseResearchContextProjectionsItemConfidenceMin = 0;
+export const getPortfolioResponseResearchContextProjectionsItemConfidenceMax = 100;
+
+
+export const getPortfolioResponseResearchContextExcludedCountMin = 0;
+
+
+
 export const GetPortfolioResponse = zod.object({
   "totalCapital": zod.string(),
   "protectedCapital": zod.string(),
@@ -507,7 +623,54 @@ export const GetPortfolioResponse = zod.object({
   "label": zod.string(),
   "amount": zod.string(),
   "percent": zod.number()
+})),
+  "researchContext": zod.object({
+  "status": zod.enum(['available', 'empty']),
+  "projections": zod.array(zod.object({
+  "id": zod.string(),
+  "ticker": zod.string(),
+  "title": zod.string(),
+  "thesis": zod.string(),
+  "direction": zod.string(),
+  "confidence": zod.number().min(getPortfolioResponseResearchContextProjectionsItemConfidenceMin).max(getPortfolioResponseResearchContextProjectionsItemConfidenceMax),
+  "portfolioFit": zod.object({
+  "posture": zod.enum(['constructive', 'neutral', 'caution']),
+  "concentrationContext": zod.string(),
+  "suitability": zod.enum(['advisory_review'])
+}),
+  "thesisRisk": zod.object({
+  "risks": zod.array(zod.string()),
+  "reviewNeeded": zod.boolean()
+}),
+  "evidenceQuality": zod.object({
+  "level": zod.enum(['high', 'medium']),
+  "sourceCount": zod.number().min(1),
+  "freshness": zod.enum(['fresh']),
+  "reviewedAt": zod.coerce.date(),
+  "sources": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "sourceKind": zod.string(),
+  "freshness": zod.enum(['fresh'])
 }))
+}),
+  "monitoring": zod.object({
+  "signals": zod.array(zod.string()),
+  "changeDetected": zod.boolean(),
+  "deteriorationDetected": zod.boolean(),
+  "stale": zod.literal(false),
+  "lastReviewedAt": zod.coerce.date()
+}),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
+})),
+  "excludedCount": zod.number().min(getPortfolioResponseResearchContextExcludedCountMin),
+  "policy": zod.string(),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
+})
 })
 
 
@@ -2143,6 +2306,14 @@ export const AllocateStrategyResponse = zod.object({
 /**
  * @summary Get Capital Governor state and safeguards
  */
+export const getRiskResponseResearchContextProjectionsItemConfidenceMin = 0;
+export const getRiskResponseResearchContextProjectionsItemConfidenceMax = 100;
+
+
+export const getRiskResponseResearchContextExcludedCountMin = 0;
+
+
+
 export const GetRiskResponse = zod.object({
   "state": zod.string(),
   "protectedCapitalLocked": zod.boolean(),
@@ -2156,7 +2327,54 @@ export const GetRiskResponse = zod.object({
   "name": zod.string(),
   "status": zod.string(),
   "message": zod.string()
+})),
+  "researchContext": zod.object({
+  "status": zod.enum(['available', 'empty']),
+  "projections": zod.array(zod.object({
+  "id": zod.string(),
+  "ticker": zod.string(),
+  "title": zod.string(),
+  "thesis": zod.string(),
+  "direction": zod.string(),
+  "confidence": zod.number().min(getRiskResponseResearchContextProjectionsItemConfidenceMin).max(getRiskResponseResearchContextProjectionsItemConfidenceMax),
+  "portfolioFit": zod.object({
+  "posture": zod.enum(['constructive', 'neutral', 'caution']),
+  "concentrationContext": zod.string(),
+  "suitability": zod.enum(['advisory_review'])
+}),
+  "thesisRisk": zod.object({
+  "risks": zod.array(zod.string()),
+  "reviewNeeded": zod.boolean()
+}),
+  "evidenceQuality": zod.object({
+  "level": zod.enum(['high', 'medium']),
+  "sourceCount": zod.number().min(1),
+  "freshness": zod.enum(['fresh']),
+  "reviewedAt": zod.coerce.date(),
+  "sources": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "sourceKind": zod.string(),
+  "freshness": zod.enum(['fresh'])
 }))
+}),
+  "monitoring": zod.object({
+  "signals": zod.array(zod.string()),
+  "changeDetected": zod.boolean(),
+  "deteriorationDetected": zod.boolean(),
+  "stale": zod.literal(false),
+  "lastReviewedAt": zod.coerce.date()
+}),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
+})),
+  "excludedCount": zod.number().min(getRiskResponseResearchContextExcludedCountMin),
+  "policy": zod.string(),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
+})
 })
 
 
@@ -2172,6 +2390,14 @@ export const ActivateEmergencyStopBody = zod.object({
   "reason": zod.string().min(1).max(activateEmergencyStopBodyReasonMax)
 })
 
+export const activateEmergencyStopResponseResearchContextProjectionsItemConfidenceMin = 0;
+export const activateEmergencyStopResponseResearchContextProjectionsItemConfidenceMax = 100;
+
+
+export const activateEmergencyStopResponseResearchContextExcludedCountMin = 0;
+
+
+
 export const ActivateEmergencyStopResponse = zod.object({
   "state": zod.string(),
   "protectedCapitalLocked": zod.boolean(),
@@ -2185,7 +2411,54 @@ export const ActivateEmergencyStopResponse = zod.object({
   "name": zod.string(),
   "status": zod.string(),
   "message": zod.string()
+})),
+  "researchContext": zod.object({
+  "status": zod.enum(['available', 'empty']),
+  "projections": zod.array(zod.object({
+  "id": zod.string(),
+  "ticker": zod.string(),
+  "title": zod.string(),
+  "thesis": zod.string(),
+  "direction": zod.string(),
+  "confidence": zod.number().min(activateEmergencyStopResponseResearchContextProjectionsItemConfidenceMin).max(activateEmergencyStopResponseResearchContextProjectionsItemConfidenceMax),
+  "portfolioFit": zod.object({
+  "posture": zod.enum(['constructive', 'neutral', 'caution']),
+  "concentrationContext": zod.string(),
+  "suitability": zod.enum(['advisory_review'])
+}),
+  "thesisRisk": zod.object({
+  "risks": zod.array(zod.string()),
+  "reviewNeeded": zod.boolean()
+}),
+  "evidenceQuality": zod.object({
+  "level": zod.enum(['high', 'medium']),
+  "sourceCount": zod.number().min(1),
+  "freshness": zod.enum(['fresh']),
+  "reviewedAt": zod.coerce.date(),
+  "sources": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "sourceKind": zod.string(),
+  "freshness": zod.enum(['fresh'])
 }))
+}),
+  "monitoring": zod.object({
+  "signals": zod.array(zod.string()),
+  "changeDetected": zod.boolean(),
+  "deteriorationDetected": zod.boolean(),
+  "stale": zod.literal(false),
+  "lastReviewedAt": zod.coerce.date()
+}),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
+})),
+  "excludedCount": zod.number().min(activateEmergencyStopResponseResearchContextExcludedCountMin),
+  "policy": zod.string(),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
+})
 })
 
 
@@ -2239,6 +2512,14 @@ export const DecideRecommendationResponse = zod.object({
 /**
  * @summary Get the explainable household intelligence snapshot
  */
+export const getIntelligenceResponseResearchContextProjectionsItemConfidenceMin = 0;
+export const getIntelligenceResponseResearchContextProjectionsItemConfidenceMax = 100;
+
+
+export const getIntelligenceResponseResearchContextExcludedCountMin = 0;
+
+
+
 export const GetIntelligenceResponse = zod.object({
   "recommendation": zod.object({
   "id": zod.string(),
@@ -2306,6 +2587,53 @@ export const GetIntelligenceResponse = zod.object({
   "riskReview": zod.string(),
   "topFinancialDecisions": zod.array(zod.string()),
   "nextMonthPriorities": zod.array(zod.string())
+}),
+  "researchContext": zod.object({
+  "status": zod.enum(['available', 'empty']),
+  "projections": zod.array(zod.object({
+  "id": zod.string(),
+  "ticker": zod.string(),
+  "title": zod.string(),
+  "thesis": zod.string(),
+  "direction": zod.string(),
+  "confidence": zod.number().min(getIntelligenceResponseResearchContextProjectionsItemConfidenceMin).max(getIntelligenceResponseResearchContextProjectionsItemConfidenceMax),
+  "portfolioFit": zod.object({
+  "posture": zod.enum(['constructive', 'neutral', 'caution']),
+  "concentrationContext": zod.string(),
+  "suitability": zod.enum(['advisory_review'])
+}),
+  "thesisRisk": zod.object({
+  "risks": zod.array(zod.string()),
+  "reviewNeeded": zod.boolean()
+}),
+  "evidenceQuality": zod.object({
+  "level": zod.enum(['high', 'medium']),
+  "sourceCount": zod.number().min(1),
+  "freshness": zod.enum(['fresh']),
+  "reviewedAt": zod.coerce.date(),
+  "sources": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "sourceKind": zod.string(),
+  "freshness": zod.enum(['fresh'])
+}))
+}),
+  "monitoring": zod.object({
+  "signals": zod.array(zod.string()),
+  "changeDetected": zod.boolean(),
+  "deteriorationDetected": zod.boolean(),
+  "stale": zod.literal(false),
+  "lastReviewedAt": zod.coerce.date()
+}),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
+})),
+  "excludedCount": zod.number().min(getIntelligenceResponseResearchContextExcludedCountMin),
+  "policy": zod.string(),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
 })
 })
 
@@ -2313,6 +2641,14 @@ export const GetIntelligenceResponse = zod.object({
 /**
  * @summary Refresh persisted advisory intelligence
  */
+export const refreshIntelligenceResponseResearchContextProjectionsItemConfidenceMin = 0;
+export const refreshIntelligenceResponseResearchContextProjectionsItemConfidenceMax = 100;
+
+
+export const refreshIntelligenceResponseResearchContextExcludedCountMin = 0;
+
+
+
 export const RefreshIntelligenceResponse = zod.object({
   "recommendation": zod.object({
   "id": zod.string(),
@@ -2380,6 +2716,53 @@ export const RefreshIntelligenceResponse = zod.object({
   "riskReview": zod.string(),
   "topFinancialDecisions": zod.array(zod.string()),
   "nextMonthPriorities": zod.array(zod.string())
+}),
+  "researchContext": zod.object({
+  "status": zod.enum(['available', 'empty']),
+  "projections": zod.array(zod.object({
+  "id": zod.string(),
+  "ticker": zod.string(),
+  "title": zod.string(),
+  "thesis": zod.string(),
+  "direction": zod.string(),
+  "confidence": zod.number().min(refreshIntelligenceResponseResearchContextProjectionsItemConfidenceMin).max(refreshIntelligenceResponseResearchContextProjectionsItemConfidenceMax),
+  "portfolioFit": zod.object({
+  "posture": zod.enum(['constructive', 'neutral', 'caution']),
+  "concentrationContext": zod.string(),
+  "suitability": zod.enum(['advisory_review'])
+}),
+  "thesisRisk": zod.object({
+  "risks": zod.array(zod.string()),
+  "reviewNeeded": zod.boolean()
+}),
+  "evidenceQuality": zod.object({
+  "level": zod.enum(['high', 'medium']),
+  "sourceCount": zod.number().min(1),
+  "freshness": zod.enum(['fresh']),
+  "reviewedAt": zod.coerce.date(),
+  "sources": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "sourceKind": zod.string(),
+  "freshness": zod.enum(['fresh'])
+}))
+}),
+  "monitoring": zod.object({
+  "signals": zod.array(zod.string()),
+  "changeDetected": zod.boolean(),
+  "deteriorationDetected": zod.boolean(),
+  "stale": zod.literal(false),
+  "lastReviewedAt": zod.coerce.date()
+}),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
+})),
+  "excludedCount": zod.number().min(refreshIntelligenceResponseResearchContextExcludedCountMin),
+  "policy": zod.string(),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
 })
 })
 
@@ -5668,6 +6051,14 @@ export const RunCapitalWaterfallResponse = zod.object({
 /**
  * @summary Get advisory household finance insights
  */
+export const getFinanceInsightsResponseResearchContextProjectionsItemConfidenceMin = 0;
+export const getFinanceInsightsResponseResearchContextProjectionsItemConfidenceMax = 100;
+
+
+export const getFinanceInsightsResponseResearchContextExcludedCountMin = 0;
+
+
+
 export const GetFinanceInsightsResponse = zod.object({
   "insights": zod.array(zod.object({
   "type": zod.string(),
@@ -5681,7 +6072,54 @@ export const GetFinanceInsightsResponse = zod.object({
   "annualCost": zod.string(),
   "essentialStatus": zod.string()
 })),
-  "anomalyCount": zod.number()
+  "anomalyCount": zod.number(),
+  "researchContext": zod.object({
+  "status": zod.enum(['available', 'empty']),
+  "projections": zod.array(zod.object({
+  "id": zod.string(),
+  "ticker": zod.string(),
+  "title": zod.string(),
+  "thesis": zod.string(),
+  "direction": zod.string(),
+  "confidence": zod.number().min(getFinanceInsightsResponseResearchContextProjectionsItemConfidenceMin).max(getFinanceInsightsResponseResearchContextProjectionsItemConfidenceMax),
+  "portfolioFit": zod.object({
+  "posture": zod.enum(['constructive', 'neutral', 'caution']),
+  "concentrationContext": zod.string(),
+  "suitability": zod.enum(['advisory_review'])
+}),
+  "thesisRisk": zod.object({
+  "risks": zod.array(zod.string()),
+  "reviewNeeded": zod.boolean()
+}),
+  "evidenceQuality": zod.object({
+  "level": zod.enum(['high', 'medium']),
+  "sourceCount": zod.number().min(1),
+  "freshness": zod.enum(['fresh']),
+  "reviewedAt": zod.coerce.date(),
+  "sources": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "sourceKind": zod.string(),
+  "freshness": zod.enum(['fresh'])
+}))
+}),
+  "monitoring": zod.object({
+  "signals": zod.array(zod.string()),
+  "changeDetected": zod.boolean(),
+  "deteriorationDetected": zod.boolean(),
+  "stale": zod.literal(false),
+  "lastReviewedAt": zod.coerce.date()
+}),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
+})),
+  "excludedCount": zod.number().min(getFinanceInsightsResponseResearchContextExcludedCountMin),
+  "policy": zod.string(),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false)
+})
 })
 
 

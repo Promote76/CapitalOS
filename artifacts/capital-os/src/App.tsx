@@ -11,6 +11,7 @@ import {
 } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
+import { researchContextUiState } from './research-context-state';
 import {
   createContribution,
   useGetCashFlow,
@@ -67,6 +68,8 @@ import {
   type BudgetPlanningCategoryInputCategoryType,
   type BudgetPlanningCategoryInputEssentialStatus,
   useGetHousehold,
+  useGetPortfolio,
+  useGetRisk,
   useGetPropertyUnderwriting,
   useUpdateBuyBox,
   useCreatePropertyCandidate,
@@ -879,8 +882,8 @@ function Dashboard({ onAction, onFeedback, transactions, dashboard, dashboardSta
         {movementState === 'unavailable' && <div className="dashboard-inline-state" role="alert">No contribution rows are shown because the household history could not be loaded.</div>}
         {movementState === 'empty' && <div className="dashboard-inline-state">No contributions have been recorded for this household.</div>}
       </section>
-    </div>
-    <section className="card card-pad page-section">
+       </div>
+       <section className="card card-pad page-section">
       <CardTitle title="Capital balances" subtitle="Balances recorded for this household." action={<Link href="/goals" className="btn" data-testid="link-view-goals">Open goals <ChevronRight size={14} /></Link>} />
       <div>{(portfolio?.composition ?? []).map((item, index) => <div className="goal-row" key={item.label}><div><div className="goal-label"><i style={{ background: index === 0 ? 'var(--color-protected)' : index === 1 ? 'var(--color-opportunity)' : 'var(--color-primary)' }} />{item.label}</div><div className="goal-meta">{displayMoney(item.amount, '—')} current balance</div></div><div className="goal-progress"><b style={{ width: `${item.percent}%`, background: index === 0 ? 'var(--color-protected)' : index === 1 ? 'var(--color-opportunity)' : 'var(--color-primary)' }} /></div><div className="goal-pct">{item.percent.toFixed(1)}%</div></div>)}</div>
     </section>
@@ -1006,14 +1009,39 @@ function StrategiesPage({ onFeedback }: { onFeedback: (message: string) => void 
   </main>;
 }
 
-function PortfolioPage({ onFeedback }: { onFeedback: (message: string) => void }) {
+function ResearchContextPanel({ context, title = "Approved research context" }: { context?: any; title?: string }) {
+  if (!context) return <section className="card card-pad research-context" role="alert"><strong>Research context unavailable</strong><span>The advisory projection was not included in this response. Financial and execution state is unchanged.</span></section>;
+  if (context.status === 'empty') return <section className="card card-pad research-context research-context-empty"><CardTitle title={title} subtitle="Only human-reviewed, fresh research is eligible." /><div className="empty-state compact"><ShieldCheck size={18} /><strong>No eligible approved research</strong><span>Pending, blocked, unreviewed, stale, and malformed records stay out of downstream views.</span></div></section>;
+  return <section className="card card-pad research-context" data-testid="card-approved-research-context">
+    <CardTitle title={title} subtitle="Human-reviewed advisory context. It cannot change balances, allocations, or execution." />
+    <div className="research-context-list">
+      {context.projections.map((item: any) => <article className="research-projection" key={item.id}>
+        <div className="research-projection-head"><div><span className="mono-label">{item.ticker} · reviewed research</span><h3>{item.title}</h3></div><span className={`status ${item.portfolioFit.posture === 'caution' ? 'pending' : ''}`}>{item.portfolioFit.posture}</span></div>
+        <p>{item.thesis}</p>
+        <div className="research-projection-facts"><span><strong>Evidence</strong>{item.evidenceQuality.level} · {item.evidenceQuality.sourceCount} source(s)</span><span><strong>Reviewed</strong>{displayDate(item.evidenceQuality.reviewedAt, 'Unknown')}</span><span><strong>Suitability</strong>Advisory review</span></div>
+        {item.thesisRisk.risks.length > 0 && <div className="research-risk-note"><AlertTriangle size={14} /><span>{item.thesisRisk.risks.join(' · ')}</span></div>}
+        {item.monitoring.signals.length > 0 && <div className="research-monitoring"><strong>Monitor</strong>{item.monitoring.signals.join(' · ')}</div>}
+        <div className="research-sources">{item.evidenceQuality.sources.map((source: any) => <span key={source.id}>{source.title} · {source.sourceKind}</span>)}</div>
+      </article>)}
+    </div>
+  </section>;
+}
+
+function PortfolioPage() {
+  const query = useGetPortfolio();
+  const state = researchContextUiState(query);
+  if (state === "loading") return <main className="content"><div className="card card-pad">Loading portfolio…</div></main>;
+  if (state === "error" || !query.data) return <main className="content"><div className="card card-pad" role="alert">Portfolio data is temporarily unavailable. Try again in a moment.</div></main>;
+  const data = query.data;
+  const total = data.totalCapital;
   return <main className="content">
     <PageHeading eyebrow="Plan / portfolio" title={<>Know what is<br /><em>carrying the load.</em></>} description="A composed view of where your family capital sits today—not a screen that asks you to react." actions={<button className="btn feedback-only-control" data-testid="button-portfolio-export" title="Export is coming soon" disabled><ArrowDownLeft size={15} /> Export snapshot <span className="feedback-only-label">coming soon</span></button>} />
     <div className="portfolio-split">
-      <section className="card card-pad animate-in delay-1"><CardTitle title="Capital composition" subtitle="Total tracked capital · $56,280" /><div className="donut-wrap"><div className="donut"><div className="donut-center"><strong>$56.3k</strong><span>total capital</span></div></div><div className="holding-list">{[['Duplex Reserve','63%','var(--color-primary)'],['Opportunity Reserve','20%','var(--color-opportunity)'],['Capital OS','11%','var(--color-protected)'],['Other cash','6%','var(--color-warning)']].map(([name, pct, color]) => <div className="holding-row" key={name}><i style={{ background:color }} /><span>{name}</span><b>{pct}</b></div>)}</div></div></section>
-      <section className="card card-pad animate-in delay-1"><CardTitle title="Resilience check" subtitle="How the plan behaves in three ordinary scenarios." /><div className="activity-list">{[['Emergency buffer', '8.4 months of core expenses', 'Strong', 'var(--ink)'], ['Acquisition liquidity', '100% available within 5 days', 'Ready', 'var(--marigold)'], ['Single-account exposure', 'Largest account is 63% of total', 'Watch', 'var(--clay)']].map(([label, desc, status, color]) => <div className="activity-item" key={label}><div className="activity-icon" style={{ background: 'var(--secondary)', color }}><ShieldCheck size={14} /></div><div className="activity-copy"><strong>{label}</strong><span>{desc}</span></div><span className="status" style={{ color, background: 'var(--secondary)' }}>{status}</span></div>)}</div></section>
+      <section className="card card-pad animate-in delay-1"><CardTitle title="Capital composition" subtitle={`Total tracked capital · ${displayMoney(total, '$0')}`} /><div className="donut-wrap"><div className="donut"><div className="donut-center"><strong>{displayMoney(total, '$0')}</strong><span>total capital</span></div></div><div className="holding-list">{data.composition.map((holding) => <div className="holding-row" key={holding.label}><i /><span>{holding.label}</span><b>{holding.percent}%</b></div>)}</div></div></section>
+      <section className="card card-pad animate-in delay-1"><CardTitle title="Resilience check" subtitle="How the plan behaves in three ordinary scenarios." /><div className="activity-list">{[['Protected capital', displayMoney(data.protectedCapital, '$0'), 'Ring-fenced', 'var(--ink)'], ['Active capital', displayMoney(data.activeCapital, '$0'), 'Tracked', 'var(--marigold)'], ['Cash reserve', displayMoney(data.cashReserve, '$0'), 'Available', 'var(--clay)']].map(([label, desc, status, color]) => <div className="activity-item" key={label}><div className="activity-icon" style={{ background: 'var(--secondary)', color }}><ShieldCheck size={14} /></div><div className="activity-copy"><strong>{label}</strong><span>{desc}</span></div><span className="status" style={{ color, background: 'var(--secondary)' }}>{status}</span></div>)}</div></section>
     </div>
-      <section className="card card-pad page-section"><CardTitle title="Accounts & sleeves" subtitle="Last synced 14 October 2024 at 08:42" action={<button className="btn" data-testid="button-sync-portfolio" onClick={() => onFeedback('Account balances are already current.')}><RotateCcw size={14} /> Sync now</button>} /><div className="table-wrap"><table className="table"><thead><tr><th>Account</th><th>Purpose</th><th>Balance</th><th>Access</th><th /></tr></thead><tbody>{[['Vanguard brokerage · 4821','Duplex Reserve','$48,260','Liquid'],['Ally High Yield · 1094','Opportunity Reserve','$6,840','Liquid'],['Capital OS checking · 0037','Operating reserve','$1,180','Everyday'],['Series I bonds · 7410','Long horizon','$4,920','12-mo hold']].map((row, index) => <tr key={row[0]}><td><strong>{row[0]}</strong></td><td>{row[1]}</td><td className="font-mono">{row[2]}</td><td><span className={`status ${index === 3 ? 'pending' : ''}`}>{row[3]}</span></td><td><button className="icon-btn" data-testid={`button-account-menu-${index}`} onClick={() => onFeedback(`${row[0]} is connected to your plan.`)}><MoreHorizontal size={15} /></button></td></tr>)}</tbody></table></div></section>
+    <section className="card card-pad page-section"><CardTitle title="Accounts & sleeves" subtitle={data.ledgerBalanced ? 'Ledger reconciled · household-scoped balances' : 'Ledger reconciliation needs review'} /><div className="table-wrap"><table className="table"><thead><tr><th>Sleeve</th><th>Share</th><th>Balance</th></tr></thead><tbody>{data.composition.map((holding) => <tr key={holding.label}><td><strong>{holding.label}</strong></td><td>{holding.percent}%</td><td className="font-mono">{displayMoney(holding.amount, '$0')}</td></tr>)}</tbody></table></div></section>
+    <ResearchContextPanel context={data.researchContext} />
   </main>;
 }
 
@@ -1116,6 +1144,7 @@ function RiskPage({ onFeedback }: { onFeedback: (message: string) => void }) {
   const [comfortable, setComfortable] = useState(true);
   const [emergencyOpen, setEmergencyOpen] = useState(false);
   const executionControl = useGetExecutionControl();
+  const riskQuery = useGetRisk();
   const [stopping, setStopping] = useState(false);
   const stopWithReverification = useProviderProtectedAction(() =>
     requestExecutionStop(
@@ -1137,15 +1166,20 @@ function RiskPage({ onFeedback }: { onFeedback: (message: string) => void }) {
       setStopping(false);
     }
   };
+  const riskState = researchContextUiState(riskQuery);
+  if (riskState === "loading") return <main className="content"><div className="card card-pad">Loading risk and readiness…</div></main>;
+  if (riskState === "error" || !riskQuery.data) return <main className="content"><div className="card card-pad" role="alert">Risk and readiness data is temporarily unavailable. Try again in a moment.</div></main>;
+  const risk = riskQuery.data;
   return <main className="content">
     <PageHeading eyebrow="Plan / risk & readiness" title={<>Protect the plan<br /><em>you can explain.</em></>} description="Risk is a set of understandable safeguards. Review them before they need to do any work." actions={<><button className="btn" data-testid="button-risk-review" onClick={() => setComfortable(!comfortable)}><RotateCcw size={15} /> Re-run review</button><button className="btn emergency-btn" data-testid="button-emergency-stop" onClick={() => setEmergencyOpen(true)}><ShieldAlert size={15} /> Emergency stop</button></>} />
     <section className="card card-pad animate-in delay-1"><CardTitle title="Server execution control" subtitle="The database-backed state is authoritative across reloads, sessions, and API restarts." action={<span className={`status ${executionControl.data?.state === 'STOP' ? 'blocked' : 'review'}`} data-testid="status-execution-control">{executionControl.isLoading ? 'Checking…' : executionControl.data?.state ?? 'Unavailable'}</span>} /><p className="finance-note"><ShieldCheck size={16} /> {executionControl.data?.state === 'STOP' ? 'New order intents are stopped by the server.' : executionControl.isError ? 'The control plane could not be read safely; execution remains denied.' : 'No browser-local state can override the server control plane.'}</p></section>
-    <section className="card card-pad animate-in delay-1"><CardTitle title="Readiness posture" subtitle={comfortable ? 'Your plan has a comfortable margin today.' : 'Review in progress — compare this with your household budget.'} action={<span className={`status ${comfortable ? '' : 'pending'}`} data-testid="status-risk-posture">{comfortable ? 'Comfortable' : 'Reviewing'}</span>} /><div style={{ maxWidth:780 }}><div className="risk-meter"><span className="risk-marker" style={{ left: comfortable ? '37%' : '57%' }} /></div><div className="risk-scale"><span>Protected</span><span>Balanced</span><span>Stretched</span></div></div><div className="stat-strip" style={{ marginTop:28, marginLeft:-22, marginRight:-22, borderTop:'1px solid var(--line)' }}>{[['8.4 mo', 'cash runway', 'Above your 6 mo floor'], ['63%', 'largest sleeve', 'Concentration to watch'], ['0', 'high flags', 'No action needed now']].map(([value, label, detail]) => <div className="stat-cell" key={label}><div className="mono-label">{label}</div><div className="stat-value">{value}</div><div className="stat-detail">{detail}</div></div>)}</div></section>
-    <section className="card card-pad page-section animate-in delay-2"><CardTitle title="Risk Governor safeguards" subtitle="Capital OS watches these boundaries so you do not have to watch a market screen." /><div className="safeguard-grid" data-testid="risk-safeguards">{[['Protected Capital Lock', 'Ring-fenced reserve cannot be allocated to experimental strategies.', LockKeyhole], ['Max Active Capital', 'Active capital stays within the approved household ceiling.', ShieldCheck], ['Reconciliation Health', 'All recent movements match the planned allocation.', Check], ['Strategy Exposure', 'No single strategy can quietly become the whole plan.', SlidersHorizontal], ['Venue Health', 'Connected accounts are reporting normally.', Landmark], ['Market Data Health', 'Reference data is current for the next review.', Gauge]].map(([title, desc, Icon]) => <div className="safeguard" key={title as string}><Icon size={16} /><div><strong>{title as string}</strong><span>{desc as string}</span></div><span className="status" style={{ marginLeft:'auto', flex:'0 0 auto' }}>Healthy</span></div>)}</div></section>
+    <section className="card card-pad animate-in delay-1"><CardTitle title="Readiness posture" subtitle={comfortable ? 'Your plan has a comfortable margin today.' : 'Review in progress — compare this with your household budget.'} action={<span className={`status ${comfortable ? '' : 'pending'}`} data-testid="status-risk-posture">{comfortable ? 'Comfortable' : 'Reviewing'}</span>} /><div style={{ maxWidth:780 }}><div className="risk-meter"><span className="risk-marker" style={{ left: comfortable ? '37%' : '57%' }} /></div><div className="risk-scale"><span>Protected</span><span>Balanced</span><span>Stretched</span></div></div><div className="stat-strip" style={{ marginTop:28, marginLeft:-22, marginRight:-22, borderTop:'1px solid var(--line)' }}>{[[risk.minimumCashReserve, 'minimum cash reserve', 'Server policy floor'], [risk.maxActiveCapital, 'maximum active capital', 'Governor ceiling'], [risk.maxDrawdown, 'maximum drawdown', 'Risk boundary']].map(([value, label, detail]) => <div className="stat-cell" key={label}><div className="mono-label">{label}</div><div className="stat-value">{value}</div><div className="stat-detail">{detail}</div></div>)}</div></section>
+    <section className="card card-pad page-section animate-in delay-2"><CardTitle title="Risk Governor safeguards" subtitle="Capital OS watches these boundaries so you do not have to watch a market screen." /><div className="safeguard-grid" data-testid="risk-safeguards">{risk.safeguards.map((safeguard) => <div className="safeguard" key={safeguard.name}><ShieldCheck size={16} /><div><strong>{safeguard.name}</strong><span>{safeguard.message}</span></div><span className={`status ${safeguard.status === 'review' ? 'pending' : ''}`} style={{ marginLeft:'auto', flex:'0 0 auto' }}>{safeguard.status}</span></div>)}</div></section>
     <div className="section-grid">
       <section className="card card-pad page-section"><CardTitle title="The three questions" subtitle="A practical review, not a prediction." />{[['Could the household keep contributing?', 'Yes · the weekly plan is 4.8% of take-home income.', ShieldCheck], ['Could we pause without losing the thread?', 'Yes · the reserve is already separated by purpose.', LockKeyhole], ['Could we say no to the wrong property?', 'Yes · your opportunity reserve protects that choice.', Home]].map(([title, desc, Icon]) => <div className="activity-item" key={title as string}><div className="activity-icon"><Icon size={14} /></div><div className="activity-copy"><strong>{title as string}</strong><span>{desc as string}</span></div><Check size={16} color="var(--ink)" /></div>)}</section>
       <section className="card card-pad page-section"><CardTitle title="Watch next" subtitle="Low drama, high usefulness." />{['Confirm insurance estimate in Q4', 'Review beneficiaries before year end', 'Revisit purchase window in January'].map((item, index) => <div className="setting-row" key={item}><div><strong>{item}</strong><p>{['Due 15 Nov', 'Due 31 Dec', 'Due 06 Jan'][index]}</p></div><ChevronRight size={15} color="var(--ink-soft)" /></div>)}</section>
      </div>
+      <ResearchContextPanel context={risk.researchContext} title="Research thesis risk & readiness" />
      {emergencyOpen && <div className="modal-backdrop" role="presentation"><div className="modal" role="dialog" aria-modal="true" aria-labelledby="emergency-title"><div className="modal-header"><div><div className="eyebrow" style={{ color:'var(--color-critical)' }}>Critical action / confirmation required</div><h2 id="emergency-title">Stop new activity?</h2><p>This sends a server-authoritative STOP command. It persists beyond this browser session and denies new order intents before they reach the OMS.</p></div><button className="icon-btn" aria-label="Close emergency confirmation" data-testid="button-close-emergency-modal" onClick={() => setEmergencyOpen(false)} disabled={stopping}><X size={17} /></button></div><div className="modal-actions"><button className="btn" data-testid="button-cancel-emergency-stop" onClick={() => setEmergencyOpen(false)} disabled={stopping}>Keep system running</button><button className="btn emergency-btn" data-testid="button-confirm-emergency-stop" onClick={() => { void confirmEmergencyStop(); }} disabled={stopping}><ShieldAlert size={14} /> {stopping ? 'Confirming…' : 'Confirm server stop'}</button></div></div></div>}
   </main>;
 }
@@ -3009,10 +3043,14 @@ function BankConnectionCard({ connection, accounts, providerAvailable, onChanged
 
 function FinanceInsightsPage() {
   const query = useGetFinanceInsights();
+  const state = researchContextUiState(query);
+  if (state === "loading") return <main className="content"><div className="card card-pad">Loading finance insights…</div></main>;
+  if (state === "error" || !query.data) return <main className="content"><div className="card card-pad" role="alert">Finance insights are temporarily unavailable. Try again in a moment.</div></main>;
   return <main className="content">
     <PageHeading eyebrow="Household finance / insights" title={<>Small signals,<br /><em>useful decisions.</em></>} description="Advisory observations from your cash flow, recurring expenses, and reserve posture. Nothing here can move money." />
-    <section className="card card-pad animate-in delay-1"><CardTitle title="This month’s signals" subtitle="Review, decide, and keep the human in the loop." /><div className="insight-list">{(query.data?.insights ?? []).map((insight) => <div className="insight-row" key={insight.title}><div className={`insight-icon ${insight.type}`}><Lightbulb size={15} /></div><div><strong>{insight.title}</strong><p>{insight.description}</p></div><span className={`status ${insight.severity === 'medium' ? 'pending' : ''}`}>{insight.severity}</span></div>)}</div></section>
-    <section className="card card-pad page-section"><CardTitle title="Recurring expenses" subtitle="A clear annual view makes optional costs easier to discuss." /><div className="table-wrap"><table className="table"><thead><tr><th>Expense</th><th>Monthly</th><th>Annual</th><th>Role</th></tr></thead><tbody>{(query.data?.subscriptions ?? []).map((subscription) => <tr key={subscription.merchant}><td><strong>{subscription.merchant}</strong></td><td className="font-mono">{displayMoney(subscription.monthlyAmount, '$0')}</td><td className="font-mono">{displayMoney(subscription.annualCost, '$0')}</td><td><span className="status pending">{subscription.essentialStatus}</span></td></tr>)}</tbody></table></div></section>
+    <section className="card card-pad animate-in delay-1"><CardTitle title="This month’s signals" subtitle="Review, decide, and keep the human in the loop." /><div className="insight-list">{query.data.insights.map((insight) => <div className="insight-row" key={insight.title}><div className={`insight-icon ${insight.type}`}><Lightbulb size={15} /></div><div><strong>{insight.title}</strong><p>{insight.description}</p></div><span className={`status ${insight.severity === 'medium' ? 'pending' : ''}`}>{insight.severity}</span></div>)}</div></section>
+    <section className="card card-pad page-section"><CardTitle title="Recurring expenses" subtitle="A clear annual view makes optional costs easier to discuss." /><div className="table-wrap"><table className="table"><thead><tr><th>Expense</th><th>Monthly</th><th>Annual</th><th>Role</th></tr></thead><tbody>{query.data.subscriptions.map((subscription) => <tr key={subscription.merchant}><td><strong>{subscription.merchant}</strong></td><td className="font-mono">{displayMoney(subscription.monthlyAmount, '$0')}</td><td className="font-mono">{displayMoney(subscription.annualCost, '$0')}</td><td><span className="status pending">{subscription.essentialStatus}</span></td></tr>)}</tbody></table></div></section>
+    <ResearchContextPanel context={query.data.researchContext} title="Research-derived thesis & freshness signals" />
   </main>;
 }
 
@@ -4661,7 +4699,7 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, dashboardSta
     <Route path="/strategies" component={() => <StrategiesPage onFeedback={onFeedback} />} />
     <Route path="/micro-live" component={() => <MicroLivePage onFeedback={onFeedback} />} />
     <Route path="/treasury" component={() => <TreasuryPage onFeedback={onFeedback} />} />
-    <Route path="/portfolio" component={() => <PortfolioPage onFeedback={onFeedback} />} />
+    <Route path="/portfolio" component={PortfolioPage} />
     <Route path="/properties" component={() => <PropertiesPage onAction={onAction} />} />
     <Route path="/financing" component={() => <FinancingPage onFeedback={onFeedback} />} />
     <Route path="/investment-research" component={() => <InvestmentResearchPage />} />

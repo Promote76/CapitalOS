@@ -1985,6 +1985,118 @@ export interface TransactionSummary {
   createdAt: string;
 }
 
+export type FamilyOfficeResearchProjectionEvidenceFreshness = typeof FamilyOfficeResearchProjectionEvidenceFreshness[keyof typeof FamilyOfficeResearchProjectionEvidenceFreshness];
+
+
+export const FamilyOfficeResearchProjectionEvidenceFreshness = {
+  fresh: 'fresh',
+} as const;
+
+export interface FamilyOfficeResearchProjectionEvidence {
+  id: string;
+  title: string;
+  sourceKind: string;
+  freshness: FamilyOfficeResearchProjectionEvidenceFreshness;
+}
+
+export type FamilyOfficeResearchProjectionPortfolioFitPosture = typeof FamilyOfficeResearchProjectionPortfolioFitPosture[keyof typeof FamilyOfficeResearchProjectionPortfolioFitPosture];
+
+
+export const FamilyOfficeResearchProjectionPortfolioFitPosture = {
+  constructive: 'constructive',
+  neutral: 'neutral',
+  caution: 'caution',
+} as const;
+
+export type FamilyOfficeResearchProjectionPortfolioFitSuitability = typeof FamilyOfficeResearchProjectionPortfolioFitSuitability[keyof typeof FamilyOfficeResearchProjectionPortfolioFitSuitability];
+
+
+export const FamilyOfficeResearchProjectionPortfolioFitSuitability = {
+  advisory_review: 'advisory_review',
+} as const;
+
+export type FamilyOfficeResearchProjectionPortfolioFit = {
+  posture: FamilyOfficeResearchProjectionPortfolioFitPosture;
+  concentrationContext: string;
+  suitability: FamilyOfficeResearchProjectionPortfolioFitSuitability;
+};
+
+export type FamilyOfficeResearchProjectionThesisRisk = {
+  risks: string[];
+  reviewNeeded: boolean;
+};
+
+export type FamilyOfficeResearchProjectionEvidenceQualityLevel = typeof FamilyOfficeResearchProjectionEvidenceQualityLevel[keyof typeof FamilyOfficeResearchProjectionEvidenceQualityLevel];
+
+
+export const FamilyOfficeResearchProjectionEvidenceQualityLevel = {
+  high: 'high',
+  medium: 'medium',
+} as const;
+
+export type FamilyOfficeResearchProjectionEvidenceQualityFreshness = typeof FamilyOfficeResearchProjectionEvidenceQualityFreshness[keyof typeof FamilyOfficeResearchProjectionEvidenceQualityFreshness];
+
+
+export const FamilyOfficeResearchProjectionEvidenceQualityFreshness = {
+  fresh: 'fresh',
+} as const;
+
+export type FamilyOfficeResearchProjectionEvidenceQuality = {
+  level: FamilyOfficeResearchProjectionEvidenceQualityLevel;
+  /** @minimum 1 */
+  sourceCount: number;
+  freshness: FamilyOfficeResearchProjectionEvidenceQualityFreshness;
+  reviewedAt: string;
+  sources: FamilyOfficeResearchProjectionEvidence[];
+};
+
+export type FamilyOfficeResearchProjectionMonitoring = {
+  signals: string[];
+  changeDetected: boolean;
+  deteriorationDetected: boolean;
+  stale: false;
+  lastReviewedAt: string;
+};
+
+export interface FamilyOfficeResearchProjection {
+  id: string;
+  ticker: string;
+  title: string;
+  thesis: string;
+  direction: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  confidence: number;
+  portfolioFit: FamilyOfficeResearchProjectionPortfolioFit;
+  thesisRisk: FamilyOfficeResearchProjectionThesisRisk;
+  evidenceQuality: FamilyOfficeResearchProjectionEvidenceQuality;
+  monitoring: FamilyOfficeResearchProjectionMonitoring;
+  advisoryOnly: true;
+  executionAuthorization: false;
+  householdCapitalIncluded: false;
+}
+
+export type FamilyOfficeResearchProjectionContextStatus = typeof FamilyOfficeResearchProjectionContextStatus[keyof typeof FamilyOfficeResearchProjectionContextStatus];
+
+
+export const FamilyOfficeResearchProjectionContextStatus = {
+  available: 'available',
+  empty: 'empty',
+} as const;
+
+export interface FamilyOfficeResearchProjectionContext {
+  status: FamilyOfficeResearchProjectionContextStatus;
+  projections: FamilyOfficeResearchProjection[];
+  /** @minimum 0 */
+  excludedCount: number;
+  policy: string;
+  advisoryOnly: true;
+  executionAuthorization: false;
+  householdCapitalIncluded: false;
+}
+
 export type PortfolioSummaryCompositionItem = {
   label: string;
   amount: string;
@@ -1998,6 +2110,7 @@ export interface PortfolioSummary {
   cashReserve: string;
   ledgerBalanced: boolean;
   composition: PortfolioSummaryCompositionItem[];
+  researchContext: FamilyOfficeResearchProjectionContext;
 }
 
 export interface PropertyMilestone {
@@ -3103,6 +3216,7 @@ export interface RiskSummary {
   maxDrawdown: string;
   minimumCashReserve: string;
   safeguards: RiskSummarySafeguardsItem[];
+  researchContext: FamilyOfficeResearchProjectionContext;
 }
 
 export interface EmergencyStopInput {
@@ -3222,6 +3336,7 @@ export interface IntelligenceSnapshot {
   dailyBrief: DailyBrief;
   weeklyReport: WeeklyIntelligenceReport;
   monthlyReview: MonthlyFamilyCapitalReview;
+  researchContext: FamilyOfficeResearchProjectionContext;
 }
 
 export type IntelligenceFeedbackInputFeedback = typeof IntelligenceFeedbackInputFeedback[keyof typeof IntelligenceFeedbackInputFeedback];
@@ -6018,6 +6133,7 @@ export interface FinanceInsights {
   insights: FinanceInsightsInsightsItem[];
   subscriptions: FinanceInsightsSubscriptionsItem[];
   anomalyCount: number;
+  researchContext: FamilyOfficeResearchProjectionContext;
 }
 
 export interface ProviderWebhookPayload { [key: string]: unknown }

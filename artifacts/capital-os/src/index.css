@@ -11772,3 +11772,105 @@ body {
     flex-direction: column;
   }
 }
+
+.research-context {
+  margin-top: 24px;
+}
+.research-context-empty .empty-state {
+  padding: 18px 0 4px;
+}
+.research-context-list {
+  display: grid;
+  gap: 14px;
+}
+.research-projection {
+  padding: 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  background: var(--surface-subtle);
+}
+.research-projection-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+.research-projection h3 {
+  margin: 5px 0 0;
+  font-size: 17px;
+}
+.research-projection p {
+  margin: 12px 0;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+.research-projection-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.research-projection-facts span {
+  display: grid;
+  gap: 3px;
+}
+.research-projection-facts strong,
+.research-monitoring strong {
+  color: var(--text-primary);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.research-risk-note,
+.research-monitoring {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.research-risk-note {
+  color: var(--color-critical);
+}
+.research-monitoring {
+  display: grid;
+  gap: 3px;
+}
+.research-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+.research-sources span {
+  max-width: 100%;
+  padding: 4px 7px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  background: var(--surface);
+  font: 10px/1.3 var(--app-font-mono);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 620px) {
+  .research-projection {
+    padding: 13px;
+  }
+  .research-projection-head {
+    display: grid;
+  }
+  .research-projection-head .status {
+    justify-self: start;
+  }
+  .research-projection-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .research-sources {
+    display: grid;
+  }
+}

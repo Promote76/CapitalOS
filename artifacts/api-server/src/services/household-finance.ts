@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
+import { getApprovedFamilyOfficeResearchProjection } from "./family-office";
 import {
   auditEvents,
   accounts,
@@ -1144,7 +1145,7 @@ export async function getSafeToDeploy(actor?: Actor) {
   });
 }
 
-export async function getFinanceInsights(actor?: Actor) {
+export async function getFinanceInsights(actor: Actor) {
   const data = await loadFinanceData(actor);
   const transactions = transactionWithCategory(data);
   const subscriptions = data.recurring.filter((item) => item.essentialStatus === "discretionary");
@@ -1157,6 +1158,7 @@ export async function getFinanceInsights(actor?: Actor) {
     ],
     subscriptions: subscriptions.map((item) => ({ merchant: item.merchant, monthlyAmount: item.averageAmount, annualCost: item.annualCost, essentialStatus: item.essentialStatus })),
     anomalyCount: anomalies.length,
+    researchContext: await getApprovedFamilyOfficeResearchProjection(actor),
   };
 }
 

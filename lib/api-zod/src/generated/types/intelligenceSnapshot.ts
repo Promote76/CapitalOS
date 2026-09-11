@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { DailyBrief } from './dailyBrief';
+import type { FamilyOfficeResearchProjectionContext } from './familyOfficeResearchProjectionContext';
 import type { IntelligenceAnalyst } from './intelligenceAnalyst';
 import type { IntelligenceInsight } from './intelligenceInsight';
 import type { IntelligenceRecommendation } from './intelligenceRecommendation';
@@ -19,4 +20,5 @@ export interface IntelligenceSnapshot {
   dailyBrief: DailyBrief;
   weeklyReport: WeeklyIntelligenceReport;
   monthlyReview: MonthlyFamilyCapitalReview;
+  researchContext: FamilyOfficeResearchProjectionContext;
 }

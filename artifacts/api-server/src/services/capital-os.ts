@@ -46,6 +46,7 @@ import { reportDescriptors } from "../domain/reports";
 import { canViewFinancialBalance } from "../domain/household-finance";
 import { ensureTenantCore } from "./seed";
 import { requestExecutionStop } from "./execution-control";
+import { getApprovedFamilyOfficeResearchProjection } from "./family-office";
 
 export type Actor = {
   role: HouseholdRole;
@@ -249,6 +250,7 @@ export async function getPortfolio(actor: Actor) {
     ledgerTotals.set(row.transactionId, current);
   }
   const ledgerBalanced = Array.from(ledgerTotals.values()).every((value) => value.debit === value.credit);
+  const researchContext = await getApprovedFamilyOfficeResearchProjection(actor);
   return {
     totalCapital: centsToMoney(totals.total),
     protectedCapital: centsToMoney(totals.protected),
@@ -260,6 +262,7 @@ export async function getPortfolio(actor: Actor) {
       amount: row.balance,
       percent: totals.total === 0 ? 0 : Number(((numeric(row.balance) / totals.total) * 100).toFixed(1)),
     })),
+    researchContext,
   };
 }
 
@@ -354,7 +357,7 @@ export async function getRisk(actor: Actor) {
     eq(riskStates.householdId, ids.householdId),
   )).limit(1);
   if (!risk) throw new Error("Risk state was not found");
-  return riskSummary(risk);
+  return { ...riskSummary(risk), researchContext: await getApprovedFamilyOfficeResearchProjection(actor) };
 }
 
 export async function getRecommendation(actor: Actor) {

@@ -9,6 +9,7 @@ import { getGoals, getPortfolio, getRisk, getStrategies } from "./capital-os";
 import { getPropertyUnderwriting } from "./property-underwriting";
 import { ensureTenantCore } from "./seed";
 import type { Actor } from "./capital-os";
+import { getApprovedFamilyOfficeResearchProjection } from "./family-office";
 
 const cents = (value: string | number | null | undefined) => parseMoneyToCents(String(value ?? "0"));
 const dollars = (value: number) => (value / 100).toFixed(2);
@@ -57,7 +58,7 @@ export async function refreshIntelligence(actor: Actor) {
     getPortfolio(actor),
     getStrategies(actor),
     getRisk(actor),
-    getFinanceInsights(),
+    getFinanceInsights(actor),
   ]);
   const [goalRow] = await db.select({ id: goalsTable.id }).from(goalsTable)
     .where(eq(goalsTable.householdId, actor.householdId))
@@ -242,7 +243,7 @@ async function readIntelligenceSnapshot(actor: Actor) {
     .orderBy(aiRecommendations.createdAt)
     .limit(1);
   ids.recommendationId = recommendationSeed?.id ?? "";
-  const [recommendation, analyses, insights, cashFlow, safeToDeploy, property, goals, portfolio, risk] = await Promise.all([
+  const [recommendation, analyses, insights, cashFlow, safeToDeploy, property, goals, portfolio, risk, researchContext] = await Promise.all([
     db.select().from(aiRecommendations).where(and(
       eq(aiRecommendations.id, ids.recommendationId),
       eq(aiRecommendations.householdId, ids.householdId),
@@ -255,6 +256,7 @@ async function readIntelligenceSnapshot(actor: Actor) {
     getGoals(actor),
     getPortfolio(actor),
     getRisk(actor),
+    getApprovedFamilyOfficeResearchProjection(actor),
   ]);
   if (!recommendation[0]) throw new Error("CIO recommendation was not found");
   const row = recommendation[0];
@@ -326,6 +328,7 @@ async function readIntelligenceSnapshot(actor: Actor) {
       topFinancialDecisions: [row.recommendation],
       nextMonthPriorities: [row.suggestedNextAction ?? "Review the current household plan."],
     },
+    researchContext,
   };
 }
 

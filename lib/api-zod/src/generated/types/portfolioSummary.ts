@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { FamilyOfficeResearchProjectionContext } from './familyOfficeResearchProjectionContext';
 import type { PortfolioSummaryCompositionItem } from './portfolioSummaryCompositionItem';
 
 export interface PortfolioSummary {
@@ -14,4 +15,5 @@ export interface PortfolioSummary {
   cashReserve: string;
   ledgerBalanced: boolean;
   composition: PortfolioSummaryCompositionItem[];
+  researchContext: FamilyOfficeResearchProjectionContext;
 }

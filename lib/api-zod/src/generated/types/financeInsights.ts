@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { FamilyOfficeResearchProjectionContext } from './familyOfficeResearchProjectionContext';
 import type { FinanceInsightsInsightsItem } from './financeInsightsInsightsItem';
 import type { FinanceInsightsSubscriptionsItem } from './financeInsightsSubscriptionsItem';
 
@@ -12,4 +13,5 @@ export interface FinanceInsights {
   insights: FinanceInsightsInsightsItem[];
   subscriptions: FinanceInsightsSubscriptionsItem[];
   anomalyCount: number;
+  researchContext: FamilyOfficeResearchProjectionContext;
 }

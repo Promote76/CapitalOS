@@ -4973,9 +4973,76 @@ components:
         category: { type: string }
         status: { type: string }
         createdAt: { type: string, format: date-time }
+    FamilyOfficeResearchProjectionEvidence:
+      type: object
+      required: [id, title, sourceKind, freshness]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        sourceKind: { type: string }
+        freshness: { type: string, enum: [fresh] }
+    FamilyOfficeResearchProjection:
+      type: object
+      required: [id, ticker, title, thesis, direction, confidence, portfolioFit, thesisRisk, evidenceQuality, monitoring, advisoryOnly, executionAuthorization, householdCapitalIncluded]
+      properties:
+        id: { type: string }
+        ticker: { type: string }
+        title: { type: string }
+        thesis: { type: string }
+        direction: { type: string }
+        confidence: { type: number, minimum: 0, maximum: 100 }
+        portfolioFit:
+          type: object
+          required: [posture, concentrationContext, suitability]
+          properties:
+            posture: { type: string, enum: [constructive, neutral, caution] }
+            concentrationContext: { type: string }
+            suitability: { type: string, enum: [advisory_review] }
+        thesisRisk:
+          type: object
+          required: [risks, reviewNeeded]
+          properties:
+            risks: { type: array, items: { type: string } }
+            reviewNeeded: { type: boolean }
+        evidenceQuality:
+          type: object
+          required: [level, sourceCount, freshness, reviewedAt, sources]
+          properties:
+            level: { type: string, enum: [high, medium] }
+            sourceCount: { type: number, minimum: 1 }
+            freshness: { type: string, enum: [fresh] }
+            reviewedAt: { type: string, format: date-time }
+            sources:
+              type: array
+              items: { $ref: "#/components/schemas/FamilyOfficeResearchProjectionEvidence" }
+        monitoring:
+          type: object
+          required: [signals, changeDetected, deteriorationDetected, stale, lastReviewedAt]
+          properties:
+            signals: { type: array, items: { type: string } }
+            changeDetected: { type: boolean }
+            deteriorationDetected: { type: boolean }
+            stale: { type: boolean, enum: [false] }
+            lastReviewedAt: { type: string, format: date-time }
+        advisoryOnly: { type: boolean, enum: [true] }
+        executionAuthorization: { type: boolean, enum: [false] }
+        householdCapitalIncluded: { type: boolean, enum: [false] }
+    FamilyOfficeResearchProjectionContext:
+      type: object
+      required: [status, projections, excludedCount, policy, advisoryOnly, executionAuthorization, householdCapitalIncluded]
+      properties:
+        status: { type: string, enum: [available, empty] }
+        projections:
+          type: array
+          items: { $ref: "#/components/schemas/FamilyOfficeResearchProjection" }
+        excludedCount: { type: number, minimum: 0 }
+        policy: { type: string }
+        advisoryOnly: { type: boolean, enum: [true] }
+        executionAuthorization: { type: boolean, enum: [false] }
+        householdCapitalIncluded: { type: boolean, enum: [false] }
     PortfolioSummary:
       type: object
-      required: [totalCapital, protectedCapital, activeCapital, cashReserve, ledgerBalanced, composition]
+      required: [totalCapital, protectedCapital, activeCapital, cashReserve, ledgerBalanced, composition, researchContext]
       properties:
         totalCapital: { type: string }
         protectedCapital: { type: string }
@@ -4991,6 +5058,7 @@ components:
               label: { type: string }
               amount: { type: string }
               percent: { type: number }
+        researchContext: { $ref: "#/components/schemas/FamilyOfficeResearchProjectionContext" }
     PropertyMilestone:
       type: object
       required: [id, name, status, progress, target, currentState, nextAction]
@@ -5956,7 +6024,7 @@ components:
         amount: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
     RiskSummary:
       type: object
-      required: [state, protectedCapitalLocked, emergencyStopActive, maxActiveCapital, maxStrategyAllocation, maxWeeklyRisk, maxDrawdown, minimumCashReserve, safeguards]
+      required: [state, protectedCapitalLocked, emergencyStopActive, maxActiveCapital, maxStrategyAllocation, maxWeeklyRisk, maxDrawdown, minimumCashReserve, safeguards, researchContext]
       properties:
         state: { type: string }
         protectedCapitalLocked: { type: boolean }
@@ -5975,6 +6043,7 @@ components:
               name: { type: string }
               status: { type: string }
               message: { type: string }
+        researchContext: { $ref: "#/components/schemas/FamilyOfficeResearchProjectionContext" }
     EmergencyStopInput:
       type: object
       required: [confirmed, reason]
@@ -6001,7 +6070,7 @@ components:
         reason: { type: string, minLength: 1, maxLength: 500 }
     IntelligenceSnapshot:
       type: object
-      required: [recommendation, analysts, insights, dailyBrief, weeklyReport, monthlyReview]
+      required: [recommendation, analysts, insights, dailyBrief, weeklyReport, monthlyReview, researchContext]
       properties:
         recommendation: { $ref: "#/components/schemas/IntelligenceRecommendation" }
         analysts:
@@ -6013,6 +6082,7 @@ components:
         dailyBrief: { $ref: "#/components/schemas/DailyBrief" }
         weeklyReport: { $ref: "#/components/schemas/WeeklyIntelligenceReport" }
         monthlyReview: { $ref: "#/components/schemas/MonthlyFamilyCapitalReview" }
+        researchContext: { $ref: "#/components/schemas/FamilyOfficeResearchProjectionContext" }
     IntelligenceRecommendation:
       type: object
       required: [id, analyst, priority, recommendation, reason, evidence, expectedBenefit, potentialDownside, impactOnDuplexGoal, impactOnHouseholdLiquidity, riskLevel, confidence, dataQuality, status, requiredApproval, suggestedNextAction, advisoryOnly, createdAt]
@@ -7886,7 +7956,7 @@ components:
             manualOverride: { type: boolean }
     FinanceInsights:
       type: object
-      required: [insights, subscriptions, anomalyCount]
+      required: [insights, subscriptions, anomalyCount, researchContext]
       properties:
         insights:
           type: array
@@ -7909,6 +7979,7 @@ components:
               annualCost: { type: string }
               essentialStatus: { type: string }
         anomalyCount: { type: number }
+        researchContext: { $ref: "#/components/schemas/FamilyOfficeResearchProjectionContext" }
     ProviderWebhookPayload:
       type: object
       additionalProperties: true

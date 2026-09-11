@@ -43,6 +43,10 @@ import { ProviderUnavailableError, safeProviderModel, XaiIntelligenceProvider } 
 import { getPropertyUnderwriting } from "./property-underwriting";
 import type { Actor } from "./capital-os";
 import { parseResearchDigestion, type NormalizedResearchDigestion } from "../domain/research-digestion";
+import {
+  buildApprovedResearchProjection,
+  type ApprovedResearchProjectionContext,
+} from "../domain/family-office-research-projection";
 
 type ResearchInput = { analyst?: string; scope: string; prompt?: string; ticker?: string; url?: string; digestionPayload?: string; dossierContext?: string; permittedEvidence?: Array<{ title: string; sourceUrl?: string; excerpt: string; permissionConfirmed: true }> };
 export type PublicWebEvidence = { title: string; finalUrl: string; excerpt: string; retrievedAt: string; freshness: string; status: "extracted"; accessLimitation: null };
@@ -277,6 +281,43 @@ function proposalView(proposal: typeof familyOfficeProposals.$inferSelect) {
     advisoryOnly: true,
     executionAuthorization: false,
   };
+}
+
+export async function getApprovedFamilyOfficeResearchProjection(actor: Actor): Promise<ApprovedResearchProjectionContext> {
+  assertPermission(actor.role, "read");
+  const [proposals, evidence] = await Promise.all([
+    db.select({
+      id: familyOfficeProposals.id,
+      householdId: familyOfficeProposals.householdId,
+      title: familyOfficeProposals.title,
+      thesis: familyOfficeProposals.thesis,
+      label: familyOfficeProposals.label,
+      analyticalDirection: familyOfficeProposals.analyticalDirection,
+      confidence: familyOfficeProposals.confidence,
+      risks: familyOfficeProposals.risks,
+      ticker: familyOfficeProposals.ticker,
+      dossierKind: familyOfficeProposals.dossierKind,
+      evidenceIds: familyOfficeProposals.evidenceIds,
+      status: familyOfficeProposals.status,
+      reviewedAt: familyOfficeProposals.reviewedAt,
+    }).from(familyOfficeProposals).where(eq(familyOfficeProposals.householdId, actor.householdId)),
+    db.select({
+      id: familyOfficeEvidence.id,
+      householdId: familyOfficeEvidence.householdId,
+      title: familyOfficeEvidence.title,
+      sourceKind: familyOfficeEvidence.sourceKind,
+      classification: familyOfficeEvidence.classification,
+      freshness: familyOfficeEvidence.freshness,
+      retrievedAt: familyOfficeEvidence.retrievedAt,
+      createdAt: familyOfficeEvidence.createdAt,
+    }).from(familyOfficeEvidence).where(eq(familyOfficeEvidence.householdId, actor.householdId)),
+  ]);
+
+  return buildApprovedResearchProjection({
+    householdId: actor.householdId,
+    proposals,
+    evidence,
+  });
 }
 
 function portfolioView(portfolio: typeof shadowPortfolios.$inferSelect) {

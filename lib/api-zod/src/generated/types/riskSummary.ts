@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { FamilyOfficeResearchProjectionContext } from './familyOfficeResearchProjectionContext';
 import type { RiskSummarySafeguardsItem } from './riskSummarySafeguardsItem';
 
 export interface RiskSummary {
@@ -17,4 +18,5 @@ export interface RiskSummary {
   maxDrawdown: string;
   minimumCashReserve: string;
   safeguards: RiskSummarySafeguardsItem[];
+  researchContext: FamilyOfficeResearchProjectionContext;
 }

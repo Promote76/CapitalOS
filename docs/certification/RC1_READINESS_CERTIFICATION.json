@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "releaseCandidate": "RC1",
   "result": "PASS_WITH_BLOCKER",
-  "generatedAt": "2026-09-11T20:21:33.749Z",
+  "generatedAt": "2026-09-11T23:17:30.057Z",
   "source": {
-    "baseCommit": "a17e1a48d60adf0d4af27e7a3876167b7df0234a",
-    "sourceSha256": "975e78cbbe924098be6f82d20834837947cab447e723cf3e21c30051427c79d2",
-    "inputCount": 1114,
+    "baseCommit": "fb8ae78771b1372be9a9d6fa8420225dce2f4989",
+    "sourceSha256": "7583d22d6fa0f656c2f19a3c9cd731dc688ea25a403827972de7b309cb667e13",
+    "inputCount": 1125,
     "inputs": [
       "artifacts/api-server/.replit-artifact/artifact.toml",
       "artifacts/api-server/package.json",
@@ -103,6 +103,7 @@
       "artifacts/api-server/src/integration/p0-http.test.ts",
       "artifacts/api-server/src/integration/rc1-readiness-certification.test.ts",
       "artifacts/api-server/src/integration/research-digestion-db.test.ts",
+      "artifacts/api-server/src/integration/research-opportunities.test.ts",
       "artifacts/api-server/src/integration/schwab-market-data-oauth.test.ts",
       "artifacts/api-server/src/integration/schwab-oauth.test.ts",
       "artifacts/api-server/src/integration/tenant-route-inventory.d.mts",
@@ -183,6 +184,7 @@
       "artifacts/api-server/src/services/public-research-ingestion.test.ts",
       "artifacts/api-server/src/services/public-research-ingestion.ts",
       "artifacts/api-server/src/services/research-dossier.ts",
+      "artifacts/api-server/src/services/research-opportunities.ts",
       "artifacts/api-server/src/services/schwab-market-data-oauth.ts",
       "artifacts/api-server/src/services/schwab-oauth.test.ts",
       "artifacts/api-server/src/services/schwab-oauth.ts",
@@ -800,6 +802,15 @@
       "lib/api-zod/src/generated/types/researchEvidenceUploadRequestContentType.ts",
       "lib/api-zod/src/generated/types/researchEvidenceUploadResponse.ts",
       "lib/api-zod/src/generated/types/researchJournalEntry.ts",
+      "lib/api-zod/src/generated/types/researchOpportunitiesResponse.ts",
+      "lib/api-zod/src/generated/types/researchOpportunitiesResponseRanking.ts",
+      "lib/api-zod/src/generated/types/researchOpportunity.ts",
+      "lib/api-zod/src/generated/types/researchOpportunityCategory.ts",
+      "lib/api-zod/src/generated/types/researchOpportunityEvidence.ts",
+      "lib/api-zod/src/generated/types/researchOpportunityEvidenceFreshness.ts",
+      "lib/api-zod/src/generated/types/researchOpportunityEvidenceSourceKind.ts",
+      "lib/api-zod/src/generated/types/researchOpportunityFactorScores.ts",
+      "lib/api-zod/src/generated/types/researchOpportunityPortfolioFit.ts",
       "lib/api-zod/src/generated/types/researchStrategyCreated.ts",
       "lib/api-zod/src/generated/types/reviewMarketSnapshotRequest.ts",
       "lib/api-zod/src/generated/types/reviewMarketSnapshotRequestDisposition.ts",
@@ -1125,8 +1136,8 @@
     ]
   },
   "routeInventory": {
-    "current": 250,
-    "executed": 250,
+    "current": 251,
+    "executed": 251,
     "result": "PASS"
   },
   "databaseTarget": "DISPOSABLE_LOCAL_POSTGRESQL",
@@ -1166,5 +1177,5 @@
     "venueExecution": "DISABLED",
     "moneyMovement": "DISABLED"
   },
-  "evidenceLog": "docs/certification/operations-recovery-runs/operations-recovery-2026-09-11T20-20-22Z.log"
+  "evidenceLog": "docs/certification/operations-recovery-runs/operations-recovery-2026-09-11T23-16-20Z.log"
 }

@@ -1302,6 +1302,19 @@ paths:
         "201":
           description: Created advisory dossier/proposal and refreshed list data
           content: { application/json: { schema: { $ref: "#/components/schemas/ResearchDossierCreateResult" } } }
+  /research/opportunities:
+    get:
+      operationId: listResearchOpportunities
+      tags: [research-dossier]
+      summary: List the household-scoped approved-evidence research screen
+      responses:
+        "200":
+          description: Deterministic advisory Top 25 built from current approved read-only evidence
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResearchOpportunitiesResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /family-office/research/digestion/preview:
     post:
       operationId: previewFamilyOfficeResearchDigestion
@@ -7270,6 +7283,74 @@ components:
             - { $ref: "#/components/schemas/FamilyOfficeProposal" }
             - { type: "null" }
         refresh: { $ref: "#/components/schemas/ResearchDossierListResponse" }
+    ResearchOpportunityFactorScores:
+      type: object
+      required: [incomeQuality, growthQuality, earningsQuality, balanceSheet, valuation, liquidity, risk, evidenceFreshness, portfolioFit]
+      properties:
+        incomeQuality: { type: number, minimum: 0, maximum: 100, multipleOf: 1 }
+        growthQuality: { type: number, minimum: 0, maximum: 100, multipleOf: 1 }
+        earningsQuality: { type: number, minimum: 0, maximum: 100, multipleOf: 1 }
+        balanceSheet: { type: number, minimum: 0, maximum: 100, multipleOf: 1 }
+        valuation: { type: number, minimum: 0, maximum: 100, multipleOf: 1 }
+        liquidity: { type: number, minimum: 0, maximum: 100, multipleOf: 1 }
+        risk: { type: number, minimum: 0, maximum: 100, multipleOf: 1 }
+        evidenceFreshness: { type: number, minimum: 0, maximum: 100, multipleOf: 1 }
+        portfolioFit: { type: number, minimum: 0, maximum: 100, multipleOf: 1 }
+    ResearchOpportunityEvidence:
+      type: object
+      required: [id, title, sourceKind, reviewedAt, freshness]
+      properties:
+        id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        title: { type: string, maxLength: 240 }
+        sourceKind: { type: string, enum: [SCHWAB_MARKET_SNAPSHOT, SEC_FILING] }
+        reviewedAt: { type: string, format: date-time }
+        freshness: { type: string, enum: [CURRENT] }
+    ResearchOpportunity:
+      type: object
+      required: [ticker, companyName, platinumScore, category, thesis, whyNow, redFlags, evidenceFreshness, portfolioFit, concentrationImpact, maximumExposure, bullCase, baseCase, bearCase, invalidationConditions, protectedCapitalStatus, humanReviewStatus, factorSubScores, sourceCount, advisoryOnly, noExecution, evidence, factors]
+      properties:
+        ticker: { type: string, maxLength: 16 }
+        companyName: { type: string, maxLength: 240 }
+        platinumScore: { type: number, minimum: 0, maximum: 100, multipleOf: 1 }
+        category: { type: string, enum: [Income, Compounders, Balanced] }
+        thesis: { type: string, maxLength: 1200 }
+        whyNow: { type: string, maxLength: 1200 }
+        redFlags: { type: array, maxItems: 5, items: { type: string, maxLength: 300 } }
+        evidenceFreshness: { type: string, enum: [Current] }
+        portfolioFit: { type: string, enum: [Constructive, Review, Caution] }
+        concentrationImpact: { type: string, maxLength: 120 }
+        maximumExposure: { type: string, maxLength: 120 }
+        bullCase: { type: string, maxLength: 1200 }
+        baseCase: { type: string, maxLength: 1200 }
+        bearCase: { type: string, maxLength: 1200 }
+        invalidationConditions: { type: array, maxItems: 3, items: { type: string, maxLength: 300 } }
+        protectedCapitalStatus: { type: string, maxLength: 120 }
+        humanReviewStatus: { type: string, maxLength: 120 }
+        factorSubScores: { $ref: "#/components/schemas/ResearchOpportunityFactorScores" }
+        sourceCount: { type: number, minimum: 1, maximum: 6, multipleOf: 1 }
+        advisoryOnly: { type: boolean, const: true }
+        noExecution: { type: boolean, const: true }
+        evidence: { type: array, maxItems: 6, items: { $ref: "#/components/schemas/ResearchOpportunityEvidence" } }
+        factors: { $ref: "#/components/schemas/ResearchOpportunityFactorScores" }
+    ResearchOpportunitiesResponse:
+      type: object
+      required: [opportunities, totalEligible, excludedStaleOrUnreviewed, generatedAt, ranking, advisoryOnly, executionAuthorization, householdCapitalIncluded, noTradingOrMoneyMovement]
+      properties:
+        opportunities: { type: array, maxItems: 25, items: { $ref: "#/components/schemas/ResearchOpportunity" } }
+        totalEligible: { type: number, minimum: 0, multipleOf: 1 }
+        excludedStaleOrUnreviewed: { type: number, minimum: 0, multipleOf: 1 }
+        generatedAt: { type: string, format: date-time }
+        ranking:
+          type: object
+          required: [method, factors, missingData]
+          properties:
+            method: { type: string }
+            factors: { type: array, maxItems: 12, items: { type: string } }
+            missingData: { type: string }
+        advisoryOnly: { type: boolean, const: true }
+        executionAuthorization: { type: boolean, const: false }
+        householdCapitalIncluded: { type: boolean, const: false }
+        noTradingOrMoneyMovement: { type: boolean, const: true }
     FamilyOfficeResearchResult:
       type: object
       required: [run, proposal, advisoryOnly]

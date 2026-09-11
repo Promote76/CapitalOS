@@ -30,6 +30,7 @@ import {
   ListResearchDossiersResponse,
   CreateResearchDossierBody,
   CreateResearchDossierResponse,
+  ListResearchOpportunitiesResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
@@ -47,6 +48,7 @@ import type { ResearchOptions } from "../services/family-office";
 import { ingestPublicResearchUrl } from "../services/public-research-ingestion";
 import { parseResearchDigestion, type NormalizedResearchDigestion } from "../domain/research-digestion";
 import { createInvestmentResearchDossier, listResearchDossiers, registerResearchEvidence, requestResearchEvidenceUpload, reviewResearchEvidence } from "../services/research-dossier";
+import { listResearchOpportunities } from "../services/research-opportunities";
 
 const router: IRouter = Router();
 
@@ -58,6 +60,10 @@ router.post("/family-office/research-evidence/upload-url", asyncRoute(async (req
 
 router.get("/family-office/research-dossiers", asyncRoute(async (_req, res) => {
   res.json(ListResearchDossiersResponse.parse(await listResearchDossiers(actorFrom(res))));
+}));
+
+router.get("/research/opportunities", asyncRoute(async (_req, res) => {
+  res.json(ListResearchOpportunitiesResponse.parse(await listResearchOpportunities(actorFrom(res))));
 }));
 
 router.post("/family-office/research-evidence", asyncRoute(async (req, res) => {

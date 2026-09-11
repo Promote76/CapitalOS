@@ -10,6 +10,7 @@ import {
   useRefreshSchwabMarketDataConnection,
   getGetSchwabResearchCertificationQueryKey,
   getListResearchDossiersQueryKey,
+  getListResearchOpportunitiesQueryKey,
   useListMarketSnapshots,
   useCreateMarketSnapshot,
   useReviewMarketSnapshot,
@@ -21,11 +22,19 @@ import {
   useRetrieveSecFiling,
   useReviewSecFiling,
   getListSecFilingsQueryKey,
+  useListResearchOpportunities,
+  type ResearchOpportunity as ApiResearchOpportunity,
 } from "@workspace/api-client-react";
 import { AlertCircle, AlertTriangle, FilePlus2, X, FileText, CheckCircle2, FlaskConical, Clock, Beaker, FileSearch, Database, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useProviderProtectedAction } from "@/lib/reverification";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  ResearchOpportunityWorkflow,
+  type ResearchOpportunity as WorkflowOpportunity,
+  type ResearchManualAction,
+  type ResearchView,
+} from "@/components/research-opportunity-workflow";
 
 export const isDossierEligibleEvidence = (evidence: ResearchEvidence) =>
   (evidence.reviewStatus === "REVIEWED" || evidence.reviewStatus === "APPROVED")
@@ -251,10 +260,13 @@ export default function InvestmentResearchPage() {
   const secQuery = useListSecFilings();
   const retrieveSec = useRetrieveSecFiling();
   const reviewSec = useReviewSecFiling();
+  const opportunitiesQuery = useListResearchOpportunities();
 
   const [snapshotTicker, setSnapshotTicker] = useState("");
   const [snapshotReasons, setSnapshotReasons] = useState<Record<string, string>>({});
   const [secTicker, setSecTicker] = useState("");
+  const [researchView, setResearchView] = useState<ResearchView>("Balanced");
+  const [selectedOpportunityTickers, setSelectedOpportunityTickers] = useState<string[]>([]);
 
   const handleSnapshotReasonChange = (id: string, val: string) => setSnapshotReasons(p => ({...p, [id]: val}));
 
@@ -292,6 +304,7 @@ export default function InvestmentResearchPage() {
       setSnapshotReasons(p => { const next = {...p}; delete next[snapshotId]; return next; });
       await queryClient.invalidateQueries({ queryKey: getListMarketSnapshotsQueryKey() });
       await queryClient.invalidateQueries({ queryKey: getListResearchDossiersQueryKey() });
+      await queryClient.invalidateQueries({ queryKey: getListResearchOpportunitiesQueryKey() });
     } catch (e) {
        toast({ title: "Review failed", description: e instanceof Error ? e.message : "Failed to review snapshot.", variant: "destructive" });
     }
@@ -318,6 +331,7 @@ export default function InvestmentResearchPage() {
       await reviewSec.mutateAsync({ filingId, data: { disposition } });
       await queryClient.invalidateQueries({ queryKey: getListSecFilingsQueryKey() });
       await queryClient.invalidateQueries({ queryKey: getListResearchDossiersQueryKey() });
+      await queryClient.invalidateQueries({ queryKey: getListResearchOpportunitiesQueryKey() });
     } catch (error) {
       toast({ title: "SEC review failed", description: error instanceof Error ? error.message : "Review could not be recorded.", variant: "destructive" });
     }
@@ -347,6 +361,7 @@ export default function InvestmentResearchPage() {
       }
       await queryClient.invalidateQueries({ queryKey: getGetSchwabResearchCertificationQueryKey() });
       await queryClient.invalidateQueries({ queryKey: getListResearchDossiersQueryKey() });
+      await queryClient.invalidateQueries({ queryKey: getListResearchOpportunitiesQueryKey() });
       toast({
         title: result.result === "PASS" ? "BKSC certification confirmed" : "BKSC certification remains pending",
         description: result.result === "PASS"
@@ -484,6 +499,11 @@ Research Notes:
     }
   }, [selectedEvidenceIds]);
 
+  useEffect(() => {
+    const available = new Set(opportunitiesQuery.data?.opportunities.map((item) => item.ticker) ?? []);
+    setSelectedOpportunityTickers((current) => current.filter((ticker) => available.has(ticker)));
+  }, [opportunitiesQuery.data?.opportunities]);
+
   const handleCreateDossier = async (e: React.FormEvent) => {
     e.preventDefault();
     const hasReviewedPrefill = dossiersQuery.data?.evidence.some((item) =>
@@ -569,6 +589,34 @@ Research Notes:
   if (isError || !data) return <main className="content"><PageHeading eyebrow="Investment Research" title={<>Workspace<br/><em>unavailable.</em></>} description="Could not load the research workspace." /><section className="card card-pad empty-state"><AlertCircle size={19} /><div><strong>Data unavailable</strong><p>Please try again later.</p></div></section></main>;
 
   const { dossiers, evidence, capabilityReadiness } = data;
+  const workflowOpportunities: WorkflowOpportunity[] = (opportunitiesQuery.data?.opportunities ?? []).map((item: ApiResearchOpportunity) => ({
+    ticker: item.ticker,
+    companyName: item.companyName,
+    platinumScore: item.platinumScore,
+    category: item.category,
+    thesis: item.thesis,
+    whyNow: item.whyNow,
+    redFlags: item.redFlags,
+    evidenceFreshness: item.evidenceFreshness,
+    portfolioFit: item.portfolioFit,
+    concentrationImpact: item.concentrationImpact,
+    maximumExposure: item.maximumExposure,
+    bullCase: item.bullCase,
+    baseCase: item.baseCase,
+    bearCase: item.bearCase,
+    invalidationConditions: item.invalidationConditions,
+    protectedCapitalStatus: item.protectedCapitalStatus,
+    humanReviewStatus: item.humanReviewStatus,
+    factorSubScores: {
+      quality: item.factorSubScores.earningsQuality,
+      valuation: item.factorSubScores.valuation,
+      momentum: item.factorSubScores.growthQuality,
+      resilience: item.factorSubScores.balanceSheet,
+    },
+    sourceCount: item.sourceCount,
+    advisoryOnly: item.advisoryOnly,
+    noExecution: item.noExecution,
+  }));
   const eligibleEvidence = evidence.filter(isDossierEligibleEvidence);
   const selectedEvidence = eligibleEvidence.filter((item) => selectedEvidenceIds.has(item.id));
   const duplicateEvidenceSet = hasExactDossierEvidenceSet(dossiers, dossierTicker, selectedEvidenceIds);
@@ -583,6 +631,21 @@ Research Notes:
   );
   const certification = certificationQuery.data?.certification;
   const certificationBusy = runCertification.isPending || isRefreshingForCertification || marketDataRefresh.isPending;
+  const workflowState = opportunitiesQuery.isLoading
+    ? "loading"
+    : opportunitiesQuery.isError
+      ? "error"
+      : workflowOpportunities.length > 0
+        ? "ready"
+        : "empty";
+  const handleOpportunityAction = (action: ResearchManualAction, opportunity: WorkflowOpportunity) => {
+    toast({
+      title: `${action} queued for review`,
+      description: action === "Open in Schwab"
+        ? `${opportunity.ticker} is ready for manual review in your Schwab session. No order or account action was sent.`
+        : `${opportunity.ticker} remains advisory-only. Capital OS did not change a position or create an order.`,
+    });
+  };
 
   const getCapabilityClass = (status: string) => {
     if (status === "implemented") return "status text-green-500 bg-green-500/10";
@@ -592,10 +655,29 @@ Research Notes:
 
   return (
     <main className="content">
-      <PageHeading 
-        eyebrow="Investment Research" 
-        title={<>Synthesis from<br/><em>evidence.</em></>} 
-        description="Household-scoped, source-linked research from reviewed evidence and existing Schwab observations."
+      <PageHeading
+        eyebrow="Investment Research"
+        title={<>Research<br/><em>committee.</em></>}
+        description="A fast discovery layer above the reviewed evidence console. Every result is household-scoped, source-linked, and advisory-only."
+      />
+
+      <ResearchOpportunityWorkflow
+        activeView={researchView}
+        opportunities={workflowOpportunities}
+        selectedTickers={selectedOpportunityTickers}
+        state={workflowState}
+        errorMessage="Approved research evidence could not be screened right now."
+        lastUpdated={opportunitiesQuery.data?.generatedAt ? `Evidence checked ${new Date(opportunitiesQuery.data.generatedAt).toLocaleString()}` : "Evidence check pending"}
+        onViewSelect={setResearchView}
+        onSelectCandidate={(ticker, selected) => setSelectedOpportunityTickers((current) => selected
+          ? current.includes(ticker) ? current : [...current, ticker]
+          : current.filter((item) => item !== ticker))}
+        onCompare={(tickers) => toast({
+          title: "Comparison ready",
+          description: `${tickers.join(", ")} selected for side-by-side review. No capital or account state changed.`,
+        })}
+        onManualAction={handleOpportunityAction}
+        onRetry={() => { void opportunitiesQuery.refetch(); }}
       />
       
       <section className="card card-pad animate-in delay-1">

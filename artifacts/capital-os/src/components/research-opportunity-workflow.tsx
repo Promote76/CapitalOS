@@ -1,0 +1,506 @@
+import {
+  AlertCircle,
+  ArrowUpRight,
+  BarChart3,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  CircleHelp,
+  Clock3,
+  ExternalLink,
+  Eye,
+  FileSearch,
+  Filter,
+  LockKeyhole,
+  Search,
+  ShieldCheck,
+  SlidersHorizontal,
+  Sparkles,
+  Target,
+  X,
+} from "lucide-react";
+import { type ReactNode, useMemo, useState } from "react";
+
+export type ResearchView = "Income" | "Compounders" | "Balanced";
+
+export type FactorSubScores = {
+  quality: number;
+  valuation: number;
+  momentum: number;
+  resilience: number;
+};
+
+export type ResearchOpportunity = {
+  ticker: string;
+  companyName: string;
+  platinumScore: number;
+  category: string;
+  thesis: string;
+  whyNow: string;
+  redFlags: string[];
+  evidenceFreshness: string;
+  portfolioFit: string;
+  concentrationImpact: string;
+  maximumExposure: string;
+  bullCase: string;
+  baseCase: string;
+  bearCase: string;
+  invalidationConditions: string[];
+  protectedCapitalStatus: string;
+  humanReviewStatus: string;
+  factorSubScores: FactorSubScores;
+  sourceCount: number;
+  advisoryOnly: boolean;
+  noExecution: boolean;
+};
+
+export type ResearchWorkflowState = "idle" | "loading" | "error" | "ready" | "empty";
+
+export type ResearchManualAction = "Skip" | "Watch" | "Shadow" | "Open in Schwab";
+
+export type ResearchOpportunityWorkflowProps = {
+  activeView: ResearchView;
+  opportunities: ResearchOpportunity[];
+  selectedTickers: string[];
+  state?: ResearchWorkflowState;
+  errorMessage?: string;
+  lastUpdated?: string;
+  onViewSelect: (view: ResearchView) => void;
+  onSelectCandidate: (ticker: string, selected: boolean) => void;
+  onCompare: (tickers: string[]) => void;
+  onManualAction: (action: ResearchManualAction, opportunity: ResearchOpportunity) => void;
+  onRetry?: () => void;
+  onDiscoveryChange?: (query: string) => void;
+  className?: string;
+};
+
+type MetricProps = {
+  label: string;
+  value: string;
+  tone?: "quiet" | "positive" | "caution";
+};
+
+const views: ResearchView[] = ["Income", "Compounders", "Balanced"];
+
+function scoreTone(score: number) {
+  if (score >= 85) return "text-[#236b59] bg-[#e8f3ed]";
+  if (score >= 70) return "text-[#956b1f] bg-[#fbf4df]";
+  return "text-[#a14438] bg-[#f9ece8]";
+}
+
+function compactScore(score: number) {
+  return Math.round(score);
+}
+
+function Metric({ label, value, tone = "quiet" }: MetricProps) {
+  const toneClass =
+    tone === "positive"
+      ? "text-[#236b59]"
+      : tone === "caution"
+        ? "text-[#9a6e23]"
+        : "text-[#23463e]";
+  return (
+    <div className="min-w-0">
+      <div className="font-mono text-[9px] uppercase tracking-[0.13em] text-[#71877f]">{label}</div>
+      <div className={`mt-1 truncate text-[12px] font-semibold ${toneClass}`}>{value}</div>
+    </div>
+  );
+}
+
+function StatusPill({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "safe" | "caution" | "alert" }) {
+  const toneClass = {
+    neutral: "border-[#d8e1da] bg-[#f6f8f4] text-[#58716a]",
+    safe: "border-[#c3dccc] bg-[#edf6ef] text-[#236b59]",
+    caution: "border-[#ead6a4] bg-[#fff8e7] text-[#906722]",
+    alert: "border-[#ebc9c3] bg-[#fdf0ed] text-[#a14438]",
+  }[tone];
+  return <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-medium leading-none ${toneClass}`}>{children}</span>;
+}
+
+function FactorBar({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="grid grid-cols-[72px_1fr_28px] items-center gap-2">
+      <span className="text-[10px] text-[#58716a]">{label}</span>
+      <div className="h-1.5 overflow-hidden rounded-full bg-[#e7eee7]" aria-label={`${label} score ${value} out of 100`}>
+        <div className="h-full rounded-full bg-[#b99345] transition-[width] duration-500 ease-out" style={{ width: `${Math.max(0, Math.min(value, 100))}%` }} />
+      </div>
+      <span className="font-mono text-[10px] text-[#23463e]">{value}</span>
+    </div>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="animate-pulse rounded-xl border border-[#e3ded1] bg-[#fffdfa] p-4" aria-label="Loading opportunity">
+      <div className="flex justify-between gap-4">
+        <div className="space-y-2">
+          <div className="h-4 w-16 rounded bg-[#e7eee7]" />
+          <div className="h-3 w-32 rounded bg-[#edf1eb]" />
+        </div>
+        <div className="h-10 w-12 rounded-lg bg-[#edf1eb]" />
+      </div>
+      <div className="mt-5 h-3 w-full rounded bg-[#edf1eb]" />
+      <div className="mt-2 h-3 w-4/5 rounded bg-[#edf1eb]" />
+      <div className="mt-5 grid grid-cols-3 gap-2">
+        <div className="h-8 rounded bg-[#f1f4ef]" />
+        <div className="h-8 rounded bg-[#f1f4ef]" />
+        <div className="h-8 rounded bg-[#f1f4ef]" />
+      </div>
+    </div>
+  );
+}
+
+function OpportunityCard({
+  opportunity,
+  selected,
+  onSelect,
+  onOpen,
+}: {
+  opportunity: ResearchOpportunity;
+  selected: boolean;
+  onSelect: (selected: boolean) => void;
+  onOpen: () => void;
+}) {
+  const score = compactScore(opportunity.platinumScore);
+  return (
+    <article
+      className={`group relative flex min-h-[286px] cursor-pointer flex-col rounded-xl border bg-[#fffdfa] p-4 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-[#b9cdbd] hover:shadow-[0_14px_30px_rgba(35,70,62,0.08)] ${
+        selected ? "border-[#236b59] ring-1 ring-[#236b59]/20" : "border-[#e3ded1]"
+      }`}
+      onClick={onOpen}
+      data-testid={`card-opportunity-${opportunity.ticker}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <label className="flex cursor-pointer items-start gap-3" onClick={(event) => event.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(event) => onSelect(event.target.checked)}
+            className="mt-1 h-4 w-4 accent-[#236b59]"
+            aria-label={`Select ${opportunity.ticker} for comparison`}
+            data-testid={`checkbox-opportunity-${opportunity.ticker}`}
+          />
+          <span>
+            <span className="block font-mono text-[15px] font-bold tracking-[0.04em] text-[#23463e]">{opportunity.ticker}</span>
+            <span className="mt-0.5 block max-w-[145px] truncate text-[11px] text-[#71877f]">{opportunity.companyName}</span>
+          </span>
+        </label>
+        <div className={`flex h-11 min-w-[48px] flex-col items-center justify-center rounded-lg ${scoreTone(score)}`}>
+          <span className="font-mono text-[16px] font-bold leading-none">{score}</span>
+          <span className="mt-1 text-[8px] uppercase tracking-[0.12em]">platinum</span>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center gap-2">
+        <StatusPill tone="safe">{opportunity.category}</StatusPill>
+        {opportunity.protectedCapitalStatus && <StatusPill><ShieldCheck size={11} /> {opportunity.protectedCapitalStatus}</StatusPill>}
+      </div>
+      <p className="mt-4 line-clamp-3 text-[12px] leading-[1.55] text-[#36584f]">{opportunity.thesis}</p>
+
+      <div className="mt-auto grid grid-cols-3 gap-3 border-t border-[#eee9dd] pt-4">
+        <Metric label="Portfolio fit" value={opportunity.portfolioFit} tone="positive" />
+        <Metric label="Max exposure" value={opportunity.maximumExposure} />
+        <Metric label="Evidence" value={opportunity.evidenceFreshness} />
+      </div>
+      <div className="mt-3 flex items-center justify-between text-[10px] text-[#71877f]">
+        <span className="inline-flex items-center gap-1"><FileSearch size={11} /> {opportunity.sourceCount} sources</span>
+        <span className="inline-flex items-center gap-1 transition-colors group-hover:text-[#236b59]">Review brief <ChevronRight size={12} /></span>
+      </div>
+    </article>
+  );
+}
+
+function DetailPanel({
+  opportunity,
+  onManualAction,
+  onClose,
+}: {
+  opportunity: ResearchOpportunity;
+  onManualAction: (action: ResearchManualAction, opportunity: ResearchOpportunity) => void;
+  onClose: () => void;
+}) {
+  const [expanded, setExpanded] = useState<"why" | "cases" | "risk" | null>("why");
+  const toggle = (section: "why" | "cases" | "risk") => setExpanded((current) => (current === section ? null : section));
+  return (
+    <aside className="animate-in slide-in-from-right-2 fixed inset-x-3 bottom-3 z-30 max-h-[calc(100dvh-24px)] overflow-y-auto rounded-2xl border border-[#d5dfd5] bg-[#fffdfa] p-5 shadow-[0_24px_80px_rgba(35,70,62,0.18)] md:absolute md:inset-y-0 md:right-0 md:left-auto md:w-[410px] md:rounded-none md:rounded-l-2xl md:border-y-0 md:border-r-0 md:border-l md:shadow-[-18px_0_50px_rgba(35,70,62,0.08)]"
+      data-testid={`panel-decision-card-${opportunity.ticker}`}
+    >
+      <div className="flex items-start justify-between gap-4 border-b border-[#e9e5da] pb-4">
+        <div>
+          <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#b38b3d]">Decision card</div>
+          <div className="mt-2 flex items-baseline gap-2">
+            <h2 className="font-mono text-2xl font-bold tracking-tight text-[#23463e]">{opportunity.ticker}</h2>
+            <span className="text-[12px] text-[#71877f]">{opportunity.companyName}</span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <StatusPill tone="safe"><ShieldCheck size={11} /> Protected-capital screen</StatusPill>
+            <StatusPill><FileSearch size={11} /> {opportunity.sourceCount} evidence sources</StatusPill>
+          </div>
+        </div>
+        <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-[#71877f] transition-colors hover:bg-[#eef3ed] hover:text-[#23463e]" aria-label="Close decision card" data-testid="button-close-decision-card">
+          <X size={17} />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 border-b border-[#e9e5da] py-4">
+        <div className="rounded-lg bg-[#f5f7f1] p-2.5">
+          <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#71877f]">Platinum</div>
+          <div className="mt-1 text-xl font-semibold text-[#236b59]">{compactScore(opportunity.platinumScore)}</div>
+        </div>
+        <div className="rounded-lg bg-[#f5f7f1] p-2.5">
+          <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#71877f]">Fit</div>
+          <div className="mt-1 truncate text-[12px] font-semibold text-[#23463e]">{opportunity.portfolioFit}</div>
+        </div>
+        <div className="rounded-lg bg-[#f5f7f1] p-2.5">
+          <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#71877f]">Max</div>
+          <div className="mt-1 truncate text-[12px] font-semibold text-[#23463e]">{opportunity.maximumExposure}</div>
+        </div>
+      </div>
+
+      <div className="space-y-2 py-4">
+        <div className="rounded-xl border border-[#e9e5da]">
+          <button type="button" className="flex w-full items-center justify-between gap-3 p-3 text-left" onClick={() => toggle("why")} data-testid="button-toggle-why-now">
+            <span className="text-[12px] font-semibold text-[#23463e]">Why this is on the list now</span>
+            <ChevronDown size={15} className={`text-[#71877f] transition-transform ${expanded === "why" ? "rotate-180" : ""}`} />
+          </button>
+          {expanded === "why" && <div className="border-t border-[#eee9dd] px-3 pb-3 pt-2 text-[12px] leading-[1.55] text-[#58716a]">{opportunity.whyNow}</div>}
+        </div>
+        <div className="rounded-xl border border-[#e9e5da]">
+          <button type="button" className="flex w-full items-center justify-between gap-3 p-3 text-left" onClick={() => toggle("cases")} data-testid="button-toggle-cases">
+            <span className="text-[12px] font-semibold text-[#23463e]">Case range</span>
+            <ChevronDown size={15} className={`text-[#71877f] transition-transform ${expanded === "cases" ? "rotate-180" : ""}`} />
+          </button>
+          {expanded === "cases" && (
+            <div className="space-y-3 border-t border-[#eee9dd] px-3 pb-3 pt-3">
+              <div><div className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#236b59]">Bull</div><p className="mt-1 text-[11px] leading-[1.45] text-[#58716a]">{opportunity.bullCase}</p></div>
+              <div><div className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#9a6e23]">Base</div><p className="mt-1 text-[11px] leading-[1.45] text-[#58716a]">{opportunity.baseCase}</p></div>
+              <div><div className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#a14438]">Bear</div><p className="mt-1 text-[11px] leading-[1.45] text-[#58716a]">{opportunity.bearCase}</p></div>
+            </div>
+          )}
+        </div>
+        <div className="rounded-xl border border-[#e9e5da]">
+          <button type="button" className="flex w-full items-center justify-between gap-3 p-3 text-left" onClick={() => toggle("risk")} data-testid="button-toggle-risk">
+            <span className="text-[12px] font-semibold text-[#23463e]">Risk & invalidation</span>
+            <ChevronDown size={15} className={`text-[#71877f] transition-transform ${expanded === "risk" ? "rotate-180" : ""}`} />
+          </button>
+          {expanded === "risk" && (
+            <div className="border-t border-[#eee9dd] px-3 pb-3 pt-3">
+              {opportunity.redFlags.length > 0 && <div className="mb-3 rounded-lg bg-[#fff6e9] p-2.5 text-[11px] leading-[1.45] text-[#8d672b]"><div className="mb-1 font-semibold">Red flags</div>{opportunity.redFlags.join(" · ")}</div>}
+              <div className="text-[11px] leading-[1.45] text-[#58716a]"><div className="mb-1 font-semibold text-[#23463e]">We would change our mind if…</div>{opportunity.invalidationConditions.join(" · ")}</div>
+              <div className="mt-3 flex items-center justify-between border-t border-[#eee9dd] pt-3 text-[10px]"><span className="text-[#71877f]">Concentration impact</span><span className="font-semibold text-[#23463e]">{opportunity.concentrationImpact}</span></div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="border-t border-[#e9e5da] pt-4">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-[11px] font-semibold text-[#23463e]">Factor read-through</span>
+          <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-[#71877f]">0–100</span>
+        </div>
+        <div className="space-y-2.5">
+          <FactorBar label="Quality" value={opportunity.factorSubScores.quality} />
+          <FactorBar label="Valuation" value={opportunity.factorSubScores.valuation} />
+          <FactorBar label="Momentum" value={opportunity.factorSubScores.momentum} />
+          <FactorBar label="Resilience" value={opportunity.factorSubScores.resilience} />
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-xl border border-[#d9e6df] bg-[#f3f8f3] p-3">
+        <div className="flex items-start gap-2">
+          <LockKeyhole size={14} className="mt-0.5 shrink-0 text-[#236b59]" />
+          <div><div className="text-[11px] font-semibold text-[#236b59]">Manual-only safety boundary</div><p className="mt-1 text-[10px] leading-[1.5] text-[#58716a]">Research can inform a decision, never place one. Every next step requires a human review and an explicit manual action.</p></div>
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <button type="button" className="rounded-lg border border-[#d8e1da] bg-[#fffdfa] px-3 py-2 text-[11px] font-semibold text-[#58716a] transition-colors hover:border-[#b9cdbd] hover:bg-[#f5f8f3]" onClick={() => onManualAction("Skip", opportunity)} data-testid={`button-skip-${opportunity.ticker}`}>Skip</button>
+        <button type="button" className="rounded-lg border border-[#d8e1da] bg-[#fffdfa] px-3 py-2 text-[11px] font-semibold text-[#58716a] transition-colors hover:border-[#b9cdbd] hover:bg-[#f5f8f3]" onClick={() => onManualAction("Watch", opportunity)} data-testid={`button-watch-${opportunity.ticker}`}><Eye size={13} className="mr-1 inline" /> Watch</button>
+        <button type="button" className="rounded-lg border border-[#b9cdbd] bg-[#edf6ef] px-3 py-2 text-[11px] font-semibold text-[#236b59] transition-colors hover:bg-[#e3f1e6]" onClick={() => onManualAction("Shadow", opportunity)} data-testid={`button-shadow-${opportunity.ticker}`}>Shadow</button>
+        <button type="button" className="rounded-lg bg-[#236b59] px-3 py-2 text-[11px] font-semibold text-[#f8fbf7] transition-colors hover:bg-[#1b594a]" onClick={() => onManualAction("Open in Schwab", opportunity)} data-testid={`button-open-schwab-${opportunity.ticker}`}><ExternalLink size={13} className="mr-1 inline" /> Open in Schwab</button>
+      </div>
+    </aside>
+  );
+}
+
+export function ResearchOpportunityWorkflow({
+  activeView,
+  opportunities,
+  selectedTickers,
+  state = "ready",
+  errorMessage = "The research feed could not be loaded.",
+  lastUpdated = "Evidence checked moments ago",
+  onViewSelect,
+  onSelectCandidate,
+  onCompare,
+  onManualAction,
+  onRetry,
+  onDiscoveryChange,
+  className = "",
+}: ResearchOpportunityWorkflowProps) {
+  const [query, setQuery] = useState("");
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [comparisonOpen, setComparisonOpen] = useState(false);
+  const lensOpportunities = activeView === "Balanced"
+    ? opportunities
+    : opportunities.filter((opportunity) => opportunity.category === activeView);
+  const filteredOpportunities = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return lensOpportunities;
+    return lensOpportunities.filter((opportunity) => `${opportunity.ticker} ${opportunity.companyName} ${opportunity.category}`.toLowerCase().includes(normalized));
+  }, [lensOpportunities, query]);
+  const selectedOpportunities = opportunities.filter((opportunity) => selectedTickers.includes(opportunity.ticker));
+  const detailOpportunity = selectedTicker ? opportunities.find((opportunity) => opportunity.ticker === selectedTicker) : undefined;
+
+  const updateQuery = (value: string) => {
+    setQuery(value);
+    onDiscoveryChange?.(value);
+  };
+
+  return (
+    <section className={`relative min-w-0 ${className}`} data-testid="research-opportunity-workflow">
+      <div className="overflow-hidden rounded-2xl border border-[#dfe6dd] bg-[#f7f8f2] shadow-[0_18px_50px_rgba(35,70,62,0.06)]">
+        <div className="relative border-b border-[#dfe6dd] px-4 pb-5 pt-5 sm:px-6 sm:pt-6">
+          <div className="pointer-events-none absolute right-[-70px] top-[-110px] h-64 w-64 rounded-full border border-[#d8c89c]/40" />
+          <div className="pointer-events-none absolute right-[-25px] top-[-65px] h-36 w-36 rounded-full border border-[#d8c89c]/40" />
+          <div className="relative flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
+            <div>
+              <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[#b38b3d]"><Sparkles size={13} /> Research committee / 01</div>
+              <h1 className="mt-2 max-w-[700px] font-display text-3xl leading-[1.05] text-[#23463e] sm:text-[40px]">Find the next considered yes.</h1>
+              <p className="mt-3 max-w-[640px] text-[12px] leading-[1.6] text-[#58716a] sm:text-[13px]">A read-only opportunity set for family capital. Transparent evidence, measured exposure, and a human decision at every turn.</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 rounded-lg border border-[#d9e2d8] bg-[#fbfcf8] px-3 py-2 text-[10px] text-[#58716a]">
+              <ShieldCheck size={14} className="text-[#236b59]" />
+              <span><strong className="font-semibold text-[#23463e]">Advisory only</strong><br />No trading authority</span>
+            </div>
+          </div>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex w-full gap-1 rounded-lg border border-[#dfe6dd] bg-[#eef3ed] p-1 sm:w-auto" role="tablist" aria-label="Research lens">
+              {views.map((view) => (
+                <button
+                  key={view}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeView === view}
+                  className={`flex-1 rounded-md px-3 py-2 text-[11px] font-semibold transition-[background-color,color,box-shadow] duration-200 sm:flex-none ${activeView === view ? "bg-[#fffdfa] text-[#236b59] shadow-sm" : "text-[#71877f] hover:text-[#36584f]"}`}
+                  onClick={() => onViewSelect(view)}
+                  data-testid={`tab-research-${view.toLowerCase()}`}
+                >
+                  {view}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 text-[10px] text-[#71877f]"><Clock3 size={12} /> {lastUpdated}</div>
+          </div>
+        </div>
+
+        <div className="border-b border-[#dfe6dd] bg-[#fbfcf8] px-4 py-3 sm:px-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <label className="relative min-w-0 flex-1">
+              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#8ba098]" />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => updateQuery(event.target.value)}
+                placeholder="Search ticker, company, or category"
+                className="h-10 w-full rounded-lg border border-[#dfe6dd] bg-[#fffdfa] pl-9 pr-9 text-[12px] text-[#23463e] outline-none transition-[border-color,box-shadow] placeholder:text-[#9aa9a2] focus:border-[#7da28f] focus:ring-2 focus:ring-[#236b59]/10"
+                aria-label="Search research opportunities"
+                data-testid="input-research-discovery"
+              />
+              {query && <button type="button" onClick={() => updateQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-[#8ba098] hover:bg-[#edf3ed] hover:text-[#23463e]" aria-label="Clear search" data-testid="button-clear-research-search"><X size={14} /></button>}
+            </label>
+            <button type="button" onClick={() => setFiltersOpen((open) => !open)} className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg border px-3 text-[11px] font-semibold transition-colors ${filtersOpen ? "border-[#adc6b5] bg-[#edf6ef] text-[#236b59]" : "border-[#dfe6dd] bg-[#fffdfa] text-[#58716a] hover:border-[#b9cdbd]"}`} aria-expanded={filtersOpen} data-testid="button-toggle-research-filters">
+              <SlidersHorizontal size={14} /> Refine <ChevronDown size={13} className={filtersOpen ? "rotate-180" : ""} />
+            </button>
+            <div className="flex items-center justify-between gap-3 text-[10px] text-[#71877f] md:justify-end">
+              <span className="inline-flex items-center gap-1.5"><Target size={12} className="text-[#b38b3d]" /> Top 25 / {filteredOpportunities.length} shown</span>
+              {selectedOpportunities.length > 0 && <button type="button" onClick={() => { onCompare(selectedTickers); setComparisonOpen(true); }} className="inline-flex items-center gap-1.5 rounded-md bg-[#23463e] px-3 py-2 font-semibold text-[#f8fbf7] transition-colors hover:bg-[#1b594a]" data-testid="button-compare-selected"><BarChart3 size={13} /> Compare ({selectedOpportunities.length})</button>}
+            </div>
+          </div>
+          {filtersOpen && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#e9eee6] pt-3 text-[10px] text-[#58716a]" data-testid="research-filter-panel">
+              <span className="inline-flex items-center gap-1 font-semibold text-[#23463e]"><Filter size={12} /> Screening guardrails</span>
+              <StatusPill tone="safe"><Check size={10} /> Protected capital first</StatusPill>
+              <StatusPill tone="safe"><Check size={10} /> Read-only sources</StatusPill>
+              <StatusPill><CircleHelp size={10} /> Human review required</StatusPill>
+            </div>
+          )}
+          {comparisonOpen && selectedOpportunities.length > 1 && (
+            <div className="mt-5 overflow-hidden rounded-xl border border-[#d5dfd5] bg-[#fffdfa]" data-testid="research-comparison">
+              <div className="flex items-center justify-between gap-3 border-b border-[#e9e5da] px-4 py-3">
+                <div>
+                  <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#b38b3d]">Side-by-side review</div>
+                  <h2 className="mt-1 text-[13px] font-semibold text-[#23463e]">Compare the selected research cases</h2>
+                </div>
+                <button type="button" onClick={() => setComparisonOpen(false)} className="rounded-md p-1.5 text-[#71877f] hover:bg-[#eef3ed] hover:text-[#23463e]" aria-label="Close comparison" data-testid="button-close-comparison"><X size={14} /></button>
+              </div>
+              <div className="grid gap-px bg-[#e9e5da] md:grid-cols-2 xl:grid-cols-3">
+                {selectedOpportunities.map((opportunity) => (
+                  <button key={opportunity.ticker} type="button" className="bg-[#fffdfa] p-4 text-left transition-colors hover:bg-[#f8faf5]" onClick={() => setSelectedTicker(opportunity.ticker)} data-testid={`comparison-${opportunity.ticker}`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div><div className="font-mono text-[13px] font-bold text-[#23463e]">{opportunity.ticker}</div><div className="mt-1 text-[10px] text-[#71877f]">{opportunity.companyName}</div></div>
+                      <div className={`rounded-md px-2 py-1 font-mono text-[13px] font-bold ${scoreTone(compactScore(opportunity.platinumScore))}`}>{compactScore(opportunity.platinumScore)}</div>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#eee9dd] pt-3">
+                      <Metric label="Portfolio fit" value={opportunity.portfolioFit} />
+                      <Metric label="Evidence" value={opportunity.evidenceFreshness} />
+                      <Metric label="Max exposure" value={opportunity.maximumExposure} />
+                      <Metric label="Sources" value={String(opportunity.sourceCount)} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="px-4 py-5 sm:px-6">
+          {state === "loading" && <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{[1, 2, 3, 4, 5, 6].map((item) => <SkeletonCard key={item} />)}</div>}
+          {state === "error" && (
+            <div className="flex min-h-[280px] flex-col items-center justify-center rounded-xl border border-[#ebd3ce] bg-[#fff7f4] p-8 text-center" data-testid="status-research-error">
+              <AlertCircle size={23} className="text-[#a14438]" />
+              <h2 className="mt-3 text-[14px] font-semibold text-[#23463e]">The committee feed is unavailable</h2>
+              <p className="mt-2 max-w-sm text-[12px] leading-[1.5] text-[#71877f]">{errorMessage}</p>
+              {onRetry && <button type="button" onClick={onRetry} className="mt-4 rounded-lg border border-[#d5b6ae] bg-[#fffdfa] px-4 py-2 text-[11px] font-semibold text-[#a14438] transition-colors hover:bg-[#fdf0ed]" data-testid="button-retry-research"><ArrowUpRight size={13} className="mr-1 inline" /> Retry review</button>}
+            </div>
+          )}
+          {state === "empty" && (
+            <div className="flex min-h-[280px] flex-col items-center justify-center rounded-xl border border-dashed border-[#cfdccf] bg-[#fbfcf8] p-8 text-center" data-testid="status-research-empty">
+              <div className="grid h-11 w-11 place-items-center rounded-full bg-[#e8f1e9] text-[#236b59]"><FileSearch size={20} /></div>
+              <h2 className="mt-3 text-[14px] font-semibold text-[#23463e]">No opportunities meet this lens yet</h2>
+              <p className="mt-2 max-w-sm text-[12px] leading-[1.5] text-[#71877f]">The screen stays quiet when evidence or portfolio fit is not strong enough. Try another research lens or check back after the next evidence refresh.</p>
+            </div>
+          )}
+          {state === "ready" && filteredOpportunities.length === 0 && (
+            <div className="flex min-h-[240px] flex-col items-center justify-center rounded-xl border border-dashed border-[#cfdccf] bg-[#fbfcf8] p-8 text-center" data-testid="status-research-no-match">
+              <Search size={21} className="text-[#8ba098]" />
+              <h2 className="mt-3 text-[14px] font-semibold text-[#23463e]">Nothing matches “{query}”</h2>
+              <button type="button" onClick={() => updateQuery("")} className="mt-3 text-[11px] font-semibold text-[#236b59] underline underline-offset-4" data-testid="button-clear-no-match">Clear search</button>
+            </div>
+          )}
+          {state === "ready" && filteredOpportunities.length > 0 && (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="research-opportunity-grid">
+              {filteredOpportunities.slice(0, 25).map((opportunity) => (
+                <OpportunityCard
+                  key={opportunity.ticker}
+                  opportunity={opportunity}
+                  selected={selectedTickers.includes(opportunity.ticker)}
+                  onSelect={(selected) => onSelectCandidate(opportunity.ticker, selected)}
+                  onOpen={() => setSelectedTicker(opportunity.ticker)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3 border-t border-[#dfe6dd] bg-[#edf3ed] px-4 py-3 text-[10px] text-[#58716a] sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex items-start gap-2"><LockKeyhole size={13} className="mt-0.5 shrink-0 text-[#236b59]" /><span><strong className="font-semibold text-[#23463e]">Manual-only by design.</strong> Schwab and SEC connections are read-only; Capital OS cannot submit trades or move protected capital.</span></div>
+          <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.1em] text-[#71877f]">Audit trail ready</span>
+        </div>
+      </div>
+      {detailOpportunity && <DetailPanel opportunity={detailOpportunity} onClose={() => setSelectedTicker(null)} onManualAction={onManualAction} />}
+    </section>
+  );
+}
+
+export default ResearchOpportunityWorkflow;

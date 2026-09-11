@@ -44,3 +44,4 @@
 - [SEC OTC issuer lookup](sec-otc-issuer-lookup.md) — SEC JSON ticker indexes may omit OTC issuers; use the official legacy ticker index and preserve units from companyfacts map keys.
 - [Artifact production runtime](artifact-production-runtime.md) — configure API production env and health gates in the artifact manifest; root workspace settings do not wire artifact deployments.
 - [RC1 publish evidence freshness](capital-os-publish-evidence-freshness.md) — rerun the authoritative readiness certification before regenerating source-bound publish manifests.
+- [Research opportunity screen](capital-os-research-opportunity-screen.md) — rank only approved current evidence; broker observations inform fit, never execution authority.

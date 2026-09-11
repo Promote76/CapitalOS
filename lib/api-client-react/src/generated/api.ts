@@ -252,6 +252,7 @@ import type {
   ResearchEvidenceUploadRequest,
   ResearchEvidenceUploadResponse,
   ResearchJournalEntry,
+  ResearchOpportunitiesResponse,
   ResearchStrategyCreated,
   ReviewMarketSnapshotRequest,
   ReviewResearchEvidenceRequest,
@@ -6216,6 +6217,83 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getCreateResearchDossierMutationOptions(options));
     }
+
+export const getListResearchOpportunitiesUrl = () => {
+
+
+
+
+  return `/api/research/opportunities`
+}
+
+/**
+ * @summary List the household-scoped approved-evidence research screen
+ */
+export const listResearchOpportunities = async ( options?: Parameters<typeof customFetch>[1]): Promise<ResearchOpportunitiesResponse> => {
+
+  return customFetch<ResearchOpportunitiesResponse>(getListResearchOpportunitiesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListResearchOpportunitiesQueryKey = () => {
+    return [
+    `/api/research/opportunities`
+    ] as const;
+    }
+
+
+export const getListResearchOpportunitiesQueryOptions = <TData = Awaited<ReturnType<typeof listResearchOpportunities>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listResearchOpportunities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListResearchOpportunitiesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listResearchOpportunities>>> = ({ signal }) => listResearchOpportunities({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listResearchOpportunities>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListResearchOpportunitiesQueryResult = NonNullable<Awaited<ReturnType<typeof listResearchOpportunities>>>
+export type ListResearchOpportunitiesQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary List the household-scoped approved-evidence research screen
+ */
+
+export function useListResearchOpportunities<TData = Awaited<ReturnType<typeof listResearchOpportunities>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listResearchOpportunities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListResearchOpportunitiesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getPreviewFamilyOfficeResearchDigestionUrl = () => {
 

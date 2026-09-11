@@ -5093,6 +5093,173 @@ export interface ResearchDossierCreateResult {
   refresh: ResearchDossierListResponse;
 }
 
+export interface ResearchOpportunityFactorScores {
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  incomeQuality: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  growthQuality: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  earningsQuality: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  balanceSheet: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  valuation: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  liquidity: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  risk: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  evidenceFreshness: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  portfolioFit: number;
+}
+
+export type ResearchOpportunityEvidenceSourceKind = typeof ResearchOpportunityEvidenceSourceKind[keyof typeof ResearchOpportunityEvidenceSourceKind];
+
+
+export const ResearchOpportunityEvidenceSourceKind = {
+  SCHWAB_MARKET_SNAPSHOT: 'SCHWAB_MARKET_SNAPSHOT',
+  SEC_FILING: 'SEC_FILING',
+} as const;
+
+export type ResearchOpportunityEvidenceFreshness = typeof ResearchOpportunityEvidenceFreshness[keyof typeof ResearchOpportunityEvidenceFreshness];
+
+
+export const ResearchOpportunityEvidenceFreshness = {
+  CURRENT: 'CURRENT',
+} as const;
+
+export interface ResearchOpportunityEvidence {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  /** @maxLength 240 */
+  title: string;
+  sourceKind: ResearchOpportunityEvidenceSourceKind;
+  reviewedAt: string;
+  freshness: ResearchOpportunityEvidenceFreshness;
+}
+
+export type ResearchOpportunityCategory = typeof ResearchOpportunityCategory[keyof typeof ResearchOpportunityCategory];
+
+
+export const ResearchOpportunityCategory = {
+  Income: 'Income',
+  Compounders: 'Compounders',
+  Balanced: 'Balanced',
+} as const;
+
+export type ResearchOpportunityPortfolioFit = typeof ResearchOpportunityPortfolioFit[keyof typeof ResearchOpportunityPortfolioFit];
+
+
+export const ResearchOpportunityPortfolioFit = {
+  Constructive: 'Constructive',
+  Review: 'Review',
+  Caution: 'Caution',
+} as const;
+
+export interface ResearchOpportunity {
+  /** @maxLength 16 */
+  ticker: string;
+  /** @maxLength 240 */
+  companyName: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  platinumScore: number;
+  category: ResearchOpportunityCategory;
+  /** @maxLength 1200 */
+  thesis: string;
+  /** @maxLength 1200 */
+  whyNow: string;
+  /**
+     * @maxItems 5
+     * @items.maxLength 300
+     */
+  redFlags: string[];
+  evidenceFreshness: ResearchOpportunityEvidenceFreshness;
+  portfolioFit: ResearchOpportunityPortfolioFit;
+  /** @maxLength 120 */
+  concentrationImpact: string;
+  /** @maxLength 120 */
+  maximumExposure: string;
+  /** @maxLength 1200 */
+  bullCase: string;
+  /** @maxLength 1200 */
+  baseCase: string;
+  /** @maxLength 1200 */
+  bearCase: string;
+  /**
+     * @maxItems 3
+     * @items.maxLength 300
+     */
+  invalidationConditions: string[];
+  /** @maxLength 120 */
+  protectedCapitalStatus: string;
+  /** @maxLength 120 */
+  humanReviewStatus: string;
+  factorSubScores: ResearchOpportunityFactorScores;
+  /**
+     * @minimum 1
+     * @maximum 6
+     */
+  sourceCount: number;
+  advisoryOnly: true;
+  noExecution: true;
+  /** @maxItems 6 */
+  evidence: ResearchOpportunityEvidence[];
+  factors: ResearchOpportunityFactorScores;
+}
+
+export type ResearchOpportunitiesResponseRanking = {
+  method: string;
+  /** @maxItems 12 */
+  factors: string[];
+  missingData: string;
+};
+
+export interface ResearchOpportunitiesResponse {
+  /** @maxItems 25 */
+  opportunities: ResearchOpportunity[];
+  /** @minimum 0 */
+  totalEligible: number;
+  /** @minimum 0 */
+  excludedStaleOrUnreviewed: number;
+  generatedAt: string;
+  ranking: ResearchOpportunitiesResponseRanking;
+  advisoryOnly: true;
+  executionAuthorization: false;
+  householdCapitalIncluded: false;
+  noTradingOrMoneyMovement: true;
+}
+
 export type FamilyOfficeResearchResultSourceRetrievalProvenance = typeof FamilyOfficeResearchResultSourceRetrievalProvenance[keyof typeof FamilyOfficeResearchResultSourceRetrievalProvenance];
 
 

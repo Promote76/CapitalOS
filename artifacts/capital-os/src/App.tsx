@@ -191,6 +191,7 @@ import {
   Compass,
   FilePlus2,
   FileText,
+  Globe2,
   Gauge,
   Activity,
   Home,
@@ -3762,107 +3763,125 @@ const RECOMMENDED_LABELS: Record<string, string> = {
   INSUFFICIENT_EVIDENCE: 'Insufficient Evidence',
 };
 
-function ProposalCard({ proposal, onDecide }: { proposal: FamilyOfficeProposal, onDecide: (id: string, decision: FamilyOfficeProposalDecisionInputDecision) => void }) {
+function readableProposalThesis(thesis: string) {
+  const withoutSynthesis = thesis.split(/\s+Multi-agent synthesis:\s*/i)[0]?.trim();
+  return withoutSynthesis || thesis;
+}
+
+function ProposalEvidenceGroup({ title, items, icon }: { title: string; items: string[]; icon: ReactNode }) {
   return (
-    <div className="card card-pad ai-card">
-      <div className="card-title-row" style={{ marginBottom: '0.5rem' }}>
-        <div>
-          <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>{proposal.ticker ? `${proposal.ticker} · ` : ''}{proposal.title}</h3>
-          <span className="intelligence-confidence">Confidence: {proposal.confidence.toFixed(0)}% · {proposal.dossierKind}</span>
+    <section className="proposal-evidence-group">
+      <div className="proposal-section-label">{icon}<span>{title}</span><b>{items.length}</b></div>
+      {items.length > 0 ? (
+        <ul className="proposal-bullet-list">
+          {items.map((item, index) => <li key={`${title}-${index}`}>{item}</li>)}
+        </ul>
+      ) : (
+        <p className="proposal-empty-copy">None recorded</p>
+      )}
+    </section>
+  );
+}
+
+function ProposalCard({ proposal, onDecide }: { proposal: FamilyOfficeProposal, onDecide: (id: string, decision: FamilyOfficeProposalDecisionInputDecision) => void }) {
+  const synthesis = proposal.multiAgentSynthesis;
+  const hasSynthesis = synthesis && (synthesis.agreements.length > 0 || synthesis.disagreements.length > 0 || synthesis.evidenceGaps.length > 0);
+  const hasAdvisorySections = proposal.advisorySections && Object.keys(proposal.advisorySections).length > 0;
+  const canDecide = proposal.status === 'pending' || proposal.status === 'proposed';
+  return (
+    <article className="card card-pad ai-card family-office-proposal-card">
+      <header className="proposal-card-header">
+        <div className="proposal-card-heading">
+          <div className="proposal-kicker">{proposal.ticker || 'Family Office'} · {proposal.dossierKind}</div>
+          <h3>{proposal.title}</h3>
+          <div className="proposal-card-meta">
+            <span>{proposal.confidence.toFixed(0)}% confidence</span>
+            <span>Created {new Date(proposal.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+            {proposal.reviewedAt && <span>Reviewed {new Date(proposal.reviewedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>}
+          </div>
         </div>
-        <span className="status">{proposal.label}</span>
-      </div>
-      <p style={{ fontSize: '0.875rem' }}>{proposal.thesis}</p>
-
-      <div className="logic-grid" style={{ marginTop: '1rem' }}>
-        {proposal.multiAgentSynthesis?.agreements?.length > 0 && (
-          <div><span><CheckCircle2 size={12} /> Agreements</span>
-            <ul style={{ paddingLeft: '1.25rem', margin: '0.25rem 0 0', fontSize: '0.875rem' }}>{proposal.multiAgentSynthesis.agreements.map((item: string, i: number) => <li key={i}>{item}</li>)}</ul>
-          </div>
-        )}
-        {proposal.multiAgentSynthesis?.disagreements?.length > 0 && (
-          <div><span><AlertCircle size={12} /> Disagreements</span>
-            <ul style={{ paddingLeft: '1.25rem', margin: '0.25rem 0 0', fontSize: '0.875rem' }}>{proposal.multiAgentSynthesis.disagreements.map((item: string, i: number) => <li key={i}>{item}</li>)}</ul>
-          </div>
-        )}
-        {proposal.multiAgentSynthesis?.evidenceGaps?.length > 0 && (
-          <div><span><Search size={12} /> Evidence Gaps</span>
-            <ul style={{ paddingLeft: '1.25rem', margin: '0.25rem 0 0', fontSize: '0.875rem' }}>{proposal.multiAgentSynthesis.evidenceGaps.map((item: string, i: number) => <li key={i}>{item}</li>)}</ul>
-          </div>
-        )}
-      </div>
-
-      <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-inset)', borderRadius: '0.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-          <strong style={{ fontSize: '0.875rem' }}>Multi-Agent Synthesis Recommendation</strong>
-          <span className="status pending">{RECOMMENDED_LABELS[proposal.multiAgentSynthesis?.recommendation] || proposal.multiAgentSynthesis?.recommendation}</span>
+        <div className="proposal-card-status">
+          <span className={`status ${canDecide ? 'pending' : ''}`}>{humanize(proposal.status)}</span>
+          <span className="proposal-authority"><Lock size={11} /> No execution authority</span>
         </div>
-        {proposal.multiAgentSynthesis?.pendingHumanApproval && <div className="safety-inline" style={{ marginTop: 0 }}><ShieldAlert size={14} /> Final advisory recommendation pending human approval. Non-executable.</div>}
-        {proposal.advisoryOnly && <div className="safety-inline" style={{ marginTop: '0.25rem' }}><Lock size={14} /> Protected capital notice: This is advisory analysis only. No real orders or allocations will be executed.</div>}
+      </header>
+
+      <div className="proposal-thesis">
+        <div className="proposal-section-label"><BookOpen size={13} /><span>Analyst read</span></div>
+        <p>{readableProposalThesis(proposal.thesis)}</p>
       </div>
 
-      {proposal.sourceRetrieval && (
-        <div style={{ marginTop: '1rem', padding: '0.75rem', border: '1px solid var(--border-soft)', borderRadius: '0.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-            <strong style={{ fontSize: '0.875rem' }}>Public Web Retrieval</strong>
-            <span className={`status ${proposal.sourceRetrieval.status === 'extracted' ? '' : 'pending'}`}>{proposal.sourceRetrieval.status || 'Resolved'}</span>
+      <div className="proposal-evidence-grid">
+        <ProposalEvidenceGroup title="Facts" items={proposal.facts} icon={<CheckCircle2 size={13} />} />
+        <ProposalEvidenceGroup title="Assumptions" items={proposal.assumptions} icon={<CircleHelp size={13} />} />
+        <ProposalEvidenceGroup title="Risks" items={proposal.risks} icon={<AlertCircle size={13} />} />
+      </div>
+
+      {hasSynthesis && <section className="proposal-synthesis">
+        <div className="proposal-synthesis-header">
+          <div>
+            <div className="proposal-section-label"><FlaskConical size={13} /><span>Multi-agent synthesis</span></div>
+            <strong>{RECOMMENDED_LABELS[synthesis.recommendation] || synthesis.recommendation}</strong>
           </div>
-          <div className="logic-grid" style={{ gap: '0.5rem' }}>
-            <div><span>Source URL</span><p style={{ wordBreak: 'break-all' }}>{proposal.sourceRetrieval.finalUrl || 'Unknown'}</p></div>
-            <div><span>Retrieved At</span><p>{proposal.sourceRetrieval.retrievedAt ? new Date(proposal.sourceRetrieval.retrievedAt).toLocaleString() : 'Unknown'}</p></div>
-            <div><span>Freshness</span><p>{proposal.sourceRetrieval.freshness || 'Unknown'}</p></div>
-            <div><span>Provenance</span><p>{proposal.sourceRetrieval.provenance || 'Unknown'}</p></div>
-          </div>
-          {proposal.sourceRetrieval.title && <div style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}><strong>Title:</strong> {proposal.sourceRetrieval.title}</div>}
-          {proposal.sourceRetrieval.accessLimitation && (
-            <div className="operator-form-note warning" style={{ marginTop: '0.5rem' }}>
-              <AlertTriangle size={14} /> <span><strong>Access Limitation:</strong> {proposal.sourceRetrieval.accessLimitation}</span>
+          <span className="status pending">Advisory recommendation</span>
+        </div>
+        <div className="proposal-synthesis-grid">
+          {synthesis.agreements.length > 0 && <ProposalEvidenceGroup title="Agreements" items={synthesis.agreements} icon={<CheckCircle2 size={13} />} />}
+          {synthesis.disagreements.length > 0 && <ProposalEvidenceGroup title="Disagreements" items={synthesis.disagreements} icon={<AlertCircle size={13} />} />}
+          {synthesis.evidenceGaps.length > 0 && <ProposalEvidenceGroup title="Evidence gaps" items={synthesis.evidenceGaps} icon={<Search size={13} />} />}
+        </div>
+      </section>}
+
+      <div className="proposal-safety">
+        {synthesis?.pendingHumanApproval && <span><ShieldAlert size={13} /> Human approval required before any Shadow review.</span>}
+        {proposal.advisoryOnly && <span><Lock size={13} /> Advisory only. No real orders, allocations, or capital movement.</span>}
+      </div>
+
+      {(proposal.sourceRetrieval || proposal.digestionSummary || hasAdvisorySections || proposal.evidenceIds.length > 0) && <details className="proposal-details">
+        <summary>Source and provenance details <span>{proposal.evidenceIds.length} evidence reference{proposal.evidenceIds.length === 1 ? '' : 's'}</span></summary>
+        <div className="proposal-details-body">
+          {proposal.digestionSummary && <div className="proposal-detail-block">
+            <div className="proposal-section-label"><FileText size={13} /><span>Structured digestion</span></div>
+            <div className="proposal-detail-grid">
+              {proposal.digestionSummary.company && <div><span>Company</span><strong>{proposal.digestionSummary.company}</strong></div>}
+              {proposal.digestionSummary.ticker && <div><span>Ticker</span><strong>{proposal.digestionSummary.ticker}</strong></div>}
+              <div><span>Sources</span><strong>{proposal.digestionSummary.sourceCount ?? 0}</strong></div>
+              <div><span>Claims</span><strong>{proposal.digestionSummary.sourceClaimCount ?? 0}</strong></div>
+              <div><span>Inferences</span><strong>{proposal.digestionSummary.inferenceCount ?? 0}</strong></div>
             </div>
-          )}
-        </div>
-      )}
-
-      {proposal.digestionSummary && (
-        <div style={{ marginTop: '1rem', padding: '0.75rem', border: '1px solid var(--border-soft)', borderRadius: '0.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-            <strong style={{ fontSize: '0.875rem' }}>Structured Digestion Overview</strong>
-            <span className="status">Advisory only</span>
-          </div>
-          <div className="logic-grid" style={{ gap: '0.5rem' }}>
-            {proposal.digestionSummary.company && <div><span>Company</span><p>{proposal.digestionSummary.company}</p></div>}
-            {proposal.digestionSummary.ticker && <div><span>Ticker</span><p>{proposal.digestionSummary.ticker}</p></div>}
-            <div><span>Sources</span><p>{proposal.digestionSummary.sourceCount ?? 0}</p></div>
-            <div><span>Claims</span><p>{proposal.digestionSummary.sourceClaimCount ?? 0}</p></div>
-            <div><span>Inferences</span><p>{proposal.digestionSummary.inferenceCount ?? 0}</p></div>
-            {proposal.digestionSummary.fingerprint && <div><span>Fingerprint</span><p style={{ fontFamily: 'monospace', fontSize: '0.75rem', wordBreak: 'break-all' }}>{proposal.digestionSummary.fingerprint}</p></div>}
-          </div>
-        </div>
-      )}
-
-      {proposal.advisorySections && Object.keys(proposal.advisorySections).length > 0 && (
-        <div style={{ marginTop: '1rem' }}>
-          <strong style={{ fontSize: '0.875rem' }}>Source-separated Advisory Sections</strong>
-          {Object.entries(proposal.advisorySections as unknown as Record<string, { content: string[], provenance?: string[] }>).map(([key, section]) => (
-            <div key={key} style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
-              <div style={{ fontWeight: 500, textTransform: 'capitalize' }}>{key.replace(/_/g, ' ')}</div>
-              {section.content.map((p: string, i: number) => <p key={i} style={{ margin: '0.25rem 0 0' }}>{p}</p>)}
-              {section.provenance && section.provenance.length > 0 && (
-                 <div style={{ color: 'var(--ink-soft)', marginTop: '0.25rem', fontSize: '0.8rem' }}>Sources: {section.provenance.join(', ')}</div>
-              )}
+          </div>}
+          {proposal.sourceRetrieval && <div className="proposal-detail-block">
+            <div className="proposal-section-label"><Globe2 size={13} /><span>Public web retrieval</span><span className="status">{proposal.sourceRetrieval.freshness || 'Unknown'}</span></div>
+            {proposal.sourceRetrieval.title && <strong className="proposal-detail-title">{proposal.sourceRetrieval.title}</strong>}
+            <div className="proposal-detail-grid">
+              <div><span>Retrieved</span><strong>{proposal.sourceRetrieval.retrievedAt ? new Date(proposal.sourceRetrieval.retrievedAt).toLocaleString() : 'Unknown'}</strong></div>
+              <div><span>Provenance</span><strong>{proposal.sourceRetrieval.provenance || 'Unknown'}</strong></div>
             </div>
-          ))}
+            {proposal.sourceRetrieval.finalUrl && <a className="proposal-source-link" href={proposal.sourceRetrieval.finalUrl} target="_blank" rel="noreferrer">{proposal.sourceRetrieval.finalUrl}</a>}
+          </div>}
+          {hasAdvisorySections && <div className="proposal-detail-block">
+            <div className="proposal-section-label"><FileText size={13} /><span>Source-separated advisory sections</span></div>
+            <div className="proposal-advisory-sections">
+              {Object.entries(proposal.advisorySections as unknown as Record<string, { content: string[]; provenance?: string[] }>).map(([key, section]) => (
+                <div key={key} className="proposal-advisory-section">
+                  <strong>{key.replace(/_/g, ' ')}</strong>
+                  {section.content.map((paragraph: string, index: number) => <p key={index}>{paragraph}</p>)}
+                  {section.provenance && section.provenance.length > 0 && <span>Sources: {section.provenance.join(', ')}</span>}
+                </div>
+              ))}
+            </div>
+          </div>}
+          {proposal.evidenceIds.length > 0 && <div className="proposal-evidence-ids"><span>Evidence IDs</span><code>{proposal.evidenceIds.join(' · ')}</code></div>}
         </div>
-      )}
+      </details>}
 
-      {proposal.status === 'pending' && (
-        <div className="heading-actions" style={{ marginTop: '1rem', flexWrap: 'wrap' }}>
+      {canDecide && <div className="proposal-actions">
           <button className="btn btn-primary" onClick={() => onDecide(proposal.id, 'approve_shadow')}><Check size={14} /> Approve for Shadow</button>
           <button className="btn" onClick={() => onDecide(proposal.id, 'watch')}><Search size={14} /> Watch</button>
           <button className="btn" onClick={() => onDecide(proposal.id, 'request_more_research')}><FlaskConical size={14} /> More Research</button>
           <button className="btn" onClick={() => onDecide(proposal.id, 'reject')}><X size={14} /> Reject</button>
-        </div>
-      )}
-    </div>
+        </div>}
+    </article>
   );
 }
 
@@ -4480,7 +4499,7 @@ Research Notes:
     </section>
 
     <section className="section-grid page-section">
-      <div className="card card-pad animate-in delay-2">
+       <div id="watchlist-projection" className="card card-pad animate-in delay-2">
          <CardTitle title="Watchlist Projection" subtitle="Advisory tracking list." action={<Search size={17} color="var(--ink-soft)" />} />
          {snapshot.watchlist.length === 0 ? <div className="empty-state">No watchlist candidates</div> : (
            <div className="review-list">
@@ -4488,7 +4507,7 @@ Research Notes:
            </div>
          )}
       </div>
-      <div className="card card-pad animate-in delay-2">
+       <div id="investment-thesis-projection" className="card card-pad animate-in delay-2">
          <CardTitle title="Investment Thesis Projection" subtitle="Dossiers categorized as actionable thesis candidates." action={<BookOpen size={17} color="var(--ink-soft)" />} />
          {snapshot.investmentTheses.length === 0 ? <div className="empty-state">No investment thesis proposals</div> : (
            <div className="review-list">
@@ -4585,14 +4604,14 @@ Research Notes:
        </section>
      </section>
 
-     <section className="card card-pad page-section animate-in delay-3">
+     <section id="analyst-proposals" className="card card-pad page-section animate-in delay-3">
        <CardTitle title="Tax-lien review queue" subtitle={`${taxLiens.length} Florida candidate${taxLiens.length === 1 ? '' : 's'} · clean evidence is still human review required`} action={<span className="mono-label">{realEstate?.summary.blockedTaxLienCount ?? 0} blocked</span>} />
        {taxLiens.length === 0 ? <div className="empty-state"><MapPin size={19} /><strong>No tax-lien candidates</strong><span>Record a county or state source above to begin an auditable research queue.</span></div> : <div className="journal-list">{taxLiens.map((candidate) => <article key={candidate.id}><div className="journal-date"><span className={`status ${candidate.reviewStatus === 'blocked' ? 'pending' : ''}`}>{candidate.reviewStatus}</span><br />{new Date(candidate.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div><div><div className="card-title-row"><div><h3>{candidate.county} · certificate {candidate.certificateNumber}</h3><span className="intelligence-confidence">{candidate.propertyAddress} · {candidate.sourceKind} · {candidate.sourceFreshness}</span></div><span className="status">No bid authority</span></div><div className="logic-grid"><div><span>Identity</span><p>{candidate.reconciliationStatus}</p></div><div><span>Reserve</span><p>{candidate.reserveStatus} · exposure {candidate.estimatedTotalExposure}</p></div><div><span>Redemption</span><p>{candidate.redemptionStatus} · availability {candidate.liveAvailability}</p></div></div>{candidate.hardStops.length > 0 && <div className="safety-inline"><ShieldAlert size={14} /> {candidate.hardStops.join(' ')}</div>}</div></article>)}</div>}
      </section>
 
     <section className="card card-pad page-section animate-in delay-3">
       <CardTitle title="Analyst proposals" subtitle={`${proposals.length} household-scoped proposal${proposals.length === 1 ? '' : 's'} · facts and uncertainty remain visible`} action={<span className="mono-label">Human review required</span>} />
-      {proposals.length === 0 ? <div className="empty-state"><BookOpen size={19} /><strong>No proposals yet</strong><span>Run a research question to create an advisory proposal when the provider is available.</span></div> : <div className="journal-list">{proposals.map((proposal) => <article key={proposal.id}><div className="journal-date"><span className={`status ${proposal.status === 'proposed' ? 'pending' : ''}`}>{proposal.status}</span><br />{new Date(proposal.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div><div><div className="card-title-row"><div><h3>{proposal.title}</h3><span className="intelligence-confidence">{proposal.label} · {proposal.analyticalDirection} · {proposal.confidence.toFixed(0)}% confidence</span></div><span className="status">No execution authority</span></div><p>{proposal.thesis}</p><div className="logic-grid"><div><span>Facts</span><p>{proposal.facts.join(' · ') || 'None recorded'}</p></div><div><span>Assumptions</span><p>{proposal.assumptions.join(' · ') || 'None recorded'}</p></div><div><span>Risks</span><p>{proposal.risks.join(' · ') || 'None recorded'}</p></div></div>{proposal.status === 'proposed' && <div className="heading-actions"><button className="btn" onClick={() => { void recordDecision(proposal.id, 'watch'); }} disabled={decide.isPending}>Watch</button><button className="btn" onClick={() => { void recordDecision(proposal.id, 'request_more_research'); }} disabled={decide.isPending}>Request more research</button><button className="btn btn-primary" onClick={() => { void recordDecision(proposal.id, 'approve_shadow'); }} disabled={decide.isPending}>Approve Shadow review</button></div>}</div></article>)}</div>}
+      {proposals.length === 0 ? <div className="empty-state"><BookOpen size={19} /><strong>No proposals yet</strong><span>Run a research question to create an advisory proposal when the provider is available.</span></div> : <div className="review-list analyst-proposal-list">{proposals.map((proposal) => <ProposalCard key={proposal.id} proposal={proposal} onDecide={recordDecision} />)}</div>}
     </section>
 
     <section className="section-grid page-section">

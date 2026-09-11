@@ -4,7 +4,9 @@ import {
   investmentResearchDossiers,
   reviewedResearchEvidence,
   reviewedSecFilingEvidence,
+  secFilingSnapshots,
   schwabObservationSnapshots,
+  schwabMarketSnapshots,
 } from "@workspace/db";
 import type { Actor } from "./capital-os";
 
@@ -23,6 +25,7 @@ type EvidenceItem = {
   ticker: string;
   content: JsonRecord;
   provenance: JsonRecord;
+  canonicalSha256: string;
   missingFlags: string[];
   qualityFlags: string[];
 };
@@ -92,14 +95,16 @@ function parsePortfolioWeight(positions: unknown[], ticker: string) {
 
 function createEvidenceFromSchwab(
   row: typeof reviewedResearchEvidence.$inferSelect,
+  source: typeof schwabMarketSnapshots.$inferSelect | undefined,
   now: Date,
 ): EvidenceItem | null {
+  if (!source || source.householdId !== row.householdId || source.reviewStatus !== "APPROVED" || source.ticker.trim().toUpperCase() !== row.ticker.trim().toUpperCase()) return null;
   const context = record(record(row.canonicalContent).snapshotContext);
-  const freshness = String(context.freshness ?? record(row.provenance).freshness ?? "").toUpperCase();
-  const retrievedAt = context.retrievedAt ?? row.createdAt;
-  if (["STALE", "UNKNOWN", "EXPIRED"].includes(freshness) || !freshWithin(retrievedAt, maxSchwabAgeDays, now)) return null;
+  const freshness = String(source.freshness ?? context.freshness ?? record(row.provenance).freshness ?? "").toUpperCase();
+  if (["STALE", "UNKNOWN", "EXPIRED"].includes(freshness) || !freshWithin(source.retrievedAt, maxSchwabAgeDays, now)) return null;
+  const canonicalFreshness = String(context.freshness ?? "").toUpperCase();
+  if (["STALE", "UNKNOWN", "EXPIRED"].includes(canonicalFreshness) || (context.retrievedAt !== undefined && !freshWithin(context.retrievedAt, maxSchwabAgeDays, now))) return null;
   const content = record(row.canonicalContent);
-  const instrument = record(content.instrument);
   const ticker = String(row.ticker).trim().toUpperCase();
   return {
     id: row.id,
@@ -110,6 +115,7 @@ function createEvidenceFromSchwab(
     ticker,
     content,
     provenance: record(row.provenance),
+    canonicalSha256: row.canonicalSha256,
     missingFlags: Array.isArray(context.missingFlags) ? context.missingFlags.filter((item): item is string => typeof item === "string") : [],
     qualityFlags: Array.isArray(context.qualityFlags) ? context.qualityFlags.filter((item): item is string => typeof item === "string") : [],
   };
@@ -117,12 +123,14 @@ function createEvidenceFromSchwab(
 
 function createEvidenceFromSec(
   row: typeof reviewedSecFilingEvidence.$inferSelect,
+  source: typeof secFilingSnapshots.$inferSelect | undefined,
   now: Date,
 ): EvidenceItem | null {
+  if (!source || source.householdId !== row.householdId || source.reviewStatus !== "APPROVED" || source.ticker.trim().toUpperCase() !== row.ticker.trim().toUpperCase()) return null;
   const provenance = record(row.provenance);
   const content = record(row.canonicalContent);
   const filings = Array.isArray(content.filings) ? content.filings.map(record) : [];
-  const latestFilingDate = filings[0]?.filingDate;
+  const latestFilingDate = source.filingDate;
   if (!freshWithin(latestFilingDate, maxSecAgeDays, now)) return null;
   const missingFlags = Array.isArray(content.missingFields)
     ? content.missingFields.filter((item): item is string => typeof item === "string")
@@ -136,6 +144,7 @@ function createEvidenceFromSec(
     ticker: row.ticker.trim().toUpperCase(),
     content,
     provenance,
+    canonicalSha256: row.canonicalSha256,
     missingFlags,
     qualityFlags: [String(content.evidenceQuality ?? "UNKNOWN")],
   };
@@ -160,6 +169,8 @@ function getSecMetrics(evidence: EvidenceItem[]) {
 
 function buildDossierContent(row: typeof investmentResearchDossiers.$inferSelect | undefined) {
   const report = row?.report && typeof row.report === "object" ? row.report as JsonRecord : {};
+  const run = record(report.run);
+  if (["blocked", "pending", "failed"].includes(String(run.status ?? "").toLowerCase())) return null;
   const proposal = report.proposal && typeof report.proposal === "object" ? report.proposal as JsonRecord : null;
   return proposal;
 }
@@ -260,26 +271,39 @@ function buildOpportunity(candidate: Candidate) {
 
 export async function listResearchOpportunities(actor: Actor) {
   const now = new Date();
-  const [snapshotRows, secRows, portfolioRows, dossierRows] = await Promise.all([
-    db.select().from(reviewedResearchEvidence).where(eq(reviewedResearchEvidence.householdId, actor.householdId)).orderBy(desc(reviewedResearchEvidence.approvedAt)),
-    db.select().from(reviewedSecFilingEvidence).where(eq(reviewedSecFilingEvidence.householdId, actor.householdId)).orderBy(desc(reviewedSecFilingEvidence.approvedAt)),
+  const [snapshotRows, secRows, sourceSnapshotRows, sourceSecRows, portfolioRows, dossierRows] = await Promise.all([
+    db.select().from(reviewedResearchEvidence).where(eq(reviewedResearchEvidence.householdId, actor.householdId)).orderBy(desc(reviewedResearchEvidence.approvedAt), desc(reviewedResearchEvidence.id)),
+    db.select().from(reviewedSecFilingEvidence).where(eq(reviewedSecFilingEvidence.householdId, actor.householdId)).orderBy(desc(reviewedSecFilingEvidence.approvedAt), desc(reviewedSecFilingEvidence.id)),
+    db.select().from(schwabMarketSnapshots).where(eq(schwabMarketSnapshots.householdId, actor.householdId)).orderBy(desc(schwabMarketSnapshots.createdAt), desc(schwabMarketSnapshots.id)),
+    db.select().from(secFilingSnapshots).where(eq(secFilingSnapshots.householdId, actor.householdId)).orderBy(desc(secFilingSnapshots.createdAt), desc(secFilingSnapshots.id)),
     db.select({ positions: schwabObservationSnapshots.positions }).from(schwabObservationSnapshots)
       .where(eq(schwabObservationSnapshots.householdId, actor.householdId))
-      .orderBy(desc(schwabObservationSnapshots.createdAt))
+      .orderBy(desc(schwabObservationSnapshots.createdAt), desc(schwabObservationSnapshots.id))
       .limit(1),
     db.select().from(investmentResearchDossiers).where(and(
       eq(investmentResearchDossiers.householdId, actor.householdId),
       eq(investmentResearchDossiers.reviewStatus, "APPROVED"),
-    )).orderBy(desc(investmentResearchDossiers.createdAt)),
+    )).orderBy(desc(investmentResearchDossiers.createdAt), desc(investmentResearchDossiers.id)),
   ]);
+  const sourceSnapshotsById = new Map(sourceSnapshotRows.map((row) => [row.id, row]));
+  const sourceSecById = new Map(sourceSecRows.map((row) => [row.id, row]));
   const evidence = [
-    ...snapshotRows.map((row) => createEvidenceFromSchwab(row, now)).filter((item): item is EvidenceItem => !!item),
-    ...secRows.map((row) => createEvidenceFromSec(row, now)).filter((item): item is EvidenceItem => !!item),
+    ...snapshotRows.map((row) => createEvidenceFromSchwab(row, sourceSnapshotsById.get(row.snapshotId), now)).filter((item): item is EvidenceItem => !!item),
+    ...secRows.map((row) => createEvidenceFromSec(row, sourceSecById.get(row.snapshotId), now)).filter((item): item is EvidenceItem => !!item),
   ];
+  const uniqueEvidence = evidence.filter((item, index, items) => items.findIndex((candidate) =>
+    candidate.ticker === item.ticker && candidate.canonicalSha256 === item.canonicalSha256) === index);
   const positions = Array.isArray(portfolioRows[0]?.positions) ? portfolioRows[0].positions : [];
-  const dossiersByTicker = new Map(dossierRows.map((row) => [row.ticker.trim().toUpperCase(), buildDossierContent(row)]));
+  const eligibleEvidenceIds = new Set(uniqueEvidence.map((item) => item.id));
+  const dossiersByTicker = new Map<string, JsonRecord | null>();
+  for (const row of dossierRows) {
+    const ids = Array.isArray(row.evidenceIds) ? row.evidenceIds : [];
+    if (!ids.length || ids.some((id) => !eligibleEvidenceIds.has(id))) continue;
+    const ticker = row.ticker.trim().toUpperCase();
+    if (!dossiersByTicker.has(ticker)) dossiersByTicker.set(ticker, buildDossierContent(row));
+  }
   const byTicker = new Map<string, Candidate>();
-  for (const item of evidence) {
+  for (const item of uniqueEvidence) {
     const existing = byTicker.get(item.ticker);
     if (existing) {
       if (!existing.evidence.some((candidate) => candidate.id === item.id)) existing.evidence.push(item);
@@ -313,7 +337,7 @@ export async function listResearchOpportunities(actor: Actor) {
   return {
     opportunities,
     totalEligible: opportunities.length,
-    excludedStaleOrUnreviewed: snapshotRows.length + secRows.length - evidence.length,
+    excludedStaleOrUnreviewed: snapshotRows.length + secRows.length - uniqueEvidence.length,
     generatedAt: now.toISOString(),
     ranking: {
       method: "Deterministic approved-evidence screen",

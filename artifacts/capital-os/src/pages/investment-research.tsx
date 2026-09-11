@@ -655,9 +655,9 @@ Research Notes:
 
   return (
     <main className="content">
-      <PageHeading
-        eyebrow="Investment Research"
-        title={<>Research<br/><em>committee.</em></>}
+      <PageHeading 
+        eyebrow="Investment Research" 
+        title={<>Research<br/><em>committee.</em></>} 
         description="A fast discovery layer above the reviewed evidence console. Every result is household-scoped, source-linked, and advisory-only."
       />
 

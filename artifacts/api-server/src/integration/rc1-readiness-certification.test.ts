@@ -82,6 +82,9 @@ test("RC1 exact-release readiness certification", async (t) => {
         ]);
         return workers.length > 0 && leases.length > 0;
       });
+      stopWorker();
+      stopScheduler();
+      assert.equal((await verifyAuditIntegrity()).status, "PASS");
       const address = server.address();
       assert.ok(address && typeof address !== "string");
       const response = await fetch(

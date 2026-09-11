@@ -83,7 +83,7 @@ async function ensureTreasurySeed(householdId: string, ownerId: string, fixtureM
         "Validated strategy capital",
       ] : [],
       updatedBy: ownerId,
-    });
+    }).onConflictDoNothing({ target: treasuryPolicies.householdId });
   }
 
   if (!fixtureMode) {

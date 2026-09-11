@@ -603,6 +603,7 @@ const secondaryNav = [
   { href: '/reports', label: 'Reports', icon: FileText },
   { href: '/documents', label: 'Documents', icon: ClipboardList },
   { href: '/insights', label: 'Insights', icon: Lightbulb },
+  { href: '/finance-insights', label: 'Finance insights', icon: Lightbulb },
   { href: '/family-office', label: 'Family Office', icon: Sparkles },
 ];
 
@@ -3095,6 +3096,7 @@ function IntelligencePage({ onFeedback }: { onFeedback: (message: string) => voi
         <CardTitle title="Specialist analyst desk" subtitle="Each analyst owns a narrow view so strong signals do not hide weak ones." />
         <div className="analyst-grid">{snapshot.analysts.map((analyst) => <article className="analyst-card" key={analyst.id}><div className="analyst-card-header"><div><div className="mono-label">{analyst.scope.replaceAll('_', ' ')}</div><h3>{analyst.analyst}</h3></div><span className={`status ${analyst.dataQuality === 'low' ? 'critical' : analyst.dataQuality === 'medium' ? 'pending' : ''}`}>{analyst.dataQuality}</span></div><p>{analyst.summary}</p><ConfidenceLabel confidence={analyst.confidence} dataQuality={analyst.dataQuality} /><div className="analyst-evidence">{analyst.evidence.slice(0, 3).map((item) => <span key={item}>• {item}</span>)}</div></article>)}</div>
       </section>
+      <ResearchContextPanel context={snapshot.researchContext} title="Research-derived thesis & freshness signals" />
       <div className="section-grid page-section">
         <section className="card card-pad">
           <CardTitle title="Persisted insights" subtitle="Advisory observations retained for the next review." />
@@ -4710,7 +4712,8 @@ function AppRouter({ onAction, onFeedback, transactions, dashboard, dashboardSta
      <Route path="/contributions" component={() => <UtilityPage kind="contributions" onAction={onAction} transactions={transactions} dashboard={dashboard} />} />
     <Route path="/reports" component={() => <UtilityPage kind="reports" onAction={onAction} transactions={transactions} />} />
      <Route path="/documents" component={CompletedDocumentsPage} />
-    <Route path="/insights" component={FinanceInsightsPage} />
+     <Route path="/insights" component={() => <IntelligencePage onFeedback={onFeedback} />} />
+     <Route path="/finance-insights" component={FinanceInsightsPage} />
       <Route path="/family-office"><FamilyOfficePage onFeedback={onFeedback} /></Route>
     <Route component={NotFound} />
   </Switch>;

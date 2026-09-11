@@ -150,14 +150,14 @@ test("authenticated approved research stays isolated across Portfolio, Risk, and
     await page.setViewportSize({ width: 1440, height: 1000 });
     await assertLoadingState("/portfolio", "/api/portfolio", "Loading portfolio…");
     await assertLoadingState("/risk", "/api/risk", "Loading risk and readiness…");
-    await assertLoadingState("/insights", "/api/finance-insights", "Loading finance insights…");
+    await assertLoadingState("/insights", "/api/intelligence", "Preparing the latest household read…");
     await assertEmptyState("/portfolio", "/api/portfolio");
     await assertEmptyState("/risk", "/api/risk");
-    await assertEmptyState("/insights", "/api/finance-insights");
+    await assertEmptyState("/insights", "/api/intelligence");
     for (const [path, heading] of [
       ["/portfolio", /Know what is/i],
       ["/risk", /Protect the plan/i],
-      ["/insights", /Small signals/i],
+      ["/insights", /A clearer read on/i],
     ] as const) {
       await page.goto(path);
       await expect(page.getByRole("heading", { name: heading })).toBeVisible();
@@ -175,8 +175,8 @@ test("authenticated approved research stays isolated across Portfolio, Risk, and
     await expect(page.getByText("Risk Governor safeguards")).toBeVisible();
     await expect(page.getByTestId("status-execution-control")).toHaveText(/DISABLED|SAFE_MODE|STOP/);
     await page.goto("/insights");
-    await expect(page.getByText("This month’s signals")).toBeVisible();
-    await expect(page.getByText("Nothing here can move money.")).toBeVisible();
+    await expect(page.getByText("Specialist analyst desk")).toBeVisible();
+    await expect(page.getByText("This never changes the live allocation.")).toBeVisible();
 
     const after = await readState(page);
     expect(after.portfolio).toEqual(before.portfolio);
@@ -213,10 +213,10 @@ test("authenticated approved research stays isolated across Portfolio, Risk, and
     await page.goto("/risk");
     await expect(page.getByRole("alert")).toContainText("Risk and readiness data is temporarily unavailable");
     await page.unroute("**/api/risk");
-    await page.route("**/api/finance-insights", (route) => route.abort("failed"));
+    await page.route("**/api/intelligence", (route) => route.abort("failed"));
     await page.goto("/insights");
-    await expect(page.getByRole("alert")).toContainText("Finance insights are temporarily unavailable");
-    await page.unroute("**/api/finance-insights");
+    await expect(page.getByTestId("state-intelligence-error")).toContainText("Intelligence is unavailable");
+    await page.unroute("**/api/intelligence");
 
     console.log(JSON.stringify({
       gate: "BROWSER-APPROVED-RESEARCH-ISOLATION",

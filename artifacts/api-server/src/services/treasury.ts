@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, desc, eq, sql } from "drizzle-orm";
 import {
   capitalRequests,
@@ -206,7 +207,7 @@ export async function createCapitalRequest(actor: Actor, input: {
       status: "SUBMITTED",
       createdBy: actor.userId,
     }).returning();
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: ids.householdId,
       eventType: "capital_request_submitted",
       actor: actor.userId,
@@ -219,7 +220,7 @@ export async function createCapitalRequest(actor: Actor, input: {
         requestingModule: request.requestingModule,
         riskClass: request.riskClass,
       },
-    });
+    }, tx);
     const response = requestResponse(request);
     await tx.insert(idempotencyKeys).values({
       householdId: ids.householdId,
@@ -325,7 +326,7 @@ export async function decideCapitalRequest(actor: Actor, requestId: string, inpu
       reservationId = reservation.id;
     }
 
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: ids.householdId,
       eventType: "capital_request_decided",
       actor: actor.userId,
@@ -337,7 +338,7 @@ export async function decideCapitalRequest(actor: Actor, requestId: string, inpu
         approvedAmount: input.decision === "REJECTED" ? "0.00" : centsToMoney(approvedCents),
         reservationId,
       },
-    });
+    }, tx);
     return requestResponse(updated);
   });
 }

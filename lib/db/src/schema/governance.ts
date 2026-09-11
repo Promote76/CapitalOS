@@ -147,10 +147,19 @@ export const auditEvents = pgTable(
     reason: text("reason"),
     metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
     timestamp: timestamp("timestamp", { withTimezone: true }).defaultNow().notNull(),
+    canonicalVersion: integer("canonical_version").notNull().default(1),
+    chainScope: text("chain_scope").notNull().default("household"),
+    chainKey: text("chain_key"),
+    sequence: integer("sequence"),
+    previousHash: text("previous_hash"),
+    eventHash: text("event_hash"),
+    idempotencyKey: text("idempotency_key"),
   },
   (table) => ({
     householdIdx: index("audit_events_household_idx").on(table.householdId),
     timestampIdx: index("audit_events_timestamp_idx").on(table.timestamp),
+    chainIdx: uniqueIndex("audit_events_chain_sequence_unique").on(table.chainKey, table.sequence),
+    idempotencyIdx: uniqueIndex("audit_events_idempotency_unique").on(table.householdId, table.idempotencyKey),
   }),
 );
 

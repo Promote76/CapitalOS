@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { desc, eq } from "drizzle-orm";
 import {
   auditEvents,
@@ -275,7 +276,7 @@ export async function runSchwabResearchCertification(actor: Actor) {
     result,
     record: recordValue,
   }).returning();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: actor.householdId,
     actor: actor.userId,
     eventType: "schwab_research_certification",

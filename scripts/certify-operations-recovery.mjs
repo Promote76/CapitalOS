@@ -24,6 +24,7 @@ const requiredTests = [
   "src/integration/operations-recovery.test.ts",
   "src/integration/operations-recovery-certification.test.ts",
   "src/integration/operations-worker-probe.ts",
+  "src/integration/audit-application-integrity.test.ts",
   "src/integration/rc1-readiness-certification.test.ts",
 ];
 const readinessEvidencePath = path.join(
@@ -104,14 +105,11 @@ function runCommand(command, args, label, options = {}) {
 }
 
 function releaseMigrationFiles() {
-  const archiveMigration = path.join(
-    migrationDir,
-    "0053_restore_audit_archive.sql",
-  );
-  if (!fs.existsSync(archiveMigration)) {
-    throw new Error("The RC1 audit archive migration is missing.");
+  const auditMigration = path.join(migrationDir, "0054_useful_earthquake.sql");
+  if (!fs.existsSync(auditMigration)) {
+    throw new Error("The RC1 application audit migration is missing.");
   }
-  return [archiveMigration];
+  return [auditMigration];
 }
 
 function createPreMigrationArchiveGap(port) {
@@ -131,9 +129,6 @@ function createPreMigrationArchiveGap(port) {
       "ON_ERROR_STOP=1",
       "--command",
       `
-        drop trigger if exists audit_events_archive_on_insert on public.audit_events;
-        drop trigger if exists audit_events_archive_restricted_insert on public.audit_events_archive;
-        drop trigger if exists audit_events_archive_append_only on public.audit_events_archive;
         insert into public.households (id, name)
           values ('00000000-0000-4000-8000-000000000053', 'RC1 isolated certification');
         insert into public.audit_events (
@@ -141,7 +136,7 @@ function createPreMigrationArchiveGap(port) {
         ) values (
           '00000000-0000-4000-8000-000000000053',
           '00000000-0000-4000-8000-000000000053',
-          'rc1_pre_trigger_backfill',
+          'rc1_pre_application_backfill',
           'rc1-certification',
           'release',
           'rc1',
@@ -346,29 +341,6 @@ async function main() {
     const gapStatus = createPreMigrationArchiveGap(port);
     if (gapStatus !== 0) return gapStatus;
 
-    for (const migration of migrations) {
-      const migrationStatus = runCommand(
-        "psql",
-        [
-          "--no-psqlrc",
-          "--host",
-          "127.0.0.1",
-          "--port",
-          String(port),
-          "--username",
-          databaseRole,
-          "--dbname",
-          databaseName,
-          "--set",
-          "ON_ERROR_STOP=1",
-          "--file",
-          migration,
-        ],
-        `Apply committed migration ${path.basename(migration)}`,
-      );
-      if (migrationStatus !== 0) return migrationStatus;
-    }
-
     const testEnv = {
       ...process.env,
       CAPITAL_OS_CERTIFICATION_DB_URL: certificationDbUrl,
@@ -383,6 +355,7 @@ async function main() {
         "src/domain/operations.test.ts",
         "src/integration/operations-recovery.test.ts",
         "src/integration/operations-recovery-certification.test.ts",
+        "src/integration/audit-application-integrity.test.ts",
         "src/integration/rc1-readiness-certification.test.ts",
       ],
       "Run operations recovery tests",
@@ -421,10 +394,12 @@ async function main() {
           archive: {
             cleanInstall: "PASS",
             backfill: "PASS",
-            synchronousTrigger: "PASS",
-            appendOnlySource: "PASS",
-            appendOnlyArchive: "PASS",
-            directArchiveInsertRejected: "PASS",
+            applicationAtomicArchive: "PASS",
+            hashChainVerification: "PASS",
+            applicationBoundaryStaticCheck: "PASS",
+            transactionalDualWrite: "PASS",
+            hashChainIntegrity: "PASS",
+            explicitBackfill: "PASS",
           },
           operations: {
             workerStartup: "PASS",

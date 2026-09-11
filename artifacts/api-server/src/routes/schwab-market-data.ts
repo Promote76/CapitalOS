@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "../services/audit";
 import { randomBytes, randomUUID } from "node:crypto";
 import { Router, type IRouter } from "express";
 import { and, eq, isNull } from "drizzle-orm";
@@ -23,8 +24,8 @@ import {
 const router: IRouter = Router();
 const browserCookie = "__Host-capitalos_schwab_market_data_oauth";
 const oauthCookie = (value: string, maxAge: number) => `${browserCookie}=${value}; Path=/; Max-Age=${maxAge}; HttpOnly; Secure; SameSite=Lax`;
-const audit = (householdId: string, actor: string, eventType: string, entityId = householdId) =>
-  db.insert(auditEvents).values({
+const audit = async (householdId: string, actor: string, eventType: string, entityId = householdId) => {
+  return appendAuditEvent({
     householdId,
     actor,
     eventType,
@@ -32,6 +33,7 @@ const audit = (householdId: string, actor: string, eventType: string, entityId =
     entityId,
     metadata: { provider: "schwab", product: "market_data_production", readOnly: true },
   });
+};
 const parseSymbols = (input: unknown): string[] | null => {
   if (input === undefined) return [];
   if (typeof input !== "string") return null;

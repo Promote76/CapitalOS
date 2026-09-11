@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { randomUUID } from "node:crypto";
 import { db } from "@workspace/db";
 import { auditEvents, operationsSchedulerLeases, operationsSchedulers } from "@workspace/db/schema";
@@ -38,10 +39,11 @@ export async function runOperationsSchedulerTick(ownerId: string) {
         nextRunAt: nextRunAt(schedule.nextRunAt, schedule.cadence),
         updatedAt: now,
       }).where(eq(operationsSchedulers.id, schedule.id));
-      await db.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: schedule.householdId,
         eventType: "operations_schedule_missed_skipped",
         actor: ownerId,
+        chainKind: "system",
         entity: "operations_scheduler",
         entityId: schedule.id,
         reason: `Unsupported scheduled job kind ${schedule.jobKind}`,
@@ -59,10 +61,11 @@ export async function runOperationsSchedulerTick(ownerId: string) {
         correlationId: `schedule:${schedule.id}`,
       });
       enqueued += 1;
-      await db.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: schedule.householdId,
         eventType: "operations_schedule_missed_recovered",
         actor: ownerId,
+        chainKind: "system",
         entity: "operations_scheduler",
         entityId: schedule.id,
         reason: "Persistent scheduler recovered a due run",

@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
@@ -135,7 +136,7 @@ async function ensureTreasurySeed(householdId: string, ownerId: string, fixtureM
       removedBucketIds.push(...removed.map(({ id }) => id));
     }
     if (remediatedPolicy.length > 0 || removedBucketIds.length > 0) {
-      await db.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId,
         eventType: "authenticated_household_demo_data_removed",
         actor: ownerId,
@@ -1449,7 +1450,7 @@ export async function ensureSeedData(): Promise<SeedContext> {
         metadata: { seed: true },
       })),
     );
-    await tx.insert(auditEvents).values([
+    await appendAuditEvents([
       {
         householdId: household.id,
         eventType: "household_initialized",
@@ -1479,7 +1480,7 @@ export async function ensureSeedData(): Promise<SeedContext> {
         reason: "Capital Governor defaults",
         metadata: { seed: true },
       },
-    ]);
+    ], tx);
 
     return {
       householdId: household.id,

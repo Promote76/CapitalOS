@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, eq } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { aiAnalyses, aiInsights, aiRecommendations, auditEvents, goals as goalsTable, recommendationFeedback } from "@workspace/db";
@@ -221,7 +222,7 @@ export async function refreshIntelligence(actor: Actor) {
     eq(aiRecommendations.householdId, ids.householdId),
   ));
 
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: ids.householdId,
     eventType: "intelligence_refreshed",
     actor: actor.userId,
@@ -351,7 +352,7 @@ export async function runContributionScenario(proposedWeekly: string, actor: Act
     productionDataChanged: false,
     householdId: ids.householdId,
   };
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: ids.householdId,
     eventType: "intelligence_scenario_created",
     actor: actor.userId,
@@ -380,7 +381,7 @@ export async function recordRecommendationFeedback(
     note: input.note,
     createdBy: actor.userId,
   }).returning();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: ids.householdId,
     eventType: "recommendation_feedback_recorded",
     actor: actor.userId,

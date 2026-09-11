@@ -7865,6 +7865,20 @@ export const ListOperationsJobsResponse = zod.array(ListOperationsJobsResponseIt
 
 
 /**
+ * @summary Run one bounded owner-approved audit archive backfill batch
+ */
+export const runOperationsAuditBackfillQueryLimitMax = 1000;
+
+
+
+export const RunOperationsAuditBackfillQueryParams = zod.object({
+  "limit": zod.coerce.number().int().min(1).max(runOperationsAuditBackfillQueryLimitMax)
+})
+
+export const RunOperationsAuditBackfillResponse = zod.record(zod.string(), zod.unknown())
+
+
+/**
  * @summary List immutable archived audit events for the household
  */
 export const listOperationsAuditArchiveQueryLimitDefault = 200;

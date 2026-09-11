@@ -12,6 +12,8 @@ import app from "../app";
 import { ensureObservabilityDefaults } from "../services/observability-alerts";
 import { startOperationsScheduler } from "../services/operations-scheduler";
 import { startOperationsWorker } from "../services/operations-worker";
+import { appendAuditEvent } from "../services/audit";
+import { runAuditBackfill, verifyAuditIntegrity } from "../services/audit-backfill";
 
 const waitFor = async (predicate: () => Promise<boolean>, timeoutMs = 5_000) => {
   const deadline = Date.now() + timeoutMs;
@@ -23,7 +25,9 @@ const waitFor = async (predicate: () => Promise<boolean>, timeoutMs = 5_000) => 
 };
 
 test("RC1 exact-release readiness certification", async (t) => {
-  await t.test("archive migration backfilled the pre-trigger audit row", async () => {
+  await t.test("explicit application backfill archives and verifies the legacy row", async () => {
+    const backfill = await runAuditBackfill(100);
+    assert.equal(backfill.status, "COMPLETE");
     const result = await db.execute<{ count: number }>(sql`
       select count(*)::int as count
       from audit_events_archive
@@ -32,27 +36,13 @@ test("RC1 exact-release readiness certification", async (t) => {
     assert.equal(result.rows[0]?.count, 1);
   });
 
-  await t.test("archive trigger is enabled and synchronous", async () => {
-    const result = await db.execute<{ enabled: boolean }>(sql`
-      select exists (
-        select 1 from pg_trigger
-        where tgname = 'audit_events_archive_on_insert' and tgenabled <> 'D'
-      ) as enabled
-    `);
-    assert.equal(result.rows[0]?.enabled, true);
-    await db.execute(sql`
-      insert into audit_events (
-        id, household_id, event_type, actor, entity, entity_id, metadata
-      ) values (
-        '00000000-0000-4000-8000-000000000054',
-        '00000000-0000-4000-8000-000000000053',
-        'rc1_synchronous_archive',
-        'rc1-certification',
-        'release',
-        'rc1',
-        '{}'::jsonb
-      )
-    `);
+  await t.test("application append is synchronous and archived", async () => {
+    await appendAuditEvent({
+      id: "00000000-0000-4000-8000-000000000054",
+      householdId: "00000000-0000-4000-8000-000000000053",
+      eventType: "rc1_synchronous_archive", actor: "rc1-certification",
+      entity: "release", entityId: "rc1", metadata: {},
+    });
     const archived = await db.execute<{ count: number }>(sql`
       select count(*)::int as count from audit_events_archive
       where event_id = '00000000-0000-4000-8000-000000000054'
@@ -60,30 +50,12 @@ test("RC1 exact-release readiness certification", async (t) => {
     assert.equal(archived.rows[0]?.count, 1);
   });
 
-  await t.test("audit source and archive are append-only", async () => {
-    await assert.rejects(() =>
-      db.execute(sql`update audit_events set reason = 'forbidden' where id = '00000000-0000-4000-8000-000000000054'`),
-    );
-    await assert.rejects(() =>
-      db.execute(sql`delete from audit_events_archive where event_id = '00000000-0000-4000-8000-000000000054'`),
-    );
-    await assert.rejects(() =>
-      db.execute(sql`
-        insert into audit_events_archive (
-          event_id, household_id, event_type, actor, entity, entity_id,
-          metadata, event_timestamp
-        ) values (
-          'direct-insert-forbidden',
-          '00000000-0000-4000-8000-000000000053',
-          'forbidden',
-          'rc1-certification',
-          'release',
-          'rc1',
-          '{}'::jsonb,
-          now()
-        )
-      `),
-    );
+  await t.test("verifier detects direct source/archive tampering", async () => {
+    const original = await db.execute<{ event_hash: string }>(sql`select event_hash from audit_events where id = '00000000-0000-4000-8000-000000000054'`);
+    await db.execute(sql`update audit_events set reason = 'forbidden' where id = '00000000-0000-4000-8000-000000000054'`);
+    assert.equal((await verifyAuditIntegrity()).status, "FAIL");
+    await db.execute(sql`update audit_events set reason = null, event_hash = ${original.rows[0]?.event_hash} where id = '00000000-0000-4000-8000-000000000054'`);
+    assert.equal((await verifyAuditIntegrity()).status, "PASS");
   });
 
   await t.test("production runtime starts worker and scheduler but blocks readiness without an approved destination", async () => {

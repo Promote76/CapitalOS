@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { createHash } from "node:crypto";
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import {
@@ -320,7 +321,7 @@ export async function runCapitalWaterfall(actor: Actor, input: { asOf?: string; 
     }).returning();
     for (const allocation of result.waterfall.allocations) {
       if (parseMoneyToCents(allocation.amount) <= 0) continue;
-      await tx.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: ids.householdId,
         eventType: "capital_waterfall_recommended",
         actor: actor.userId,
@@ -328,7 +329,7 @@ export async function runCapitalWaterfall(actor: Actor, input: { asOf?: string; 
         entityId: run.id,
         reason: `Advisory ${scenario} waterfall recommendation`,
         metadata: { bucket: allocation.bucket, amount: allocation.amount, physicalMovementAuthorized: false, fingerprint },
-      });
+      }, tx);
     }
     await tx.insert(idempotencyKeys).values({
       householdId: ids.householdId,

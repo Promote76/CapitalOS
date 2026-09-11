@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "releaseCandidate": "RC1",
   "result": "PASS_WITH_BLOCKER",
-  "generatedAt": "2026-09-10T22:27:43.342Z",
+  "generatedAt": "2026-09-11T00:55:06.692Z",
   "source": {
-    "baseCommit": "369acafee64a0ea35a39a71279d60ca55f142568",
-    "sourceSha256": "ea0898e40833dabc5e2b9dfd9c0507d9059abfcb3e0e0371c3c3556df28f9d28",
-    "inputCount": 1086,
+    "baseCommit": "87dc9713cb9e1208d67895ebbee4a215db562d1e",
+    "sourceSha256": "c732cd506888256c80f8b8092b5bcbaa74ec7ff38edc53281f45427252c23b59",
+    "inputCount": 1093,
     "inputs": [
       "artifacts/api-server/.replit-artifact/artifact.toml",
       "artifacts/api-server/package.json",
@@ -73,6 +73,7 @@
       "artifacts/api-server/src/domain/variable-income.ts",
       "artifacts/api-server/src/fixtures/business-income-pdfs.ts",
       "artifacts/api-server/src/index.ts",
+      "artifacts/api-server/src/integration/audit-application-integrity.test.ts",
       "artifacts/api-server/src/integration/bank-statement-parent-review.test.ts",
       "artifacts/api-server/src/integration/bank-statement-settlement-scope.test.ts",
       "artifacts/api-server/src/integration/banking-sync.test.ts",
@@ -149,6 +150,8 @@
       "artifacts/api-server/src/routes/treasury.ts",
       "artifacts/api-server/src/routes/variable-income.ts",
       "artifacts/api-server/src/services/accounting.ts",
+      "artifacts/api-server/src/services/audit-backfill.ts",
+      "artifacts/api-server/src/services/audit.ts",
       "artifacts/api-server/src/services/bank-statement-parser.test.ts",
       "artifacts/api-server/src/services/bank-statement-parser.ts",
       "artifacts/api-server/src/services/business-document-parser.ts",
@@ -786,6 +789,8 @@
       "lib/api-zod/src/generated/types/reviewedFinancialTransactionWeeklyGuidanceExclusionReason.ts",
       "lib/api-zod/src/generated/types/riskSummary.ts",
       "lib/api-zod/src/generated/types/riskSummarySafeguardsItem.ts",
+      "lib/api-zod/src/generated/types/runOperationsAuditBackfill200.ts",
+      "lib/api-zod/src/generated/types/runOperationsAuditBackfillParams.ts",
       "lib/api-zod/src/generated/types/runStrategyExperimentInput.ts",
       "lib/api-zod/src/generated/types/runStrategyExperimentInputExecutionModel.ts",
       "lib/api-zod/src/generated/types/runStrategyExperimentInputMode.ts",
@@ -1030,6 +1035,7 @@
       "lib/db/migrations/0051_sudden_victor_mancha.sql",
       "lib/db/migrations/0052_medical_gateway.sql",
       "lib/db/migrations/0053_restore_audit_archive.sql",
+      "lib/db/migrations/0054_useful_earthquake.sql",
       "lib/db/migrations/meta/0000_snapshot.json",
       "lib/db/migrations/meta/0001_snapshot.json",
       "lib/db/migrations/meta/0002_snapshot.json",
@@ -1084,6 +1090,7 @@
       "lib/db/migrations/meta/0051_snapshot.json",
       "lib/db/migrations/meta/0052_snapshot.json",
       "lib/db/migrations/meta/0053_snapshot.json",
+      "lib/db/migrations/meta/0054_snapshot.json",
       "lib/db/migrations/meta/_journal.json",
       "package.json",
       "pnpm-lock.yaml",
@@ -1097,22 +1104,24 @@
     ]
   },
   "routeInventory": {
-    "current": 249,
-    "executed": 249,
+    "current": 250,
+    "executed": 250,
     "result": "PASS"
   },
   "databaseTarget": "DISPOSABLE_LOCAL_POSTGRESQL",
   "migrationSet": [
     "CURRENT_DECLARED_SCHEMA",
-    "0053_restore_audit_archive.sql"
+    "0054_useful_earthquake.sql"
   ],
   "archive": {
     "cleanInstall": "PASS",
     "backfill": "PASS",
-    "synchronousTrigger": "PASS",
-    "appendOnlySource": "PASS",
-    "appendOnlyArchive": "PASS",
-    "directArchiveInsertRejected": "PASS"
+    "applicationAtomicArchive": "PASS",
+    "hashChainVerification": "PASS",
+    "applicationBoundaryStaticCheck": "PASS",
+    "transactionalDualWrite": "PASS",
+    "hashChainIntegrity": "PASS",
+    "explicitBackfill": "PASS"
   },
   "operations": {
     "workerStartup": "PASS",
@@ -1136,5 +1145,5 @@
     "venueExecution": "DISABLED",
     "moneyMovement": "DISABLED"
   },
-  "evidenceLog": "docs/certification/operations-recovery-runs/operations-recovery-2026-09-10T22-26-47Z.log"
+  "evidenceLog": "docs/certification/operations-recovery-runs/operations-recovery-2026-09-11T00-54-01Z.log"
 }

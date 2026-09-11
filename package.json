@@ -32,7 +32,7 @@
     "certify:document-budget-bridge": "node scripts/certify-document-budget-bridge.mjs",
     "generate:production-readiness-manifest": "node scripts/generate-production-readiness-manifest.mjs",
     "check:production-readiness-manifest": "node scripts/check-production-readiness-manifest.mjs",
-    "check:rc1-release": "node scripts/check-api-artifact-config.mjs && node scripts/check-api-contract.mjs && node scripts/check-production-readiness-manifest.mjs"
+    "check:rc1-release": "node scripts/check-api-artifact-config.mjs && node scripts/check-api-contract.mjs && node scripts/check-audit-writes.mjs && node scripts/check-production-readiness-manifest.mjs"
   },
   "private": true,
   "dependencies": {

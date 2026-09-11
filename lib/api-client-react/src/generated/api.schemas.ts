@@ -8794,6 +8794,16 @@ export type ReceiveReadOnlyBankWebhook202 = {
   eventId: string;
 };
 
+export type RunOperationsAuditBackfillParams = {
+/**
+ * @minimum 1
+ * @maximum 1000
+ */
+limit: number;
+};
+
+export type RunOperationsAuditBackfill200 = { [key: string]: unknown };
+
 export type ListOperationsAuditArchiveParams = {
 /**
  * @minimum 1

@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import {
@@ -902,7 +903,7 @@ export async function runFamilyOfficeResearch(
         status: "blocked",
         updatedAt: new Date(),
       }).where(eq(familyOfficeAnalystScorecards.id, scorecard.id));
-      await tx.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: actor.householdId,
         eventType: "family_office_research_blocked",
         actor: actor.userId,
@@ -915,7 +916,7 @@ export async function runFamilyOfficeResearch(
           errorCode,
           ...(diagnostic ? { providerDiagnostic: diagnostic } : {}),
         },
-      });
+      }, tx);
       return blockedRun;
     });
     return { run: runView(updated), proposal: null, advisoryOnly: true };
@@ -1090,7 +1091,7 @@ export async function runFamilyOfficeResearch(
         status: "available",
         updatedAt: new Date(),
       }).where(eq(familyOfficeAnalystScorecards.id, scorecard.id));
-      await tx.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: actor.householdId,
         eventType: "family_office_research_completed",
         actor: actor.userId,
@@ -1106,7 +1107,7 @@ export async function runFamilyOfficeResearch(
             digestionInferenceCount: digestion.inferences?.length ?? 0,
           } : {}),
         },
-      });
+      }, tx);
       return { run: runView(updated), proposal: proposalView(proposal), advisoryOnly: true };
     });
   } catch {
@@ -1135,7 +1136,7 @@ export async function runFamilyOfficeResearch(
         status: "blocked",
         updatedAt: new Date(),
       }).where(eq(familyOfficeAnalystScorecards.id, scorecard.id));
-      await tx.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: actor.householdId,
         eventType: "family_office_research_blocked",
         actor: actor.userId,
@@ -1258,7 +1259,7 @@ export async function decideFamilyOfficeProposal(actor: Actor, proposalId: strin
     reviewedAt: new Date(),
     reviewReason: reason.trim().slice(0, 500),
   }).where(and(eq(familyOfficeProposals.id, proposal.id), eq(familyOfficeProposals.householdId, actor.householdId))).returning();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: actor.householdId,
     eventType: "family_office_proposal_decided",
     actor: actor.userId,
@@ -1415,7 +1416,7 @@ export async function createTaxLienCandidate(actor: Actor, input: TaxLienCandida
     hardStops: assessment.hardStops,
     notes: input.notes?.trim() || null,
   }).returning();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: actor.householdId,
     eventType: "family_office_tax_lien_recorded",
     actor: actor.userId,

@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, asc, desc, eq, lte, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { db } from "@workspace/db";
@@ -405,7 +406,8 @@ export async function enqueueOperationsJob(input: {
   correlationId?: string;
   priority?: number;
 }) {
-  const [job] = await db.insert(operationsJobs).values({
+  const [job] = await db.transaction(async (tx) => {
+  const [created] = await tx.insert(operationsJobs).values({
     householdId: input.householdId,
     jobKey: input.jobKey ?? randomUUID(),
     kind: input.kind,
@@ -416,21 +418,20 @@ export async function enqueueOperationsJob(input: {
     idempotencyKey: input.idempotencyKey,
     correlationId: input.correlationId,
   }).onConflictDoNothing({ target: [operationsJobs.householdId, operationsJobs.idempotencyKey] }).returning();
-  if (job) {
-    await db.insert(auditEvents).values({
-      householdId: job.householdId,
+  if (created) {
+    await appendAuditEvent({
+      householdId: created.householdId,
       eventType: "operations_job_created",
       actor: "system",
       entity: "operations_job",
-      entityId: job.id,
+      entityId: created.id,
       reason: "Durable operations job persisted",
-      metadata: {
-        kind: job.kind,
-        correlationId: job.correlationId,
-        idempotencyKey: job.idempotencyKey,
-        payloadReference: job.payloadReference,
-      },
-    });
+      metadata: { kind: created.kind, correlationId: created.correlationId, idempotencyKey: created.idempotencyKey, payloadReference: created.payloadReference },
+    }, tx);
+  }
+  return [created] as const;
+  });
+  if (job) {
     return job;
   }
   if (input.idempotencyKey) {
@@ -459,7 +460,7 @@ export async function claimNextOperationsJob(householdId: string, workerId: stri
     }).where(and(eq(operationsJobs.id, job.id), sql`${operationsJobs.status} in ('QUEUED', 'RETRY_PENDING')`)).returning();
     if (claimed) {
       await tx.insert(operationsJobAttempts).values({ jobId: claimed.id, householdId, attempt: claimed.attempts, workerId, leaseExpiresAt: claimed.leaseExpiresAt });
-      await tx.insert(auditEvents).values({ householdId, eventType: "operations_job_leased", actor: "system", entity: "operations_job", entityId: claimed.id, reason: "Atomic durable worker lease", metadata: { workerId, attempt: claimed.attempts } });
+      await appendAuditEvent({ householdId, eventType: "operations_job_leased", actor: "system", entity: "operations_job", entityId: claimed.id, reason: "Atomic durable worker lease", metadata: { workerId, attempt: claimed.attempts } }, tx);
     }
     return claimed ?? null;
   });
@@ -467,7 +468,8 @@ export async function claimNextOperationsJob(householdId: string, workerId: stri
 
 export async function startOperationsJob(jobId: string, householdId: string, workerId: string) {
   const now = new Date();
-  const [job] = await db.update(operationsJobs).set({
+  return db.transaction(async (tx) => {
+  const [job] = await tx.update(operationsJobs).set({
     status: "RUNNING",
     startedAt: now,
     updatedAt: now,
@@ -479,27 +481,30 @@ export async function startOperationsJob(jobId: string, householdId: string, wor
     sql`${operationsJobs.leaseExpiresAt} > ${now}`,
   )).returning();
   if (job) {
-    await db.update(operationsJobAttempts).set({ status: "RUNNING", startedAt: now }).where(and(
+    await tx.update(operationsJobAttempts).set({ status: "RUNNING", startedAt: now }).where(and(
       eq(operationsJobAttempts.jobId, jobId),
       eq(operationsJobAttempts.attempt, job.attempts),
       eq(operationsJobAttempts.workerId, workerId),
     ));
-    await db.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId,
       eventType: "operations_job_started",
       actor: workerId,
+      chainKind: "system",
       entity: "operations_job",
       entityId: job.id,
       reason: "Durable worker started job",
       metadata: { workerId, attempt: job.attempts },
-    });
+    }, tx);
   }
   return job ?? null;
+  });
 }
 
 export async function completeOperationsJob(jobId: string, householdId: string, workerId: string) {
   const now = new Date();
-  const [job] = await db.update(operationsJobs).set({
+  return db.transaction(async (tx) => {
+  const [job] = await tx.update(operationsJobs).set({
     status: "SUCCEEDED",
     completedAt: now,
     updatedAt: now,
@@ -513,19 +518,21 @@ export async function completeOperationsJob(jobId: string, householdId: string, 
     sql`${operationsJobs.leaseExpiresAt} > ${now}`,
   )).returning();
   if (job) {
-    await db.update(operationsJobAttempts).set({ status: "SUCCEEDED", finishedAt: now }).where(and(
+    await tx.update(operationsJobAttempts).set({ status: "SUCCEEDED", finishedAt: now }).where(and(
       eq(operationsJobAttempts.jobId, jobId),
       eq(operationsJobAttempts.attempt, job.attempts),
       eq(operationsJobAttempts.workerId, workerId),
     ));
-    await db.insert(auditEvents).values({ householdId, eventType: "operations_job_completed", actor: workerId, entity: "operations_job", entityId: job.id, reason: "Durable worker completed job", metadata: { attempt: job.attempts } });
-    await db.update(operationsWorkers).set({ status: "IDLE", currentJobId: null, updatedAt: now }).where(eq(operationsWorkers.workerId, workerId));
+     await appendAuditEvent({ householdId, eventType: "operations_job_completed", actor: workerId, chainKind: "system", entity: "operations_job", entityId: job.id, reason: "Durable worker completed job", metadata: { attempt: job.attempts } }, tx);
+     await tx.update(operationsWorkers).set({ status: "IDLE", currentJobId: null, updatedAt: now }).where(eq(operationsWorkers.workerId, workerId));
   }
   return job ?? null;
+  });
 }
 
 export async function failOperationsJob(jobId: string, householdId: string, workerId: string, error: unknown) {
-  const [existing] = await db.select().from(operationsJobs).where(and(
+  return db.transaction(async (tx) => {
+  const [existing] = await tx.select().from(operationsJobs).where(and(
     eq(operationsJobs.id, jobId),
     eq(operationsJobs.householdId, householdId),
     eq(operationsJobs.leaseOwner, workerId),
@@ -536,7 +543,7 @@ export async function failOperationsJob(jobId: string, householdId: string, work
   const classification = classifyOperationsFailure(error);
   const terminal = existing.attempts >= existing.maxAttempts || classification === "PERMANENT";
   const now = new Date();
-  const [job] = await db.update(operationsJobs).set({
+  const [job] = await tx.update(operationsJobs).set({
     status: terminal ? "DEAD_LETTER" : "RETRY_PENDING",
     availableAt: terminal ? existing.availableAt : new Date(Date.now() + operationsBackoffMs(existing.attempts)),
     lastError: message,
@@ -551,7 +558,7 @@ export async function failOperationsJob(jobId: string, householdId: string, work
     sql`${operationsJobs.status} in ('LEASED', 'RUNNING')`,
   )).returning();
   if (job) {
-    await db.update(operationsJobAttempts).set({
+    await tx.update(operationsJobAttempts).set({
       status: terminal ? "DEAD_LETTER" : "RETRY_PENDING",
       classification,
       error: message,
@@ -561,10 +568,11 @@ export async function failOperationsJob(jobId: string, householdId: string, work
       eq(operationsJobAttempts.attempt, existing.attempts),
       eq(operationsJobAttempts.workerId, workerId),
     ));
-    await db.insert(auditEvents).values({ householdId, eventType: terminal ? "operations_job_dead_lettered" : "operations_job_retry_scheduled", actor: workerId, entity: "operations_job", entityId: job.id, reason: message, metadata: { attempt: job.attempts, classification } });
-    await db.update(operationsWorkers).set({ status: "IDLE", currentJobId: null, updatedAt: now }).where(eq(operationsWorkers.workerId, workerId));
+    await appendAuditEvent({ householdId, eventType: terminal ? "operations_job_dead_lettered" : "operations_job_retry_scheduled", actor: workerId, chainKind: "system", entity: "operations_job", entityId: job.id, reason: message, metadata: { attempt: job.attempts, classification } }, tx);
+    await tx.update(operationsWorkers).set({ status: "IDLE", currentJobId: null, updatedAt: now }).where(eq(operationsWorkers.workerId, workerId));
   }
   return job ?? null;
+  });
 }
 
 export async function recoverStaleOperationsJobs(householdId: string, staleAfterMs = 5 * 60_000) {
@@ -572,7 +580,8 @@ export async function recoverStaleOperationsJobs(householdId: string, staleAfter
   // Do not resurrect a job which has already exhausted its bounded attempts.
   // The status transition is fenced by the lease expiry and is therefore safe
   // to run from more than one worker.
-  const recovered = await db.update(operationsJobs).set({
+  return db.transaction(async (tx) => {
+  const recovered = await tx.update(operationsJobs).set({
     status: sql`case when ${operationsJobs.attempts} >= ${operationsJobs.maxAttempts} then 'DEAD_LETTER' else 'RETRY_PENDING' end`,
     claimedAt: null,
     claimedBy: null,
@@ -589,18 +598,20 @@ export async function recoverStaleOperationsJobs(householdId: string, staleAfter
   )).returning();
   for (const job of recovered) {
     const terminal = job.status === "DEAD_LETTER";
-    await db.update(operationsJobAttempts).set({ status: terminal ? "DEAD_LETTER" : "RECOVERED", finishedAt: new Date() }).where(and(
+    await tx.update(operationsJobAttempts).set({ status: terminal ? "DEAD_LETTER" : "RECOVERED", finishedAt: new Date() }).where(and(
       eq(operationsJobAttempts.jobId, job.id),
       eq(operationsJobAttempts.attempt, job.attempts),
     ));
-    await db.insert(auditEvents).values({ householdId, eventType: terminal ? "operations_job_dead_lettered" : "operations_job_recovered", actor: "system", entity: "operations_job", entityId: job.id, reason: terminal ? "Lease expired after maximum attempts" : "Lease expired before completion", metadata: { attempt: job.attempts, recovery: true } });
+    await appendAuditEvent({ householdId, eventType: terminal ? "operations_job_dead_lettered" : "operations_job_recovered", actor: "system", entity: "operations_job", entityId: job.id, reason: terminal ? "Lease expired after maximum attempts" : "Lease expired before completion", metadata: { attempt: job.attempts, recovery: true } }, tx);
   }
   return recovered;
+  });
 }
 
 export async function heartbeatOperationsWorker(workerId: string, currentJobId?: string | null) {
   const now = new Date();
-  const [worker] = await db.insert(operationsWorkers).values({
+  return db.transaction(async (tx) => {
+  const [worker] = await tx.insert(operationsWorkers).values({
     workerId, currentJobId: currentJobId ?? null, status: currentJobId ? "BUSY" : "IDLE",
     lastHeartbeatAt: now, updatedAt: now, version: process.env.npm_package_version ?? "unknown",
   }).onConflictDoUpdate({
@@ -608,22 +619,24 @@ export async function heartbeatOperationsWorker(workerId: string, currentJobId?:
     set: { currentJobId: currentJobId ?? null, status: currentJobId ? "BUSY" : "IDLE", lastHeartbeatAt: now, updatedAt: now },
   }).returning();
   if (currentJobId) {
-    const [job] = await db.update(operationsJobs).set({ leaseExpiresAt: new Date(Date.now() + 5 * 60_000), updatedAt: now })
+    const [job] = await tx.update(operationsJobs).set({ leaseExpiresAt: new Date(Date.now() + 5 * 60_000), updatedAt: now })
       .where(and(eq(operationsJobs.id, currentJobId), eq(operationsJobs.leaseOwner, workerId), sql`${operationsJobs.status} in ('LEASED', 'RUNNING')`))
       .returning({ id: operationsJobs.id, householdId: operationsJobs.householdId, attempts: operationsJobs.attempts });
     if (job) {
-      await db.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: job.householdId,
         eventType: "operations_worker_heartbeat",
         actor: workerId,
+        chainKind: "system",
         entity: "operations_job",
         entityId: job.id,
         reason: "Worker heartbeat renewed the job lease",
         metadata: { workerId, attempt: job.attempts },
-      });
+      }, tx);
     }
   }
   return worker;
+  });
 }
 
 export async function getOperationsMetrics(householdId: string) {
@@ -738,11 +751,14 @@ export async function listOperationsWorkerHealth(actor: Actor) {
 
 export async function reprocessOperationsJob(actor: Actor, jobId: string) {
   assertPermission(actor.role, "approve");
-  const [job] = await db.update(operationsJobs).set({
+  const [job] = await db.transaction(async (tx) => {
+  const [updated] = await tx.update(operationsJobs).set({
     status: "RETRY_PENDING", availableAt: new Date(), deadLetterReason: null, updatedAt: new Date(),
   }).where(and(eq(operationsJobs.id, jobId), eq(operationsJobs.householdId, actor.householdId), sql`${operationsJobs.status} in ('DEAD_LETTER', 'DEAD_LETTERED')`)).returning();
+  if (updated) await appendAuditEvent({ householdId: actor.householdId, eventType: "operations_job_manual_reprocess", actor: actor.userId, entity: "operations_job", entityId: updated.id, reason: "Authorized operator reprocessing", metadata: { correlationId: updated.correlationId } }, tx);
+  return [updated] as const;
+  });
   if (!job) throw new GovernanceError("INVALID_STATE", "Only a household dead-letter job can be reprocessed");
-  await db.insert(auditEvents).values({ householdId: actor.householdId, eventType: "operations_job_manual_reprocess", actor: actor.userId, entity: "operations_job", entityId: job.id, reason: "Authorized operator reprocessing", metadata: { correlationId: job.correlationId } });
   return operationsJobResponse(job);
 }
 
@@ -760,7 +776,8 @@ export async function createOperationsScheduler(actor: Actor, input: {
   nextRunAt: Date;
 }) {
   assertPermission(actor.role, "approve");
-  const [schedule] = await db.insert(operationsSchedulers).values({
+  const [schedule] = await db.transaction(async (tx) => {
+  const [created] = await tx.insert(operationsSchedulers).values({
     householdId: actor.householdId,
     name: input.name,
     jobKind: input.jobKind,
@@ -770,16 +787,10 @@ export async function createOperationsScheduler(actor: Actor, input: {
     nextRunAt: input.nextRunAt,
     createdBy: actor.userId,
   }).returning();
-  if (!schedule) throw new GovernanceError("INVALID_STATE", "Scheduler definition could not be persisted");
-  await db.insert(auditEvents).values({
-    householdId: actor.householdId,
-    eventType: "operations_scheduler_created",
-    actor: actor.userId,
-    entity: "operations_scheduler",
-    entityId: schedule.id,
-    reason: "Persistent scheduler definition created",
-    metadata: { jobKind: schedule.jobKind, cadence: schedule.cadence, missedRunPolicy: schedule.missedRunPolicy },
+  if (created) await appendAuditEvent({ householdId: actor.householdId, eventType: "operations_scheduler_created", actor: actor.userId, entity: "operations_scheduler", entityId: created.id, reason: "Persistent scheduler definition created", metadata: { jobKind: created.jobKind, cadence: created.cadence, missedRunPolicy: created.missedRunPolicy } }, tx);
+  return [created] as const;
   });
+  if (!schedule) throw new GovernanceError("INVALID_STATE", "Scheduler definition could not be persisted");
   return schedule;
 }
 
@@ -797,9 +808,9 @@ export async function acquireOperationsSchedulerLeadership(actor: Actor) {
       ? await tx.update(operationsSchedulerLeases).set({ ownerId: actor.userId, leaseExpiresAt: expiry, heartbeatAt: now }).where(eq(operationsSchedulerLeases.singleton, "operations")).returning()
       : await tx.insert(operationsSchedulerLeases).values({ ownerId: actor.userId, leaseExpiresAt: expiry, heartbeatAt: now }).returning();
     if (!updated) throw new GovernanceError("INVALID_STATE", "Scheduler leadership could not be persisted");
+    await appendAuditEvent({ householdId: actor.householdId, eventType: "operations_scheduler_leadership", actor: actor.userId, entity: "operations_scheduler_lease", entityId: updated.singleton, reason: "Scheduler leadership acquired", metadata: {} }, tx);
     return updated;
   });
-  await db.insert(auditEvents).values({ householdId: actor.householdId, eventType: "operations_scheduler_leadership", actor: actor.userId, entity: "operations_scheduler_lease", entityId: lease.singleton, reason: "Scheduler leadership acquired", metadata: {} });
   return lease;
 }
 
@@ -1031,7 +1042,7 @@ export async function createDailyOpsJournalEntry(actor: Actor, input: {
       relatedEntityType: input.relatedEntityType ?? null,
       relatedEntityId: input.relatedEntityId ?? null,
     }).returning();
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: ids.householdId,
       eventType: "daily_ops_journal_entry_created",
       actor: actor.userId,
@@ -1043,7 +1054,7 @@ export async function createDailyOpsJournalEntry(actor: Actor, input: {
         unresolvedBlockerCount: (input.unresolvedBlockers ?? []).length,
         evidenceLinkCount: (input.evidenceLinks ?? []).length,
       },
-    });
+    }, tx);
     return journalEntryResponse(entry);
   });
 }
@@ -1178,7 +1189,7 @@ export async function recordGuidedRunAction(actor: Actor, input: {
       actorId: actor.userId,
       snoozedUntil: input.action === "SNOOZE" ? new Date(input.snoozedUntil as string | Date) : null,
     }).returning();
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: ids.householdId,
       eventType: "daily_ops_guided_run_action",
       actor: actor.userId,
@@ -1186,7 +1197,7 @@ export async function recordGuidedRunAction(actor: Actor, input: {
       entityId: updatedRun.id,
       reason: input.reason.trim(),
       metadata: { action: input.action, cadence: updatedRun.cadence, runDate: updatedRun.runDate },
-    });
+    }, tx);
     const response = { run: guidedRunResponse(updatedRun, [event]), event: guidedRunEventResponse(event) };
     await tx.insert(idempotencyKeys).values({
       householdId: ids.householdId,
@@ -1262,7 +1273,7 @@ export async function updateOperationsTask(actor: Actor, taskId: string, input: 
       eq(operationsTasks.householdId, ids.householdId),
     )).returning();
 
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: ids.householdId,
       eventType: "operations_task_updated",
       actor: actor.userId,
@@ -1286,7 +1297,7 @@ export async function updateOperationsTask(actor: Actor, taskId: string, input: 
       metadata: {
         requiresRecentAuthentication: true,
       },
-    });
+    }, tx);
     return taskResponse(task);
   });
 }
@@ -1327,7 +1338,7 @@ export async function decideOperationsApproval(actor: Actor, approvalId: string,
     if (!approval) {
       throw new GovernanceError("INVALID_STATE", "Only pending approvals can be decided");
     }
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: ids.householdId,
       eventType: "operations_approval_decided",
       actor: actor.userId,
@@ -1339,7 +1350,7 @@ export async function decideOperationsApproval(actor: Actor, approvalId: string,
         requestedBy: approval.requestedBy,
         requiredAuthority: approval.requiredAuthority,
       },
-    });
+    }, tx);
     return approvalResponse(approval);
   });
 }

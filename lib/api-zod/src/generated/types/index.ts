@@ -589,6 +589,8 @@ export * from './reviewResearchEvidenceRequest';
 export * from './reviewResearchEvidenceRequestStatus';
 export * from './riskSummary';
 export * from './riskSummarySafeguardsItem';
+export * from './runOperationsAuditBackfill200';
+export * from './runOperationsAuditBackfillParams';
 export * from './runStrategyExperimentInput';
 export * from './runStrategyExperimentInputExecutionModel';
 export * from './runStrategyExperimentInputMode';

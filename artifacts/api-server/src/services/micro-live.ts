@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   auditEvents,
@@ -232,7 +233,7 @@ async function persistExecutionIncident(input: {
         ],
         status: "OPEN",
       }).returning({ id: tradingIncidents.id }))[0];
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: input.householdId,
       eventType: "micro_live_execution_incident_recorded",
       actor: input.actor.userId,
@@ -244,7 +245,7 @@ async function persistExecutionIncident(input: {
         orderIntentId: input.orderIntentId ?? null,
         liveExecutionEnabled: false,
       },
-    });
+    }, tx);
     return incident;
   });
 }
@@ -287,7 +288,7 @@ async function transitionOrder(
       payload,
       externalEventId: typeof payload.externalEventId === "string" ? payload.externalEventId : null,
     }).onConflictDoNothing();
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       eventType: `micro_live_order_${eventType}`,
       actor: actor.userId,
@@ -469,7 +470,7 @@ async function persistProviderAcknowledgement(actor: Actor, intentId: string, or
         externalEventId: `order:${order.externalOrderId}:${order.state}`,
         payload: order as unknown as Record<string, unknown>,
       }).onConflictDoNothing();
-      await tx.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: actor.householdId,
         eventType: "micro_live_order_provider_acknowledged",
         actor: actor.userId,
@@ -479,7 +480,7 @@ async function persistProviderAcknowledgement(actor: Actor, intentId: string, or
         afterState: { state: order.state },
         reason: "Provider acknowledgement persisted before reconciliation",
         metadata: { externalOrderId: order.externalOrderId },
-      });
+      }, tx);
     }
     return venueOrder;
   });
@@ -742,7 +743,7 @@ async function persistProviderStateAndReconcile(input: {
         status: "OPEN",
       }).onConflictDoNothing();
     }
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: input.actor.householdId,
       eventType: "micro_live_provider_reconciliation_completed",
       actor: input.actor.userId,
@@ -750,7 +751,7 @@ async function persistProviderStateAndReconcile(input: {
       entityId: run.id,
       reason: clean ? "Provider acknowledgement, fills, balances, positions, and ledger state reconciled" : "Provider mismatch contained; new exposure remains blocked",
       metadata: { status: run.status, newFillIds, duplicateFillIds, liveExecutionEnabled: false },
-    });
+    }, tx);
     return { run, clean, newFillIds, duplicateFillIds };
   });
 }
@@ -932,7 +933,7 @@ export async function submitMicroLiveOrder(actor: Actor, input: MicroLiveOrderCo
       toState: "VALIDATING",
       payload: { clientOrderId, idempotencyKey },
     });
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       eventType: "micro_live_order_intent_created",
       actor: actor.userId,
@@ -941,7 +942,7 @@ export async function submitMicroLiveOrder(actor: Actor, input: MicroLiveOrderCo
       afterState: { state: "VALIDATING", clientOrderId },
       reason: "Authenticated Micro-Live order intent persisted before provider submission",
       metadata: { idempotencyKey, marketId: input.marketId, executionOnly: true },
-    });
+    }, tx);
     return [created];
   });
   if (!intent) throw new Error("Order intent was not created");
@@ -1181,7 +1182,7 @@ export async function approveMicroLiveFirstFillResume(actor: Actor) {
     firstFillResumeApprovedAt: approvedAt,
     updatedAt: approvedAt,
   }).where(and(eq(microLiveSessions.id, session.id), eq(microLiveSessions.householdId, actor.householdId))).returning();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: actor.householdId,
     eventType: "micro_live_first_fill_resume_approved",
     actor: actor.userId,
@@ -1265,7 +1266,7 @@ async function persistMicroLiveRecoveryFailure(input: {
       status: "OPEN",
     });
   }
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: input.householdId,
     eventType: "micro_live_reconciliation_failed_closed",
     actor: input.actor.userId,
@@ -1449,7 +1450,7 @@ export async function runMicroLiveRehearsal(actor: Actor) {
   assertPermission(actor.role, "contribute");
   const { householdId, session } = await ensureMicroLiveSeed(actor);
   const rehearsal = runLiveRehearsal();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId,
     eventType: "micro_live_rehearsal_completed",
     actor: actor.userId,
@@ -1465,7 +1466,7 @@ export async function reviewMicroLiveEnablement(actor: Actor) {
   assertPermission(actor.role, "approve");
   const snapshot = await getMicroLiveSnapshot(actor);
   const { householdId } = await ensureMicroLiveSeed(actor);
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId,
     eventType: "micro_live_enablement_reviewed",
     actor: actor.userId,
@@ -1546,7 +1547,7 @@ export async function recordMicroLiveVenueReview(
     eq(venueRegistry.id, venueId),
     eq(venueRegistry.householdId, householdId),
   )).returning();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId,
     eventType: `micro_live_venue_${kind}_reviewed`,
     actor: actor.userId,
@@ -1629,7 +1630,7 @@ export async function approveMicroLiveVenue(
     .where(and(eq(venueRegistry.id, venueId), eq(venueRegistry.householdId, householdId)))
     .returning();
 
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId,
     eventType: "micro_live_venue_approved",
     actor: actor.userId,
@@ -1720,7 +1721,7 @@ export async function armMicroLive(actor: Actor, venueId: string) {
       eq(microLiveSessions.householdId, actor.householdId),
     ))
     .returning();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: session.householdId,
     eventType: "micro_live_human_armed",
     actor: actor.userId,
@@ -1869,7 +1870,7 @@ export async function runMicroLiveReconciliation(actor: Actor) {
     }
   }
 
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId,
     eventType: "micro_live_reconciliation_completed",
     actor: actor.userId,
@@ -1988,7 +1989,7 @@ export async function createMicroLiveIncidentReview(actor: Actor, incidentId: st
     ).returning();
     return { review, requirements };
   });
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId,
     eventType: "micro_live_incident_review_recorded",
     actor: actor.userId,
@@ -2031,7 +2032,7 @@ export async function completeMicroLiveReactivationRequirement(actor: Actor, req
       eq(tradingIncidents.householdId, householdId),
     ));
   }
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId,
     eventType: "micro_live_reactivation_requirement_completed",
     actor: actor.userId,

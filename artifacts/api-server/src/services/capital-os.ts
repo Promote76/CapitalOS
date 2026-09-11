@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
@@ -164,11 +165,12 @@ export async function updatePrivacySettings(actor: Actor, input: { financeDataPr
   assertPermission(actor.role, "approve");
   const ids = await context(actor);
   const [settings] = await db.select().from(householdSettings).where(eq(householdSettings.householdId, ids.householdId)).limit(1);
-  await db.update(householdSettings).set({
+  await db.transaction(async (tx) => {
+  await tx.update(householdSettings).set({
     settings: { ...(settings?.settings ?? {}), ...input, credentialsStored: false, bankActionsEnabled: false },
     updatedAt: new Date(),
   }).where(eq(householdSettings.householdId, ids.householdId));
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: ids.householdId,
     eventType: "household_privacy_updated",
     actor: actor.userId,
@@ -176,6 +178,7 @@ export async function updatePrivacySettings(actor: Actor, input: { financeDataPr
     entityId: ids.householdId,
     afterState: input,
     reason: "Household privacy settings updated",
+  }, tx);
   });
   return getHousehold(actor);
 }
@@ -481,7 +484,7 @@ export async function updateAllocation(actor: Actor, input: {
       .update(allocationRules)
       .set({ active: false, updatedAt: new Date() })
       .where(and(eq(allocationRules.householdId, ids.householdId), eq(allocationRules.active, true)));
-    return tx
+    const [created] = await tx
       .insert(allocationRules)
       .values({
         householdId: ids.householdId,
@@ -493,15 +496,16 @@ export async function updateAllocation(actor: Actor, input: {
         createdBy: ids.ownerId,
       })
       .returning();
-  });
-  await db.insert(auditEvents).values({
-    householdId: ids.householdId,
-    eventType: "allocation_rule_updated",
-    actor: actor.userId,
-    entity: "allocation_rule",
-    entityId: updated.id,
-    afterState: impact.proposed,
-    reason: "Allocation impact reviewed before saving",
+    await appendAuditEvent({
+      householdId: ids.householdId,
+      eventType: "allocation_rule_updated",
+      actor: actor.userId,
+      entity: "allocation_rule",
+      entityId: created.id,
+      afterState: impact.proposed,
+      reason: "Allocation impact reviewed before saving",
+    }, tx);
+    return [created];
   });
   return {
     totalWeekly: updated.totalWeekly,
@@ -682,7 +686,7 @@ export async function recordContribution(actor: Actor, input: { amount: string; 
         updatedAt: new Date(),
       })
       .where(and(eq(goals.id, goalId), eq(goals.householdId, ids.householdId)));
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: ids.householdId,
       eventType: "contribution_completed",
       actor: actor.userId,
@@ -690,7 +694,7 @@ export async function recordContribution(actor: Actor, input: { amount: string; 
       entityId: contribution.id,
       reason: input.note ?? "Contribution recorded",
       metadata: { idempotencyKey, amount: centsToMoney(amountCents), split },
-    });
+    }, tx);
     return {
       id: contribution.id,
       amount: contribution.amount,
@@ -765,7 +769,7 @@ export async function createTransfer(
       idempotencyKey,
       metadata: { idempotencyKey, note: input.note ?? null },
     });
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: ids.householdId,
       eventType: "transfer_completed",
       actor: actor.userId,
@@ -773,7 +777,7 @@ export async function createTransfer(
       entityId: transactionId,
       reason: input.note ?? "Internal transfer completed",
       metadata: { idempotencyKey, sourceAccountId: source.id, destinationAccountId: destination.id },
-    });
+    }, tx);
     const [transaction] = await tx.select().from(ledgerTransactions).where(and(
       eq(ledgerTransactions.id, transactionId),
       eq(ledgerTransactions.householdId, ids.householdId),
@@ -819,7 +823,7 @@ export async function promoteStrategy(actor: Actor, strategyId: string, input: {
     .set({ stage: input.toStage as StrategyStage, updatedAt: new Date() })
      .where(and(eq(strategies.id, strategy.id), eq(strategies.householdId, ids.householdId)))
     .returning();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: ids.householdId,
     eventType: input.authorizedOverride ? "strategy_stage_override" : "strategy_stage_promoted",
      actor: actor.userId,
@@ -914,7 +918,7 @@ export async function allocateStrategy(
       .update(strategies)
       .set({ allocation: sql`${strategies.allocation} + ${centsToMoney(amountCents)}`, updatedAt: new Date() })
       .where(and(eq(strategies.id, strategy.id), eq(strategies.householdId, ids.householdId)));
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: ids.householdId,
       eventType: "strategy_allocation_completed",
       actor: actor.userId,
@@ -922,7 +926,7 @@ export async function allocateStrategy(
       entityId: strategy.id,
       reason: "Approved strategy allocation",
       metadata: { transactionId, sourceAccountId: source.id, amount: centsToMoney(amountCents) },
-    });
+    }, tx);
     const [transaction] = await tx.select().from(ledgerTransactions).where(and(
       eq(ledgerTransactions.id, transactionId),
       eq(ledgerTransactions.householdId, ids.householdId),
@@ -951,7 +955,7 @@ export async function activateEmergencyStop(actor: Actor, confirmed: boolean, re
     .set({ state: "locked", emergencyStopActive: true, updatedAt: new Date() })
     .where(and(eq(riskStates.id, ids.riskStateId), eq(riskStates.householdId, ids.householdId)))
     .returning();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: ids.householdId,
     eventType: "emergency_stop_activated",
     actor: actor.userId,
@@ -988,7 +992,7 @@ export async function decideRecommendation(actor: Actor, recommendationId: strin
     eq(aiRecommendations.id, recommendation.id),
     eq(aiRecommendations.householdId, ids.householdId),
   )).returning();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: ids.householdId,
     eventType: "recommendation_decided",
     actor: actor.userId,
@@ -1021,7 +1025,7 @@ export async function addPropertyNote(actor: Actor, propertyGoalId: string, body
   )).limit(1);
   if (!property) throw new GovernanceError("INVALID_STATE", "Property goal was not found");
   const [note] = await db.insert(propertyNotes).values({ propertyGoalId, body, createdBy: actor.userId }).returning();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: ids.householdId,
     eventType: "property_note_created",
     actor: actor.userId,

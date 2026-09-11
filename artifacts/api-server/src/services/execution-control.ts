@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, desc, eq, sql } from "drizzle-orm";
 import {
   auditEvents,
@@ -113,7 +114,7 @@ async function transition(
           throw new GovernanceError("IDEMPOTENCY_CONFLICT", "Execution command idempotency key was already used for another command");
         }
         const replay = serializeControl(control, true);
-        await tx.insert(auditEvents).values({
+        await appendAuditEvent({
           householdId: actor.householdId,
           eventType: "execution_control_transition_attempt",
           actor: actor.userId,
@@ -128,14 +129,14 @@ async function transition(
             correlationId: input.correlationId ?? null,
             idempotencyKey,
           },
-        });
+        }, tx);
         return replay;
       }
     }
 
     const from = stateOf(control.state);
     if (!canTransitionExecutionState(from, target)) {
-      await tx.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: actor.householdId,
         eventType: "execution_control_transition_attempt",
         actor: actor.userId,
@@ -172,7 +173,7 @@ async function transition(
     )).returning();
     if (!updated) throw new GovernanceError("RISK_BLOCKED", "Execution control changed concurrently; retry safely");
 
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       eventType: "execution_control_transition_attempt",
       actor: actor.userId,

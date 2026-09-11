@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
@@ -279,7 +280,7 @@ export async function resolveCompatibleTruckingBusiness(actor: Actor, input: {
         businessId: business.id,
         updatedBy: actor.userId,
       });
-      await tx.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: actor.householdId,
         eventType: "business_compatible_boundary_created",
         actor: actor.userId,
@@ -287,9 +288,9 @@ export async function resolveCompatibleTruckingBusiness(actor: Actor, input: {
         entityId: business.id,
         reason: "Created the canonical internal trucking accounting boundary.",
         metadata: { businessKind: input.businessKind, disclaimer: INTERNAL_TRUCKING_DISCLAIMER },
-      });
+      }, tx);
     } else {
-      await tx.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: actor.householdId,
         eventType: "business_compatible_boundary_reused",
         actor: actor.userId,
@@ -297,7 +298,7 @@ export async function resolveCompatibleTruckingBusiness(actor: Actor, input: {
         entityId: business.id,
         reason: "Reused the existing reviewed compatible trucking accounting boundary.",
         metadata: { businessKind: input.businessKind, disclaimer: INTERNAL_TRUCKING_DISCLAIMER },
-      });
+      }, tx);
     }
     const result = { business: entityResponse(business), outcome, disclaimer: INTERNAL_TRUCKING_DISCLAIMER };
     await tx.insert(idempotencyKeys).values({
@@ -340,7 +341,7 @@ export async function createBusinessEntity(actor: Actor, input: BusinessEntityIn
       businessId: row.id,
       updatedBy: actor.userId,
     });
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: ids.householdId,
       eventType: "business_entity_created",
       actor: actor.userId,
@@ -348,7 +349,7 @@ export async function createBusinessEntity(actor: Actor, input: BusinessEntityIn
       entityId: row.id,
       afterState: { displayName: row.displayName, entityType: row.entityType, ownershipPercentage: row.ownershipPercentage },
       reason: "Business entity created",
-    });
+    }, tx);
     return entityResponse(row);
   });
 }
@@ -416,7 +417,7 @@ export async function createBusinessDistribution(actor: Actor, input: Distributi
       createdBy: actor.userId,
       status: "proposed",
     }).returning();
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: ids.householdId,
       eventType: "business_distribution_proposed",
       actor: actor.userId,
@@ -428,7 +429,7 @@ export async function createBusinessDistribution(actor: Actor, input: Distributi
         amount: row.amount,
         businessId: row.businessId,
       },
-    });
+    }, tx);
     const response = distributionResponse(row);
     await tx.insert(idempotencyKeys).values({
       householdId: ids.householdId,

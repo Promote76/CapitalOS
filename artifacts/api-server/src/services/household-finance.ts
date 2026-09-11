@@ -52,6 +52,7 @@ import { ensureSeedData } from "./seed";
 import type { Actor } from "./capital-os";
 import { assertPermission, GovernanceError } from "../domain/governance";
 import { activeSecurityContext } from "../middleware/request-scope";
+import { appendAuditEvent } from "./audit";
 
 const DEFAULT_FINANCE_CATEGORY_CATALOG = [
   { name: "Household income", categoryType: "income", essentialStatus: "essential" },
@@ -260,7 +261,7 @@ function hashImportIdentity(value: string) {
 }
 
 async function auditFinanceMutation(actor: Actor, eventType: string, entity: string, entityId: string, afterState?: Record<string, unknown>, beforeState?: Record<string, unknown>) {
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: actor.householdId,
     eventType,
     actor: actor.userId,
@@ -576,7 +577,7 @@ export async function acceptWeeklyBudgetGuidance(actor: Actor, periodId: string,
     const [updatedPeriod] = await tx.update(budgetPlanningPeriods).set({ version: period.version + 1, updatedAt: new Date() }).where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.version, period.version), eq(budgetPlanningPeriods.status, "draft"))).returning();
     if (!updatedPeriod) throw new GovernanceError("CONFLICT", "Planning period is stale or no longer a draft");
     const response = { periodId, version: updatedPeriod.version, acceptedCategoryIds: normalizedIds, targets, affectsOfficialTotals: false as const };
-    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "budget_weekly_guidance_accepted", actor: actor.userId, entity: "budget_planning_period", entityId: periodId, beforeState: Object.fromEntries(categories.filter((category) => normalizedIds.includes(category.id)).map((category) => [category.id, category.monthlyTarget])), afterState: { ...response, basis: guidance.basis, calculationDate: guidance.calculationDate, verifiedIncome: guidance.verifiedIncome, includedIncomeCount: guidance.includedIncomeCount, includedOutflowCount: guidance.includedOutflowCount, exclusions: guidance.exclusions, recommendationFingerprint: guidance.fingerprint }, reason: "Owner accepted advisory weekly guidance into draft targets" });
+    await appendAuditEvent({ householdId: actor.householdId, eventType: "budget_weekly_guidance_accepted", actor: actor.userId, entity: "budget_planning_period", entityId: periodId, beforeState: Object.fromEntries(categories.filter((category) => normalizedIds.includes(category.id)).map((category) => [category.id, category.monthlyTarget])), afterState: { ...response, basis: guidance.basis, calculationDate: guidance.calculationDate, verifiedIncome: guidance.verifiedIncome, includedIncomeCount: guidance.includedIncomeCount, includedOutflowCount: guidance.includedOutflowCount, exclusions: guidance.exclusions, recommendationFingerprint: guidance.fingerprint }, reason: "Owner accepted advisory weekly guidance into draft targets" }, tx);
     await tx.insert(idempotencyKeys).values({ householdId: actor.householdId, key: idempotencyKey, operation: "budget_weekly_guidance_accept", responseStatus: 200, responseBody: { fingerprint: JSON.stringify(idempotencyInput), response } });
     return response;
   });
@@ -615,7 +616,7 @@ export async function updateWeeklyBudgetAllocations(actor: Actor, periodId: stri
       .where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.version, period.version), eq(budgetPlanningPeriods.status, "draft"))).returning();
     if (!updatedPeriod) throw new GovernanceError("CONFLICT", "Planning period is stale or no longer a draft");
     const allocations = Object.fromEntries(input.allocations.map((allocation) => [allocation.categoryId, allocation.basisPoints]));
-    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "budget_weekly_allocation_template_updated", actor: actor.userId, entity: "budget_planning_period", entityId: periodId, beforeState, afterState: { version: updatedPeriod.version, allocations, totalBasisPoints: 10000 }, reason: "Owner updated the household weekly allocation template for a draft period" });
+    await appendAuditEvent({ householdId: actor.householdId, eventType: "budget_weekly_allocation_template_updated", actor: actor.userId, entity: "budget_planning_period", entityId: periodId, beforeState, afterState: { version: updatedPeriod.version, allocations, totalBasisPoints: 10000 }, reason: "Owner updated the household weekly allocation template for a draft period" }, tx);
     return { periodId, version: updatedPeriod.version, totalBasisPoints: 10000, allocations };
   });
 }
@@ -671,7 +672,7 @@ async function bootstrapPlanningPeriodInTransaction(tx: any, actor: Actor, house
         })));
       }
     }
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: household,
       eventType: supersedesPeriodId ? "budget_plan_superseding_draft_created" : source === "prior_finalized" ? "budget_plan_copied_forward" : "budget_plan_created",
       actor: actor.userId,
@@ -679,7 +680,7 @@ async function bootstrapPlanningPeriodInTransaction(tx: any, actor: Actor, house
       entityId: period.id,
       afterState: { month: monthDate.slice(0, 7), source, copiedFromPeriodId: prior[0]?.id ?? null, supersedesPeriodId: supersedesPeriodId ?? null },
       reason: supersedesPeriodId ? "Reviewable correction draft created without changing the approved plan" : source === "prior_finalized" ? "Planning period copied from latest finalized plan" : "Planning period created from current finance taxonomy",
-    });
+    }, tx);
     return { period, created: true, source };
 }
 
@@ -739,7 +740,7 @@ export async function createBudgetPlanningCategory(actor: Actor, periodId: strin
     if (!period) throw new GovernanceError("CONFLICT", "Planning period is stale or no longer a draft");
     const [{ max }] = await tx.select({ max: sql<number>`coalesce(max(${budgetPlanningCategorySnapshots.sortOrder}), -1)` }).from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, period.id));
     const [created] = await tx.insert(budgetPlanningCategorySnapshots).values({ householdId: actor.householdId, periodId, ...input, warningThreshold: input.warningThreshold ?? "1.00", sortOrder: max + 1, createdBy: actor.userId, updatedBy: actor.userId }).returning();
-    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "budget_plan_category_created", actor: actor.userId, entity: "budget_planning_category_snapshot", entityId: created.id, afterState: planningSnapshot(created), reason: "Draft budget planning edit" });
+    await appendAuditEvent({ householdId: actor.householdId, eventType: "budget_plan_category_created", actor: actor.userId, entity: "budget_planning_category_snapshot", entityId: created.id, afterState: planningSnapshot(created), reason: "Draft budget planning edit" }, tx);
     return [created];
   });
   return { ...planningSnapshot(category), version: version + 1 };
@@ -754,7 +755,7 @@ export async function updateBudgetPlanningCategory(actor: Actor, periodId: strin
     const [updated] = await tx.update(budgetPlanningCategorySnapshots).set({ ...input, updatedBy: actor.userId, updatedAt: new Date() })
       .where(and(eq(budgetPlanningCategorySnapshots.id, categoryId), eq(budgetPlanningCategorySnapshots.periodId, periodId), eq(budgetPlanningCategorySnapshots.householdId, actor.householdId))).returning();
     if (!updated) return planningNotFound("Budget planning category");
-    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: input.archived ? "budget_plan_category_archived" : "budget_plan_category_updated", actor: actor.userId, entity: "budget_planning_category_snapshot", entityId: updated.id, afterState: planningSnapshot(updated), reason: "Draft budget planning edit" });
+    await appendAuditEvent({ householdId: actor.householdId, eventType: input.archived ? "budget_plan_category_archived" : "budget_plan_category_updated", actor: actor.userId, entity: "budget_planning_category_snapshot", entityId: updated.id, afterState: planningSnapshot(updated), reason: "Draft budget planning edit" }, tx);
     return [updated];
   });
   return { ...planningSnapshot(category), version: version + 1 };
@@ -791,7 +792,7 @@ export async function approveBudgetPlanningPeriod(actor: Actor, periodId: string
     if (!period) throw new GovernanceError("CONFLICT", "Planning period is stale or no longer a draft");
     const response = { id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, approvedAt: period.approvedAt, supersedesPeriodId: period.supersedesPeriodId };
     await tx.insert(idempotencyKeys).values({ householdId: actor.householdId, key: idempotencyKey, operation: "budget_plan_approve", responseStatus: 200, responseBody: response });
-    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "budget_plan_approved", actor: actor.userId, entity: "budget_planning_period", entityId: period.id, afterState: response, reason: "Owner-approved immutable budget plan" });
+    await appendAuditEvent({ householdId: actor.householdId, eventType: "budget_plan_approved", actor: actor.userId, entity: "budget_planning_period", entityId: period.id, afterState: response, reason: "Owner-approved immutable budget plan" }, tx);
     return response;
   });
 }
@@ -834,7 +835,7 @@ export async function reorderBudgetPlanningCategories(actor: Actor, periodId: st
     }
     await tx.update(budgetPlanningCategorySnapshots).set({ sortOrder: sql`-(${budgetPlanningCategorySnapshots.sortOrder} + 1)`, updatedAt: new Date(), updatedBy: actor.userId }).where(eq(budgetPlanningCategorySnapshots.periodId, periodId));
     for (const [sortOrder, id] of categoryIds.entries()) await tx.update(budgetPlanningCategorySnapshots).set({ sortOrder, updatedAt: new Date(), updatedBy: actor.userId }).where(eq(budgetPlanningCategorySnapshots.id, id));
-    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "budget_plan_categories_reordered", actor: actor.userId, entity: "budget_planning_period", entityId: periodId, afterState: { categoryIds, version: period.version }, reason: "Draft budget planning edit" });
+    await appendAuditEvent({ householdId: actor.householdId, eventType: "budget_plan_categories_reordered", actor: actor.userId, entity: "budget_planning_period", entityId: periodId, afterState: { categoryIds, version: period.version }, reason: "Draft budget planning edit" }, tx);
     return { version: period.version, categoryIds };
   });
   return response;
@@ -847,7 +848,7 @@ export async function closeBudgetPlanningPeriod(actor: Actor, periodId: string, 
       .where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.status, "approved"), eq(budgetPlanningPeriods.version, version))).returning();
     if (!period) throw new GovernanceError("CONFLICT", "Only a current approved planning period can be closed");
     const response = { id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, closedAt: period.closedAt };
-    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "budget_plan_closed", actor: actor.userId, entity: "budget_planning_period", entityId: period.id, afterState: response, reason: "Owner closed immutable budget plan" });
+    await appendAuditEvent({ householdId: actor.householdId, eventType: "budget_plan_closed", actor: actor.userId, entity: "budget_planning_period", entityId: period.id, afterState: response, reason: "Owner closed immutable budget plan" }, tx);
     return response;
   });
 }
@@ -1434,7 +1435,7 @@ export async function createManualFinancialAccount(actor: Actor, input: {
       lastSync: recordedAt,
       lastSuccessfulSync: recordedAt,
     }).returning();
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       eventType: "finance_account_created",
       actor: actor.userId,
@@ -1448,7 +1449,7 @@ export async function createManualFinancialAccount(actor: Actor, input: {
       },
       reason: "Household finance planning record",
       metadata: { source: "household-finance", readOnlyExternal: true },
-    });
+    }, tx);
     return accountVisibility(actor, account);
   });
 }
@@ -1514,7 +1515,7 @@ export async function importFinanceCsv(actor: Actor, accountId: string, csv: str
       }).where(and(eq(bankConnections.id, account[0].bankConnectionId!), eq(bankConnections.householdId, id)));
     }
     const [audit] = fresh.length
-      ? await tx.insert(auditEvents).values({
+      ? await appendAuditEvent({
         householdId: actor.householdId,
         eventType: "finance_csv_imported",
         actor: actor.userId,
@@ -1522,7 +1523,7 @@ export async function importFinanceCsv(actor: Actor, accountId: string, csv: str
         entityId: accountId,
         reason: "Imported rows require household review before planning use",
         metadata: { source: "csv_import", imported: fresh.length, skippedDuplicates: deduplicated.skippedDuplicates, readOnlyExternal: true },
-      }).returning({ id: auditEvents.id })
+      }, tx)
       : [];
     void audit;
     return { imported: fresh.length, skippedDuplicates: deduplicated.skippedDuplicates, readOnly: true };
@@ -1577,7 +1578,7 @@ export async function createManualFinanceTransaction(actor: Actor, accountId: st
       dataSource: financeTransactions.dataSource,
       reviewStatus: financeTransactions.reviewStatus,
     });
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       eventType: "finance_transaction_created",
       actor: actor.userId,
@@ -1592,7 +1593,7 @@ export async function createManualFinanceTransaction(actor: Actor, accountId: st
       },
       reason: "Manual household finance entry requires review before planning use",
       metadata: { source: "manual", readOnlyExternal: true },
-    });
+    }, tx);
     return transaction;
   });
 }
@@ -1719,7 +1720,7 @@ export async function reviewFinancialTransaction(actor: Actor, transactionId: st
       eq(financeTransactions.householdId, id),
     )).returning();
     if (!updated) return planningNotFound("Financial transaction");
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: id,
       eventType: "finance_transaction_reviewed",
       actor: actor.userId,
@@ -1740,7 +1741,7 @@ export async function reviewFinancialTransaction(actor: Actor, transactionId: st
         note: nextNote,
       },
       metadata: { source: "household-finance-review", idempotent: false },
-    });
+    }, tx);
     const [account] = await tx.select({ nickname: financialAccounts.nickname })
       .from(financialAccounts)
       .where(and(eq(financialAccounts.id, updated.accountId), eq(financialAccounts.householdId, id)))
@@ -1929,7 +1930,7 @@ export async function createReadOnlyBankConnection(actor: Actor, input: ReadOnly
       provider,
       credentialRef,
     });
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: id,
       eventType: "bank_connection_consented",
       actor: actor.userId,
@@ -1944,7 +1945,7 @@ export async function createReadOnlyBankConnection(actor: Actor, input: ReadOnly
       },
       reason: "Household explicitly consented to read-only bank synchronization",
       metadata: { source: "household-bank-sync", credentialRefStored: true, credentialValueStored: false },
-    });
+    }, tx);
     return publicBankConnection(connection, true);
   });
 }
@@ -1994,7 +1995,7 @@ export async function reauthorizeReadOnlyBankConnection(actor: Actor, connection
       errorMessage: null,
       updatedAt: new Date(),
     }).where(and(eq(bankConnections.id, connection.id), eq(bankConnections.householdId, id))).returning();
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: id,
       eventType: "bank_connection_reauthorized",
       actor: actor.userId,
@@ -2003,7 +2004,7 @@ export async function reauthorizeReadOnlyBankConnection(actor: Actor, connection
       afterState: { credentialReferenceReplaced: true, consentStatus: "granted", readOnly: true },
       reason: "Household reauthorized the read-only provider connection",
       metadata: { source: "household-bank-sync", credentialValueStored: false },
-    });
+    }, tx);
     return publicBankConnection(updated, true);
   });
 }
@@ -2128,7 +2129,7 @@ export async function linkReadOnlyBankAccount(
       dataSource: "plaid",
       updatedAt: new Date(),
     }).where(and(eq(financialAccounts.id, account.id), eq(financialAccounts.householdId, id))).returning();
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: id,
       eventType: "bank_account_linked",
       actor: actor.userId,
@@ -2138,7 +2139,7 @@ export async function linkReadOnlyBankAccount(
       afterState: { bankConnectionId: connection.id, providerAccountRef: providerRef, readOnly: true },
       reason: "Household explicitly matched a provider account to a planning account",
       metadata: { source: "household-bank-sync" },
-    });
+    }, tx);
     return accountVisibility(actor, updated);
   });
 }
@@ -2173,7 +2174,7 @@ export async function revokeReadOnlyBankConnection(actor: Actor, connectionId: s
       eq(financialAccounts.bankConnectionId, connection.id),
       eq(financialAccounts.householdId, id),
     ));
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: id,
       eventType: "bank_connection_revoked",
       actor: actor.userId,
@@ -2183,7 +2184,7 @@ export async function revokeReadOnlyBankConnection(actor: Actor, connectionId: s
       afterState: { consentStatus: "revoked", status: "disconnected", credentialsRevoked: true },
       reason: "Household revoked read-only bank synchronization consent",
       metadata: { source: "household-bank-sync" },
-    });
+    }, tx);
     return publicBankConnection(updated, false);
   });
 }
@@ -2263,7 +2264,7 @@ export async function deleteReadOnlyBankConnectionData(actor: Actor, connectionI
         inArray(financialAccounts.id, accountIds),
       ));
     }
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: id,
       eventType: "bank_connection_data_deleted",
       actor: actor.userId,
@@ -2273,7 +2274,7 @@ export async function deleteReadOnlyBankConnectionData(actor: Actor, connectionI
       afterState: { providerDataDeleted: true, credentialsDeleted: true, accountLinksRemoved: accountIds.length },
       reason: "Household requested deletion of provider-derived bank data",
       metadata: { source: "household-bank-sync", rawCredentialsPersisted: false },
-    });
+    }, tx);
     await tx.delete(bankConnectionCredentials).where(and(
       eq(bankConnectionCredentials.connectionId, connection.id),
       eq(bankConnectionCredentials.householdId, id),
@@ -2649,7 +2650,7 @@ export async function syncReadOnlyBankConnection(actor: Actor, connectionId: str
         errorMessage: transferErrorMessage,
         updatedAt: now,
       }).where(and(eq(bankConnections.id, connection.id), eq(bankConnections.householdId, id)));
-      await tx.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: id,
         eventType: "bank_connection_synced",
         actor: actor.userId,
@@ -2658,7 +2659,7 @@ export async function syncReadOnlyBankConnection(actor: Actor, connectionId: str
         afterState: { readOnly: true, inserted: result.inserted, updated: result.updated, duplicates: result.duplicates, reviewCount: result.reviewCount, removed: result.removed, reconciliationStatus: result.status, transferReconciliationIssues: result.transferReconciliationIssues },
         reason: transferErrorMessage ?? "Read-only provider snapshot passed freshness, account matching, balance, and transfer-pair reconciliation gates",
         metadata: { source: "household-bank-sync", provider: connection.provider },
-      });
+      }, tx);
     });
   } catch (error) {
     const details = syncErrorDetails(error);

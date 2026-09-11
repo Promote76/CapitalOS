@@ -257,6 +257,8 @@ import type {
   ReviewResearchEvidenceRequest,
   ReviewedFinancialTransaction,
   RiskSummary,
+  RunOperationsAuditBackfill200,
+  RunOperationsAuditBackfillParams,
   RunStrategyExperimentInput,
   SafeToDeploy,
   SchwabConnectResult,
@@ -12114,6 +12116,84 @@ export function useListOperationsJobs<TData = Awaited<ReturnType<typeof listOper
 
 
 
+
+export const getRunOperationsAuditBackfillUrl = (params: RunOperationsAuditBackfillParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/operations/audit-backfill?${stringifiedParams}` : `/api/operations/audit-backfill`
+}
+
+/**
+ * @summary Run one bounded owner-approved audit archive backfill batch
+ */
+export const runOperationsAuditBackfill = async (params: RunOperationsAuditBackfillParams, options?: Parameters<typeof customFetch>[1]): Promise<RunOperationsAuditBackfill200> => {
+
+  return customFetch<RunOperationsAuditBackfill200>(getRunOperationsAuditBackfillUrl(params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRunOperationsAuditBackfillMutationOptions = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runOperationsAuditBackfill>>, TError,{params: RunOperationsAuditBackfillParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runOperationsAuditBackfill>>, TError,{params: RunOperationsAuditBackfillParams}, TContext> => {
+
+const mutationKey = ['runOperationsAuditBackfill'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runOperationsAuditBackfill>>, {params: RunOperationsAuditBackfillParams}> = (props) => {
+          const {params} = props ?? {};
+
+          return  runOperationsAuditBackfill(params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunOperationsAuditBackfillMutationResult = NonNullable<Awaited<ReturnType<typeof runOperationsAuditBackfill>>>
+
+    export type RunOperationsAuditBackfillMutationError = ErrorType<BadRequestResponse | ForbiddenResponse>
+
+    /**
+ * @summary Run one bounded owner-approved audit archive backfill batch
+ */
+export const useRunOperationsAuditBackfill = <TError = ErrorType<BadRequestResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runOperationsAuditBackfill>>, TError,{params: RunOperationsAuditBackfillParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runOperationsAuditBackfill>>,
+        TError,
+        {params: RunOperationsAuditBackfillParams},
+        TContext
+      > => {
+      return useMutation(getRunOperationsAuditBackfillMutationOptions(options));
+    }
 
 export const getListOperationsAuditArchiveUrl = (params?: ListOperationsAuditArchiveParams,) => {
   const normalizedParams = new URLSearchParams();

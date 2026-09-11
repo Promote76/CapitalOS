@@ -2,7 +2,8 @@ import type { NextFunction, Request, Response } from "express";
 import { clerkClient, getAuth } from "@clerk/express";
 import { reverificationError } from "@clerk/shared/authorization-errors";
 import { and, asc, eq, sql } from "drizzle-orm";
-import { auditEvents, db, householdMembers, households, users } from "@workspace/db";
+import { db, householdMembers, households, users } from "@workspace/db";
+import { appendAuditEvent } from "../services/audit";
 import { ensureSeedData } from "../services/seed";
 import type { Actor } from "../services/capital-os";
 import {
@@ -63,6 +64,7 @@ function requiresRecentAuthentication(req: Request) {
     path === "/risk/emergency-stop" ||
     path.startsWith("/recommendations/") ||
     path.startsWith("/operations/tasks/") ||
+    path === "/operations/audit-backfill" ||
     path.startsWith("/operations/approvals/") ||
     path.includes("/treasury/requests/") ||
     path.startsWith("/business/distributions") ||
@@ -204,7 +206,7 @@ async function authenticatedContext(req: Request): Promise<RequestSecurityContex
       role: "owner",
       permissions,
     });
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: household.id,
       eventType: "household_initialized",
       actor: identity.userId,
@@ -212,7 +214,7 @@ async function authenticatedContext(req: Request): Promise<RequestSecurityContex
       entityId: household.id,
       reason: "Provisioned authenticated household",
       metadata: { source: "clerk-sign-in", seeded: false },
-    });
+    }, tx);
     return { householdId: household.id, role: "owner" as const, permissions };
   });
 

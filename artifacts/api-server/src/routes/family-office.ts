@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "../services/audit";
 import { Router, type IRouter } from "express";
 import { auditEvents, db, familyOfficeRuns } from "@workspace/db";
 import { assertPermission } from "../domain/governance";
@@ -129,7 +130,7 @@ router.post("/family-office/research", asyncRoute(async (req, res) => {
         status: "blocked", providerStatus: "not_started", errorCode: fetched.status,
         outputSummary: fetched.limitation ?? null, createdBy: actor.userId, completedAt: new Date(),
       }).returning();
-      await db.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: actor.householdId,
         eventType: "family_office_public_research_blocked",
         actor: actor.userId,

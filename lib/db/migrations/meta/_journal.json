@@ -379,6 +379,13 @@
       "when": 1789056273604,
       "tag": "0053_restore_audit_archive",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1789086690310,
+      "tag": "0054_useful_earthquake",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, desc, eq, gte, lte, ne, or, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
@@ -272,7 +273,7 @@ export async function createSettlementDocument(actor: Actor, input: SettlementIn
          message: persistedMathReason,
       });
     }
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       eventType: "business_settlement_recorded",
       actor: actor.userId,
@@ -280,7 +281,7 @@ export async function createSettlementDocument(actor: Actor, input: SettlementIn
       entityId: document.id,
        reason: persistedMathReason,
        metadata: { businessId: business.id, mathStatus: persistedMathStatus, sourceKind: document.sourceKind, extractionStatus: document.extractionStatus },
-    });
+    }, tx);
     return settlementResponse(document, mathRow);
   });
 }
@@ -357,7 +358,7 @@ export async function createProfitLossDocument(actor: Actor, input: ProfitLossIn
        sourcePage: line.sourcePage,
        reviewStatus: input.sourceObjectPath ? "needs_review" : "approved",
      })));
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       eventType: "business_profit_loss_recorded",
       actor: actor.userId,
@@ -365,7 +366,7 @@ export async function createProfitLossDocument(actor: Actor, input: ProfitLossIn
       entityId: document.id,
        reason: input.extractionReason ?? "Business P&L document recorded for reconciliation review",
        metadata: { businessId: input.businessId, extractionStatus: document.extractionStatus, verificationStatus: document.verificationStatus },
-    });
+    }, tx);
        if (document.sourceKind === "object_storage" && (document.extractionStatus !== "complete" || document.verificationStatus !== "verified")) {
        await tx.insert(businessIncomeAnomalies).values({
          householdId: actor.householdId,
@@ -567,7 +568,7 @@ export async function reviewBusinessIncomeDocument(actor: Actor, documentId: str
           message: input.reason,
         });
       }
-      await tx.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: actor.householdId,
         eventType: "business_income_document_reviewed",
         actor: actor.userId,
@@ -575,7 +576,7 @@ export async function reviewBusinessIncomeDocument(actor: Actor, documentId: str
         entityId: documentId,
         reason: input.reason,
         metadata: { documentType: "settlement", decision: input.decision, reviewedLineCount: revenue.length + deductions.length, verificationStatus: verified ? "verified" : "needs_review" },
-      });
+      }, tx);
       return reviewResult({
         documentType: "settlement",
         documentId,
@@ -644,7 +645,7 @@ export async function reviewBusinessIncomeDocument(actor: Actor, documentId: str
         message: reason,
       });
     }
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       eventType: "business_income_document_reviewed",
       actor: actor.userId,
@@ -718,7 +719,7 @@ export async function reviewBusinessIncomeLineItem(actor: Actor, documentId: str
         reviewedAt,
         updatedAt: reviewedAt,
       }).where(and(eq(settlementDocuments.id, documentId), eq(settlementDocuments.householdId, actor.householdId)));
-      await tx.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: actor.householdId,
         eventType: "business_income_line_reviewed",
         actor: actor.userId,
@@ -726,7 +727,7 @@ export async function reviewBusinessIncomeLineItem(actor: Actor, documentId: str
         entityId: lineId,
         reason: input.reason,
         metadata: { documentId, decision: input.decision, corrected: Boolean(input.correctedDescription || input.correctedAmount), correctedAmount: input.correctedAmount },
-      });
+      }, tx);
       return reviewResult({
         documentType: "settlement",
         documentId,
@@ -765,7 +766,7 @@ export async function reviewBusinessIncomeLineItem(actor: Actor, documentId: str
       reviewedBy: actor.userId,
       reviewedAt,
     }).where(and(eq(profitLossDocuments.id, documentId), eq(profitLossDocuments.householdId, actor.householdId)));
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       eventType: "business_income_line_reviewed",
       actor: actor.userId,
@@ -1093,7 +1094,7 @@ export async function approveOwnerDrawProposal(actor: Actor, proposalId: string,
       notes: input.notes,
       createdBy: actor.userId,
     });
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       eventType: "business_owner_draw_approved",
       actor: actor.userId,
@@ -1101,7 +1102,7 @@ export async function approveOwnerDrawProposal(actor: Actor, proposalId: string,
       entityId: proposal.id,
       reason: "Human-approved owner draw became verified household income",
       metadata: { businessId: proposal.businessId, amount: centsToMoney(approvedCents), verifiedIncomeId: income.id },
-    });
+    }, tx);
     return { proposal: hideHousehold(updated), verifiedIncome: hideHousehold(income) };
   });
 }

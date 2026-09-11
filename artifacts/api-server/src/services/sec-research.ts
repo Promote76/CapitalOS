@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, desc, eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { auditEvents, db, reviewedSecFilingEvidence, secFilingSnapshots } from "@workspace/db";
@@ -195,14 +196,17 @@ export async function retrieveSecFiling(actor: Actor, input: { ticker: string })
   const normalized = normalizeSecFilingPayloads({
     symbol, tickerMap: normalizedTickerMap, submissions, facts, accessedAt: extractionTimestamp.toISOString(),
   });
-  const [row] = await db.insert(secFilingSnapshots).values({
+  const [row] = await db.transaction(async (tx) => {
+    const [created] = await tx.insert(secFilingSnapshots).values({
     householdId: actor.householdId, ticker: symbol, filingForm: normalized.content.filings.map((item) => item.form).join("+"),
     filingDate: normalized.latestQ.filed, accession: normalized.latestQ.accession,
     sourceUrl: normalized.content.filings[0]!.sourceUrl, content: normalized.content, provenance: normalized.provenance,
     missingFields: normalized.missingFields, evidenceQuality: normalized.evidenceQuality, extractionTimestamp, createdBy: actor.userId,
-  }).onConflictDoNothing().returning();
+    }).onConflictDoNothing().returning();
+    if (created) await appendAuditEvent({ householdId: actor.householdId, actor: actor.userId, eventType: "sec_filing_draft_created", entity: "sec_filing_snapshot", entityId: created.id, reason: "Normalized official SEC filing evidence pending human review", metadata: { ticker: symbol, accession: created.accession, missingFields: normalized.missingFields, evidenceQuality: normalized.evidenceQuality } }, tx);
+    return [created] as const;
+  });
   if (!row) throw new Error("SEC filing accession already collected for this household");
-  await db.insert(auditEvents).values({ householdId: actor.householdId, actor: actor.userId, eventType: "sec_filing_draft_created", entity: "sec_filing_snapshot", entityId: row.id, reason: "Normalized official SEC filing evidence pending human review", metadata: { ticker: symbol, accession: row.accession, missingFields: normalized.missingFields, evidenceQuality: normalized.evidenceQuality } });
   return { ...row, filingAgeStatus: normalized.filingAgeStatus, advisoryOnly: true, readOnly: true, tradingEnabled: false, executionAuthority: "none" };
 }
 
@@ -225,7 +229,7 @@ export async function reviewSecFiling(actor: Actor, id: string, disposition: "AP
       const canonicalSha256 = createHash("sha256").update(canonical(canonicalContent)).digest("hex");
       [evidence] = await tx.insert(reviewedSecFilingEvidence).values({ householdId: actor.householdId, snapshotId: draft.id, ticker: draft.ticker, canonicalContent, canonicalSha256, provenance: draft.provenance, approvedBy: actor.userId }).returning();
     }
-    await tx.insert(auditEvents).values({ householdId: actor.householdId, actor: actor.userId, eventType: "sec_filing_reviewed", entity: "sec_filing_snapshot", entityId: draft.id, reason: `Human disposition: ${disposition}`, metadata: { digest: evidence?.canonicalSha256 ?? null } });
+    await appendAuditEvent({ householdId: actor.householdId, actor: actor.userId, eventType: "sec_filing_reviewed", entity: "sec_filing_snapshot", entityId: draft.id, reason: `Human disposition: ${disposition}`, metadata: { digest: evidence?.canonicalSha256 ?? null } }, tx);
     return { snapshot: { ...updated, filingAgeStatus: draftWithStatus.filingAgeStatus, content: draftWithStatus.content }, evidence };
   });
 }

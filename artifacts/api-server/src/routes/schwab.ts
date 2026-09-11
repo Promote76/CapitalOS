@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "../services/audit";
 import { Router, type IRouter } from "express";
 import { randomBytes, randomUUID } from "node:crypto";
 import { and, eq, isNull, sql } from "drizzle-orm";
@@ -14,10 +15,12 @@ import {
 import { completeSchwabMarketDataOAuthCallback } from "../services/schwab-market-data-oauth";
 
 const router: IRouter = Router();
-const audit = (householdId: string, actor: string, eventType: string, entityId = householdId) =>
-  db.insert(auditEvents).values({ householdId, actor, eventType, entity: "schwab_connection", entityId, metadata: { provider: "schwab", readOnly: true } });
-const marketDataAudit = (householdId: string, actor: string, eventType: string, entityId = householdId) =>
-  db.insert(auditEvents).values({ householdId, actor, eventType, entity: "schwab_market_data_connection", entityId, metadata: { provider: "schwab", product: "market_data_production", readOnly: true } });
+const audit = async (householdId: string, actor: string, eventType: string, entityId = householdId) => {
+  return appendAuditEvent({ householdId, actor, eventType, entity: "schwab_connection", entityId, metadata: { provider: "schwab", readOnly: true } });
+};
+const marketDataAudit = async (householdId: string, actor: string, eventType: string, entityId = householdId) => {
+  return appendAuditEvent({ householdId, actor, eventType, entity: "schwab_market_data_connection", entityId, metadata: { provider: "schwab", product: "market_data_production", readOnly: true } });
+};
 const configured = () => Boolean(process.env.SCHWAB_APP_KEY && process.env.SCHWAB_APP_SECRET);
 const lifecycleLock = (householdId: string) => sql`select pg_advisory_xact_lock(hashtextextended(${`schwab-lifecycle:${householdId}`}, 0))`;
 const schwabBrowserCookie = "__Host-capitalos_schwab_oauth";

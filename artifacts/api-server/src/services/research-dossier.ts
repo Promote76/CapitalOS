@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -185,28 +186,31 @@ export async function createSchwabMarketSnapshot(actor: Actor, input: {
   missingFlags: string[]; qualityFlags: string[];
 }) {
   const missingFlags = Array.from(new Set([...input.missingFlags, ...collectMissing(input.content)]));
-  const [row] = await db.insert(schwabMarketSnapshots).values({
+  const [row] = await db.transaction(async (tx) => {
+    const [created] = await tx.insert(schwabMarketSnapshots).values({
     householdId: actor.householdId, ticker: input.ticker, content: input.content, provenance: input.provenance,
     requestedAt: new Date(input.requestedAt), retrievedAt: new Date(input.retrievedAt),
     providerAsOf: input.providerAsOf ? new Date(input.providerAsOf) : null, marketDate: input.marketDate,
     realtime: input.realtime, delayed: input.delayed, freshness: input.freshness,
     missingFlags, qualityFlags: input.qualityFlags, createdBy: actor.userId,
-  }).returning();
-  await db.insert(auditEvents).values({
+    }).returning();
+    await appendAuditEvent({
     householdId: actor.householdId,
     actor: actor.userId,
     eventType: "schwab_market_snapshot_draft_created",
     entity: "schwab_market_snapshot",
-    entityId: row.id,
+    entityId: created.id,
     reason: "Fresh normalized Schwab observations retained as non-authoritative draft pending human review",
     metadata: {
-      ticker: row.ticker,
+      ticker: created.ticker,
       readOnly: true,
       tradingEnabled: false,
       executionAuthority: "none",
-      freshness: row.freshness,
-      qualityFlags: row.qualityFlags,
+      freshness: created.freshness,
+      qualityFlags: created.qualityFlags,
     },
+    }, tx);
+    return [created] as const;
   });
   return projectMarketSnapshot(row);
 }
@@ -248,7 +252,7 @@ export async function reviewSchwabMarketSnapshot(actor: Actor, snapshotId: strin
         readOnly: true, tradingEnabled: false, executionAuthority: "none", nonAuthoritative: false,
       }).returning();
     }
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       actor: actor.userId,
       eventType: "schwab_market_snapshot_reviewed",
@@ -256,7 +260,7 @@ export async function reviewSchwabMarketSnapshot(actor: Actor, snapshotId: strin
       entityId: snapshotId,
       reason: `Human disposition: ${disposition}`,
       metadata: { disposition, digest: evidence?.canonicalSha256 ?? null },
-    });
+    }, tx);
     return { snapshot: updated, evidence };
   });
   return {
@@ -357,20 +361,26 @@ export async function registerResearchEvidence(actor: Actor, input: {
   const extractedText = extraction.text;
   const existing = await db.select().from(researchEvidence).where(and(eq(researchEvidence.householdId, actor.householdId), eq(researchEvidence.sha256, stored.sha256))).limit(1);
   if (existing[0]) return { ...existing[0], duplicate: true, advisoryOnly: true, evidenceKind: "UPLOADED_DOCUMENT" as const };
-  const [row] = await db.insert(researchEvidence).values({
+  const [row] = await db.transaction(async (tx) => {
+    const [created] = await tx.insert(researchEvidence).values({
     householdId: actor.householdId, title, objectPath: input.objectPath, byteLength: input.byteLength,
     mimeType: input.mimeType, sha256: stored.sha256, provenanceClass: input.provenanceClass,
     financialDocumentId: input.financialDocumentId, uploadedBy: actor.userId, extractedText,
     extractionStatus: extraction.status,
-  }).returning();
-  await db.insert(auditEvents).values({ householdId: actor.householdId, actor: actor.userId, eventType: "research_evidence_registered", entity: "research_evidence", entityId: row.id, reason: "User-declared research provenance retained pending human review", metadata: { provenanceClass: input.provenanceClass, sha256: row.sha256 } });
+    }).returning();
+    await appendAuditEvent({ householdId: actor.householdId, actor: actor.userId, eventType: "research_evidence_registered", entity: "research_evidence", entityId: created.id, reason: "User-declared research provenance retained pending human review", metadata: { provenanceClass: input.provenanceClass, sha256: created.sha256 } }, tx);
+    return [created] as const;
+  });
   return { ...row, duplicate: false, advisoryOnly: true, evidenceKind: "UPLOADED_DOCUMENT" as const };
 }
 
 export async function reviewResearchEvidence(actor: Actor, evidenceId: string, status: "REVIEWED" | "REJECTED") {
-  const [row] = await db.update(researchEvidence).set({ reviewStatus: status, reviewedBy: actor.userId, reviewedAt: new Date() }).where(and(eq(researchEvidence.id, evidenceId), eq(researchEvidence.householdId, actor.householdId), eq(researchEvidence.reviewStatus, "PENDING_HUMAN_REVIEW"))).returning();
+  const [row] = await db.transaction(async (tx) => {
+    const [updated] = await tx.update(researchEvidence).set({ reviewStatus: status, reviewedBy: actor.userId, reviewedAt: new Date() }).where(and(eq(researchEvidence.id, evidenceId), eq(researchEvidence.householdId, actor.householdId), eq(researchEvidence.reviewStatus, "PENDING_HUMAN_REVIEW"))).returning();
+    if (updated) await appendAuditEvent({ householdId: actor.householdId, actor: actor.userId, eventType: "research_evidence_reviewed", entity: "research_evidence", entityId: evidenceId, reason: `Human review status: ${status}`, metadata: { status } }, tx);
+    return [updated] as const;
+  });
   if (!row) throw new ResearchDossierError("VALIDATION_ERROR", "Research evidence not found in this household");
-  await db.insert(auditEvents).values({ householdId: actor.householdId, actor: actor.userId, eventType: "research_evidence_reviewed", entity: "research_evidence", entityId: evidenceId, reason: `Human review status: ${status}`, metadata: { status } });
   return { ...row, advisoryOnly: true, evidenceKind: "UPLOADED_DOCUMENT" as const };
 }
 
@@ -393,12 +403,15 @@ export async function createInvestmentResearchDossier(actor: Actor, input: { tic
     ...reviewedSec.map((item) => ({ id: item.id, title: `SEC ${item.ticker} filing`, provenanceClass: "PRIMARY_SOURCE", reviewStatus: "APPROVED", extractionStatus: "complete", extractedText: JSON.stringify(item.canonicalContent), evidenceText: JSON.stringify(item.canonicalContent) })),
   ];
   if (evidence.length !== input.evidenceIds.length || evidence.some((item) => !review.has(item.reviewStatus) || item.extractionStatus !== "complete")) throw new ResearchDossierError("VALIDATION_ERROR", "Only reviewed, completely extracted evidence from this household may be selected");
-  const [row] = await db.insert(investmentResearchDossiers).values({
+  const [row] = await db.transaction(async (tx) => {
+    const [created] = await tx.insert(investmentResearchDossiers).values({
     householdId: actor.householdId, ticker, title: requiredText(input.title, 240, "title"), evidenceIds: input.evidenceIds,
      digestion: { ...parsed.data, uploadedEvidence: evidence.filter((e) => review.has(e.reviewStatus) && e.extractionStatus === "complete").map((e) => ({ id: e.id, title: e.title, text: e.evidenceText })) } as unknown as Record<string, unknown>, createdBy: actor.userId,
     report: { status: "PENDING_PROVIDER", advisoryOnly: true, executionAuthority: "none", evidenceClasses: evidence.map((e) => e.provenanceClass) },
-  }).returning();
-  await db.insert(auditEvents).values({ householdId: actor.householdId, actor: actor.userId, eventType: "investment_research_dossier_created", entity: "investment_research_dossier", entityId: row.id, reason: "Advisory-only research dossier created from reviewed evidence", metadata: { advisoryOnly: true, executionAuthority: "none", evidenceIds: input.evidenceIds } });
+    }).returning();
+    await appendAuditEvent({ householdId: actor.householdId, actor: actor.userId, eventType: "investment_research_dossier_created", entity: "investment_research_dossier", entityId: created.id, reason: "Advisory-only research dossier created from reviewed evidence", metadata: { advisoryOnly: true, executionAuthority: "none", evidenceIds: input.evidenceIds } }, tx);
+    return [created] as const;
+  });
   // The established three-agent pipeline remains the only report producer. A
   // provider failure leaves this durable, reviewable dossier pending rather
   // than fabricating a report or granting authority.

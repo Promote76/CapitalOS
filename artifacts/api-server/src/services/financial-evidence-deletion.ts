@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { createHash } from "node:crypto";
 import { and, eq, inArray, notInArray, or, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
@@ -541,7 +542,7 @@ async function deleteEvidence(actor: Actor, input: DeletionInput, documentId?: s
         responseStatus: 202,
         responseBody: { fingerprint, status: "PENDING_STORAGE", objectPaths: operationPaths, deletedObjectPaths: [], protectedState },
       });
-      await tx.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: actor.householdId,
         eventType: "financial_evidence_deletion_started",
         actor: actor.userId,
@@ -549,7 +550,7 @@ async function deleteEvidence(actor: Actor, input: DeletionInput, documentId?: s
         entityId: input.idempotencyKey,
         reason: input.reason.trim(),
         metadata: { scope, documentIds: initialPlan.evidenceMetadata.map((row) => row.id), documentHashes: initialPlan.evidenceMetadata.map((row) => row.sha256), removedCounts: initialPlan.counts, storageObjectCount: operationPaths.length },
-      });
+      }, tx);
     });
   } else {
     for (const objectPath of operationPaths.filter((path) => !deletedObjectPaths.includes(path))) {
@@ -558,7 +559,7 @@ async function deleteEvidence(actor: Actor, input: DeletionInput, documentId?: s
         deletedObjectPaths = [...deletedObjectPaths, objectPath];
         await db.transaction(async (tx) => {
           await tx.update(idempotencyKeys).set({ responseStatus: 202, responseBody: { fingerprint, status: "PENDING_DATABASE", objectPaths: operationPaths, deletedObjectPaths, protectedState } }).where(and(eq(idempotencyKeys.householdId, actor.householdId), eq(idempotencyKeys.key, input.idempotencyKey)));
-          await tx.insert(auditEvents).values({
+          await appendAuditEvent({
             householdId: actor.householdId,
             eventType: "financial_evidence_storage_absence_reconciled",
             actor: actor.userId,
@@ -566,7 +567,7 @@ async function deleteEvidence(actor: Actor, input: DeletionInput, documentId?: s
             entityId: input.idempotencyKey,
             reason: "Confirmed an absent source object under an existing authorized deletion intent",
             metadata: { objectPathHash: createHash("sha256").update(objectPath).digest("hex"), completedObjectCount: deletedObjectPaths.length, storageObjectCount: operationPaths.length },
-          });
+          }, tx);
         });
       }
     }
@@ -581,7 +582,7 @@ async function deleteEvidence(actor: Actor, input: DeletionInput, documentId?: s
           responseStatus: 202,
           responseBody: { fingerprint, status: "PENDING_DATABASE", objectPaths: operationPaths, deletedObjectPaths, protectedState },
         }).where(and(eq(idempotencyKeys.householdId, actor.householdId), eq(idempotencyKeys.key, input.idempotencyKey)));
-        await tx.insert(auditEvents).values({
+        await appendAuditEvent({
           householdId: actor.householdId,
           eventType: "financial_evidence_storage_object_deleted",
           actor: actor.userId,
@@ -589,7 +590,7 @@ async function deleteEvidence(actor: Actor, input: DeletionInput, documentId?: s
           entityId: input.idempotencyKey,
           reason: "Deleted one private source object under a durable evidence deletion intent",
           metadata: { objectPathHash: createHash("sha256").update(objectPath).digest("hex"), completedObjectCount: deletedObjectPaths.length, storageObjectCount: operationPaths.length },
-        });
+        }, tx);
       });
     } catch (error) {
       await db.update(idempotencyKeys).set({
@@ -679,7 +680,7 @@ async function deleteEvidence(actor: Actor, input: DeletionInput, documentId?: s
       postResetVerification: verification,
       storageObjectCount: plan.objectPaths.length,
     }).returning();
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       eventType: scope === "ALL" ? "financial_evidence_reset" : "financial_document_evidence_deleted",
       actor: actor.userId,
@@ -695,7 +696,7 @@ async function deleteEvidence(actor: Actor, input: DeletionInput, documentId?: s
         idempotencyKey: input.idempotencyKey,
         storageObjectCount: plan.objectPaths.length,
       },
-    });
+    }, tx);
     const result = {
       status: "DELETED" as const,
       scope,

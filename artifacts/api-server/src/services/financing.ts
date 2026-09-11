@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
@@ -290,12 +291,12 @@ export async function createFinancingLiability(actor: Actor, input: {
       updatedBy: actor.userId,
     }).returning();
     const response = liabilityResponse(row);
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId, eventType: "financing_liability_created", actor: actor.userId,
       entity: "financing_liability", entityId: row.id, afterState: response,
       reason: input.notes ?? "Advisory liability record created",
       metadata: { idempotencyKey, ownership: row.ownership, executionEnabled: false },
-    });
+    }, tx);
     return response;
   });
 }
@@ -316,12 +317,12 @@ export async function updateFinancingCreditProfile(actor: Actor, input: {
       ? await tx.update(financingCreditProfiles).set({ ...input, updatedBy: actor.userId, updatedAt: new Date() }).where(eq(financingCreditProfiles.id, existing.id)).returning()
       : await tx.insert(financingCreditProfiles).values({ householdId: actor.householdId, ...input, updatedBy: actor.userId }).returning();
     const response = { ...row, scoreIsNotApproval: true };
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId, eventType: "financing_credit_profile_updated", actor: actor.userId,
       entity: "financing_credit_profile", entityId: row.id, afterState: response,
       reason: "Manual planning input updated; no credit pull was performed",
       metadata: { idempotencyKey, provider: "none", approvalClaim: false },
-    });
+    }, tx);
     return response;
   });
 }
@@ -367,11 +368,11 @@ export async function createFinancingScenario(actor: Actor, input: {
       estimatedMonthlyHousingCost: centsToMoney(monthlyPrincipalInterest + cents(input.mortgageInsurance) + Math.round(cents(input.closingCosts) / 12)),
     }).returning();
     const response = { ...scenarioResponse(row), source: candidate ? "linked_property_candidate" : "household_planning" };
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId, eventType: "financing_scenario_created", actor: actor.userId,
       entity: "financing_scenario", entityId: row.id, afterState: response,
       reason: "Illustrative financing scenario created", metadata: { idempotencyKey, lenderSubmission: false },
-    });
+    }, tx);
     return response;
   });
 }
@@ -408,12 +409,12 @@ export async function createFinancingOffer(actor: Actor, input: {
       expirationDate: input.expirationDate, assumptions: input.assumptions ?? {}, notes: input.notes, createdBy: actor.userId,
     }).returning();
     const response = { ...row, executionEnabled: false };
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId, eventType: "financing_offer_recorded", actor: actor.userId,
       entity: "financing_offer", entityId: row.id, afterState: response,
       reason: "Advisory offer or rate indication recorded without lender connectivity",
       metadata: { idempotencyKey, accepted: false, applicationSubmitted: false },
-    });
+    }, tx);
     return response;
   });
 }
@@ -430,11 +431,11 @@ export async function createPipelineEvent(actor: Actor, input: { toStage: string
       note: input.note, createdBy: actor.userId,
     }).returning();
     await tx.update(financingPipelines).set({ stage: input.toStage, notes: input.note, updatedBy: actor.userId, updatedAt: new Date() }).where(eq(financingPipelines.id, pipeline.id));
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId, eventType: "financing_pipeline_stage_changed", actor: actor.userId,
       entity: "financing_pipeline", entityId: pipeline.id, afterState: { ...event, executionEnabled: false },
       reason: input.note ?? "Advisory financing pipeline stage changed", metadata: { idempotencyKey },
-    });
+    }, tx);
     return { ...event, executionEnabled: false };
   });
 }
@@ -446,11 +447,11 @@ export async function updateFinancingDocument(actor: Actor, documentId: string, 
       eq(financingDocuments.id, documentId), eq(financingDocuments.householdId, actor.householdId),
     )).returning();
     if (!row) throw new GovernanceError("INVALID_STATE", "Financing document requirement was not found");
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId, eventType: "financing_document_updated", actor: actor.userId,
       entity: "financing_document", entityId: row.id, afterState: row,
       reason: "Document readiness status updated", metadata: { idempotencyKey },
-    });
+    }, tx);
     return row;
   });
 }

@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
@@ -93,7 +94,7 @@ export async function ingestFinancialDocument(actor: Actor, input: {
       eq(financialDocuments.householdId, actor.householdId), eq(financialDocuments.documentHash, sha256),
     )).limit(1);
     if (existing) {
-      await tx.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: actor.householdId,
         eventType: "financial_document_duplicate_upload",
         actor: actor.userId,
@@ -101,7 +102,7 @@ export async function ingestFinancialDocument(actor: Actor, input: {
         entityId: existing.id,
         reason: "The same household source hash was already recorded; no second evidence record was created.",
         metadata: { documentHash: sha256, selectedDocumentType: input.documentType },
-      });
+      }, tx);
       const [statement] = await tx.select().from(bankStatementDocuments).where(and(
         eq(bankStatementDocuments.documentId, existing.id),
         eq(bankStatementDocuments.householdId, actor.householdId),
@@ -213,7 +214,7 @@ export async function ingestFinancialDocument(actor: Actor, input: {
         transactions = inserted.map((row) => ({ ...row, correctionHistory: [] }));
       }
     }
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId, eventType: "financial_document_ingested", actor: actor.userId,
       entity: "financial_document", entityId: document.id,
       reason: "Financial evidence recorded; no ledger entry or bank write was made.",
@@ -225,7 +226,7 @@ export async function ingestFinancialDocument(actor: Actor, input: {
         detectionConfidence: detection.confidence,
         typeMismatch: detection.conflictsWithSelectedType,
       },
-    });
+    }, tx);
     const [updatedDocument] = await tx.select().from(financialDocuments).where(eq(financialDocuments.id, document.id));
     return response(updatedDocument, bankStatement, transactions);
   });
@@ -294,7 +295,7 @@ export async function linkFinancialDocumentBusiness(actor: Actor, documentId: st
       eq(bankStatementDocuments.householdId, actor.householdId),
     )).limit(1);
     const result = response(updated, statement, statement ? await statementTransactions(tx, statement.id, actor.householdId) : []);
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       eventType: "financial_document_business_linked",
       actor: actor.userId,
@@ -307,7 +308,7 @@ export async function linkFinancialDocumentBusiness(actor: Actor, documentId: st
         alreadyLinked: document.businessId === business.id,
         idempotencyKey: input.idempotencyKey,
       },
-    });
+    }, tx);
     await tx.insert(idempotencyKeys).values({
       householdId: actor.householdId,
       key: input.idempotencyKey,
@@ -368,7 +369,7 @@ export async function decideFinancialDocumentType(actor: Actor, documentId: stri
         reviewedBy: actor.userId,
         reviewedAt: new Date(),
       }).where(and(eq(financialDocuments.id, documentId), eq(financialDocuments.householdId, actor.householdId))).returning();
-      await tx.insert(auditEvents).values({
+      await appendAuditEvent({
         householdId: actor.householdId,
         eventType: "financial_document_type_override",
         actor: actor.userId,
@@ -376,7 +377,7 @@ export async function decideFinancialDocumentType(actor: Actor, documentId: stri
         entityId: documentId,
         reason: input.reason,
         metadata: { selectedDocumentType: existingDocument.documentType, detectedDocumentType: existingDocument.detectedDocumentType, confidence: existingDocument.detectionConfidence },
-      });
+      }, tx);
       return response(updated);
     });
   }
@@ -523,7 +524,7 @@ export async function decideFinancialDocumentType(actor: Actor, documentId: stri
       relatedEntityId: pnl.id,
       message: parsed.reason,
     });
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       eventType: "financial_document_type_corrected",
       actor: actor.userId,
@@ -531,7 +532,7 @@ export async function decideFinancialDocumentType(actor: Actor, documentId: stri
       entityId: documentId,
       reason: input.reason,
       metadata: { correctionId: correction.id, originalDocumentType: originalType, correctedDocumentType: correctedType, parserGenerationId: generation.id, profitLossDocumentId: pnl.id, oldParseSuperseded: true },
-    });
+    }, tx);
     return response(updated);
   });
 }
@@ -617,7 +618,7 @@ export async function runFinancialDocumentTypeDetection(actor: Actor, documentId
     )).returning();
     if (!updated) throw new GovernanceError("INVALID_STATE", "Financial document could not be updated with detection evidence");
     const result = response(updated);
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       eventType: "financial_document_type_detected",
       actor: actor.userId,
@@ -634,7 +635,7 @@ export async function runFinancialDocumentTypeDetection(actor: Actor, documentId
         sourceObjectPreserved: true,
         idempotencyKey: input.idempotencyKey,
       },
-    });
+    }, tx);
     await tx.insert(idempotencyKeys).values({
       householdId: actor.householdId,
       key: input.idempotencyKey,
@@ -713,12 +714,12 @@ export async function reviewBankStatementTransaction(actor: Actor, transactionId
           )).limit(1) : [];
           if (official && exactMoney(correction.amount) !== exactMoney(official.amount)) {
             await tx.update(statementFinancialInclusions).set({ reviewRequired: true, mismatchCode: "SOURCE_OFFICIAL_MISMATCH", reconciliationStatus: "REQUIRED", updatedAt: new Date() }).where(eq(statementFinancialInclusions.id, inclusion.id));
-            await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "statement_source_official_mismatch", actor: actor.userId, entity: "statement_financial_inclusion", entityId: inclusion.id, reason: input.reason, metadata: { cause: "SOURCE_AMOUNT_CHANGED", sourceAmount: exactMoney(correction.amount), officialAmount: exactMoney(official.amount) } });
+            await appendAuditEvent({ householdId: actor.householdId, eventType: "statement_source_official_mismatch", actor: actor.userId, entity: "statement_financial_inclusion", entityId: inclusion.id, reason: input.reason, metadata: { cause: "SOURCE_AMOUNT_CHANGED", sourceAmount: exactMoney(correction.amount), officialAmount: exactMoney(official.amount) } }, tx);
           }
         }
       }
     }
-    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "bank_statement_transaction_reviewed", actor: actor.userId, entity: "bank_statement_transaction", entityId: transactionId, reason: input.reason, metadata: { action: input.action, idempotencyKey: input.idempotencyKey, originalValue: row.originalValue } });
+    await appendAuditEvent({ householdId: actor.householdId, eventType: "bank_statement_transaction_reviewed", actor: actor.userId, entity: "bank_statement_transaction", entityId: transactionId, reason: input.reason, metadata: { action: input.action, idempotencyKey: input.idempotencyKey, originalValue: row.originalValue } }, tx);
     const withHistory = await statementTransactions(tx, row.bankStatementDocumentId, actor.householdId);
     const result = withHistory.find((transaction) => transaction.id === updated.id) ?? { ...updated, correctionHistory: [] };
     await tx.insert(idempotencyKeys).values({ householdId: actor.householdId, key: input.idempotencyKey, operation: "bank_statement_transaction_review", responseStatus: 200, responseBody: result });
@@ -819,7 +820,7 @@ export async function reviewFinancialDocumentIdentity(actor: Actor, documentId: 
       ));
       supersessionCreated = true;
     }
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: actor.householdId,
       eventType: "financial_document_identity_reviewed",
       actor: actor.userId,
@@ -835,7 +836,7 @@ export async function reviewFinancialDocumentIdentity(actor: Actor, documentId: 
         supersededByDocumentId: supersessionCreated ? document.id : null,
         sourceObjectsPreserved: true,
       },
-    });
+    }, tx);
     const [updatedWithRelations] = await tx.select().from(financialDocuments).where(and(
       eq(financialDocuments.id, document.id),
       eq(financialDocuments.householdId, actor.householdId),
@@ -895,7 +896,7 @@ export async function reviewFinancialDocument(actor: Actor, documentId: string, 
       ));
       if (affected.length) {
         await tx.update(statementFinancialInclusions).set({ reviewRequired: true, mismatchCode: "SOURCE_OFFICIAL_MISMATCH", reconciliationStatus: "REQUIRED", updatedAt: new Date() }).where(inArray(statementFinancialInclusions.id, affected.map((row) => row.id)));
-        await tx.insert(auditEvents).values(affected.map((row) => ({ householdId: actor.householdId, eventType: "statement_source_official_mismatch", actor: actor.userId, entity: "statement_financial_inclusion", entityId: row.id, reason: input.reason, metadata: { cause: "PARENT_REJECTED" } })));
+        await appendAuditEvents(affected.map((row) => ({ householdId: actor.householdId, eventType: "statement_source_official_mismatch", actor: actor.userId, entity: "statement_financial_inclusion", entityId: row.id, reason: input.reason, metadata: { cause: "PARENT_REJECTED" } })), tx);
       }
     } else if (statement && input.decision === "VERIFIED") {
       await tx.update(bankStatementDocuments).set({ status: "document_evidence_verified" }).where(and(
@@ -906,7 +907,7 @@ export async function reviewFinancialDocument(actor: Actor, documentId: string, 
     const [document] = await tx.update(financialDocuments).set({
       status: input.decision, reviewDecision: input.decision, reviewReason: input.reason, reviewedBy: actor.userId, reviewedAt: new Date(),
     }).where(and(eq(financialDocuments.id, documentId), eq(financialDocuments.householdId, actor.householdId))).returning();
-    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "financial_document_reviewed", actor: actor.userId, entity: "financial_document", entityId: document.id, reason: input.reason, metadata: { decision: input.decision, bankStatement: Boolean(statement) } });
+    await appendAuditEvent({ householdId: actor.householdId, eventType: "financial_document_reviewed", actor: actor.userId, entity: "financial_document", entityId: document.id, reason: input.reason, metadata: { decision: input.decision, bankStatement: Boolean(statement) } }, tx);
     const refreshedStatement = statement ? (await tx.select().from(bankStatementDocuments).where(eq(bankStatementDocuments.id, statement.id)).limit(1))[0] : undefined;
     return response(document, refreshedStatement, refreshedStatement ? await statementTransactions(tx, refreshedStatement.id, actor.householdId) : []);
   });
@@ -1017,7 +1018,7 @@ export async function reconcileBankStatementTransactionInclusion(actor: Actor, t
     const [existing] = await tx.select().from(statementFinancialInclusions).where(and(eq(statementFinancialInclusions.householdId, actor.householdId), eq(statementFinancialInclusions.statementRowId, source.row.id))).limit(1);
     if (!existing?.reviewRequired) throw new GovernanceError("INVALID_STATE", "Statement inclusion has no outstanding reconciliation");
     const [updated] = await tx.update(statementFinancialInclusions).set({ reviewRequired: false, reconciliationStatus: "RESOLVED", reconciledBy: actor.userId, reconciledAt: new Date(), updatedAt: new Date() }).where(eq(statementFinancialInclusions.id, existing.id)).returning();
-    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "statement_inclusion_reconciled", actor: actor.userId, entity: "statement_financial_inclusion", entityId: existing.id, reason: input.reason, metadata: { mismatchCode: existing.mismatchCode } });
+    await appendAuditEvent({ householdId: actor.householdId, eventType: "statement_inclusion_reconciled", actor: actor.userId, entity: "statement_financial_inclusion", entityId: existing.id, reason: input.reason, metadata: { mismatchCode: existing.mismatchCode } }, tx);
     return updated;
   });
 }
@@ -1032,7 +1033,7 @@ export async function decideBankStatementTransactionCategory(actor: Actor, trans
     const [existingInclusion] = await tx.select().from(statementFinancialInclusions).where(and(eq(statementFinancialInclusions.householdId, actor.householdId), eq(statementFinancialInclusions.statementRowId, row.id))).limit(1);
     if (existingInclusion && existingInclusion.status !== "REVERSED" && (existingInclusion.categoryId !== (input.categoryId ?? null) || input.economicClassification !== "HOUSEHOLD")) {
       await tx.update(statementFinancialInclusions).set({ reviewRequired: true, mismatchCode: "SOURCE_OFFICIAL_MISMATCH", reconciliationStatus: "REQUIRED", updatedAt: new Date() }).where(eq(statementFinancialInclusions.id, existingInclusion.id));
-      await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "statement_source_official_mismatch", actor: actor.userId, entity: "statement_financial_inclusion", entityId: existingInclusion.id, reason: input.reason, metadata: { cause: "SOURCE_CATEGORY_OR_CLASSIFICATION_CHANGED" } });
+      await appendAuditEvent({ householdId: actor.householdId, eventType: "statement_source_official_mismatch", actor: actor.userId, entity: "statement_financial_inclusion", entityId: existingInclusion.id, reason: input.reason, metadata: { cause: "SOURCE_CATEGORY_OR_CLASSIFICATION_CHANGED" } }, tx);
     }
     if (input.economicClassification === "HOUSEHOLD") {
       if (!input.categoryId || !["USER_CONFIRMED", "USER_CORRECTED"].includes(input.status)) throw new GovernanceError("INVALID_STATE", "Household inclusion requires an explicit category decision");
@@ -1042,7 +1043,7 @@ export async function decideBankStatementTransactionCategory(actor: Actor, trans
     } else if (input.categoryId) throw new GovernanceError("INVALID_STATE", "Non-household evidence cannot receive a household category");
     const [updated] = await tx.update(bankStatementTransactions).set({ selectedCategoryId: input.categoryId ?? null, categoryDecisionStatus: input.status, economicClassification: input.economicClassification, categoryDecidedBy: actor.userId, categoryDecidedAt: new Date(), categoryCorrectionVersion: row.categoryCorrectionVersion + 1 }).where(eq(bankStatementTransactions.id, row.id)).returning();
     const result = { ...updated, correctionHistory: [] };
-    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "statement_category_decided", actor: actor.userId, entity: "bank_statement_transaction", entityId: row.id, reason: input.reason, metadata: { status: input.status, economicClassification: input.economicClassification, categoryId: input.categoryId } });
+    await appendAuditEvent({ householdId: actor.householdId, eventType: "statement_category_decided", actor: actor.userId, entity: "bank_statement_transaction", entityId: row.id, reason: input.reason, metadata: { status: input.status, economicClassification: input.economicClassification, categoryId: input.categoryId } }, tx);
     await tx.insert(idempotencyKeys).values({ householdId: actor.householdId, key: input.idempotencyKey, operation: "statement_category_decision", responseStatus: 200, responseBody: result });
     return result;
   });
@@ -1076,7 +1077,7 @@ export async function importBankStatementTransaction(actor: Actor, rowId: string
     const fp = statementRowFingerprint({ householdId: actor.householdId, accountId: source.statement.accountId, postedDate: source.row.postedDate, signedAmount: amount, description: source.row.description, reference: source.row.reference });
     const [created] = await tx.insert(financeTransactions).values({ householdId: actor.householdId, accountId: source.statement.accountId!, transactionDate: source.row.postedDate!, description: source.row.description, originalAmount: amount, amount, categoryId: source.row.selectedCategoryId, dataSource: "bank_statement_import", sourceDocumentId: source.document.id, sourceStatementRowId: source.row.id, statementRowFingerprint: fp, importedBy: actor.userId, importedAt: new Date(), reviewStatus: "approved", pending: false, excludedFromBudget: false, metadata: { provenance: "bank_statement_import", evidenceFingerprint: source.row.evidenceFingerprint, incomeVerified: false } }).returning();
     const [inclusion] = await tx.insert(statementFinancialInclusions).values({ householdId: actor.householdId, statementDocumentId: source.statement.id, statementRowId: source.row.id, statementRowFingerprint: fp, evidenceDecision: source.row.lastReviewAction!, categoryId: source.row.selectedCategoryId, inclusionDecision: "IMPORT_NEW", createdFinanceTransactionId: created.id, duplicateStatus: "NO_MATCH", transferStatus: "NOT_TRANSFER", settlementLinkStatus: "NOT_LINKED", approvedBy: actor.userId, approvedAt: new Date(), status: "IMPORTED_NEW" }).returning();
-    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "statement_financial_imported", actor: actor.userId, entity: "statement_financial_inclusion", entityId: inclusion.id, reason: "Approved statement evidence imported once", metadata: { financeTransactionId: created.id, amount } });
+    await appendAuditEvent({ householdId: actor.householdId, eventType: "statement_financial_imported", actor: actor.userId, entity: "statement_financial_inclusion", entityId: inclusion.id, reason: "Approved statement evidence imported once", metadata: { financeTransactionId: created.id, amount } }, tx);
     return inclusionResponse(inclusion);
   });
 }
@@ -1103,7 +1104,7 @@ export async function linkBankStatementTransaction(actor: Actor, rowId: string, 
     if (target.categoryId !== source.row.selectedCategoryId) throw new GovernanceError("INVALID_STATE", "Linked transaction must have the selected household category and account");
     const fp = statementRowFingerprint({ householdId: actor.householdId, accountId: source.statement.accountId, postedDate: source.row.postedDate, signedAmount: authoritativeStatementAmount(source.row), description: source.row.description, reference: source.row.reference });
     const [inclusion] = await tx.insert(statementFinancialInclusions).values({ householdId: actor.householdId, statementDocumentId: source.statement.id, statementRowId: source.row.id, statementRowFingerprint: fp, evidenceDecision: source.row.lastReviewAction!, categoryId: source.row.selectedCategoryId, inclusionDecision: "LINK_EXISTING", matchedFinanceTransactionId: target.id, duplicateStatus: "ONE_HIGH_CONFIDENCE_MATCH", transferStatus: "NOT_TRANSFER", settlementLinkStatus: "NOT_LINKED", approvedBy: actor.userId, approvedAt: new Date(), status: "LINKED_EXISTING" }).returning();
-    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "statement_financial_linked", actor: actor.userId, entity: "statement_financial_inclusion", entityId: inclusion.id, reason: "Evidence linked to existing transaction", metadata: { financeTransactionId: target.id } });
+    await appendAuditEvent({ householdId: actor.householdId, eventType: "statement_financial_linked", actor: actor.userId, entity: "statement_financial_inclusion", entityId: inclusion.id, reason: "Evidence linked to existing transaction", metadata: { financeTransactionId: target.id } }, tx);
     return inclusionResponse(inclusion);
   });
 }
@@ -1117,7 +1118,7 @@ async function reverseStatementInclusion(actor: Actor, rowId: string, input: { r
     if (existing.createdFinanceTransactionId) await tx.update(financeTransactions).set({ excludedFromBudget: true, metadata: sql`${financeTransactions.metadata} || ${JSON.stringify({ statementImportReversed: true, reconciliationRequired: true })}::jsonb` }).where(and(eq(financeTransactions.id, existing.createdFinanceTransactionId), eq(financeTransactions.householdId, actor.householdId)));
     const [inclusion] = await tx.update(statementFinancialInclusions).set({ status: "REVERSED", reversedBy: actor.userId, reversedAt: new Date(), updatedAt: new Date() }).where(eq(statementFinancialInclusions.id, existing.id)).returning();
     const [reversal] = await tx.insert(statementFinancialReversals).values({ householdId: actor.householdId, inclusionId: existing.id, statementRowId: source.row.id, financeTransactionId: transactionId, previousState: existing, newState: inclusion, reason: input.reason, actor: actor.userId }).returning();
-    await tx.insert(auditEvents).values({ householdId: actor.householdId, eventType: "statement_financial_reversed", actor: actor.userId, entity: "statement_financial_inclusion", entityId: existing.id, reason: input.reason, metadata: { before: existing.status, after: inclusion.status, financeTransactionId: transactionId } });
+    await appendAuditEvent({ householdId: actor.householdId, eventType: "statement_financial_reversed", actor: actor.userId, entity: "statement_financial_inclusion", entityId: existing.id, reason: input.reason, metadata: { before: existing.status, after: inclusion.status, financeTransactionId: transactionId } }, tx);
     return { inclusion, reversal };
   });
 }

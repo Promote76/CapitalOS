@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import { and, desc, eq, sql } from "drizzle-orm";
 import {
@@ -239,9 +240,7 @@ export async function triggerObservabilityAlert(
       })
       .returning();
   }
-  await db
-    .insert(auditEvents)
-    .values({
+  await appendAuditEvent({
       householdId: actor.householdId,
       eventType: "observability_alert_triggered",
       actor: actor.userId,
@@ -280,9 +279,7 @@ export async function resolveObservabilityAlert(
       "INVALID_STATE",
       "Only an open household incident can be resolved",
     );
-  await db
-    .insert(auditEvents)
-    .values({
+  await appendAuditEvent({
       householdId: actor.householdId,
       eventType: "observability_alert_resolved",
       actor: actor.userId,
@@ -400,7 +397,7 @@ export async function reprocessObservabilityAlert(
     .limit(1);
   if (!incident)
     throw new GovernanceError("INVALID_STATE", "Alert incident is missing");
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: actor.householdId,
     eventType: "observability_alert_delivery_reprocessed",
     actor: actor.userId,

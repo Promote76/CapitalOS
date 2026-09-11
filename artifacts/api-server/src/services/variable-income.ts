@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
@@ -295,7 +296,7 @@ export async function recalculateVariableIncomeProfile(actor: Actor, input: { ca
       updatedAt: new Date(),
     },
   }).returning();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: actor.householdId,
     eventType: "variable_income_profile_recalculated",
     actor: actor.userId,
@@ -383,7 +384,7 @@ export async function createVehicleScenario(actor: Actor, input: {
     notes: input.notes,
     createdBy: actor.userId,
   }).returning();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: actor.householdId,
     eventType: "household_vehicle_scenario_created",
     actor: actor.userId,

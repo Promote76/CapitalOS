@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "../services/audit";
 import { Router, type IRouter } from "express";
 import { getAuth } from "@clerk/express";
 import { and, asc, eq } from "drizzle-orm";
@@ -94,7 +95,7 @@ router.post("/auth/onboard", asyncRoute(async (req, res) => {
         liveExecution: "disabled",
       },
     });
-    await tx.insert(auditEvents).values({
+    await appendAuditEvent({
       householdId: household.id,
       eventType: "household_onboarded",
       actor: identity.userId,
@@ -102,7 +103,7 @@ router.post("/auth/onboard", asyncRoute(async (req, res) => {
       entityId: household.id,
       reason: "Authenticated user completed household onboarding",
       metadata: { source: "clerk_session" },
-    });
+    }, tx);
     return household;
   });
 

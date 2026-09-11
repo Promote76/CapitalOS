@@ -23,11 +23,7 @@ export const rateLimitBuckets = pgTable("rate_limit_buckets", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
-/**
- * Database-backed immutable copy of every application audit event. Inserts
- * are performed by the audit_events trigger in the migration; application
- * code should continue writing only to auditEvents.
- */
+/** Database-backed copy written by the application audit boundary. */
 export const auditEventArchive = pgTable("audit_events_archive", {
   eventId: text("event_id").primaryKey(),
   householdId: text("household_id").notNull(),
@@ -41,10 +37,55 @@ export const auditEventArchive = pgTable("audit_events_archive", {
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull(),
   eventTimestamp: timestamp("event_timestamp", { withTimezone: true }).notNull(),
   archivedAt: timestamp("archived_at", { withTimezone: true }).notNull(),
+  canonicalVersion: integer("canonical_version").notNull().default(1),
+  chainScope: text("chain_scope").notNull().default("household"),
+  chainKey: text("chain_key"),
+  sequence: integer("sequence"),
+  previousHash: text("previous_hash"),
+  eventHash: text("event_hash"),
+});
+
+/** The serialized tail of each audit chain. One row per household (or system scope). */
+export const auditChainHeads = pgTable("audit_chain_heads", {
+  chainKey: text("chain_key"),
+  chainScope: text("chain_scope"),
+  householdId: text("household_id"),
+  sequence: integer("sequence"),
+  eventHash: text("event_hash"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  pk: uniqueIndex("audit_chain_heads_chain_key_unique").on(table.chainKey),
+}));
+
+/** Explicit operator-run progress for the bounded legacy audit migration. */
+export const auditBackfillState = pgTable("audit_backfill_state", {
+  scope: text("scope").primaryKey(),
+  status: text("status").notNull().default("PENDING"),
+  cursor: text("cursor"),
+  processed: integer("processed").notNull().default(0),
+  lastError: text("last_error"),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const auditVerificationState = pgTable("audit_verification_state", {
+  scope: text("scope").primaryKey(),
+  status: text("status").notNull().default("PENDING"),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  sourceCount: integer("source_count").notNull().default(0),
+  archiveCount: integer("archive_count").notNull().default(0),
+  highWaterTimestamp: timestamp("high_water_timestamp", { withTimezone: true }),
+  highWaterDigest: text("high_water_digest"),
+  failureReason: text("failure_reason"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export type RateLimitBucket = typeof rateLimitBuckets.$inferSelect;
 export type AuditEventArchive = typeof auditEventArchive.$inferSelect;
+export type AuditChainHead = typeof auditChainHeads.$inferSelect;
+export type AuditBackfillState = typeof auditBackfillState.$inferSelect;
+export type AuditVerificationState = typeof auditVerificationState.$inferSelect;
 
 /** Persisted operational alert policy. Targets contain no credentials. */
 export const observabilityAlertRules = pgTable("observability_alert_rules", {

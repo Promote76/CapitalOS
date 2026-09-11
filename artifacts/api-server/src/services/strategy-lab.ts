@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "./audit";
 import { and, desc, eq } from "drizzle-orm";
 import {
   auditEvents,
@@ -476,7 +477,7 @@ export async function createResearchStrategy(actor: Actor, input: {
     body: input.hypothesis,
     createdBy: actor.userId,
   });
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: ids.householdId,
     eventType: "strategy_created",
     actor: actor.userId,
@@ -500,7 +501,7 @@ export async function createStrategyVersion(actor: Actor, strategyId: string, in
     version: input.version,
     configuration: { reason: input.reason, logicChanges: input.logicChanges, parameters: input.parameters ?? {}, previousVersionId: previous?.id ?? null, immutable: true },
   }).returning();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: ids.householdId,
     eventType: "strategy_version_created",
     actor: actor.userId,
@@ -550,7 +551,7 @@ export async function runStrategyExperiment(actor: Actor, input: {
     metrics,
     completedAt: new Date(),
   }).returning();
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: ids.householdId,
     eventType: input.mode === "backtest" ? "backtest_completed" : `${input.mode}_completed`,
     actor: actor.userId,
@@ -575,7 +576,7 @@ export async function evaluateStrategyGraduation(actor: Actor, strategyId: strin
     versionExists: versions.length > 0,
     experiments: experiments.map((experiment) => ({ mode: experiment.mode, status: experiment.status, metrics: metricsOf(experiment) })),
   });
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: ids.householdId,
     eventType: result.eligible ? "strategy_graduation_evaluated" : "strategy_graduation_denied",
     actor: actor.userId,

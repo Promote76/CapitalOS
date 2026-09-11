@@ -1,3 +1,4 @@
+import { appendAuditEvent, appendAuditEvents } from "../services/audit";
 import { and, eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { Router, type IRouter } from "express";
@@ -174,7 +175,7 @@ const handle = (capability: SchwabResearchCapability) => asyncRoute(async (req, 
     eq(schwabMarketDataConnections.accessTokenCiphertext, connection.accessTokenCiphertext),
   )).returning({ id: schwabMarketDataConnections.id });
   if (!updated.length) throw new SchwabResearchError("CONNECTION_CHANGED", 409, "Schwab Market Data connection changed during research retrieval");
-  await db.insert(auditEvents).values({
+  await appendAuditEvent({
     householdId: actor.householdId,
     actor: actor.userId,
     eventType: "schwab_research_read",

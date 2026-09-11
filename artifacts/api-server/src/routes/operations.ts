@@ -25,7 +25,10 @@ import {
   RecordGuidedRunActionResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
-import { actorFrom } from "../middleware/request-context";
+import { actorFrom, securityContextFrom } from "../middleware/request-context";
+import { assertPermission, GovernanceError } from "../domain/governance";
+import { hasProviderReverification } from "../middleware/reverification";
+import { runAuditBackfill, verifyAuditIntegrity } from "../services/audit-backfill";
 import {
   createOperationsTask,
   decideOperationsApproval,
@@ -53,6 +56,23 @@ const router: IRouter = Router();
 
 router.get("/operations", asyncRoute(async (_req, res) => {
   res.json(GetOperationsOverviewResponse.parse(await getOperationsOverview(actorFrom(res))));
+}));
+
+router.post("/operations/audit-backfill", asyncRoute(async (req, res) => {
+  const actor = actorFrom(res);
+  assertPermission(actor.role, "approve");
+  if (actor.role !== "owner") {
+    throw new GovernanceError("FORBIDDEN", "Household owner permission is required for audit backfill");
+  }
+  if (!hasProviderReverification(req, securityContextFrom(res))) {
+    throw new GovernanceError("FORBIDDEN", "Recent provider authentication is required for audit backfill");
+  }
+  const limit = Number(req.query.limit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+    res.status(400).json({ code: "AUDIT_BACKFILL_LIMIT_INVALID" });
+    return;
+  }
+  res.json({ ...(await runAuditBackfill(limit)), verification: await verifyAuditIntegrity() });
 }));
 
 router.get("/operations/jobs/metrics", asyncRoute(async (_req, res) => {

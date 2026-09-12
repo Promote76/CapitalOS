@@ -49,3 +49,4 @@
 - [Research advisory decision boundary](capital-os-research-advisory-boundary.md) — persist provenance snapshots separately from execution state; portfolio observation remains read-only and manual Schwab handoff never places orders.
 - [Research evidence console state](capital-os-research-evidence-console.md) — synchronize the collapsible evidence console from the native disclosure toggle during query refreshes.
 - [Research API contract certification](capital-os-research-api-contract.md) — exercise the response schema through authenticated routes; service tests and mocked browser payloads can hide shape drift.
+- [Broad research universe](capital-os-research-universe.md) — SEC supplies the frozen broad universe; Schwab only enriches versioned deterministic batches and never supplies or screens the universe.

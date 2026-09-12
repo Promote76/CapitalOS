@@ -298,8 +298,20 @@ export default function InvestmentResearchPage() {
   const discoverOpportunities = useDiscoverResearchOpportunities();
   const advisoryDecisionsQuery = useListResearchAdvisoryDecisions();
   const createAdvisoryDecision = useCreateResearchAdvisoryDecision();
-  const [discoverySummary, setDiscoverySummary] = useState<ResearchDiscoverySummary | null>(null);
+  const storedDiscovery = (() => {
+    try {
+      const value = window.sessionStorage.getItem("capital-os:research:discovery-session");
+      return value ? JSON.parse(value) as { summary?: ResearchDiscoverySummary; nextOffset?: number } : null;
+    } catch {
+      return null;
+    }
+  })();
+  const [discoverySummary, setDiscoverySummary] = useState<ResearchDiscoverySummary | null>(storedDiscovery?.summary ?? null);
   const [discoveryError, setDiscoveryError] = useState<string | null>(null);
+  const [discoveryOffset, setDiscoveryOffset] = useState(storedDiscovery?.nextOffset ?? 0);
+  const visibleDiscoverySummary = discoverySummary
+    ?? (opportunitiesQuery.data as (typeof opportunitiesQuery.data & { discovery?: ResearchDiscoverySummary }) | undefined)?.discovery
+    ?? null;
 
   const handleSnapshotReasonChange = (id: string, val: string) => setSnapshotReasons(p => ({...p, [id]: val}));
 
@@ -720,8 +732,23 @@ Research Notes:
   const handleDiscoverOpportunities = async () => {
     setDiscoveryError(null);
     try {
-      const result = await discoverOpportunities.mutateAsync({ data: opportunityParams ?? {} });
+      const requestedOffset = visibleDiscoverySummary?.nextOffset ?? (visibleDiscoverySummary ? 0 : discoveryOffset);
+      // The SEC universe is traversed in deterministic bounded batches. Keep the
+      // cursor client-side and explicitly send zero for the first run.
+      const result = await discoverOpportunities.mutateAsync({
+        data: {
+          ...(opportunityParams ?? {}),
+          offset: requestedOffset,
+          ...(visibleDiscoverySummary?.source.version ? { universeVersion: visibleDiscoverySummary.source.version } : {}),
+        },
+      });
       setDiscoverySummary(result.discovery);
+      const nextOffset = result.discovery.nextOffset ?? 0;
+      setDiscoveryOffset(nextOffset);
+      window.sessionStorage.setItem("capital-os:research:discovery-session", JSON.stringify({
+        summary: result.discovery,
+        nextOffset,
+      }));
       queryClient.setQueryData(getListResearchOpportunitiesQueryKey(opportunityParams), result);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getListMarketSnapshotsQueryKey() }),
@@ -793,7 +820,7 @@ Research Notes:
         refine={researchRefine}
         onDiscover={() => { void handleDiscoverOpportunities(); }}
         discoverPending={discoverOpportunities.isPending}
-        discoverySummary={discoverySummary}
+        discoverySummary={visibleDiscoverySummary}
         discoveryError={discoveryError}
         totalEligible={opportunitiesQuery.data?.totalEligible}
         diagnostics={opportunitiesQuery.data?.diagnostics}

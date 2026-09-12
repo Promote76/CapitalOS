@@ -7,6 +7,8 @@
  */
 import type { ResearchDiscoveryIssue } from './researchDiscoveryIssue';
 import type { ResearchDiscoveryProvider } from './researchDiscoveryProvider';
+import type { ResearchDiscoverySource } from './researchDiscoverySource';
+import type { ResearchDiscoverySourceExclusions } from './researchDiscoverySourceExclusions';
 import type { ResearchDiscoverySummaryProgress } from './researchDiscoverySummaryProgress';
 import type { ResearchDiscoverySummaryStatus } from './researchDiscoverySummaryStatus';
 
@@ -15,6 +17,29 @@ export interface ResearchDiscoverySummary {
   progress: ResearchDiscoverySummaryProgress;
   /** @minimum 0 */
   knownUniverseCount: number;
+  source: ResearchDiscoverySource;
+  /** @minimum 0 */
+  rawSourceRowCount: number;
+  /** @minimum 0 */
+  availableSymbolCount: number;
+  sourceExclusions: ResearchDiscoverySourceExclusions;
+  /** @minimum 0 */
+  runOffset: number;
+  /**
+     * @minimum 1
+     * @maximum 25
+     */
+  runCap: number;
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  selected: number;
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  screened: number;
   /** @minimum 0 */
   symbolsSelected: number;
   /** @minimum 0 */
@@ -23,6 +48,53 @@ export interface ResearchDiscoverySummary {
   symbolsEligible: number;
   /** @minimum 0 */
   symbolsExcluded: number;
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  successfulSchwabEnrichments: number;
+  /**
+     * @minimum 0
+     * @maximum 50
+     */
+  providerFailures: number;
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  schwabFailures: number;
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  secFailures: number;
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  providerOmissions: number;
+  /**
+     * @minimum 0
+     * @maximum 50
+     */
+  pendingReview: number;
+  /** @minimum 0 */
+  approvedEligible: number;
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  finalCandidates: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  nextOffset: number | null;
+  /**
+     * @maxItems 50
+     * @items.maxLength 500
+     */
+  limitations: string[];
   /**
      * @minimum 0
      * @maximum 25

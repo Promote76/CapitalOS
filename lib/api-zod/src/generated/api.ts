@@ -5060,13 +5060,20 @@ export const discoverResearchOpportunitiesBodyMinScoreMin = 0;
 export const discoverResearchOpportunitiesBodyMinScoreMax = 100;
 export const discoverResearchOpportunitiesBodyMinScoreMultipleOf = 1;
 
+export const discoverResearchOpportunitiesBodyOffsetMin = 0;
+export const discoverResearchOpportunitiesBodyOffsetMultipleOf = 1;
+
+export const discoverResearchOpportunitiesBodyUniverseVersionMax = 160;
+
 
 
 export const DiscoverResearchOpportunitiesBody = zod.object({
   "lens": zod.enum(['Income', 'Compounders', 'Balanced']).optional(),
   "search": zod.string().max(discoverResearchOpportunitiesBodySearchMax).optional(),
   "minScore": zod.number().min(discoverResearchOpportunitiesBodyMinScoreMin).max(discoverResearchOpportunitiesBodyMinScoreMax).multipleOf(discoverResearchOpportunitiesBodyMinScoreMultipleOf).optional(),
-  "portfolioFit": zod.enum(['Constructive', 'Review', 'Caution']).optional()
+  "portfolioFit": zod.enum(['Constructive', 'Review', 'Caution']).optional(),
+  "offset": zod.number().min(discoverResearchOpportunitiesBodyOffsetMin).multipleOf(discoverResearchOpportunitiesBodyOffsetMultipleOf).optional().describe('Stable SEC-universe offset for the next bounded discovery run'),
+  "universeVersion": zod.string().max(discoverResearchOpportunitiesBodyUniverseVersionMax).optional().describe('Version associated with offset; a mismatch resets the bounded run to offset zero')
 })
 
 export const discoverResearchOpportunitiesResponseOneOpportunitiesItemTickerMax = 16;
@@ -5246,6 +5253,43 @@ export const discoverResearchOpportunitiesResponseTwoDiscoveryProgressMessageMax
 export const discoverResearchOpportunitiesResponseTwoDiscoveryKnownUniverseCountMin = 0;
 export const discoverResearchOpportunitiesResponseTwoDiscoveryKnownUniverseCountMultipleOf = 1;
 
+export const discoverResearchOpportunitiesResponseTwoDiscoverySourceProviderMax = 160;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySourceTitleMax = 240;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySourceUrlMax = 500;
+
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySourceUrlRegExp = new RegExp('^https://(www\\.)?sec\\.gov');
+export const discoverResearchOpportunitiesResponseTwoDiscoverySourceVersionMax = 160;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySourceSourceSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+export const discoverResearchOpportunitiesResponseTwoDiscoveryRawSourceRowCountMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryRawSourceRowCountMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryAvailableSymbolCountMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryAvailableSymbolCountMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySourceExclusionsTotalMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySourceExclusionsTotalMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySourceExclusionsCountsMinOne = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySourceExclusionsCountsMultipleOfOne = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryRunOffsetMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryRunOffsetMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryRunCapMax = 25;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryRunCapMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySelectedMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySelectedMax = 25;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySelectedMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryScreenedMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryScreenedMax = 25;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryScreenedMultipleOf = 1;
+
 export const discoverResearchOpportunitiesResponseTwoDiscoverySymbolsSelectedMin = 0;
 export const discoverResearchOpportunitiesResponseTwoDiscoverySymbolsSelectedMultipleOf = 1;
 
@@ -5257,6 +5301,44 @@ export const discoverResearchOpportunitiesResponseTwoDiscoverySymbolsEligibleMul
 
 export const discoverResearchOpportunitiesResponseTwoDiscoverySymbolsExcludedMin = 0;
 export const discoverResearchOpportunitiesResponseTwoDiscoverySymbolsExcludedMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySuccessfulSchwabEnrichmentsMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySuccessfulSchwabEnrichmentsMax = 25;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySuccessfulSchwabEnrichmentsMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryProviderFailuresMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryProviderFailuresMax = 50;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryProviderFailuresMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySchwabFailuresMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySchwabFailuresMax = 25;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySchwabFailuresMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySecFailuresMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySecFailuresMax = 25;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySecFailuresMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryProviderOmissionsMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryProviderOmissionsMax = 25;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryProviderOmissionsMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryPendingReviewMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryPendingReviewMax = 50;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryPendingReviewMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryApprovedEligibleMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryApprovedEligibleMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidatesMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidatesMax = 25;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidatesMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryNextOffsetMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryNextOffsetMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryLimitationsItemMax = 500;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryLimitationsMax = 50;
 
 export const discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidateCountMin = 0;
 export const discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidateCountMax = 25;
@@ -5381,10 +5463,38 @@ export const DiscoverResearchOpportunitiesResponse = zod.object({
   "message": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoveryProgressMessageMax)
 }),
   "knownUniverseCount": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryKnownUniverseCountMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryKnownUniverseCountMultipleOf),
+  "source": zod.object({
+  "provider": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoverySourceProviderMax),
+  "title": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoverySourceTitleMax),
+  "url": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoverySourceUrlMax).regex(discoverResearchOpportunitiesResponseTwoDiscoverySourceUrlRegExp),
+  "version": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoverySourceVersionMax),
+  "retrievedAt": zod.coerce.date(),
+  "sourceSha256": zod.string().regex(discoverResearchOpportunitiesResponseTwoDiscoverySourceSourceSha256RegExp)
+}),
+  "rawSourceRowCount": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryRawSourceRowCountMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryRawSourceRowCountMultipleOf),
+  "availableSymbolCount": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryAvailableSymbolCountMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryAvailableSymbolCountMultipleOf),
+  "sourceExclusions": zod.object({
+  "total": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySourceExclusionsTotalMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySourceExclusionsTotalMultipleOf),
+  "counts": zod.record(zod.string(), zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySourceExclusionsCountsMinOne).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySourceExclusionsCountsMultipleOfOne))
+}),
+  "runOffset": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryRunOffsetMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryRunOffsetMultipleOf),
+  "runCap": zod.number().min(1).max(discoverResearchOpportunitiesResponseTwoDiscoveryRunCapMax).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryRunCapMultipleOf),
+  "selected": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySelectedMin).max(discoverResearchOpportunitiesResponseTwoDiscoverySelectedMax).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySelectedMultipleOf),
+  "screened": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryScreenedMin).max(discoverResearchOpportunitiesResponseTwoDiscoveryScreenedMax).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryScreenedMultipleOf),
   "symbolsSelected": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsSelectedMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsSelectedMultipleOf),
   "symbolsScreened": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsScreenedMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsScreenedMultipleOf),
   "symbolsEligible": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsEligibleMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsEligibleMultipleOf),
   "symbolsExcluded": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsExcludedMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsExcludedMultipleOf),
+  "successfulSchwabEnrichments": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySuccessfulSchwabEnrichmentsMin).max(discoverResearchOpportunitiesResponseTwoDiscoverySuccessfulSchwabEnrichmentsMax).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySuccessfulSchwabEnrichmentsMultipleOf),
+  "providerFailures": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryProviderFailuresMin).max(discoverResearchOpportunitiesResponseTwoDiscoveryProviderFailuresMax).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryProviderFailuresMultipleOf),
+  "schwabFailures": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySchwabFailuresMin).max(discoverResearchOpportunitiesResponseTwoDiscoverySchwabFailuresMax).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySchwabFailuresMultipleOf),
+  "secFailures": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySecFailuresMin).max(discoverResearchOpportunitiesResponseTwoDiscoverySecFailuresMax).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySecFailuresMultipleOf),
+  "providerOmissions": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryProviderOmissionsMin).max(discoverResearchOpportunitiesResponseTwoDiscoveryProviderOmissionsMax).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryProviderOmissionsMultipleOf),
+  "pendingReview": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryPendingReviewMin).max(discoverResearchOpportunitiesResponseTwoDiscoveryPendingReviewMax).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryPendingReviewMultipleOf),
+  "approvedEligible": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryApprovedEligibleMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryApprovedEligibleMultipleOf),
+  "finalCandidates": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidatesMin).max(discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidatesMax).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidatesMultipleOf),
+  "nextOffset": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryNextOffsetMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryNextOffsetMultipleOf).nullable(),
+  "limitations": zod.array(zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoveryLimitationsItemMax)).max(discoverResearchOpportunitiesResponseTwoDiscoveryLimitationsMax),
   "finalCandidateCount": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidateCountMin).max(discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidateCountMax).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidateCountMultipleOf),
   "marketDraftsCreated": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryMarketDraftsCreatedMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryMarketDraftsCreatedMultipleOf),
   "secDraftsCreated": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySecDraftsCreatedMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySecDraftsCreatedMultipleOf),
@@ -5400,8 +5510,10 @@ export const DiscoverResearchOpportunitiesResponse = zod.object({
   "schwabLastSuccessfulReadAt": zod.coerce.date().nullable(),
   "schwabFreshness": zod.enum(['REFRESHED', 'NOT_REFRESHED']),
   "secStatus": zod.enum(['REFRESHED', 'CURRENT', 'LIMITED']),
-  "coverageStatus": zod.enum(['COMPLETE_KNOWN_UNIVERSE', 'LIMITED']),
+  "coverageStatus": zod.enum(['COMPLETE_BOUNDED_RUN', 'LIMITED']),
   "providerWideDiscovery": zod.literal(false),
+  "universeProvider": zod.literal("SEC"),
+  "schwabSuppliedUniverse": zod.literal(false),
   "symbolLimit": zod.number().min(1).max(discoverResearchOpportunitiesResponseTwoDiscoveryProviderSymbolLimitMax).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryProviderSymbolLimitMultipleOf),
   "rateLimit": zod.object({
   "limit": zod.number().nullable(),

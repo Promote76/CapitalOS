@@ -21,6 +21,8 @@ export interface ResearchDiscoveryProvider {
   secStatus: ResearchDiscoveryProviderSecStatus;
   coverageStatus: ResearchDiscoveryProviderCoverageStatus;
   providerWideDiscovery: false;
+  universeProvider: 'SEC';
+  schwabSuppliedUniverse: false;
   /**
      * @minimum 1
      * @maximum 500

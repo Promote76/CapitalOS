@@ -85,11 +85,45 @@ export type ResearchRefine = {
 
 export type ResearchDiscoverySummary = {
   status: "COMPLETED" | "LIMITED";
+  progress: {
+    phase: "COMPLETED";
+    completed: number;
+    total: number;
+    message: string;
+  };
   knownUniverseCount: number;
+  source: {
+    provider: string;
+    title: string;
+    url: string;
+    version: string;
+    retrievedAt: string;
+    sourceSha256: string;
+  };
+  rawSourceRowCount: number;
+  availableSymbolCount: number;
+  sourceExclusions: {
+    total: number;
+    counts: Record<string, number>;
+  };
+  runOffset: number;
+  runCap: number;
+  selected: number;
+  screened: number;
   symbolsSelected: number;
   symbolsScreened: number;
   symbolsEligible: number;
   symbolsExcluded: number;
+  successfulSchwabEnrichments: number;
+  providerFailures: number;
+  schwabFailures: number;
+  secFailures: number;
+  providerOmissions: number;
+  pendingReview: number;
+  approvedEligible: number;
+  finalCandidates: number;
+  nextOffset: number | null;
+  limitations: string[];
   finalCandidateCount: number;
   marketDraftsCreated: number;
   secDraftsCreated: number;
@@ -101,9 +135,17 @@ export type ResearchDiscoverySummary = {
     schwabLastSuccessfulReadAt: string | null;
     schwabFreshness: "REFRESHED" | "NOT_REFRESHED";
     secStatus: "REFRESHED" | "CURRENT" | "LIMITED";
-    coverageStatus: "COMPLETE_KNOWN_UNIVERSE" | "LIMITED";
+    coverageStatus: "COMPLETE_BOUNDED_RUN" | "LIMITED";
     providerWideDiscovery: false;
+    universeProvider: "SEC";
+    schwabSuppliedUniverse: false;
     symbolLimit: number;
+    rateLimit: {
+      limit: number | null;
+      remaining: number | null;
+      resetAt: string | null;
+      retryAfterSeconds: number | null;
+    } | null;
   };
 };
 
@@ -546,20 +588,69 @@ export function ResearchOpportunityWorkflow({
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[12px] font-semibold text-[#23463e]">Discovery summary</span>
-                  <StatusPill tone={discoverySummary.status === "LIMITED" ? "caution" : "safe"}>{discoverySummary.status === "LIMITED" ? "Limited coverage" : "Known universe complete"}</StatusPill>
+                  <StatusPill tone={discoverySummary.status === "LIMITED" ? "caution" : "safe"}>{discoverySummary.status === "LIMITED" ? "Bounded coverage" : "Bounded traversal complete"}</StatusPill>
                   <StatusPill tone="safe">Schwab {discoverySummary.provider.schwabConnectionStatus.replaceAll("_", " ").toLowerCase()}</StatusPill>
                 </div>
                 <p className="mt-2 max-w-2xl text-[10px] leading-[1.5] text-[#71877f]">
-                  Schwab freshness: {discoverySummary.provider.schwabFreshness.toLowerCase().replaceAll("_", " ")} · SEC: {discoverySummary.provider.secStatus.toLowerCase()} · Provider-wide screener: unavailable through the authorized API.
+                  SEC supplied the universe; Schwab did not. Schwab was used only for targeted, read-only fundamentals, quotes, and 93-day daily history. Provider-wide screener unavailable through the authorized API. Schwab freshness: {discoverySummary.provider.schwabFreshness.toLowerCase().replaceAll("_", " ")} · SEC status: {discoverySummary.provider.secStatus.toLowerCase()}. New evidence stays pending until human approval.
                 </p>
+                <div className="mt-3 rounded-lg border border-[#d9e2d8] bg-[#f3f8f3] px-3 py-2 text-[10px] leading-[1.5] text-[#58716a]" data-testid="research-discovery-source">
+                  <div className="font-semibold text-[#23463e]">SEC universe source</div>
+                  <div className="mt-1 grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                    <span data-testid="text-research-sec-source-title"><strong>Title:</strong> {discoverySummary.source.title}</span>
+                    <span data-testid="text-research-sec-source-version"><strong>Version:</strong> {discoverySummary.source.version}</span>
+                    <span data-testid="text-research-sec-source-retrieved"><strong>Retrieved:</strong> {formatEvidenceDate(discoverySummary.source.retrievedAt)}</span>
+                    <span><strong>Provider:</strong> {discoverySummary.source.provider}</span>
+                  </div>
+                  <a
+                    href={discoverySummary.source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-flex max-w-full items-center gap-1 truncate font-semibold text-[#236b59] underline underline-offset-2"
+                    data-testid="link-research-sec-source"
+                  >
+                    <ExternalLink size={11} /> Open SEC source
+                  </a>
+                </div>
               </div>
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-                <Metric label="Known" value={String(discoverySummary.knownUniverseCount)} />
-                <Metric label="Screened" value={String(discoverySummary.symbolsScreened)} />
-                <Metric label="Eligible" value={String(discoverySummary.symbolsEligible)} tone="positive" />
-                <Metric label="Excluded" value={String(discoverySummary.symbolsExcluded)} tone={discoverySummary.symbolsExcluded ? "caution" : "quiet"} />
-                <Metric label="Candidates" value={String(discoverySummary.finalCandidateCount)} tone="positive" />
-                <Metric label="Pending review" value={String(discoverySummary.marketDraftsCreated + discoverySummary.secDraftsCreated)} tone={discoverySummary.marketDraftsCreated + discoverySummary.secDraftsCreated ? "caution" : "quiet"} />
+                <Metric label="Universe symbols" value={String(discoverySummary.availableSymbolCount)} />
+                <Metric label="Raw SEC rows" value={String(discoverySummary.rawSourceRowCount)} />
+                <Metric label="Available symbols" value={String(discoverySummary.availableSymbolCount)} />
+                <Metric label="Run offset / cap" value={`${discoverySummary.runOffset} / ${discoverySummary.runCap}`} />
+                <Metric label="Selected / screened" value={`${discoverySummary.selected} / ${discoverySummary.screened}`} />
+                <Metric label="Approved eligible" value={String(discoverySummary.approvedEligible)} tone="positive" />
+                <Metric label="Final candidates" value={String(discoverySummary.finalCandidates)} tone="positive" />
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#e9eee6] pt-3 sm:grid-cols-4 lg:grid-cols-10" data-testid="research-discovery-accounting">
+              <Metric label="Source exclusions" value={String(discoverySummary.sourceExclusions.total)} tone={discoverySummary.sourceExclusions.total ? "caution" : "quiet"} />
+              <Metric label="Successful Schwab" value={String(discoverySummary.successfulSchwabEnrichments)} tone="positive" />
+              <Metric label="Provider failures" value={String(discoverySummary.providerFailures)} tone={discoverySummary.providerFailures ? "caution" : "quiet"} />
+              <Metric label="Schwab failures" value={String(discoverySummary.schwabFailures)} tone={discoverySummary.schwabFailures ? "caution" : "quiet"} />
+              <Metric label="SEC failures" value={String(discoverySummary.secFailures)} tone={discoverySummary.secFailures ? "caution" : "quiet"} />
+              <Metric label="Provider omissions" value={String(discoverySummary.providerOmissions)} tone={discoverySummary.providerOmissions ? "caution" : "quiet"} />
+              <Metric label="Pending review" value={String(discoverySummary.pendingReview)} tone={discoverySummary.pendingReview ? "caution" : "quiet"} />
+              <Metric label="Symbols eligible" value={String(discoverySummary.symbolsEligible)} tone="positive" />
+              <Metric label="Symbols excluded" value={String(discoverySummary.symbolsExcluded)} tone={discoverySummary.symbolsExcluded ? "caution" : "quiet"} />
+              <Metric label="Next offset" value={discoverySummary.nextOffset === null ? "Wrap to 0" : String(discoverySummary.nextOffset)} />
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <div className="rounded-lg border border-[#e7dfc8] bg-[#fffaf0] px-3 py-2 text-[10px] leading-[1.45] text-[#7d672f]" data-testid="research-discovery-source-exclusions">
+                <strong className="font-mono text-[9px] uppercase tracking-[0.08em]">SEC source exclusions</strong>
+                <div className="mt-1">
+                  {Object.entries(discoverySummary.sourceExclusions.counts).length > 0
+                    ? Object.entries(discoverySummary.sourceExclusions.counts).map(([code, count]) => <span key={code} className="mr-3 inline-block">{code.replaceAll("_", " ")}: {count}</span>)
+                    : "None recorded"}
+                </div>
+              </div>
+              <div className="rounded-lg border border-[#d9e2d8] bg-[#f3f8f3] px-3 py-2 text-[10px] leading-[1.45] text-[#58716a]" data-testid="research-discovery-boundary">
+                <strong className="font-semibold text-[#23463e]">Evidence boundary</strong>
+                <div className="mt-1">
+                  Approved eligible: {discoverySummary.approvedEligible} · Final candidates: {discoverySummary.finalCandidates} · Pending review: {discoverySummary.pendingReview}.{" "}
+                  {discoverySummary.pendingReview > 0 && discoverySummary.finalCandidates === 0 && <strong>Pending review only: no approved candidates are shown. </strong>}
+                  Evidence remains pending until approval; no execution or account action is available.
+                </div>
               </div>
             </div>
             {discoverySummary.exclusionReasons.length > 0 && (
@@ -570,6 +661,11 @@ export function ResearchOpportunityWorkflow({
                     <span className="ml-2">{issue.message}{issue.count > 1 ? ` (${issue.count})` : ""}</span>
                   </div>
                 ))}
+              </div>
+            )}
+            {discoverySummary.limitations.length > 0 && (
+              <div className="mt-3 text-[10px] leading-[1.45] text-[#71877f]" data-testid="research-discovery-limitation-text">
+                <strong className="text-[#58716a]">Run limitations:</strong> {discoverySummary.limitations.join(" · ")}
               </div>
             )}
           </div>

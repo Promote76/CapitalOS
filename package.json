@@ -8,6 +8,7 @@
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "check:generated-finance-artifacts": "node scripts/check-generated-finance-artifacts.mjs",
+    "refresh:research-universe": "node scripts/refresh-sec-equity-universe.mjs",
     "certify:financial-document-integrity": "node scripts/certify-financial-document-integrity.mjs",
     "certify:production-document-remediation": "node scripts/certify-production-document-remediation.mjs",
     "certify:production-document-remediation-browser": "pnpm --filter @workspace/api-server run certify:production-document-remediation-browser",

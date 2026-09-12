@@ -281,7 +281,7 @@ test("Find Opportunities runs the permitted provider collection pipeline before 
   });
   await db.insert(schwabMarketSnapshots).values({
     householdId: f.actor.householdId,
-    ticker: "KNOWN",
+    ticker: "AHT-PF",
     content: {},
     provenance: { provider: "fixture" },
     requestedAt: new Date(),
@@ -338,14 +338,23 @@ test("Find Opportunities runs the permitted provider collection pipeline before 
         : base;
     }) as never,
   });
-  assert.deepEqual(marketReads, ["KNOWN"]);
-  assert.deepEqual(secReads, ["KNOWN"]);
+  assert.equal(marketReads.length, 25);
+  assert.equal(secReads.length, 25);
+  assert.equal(marketReads[0], "AHT-PF");
+  assert.equal(marketReads[1], "ICL");
   assert.equal(result.opportunities[0]?.ticker, "FRESH");
-  assert.equal(result.discovery.symbolsScreened, 1);
+  assert.equal(result.discovery.symbolsScreened, 25);
   assert.equal(result.discovery.finalCandidateCount, 1);
-  assert.equal(result.discovery.marketDraftsCreated, 1);
-  assert.equal(result.discovery.secDraftsCreated, 1);
+  assert.equal(result.discovery.marketDraftsCreated, 25);
+  assert.equal(result.discovery.secDraftsCreated, 25);
   assert.equal(result.discovery.provider.providerWideDiscovery, false);
+  assert.equal(result.discovery.provider.universeProvider, "SEC");
+  assert.equal(result.discovery.provider.schwabSuppliedUniverse, false);
+  assert.equal(result.discovery.runOffset, 0);
+  assert.equal(result.discovery.runCap, 25);
+  assert.equal(result.discovery.selected, 25);
+  assert.equal(result.discovery.source.provider, "U.S. Securities and Exchange Commission");
+  assert.equal(result.discovery.nextOffset, 25);
   assert.equal(result.advisoryOnly, true);
   assert.equal(result.executionAuthorization, false);
   assert.equal(result.noTradingOrMoneyMovement, true);
@@ -364,4 +373,119 @@ test("Find Opportunities fails explicitly before collection when Schwab Market D
     (error) => error instanceof SchwabResearchError && error.code === "MARKET_DATA_DISCONNECTED",
   );
   assert.equal(collectionTouched, false);
+});
+
+test("Find Opportunities paginates the SEC universe in deterministic non-overlapping batches", { skip: !enabled }, async () => {
+  const f = await fixture();
+  await db.insert(schwabMarketDataConnections).values({
+    householdId: f.actor.householdId,
+    createdByUserId: f.actor.userId,
+    status: "LIVE_CONNECTED",
+    lifecycleGeneration: randomUUID(),
+    accessTokenCiphertext: "fixture-ciphertext",
+    accessTokenNonce: "fixture-nonce",
+    accessTokenAuthTag: "fixture-tag",
+    accessTokenExpiresAt: new Date(Date.now() + 60_000),
+  });
+  const first: string[] = [];
+  const second: string[] = [];
+  const dependencies = (seen: string[]) => ({
+    collectMarket: (async (_actor: Actor, input: { ticker: string }) => {
+      seen.push(input.ticker);
+      return { provenance: {} };
+    }) as never,
+    collectSec: (async () => ({ alreadyCollected: false })) as never,
+    rank: (async () => ({
+      opportunities: [],
+      totalEligible: 0,
+      advisoryOnly: true,
+      executionAuthorization: false,
+      householdCapitalIncluded: false,
+      noTradingOrMoneyMovement: true,
+    })) as never,
+  });
+  const pageOne = await discoverResearchOpportunities(f.actor, { offset: 0 }, dependencies(first));
+  const pageTwo = await discoverResearchOpportunities(f.actor, { offset: 25 }, dependencies(second));
+  const reset: string[] = [];
+  const resetPage = await discoverResearchOpportunities(
+    f.actor,
+    { offset: 25, universeVersion: "stale-universe-version" },
+    dependencies(reset),
+  );
+  assert.equal(first.length, 25);
+  assert.equal(second.length, 25);
+  assert.deepEqual(first.slice(0, 2), ["AHT-PF", "ICL"]);
+  assert.equal(new Set([...first, ...second]).size, 50);
+  assert.equal(pageOne.discovery.nextOffset, 25);
+  assert.equal(pageTwo.discovery.runOffset, 25);
+  assert.equal(pageTwo.discovery.nextOffset, 50);
+  assert.equal(resetPage.discovery.runOffset, 0);
+  assert.deepEqual(reset, first);
+});
+
+test("Find Opportunities reports a provider halt and leaves halted symbols pending without eligibility", { skip: !enabled }, async () => {
+  const f = await fixture();
+  await db.insert(schwabMarketDataConnections).values({
+    householdId: f.actor.householdId,
+    createdByUserId: f.actor.userId,
+    status: "LIVE_CONNECTED",
+    lifecycleGeneration: randomUUID(),
+    accessTokenCiphertext: "fixture-ciphertext",
+    accessTokenNonce: "fixture-nonce",
+    accessTokenAuthTag: "fixture-tag",
+    accessTokenExpiresAt: new Date(Date.now() + 60_000),
+  });
+  const secReads: string[] = [];
+  const result = await discoverResearchOpportunities(f.actor, {}, {
+    collectMarket: (async () => {
+      throw new SchwabResearchError("PROVIDER_RATE_LIMITED", 429, "fixture provider halt");
+    }) as never,
+    collectSec: (async (_actor: Actor, input: { ticker: string }) => {
+      secReads.push(input.ticker);
+      return { alreadyCollected: false };
+    }) as never,
+    rank: (async () => ({ opportunities: [], totalEligible: 0 })) as never,
+  });
+  assert.equal(result.discovery.symbolsScreened, 1);
+  assert.equal(result.discovery.providerFailures, 1);
+  assert.equal(result.discovery.schwabFailures, 1);
+  assert.equal(result.discovery.secFailures, 0);
+  assert.equal(result.discovery.providerOmissions, 24);
+  assert.equal(result.discovery.pendingReview, 0);
+  assert.equal(result.discovery.approvedEligible, 0);
+  assert.equal(result.discovery.finalCandidates, 0);
+  assert.equal(result.discovery.nextOffset, 1);
+  assert.deepEqual(secReads, []);
+});
+
+test("Find Opportunities keeps newly collected drafts pending and out of approved eligibility", { skip: !enabled }, async () => {
+  const f = await fixture();
+  await db.insert(schwabMarketDataConnections).values({
+    householdId: f.actor.householdId,
+    createdByUserId: f.actor.userId,
+    status: "LIVE_CONNECTED",
+    lifecycleGeneration: randomUUID(),
+    accessTokenCiphertext: "fixture-ciphertext",
+    accessTokenNonce: "fixture-nonce",
+    accessTokenAuthTag: "fixture-tag",
+    accessTokenExpiresAt: new Date(Date.now() + 60_000),
+  });
+  const result = await discoverResearchOpportunities(f.actor, {}, {
+    collectMarket: (async () => ({ provenance: {} })) as never,
+    collectSec: (async () => ({ alreadyCollected: false })) as never,
+    rank: (async () => ({
+      opportunities: [],
+      totalEligible: 0,
+      advisoryOnly: true,
+      executionAuthorization: false,
+      householdCapitalIncluded: false,
+      noTradingOrMoneyMovement: true,
+    })) as never,
+  });
+  assert.equal(result.discovery.successfulSchwabEnrichments, 25);
+  assert.equal(result.discovery.pendingReview, 50);
+  assert.equal(result.discovery.approvedEligible, 0);
+  assert.equal(result.discovery.finalCandidates, 0);
+  assert.equal(result.executionAuthorization, false);
+  assert.equal(result.noTradingOrMoneyMovement, true);
 });

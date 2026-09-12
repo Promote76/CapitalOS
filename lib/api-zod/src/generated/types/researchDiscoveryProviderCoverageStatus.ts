@@ -10,6 +10,6 @@ export type ResearchDiscoveryProviderCoverageStatus = typeof ResearchDiscoveryPr
 
 
 export const ResearchDiscoveryProviderCoverageStatus = {
-  COMPLETE_KNOWN_UNIVERSE: 'COMPLETE_KNOWN_UNIVERSE',
+  COMPLETE_BOUNDED_RUN: 'COMPLETE_BOUNDED_RUN',
   LIMITED: 'LIMITED',
 } as const;

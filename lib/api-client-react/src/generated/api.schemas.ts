@@ -5354,6 +5354,16 @@ export interface DiscoverResearchOpportunitiesRequest {
      */
   minScore?: number;
   portfolioFit?: DiscoverResearchOpportunitiesRequestPortfolioFit;
+  /**
+     * Stable SEC-universe offset for the next bounded discovery run
+     * @minimum 0
+     */
+  offset?: number;
+  /**
+     * Version associated with offset; a mismatch resets the bounded run to offset zero
+     * @maxLength 160
+     */
+  universeVersion?: string;
 }
 
 export interface ResearchDiscoveryIssue {
@@ -5400,7 +5410,7 @@ export type ResearchDiscoveryProviderCoverageStatus = typeof ResearchDiscoveryPr
 
 
 export const ResearchDiscoveryProviderCoverageStatus = {
-  COMPLETE_KNOWN_UNIVERSE: 'COMPLETE_KNOWN_UNIVERSE',
+  COMPLETE_BOUNDED_RUN: 'COMPLETE_BOUNDED_RUN',
   LIMITED: 'LIMITED',
 } as const;
 
@@ -5427,6 +5437,8 @@ export interface ResearchDiscoveryProvider {
   secStatus: ResearchDiscoveryProviderSecStatus;
   coverageStatus: ResearchDiscoveryProviderCoverageStatus;
   providerWideDiscovery: false;
+  universeProvider: 'SEC';
+  schwabSuppliedUniverse: false;
   /**
      * @minimum 1
      * @maximum 500
@@ -5434,6 +5446,31 @@ export interface ResearchDiscoveryProvider {
   symbolLimit: number;
   /** @nullable */
   rateLimit: ResearchDiscoveryProviderRateLimit;
+}
+
+export interface ResearchDiscoverySource {
+  /** @maxLength 160 */
+  provider: string;
+  /** @maxLength 240 */
+  title: string;
+  /**
+     * @maxLength 500
+     * @pattern ^https://(www\.)?sec\.gov/
+     */
+  url: string;
+  /** @maxLength 160 */
+  version: string;
+  retrievedAt: string;
+  /** @pattern ^[a-f0-9]{64}$ */
+  sourceSha256: string;
+}
+
+export type ResearchDiscoverySourceExclusionsCounts = {[key: string]: number};
+
+export interface ResearchDiscoverySourceExclusions {
+  /** @minimum 0 */
+  total: number;
+  counts: ResearchDiscoverySourceExclusionsCounts;
 }
 
 export type ResearchDiscoverySummaryStatus = typeof ResearchDiscoverySummaryStatus[keyof typeof ResearchDiscoverySummaryStatus];
@@ -5466,6 +5503,29 @@ export interface ResearchDiscoverySummary {
   progress: ResearchDiscoverySummaryProgress;
   /** @minimum 0 */
   knownUniverseCount: number;
+  source: ResearchDiscoverySource;
+  /** @minimum 0 */
+  rawSourceRowCount: number;
+  /** @minimum 0 */
+  availableSymbolCount: number;
+  sourceExclusions: ResearchDiscoverySourceExclusions;
+  /** @minimum 0 */
+  runOffset: number;
+  /**
+     * @minimum 1
+     * @maximum 25
+     */
+  runCap: number;
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  selected: number;
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  screened: number;
   /** @minimum 0 */
   symbolsSelected: number;
   /** @minimum 0 */
@@ -5474,6 +5534,53 @@ export interface ResearchDiscoverySummary {
   symbolsEligible: number;
   /** @minimum 0 */
   symbolsExcluded: number;
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  successfulSchwabEnrichments: number;
+  /**
+     * @minimum 0
+     * @maximum 50
+     */
+  providerFailures: number;
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  schwabFailures: number;
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  secFailures: number;
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  providerOmissions: number;
+  /**
+     * @minimum 0
+     * @maximum 50
+     */
+  pendingReview: number;
+  /** @minimum 0 */
+  approvedEligible: number;
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  finalCandidates: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  nextOffset: number | null;
+  /**
+     * @maxItems 50
+     * @items.maxLength 500
+     */
+  limitations: string[];
   /**
      * @minimum 0
      * @maximum 25

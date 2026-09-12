@@ -1344,7 +1344,7 @@ paths:
             schema: { $ref: "#/components/schemas/DiscoverResearchOpportunitiesRequest" }
       responses:
         "200":
-          description: Completed or explicitly limited read-only discovery with pending-review evidence and deterministic rankings
+          description: Completed or explicitly limited read-only discovery over a bounded, attributed SEC universe with pending-review evidence and deterministic rankings
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ResearchOpportunityDiscoveryResponse" }
@@ -7453,6 +7453,8 @@ components:
         search: { type: string, maxLength: 120 }
         minScore: { type: number, minimum: 0, maximum: 100, multipleOf: 1 }
         portfolioFit: { type: string, enum: [Constructive, Review, Caution] }
+        offset: { type: number, minimum: 0, multipleOf: 1, description: Stable SEC-universe offset for the next bounded discovery run }
+        universeVersion: { type: string, maxLength: 160, description: Version associated with offset; a mismatch resets the bounded run to offset zero }
     ResearchDiscoveryIssue:
       type: object
       required: [code, count, message]
@@ -7462,15 +7464,17 @@ components:
         message: { type: string, maxLength: 500 }
     ResearchDiscoveryProvider:
       type: object
-      required: [schwabConnectionStatus, schwabTokenStatus, schwabLastSuccessfulReadAt, schwabFreshness, secStatus, coverageStatus, providerWideDiscovery, symbolLimit, rateLimit]
+      required: [schwabConnectionStatus, schwabTokenStatus, schwabLastSuccessfulReadAt, schwabFreshness, secStatus, coverageStatus, providerWideDiscovery, universeProvider, schwabSuppliedUniverse, symbolLimit, rateLimit]
       properties:
         schwabConnectionStatus: { type: string, enum: [LIVE_CONNECTED] }
         schwabTokenStatus: { type: string, enum: [CURRENT] }
         schwabLastSuccessfulReadAt: { type: ["string", "null"], format: date-time }
         schwabFreshness: { type: string, enum: [REFRESHED, NOT_REFRESHED] }
         secStatus: { type: string, enum: [REFRESHED, CURRENT, LIMITED] }
-        coverageStatus: { type: string, enum: [COMPLETE_KNOWN_UNIVERSE, LIMITED] }
+        coverageStatus: { type: string, enum: [COMPLETE_BOUNDED_RUN, LIMITED] }
         providerWideDiscovery: { type: boolean, const: false }
+        universeProvider: { type: string, const: SEC }
+        schwabSuppliedUniverse: { type: boolean, const: false }
         symbolLimit: { type: number, minimum: 1, maximum: 500, multipleOf: 1 }
         rateLimit:
           type: ["object", "null"]
@@ -7480,9 +7484,27 @@ components:
             remaining: { type: ["number", "null"] }
             resetAt: { type: ["string", "null"] }
             retryAfterSeconds: { type: ["number", "null"] }
+    ResearchDiscoverySource:
+      type: object
+      required: [provider, title, url, version, retrievedAt, sourceSha256]
+      properties:
+        provider: { type: string, maxLength: 160 }
+        title: { type: string, maxLength: 240 }
+        url: { type: string, pattern: "^https://(www\\.)?sec\\.gov/", maxLength: 500 }
+        version: { type: string, maxLength: 160 }
+        retrievedAt: { type: string, format: date-time }
+        sourceSha256: { type: string, pattern: "^[a-f0-9]{64}$" }
+    ResearchDiscoverySourceExclusions:
+      type: object
+      required: [total, counts]
+      properties:
+        total: { type: number, minimum: 0, multipleOf: 1 }
+        counts:
+          type: object
+          additionalProperties: { type: number, minimum: 0, multipleOf: 1 }
     ResearchDiscoverySummary:
       type: object
-      required: [status, progress, knownUniverseCount, symbolsSelected, symbolsScreened, symbolsEligible, symbolsExcluded, finalCandidateCount, marketDraftsCreated, secDraftsCreated, secSnapshotsReused, exclusionReasons, provider]
+      required: [status, progress, knownUniverseCount, source, rawSourceRowCount, availableSymbolCount, sourceExclusions, runOffset, runCap, selected, screened, symbolsSelected, symbolsScreened, symbolsEligible, symbolsExcluded, successfulSchwabEnrichments, providerFailures, schwabFailures, secFailures, providerOmissions, pendingReview, approvedEligible, finalCandidates, nextOffset, limitations, finalCandidateCount, marketDraftsCreated, secDraftsCreated, secSnapshotsReused, exclusionReasons, provider]
       properties:
         status: { type: string, enum: [COMPLETED, LIMITED] }
         progress:
@@ -7494,10 +7516,31 @@ components:
             total: { type: number, minimum: 0, multipleOf: 1 }
             message: { type: string, maxLength: 500 }
         knownUniverseCount: { type: number, minimum: 0, multipleOf: 1 }
+        source: { $ref: "#/components/schemas/ResearchDiscoverySource" }
+        rawSourceRowCount: { type: number, minimum: 0, multipleOf: 1 }
+        availableSymbolCount: { type: number, minimum: 0, multipleOf: 1 }
+        sourceExclusions: { $ref: "#/components/schemas/ResearchDiscoverySourceExclusions" }
+        runOffset: { type: number, minimum: 0, multipleOf: 1 }
+        runCap: { type: number, minimum: 1, maximum: 25, multipleOf: 1 }
+        selected: { type: number, minimum: 0, maximum: 25, multipleOf: 1 }
+        screened: { type: number, minimum: 0, maximum: 25, multipleOf: 1 }
         symbolsSelected: { type: number, minimum: 0, multipleOf: 1 }
         symbolsScreened: { type: number, minimum: 0, multipleOf: 1 }
         symbolsEligible: { type: number, minimum: 0, multipleOf: 1 }
         symbolsExcluded: { type: number, minimum: 0, multipleOf: 1 }
+        successfulSchwabEnrichments: { type: number, minimum: 0, maximum: 25, multipleOf: 1 }
+        providerFailures: { type: number, minimum: 0, maximum: 50, multipleOf: 1 }
+        schwabFailures: { type: number, minimum: 0, maximum: 25, multipleOf: 1 }
+        secFailures: { type: number, minimum: 0, maximum: 25, multipleOf: 1 }
+        providerOmissions: { type: number, minimum: 0, maximum: 25, multipleOf: 1 }
+        pendingReview: { type: number, minimum: 0, maximum: 50, multipleOf: 1 }
+        approvedEligible: { type: number, minimum: 0, multipleOf: 1 }
+        finalCandidates: { type: number, minimum: 0, maximum: 25, multipleOf: 1 }
+        nextOffset: { type: ["number", "null"], minimum: 0, multipleOf: 1 }
+        limitations:
+          type: array
+          maxItems: 50
+          items: { type: string, maxLength: 500 }
         finalCandidateCount: { type: number, minimum: 0, maximum: 25, multipleOf: 1 }
         marketDraftsCreated: { type: number, minimum: 0, multipleOf: 1 }
         secDraftsCreated: { type: number, minimum: 0, multipleOf: 1 }

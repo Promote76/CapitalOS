@@ -18,4 +18,14 @@ export interface DiscoverResearchOpportunitiesRequest {
      */
   minScore?: number;
   portfolioFit?: DiscoverResearchOpportunitiesRequestPortfolioFit;
+  /**
+     * Stable SEC-universe offset for the next bounded discovery run
+     * @minimum 0
+     */
+  offset?: number;
+  /**
+     * Version associated with offset; a mismatch resets the bounded run to offset zero
+     * @maxLength 160
+     */
+  universeVersion?: string;
 }

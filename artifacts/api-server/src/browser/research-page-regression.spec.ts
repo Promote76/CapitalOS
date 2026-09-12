@@ -93,11 +93,8 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
   const savedDecisions: Array<Record<string, unknown>> = [];
   let readOnlyObservationFixtureReady = false;
   let discoveryRequests = 0;
+  const discoveryOffsets: number[] = [];
   let discoveryAuthFailure = false;
-  let releaseDiscovery: (() => void) | undefined;
-  const discoveryGate = new Promise<void>((resolve) => {
-    releaseDiscovery = resolve;
-  });
   try {
     const user = await clerkClient.users.createUser({ emailAddress: [`${localPart}+research-${runId}@${domain}`], firstName: "Research", lastName: "browser fixture", skipPasswordRequirement: true });
     userId = user.id;
@@ -126,13 +123,19 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
       const requestUrl = new URL(route.request().url());
       if (route.request().method() === "POST" && requestUrl.pathname.endsWith("/api/research/opportunities/discover")) {
         discoveryRequests += 1;
-        expect(route.request().postDataJSON()).toEqual({});
+        const requestBody = route.request().postDataJSON() as { offset?: number; universeVersion?: string };
+        discoveryOffsets.push(requestBody.offset ?? -1);
+        expect(requestBody.offset).toEqual(expect.any(Number));
+        expect(requestBody.offset).toBeGreaterThanOrEqual(0);
         if (discoveryAuthFailure) {
           await route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ message: "Sign in is required to access Capital OS financial data." }) });
           return;
         }
-        await discoveryGate;
-        const opportunities = [opportunity("FRESH", "Balanced")];
+        if (discoveryRequests === 1) {
+          await new Promise((resolve) => setTimeout(resolve, 750));
+        }
+        const batchHasCandidate = (requestBody.offset ?? 0) === 0;
+        const opportunities = batchHasCandidate ? [opportunity("FRESH", "Balanced")] : [];
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -151,12 +154,40 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
             discovery: {
               status: "LIMITED",
               progress: { phase: "COMPLETED", completed: 2, total: 2, message: "Discovery completed." },
-              knownUniverseCount: 2,
+              knownUniverseCount: 50,
+              source: {
+                provider: "SEC EDGAR",
+                title: "SEC company universe",
+                url: "https://www.sec.gov/files/company_tickers.json",
+                version: "2025-01-15",
+                retrievedAt: date,
+                sourceSha256: digest,
+              },
+              rawSourceRowCount: 50,
+              availableSymbolCount: 50,
+              sourceExclusions: { total: 0, counts: {} },
+              runOffset: requestBody.offset ?? 0,
+              runCap: 25,
+              selected: 2,
+              screened: 2,
               symbolsSelected: 2,
               symbolsScreened: 2,
-              symbolsEligible: 1,
+              symbolsEligible: batchHasCandidate ? 1 : 0,
               symbolsExcluded: 1,
-              finalCandidateCount: 1,
+              successfulSchwabEnrichments: 2,
+              providerFailures: 0,
+              schwabFailures: 0,
+              secFailures: 0,
+              providerOmissions: 0,
+              pendingReview: 3,
+              approvedEligible: batchHasCandidate ? 1 : 0,
+              finalCandidates: batchHasCandidate ? 1 : 0,
+              nextOffset: requestBody.offset === 0 ? 25 : null,
+              limitations: [
+                "SEC supplied the universe; Schwab did not.",
+                "Schwab is limited to targeted read-only fundamentals, quotes, and 93-day daily history.",
+              ],
+              finalCandidateCount: batchHasCandidate ? 1 : 0,
               marketDraftsCreated: 2,
               secDraftsCreated: 1,
               secSnapshotsReused: 1,
@@ -172,6 +203,8 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
                 secStatus: "REFRESHED",
                 coverageStatus: "LIMITED",
                 providerWideDiscovery: false,
+                universeProvider: "SEC",
+                schwabSuppliedUniverse: false,
                 symbolLimit: 25,
                 rateLimit: { limit: 120, remaining: 100, resetAt: null, retryAfterSeconds: null },
               },
@@ -334,26 +367,48 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
       && response.ok(),
     );
     await page.getByTestId("button-find-opportunities").click();
-    await expect.poll(() => discoveryRequests).toBe(1);
-    await expect(page.getByTestId("button-find-opportunities")).toHaveText(/Screening/);
-    await expect(page.getByTestId("status-research-discovery-progress")).toContainText("Running read-only discovery");
-    releaseDiscovery?.();
+    await Promise.all([
+      expect.poll(() => discoveryRequests).toBe(1),
+      expect(page.getByTestId("button-find-opportunities")).toHaveText(/Screening/),
+      expect(page.getByTestId("status-research-discovery-progress")).toContainText("Running read-only discovery"),
+    ]);
     const completedDiscovery = await discoveryResponse;
     const completedBody = await completedDiscovery.json();
     expect(completedBody.discovery.status).toBe("LIMITED");
+    expect(completedBody.discovery.runOffset).toBe(0);
+    expect(completedBody.discovery.nextOffset).toBe(25);
     expect(completedBody.discovery.exclusionReasons[0].code).toBe("PROVIDER_WIDE_SCREENER_UNAVAILABLE");
+    expect(discoveryOffsets).toEqual([0]);
     await Promise.all([
       expect(page.getByTestId("research-discovery-summary")).toContainText("Discovery summary"),
       expect(page.getByTestId("card-opportunity-FRESH")).toBeVisible(),
     ]);
+    await expect(page.getByTestId("research-discovery-summary")).toContainText("SEC supplied the universe; Schwab did not");
+    await expect(page.getByTestId("research-discovery-summary")).toContainText("93-day daily history");
+    await expect(page.getByTestId("research-discovery-summary")).toContainText("Evidence remains pending until approval");
+    await expect(page.getByTestId("research-discovery-boundary")).toContainText("no execution or account action");
     expect(discoveryRequests).toBe(1);
     expect(forbiddenRequests).toEqual([]);
+    const nextDiscoveryResponse = page.waitForResponse((response) =>
+      response.request().method() === "POST"
+      && new URL(response.url()).pathname.endsWith("/api/research/opportunities/discover")
+      && response.ok(),
+    );
+    await page.getByTestId("button-find-opportunities").click();
+    const nextDiscoveryBody = await (await nextDiscoveryResponse).json();
+    expect(nextDiscoveryBody.discovery.runOffset).toBe(25);
+    expect(nextDiscoveryBody.discovery.nextOffset).toBeNull();
+    expect(discoveryOffsets).toEqual([0, 25]);
+    expect(discoveryRequests).toBe(2);
+    await expect(page.getByTestId("research-discovery-boundary")).toContainText("Pending review only");
+    await expect(page.getByTestId("research-discovery-boundary")).toContainText("no execution or account action");
     await page.reload();
     await expect(page.getByTestId("card-opportunity-INCM")).toBeVisible();
     discoveryAuthFailure = true;
     await page.getByTestId("button-find-opportunities").click();
     await expect(page.getByTestId("status-research-discovery-error")).toContainText("Sign in is required");
     discoveryAuthFailure = false;
+    expect(discoveryOffsets).toEqual([0, 25, 0]);
     const waitForLens = (lens: "Income" | "Compounders") => page.waitForResponse((response) => {
       const url = new URL(response.url());
       return response.ok() && url.pathname.endsWith("/api/research/opportunities") && url.searchParams.get("lens") === lens;

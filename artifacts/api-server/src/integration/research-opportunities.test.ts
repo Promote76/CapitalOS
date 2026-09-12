@@ -417,13 +417,16 @@ test("Find Opportunities paginates the SEC universe in deterministic non-overlap
   assert.deepEqual(first.slice(0, 2), staticUniverseEntries("BROAD_US_MARKET").slice(0, 2).map((entry) => entry.ticker));
   assert.equal(new Set([...first, ...second]).size, 50);
   assert.equal(pageOne.discovery.nextOffset, 25);
+  assert.equal(pageOne.discovery.status, "LIMITED");
+  assert.equal(pageOne.discovery.progress.phase, "LIMITED");
+  assert.equal(pageOne.discovery.progress.completed, 25);
   assert.equal(pageTwo.discovery.runOffset, 25);
   assert.equal(pageTwo.discovery.nextOffset, 50);
   assert.equal(resetPage.discovery.runOffset, 0);
   assert.deepEqual(reset, first);
 });
 
-test("Find Opportunities reports a provider halt and leaves halted symbols pending without eligibility", { skip: !enabled }, async () => {
+test("Find Opportunities reports a provider halt and retries the incomplete symbol without eligibility", { skip: !enabled }, async () => {
   const f = await fixture();
   await db.insert(schwabMarketDataConnections).values({
     householdId: f.actor.householdId,
@@ -450,12 +453,55 @@ test("Find Opportunities reports a provider halt and leaves halted symbols pendi
   assert.equal(result.discovery.providerFailures, 1);
   assert.equal(result.discovery.schwabFailures, 1);
   assert.equal(result.discovery.secFailures, 0);
-  assert.equal(result.discovery.providerOmissions, 24);
+  assert.equal(result.discovery.providerOmissions, 25);
   assert.equal(result.discovery.pendingReview, 0);
   assert.equal(result.discovery.approvedEligible, 0);
   assert.equal(result.discovery.finalCandidates, 0);
-  assert.equal(result.discovery.nextOffset, 1);
+  assert.equal(result.discovery.nextOffset, 0);
+  assert.equal(result.discovery.status, "LIMITED");
+  assert.equal(result.discovery.progress.phase, "LIMITED");
+  assert.equal(result.discovery.progress.completed, 0);
+  assert.match(result.discovery.progress.message, /remains incomplete/i);
+  assert.match(result.discovery.exclusionReasons.find((issue) => issue.code === "PROVIDER_OMISSIONS")?.message ?? "", /retried from the first incomplete offset/i);
   assert.deepEqual(secReads, []);
+});
+
+test("Find Opportunities retries the first symbol with a non-halting Schwab failure", { skip: !enabled }, async () => {
+  const f = await fixture();
+  await db.insert(schwabMarketDataConnections).values({
+    householdId: f.actor.householdId,
+    createdByUserId: f.actor.userId,
+    status: "LIVE_CONNECTED",
+    lifecycleGeneration: randomUUID(),
+    accessTokenCiphertext: "fixture-ciphertext",
+    accessTokenNonce: "fixture-nonce",
+    accessTokenAuthTag: "fixture-tag",
+    accessTokenExpiresAt: new Date(Date.now() + 60_000),
+  });
+  let marketAttempts = 0;
+  const secReads: string[] = [];
+  const result = await discoverResearchOpportunities(f.actor, {}, {
+    collectMarket: (async () => {
+      marketAttempts += 1;
+      if (marketAttempts === 1) throw new Error("fixture symbol-level Schwab failure");
+      return { provenance: {} };
+    }) as never,
+    collectSec: (async (_actor: Actor, input: { ticker: string }) => {
+      secReads.push(input.ticker);
+      return { alreadyCollected: false };
+    }) as never,
+    rank: (async () => ({ opportunities: [], totalEligible: 0 })) as never,
+  });
+  assert.equal(result.discovery.symbolsScreened, 25);
+  assert.equal(result.discovery.successfulSchwabEnrichments, 24);
+  assert.equal(result.discovery.schwabFailures, 1);
+  assert.equal(result.discovery.providerOmissions, 1);
+  assert.equal(result.discovery.nextOffset, 0);
+  assert.equal(result.discovery.status, "LIMITED");
+  assert.equal(result.discovery.progress.phase, "LIMITED");
+  assert.equal(result.discovery.progress.completed, 24);
+  assert.match(result.discovery.exclusionReasons.find((issue) => issue.code === "PROVIDER_OMISSIONS")?.message ?? "", /retried from the first incomplete offset/i);
+  assert.equal(secReads.length, 25);
 });
 
 test("Find Opportunities keeps newly collected drafts pending and out of approved eligibility", { skip: !enabled }, async () => {

@@ -6264,7 +6264,7 @@ export const getListResearchOpportunitiesQueryKey = (params?: ListResearchOpport
     }
 
 
-export const getListResearchOpportunitiesQueryOptions = <TData = Awaited<ReturnType<typeof listResearchOpportunities>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(params?: ListResearchOpportunitiesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listResearchOpportunities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListResearchOpportunitiesQueryOptions = <TData = Awaited<ReturnType<typeof listResearchOpportunities>>, TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>>(params?: ListResearchOpportunitiesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listResearchOpportunities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -6283,14 +6283,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type ListResearchOpportunitiesQueryResult = NonNullable<Awaited<ReturnType<typeof listResearchOpportunities>>>
-export type ListResearchOpportunitiesQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+export type ListResearchOpportunitiesQueryError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
 
 
 /**
  * @summary Run the household-scoped read-only Research discovery screen
  */
 
-export function useListResearchOpportunities<TData = Awaited<ReturnType<typeof listResearchOpportunities>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+export function useListResearchOpportunities<TData = Awaited<ReturnType<typeof listResearchOpportunities>>, TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>>(
  params?: ListResearchOpportunitiesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listResearchOpportunities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {

@@ -156,7 +156,7 @@ export function staticUniverseEntries(
     if (entry.issuerClassification.status !== "VERIFIED_DOMESTIC") return false;
     if (entry.securityClassification.status === "UNKNOWN") return false;
     const securityType = effectiveSecurityType(entry);
-    if (universe !== "CUSTOM" && !isBroadDiscoveryInstrumentAllowed(entry)) return false;
+    if (!isBroadDiscoveryInstrumentAllowed(entry)) return false;
     if (universe === "COMMON_STOCKS") return securityType === "COMMON_STOCK";
     if (universe === "ETFS_FUNDS") return securityType === "ETF_FUND";
     if (universe === "PREFERRED_INCOME") return securityType === "PREFERRED_INCOME";

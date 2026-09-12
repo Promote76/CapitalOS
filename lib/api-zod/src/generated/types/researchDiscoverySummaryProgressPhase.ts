@@ -11,4 +11,5 @@ export type ResearchDiscoverySummaryProgressPhase = typeof ResearchDiscoverySumm
 
 export const ResearchDiscoverySummaryProgressPhase = {
   COMPLETED: 'COMPLETED',
+  LIMITED: 'LIMITED',
 } as const;

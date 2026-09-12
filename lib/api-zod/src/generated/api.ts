@@ -5503,7 +5503,7 @@ export const DiscoverResearchOpportunitiesResponse = zod.object({
 })
 }),
   "progress": zod.object({
-  "phase": zod.enum(['COMPLETED']),
+  "phase": zod.enum(['COMPLETED', 'LIMITED']),
   "completed": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryProgressCompletedMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryProgressCompletedMultipleOf),
   "total": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryProgressTotalMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryProgressTotalMultipleOf),
   "message": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoveryProgressMessageMax)

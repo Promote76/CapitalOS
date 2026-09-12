@@ -105,22 +105,27 @@ export async function discoverResearchOpportunities(
   let secDraftsCreated = 0;
   let secSnapshotsReused = 0;
   let screened = 0;
+  let fullyProcessedSymbols = 0;
   let haltedByProvider = false;
+  let firstIncompleteOffset: number | null = null;
   let schwabFailures = 0;
   let secFailures = 0;
   let observedRateLimit: Record<string, unknown> | null = null;
 
-  for (const ticker of selectedSymbols) {
+  for (const [selectedIndex, ticker] of selectedSymbols.entries()) {
     if (haltedByProvider) break;
     screened += 1;
+    let marketCollected = false;
     try {
       const marketDraft = await collectMarket(actor, { ticker });
       marketDraftsCreated += 1;
+      marketCollected = true;
       const provenance = record(marketDraft.provenance);
       const requests = Array.isArray(provenance.requests) ? provenance.requests.map(record) : [];
       const rateLimits = requests.map((request) => record(request.rateLimit)).filter((item) => Object.keys(item).length > 0);
       if (rateLimits.length) observedRateLimit = rateLimits.at(-1)!;
     } catch (error) {
+      if (firstIncompleteOffset === null) firstIncompleteOffset = runOffset + selectedIndex;
       if (error instanceof SchwabResearchError) {
         addIssue(issues, error.code, error.message);
         schwabFailures += 1;
@@ -136,16 +141,19 @@ export async function discoverResearchOpportunities(
     // SEC retrieval is an independent permitted read.  It may proceed after
     // a non-halting Schwab omission, but a provider halt stops the run.
     if (haltedByProvider) continue;
+    let secCollected = false;
     try {
       const sec = await collectSec(actor, { ticker });
       if (sec.alreadyCollected) secSnapshotsReused += 1;
       else secDraftsCreated += 1;
+      secCollected = true;
     } catch (error) {
       const message = error instanceof Error ? error.message : "SEC source retrieval failed";
       const code = /issuer index|10-Q filing/i.test(message) ? "SEC_COVERAGE_UNAVAILABLE" : "SEC_SOURCE_UNAVAILABLE";
       addIssue(issues, code, message.slice(0, 240));
       secFailures += 1;
     }
+    if (marketCollected && secCollected) fullyProcessedSymbols += 1;
   }
 
   if (marketDraftsCreated + secDraftsCreated > 0) {
@@ -164,12 +172,17 @@ export async function discoverResearchOpportunities(
     .where(eq(schwabMarketDataConnections.householdId, actor.householdId))
     .limit(1);
   const eligibleSymbols = ranking.totalEligible;
-  const omittedSymbols = Math.max(0, selectedSymbols.length - screened);
+  const omittedSymbols = Math.max(0, selectedSymbols.length - marketDraftsCreated);
   const excludedSymbols = Math.max(0, selectedSymbols.length - marketDraftsCreated);
   const providerFailures = schwabFailures + secFailures;
-  const nextOffset = runOffset + screened < universe.length ? runOffset + screened : null;
+  const completedOffset = runOffset + screened;
+  const nextOffset = firstIncompleteOffset ?? (completedOffset < universe.length ? completedOffset : null);
   if (omittedSymbols > 0) {
-    addIssue(issues, "PROVIDER_OMISSIONS", `${omittedSymbols} selected SEC symbols were not screened because the provider halted the run.`);
+    addIssue(
+      issues,
+      "PROVIDER_OMISSIONS",
+      `${omittedSymbols} selected symbols did not receive successful Schwab enrichment and will be retried from the first incomplete offset.`,
+    );
   }
   const limitations = [...issues.values()];
   const coverageStatus = nextOffset !== null || haltedByProvider || limitations.some((issue) =>
@@ -193,10 +206,12 @@ export async function discoverResearchOpportunities(
         withheld: instrumentPolicyExclusions,
       },
       progress: {
-        phase: "COMPLETED" as const,
-        completed: screened,
+        phase: coverageStatus === "LIMITED" ? "LIMITED" as const : "COMPLETED" as const,
+        completed: fullyProcessedSymbols,
         total: selectedSymbols.length,
-        message: "Connection verification, permitted provider reads, evidence staging, and deterministic ranking completed.",
+        message: coverageStatus === "LIMITED"
+          ? "The bounded run remains incomplete because more symbols remain or one or more permitted provider reads were unavailable."
+          : "Connection verification, permitted provider reads, evidence staging, and deterministic ranking completed.",
       },
       knownUniverseCount: universe.length,
       rawSourceRowCount: researchUniverseSnapshot.source.sourceRowCount,

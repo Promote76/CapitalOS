@@ -1338,6 +1338,7 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ResearchOpportunitiesResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
   /research/opportunities/discover:
@@ -7557,7 +7558,7 @@ components:
           type: object
           required: [phase, completed, total, message]
           properties:
-            phase: { type: string, enum: [COMPLETED] }
+            phase: { type: string, enum: [COMPLETED, LIMITED] }
             completed: { type: number, minimum: 0, multipleOf: 1 }
             total: { type: number, minimum: 0, multipleOf: 1 }
             message: { type: string, maxLength: 500 }

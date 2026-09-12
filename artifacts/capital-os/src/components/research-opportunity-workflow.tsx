@@ -91,7 +91,7 @@ export type ResearchDiscoverySummary = {
   domesticOnly: true;
   classificationUnknownExcluded: true;
   progress: {
-    phase: "COMPLETED";
+    phase: "COMPLETED" | "LIMITED";
     completed: number;
     total: number;
     message: string;

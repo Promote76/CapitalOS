@@ -110,6 +110,7 @@ test("static universe options never broaden beyond verified domestic entries", (
   const funds = staticUniverseEntries("ETFS_FUNDS");
   const preferreds = staticUniverseEntries("PREFERRED_INCOME");
   const custom = staticUniverseEntries("CUSTOM", [" csco ", "TD", "not valid!"]);
+  const customDisallowed = staticUniverseEntries("CUSTOM", ["BEATW", "ARCLU", "ARCLR", "UZE"]);
 
   const policyExclusions = broadDiscoveryPolicyExclusions();
   assert.equal(broad.length + policyExclusions.total, researchUniverseSnapshot.entries.length);
@@ -123,6 +124,7 @@ test("static universe options never broaden beyond verified domestic entries", (
   assert.ok(funds.every((entry) => effectiveSecurityType(entry) === "ETF_FUND"));
   assert.ok(preferreds.every((entry) => effectiveSecurityType(entry) === "PREFERRED_INCOME"));
   assert.deepEqual(custom.map((entry) => entry.ticker), ["CSCO"]);
+  assert.deepEqual(customDisallowed, []);
   assert.deepEqual(normalizeCustomSymbols([" msft", "MSFT", "bad symbol!"]), ["MSFT"]);
 });
 

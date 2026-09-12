@@ -282,7 +282,6 @@ export default function InvestmentResearchPage() {
   const [researchView, setResearchView] = useState<ResearchView>("Balanced");
   const [researchSearch, setResearchSearch] = useState("");
   const [researchRefine, setResearchRefine] = useState<ResearchRefine>({});
-  const [advancedEvidenceOpen, setAdvancedEvidenceOpen] = useState(false);
   const [selectedOpportunityTickers, setSelectedOpportunityTickers] = useState<string[]>(() => loadResearchOpportunitySelection());
   const opportunityParams = researchView === "Balanced" && !researchSearch && !researchRefine.minScore && !researchRefine.portfolioFit
     ? undefined
@@ -775,8 +774,8 @@ Research Notes:
         </section>
       ) : null}
       
-      <details className="mt-8" open={advancedEvidenceOpen} data-testid="advanced-evidence-console">
-        <summary onClick={(event) => { event.preventDefault(); setAdvancedEvidenceOpen((open) => !open); }} className="cursor-pointer rounded-xl border border-[#d8e1da] bg-[#f8faf5] px-5 py-4 text-sm font-semibold text-[#23463e]">
+      <details className="mt-8" data-testid="advanced-evidence-console">
+        <summary className="cursor-pointer rounded-xl border border-[#d8e1da] bg-[#f8faf5] px-5 py-4 text-sm font-semibold text-[#23463e]">
           Advanced Evidence Console
           <span className="ml-2 text-xs font-normal text-[#71877f]">provider capabilities, SEC, Schwab snapshots, evidence library, dossiers, Research Chair</span>
         </summary>
@@ -1150,6 +1149,7 @@ Research Notes:
                     checked={selectedEvidenceIds.has(item.id)} 
                     onChange={() => toggleEvidenceSelection(item.id)}
                     disabled={!selectedEvidenceIds.has(item.id) && selectedEvidenceIds.size >= 25}
+                    data-testid={`checkbox-research-evidence-${item.id}`}
                   />
                   <div className="flex flex-col">
                     <strong className="text-sm font-medium">{item.title}</strong>

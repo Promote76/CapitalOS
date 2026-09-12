@@ -47,3 +47,4 @@
 - [Research opportunity screen](capital-os-research-opportunity-screen.md) — rank only approved current evidence; broker observations inform fit, never execution authority.
 - [Research selection persistence](capital-os-research-selection-persistence.md) — preserve committee comparison selections across query transitions and component remounts; never let reconciliation enqueue stale empty state.
 - [Research advisory decision boundary](capital-os-research-advisory-boundary.md) — persist provenance snapshots separately from execution state; portfolio observation remains read-only and manual Schwab handoff never places orders.
+- [Research evidence console state](capital-os-research-evidence-console.md) — synchronize the collapsible evidence console from the native disclosure toggle during query refreshes.

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { ResearchOpportunityEvidenceFreshness } from './researchOpportunityEvidenceFreshness';
+import type { ResearchOpportunityEvidenceReviewStatus } from './researchOpportunityEvidenceReviewStatus';
 import type { ResearchOpportunityEvidenceSourceKind } from './researchOpportunityEvidenceSourceKind';
 
 export interface ResearchOpportunityEvidence {
@@ -16,6 +17,7 @@ export interface ResearchOpportunityEvidence {
   sourceKind: ResearchOpportunityEvidenceSourceKind;
   reviewedAt: Date;
   freshness: ResearchOpportunityEvidenceFreshness;
+  reviewStatus: ResearchOpportunityEvidenceReviewStatus;
   /** @maxLength 128 */
   canonicalSha256?: string;
   /**

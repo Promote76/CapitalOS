@@ -52,7 +52,28 @@ export type ResearchOpportunity = {
   sourceCount: number;
   advisoryOnly: boolean;
   noExecution: boolean;
+  evidence: ResearchOpportunityEvidence[];
 };
+
+export type ResearchOpportunityEvidence = {
+  id: string;
+  title: string;
+  sourceKind: string;
+  reviewedAt: string | Date;
+  freshness: string;
+  reviewStatus: string;
+  canonicalSha256?: string;
+  provider?: string | null;
+  sourceUrl?: string | null;
+  retrievedAt?: string | Date | null;
+  filingDate?: string | Date | null;
+};
+
+function formatEvidenceDate(value: string | Date | null | undefined) {
+  if (!value) return "Unknown";
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? "Unknown" : date.toLocaleDateString();
+}
 
 export type ResearchWorkflowState = "idle" | "loading" | "error" | "ready" | "stale" | "empty";
 
@@ -240,7 +261,7 @@ function DetailPanel({
   const [expanded, setExpanded] = useState<"why" | "cases" | "risk" | null>("why");
   const toggle = (section: "why" | "cases" | "risk") => setExpanded((current) => (current === section ? null : section));
   return (
-    <aside className="animate-in slide-in-from-right-2 fixed inset-x-3 bottom-3 z-30 max-h-[calc(100dvh-24px)] overflow-y-auto rounded-2xl border border-[#d5dfd5] bg-[#fffdfa] p-5 shadow-[0_24px_80px_rgba(35,70,62,0.18)] md:absolute md:inset-y-0 md:right-0 md:left-auto md:w-[410px] md:rounded-none md:rounded-l-2xl md:border-y-0 md:border-r-0 md:border-l md:shadow-[-18px_0_50px_rgba(35,70,62,0.08)]"
+    <aside className="fixed inset-x-3 bottom-3 z-30 max-h-[calc(100dvh-24px)] overflow-y-auto rounded-2xl border border-[#d5dfd5] bg-[#fffdfa] p-5 shadow-[0_24px_80px_rgba(35,70,62,0.18)] md:absolute md:inset-y-0 md:right-0 md:left-auto md:w-[410px] md:rounded-none md:rounded-l-2xl md:border-y-0 md:border-r-0 md:border-l md:shadow-[-18px_0_50px_rgba(35,70,62,0.08)]"
       data-testid={`panel-decision-card-${opportunity.ticker}`}
     >
       <div className="flex items-start justify-between gap-4 border-b border-[#e9e5da] pb-4">
@@ -321,6 +342,37 @@ function DetailPanel({
           <FactorBar label="Valuation" value={opportunity.factorSubScores.valuation} />
           <FactorBar label="Momentum" value={opportunity.factorSubScores.momentum} />
           <FactorBar label="Resilience" value={opportunity.factorSubScores.resilience} />
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-xl border border-[#d9e6df] bg-[#fbfcf8] p-3" data-testid={`decision-card-evidence-${opportunity.ticker}`}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-[11px] font-semibold text-[#23463e]">Reviewed evidence & provenance</div>
+            <p className="mt-1 text-[10px] leading-[1.45] text-[#71877f]">The source rows captured for this decision are shown here for human review.</p>
+          </div>
+          <FileSearch size={14} className="mt-0.5 shrink-0 text-[#236b59]" />
+        </div>
+        <div className="mt-3 space-y-2">
+          {opportunity.evidence.map((evidence) => (
+            <div key={evidence.id} className="rounded-lg border border-[#e3e9e1] bg-[#fffdfa] p-2.5" data-testid={`decision-card-evidence-row-${evidence.id}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate text-[11px] font-semibold text-[#23463e]">{evidence.title}</div>
+                  <div className="mt-1 text-[9px] uppercase tracking-[0.08em] text-[#71877f]">{evidence.sourceKind.replaceAll("_", " ")}</div>
+                </div>
+                <StatusPill tone="safe">{evidence.reviewStatus}</StatusPill>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-[9px] text-[#58716a]">
+                <span><strong>Freshness:</strong> {evidence.freshness}</span>
+                <span><strong>Reviewed:</strong> {formatEvidenceDate(evidence.reviewedAt)}</span>
+                <span><strong>Provider:</strong> {evidence.provider ?? "Not stated"}</span>
+                <span><strong>Retrieved:</strong> {formatEvidenceDate(evidence.retrievedAt)}</span>
+              </div>
+              {evidence.sourceUrl && <a className="mt-2 block truncate text-[9px] font-semibold text-[#236b59] underline underline-offset-2" href={evidence.sourceUrl} target="_blank" rel="noreferrer">Open source provenance</a>}
+              {evidence.canonicalSha256 && <div className="mt-2 truncate font-mono text-[8px] text-[#8a9a92]">Evidence digest: {evidence.canonicalSha256}</div>}
+            </div>
+          ))}
         </div>
       </div>
 

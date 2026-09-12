@@ -5156,6 +5156,13 @@ export const ResearchOpportunityEvidenceFreshness = {
   CURRENT: 'CURRENT',
 } as const;
 
+export type ResearchOpportunityEvidenceReviewStatus = typeof ResearchOpportunityEvidenceReviewStatus[keyof typeof ResearchOpportunityEvidenceReviewStatus];
+
+
+export const ResearchOpportunityEvidenceReviewStatus = {
+  APPROVED: 'APPROVED',
+} as const;
+
 export interface ResearchOpportunityEvidence {
   /** @pattern ^[0-9a-fA-F-]{36}$ */
   id: string;
@@ -5164,6 +5171,7 @@ export interface ResearchOpportunityEvidence {
   sourceKind: ResearchOpportunityEvidenceSourceKind;
   reviewedAt: string;
   freshness: ResearchOpportunityEvidenceFreshness;
+  reviewStatus: ResearchOpportunityEvidenceReviewStatus;
   /** @maxLength 128 */
   canonicalSha256?: string;
   /**
@@ -5382,6 +5390,7 @@ export interface ResearchAdvisoryDecision {
   reason: string | null;
   createdAt: string;
   updatedAt: string;
+  isCurrent: boolean;
   observationStatus: ResearchAdvisoryDecisionObservationStatus;
   /** @nullable */
   observationAsOf: string | null;

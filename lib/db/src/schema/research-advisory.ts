@@ -1,4 +1,4 @@
-import { boolean, check, index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { households, users } from "./households.ts";
 
@@ -20,6 +20,7 @@ export const researchAdvisoryDecisions = pgTable(
     reason: text("reason"),
     opportunitySnapshot: jsonb("opportunity_snapshot").$type<Record<string, unknown>>().notNull(),
     evidenceSnapshot: jsonb("evidence_snapshot").$type<Record<string, unknown>[]>().notNull().default([]),
+    isCurrent: boolean("is_current").notNull().default(true),
     advisoryOnly: boolean("advisory_only").notNull().default(true),
     executionAuthority: text("execution_authority").notNull().default("none"),
     noTradingOrMoneyMovement: boolean("no_trading_or_money_movement").notNull().default(true),
@@ -29,6 +30,9 @@ export const researchAdvisoryDecisions = pgTable(
   (table) => ({
     householdCreatedIdx: index("research_advisory_decisions_household_created_idx").on(table.householdId, table.createdAt),
     householdTickerIdx: index("research_advisory_decisions_household_ticker_idx").on(table.householdId, table.ticker),
+    householdTickerCurrentUnique: uniqueIndex("research_advisory_decisions_household_ticker_current_unique")
+      .on(table.householdId, table.ticker)
+      .where(sql`${table.isCurrent} = true`),
     decisionCheck: check("research_advisory_decisions_decision_check", sql`${table.decision} in ('SKIP','WATCH','REVIEW','SHADOW','OPEN_SCHWAB')`),
     advisoryCheck: check("research_advisory_decisions_advisory_check", sql`${table.advisoryOnly} = true and ${table.executionAuthority} = 'none' and ${table.noTradingOrMoneyMovement} = true`),
   }),

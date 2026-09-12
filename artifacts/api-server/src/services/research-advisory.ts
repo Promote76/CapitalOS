@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db, researchAdvisoryDecisions, schwabObservationSnapshots } from "@workspace/db";
 import { appendAuditEvent } from "./audit";
 import { GovernanceError, assertPermission } from "../domain/governance";
@@ -32,7 +32,7 @@ function positionForTicker(positions: unknown, ticker: string) {
 
 function projectDecision(
   row: typeof researchAdvisoryDecisions.$inferSelect,
-  opportunity: Record<string, unknown>,
+  opportunity: Record<string, unknown> | undefined,
   positions: unknown,
   observationAsOf: Date | null,
 ) {
@@ -49,12 +49,13 @@ function projectDecision(
     reason: row.reason,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    isCurrent: row.isCurrent,
     observationStatus: observationAsOf ? (observed ? "OBSERVED_IN_PORTFOLIO" : "NOT_OBSERVED") : "UNKNOWN",
     observationAsOf,
     monitoringStatus,
     manualHandoffPath: row.decision === "OPEN_SCHWAB" ? `/schwab-integration?symbol=${encodeURIComponent(row.ticker)}` : null,
-    opportunitySnapshot: opportunity,
-    evidenceSnapshot: Array.isArray(opportunity.evidence) ? opportunity.evidence : [],
+    opportunitySnapshot: row.opportunitySnapshot,
+    evidenceSnapshot: row.evidenceSnapshot,
     advisoryOnly: true as const,
     executionAuthorization: false as const,
     noTradingOrMoneyMovement: true as const,
@@ -74,18 +75,29 @@ export async function createResearchAdvisoryDecision(actor: Actor, input: Decisi
     throw new GovernanceError("CONFLICT", "This opportunity is no longer current and cannot receive a new advisory decision.");
   }
   const reason = input.reason?.trim().slice(0, 500) || null;
-  const [row] = await db.insert(researchAdvisoryDecisions).values({
-    householdId: actor.householdId,
-    actorUserId: actor.userId,
-    ticker,
-    decision: input.decision,
-    reason,
-    opportunitySnapshot: opportunity,
-    evidenceSnapshot: Array.isArray(opportunity.evidence) ? opportunity.evidence as Record<string, unknown>[] : [],
-    advisoryOnly: true,
-    executionAuthority: "none",
-    noTradingOrMoneyMovement: true,
-  }).returning();
+  const [row] = await db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`research-advisory:${actor.householdId}:${ticker}`}, 0))`);
+    await tx.update(researchAdvisoryDecisions)
+      .set({ isCurrent: false, updatedAt: new Date() })
+      .where(and(
+        eq(researchAdvisoryDecisions.householdId, actor.householdId),
+        eq(researchAdvisoryDecisions.ticker, ticker),
+        eq(researchAdvisoryDecisions.isCurrent, true),
+      ));
+    return tx.insert(researchAdvisoryDecisions).values({
+      householdId: actor.householdId,
+      actorUserId: actor.userId,
+      ticker,
+      decision: input.decision,
+      reason,
+      opportunitySnapshot: opportunity,
+      evidenceSnapshot: Array.isArray(opportunity.evidence) ? opportunity.evidence as Record<string, unknown>[] : [],
+      isCurrent: true,
+      advisoryOnly: true,
+      executionAuthority: "none",
+      noTradingOrMoneyMovement: true,
+    }).returning();
+  });
   await appendAuditEvent({
     householdId: actor.householdId,
     eventType: "research_advisory_decision_created",
@@ -113,7 +125,7 @@ export async function createResearchAdvisoryDecision(actor: Actor, input: Decisi
 }
 
 export async function listResearchAdvisoryDecisions(actor: Actor) {
-  const [rows, observations, opportunities] = await Promise.all([
+  const [rows, observations] = await Promise.all([
     db.select().from(researchAdvisoryDecisions)
       .where(eq(researchAdvisoryDecisions.householdId, actor.householdId))
       .orderBy(desc(researchAdvisoryDecisions.createdAt), desc(researchAdvisoryDecisions.id))
@@ -125,14 +137,16 @@ export async function listResearchAdvisoryDecisions(actor: Actor) {
       .where(eq(schwabObservationSnapshots.householdId, actor.householdId))
       .orderBy(desc(schwabObservationSnapshots.createdAt), desc(schwabObservationSnapshots.id))
       .limit(1),
-    listResearchOpportunities(actor),
   ]);
   const latestObservation = observations[0];
-  const currentByTicker = new Map(opportunities.opportunities.map((item) => [item.ticker, item as Record<string, unknown>]));
+  const currentByTicker = new Map(await Promise.all(rows.map(async (row) => [
+    row.ticker,
+    await currentOpportunity(actor, row.ticker),
+  ] as const)));
   return {
     decisions: rows.map((row) => projectDecision(
       row,
-      currentByTicker.get(row.ticker) ?? row.opportunitySnapshot,
+      currentByTicker.get(row.ticker),
       latestObservation?.positions,
       latestObservation?.createdAt ?? null,
     )),

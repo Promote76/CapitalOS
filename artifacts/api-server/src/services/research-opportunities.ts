@@ -22,6 +22,7 @@ type EvidenceItem = {
   sourceKind: "SCHWAB_MARKET_SNAPSHOT" | "SEC_FILING";
   reviewedAt: Date;
   freshness: "CURRENT";
+  reviewStatus: "APPROVED";
   ticker: string;
   content: JsonRecord;
   provenance: JsonRecord;
@@ -116,6 +117,7 @@ function createEvidenceFromSchwab(
     sourceKind: "SCHWAB_MARKET_SNAPSHOT",
     reviewedAt: row.approvedAt,
     freshness: "CURRENT",
+    reviewStatus: "APPROVED",
     ticker,
     content,
     provenance: record(row.provenance),
@@ -149,6 +151,7 @@ function createEvidenceFromSec(
     sourceKind: "SEC_FILING",
     reviewedAt: row.approvedAt,
     freshness: "CURRENT",
+    reviewStatus: "APPROVED",
     ticker: row.ticker.trim().toUpperCase(),
     content,
     provenance,
@@ -256,7 +259,17 @@ function buildOpportunity(candidate: Candidate) {
     ].slice(0, 3),
     protectedCapitalStatus: "Protected-capital screen",
     humanReviewStatus: "Human review required",
-    factorSubScores: { quality, valuation, momentum, resilience },
+    factorSubScores: {
+      incomeQuality,
+      growthQuality: momentum,
+      earningsQuality: quality,
+      balanceSheet: resilience,
+      valuation,
+      liquidity,
+      risk,
+      evidenceFreshness: evidenceQuality,
+      portfolioFit,
+    },
     sourceCount: candidate.evidence.length,
     advisoryOnly: true as const,
     noExecution: true as const,
@@ -266,6 +279,7 @@ function buildOpportunity(candidate: Candidate) {
       sourceKind: item.sourceKind,
       reviewedAt: item.reviewedAt.toISOString(),
       freshness: item.freshness,
+      reviewStatus: item.reviewStatus,
       canonicalSha256: item.canonicalSha256,
       provider: item.provider,
       sourceUrl: item.sourceUrl,

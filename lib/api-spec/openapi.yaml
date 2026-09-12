@@ -7346,13 +7346,14 @@ components:
         portfolioFit: { type: number, minimum: 0, maximum: 100, multipleOf: 1 }
     ResearchOpportunityEvidence:
       type: object
-      required: [id, title, sourceKind, reviewedAt, freshness]
+      required: [id, title, sourceKind, reviewedAt, freshness, reviewStatus]
       properties:
         id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
         title: { type: string, maxLength: 240 }
         sourceKind: { type: string, enum: [SCHWAB_MARKET_SNAPSHOT, SEC_FILING] }
         reviewedAt: { type: string, format: date-time }
         freshness: { type: string, enum: [CURRENT] }
+        reviewStatus: { type: string, enum: [APPROVED] }
         canonicalSha256: { type: string, maxLength: 128 }
         provider: { type: ["string", "null"], maxLength: 120 }
         sourceUrl: { type: ["string", "null"], maxLength: 2000 }
@@ -7434,7 +7435,7 @@ components:
         reason: { type: string, maxLength: 500 }
     ResearchAdvisoryDecision:
       type: object
-      required: [id, ticker, decision, reason, createdAt, updatedAt, observationStatus, observationAsOf, monitoringStatus, manualHandoffPath, opportunitySnapshot, evidenceSnapshot, advisoryOnly, executionAuthorization, noTradingOrMoneyMovement]
+      required: [id, ticker, decision, reason, createdAt, updatedAt, isCurrent, observationStatus, observationAsOf, monitoringStatus, manualHandoffPath, opportunitySnapshot, evidenceSnapshot, advisoryOnly, executionAuthorization, noTradingOrMoneyMovement]
       properties:
         id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
         ticker: { type: string, maxLength: 16 }
@@ -7442,6 +7443,7 @@ components:
         reason: { type: ["string", "null"], maxLength: 500 }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        isCurrent: { type: boolean }
         observationStatus: { type: string, enum: [NOT_OBSERVED, OBSERVED_IN_PORTFOLIO, UNKNOWN] }
         observationAsOf: { type: ["string", "null"], format: date-time }
         monitoringStatus: { type: string, enum: [NOT_STARTED, MONITORING, NEEDS_REVIEW] }

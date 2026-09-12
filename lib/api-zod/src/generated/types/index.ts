@@ -615,6 +615,7 @@ export * from './researchOpportunity';
 export * from './researchOpportunityCategory';
 export * from './researchOpportunityEvidence';
 export * from './researchOpportunityEvidenceFreshness';
+export * from './researchOpportunityEvidenceReviewStatus';
 export * from './researchOpportunityEvidenceSourceKind';
 export * from './researchOpportunityFactorScores';
 export * from './researchOpportunityPortfolioFit';

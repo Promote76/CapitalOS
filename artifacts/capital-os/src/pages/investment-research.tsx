@@ -35,6 +35,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   ResearchOpportunityWorkflow,
   type ResearchOpportunity as WorkflowOpportunity,
+  type ResearchOpportunityEvidence as WorkflowEvidence,
   type ResearchManualAction,
   type ResearchView,
   type ResearchRefine,
@@ -376,7 +377,25 @@ export default function InvestmentResearchPage() {
   const lastReviewedPrefillRef = useRef("");
   const lastAutoTickerRef = useRef("");
   const lastAutoTitleRef = useRef("");
+  const evidenceConsoleRef = useRef<HTMLDetailsElement>(null);
+  const evidenceConsoleWasOpenRef = useRef(false);
   const [isRefreshingForCertification, setIsRefreshingForCertification] = useState(false);
+
+  useEffect(() => {
+    const details = evidenceConsoleRef.current;
+    if (!details) return;
+    const rememberNativeDisclosure = () => {
+      evidenceConsoleWasOpenRef.current = details.open;
+    };
+    details.addEventListener("toggle", rememberNativeDisclosure);
+    return () => details.removeEventListener("toggle", rememberNativeDisclosure);
+  }, []);
+
+  useEffect(() => {
+    if (evidenceConsoleWasOpenRef.current && evidenceConsoleRef.current && !evidenceConsoleRef.current.open) {
+      evidenceConsoleRef.current.open = true;
+    }
+  }, [dossiersQuery.data, opportunitiesQuery.data, opportunitiesQuery.isFetching, advisoryDecisionsQuery.data]);
 
   const handleRunCertification = async () => {
     try {
@@ -658,6 +677,19 @@ Research Notes:
     sourceCount: item.sourceCount,
     advisoryOnly: item.advisoryOnly,
     noExecution: item.noExecution,
+    evidence: item.evidence.map((evidence): WorkflowEvidence => ({
+      id: evidence.id,
+      title: evidence.title,
+      sourceKind: evidence.sourceKind,
+      reviewedAt: evidence.reviewedAt,
+      freshness: evidence.freshness,
+      reviewStatus: evidence.reviewStatus,
+      canonicalSha256: evidence.canonicalSha256,
+      provider: evidence.provider,
+      sourceUrl: evidence.sourceUrl,
+      retrievedAt: evidence.retrievedAt,
+      filingDate: evidence.filingDate,
+    })),
   }));
   const eligibleEvidence = evidence.filter(isDossierEligibleEvidence);
   const selectedEvidence = eligibleEvidence.filter((item) => selectedEvidenceIds.has(item.id));
@@ -758,11 +790,12 @@ Research Notes:
           </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {advisoryDecisionsQuery.data.decisions.map((decision) => (
-              <article key={decision.id} className="card card-pad" data-testid={`research-decision-${decision.ticker}`}>
+              <article key={decision.id} className={`card card-pad ${decision.isCurrent ? "" : "opacity-70"}`} data-testid={`research-decision-${decision.ticker}`} data-decision-state={decision.isCurrent ? "current" : "history"}>
                 <div className="flex items-start justify-between gap-3">
                   <div><div className="font-mono text-lg font-bold text-[#23463e]">{decision.ticker}</div><div className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[#71877f]">{decision.decision.replaceAll("_", " ")}</div></div>
-                  <span className={`status ${decision.observationStatus === "OBSERVED_IN_PORTFOLIO" ? "text-green-700 bg-green-50" : decision.monitoringStatus === "NEEDS_REVIEW" ? "pending" : ""}`}>{decision.observationStatus.replaceAll("_", " ")}</span>
+                  <span className={`status ${decision.isCurrent ? "text-green-700 bg-green-50" : "pending"}`}>{decision.isCurrent ? "CURRENT" : "HISTORY"}</span>
                 </div>
+                <div className="mt-2 text-[10px] uppercase tracking-wider text-[#71877f]">{decision.observationStatus.replaceAll("_", " ")}</div>
                 <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#eee9dd] pt-3 text-xs">
                   <div><span className="block text-[10px] uppercase tracking-wider text-[#9aa9a2]">Thesis health</span><strong>{decision.monitoringStatus.replaceAll("_", " ")}</strong></div>
                   <div><span className="block text-[10px] uppercase tracking-wider text-[#9aa9a2]">Evidence</span><strong>{decision.evidenceSnapshot.length} captured sources</strong></div>
@@ -774,8 +807,15 @@ Research Notes:
         </section>
       ) : null}
       
-      <details className="mt-8" data-testid="advanced-evidence-console">
-        <summary className="cursor-pointer rounded-xl border border-[#d8e1da] bg-[#f8faf5] px-5 py-4 text-sm font-semibold text-[#23463e]">
+      <details
+        ref={evidenceConsoleRef}
+        onToggle={(event) => {
+          evidenceConsoleWasOpenRef.current = event.currentTarget.open;
+        }}
+        className="mt-8"
+        data-testid="advanced-evidence-console"
+      >
+        <summary data-testid="advanced-evidence-console-summary" className="cursor-pointer select-none rounded-xl border border-[#d8e1da] bg-[#f8faf5] px-5 py-4 text-sm font-semibold text-[#23463e]">
           Advanced Evidence Console
           <span className="ml-2 text-xs font-normal text-[#71877f]">provider capabilities, SEC, Schwab snapshots, evidence library, dossiers, Research Chair</span>
         </summary>

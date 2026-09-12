@@ -24,6 +24,7 @@ export interface ResearchAdvisoryDecision {
   reason: string | null;
   createdAt: Date;
   updatedAt: Date;
+  isCurrent: boolean;
   observationStatus: ResearchAdvisoryDecisionObservationStatus;
   /** @nullable */
   observationAsOf: Date | null;

@@ -1,0 +1,2 @@
+ALTER TABLE "research_advisory_decisions" ADD COLUMN "is_current" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "research_advisory_decisions_household_ticker_current_unique" ON "research_advisory_decisions" USING btree ("household_id","ticker") WHERE "research_advisory_decisions"."is_current" = true;

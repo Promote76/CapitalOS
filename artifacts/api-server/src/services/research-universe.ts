@@ -15,6 +15,16 @@ export const RESEARCH_INVESTMENT_UNIVERSES = [
 
 export type ResearchInvestmentUniverse = typeof RESEARCH_INVESTMENT_UNIVERSES[number];
 export type ResearchSecurityType = "COMMON_STOCK" | "ETF_FUND" | "PREFERRED_INCOME" | "OTHER";
+export type ResearchInstrumentType =
+  | "COMMON_STOCK"
+  | "ETF"
+  | "CLOSED_END_FUND"
+  | "PREFERRED"
+  | "WARRANT"
+  | "UNIT"
+  | "RIGHT"
+  | "OTHER"
+  | "UNKNOWN";
 
 export type ResearchUniverseEntry = {
   ticker: string;
@@ -29,6 +39,14 @@ export type ResearchUniverseEntry = {
     sic: string | null;
     sicDescription: string | null;
     sourceUrl: string;
+  };
+  securityClassification: {
+    status: "VERIFIED" | "UNKNOWN";
+    instrumentType: ResearchInstrumentType;
+    sourceProvider: string;
+    sourceUrl: string | null;
+    securityName: string | null;
+    evidence: string;
   };
   securityType: ResearchSecurityType;
 };
@@ -46,6 +64,12 @@ export type ResearchUniverseSnapshot = {
     includedExchanges: string[];
     classificationPolicyVersion: string;
     issuerClassificationSource: string;
+    securityClassificationSources: Array<{
+      provider: string;
+      url: string;
+      sha256: string;
+      rowCount: number;
+    }>;
     selectionMethod: string;
     limitations: string[];
   };
@@ -53,6 +77,7 @@ export type ResearchUniverseSnapshot = {
     available: number;
     excluded: number;
     exclusions: Record<string, number>;
+    instrumentTypes: Partial<Record<ResearchInstrumentType, number>>;
   };
   entries: ResearchUniverseEntry[];
 };
@@ -80,14 +105,11 @@ export function normalizeCustomSymbols(symbols: string[] | undefined) {
 }
 
 export function effectiveSecurityType(entry: ResearchUniverseEntry): ResearchSecurityType {
-  if (entry.issuerClassification.entityType === "investment"
-    || ["6221", "6722", "6726"].includes(entry.issuerClassification.sic ?? "")
-    || /\b(?:ETF|FUND)\b/i.test(entry.name)) {
-    return "ETF_FUND";
-  }
-  if (/(?:-P[A-Z]?|[-.]PR[A-Z]?|PFD)$/i.test(entry.ticker)) return "PREFERRED_INCOME";
-  if (/(?:W|WT|WS|U|UN|RI)$/i.test(entry.ticker)) return "OTHER";
-  return entry.securityType;
+  const instrumentType = entry.securityClassification.instrumentType;
+  if (instrumentType === "ETF" || instrumentType === "CLOSED_END_FUND") return "ETF_FUND";
+  if (instrumentType === "PREFERRED") return "PREFERRED_INCOME";
+  if (instrumentType === "COMMON_STOCK") return "COMMON_STOCK";
+  return "OTHER";
 }
 
 export function staticUniverseEntries(

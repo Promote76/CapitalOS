@@ -2,9 +2,19 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  SECURITY_CLASSIFICATION_POLICY_VERSION,
+  classifySecurity,
+  deriveUniverseVersion,
+  parseSecurityDirectory,
+} from "./lib/research-security-classification.mjs";
 
 const SOURCE_URL = "https://www.sec.gov/files/company_tickers_exchange.json";
 const SUBMISSIONS_URL = "https://data.sec.gov/submissions";
+const SECURITY_DIRECTORY_URLS = [
+  "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt",
+  "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt",
+];
 const INCLUDED_EXCHANGES = new Set(["NYSE", "Nasdaq", "CBOE"]);
 const TICKER_PATTERN = /^[A-Z0-9._-]{1,15}$/;
 const DOMESTIC_JURISDICTIONS = new Set([
@@ -20,6 +30,25 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outputPath = path.join(
   root,
   "artifacts/api-server/src/data/sec-us-equity-universe.json",
+);
+
+const securityDirectoryResponses = await Promise.all(SECURITY_DIRECTORY_URLS.map(async (sourceUrl) => {
+  const directoryResponse = await fetch(sourceUrl, {
+    headers: { accept: "text/plain", "user-agent": USER_AGENT },
+  });
+  if (!directoryResponse.ok) {
+    throw new Error(`Security directory fetch failed with HTTP ${directoryResponse.status}: ${sourceUrl}`);
+  }
+  const bytes = Buffer.from(await directoryResponse.arrayBuffer());
+  return {
+    sourceUrl,
+    sha256: crypto.createHash("sha256").update(bytes).digest("hex"),
+    rows: parseSecurityDirectory(bytes.toString("utf8"), sourceUrl),
+  };
+}));
+const securityDirectoryByTicker = new Map(
+  securityDirectoryResponses.flatMap(({ rows }) =>
+    rows.flatMap((row) => row.aliases.map((ticker) => [ticker, row]))),
 );
 
 const response = await fetch(SOURCE_URL, {
@@ -45,7 +74,11 @@ if (
 
 const retrievedAt = new Date().toISOString();
 const asOf = retrievedAt.slice(0, 10);
-const version = `sec-company-tickers-exchange-${asOf}-${sourceSha256.slice(0, 12)}`;
+const version = deriveUniverseVersion({
+  asOf,
+  secSourceSha256: sourceSha256,
+  securitySourceSha256s: securityDirectoryResponses.map(({ sha256 }) => sha256),
+});
 const issuerClassificationByCik = new Map();
 const classificationCiks = [...new Set(payload.data
   .filter((row) => Array.isArray(row) && INCLUDED_EXCHANGES.has(row[3]))
@@ -148,15 +181,12 @@ for (const row of payload.data) {
     exclusions.foreignIssuer += 1;
     continue;
   }
-  const securityType = issuerClassification.entityType === "investment"
-    || ["6221", "6722", "6726"].includes(issuerClassification.sic)
-    || /\b(?:ETF|FUND)\b/i.test(String(name))
+  const securityClassification = classifySecurity(securityDirectoryByTicker.get(ticker));
+  const securityType = ["ETF", "CLOSED_END_FUND"].includes(securityClassification.instrumentType)
     ? "ETF_FUND"
-    : /(?:-P[A-Z]?|[-.]PR[A-Z]?|PFD)$/i.test(ticker)
+    : securityClassification.instrumentType === "PREFERRED"
       ? "PREFERRED_INCOME"
-      : /(?:W|WT|WS|U|UN|RI)$/i.test(ticker)
-        ? "OTHER"
-      : issuerClassification.entityType === "operating"
+      : securityClassification.instrumentType === "COMMON_STOCK"
         ? "COMMON_STOCK"
         : "OTHER";
   byTicker.set(ticker, {
@@ -165,6 +195,7 @@ for (const row of payload.data) {
     name: String(name),
     exchange,
     issuerClassification,
+    securityClassification,
     securityType,
   });
 }
@@ -183,7 +214,7 @@ const entries = [...byTicker.values()]
   .map(({ selectionKey: _selectionKey, ...entry }) => entry);
 
 const artifact = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   source: {
     provider: "U.S. Securities and Exchange Commission",
     title: "Company Tickers Exchange",
@@ -193,14 +224,20 @@ const artifact = {
     version,
     sourceRowCount: payload.data.length,
     includedExchanges: [...INCLUDED_EXCHANGES],
-    classificationPolicyVersion: "sec-incorporation-jurisdiction-v1",
+    classificationPolicyVersion: SECURITY_CLASSIFICATION_POLICY_VERSION,
     issuerClassificationSource: `${SUBMISSIONS_URL}/CIK##########.json`,
+    securityClassificationSources: securityDirectoryResponses.map(({ sourceUrl, sha256, rows }) => ({
+      provider: "Nasdaq Trader",
+      url: sourceUrl,
+      sha256,
+      rowCount: rows.length,
+    })),
     domesticJurisdictions: [...DOMESTIC_JURISDICTIONS].sort(),
     selectionMethod: "SHA-256(version:ticker), ascending; ticker ascending as tie-breaker",
     limitations: [
       "This is an SEC issuer-and-exchange directory, not an investment recommendation or market-wide Schwab screener.",
       "Foreign issuers and issuers without verified SEC incorporation jurisdiction are excluded before discovery.",
-      "Security-type labels are deterministic directory classifications; current approved provider evidence controls financial style and capitalization filters.",
+      "Security-type labels use Nasdaq Trader security-level rows; unmatched instrument types are recorded as UNKNOWN and excluded from typed universes.",
       "The SEC source does not guarantee that every listed symbol is currently tradable or entitled through Schwab.",
     ],
   },
@@ -208,6 +245,14 @@ const artifact = {
     available: entries.length,
     excluded: Object.values(exclusions).reduce((sum, count) => sum + count, 0),
     exclusions,
+    instrumentTypes: Object.fromEntries(
+      [...new Set(entries.map((entry) => entry.securityClassification.instrumentType))]
+        .sort()
+        .map((instrumentType) => [
+          instrumentType,
+          entries.filter((entry) => entry.securityClassification.instrumentType === instrumentType).length,
+        ]),
+    ),
   },
   entries,
 };

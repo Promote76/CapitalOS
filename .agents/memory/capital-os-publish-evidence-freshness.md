@@ -9,6 +9,8 @@ The RC1 publish gate requires certification evidence and the production-readines
 
 **How to apply:** Run the project’s RC1 readiness certification first, then regenerate and validate the manifest. For the static web build, use the artifact’s configured `PORT` and `BASE_PATH` values when reproducing the production build locally; those values are supplied through the artifact service environment rather than a nested static-build environment table.
 
+When production publishing regenerates the isolated RC1 evidence automatically, force the certification subprocess to `NODE_ENV=test`. The enclosing artifact build uses `NODE_ENV=production`, which otherwise makes test imports require production ingress configuration before the disposable certification environment is established.
+
 The API artifact’s first service routing path is also used by the deployment sidecar’s generic pre-start healthcheck. Keep the dependency-free liveness path first while retaining the broader `/api` route for normal API traffic.
 
 **Why:** Production logs showed the sidecar probing `/api` during the short window before the API process started, producing repeated 500s even though `/api/health/live` was the intended probe and became healthy immediately afterward.

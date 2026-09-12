@@ -363,13 +363,20 @@ export function ResearchOpportunityWorkflow({
   className = "",
 }: ResearchOpportunityWorkflowProps) {
   const [query, setQuery] = useState("");
+  const [selectedView, setSelectedView] = useState<ResearchView | null>(null);
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [selectedOpportunitySnapshot, setSelectedOpportunitySnapshot] = useState<ResearchOpportunity | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [localRefine, setLocalRefine] = useState<ResearchRefine>({});
+  const effectiveView = selectedView ?? activeView;
   const activeRefine = refine ?? localRefine;
-  const lensOpportunities = opportunities;
+  const lensOpportunities = useMemo(
+    () => effectiveView === "Balanced"
+      ? opportunities
+      : opportunities.filter((opportunity) => opportunity.category === effectiveView),
+    [effectiveView, opportunities],
+  );
   const filteredOpportunities = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return lensOpportunities;
@@ -413,9 +420,12 @@ export function ResearchOpportunityWorkflow({
                   key={view}
                   type="button"
                   role="tab"
-                  aria-selected={activeView === view}
-                  className={`flex-1 rounded-md px-3 py-2 text-[11px] font-semibold transition-[background-color,color,box-shadow] duration-200 sm:flex-none ${activeView === view ? "bg-[#fffdfa] text-[#236b59] shadow-sm" : "text-[#71877f] hover:text-[#36584f]"}`}
-                  onClick={() => onViewSelect(view)}
+                  aria-selected={effectiveView === view}
+                  className={`flex-1 rounded-md px-3 py-2 text-[11px] font-semibold transition-[background-color,color,box-shadow] duration-200 sm:flex-none ${effectiveView === view ? "bg-[#fffdfa] text-[#236b59] shadow-sm" : "text-[#71877f] hover:text-[#36584f]"}`}
+                  onClick={() => {
+                    setSelectedView(view);
+                    onViewSelect(view);
+                  }}
                   data-testid={`tab-research-${view.toLowerCase()}`}
                 >
                   {view}
@@ -524,14 +534,14 @@ export function ResearchOpportunityWorkflow({
               <span><strong className="font-semibold">Some evidence was excluded as stale or unreviewed.</strong> The cards below use only the current, approved evidence that remains eligible for manual review.</span>
             </div>
           )}
-          {state === "empty" && (
+          {state === "empty" && !query.trim() && (
             <div className="flex min-h-[280px] flex-col items-center justify-center rounded-xl border border-dashed border-[#cfdccf] bg-[#fbfcf8] p-8 text-center" data-testid="status-research-empty">
               <div className="grid h-11 w-11 place-items-center rounded-full bg-[#e8f1e9] text-[#236b59]"><FileSearch size={20} /></div>
               <h2 className="mt-3 text-[14px] font-semibold text-[#23463e]">No opportunities meet this lens yet</h2>
               <p className="mt-2 max-w-sm text-[12px] leading-[1.5] text-[#71877f]">The screen stays quiet when evidence or portfolio fit is not strong enough. Try another research lens or check back after the next evidence refresh.</p>
             </div>
           )}
-          {(state === "ready" || state === "stale") && filteredOpportunities.length === 0 && (
+          {(state === "empty" || state === "ready" || state === "stale") && query.trim() && filteredOpportunities.length === 0 && (
             <div className="flex min-h-[240px] flex-col items-center justify-center rounded-xl border border-dashed border-[#cfdccf] bg-[#fbfcf8] p-8 text-center" data-testid="status-research-no-match">
               <Search size={21} className="text-[#8ba098]" />
               <h2 className="mt-3 text-[14px] font-semibold text-[#23463e]">Nothing matches “{query}”</h2>

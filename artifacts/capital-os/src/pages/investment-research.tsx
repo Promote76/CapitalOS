@@ -510,6 +510,9 @@ Research Notes:
     const eligibleIds = data.evidence.filter(isDossierEligibleEvidence).map((item) => item.id);
     setSelectedEvidenceIds((previous) => {
       const reconciled = reconcileSelectedEvidenceIds(previous, eligibleIds);
+      const unchanged = reconciled.size === previous.size
+        && Array.from(previous).every((id) => reconciled.has(id));
+      if (unchanged) return previous;
       try {
         window.sessionStorage.setItem(RESEARCH_SELECTION_KEY, JSON.stringify(Array.from(reconciled).sort()));
       } catch {

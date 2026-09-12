@@ -112,7 +112,7 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
     await page.route("**/api/research/schwab/market-snapshots", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ snapshots: [] }) }));
     await page.route("**/api/research/sec/filings", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ drafts: [], approved: [] }) }));
     await page.route("**/api/research/schwab/certification", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ certification: null }) }));
-    await page.route("**/api/research/opportunities", async (route) => {
+    await page.route("**/api/research/opportunities**", async (route) => {
       if (opportunityState === "loading") {
         await opportunityLoadingGate;
       }
@@ -120,7 +120,15 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
         await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "opportunity fixture unavailable" }) });
         return;
       }
-      const opportunities = opportunityState === "empty" ? [] : [opportunity("INCM", "Income"), opportunity("CMPD", "Compounders")];
+      const requestUrl = new URL(route.request().url());
+      const lens = (requestUrl.searchParams.get("lens") ?? "Balanced").toLowerCase();
+      const search = (requestUrl.searchParams.get("search") ?? "").toLowerCase();
+      const allOpportunities = [opportunity("INCM", "Income"), opportunity("CMPD", "Compounders")];
+      const opportunities = opportunityState === "empty" ? [] : allOpportunities.filter((item) => {
+        const matchesLens = lens === "balanced" || item.category.toLowerCase() === lens;
+        const matchesSearch = !search || `${item.ticker} ${item.companyName} ${item.category}`.toLowerCase().includes(search);
+        return matchesLens && matchesSearch;
+      });
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -212,6 +220,34 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
     });
     await page.goto("/investment-research");
     await expect(page.getByTestId("status-research-current")).toBeVisible();
+    await expect(page.getByTestId("card-opportunity-INCM")).toBeVisible();
+    await expect(page.getByTestId("card-opportunity-CMPD")).toBeVisible();
+    const waitForLens = (lens: "Income" | "Compounders") => page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return response.ok() && url.pathname.endsWith("/api/research/opportunities") && url.searchParams.get("lens") === lens;
+    });
+    const incomeResponse = waitForLens("Income");
+    await page.getByRole("tab", { name: "Income" }).click();
+    await incomeResponse;
+    await expect(page.getByTestId("card-opportunity-INCM")).toBeVisible();
+    await expect(page.getByTestId("card-opportunity-CMPD")).toHaveCount(0);
+    const compoundersResponse = waitForLens("Compounders");
+    await page.getByRole("tab", { name: "Compounders" }).click();
+    await compoundersResponse;
+    await expect(page.getByTestId("card-opportunity-CMPD")).toBeVisible();
+    await expect(page.getByTestId("card-opportunity-INCM")).toHaveCount(0);
+    await page.getByRole("tab", { name: "Balanced" }).click();
+    await expect(page.getByTestId("card-opportunity-INCM")).toBeVisible();
+    await expect(page.getByTestId("card-opportunity-CMPD")).toBeVisible();
+    const discoveryInput = page.getByTestId("input-research-discovery");
+    await discoveryInput.fill("CMPD");
+    await expect(page.getByTestId("card-opportunity-CMPD")).toBeVisible();
+    await expect(page.getByTestId("card-opportunity-INCM")).toHaveCount(0);
+    await discoveryInput.fill("NO-MATCH");
+    await expect(page.getByTestId("status-research-no-match")).toBeVisible();
+    await expect(page.getByTestId("status-research-no-match")).toContainText("NO-MATCH");
+    await page.getByTestId("button-clear-no-match").click();
+    await expect(discoveryInput).toHaveValue("");
     await expect(page.getByTestId("card-opportunity-INCM")).toBeVisible();
     await expect(page.getByTestId("card-opportunity-CMPD")).toBeVisible();
     const firstOpportunity = page.getByTestId("checkbox-opportunity-INCM");

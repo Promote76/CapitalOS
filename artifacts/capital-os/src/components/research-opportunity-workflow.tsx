@@ -56,7 +56,11 @@ export type ResearchOpportunity = {
 
 export type ResearchWorkflowState = "idle" | "loading" | "error" | "ready" | "stale" | "empty";
 
-export type ResearchManualAction = "Skip" | "Watch" | "Shadow" | "Open in Schwab";
+export type ResearchManualAction = "Skip" | "Watch" | "Review" | "Shadow" | "Open in Schwab";
+export type ResearchRefine = {
+  minScore?: number;
+  portfolioFit?: "Constructive" | "Review" | "Caution";
+};
 
 export type ResearchOpportunityWorkflowProps = {
   activeView: ResearchView;
@@ -71,6 +75,20 @@ export type ResearchOpportunityWorkflowProps = {
   onManualAction: (action: ResearchManualAction, opportunity: ResearchOpportunity) => void;
   onRetry?: () => void;
   onDiscoveryChange?: (query: string) => void;
+  onRefineChange?: (refine: ResearchRefine) => void;
+  refine?: ResearchRefine;
+  onDiscover?: () => void;
+  discoverPending?: boolean;
+  totalEligible?: number;
+  diagnostics?: {
+    currentMarketEvidence: number;
+    currentSecEvidence: number;
+    excludedStale: number;
+    excludedMissingSource: number;
+    excludedUnapproved: number;
+    excludedTickerMismatch: number;
+    duplicateEvidence: number;
+  };
   className?: string;
 };
 
@@ -204,7 +222,7 @@ function OpportunityCard({
       </div>
       <div className="mt-3 flex items-center justify-between text-[10px] text-[#71877f]">
         <span className="inline-flex items-center gap-1"><FileSearch size={11} /> {opportunity.sourceCount} sources</span>
-        <span className="inline-flex items-center gap-1 transition-colors group-hover:text-[#236b59]">Review brief <ChevronRight size={12} /></span>
+        <button type="button" className="inline-flex items-center gap-1 transition-colors group-hover:text-[#236b59]" onClick={(event) => { event.stopPropagation(); onOpen(); }} data-testid={`button-review-brief-${opportunity.ticker}`}>Review brief <ChevronRight size={12} /></button>
       </div>
     </article>
   );
@@ -313,10 +331,11 @@ function DetailPanel({
         </div>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <button type="button" className="rounded-lg border border-[#d8e1da] bg-[#fffdfa] px-3 py-2 text-[11px] font-semibold text-[#58716a] transition-colors hover:border-[#b9cdbd] hover:bg-[#f5f8f3]" onClick={() => onManualAction("Skip", opportunity)} data-testid={`button-skip-${opportunity.ticker}`}>Skip</button>
-        <button type="button" className="rounded-lg border border-[#d8e1da] bg-[#fffdfa] px-3 py-2 text-[11px] font-semibold text-[#58716a] transition-colors hover:border-[#b9cdbd] hover:bg-[#f5f8f3]" onClick={() => onManualAction("Watch", opportunity)} data-testid={`button-watch-${opportunity.ticker}`}><Eye size={13} className="mr-1 inline" /> Watch</button>
-        <button type="button" className="rounded-lg border border-[#b9cdbd] bg-[#edf6ef] px-3 py-2 text-[11px] font-semibold text-[#236b59] transition-colors hover:bg-[#e3f1e6]" onClick={() => onManualAction("Shadow", opportunity)} data-testid={`button-shadow-${opportunity.ticker}`}>Shadow</button>
-        <button type="button" className="rounded-lg bg-[#236b59] px-3 py-2 text-[11px] font-semibold text-[#f8fbf7] transition-colors hover:bg-[#1b594a]" onClick={() => onManualAction("Open in Schwab", opportunity)} data-testid={`button-open-schwab-${opportunity.ticker}`}><ExternalLink size={13} className="mr-1 inline" /> Open in Schwab</button>
+        <button type="button" className="rounded-lg border border-[#d8e1da] bg-[#fffdfa] px-3 py-2 text-[11px] font-semibold text-[#58716a]" onClick={() => onManualAction("Skip", opportunity)} data-testid={`button-skip-${opportunity.ticker}`}>Skip</button>
+        <button type="button" className="rounded-lg border border-[#d8e1da] bg-[#fffdfa] px-3 py-2 text-[11px] font-semibold text-[#58716a]" onClick={() => onManualAction("Watch", opportunity)} data-testid={`button-watch-${opportunity.ticker}`}><Eye size={13} className="mr-1 inline" /> Watch</button>
+        <button type="button" className="rounded-lg border border-[#d8e1da] bg-[#fffdfa] px-3 py-2 text-[11px] font-semibold text-[#58716a]" onClick={() => onManualAction("Review", opportunity)} data-testid={`button-review-${opportunity.ticker}`}>Review</button>
+        <button type="button" className="rounded-lg border border-[#b9cdbd] bg-[#edf6ef] px-3 py-2 text-[11px] font-semibold text-[#236b59]" onClick={() => onManualAction("Shadow", opportunity)} data-testid={`button-shadow-${opportunity.ticker}`}>Shadow</button>
+        <button type="button" className="col-span-2 rounded-lg bg-[#236b59] px-3 py-2 text-[11px] font-semibold text-[#f8fbf7]" onClick={() => onManualAction("Open in Schwab", opportunity)} data-testid={`button-open-schwab-${opportunity.ticker}`}><ExternalLink size={13} className="mr-1 inline" /> Open in Schwab</button>
       </div>
     </aside>
   );
@@ -335,26 +354,39 @@ export function ResearchOpportunityWorkflow({
   onManualAction,
   onRetry,
   onDiscoveryChange,
+  onRefineChange,
+  refine,
+  onDiscover,
+  discoverPending = false,
+  totalEligible,
+  diagnostics,
   className = "",
 }: ResearchOpportunityWorkflowProps) {
   const [query, setQuery] = useState("");
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+  const [selectedOpportunitySnapshot, setSelectedOpportunitySnapshot] = useState<ResearchOpportunity | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [comparisonOpen, setComparisonOpen] = useState(false);
-  const lensOpportunities = activeView === "Balanced"
-    ? opportunities
-    : opportunities.filter((opportunity) => opportunity.category === activeView);
+  const [localRefine, setLocalRefine] = useState<ResearchRefine>({});
+  const activeRefine = refine ?? localRefine;
+  const lensOpportunities = opportunities;
   const filteredOpportunities = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) return lensOpportunities;
     return lensOpportunities.filter((opportunity) => `${opportunity.ticker} ${opportunity.companyName} ${opportunity.category}`.toLowerCase().includes(normalized));
   }, [lensOpportunities, query]);
   const selectedOpportunities = opportunities.filter((opportunity) => selectedTickers.includes(opportunity.ticker));
-  const detailOpportunity = selectedTicker ? opportunities.find((opportunity) => opportunity.ticker === selectedTicker) : undefined;
+  const detailOpportunity = selectedTicker
+    ? opportunities.find((opportunity) => opportunity.ticker === selectedTicker) ?? selectedOpportunitySnapshot
+    : undefined;
 
   const updateQuery = (value: string) => {
     setQuery(value);
     onDiscoveryChange?.(value);
+  };
+  const updateRefine = (next: ResearchRefine) => {
+    setLocalRefine(next);
+    onRefineChange?.(next);
   };
 
   return (
@@ -390,7 +422,12 @@ export function ResearchOpportunityWorkflow({
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2 text-[10px] text-[#71877f]"><Clock3 size={12} /> {lastUpdated}</div>
+             <div className="flex flex-wrap items-center gap-2 text-[10px] text-[#71877f]">
+               <div className="inline-flex items-center gap-2"><Clock3 size={12} /> {lastUpdated}</div>
+               {onDiscover && <button type="button" onClick={onDiscover} disabled={discoverPending} className="inline-flex items-center gap-2 rounded-lg bg-[#236b59] px-3 py-2 font-semibold text-[#f8fbf7] transition-colors hover:bg-[#1b594a] disabled:cursor-wait disabled:opacity-60" data-testid="button-find-opportunities">
+                 <Sparkles size={13} /> {discoverPending ? "Screening…" : "Find Opportunities"}
+               </button>}
+             </div>
           </div>
         </div>
 
@@ -413,13 +450,25 @@ export function ResearchOpportunityWorkflow({
               <SlidersHorizontal size={14} /> Refine <ChevronDown size={13} className={filtersOpen ? "rotate-180" : ""} />
             </button>
             <div className="flex items-center justify-between gap-3 text-[10px] text-[#71877f] md:justify-end">
-              <span className="inline-flex items-center gap-1.5"><Target size={12} className="text-[#b38b3d]" /> Top 25 / {filteredOpportunities.length} shown</span>
+               <span className="inline-flex items-center gap-1.5"><Target size={12} className="text-[#b38b3d]" /> Top 25 / {totalEligible ?? filteredOpportunities.length} eligible</span>
               {selectedOpportunities.length > 0 && <button type="button" onClick={() => { onCompare(selectedTickers); setComparisonOpen(true); }} className="inline-flex items-center gap-1.5 rounded-md bg-[#23463e] px-3 py-2 font-semibold text-[#f8fbf7] transition-colors hover:bg-[#1b594a]" data-testid="button-compare-selected"><BarChart3 size={13} /> Compare ({selectedOpportunities.length})</button>}
             </div>
           </div>
           {filtersOpen && (
             <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[#e9eee6] pt-3 text-[10px] text-[#58716a]" data-testid="research-filter-panel">
-              <span className="inline-flex items-center gap-1 font-semibold text-[#23463e]"><Filter size={12} /> Screening guardrails</span>
+               <span className="inline-flex items-center gap-1 font-semibold text-[#23463e]"><Filter size={12} /> Server screening</span>
+               <label className="inline-flex items-center gap-2">
+                 Minimum score
+                 <select value={activeRefine.minScore ?? 0} onChange={(event) => updateRefine({ ...activeRefine, minScore: Number(event.target.value) || undefined })} className="rounded border border-[#d8e1da] bg-[#fffdfa] px-2 py-1" aria-label="Minimum Platinum score">
+                   <option value={0}>Any</option><option value={70}>70+</option><option value={80}>80+</option><option value={90}>90+</option>
+                 </select>
+               </label>
+               <label className="inline-flex items-center gap-2">
+                 Portfolio fit
+                 <select value={activeRefine.portfolioFit ?? ""} onChange={(event) => updateRefine({ ...activeRefine, portfolioFit: (event.target.value || undefined) as ResearchRefine["portfolioFit"] })} className="rounded border border-[#d8e1da] bg-[#fffdfa] px-2 py-1" aria-label="Portfolio fit">
+                   <option value="">Any fit</option><option value="Constructive">Constructive</option><option value="Review">Review</option><option value="Caution">Caution</option>
+                 </select>
+               </label>
               <StatusPill tone="safe"><Check size={10} /> Protected capital first</StatusPill>
               <StatusPill tone="safe"><Check size={10} /> Read-only sources</StatusPill>
               <StatusPill><CircleHelp size={10} /> Human review required</StatusPill>
@@ -497,7 +546,10 @@ export function ResearchOpportunityWorkflow({
                   opportunity={opportunity}
                   selected={selectedTickers.includes(opportunity.ticker)}
                   onSelect={(selected) => onSelectCandidate(opportunity.ticker, selected)}
-                  onOpen={() => setSelectedTicker(opportunity.ticker)}
+                  onOpen={() => {
+                    setSelectedTicker(opportunity.ticker);
+                    setSelectedOpportunitySnapshot(opportunity);
+                  }}
                 />
               ))}
             </div>
@@ -509,7 +561,7 @@ export function ResearchOpportunityWorkflow({
           <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.1em] text-[#71877f]">Audit trail ready</span>
         </div>
       </div>
-      {detailOpportunity && <DetailPanel opportunity={detailOpportunity} onClose={() => setSelectedTicker(null)} onManualAction={onManualAction} />}
+      {detailOpportunity && <DetailPanel opportunity={detailOpportunity} onClose={() => { setSelectedTicker(null); setSelectedOpportunitySnapshot(null); }} onManualAction={onManualAction} />}
     </section>
   );
 }

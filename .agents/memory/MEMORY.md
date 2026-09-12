@@ -46,3 +46,4 @@
 - [RC1 publish evidence freshness](capital-os-publish-evidence-freshness.md) — rerun the authoritative readiness certification before regenerating source-bound publish manifests.
 - [Research opportunity screen](capital-os-research-opportunity-screen.md) — rank only approved current evidence; broker observations inform fit, never execution authority.
 - [Research selection persistence](capital-os-research-selection-persistence.md) — preserve committee comparison selections across query transitions and component remounts; never let reconciliation enqueue stale empty state.
+- [Research advisory decision boundary](capital-os-research-advisory-boundary.md) — persist provenance snapshots separately from execution state; portfolio observation remains read-only and manual Schwab handoff never places orders.

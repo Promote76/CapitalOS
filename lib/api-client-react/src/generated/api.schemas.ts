@@ -5164,6 +5164,22 @@ export interface ResearchOpportunityEvidence {
   sourceKind: ResearchOpportunityEvidenceSourceKind;
   reviewedAt: string;
   freshness: ResearchOpportunityEvidenceFreshness;
+  /** @maxLength 128 */
+  canonicalSha256?: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  provider?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  sourceUrl?: string | null;
+  /** @nullable */
+  retrievedAt?: string | null;
+  /** @nullable */
+  filingDate?: string | null;
 }
 
 export type ResearchOpportunityCategory = typeof ResearchOpportunityCategory[keyof typeof ResearchOpportunityCategory];
@@ -5238,11 +5254,51 @@ export interface ResearchOpportunity {
   factors: ResearchOpportunityFactorScores;
 }
 
+export type ResearchOpportunitiesResponseRankingLens = typeof ResearchOpportunitiesResponseRankingLens[keyof typeof ResearchOpportunitiesResponseRankingLens];
+
+
+export const ResearchOpportunitiesResponseRankingLens = {
+  Income: 'Income',
+  Compounders: 'Compounders',
+  Balanced: 'Balanced',
+} as const;
+
 export type ResearchOpportunitiesResponseRanking = {
   method: string;
   /** @maxItems 12 */
   factors: string[];
   missingData: string;
+  lens: ResearchOpportunitiesResponseRankingLens;
+};
+
+export type ResearchOpportunitiesResponseDiagnostics = {
+  /** @minimum 0 */
+  reviewedMarketEvidence: number;
+  /** @minimum 0 */
+  reviewedSecEvidence: number;
+  /** @minimum 0 */
+  currentMarketEvidence: number;
+  /** @minimum 0 */
+  currentSecEvidence: number;
+  /** @minimum 0 */
+  duplicateEvidence: number;
+  /** @minimum 0 */
+  excludedMissingSource: number;
+  /** @minimum 0 */
+  excludedUnapproved: number;
+  /** @minimum 0 */
+  excludedTickerMismatch: number;
+  /** @minimum 0 */
+  excludedStale: number;
+};
+
+export type ResearchOpportunitiesResponseLensCounts = {
+  /** @minimum 0 */
+  Income: number;
+  /** @minimum 0 */
+  Compounders: number;
+  /** @minimum 0 */
+  Balanced: number;
 };
 
 export interface ResearchOpportunitiesResponse {
@@ -5254,9 +5310,99 @@ export interface ResearchOpportunitiesResponse {
   excludedStaleOrUnreviewed: number;
   generatedAt: string;
   ranking: ResearchOpportunitiesResponseRanking;
+  diagnostics: ResearchOpportunitiesResponseDiagnostics;
+  lensCounts: ResearchOpportunitiesResponseLensCounts;
   advisoryOnly: true;
   executionAuthorization: false;
   householdCapitalIncluded: false;
+  noTradingOrMoneyMovement: true;
+}
+
+export type ResearchAdvisoryDecisionInputDecision = typeof ResearchAdvisoryDecisionInputDecision[keyof typeof ResearchAdvisoryDecisionInputDecision];
+
+
+export const ResearchAdvisoryDecisionInputDecision = {
+  SKIP: 'SKIP',
+  WATCH: 'WATCH',
+  REVIEW: 'REVIEW',
+  SHADOW: 'SHADOW',
+  OPEN_SCHWAB: 'OPEN_SCHWAB',
+} as const;
+
+export interface ResearchAdvisoryDecisionInput {
+  /**
+     * @minLength 1
+     * @maxLength 16
+     */
+  ticker: string;
+  decision: ResearchAdvisoryDecisionInputDecision;
+  /** @maxLength 500 */
+  reason?: string;
+}
+
+export type ResearchAdvisoryDecisionDecision = typeof ResearchAdvisoryDecisionDecision[keyof typeof ResearchAdvisoryDecisionDecision];
+
+
+export const ResearchAdvisoryDecisionDecision = {
+  SKIP: 'SKIP',
+  WATCH: 'WATCH',
+  REVIEW: 'REVIEW',
+  SHADOW: 'SHADOW',
+  OPEN_SCHWAB: 'OPEN_SCHWAB',
+} as const;
+
+export type ResearchAdvisoryDecisionObservationStatus = typeof ResearchAdvisoryDecisionObservationStatus[keyof typeof ResearchAdvisoryDecisionObservationStatus];
+
+
+export const ResearchAdvisoryDecisionObservationStatus = {
+  NOT_OBSERVED: 'NOT_OBSERVED',
+  OBSERVED_IN_PORTFOLIO: 'OBSERVED_IN_PORTFOLIO',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type ResearchAdvisoryDecisionMonitoringStatus = typeof ResearchAdvisoryDecisionMonitoringStatus[keyof typeof ResearchAdvisoryDecisionMonitoringStatus];
+
+
+export const ResearchAdvisoryDecisionMonitoringStatus = {
+  NOT_STARTED: 'NOT_STARTED',
+  MONITORING: 'MONITORING',
+  NEEDS_REVIEW: 'NEEDS_REVIEW',
+} as const;
+
+export interface ResearchAdvisoryDecision {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
+  /** @maxLength 16 */
+  ticker: string;
+  decision: ResearchAdvisoryDecisionDecision;
+  /**
+     * @maxLength 500
+     * @nullable
+     */
+  reason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  observationStatus: ResearchAdvisoryDecisionObservationStatus;
+  /** @nullable */
+  observationAsOf: string | null;
+  monitoringStatus: ResearchAdvisoryDecisionMonitoringStatus;
+  /**
+     * @maxLength 240
+     * @nullable
+     */
+  manualHandoffPath: string | null;
+  opportunitySnapshot: ResearchOpportunity;
+  /** @maxItems 6 */
+  evidenceSnapshot: ResearchOpportunityEvidence[];
+  advisoryOnly: true;
+  executionAuthorization: false;
+  noTradingOrMoneyMovement: true;
+}
+
+export interface ResearchAdvisoryDecisionListResponse {
+  decisions: ResearchAdvisoryDecision[];
+  advisoryOnly: true;
+  executionAuthorization: false;
   noTradingOrMoneyMovement: true;
 }
 
@@ -9080,6 +9226,38 @@ export type ApproveMicroLiveFirstFillResume200 = {
   allowNewOrders: boolean;
   liveExecutionEnabled: boolean;
 };
+
+export type ListResearchOpportunitiesParams = {
+lens?: ListResearchOpportunitiesLens;
+/**
+ * @maxLength 120
+ */
+search?: string;
+/**
+ * @minimum 0
+ * @maximum 100
+ */
+minScore?: number;
+portfolioFit?: ListResearchOpportunitiesPortfolioFit;
+};
+
+export type ListResearchOpportunitiesLens = typeof ListResearchOpportunitiesLens[keyof typeof ListResearchOpportunitiesLens];
+
+
+export const ListResearchOpportunitiesLens = {
+  Income: 'Income',
+  Compounders: 'Compounders',
+  Balanced: 'Balanced',
+} as const;
+
+export type ListResearchOpportunitiesPortfolioFit = typeof ListResearchOpportunitiesPortfolioFit[keyof typeof ListResearchOpportunitiesPortfolioFit];
+
+
+export const ListResearchOpportunitiesPortfolioFit = {
+  Constructive: 'Constructive',
+  Review: 'Review',
+  Caution: 'Caution',
+} as const;
 
 export type ImportFinancialAccountCsv200 = {
   imported: number;

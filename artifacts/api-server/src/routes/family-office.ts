@@ -31,6 +31,9 @@ import {
   CreateResearchDossierBody,
   CreateResearchDossierResponse,
   ListResearchOpportunitiesResponse,
+  ListResearchAdvisoryDecisionsResponse,
+  CreateResearchAdvisoryDecisionBody,
+  CreateResearchAdvisoryDecisionResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
@@ -49,6 +52,7 @@ import { ingestPublicResearchUrl } from "../services/public-research-ingestion";
 import { parseResearchDigestion, type NormalizedResearchDigestion } from "../domain/research-digestion";
 import { createInvestmentResearchDossier, listResearchDossiers, registerResearchEvidence, requestResearchEvidenceUpload, reviewResearchEvidence } from "../services/research-dossier";
 import { listResearchOpportunities } from "../services/research-opportunities";
+import { createResearchAdvisoryDecision, listResearchAdvisoryDecisions } from "../services/research-advisory";
 
 const router: IRouter = Router();
 
@@ -62,8 +66,28 @@ router.get("/family-office/research-dossiers", asyncRoute(async (_req, res) => {
   res.json(ListResearchDossiersResponse.parse(await listResearchDossiers(actorFrom(res))));
 }));
 
-router.get("/research/opportunities", asyncRoute(async (_req, res) => {
-  res.json(ListResearchOpportunitiesResponse.parse(await listResearchOpportunities(actorFrom(res))));
+router.get("/research/opportunities", asyncRoute(async (req, res) => {
+  const lens = typeof req.query.lens === "string" ? req.query.lens : undefined;
+  const search = typeof req.query.search === "string" ? req.query.search : undefined;
+  const minScore = typeof req.query.minScore === "string" && req.query.minScore.trim() ? Number(req.query.minScore) : undefined;
+  const portfolioFit = typeof req.query.portfolioFit === "string" ? req.query.portfolioFit : undefined;
+  res.json(ListResearchOpportunitiesResponse.parse(await listResearchOpportunities(actorFrom(res), {
+    lens: lens as "Income" | "Compounders" | "Balanced" | undefined,
+    search,
+    minScore: Number.isFinite(minScore) ? minScore : undefined,
+    portfolioFit: portfolioFit as "Constructive" | "Review" | "Caution" | undefined,
+  })));
+}));
+
+router.get("/research/advisory-decisions", asyncRoute(async (_req, res) => {
+  res.json(ListResearchAdvisoryDecisionsResponse.parse(await listResearchAdvisoryDecisions(actorFrom(res))));
+}));
+
+router.post("/research/advisory-decisions", asyncRoute(async (req, res) => {
+  const actor = actorFrom(res);
+  assertPermission(actor.role, "contribute");
+  const body = CreateResearchAdvisoryDecisionBody.parse(req.body);
+  res.status(201).json(CreateResearchAdvisoryDecisionResponse.parse(await createResearchAdvisoryDecision(actor, body)));
 }));
 
 router.post("/family-office/research-evidence", asyncRoute(async (req, res) => {

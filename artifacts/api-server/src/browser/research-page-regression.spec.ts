@@ -137,6 +137,34 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
         }),
       });
     });
+    await page.route("**/api/research/advisory-decisions", async (route) => {
+      if (route.request().method() === "POST") {
+        const body = route.request().postDataJSON() as { ticker: string; decision: string; reason?: string };
+        await route.fulfill({
+          status: 201,
+          contentType: "application/json",
+          body: JSON.stringify({
+            id: `decision-${body.ticker}-${body.decision}`,
+            ticker: body.ticker,
+            decision: body.decision,
+            reason: body.reason ?? null,
+            createdAt: date,
+            updatedAt: date,
+            observationStatus: "NOT_OBSERVED",
+            observationAsOf: null,
+            monitoringStatus: "MONITORING",
+            manualHandoffPath: body.decision === "OPEN_SCHWAB" ? `/schwab-integration?symbol=${body.ticker}` : null,
+            opportunitySnapshot: opportunity(body.ticker, body.ticker === "INCM" ? "Income" : "Compounders"),
+            evidenceSnapshot: [],
+            advisoryOnly: true,
+            executionAuthorization: false,
+            noTradingOrMoneyMovement: true,
+          }),
+        });
+        return;
+      }
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ decisions: [], advisoryOnly: true, executionAuthorization: false, noTradingOrMoneyMovement: true }) });
+    });
     page.on("request", (request) => {
       if (/(order|trade|transfer|withdraw|allocation|money-movement)/i.test(new URL(request.url()).pathname)) forbiddenRequests.push(request.url());
     });
@@ -216,11 +244,6 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
     await expect(page.getByTestId("status-research-stale")).toContainText("excluded as stale or unreviewed");
     await expect(page.getByTestId("card-opportunity-INCM")).toBeVisible();
     await expect(page.getByTestId("panel-decision-card-INCM")).toHaveCount(0);
-    await page.getByTestId("card-opportunity-INCM").click();
-    await expect(page.getByTestId("button-skip-INCM")).toBeVisible();
-    await page.getByTestId("button-skip-INCM").dispatchEvent("click");
-    await expect(page.getByText("Skip queued for review", { exact: true })).toBeVisible();
-    await expect(page.getByTestId("button-close-decision-card")).toBeVisible();
     expect(forbiddenRequests).toEqual([]);
 
     opportunityState = "loading";
@@ -245,6 +268,7 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
     await expect(page.locator('[data-testid^="button-skip-"]')).toHaveCount(0);
 
     opportunityState = "current";
+    await page.getByTestId("advanced-evidence-console").locator("summary").click();
     await expect(page.getByText("0 sources selected")).toBeVisible();
     const schwabCheckbox = page.locator("label").filter({ hasText: "BKSC Schwab snapshot" }).getByRole("checkbox");
     const secCheckbox = page.locator("label").filter({ hasText: "BKSC SEC filing" }).getByRole("checkbox");

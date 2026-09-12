@@ -181,6 +181,7 @@ import type {
   IntelligenceSnapshot,
   ListDailyOpsHistoryParams,
   ListOperationsAuditArchiveParams,
+  ListResearchOpportunitiesParams,
   ListTransactionReviewQueueParams,
   ManualFinanceTransactionInput,
   ManualFinancialAccountInput,
@@ -246,6 +247,9 @@ import type {
   RecoverMissedOperationsSchedules200,
   RegisterResearchEvidenceRequest,
   ReportDescriptor,
+  ResearchAdvisoryDecision,
+  ResearchAdvisoryDecisionInput,
+  ResearchAdvisoryDecisionListResponse,
   ResearchDossierCreateResult,
   ResearchDossierListResponse,
   ResearchEvidence,
@@ -6218,20 +6222,27 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateResearchDossierMutationOptions(options));
     }
 
-export const getListResearchOpportunitiesUrl = () => {
+export const getListResearchOpportunitiesUrl = (params?: ListResearchOpportunitiesParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/research/opportunities`
+  return stringifiedParams.length > 0 ? `/api/research/opportunities?${stringifiedParams}` : `/api/research/opportunities`
 }
 
 /**
- * @summary List the household-scoped approved-evidence research screen
+ * @summary Run the household-scoped read-only Research discovery screen
  */
-export const listResearchOpportunities = async ( options?: Parameters<typeof customFetch>[1]): Promise<ResearchOpportunitiesResponse> => {
+export const listResearchOpportunities = async (params?: ListResearchOpportunitiesParams, options?: Parameters<typeof customFetch>[1]): Promise<ResearchOpportunitiesResponse> => {
 
-  return customFetch<ResearchOpportunitiesResponse>(getListResearchOpportunitiesUrl(),
+  return customFetch<ResearchOpportunitiesResponse>(getListResearchOpportunitiesUrl(params),
   {
     ...options,
     method: 'GET'
@@ -6244,23 +6255,23 @@ export const listResearchOpportunities = async ( options?: Parameters<typeof cus
 
 
 
-export const getListResearchOpportunitiesQueryKey = () => {
+export const getListResearchOpportunitiesQueryKey = (params?: ListResearchOpportunitiesParams,) => {
     return [
-    `/api/research/opportunities`
+    `/api/research/opportunities`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getListResearchOpportunitiesQueryOptions = <TData = Awaited<ReturnType<typeof listResearchOpportunities>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listResearchOpportunities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListResearchOpportunitiesQueryOptions = <TData = Awaited<ReturnType<typeof listResearchOpportunities>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(params?: ListResearchOpportunitiesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listResearchOpportunities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListResearchOpportunitiesQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListResearchOpportunitiesQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listResearchOpportunities>>> = ({ signal }) => listResearchOpportunities({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listResearchOpportunities>>> = ({ signal }) => listResearchOpportunities(params, { signal, ...requestOptions });
 
 
 
@@ -6274,15 +6285,15 @@ export type ListResearchOpportunitiesQueryError = ErrorType<UnauthorizedResponse
 
 
 /**
- * @summary List the household-scoped approved-evidence research screen
+ * @summary Run the household-scoped read-only Research discovery screen
  */
 
 export function useListResearchOpportunities<TData = Awaited<ReturnType<typeof listResearchOpportunities>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listResearchOpportunities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListResearchOpportunitiesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listResearchOpportunities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListResearchOpportunitiesQueryOptions(options)
+  const queryOptions = getListResearchOpportunitiesQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -6294,6 +6305,154 @@ export function useListResearchOpportunities<TData = Awaited<ReturnType<typeof l
 
 
 
+
+export const getListResearchAdvisoryDecisionsUrl = () => {
+
+
+
+
+  return `/api/research/advisory-decisions`
+}
+
+/**
+ * @summary List household-scoped advisory decisions with read-only portfolio observation status
+ */
+export const listResearchAdvisoryDecisions = async ( options?: Parameters<typeof customFetch>[1]): Promise<ResearchAdvisoryDecisionListResponse> => {
+
+  return customFetch<ResearchAdvisoryDecisionListResponse>(getListResearchAdvisoryDecisionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListResearchAdvisoryDecisionsQueryKey = () => {
+    return [
+    `/api/research/advisory-decisions`
+    ] as const;
+    }
+
+
+export const getListResearchAdvisoryDecisionsQueryOptions = <TData = Awaited<ReturnType<typeof listResearchAdvisoryDecisions>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listResearchAdvisoryDecisions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListResearchAdvisoryDecisionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listResearchAdvisoryDecisions>>> = ({ signal }) => listResearchAdvisoryDecisions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listResearchAdvisoryDecisions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListResearchAdvisoryDecisionsQueryResult = NonNullable<Awaited<ReturnType<typeof listResearchAdvisoryDecisions>>>
+export type ListResearchAdvisoryDecisionsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary List household-scoped advisory decisions with read-only portfolio observation status
+ */
+
+export function useListResearchAdvisoryDecisions<TData = Awaited<ReturnType<typeof listResearchAdvisoryDecisions>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listResearchAdvisoryDecisions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListResearchAdvisoryDecisionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateResearchAdvisoryDecisionUrl = () => {
+
+
+
+
+  return `/api/research/advisory-decisions`
+}
+
+/**
+ * @summary Persist a manual advisory decision without execution authority
+ */
+export const createResearchAdvisoryDecision = async (researchAdvisoryDecisionInput: ResearchAdvisoryDecisionInput, options?: Parameters<typeof customFetch>[1]): Promise<ResearchAdvisoryDecision> => {
+
+  return customFetch<ResearchAdvisoryDecision>(getCreateResearchAdvisoryDecisionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(researchAdvisoryDecisionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateResearchAdvisoryDecisionMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createResearchAdvisoryDecision>>, TError,{data: BodyType<ResearchAdvisoryDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createResearchAdvisoryDecision>>, TError,{data: BodyType<ResearchAdvisoryDecisionInput>}, TContext> => {
+
+const mutationKey = ['createResearchAdvisoryDecision'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createResearchAdvisoryDecision>>, {data: BodyType<ResearchAdvisoryDecisionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createResearchAdvisoryDecision(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateResearchAdvisoryDecisionMutationResult = NonNullable<Awaited<ReturnType<typeof createResearchAdvisoryDecision>>>
+    export type CreateResearchAdvisoryDecisionMutationBody = BodyType<ResearchAdvisoryDecisionInput>
+    export type CreateResearchAdvisoryDecisionMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Persist a manual advisory decision without execution authority
+ */
+export const useCreateResearchAdvisoryDecision = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createResearchAdvisoryDecision>>, TError,{data: BodyType<ResearchAdvisoryDecisionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createResearchAdvisoryDecision>>,
+        TError,
+        {data: BodyType<ResearchAdvisoryDecisionInput>},
+        TContext
+      > => {
+      return useMutation(getCreateResearchAdvisoryDecisionMutationOptions(options));
+    }
 
 export const getPreviewFamilyOfficeResearchDigestionUrl = () => {
 

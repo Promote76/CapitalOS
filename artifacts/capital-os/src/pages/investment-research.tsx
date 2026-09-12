@@ -11,6 +11,9 @@ import {
   getGetSchwabResearchCertificationQueryKey,
   getListResearchDossiersQueryKey,
   getListResearchOpportunitiesQueryKey,
+  getListResearchAdvisoryDecisionsQueryKey,
+  useListResearchAdvisoryDecisions,
+  useCreateResearchAdvisoryDecision,
   useListMarketSnapshots,
   useCreateMarketSnapshot,
   useReviewMarketSnapshot,
@@ -34,6 +37,7 @@ import {
   type ResearchOpportunity as WorkflowOpportunity,
   type ResearchManualAction,
   type ResearchView,
+  type ResearchRefine,
 } from "@/components/research-opportunity-workflow";
 
 export const isDossierEligibleEvidence = (evidence: ResearchEvidence) =>
@@ -271,13 +275,26 @@ export default function InvestmentResearchPage() {
   const secQuery = useListSecFilings();
   const retrieveSec = useRetrieveSecFiling();
   const reviewSec = useReviewSecFiling();
-  const opportunitiesQuery = useListResearchOpportunities();
 
   const [snapshotTicker, setSnapshotTicker] = useState("");
   const [snapshotReasons, setSnapshotReasons] = useState<Record<string, string>>({});
   const [secTicker, setSecTicker] = useState("");
   const [researchView, setResearchView] = useState<ResearchView>("Balanced");
+  const [researchSearch, setResearchSearch] = useState("");
+  const [researchRefine, setResearchRefine] = useState<ResearchRefine>({});
+  const [advancedEvidenceOpen, setAdvancedEvidenceOpen] = useState(false);
   const [selectedOpportunityTickers, setSelectedOpportunityTickers] = useState<string[]>(() => loadResearchOpportunitySelection());
+  const opportunityParams = researchView === "Balanced" && !researchSearch && !researchRefine.minScore && !researchRefine.portfolioFit
+    ? undefined
+    : {
+      lens: researchView,
+      search: researchSearch || undefined,
+      minScore: researchRefine.minScore,
+      portfolioFit: researchRefine.portfolioFit,
+    };
+  const opportunitiesQuery = useListResearchOpportunities(opportunityParams);
+  const advisoryDecisionsQuery = useListResearchAdvisoryDecisions();
+  const createAdvisoryDecision = useCreateResearchAdvisoryDecision();
 
   const handleSnapshotReasonChange = (id: string, val: string) => setSnapshotReasons(p => ({...p, [id]: val}));
 
@@ -661,13 +678,29 @@ Research Notes:
       : workflowOpportunities.length > 0
         ? (opportunitiesQuery.data?.excludedStaleOrUnreviewed ? "stale" : "ready")
         : "empty";
-  const handleOpportunityAction = (action: ResearchManualAction, opportunity: WorkflowOpportunity) => {
-    toast({
-      title: `${action} queued for review`,
-      description: action === "Open in Schwab"
-        ? `${opportunity.ticker} is ready for manual review in your Schwab session. No order or account action was sent.`
-        : `${opportunity.ticker} remains advisory-only. Capital OS did not change a position or create an order.`,
-    });
+  const handleOpportunityAction = async (action: ResearchManualAction, opportunity: WorkflowOpportunity) => {
+    const decision = action === "Open in Schwab" ? "OPEN_SCHWAB" : action.toUpperCase() as "SKIP" | "WATCH" | "REVIEW" | "SHADOW";
+    try {
+      const result = await createAdvisoryDecision.mutateAsync({
+        data: {
+          ticker: opportunity.ticker,
+          decision,
+          reason: `Manual ${action} from Research Committee`,
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: getListResearchAdvisoryDecisionsQueryKey() });
+      if (result.manualHandoffPath) {
+        window.open(result.manualHandoffPath, "_blank", "noopener,noreferrer");
+      }
+      toast({
+        title: `${action} queued for review`,
+        description: action === "Open in Schwab"
+          ? `${opportunity.ticker} is ready for manual review in Schwab. No order or account action was sent. Money movement remains disabled.`
+          : `${opportunity.ticker} remains advisory-only. This decision is now in the household research journal.`,
+      });
+    } catch (error) {
+      toast({ title: `${action} failed`, description: error instanceof Error ? error.message : "The advisory decision was not saved.", variant: "destructive" });
+    }
   };
 
   const getCapabilityClass = (status: string) => {
@@ -692,6 +725,13 @@ Research Notes:
         errorMessage="Approved research evidence could not be screened right now."
         lastUpdated={opportunitiesQuery.data?.generatedAt ? `Evidence checked ${new Date(opportunitiesQuery.data.generatedAt).toLocaleString()}` : "Evidence check pending"}
         onViewSelect={setResearchView}
+        onDiscoveryChange={setResearchSearch}
+        onRefineChange={setResearchRefine}
+        refine={researchRefine}
+        onDiscover={() => { void opportunitiesQuery.refetch(); }}
+        discoverPending={opportunitiesQuery.isFetching || createAdvisoryDecision.isPending}
+        totalEligible={opportunitiesQuery.data?.totalEligible}
+        diagnostics={opportunitiesQuery.data?.diagnostics}
         onSelectCandidate={(ticker, selected) => setSelectedOpportunityTickers((current) =>
           selected
             ? current.includes(ticker) ? current : [...current, ticker]
@@ -703,7 +743,41 @@ Research Notes:
         onManualAction={handleOpportunityAction}
         onRetry={() => { void opportunitiesQuery.refetch(); }}
       />
+
+      {advisoryDecisionsQuery.data?.decisions.length ? (
+        <section className="mt-8" data-testid="research-decision-journal">
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#b38b3d]">Decision journal</div>
+              <h2 className="mt-1 text-[18px] font-semibold text-[#23463e]">Advisory decisions &amp; observation</h2>
+              <p className="mt-1 text-xs text-[#71877f]">Later Schwab observations can show portfolio presence and thesis monitoring status. They never create authority.</p>
+            </div>
+            <span className="rounded-full bg-[#edf6ef] px-3 py-1 text-[10px] font-semibold text-[#236b59]">Read-only portfolio projection</span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {advisoryDecisionsQuery.data.decisions.map((decision) => (
+              <article key={decision.id} className="card card-pad" data-testid={`research-decision-${decision.ticker}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div><div className="font-mono text-lg font-bold text-[#23463e]">{decision.ticker}</div><div className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[#71877f]">{decision.decision.replaceAll("_", " ")}</div></div>
+                  <span className={`status ${decision.observationStatus === "OBSERVED_IN_PORTFOLIO" ? "text-green-700 bg-green-50" : decision.monitoringStatus === "NEEDS_REVIEW" ? "pending" : ""}`}>{decision.observationStatus.replaceAll("_", " ")}</span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#eee9dd] pt-3 text-xs">
+                  <div><span className="block text-[10px] uppercase tracking-wider text-[#9aa9a2]">Thesis health</span><strong>{decision.monitoringStatus.replaceAll("_", " ")}</strong></div>
+                  <div><span className="block text-[10px] uppercase tracking-wider text-[#9aa9a2]">Evidence</span><strong>{decision.evidenceSnapshot.length} captured sources</strong></div>
+                </div>
+                {decision.reason && <p className="mt-3 text-xs text-[#71877f]">{decision.reason}</p>}
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
       
+      <details className="mt-8" open={advancedEvidenceOpen} data-testid="advanced-evidence-console">
+        <summary onClick={(event) => { event.preventDefault(); setAdvancedEvidenceOpen((open) => !open); }} className="cursor-pointer rounded-xl border border-[#d8e1da] bg-[#f8faf5] px-5 py-4 text-sm font-semibold text-[#23463e]">
+          Advanced Evidence Console
+          <span className="ml-2 text-xs font-normal text-[#71877f]">provider capabilities, SEC, Schwab snapshots, evidence library, dossiers, Research Chair</span>
+        </summary>
+        <div className="mt-6 flex flex-col gap-8">
       <section className="card card-pad animate-in delay-1">
         <CardTitle title="Provider capabilities" subtitle="Status of research capabilities" />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
@@ -1225,6 +1299,8 @@ Research Notes:
           </div>
         )}
       </section>
+        </div>
+      </details>
     </main>
   );
 }

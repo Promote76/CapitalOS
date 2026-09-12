@@ -28,6 +28,10 @@ type EvidenceItem = {
   canonicalSha256: string;
   missingFlags: string[];
   qualityFlags: string[];
+  provider: string | null;
+  sourceUrl: string | null;
+  retrievedAt: Date | null;
+  filingDate: string | null;
 };
 
 type Candidate = {
@@ -118,6 +122,10 @@ function createEvidenceFromSchwab(
     canonicalSha256: row.canonicalSha256,
     missingFlags: Array.isArray(context.missingFlags) ? context.missingFlags.filter((item): item is string => typeof item === "string") : [],
     qualityFlags: Array.isArray(context.qualityFlags) ? context.qualityFlags.filter((item): item is string => typeof item === "string") : [],
+    provider: stringValue(record(row.provenance).provider) ?? stringValue(record(source.provenance).provider),
+    sourceUrl: stringValue(record(row.provenance).sourceUrl) ?? stringValue(record(source.provenance).sourceUrl),
+    retrievedAt: normalizedDate(source.retrievedAt),
+    filingDate: null,
   };
 }
 
@@ -147,6 +155,10 @@ function createEvidenceFromSec(
     canonicalSha256: row.canonicalSha256,
     missingFlags,
     qualityFlags: [String(content.evidenceQuality ?? "UNKNOWN")],
+    provider: stringValue(record(row.provenance).provider) ?? stringValue(record(source.provenance).provider),
+    sourceUrl: source.sourceUrl,
+    retrievedAt: normalizedDate(source.extractionTimestamp),
+    filingDate: source.filingDate,
   };
 }
 
@@ -254,6 +266,11 @@ function buildOpportunity(candidate: Candidate) {
       sourceKind: item.sourceKind,
       reviewedAt: item.reviewedAt.toISOString(),
       freshness: item.freshness,
+      canonicalSha256: item.canonicalSha256,
+      provider: item.provider,
+      sourceUrl: item.sourceUrl,
+      retrievedAt: item.retrievedAt?.toISOString() ?? null,
+      filingDate: item.filingDate,
     })),
     factors: {
       incomeQuality,
@@ -269,7 +286,46 @@ function buildOpportunity(candidate: Candidate) {
   };
 }
 
-export async function listResearchOpportunities(actor: Actor) {
+export type ResearchOpportunityLens = "Income" | "Compounders" | "Balanced";
+export type ResearchOpportunityPortfolioFit = "Constructive" | "Review" | "Caution";
+export type ResearchOpportunityOptions = {
+  lens?: ResearchOpportunityLens;
+  search?: string;
+  minScore?: number;
+  portfolioFit?: ResearchOpportunityPortfolioFit;
+};
+
+type ExclusionReason = "missingSource" | "unapproved" | "tickerMismatch" | "stale";
+
+function classifySchwabExclusion(
+  row: typeof reviewedResearchEvidence.$inferSelect,
+  source: typeof schwabMarketSnapshots.$inferSelect | undefined,
+  now: Date,
+): ExclusionReason | null {
+  if (!source) return "missingSource";
+  if (source.householdId !== row.householdId || source.ticker.trim().toUpperCase() !== row.ticker.trim().toUpperCase()) return "tickerMismatch";
+  if (source.reviewStatus !== "APPROVED") return "unapproved";
+  const context = record(record(row.canonicalContent).snapshotContext);
+  const freshness = String(source.freshness ?? context.freshness ?? record(row.provenance).freshness ?? "").toUpperCase();
+  if (["STALE", "UNKNOWN", "EXPIRED"].includes(freshness) || !freshWithin(source.retrievedAt, maxSchwabAgeDays, now)) return "stale";
+  if (["STALE", "UNKNOWN", "EXPIRED"].includes(String(context.freshness ?? "").toUpperCase())) return "stale";
+  if (context.retrievedAt !== undefined && !freshWithin(context.retrievedAt, maxSchwabAgeDays, now)) return "stale";
+  return null;
+}
+
+function classifySecExclusion(
+  row: typeof reviewedSecFilingEvidence.$inferSelect,
+  source: typeof secFilingSnapshots.$inferSelect | undefined,
+  now: Date,
+): ExclusionReason | null {
+  if (!source) return "missingSource";
+  if (source.householdId !== row.householdId || source.ticker.trim().toUpperCase() !== row.ticker.trim().toUpperCase()) return "tickerMismatch";
+  if (source.reviewStatus !== "APPROVED") return "unapproved";
+  if (!freshWithin(source.filingDate, maxSecAgeDays, now)) return "stale";
+  return null;
+}
+
+export async function listResearchOpportunities(actor: Actor, options: ResearchOpportunityOptions = {}) {
   const now = new Date();
   const [snapshotRows, secRows, sourceSnapshotRows, sourceSecRows, portfolioRows, dossierRows] = await Promise.all([
     db.select().from(reviewedResearchEvidence).where(eq(reviewedResearchEvidence.householdId, actor.householdId)).orderBy(desc(reviewedResearchEvidence.approvedAt), desc(reviewedResearchEvidence.id)),
@@ -287,12 +343,37 @@ export async function listResearchOpportunities(actor: Actor) {
   ]);
   const sourceSnapshotsById = new Map(sourceSnapshotRows.map((row) => [row.id, row]));
   const sourceSecById = new Map(sourceSecRows.map((row) => [row.id, row]));
+  const diagnostics = {
+    reviewedMarketEvidence: snapshotRows.length,
+    reviewedSecEvidence: secRows.length,
+    currentMarketEvidence: 0,
+    currentSecEvidence: 0,
+    duplicateEvidence: 0,
+    excludedMissingSource: 0,
+    excludedUnapproved: 0,
+    excludedTickerMismatch: 0,
+    excludedStale: 0,
+  };
+  const recordExclusion = (reason: ExclusionReason | null, kind: "market" | "sec") => {
+    if (!reason) {
+      if (kind === "market") diagnostics.currentMarketEvidence += 1;
+      else diagnostics.currentSecEvidence += 1;
+      return;
+    }
+    if (reason === "missingSource") diagnostics.excludedMissingSource += 1;
+    if (reason === "unapproved") diagnostics.excludedUnapproved += 1;
+    if (reason === "tickerMismatch") diagnostics.excludedTickerMismatch += 1;
+    if (reason === "stale") diagnostics.excludedStale += 1;
+  };
+  snapshotRows.forEach((row) => recordExclusion(classifySchwabExclusion(row, sourceSnapshotsById.get(row.snapshotId), now), "market"));
+  secRows.forEach((row) => recordExclusion(classifySecExclusion(row, sourceSecById.get(row.snapshotId), now), "sec"));
   const evidence = [
     ...snapshotRows.map((row) => createEvidenceFromSchwab(row, sourceSnapshotsById.get(row.snapshotId), now)).filter((item): item is EvidenceItem => !!item),
     ...secRows.map((row) => createEvidenceFromSec(row, sourceSecById.get(row.snapshotId), now)).filter((item): item is EvidenceItem => !!item),
   ];
   const uniqueEvidence = evidence.filter((item, index, items) => items.findIndex((candidate) =>
     candidate.ticker === item.ticker && candidate.canonicalSha256 === item.canonicalSha256) === index);
+  diagnostics.duplicateEvidence = evidence.length - uniqueEvidence.length;
   const positions = Array.isArray(portfolioRows[0]?.positions) ? portfolioRows[0].positions : [];
   const eligibleEvidenceIds = new Set(uniqueEvidence.map((item) => item.id));
   const dossiersByTicker = new Map<string, JsonRecord | null>();
@@ -330,20 +411,37 @@ export async function listResearchOpportunities(actor: Actor) {
     candidate.companyName = schwab.companyName ?? candidate.companyName;
     candidate.secMetrics = getSecMetrics(candidate.evidence);
   }
-  const opportunities = Array.from(byTicker.values())
+  const allOpportunities = Array.from(byTicker.values())
     .map(buildOpportunity)
     .sort((a, b) => b.platinumScore - a.platinumScore || a.ticker.localeCompare(b.ticker))
-    .slice(0, 25);
+  const normalizedSearch = options.search?.trim().toLowerCase() ?? "";
+  const searched = normalizedSearch
+    ? allOpportunities.filter((item) => `${item.ticker} ${item.companyName} ${item.category} ${item.thesis}`.toLowerCase().includes(normalizedSearch))
+    : allOpportunities;
+  const lensFiltered = options.lens && options.lens !== "Balanced"
+    ? searched.filter((item) => item.category === options.lens)
+    : searched;
+  const scoreFiltered = options.minScore === undefined ? lensFiltered : lensFiltered.filter((item) => item.platinumScore >= options.minScore!);
+  const fitFiltered = options.portfolioFit ? scoreFiltered.filter((item) => item.portfolioFit === options.portfolioFit) : scoreFiltered;
+  const lensCounts = {
+    Income: allOpportunities.filter((item) => item.category === "Income").length,
+    Compounders: allOpportunities.filter((item) => item.category === "Compounders").length,
+    Balanced: allOpportunities.length,
+  };
+  const opportunities = fitFiltered.slice(0, 25);
   return {
     opportunities,
-    totalEligible: opportunities.length,
-    excludedStaleOrUnreviewed: snapshotRows.length + secRows.length - uniqueEvidence.length,
+    totalEligible: fitFiltered.length,
+    excludedStaleOrUnreviewed: diagnostics.excludedStale + diagnostics.excludedUnapproved + diagnostics.excludedMissingSource + diagnostics.excludedTickerMismatch + diagnostics.duplicateEvidence,
     generatedAt: now.toISOString(),
     ranking: {
       method: "Deterministic approved-evidence screen",
       factors: ["income quality", "growth quality", "earnings quality", "balance-sheet strength", "valuation", "liquidity", "risk", "evidence freshness", "portfolio fit"],
       missingData: "Missing fields receive bounded neutral scores and remain visible in the evidence record; no values are invented.",
+      lens: options.lens ?? "Balanced",
     },
+    diagnostics,
+    lensCounts,
     advisoryOnly: true as const,
     executionAuthorization: false as const,
     householdCapitalIncluded: false as const,

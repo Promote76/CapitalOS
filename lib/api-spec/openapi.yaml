@@ -1306,15 +1306,63 @@ paths:
     get:
       operationId: listResearchOpportunities
       tags: [research-dossier]
-      summary: List the household-scoped approved-evidence research screen
+      summary: Run the household-scoped read-only Research discovery screen
+      parameters:
+        - name: lens
+          in: query
+          required: false
+          schema: { type: string, enum: [Income, Compounders, Balanced] }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string, maxLength: 120 }
+        - name: minScore
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, maximum: 100 }
+        - name: portfolioFit
+          in: query
+          required: false
+          schema: { type: string, enum: [Constructive, Review, Caution] }
       responses:
         "200":
-          description: Deterministic advisory Top 25 built from current approved read-only evidence
+          description: Deterministic advisory Top 25 built from the complete current approved read-only universe
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ResearchOpportunitiesResponse" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+  /research/advisory-decisions:
+    get:
+      operationId: listResearchAdvisoryDecisions
+      tags: [research-dossier]
+      summary: List household-scoped advisory decisions with read-only portfolio observation status
+      responses:
+        "200":
+          description: Advisory decision history and derived observation status
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResearchAdvisoryDecisionListResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      operationId: createResearchAdvisoryDecision
+      tags: [research-dossier]
+      summary: Persist a manual advisory decision without execution authority
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResearchAdvisoryDecisionInput" }
+      responses:
+        "201":
+          description: Persisted advisory decision with server-captured evidence provenance
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResearchAdvisoryDecision" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /family-office/research/digestion/preview:
     post:
       operationId: previewFamilyOfficeResearchDigestion
@@ -7305,6 +7353,11 @@ components:
         sourceKind: { type: string, enum: [SCHWAB_MARKET_SNAPSHOT, SEC_FILING] }
         reviewedAt: { type: string, format: date-time }
         freshness: { type: string, enum: [CURRENT] }
+        canonicalSha256: { type: string, maxLength: 128 }
+        provider: { type: ["string", "null"], maxLength: 120 }
+        sourceUrl: { type: ["string", "null"], maxLength: 2000 }
+        retrievedAt: { type: ["string", "null"], format: date-time }
+        filingDate: { type: ["string", "null"], format: date }
     ResearchOpportunity:
       type: object
       required: [ticker, companyName, platinumScore, category, thesis, whyNow, redFlags, evidenceFreshness, portfolioFit, concentrationImpact, maximumExposure, bullCase, baseCase, bearCase, invalidationConditions, protectedCapitalStatus, humanReviewStatus, factorSubScores, sourceCount, advisoryOnly, noExecution, evidence, factors]
@@ -7334,7 +7387,7 @@ components:
         factors: { $ref: "#/components/schemas/ResearchOpportunityFactorScores" }
     ResearchOpportunitiesResponse:
       type: object
-      required: [opportunities, totalEligible, excludedStaleOrUnreviewed, generatedAt, ranking, advisoryOnly, executionAuthorization, householdCapitalIncluded, noTradingOrMoneyMovement]
+      required: [opportunities, totalEligible, excludedStaleOrUnreviewed, generatedAt, ranking, diagnostics, lensCounts, advisoryOnly, executionAuthorization, householdCapitalIncluded, noTradingOrMoneyMovement]
       properties:
         opportunities: { type: array, maxItems: 25, items: { $ref: "#/components/schemas/ResearchOpportunity" } }
         totalEligible: { type: number, minimum: 0, multipleOf: 1 }
@@ -7342,14 +7395,69 @@ components:
         generatedAt: { type: string, format: date-time }
         ranking:
           type: object
-          required: [method, factors, missingData]
+          required: [method, factors, missingData, lens]
           properties:
             method: { type: string }
             factors: { type: array, maxItems: 12, items: { type: string } }
             missingData: { type: string }
+            lens: { type: string, enum: [Income, Compounders, Balanced] }
+        diagnostics:
+          type: object
+          required: [reviewedMarketEvidence, reviewedSecEvidence, currentMarketEvidence, currentSecEvidence, duplicateEvidence, excludedMissingSource, excludedUnapproved, excludedTickerMismatch, excludedStale]
+          properties:
+            reviewedMarketEvidence: { type: number, minimum: 0, multipleOf: 1 }
+            reviewedSecEvidence: { type: number, minimum: 0, multipleOf: 1 }
+            currentMarketEvidence: { type: number, minimum: 0, multipleOf: 1 }
+            currentSecEvidence: { type: number, minimum: 0, multipleOf: 1 }
+            duplicateEvidence: { type: number, minimum: 0, multipleOf: 1 }
+            excludedMissingSource: { type: number, minimum: 0, multipleOf: 1 }
+            excludedUnapproved: { type: number, minimum: 0, multipleOf: 1 }
+            excludedTickerMismatch: { type: number, minimum: 0, multipleOf: 1 }
+            excludedStale: { type: number, minimum: 0, multipleOf: 1 }
+        lensCounts:
+          type: object
+          required: [Income, Compounders, Balanced]
+          properties:
+            Income: { type: number, minimum: 0, multipleOf: 1 }
+            Compounders: { type: number, minimum: 0, multipleOf: 1 }
+            Balanced: { type: number, minimum: 0, multipleOf: 1 }
         advisoryOnly: { type: boolean, const: true }
         executionAuthorization: { type: boolean, const: false }
         householdCapitalIncluded: { type: boolean, const: false }
+        noTradingOrMoneyMovement: { type: boolean, const: true }
+    ResearchAdvisoryDecisionInput:
+      type: object
+      required: [ticker, decision]
+      properties:
+        ticker: { type: string, minLength: 1, maxLength: 16 }
+        decision: { type: string, enum: [SKIP, WATCH, REVIEW, SHADOW, OPEN_SCHWAB] }
+        reason: { type: string, maxLength: 500 }
+    ResearchAdvisoryDecision:
+      type: object
+      required: [id, ticker, decision, reason, createdAt, updatedAt, observationStatus, observationAsOf, monitoringStatus, manualHandoffPath, opportunitySnapshot, evidenceSnapshot, advisoryOnly, executionAuthorization, noTradingOrMoneyMovement]
+      properties:
+        id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        ticker: { type: string, maxLength: 16 }
+        decision: { type: string, enum: [SKIP, WATCH, REVIEW, SHADOW, OPEN_SCHWAB] }
+        reason: { type: ["string", "null"], maxLength: 500 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        observationStatus: { type: string, enum: [NOT_OBSERVED, OBSERVED_IN_PORTFOLIO, UNKNOWN] }
+        observationAsOf: { type: ["string", "null"], format: date-time }
+        monitoringStatus: { type: string, enum: [NOT_STARTED, MONITORING, NEEDS_REVIEW] }
+        manualHandoffPath: { type: ["string", "null"], maxLength: 240 }
+        opportunitySnapshot: { $ref: "#/components/schemas/ResearchOpportunity" }
+        evidenceSnapshot: { type: array, maxItems: 6, items: { $ref: "#/components/schemas/ResearchOpportunityEvidence" } }
+        advisoryOnly: { type: boolean, const: true }
+        executionAuthorization: { type: boolean, const: false }
+        noTradingOrMoneyMovement: { type: boolean, const: true }
+    ResearchAdvisoryDecisionListResponse:
+      type: object
+      required: [decisions, advisoryOnly, executionAuthorization, noTradingOrMoneyMovement]
+      properties:
+        decisions: { type: array, items: { $ref: "#/components/schemas/ResearchAdvisoryDecision" } }
+        advisoryOnly: { type: boolean, const: true }
+        executionAuthorization: { type: boolean, const: false }
         noTradingOrMoneyMovement: { type: boolean, const: true }
     FamilyOfficeResearchResult:
       type: object

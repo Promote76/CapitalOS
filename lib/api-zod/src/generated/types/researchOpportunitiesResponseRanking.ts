@@ -5,10 +5,12 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { ResearchOpportunitiesResponseRankingLens } from './researchOpportunitiesResponseRankingLens';
 
 export type ResearchOpportunitiesResponseRanking = {
   method: string;
   /** @maxItems 12 */
   factors: string[];
   missingData: string;
+  lens: ResearchOpportunitiesResponseRankingLens;
 };

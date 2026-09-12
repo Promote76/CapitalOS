@@ -4777,8 +4777,22 @@ export const CreateResearchDossierResponse = zod.object({
 
 
 /**
- * @summary List the household-scoped approved-evidence research screen
+ * @summary Run the household-scoped read-only Research discovery screen
  */
+export const listResearchOpportunitiesQuerySearchMax = 120;
+
+export const listResearchOpportunitiesQueryMinScoreMin = 0;
+export const listResearchOpportunitiesQueryMinScoreMax = 100;
+
+
+
+export const ListResearchOpportunitiesQueryParams = zod.object({
+  "lens": zod.enum(['Income', 'Compounders', 'Balanced']).optional(),
+  "search": zod.coerce.string().max(listResearchOpportunitiesQuerySearchMax).optional(),
+  "minScore": zod.coerce.number().int().min(listResearchOpportunitiesQueryMinScoreMin).max(listResearchOpportunitiesQueryMinScoreMax).optional(),
+  "portfolioFit": zod.enum(['Constructive', 'Review', 'Caution']).optional()
+})
+
 export const listResearchOpportunitiesResponseOpportunitiesItemTickerMax = 16;
 
 export const listResearchOpportunitiesResponseOpportunitiesItemCompanyNameMax = 240;
@@ -4855,6 +4869,12 @@ export const listResearchOpportunitiesResponseOpportunitiesItemSourceCountMultip
 export const listResearchOpportunitiesResponseOpportunitiesItemEvidenceItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const listResearchOpportunitiesResponseOpportunitiesItemEvidenceItemTitleMax = 240;
 
+export const listResearchOpportunitiesResponseOpportunitiesItemEvidenceItemCanonicalSha256Max = 128;
+
+export const listResearchOpportunitiesResponseOpportunitiesItemEvidenceItemProviderMax = 120;
+
+export const listResearchOpportunitiesResponseOpportunitiesItemEvidenceItemSourceUrlMax = 2000;
+
 export const listResearchOpportunitiesResponseOpportunitiesItemEvidenceMax = 6;
 
 export const listResearchOpportunitiesResponseOpportunitiesItemFactorsIncomeQualityMin = 0;
@@ -4903,6 +4923,42 @@ export const listResearchOpportunitiesResponseExcludedStaleOrUnreviewedMultipleO
 
 export const listResearchOpportunitiesResponseRankingFactorsMax = 12;
 
+export const listResearchOpportunitiesResponseDiagnosticsReviewedMarketEvidenceMin = 0;
+export const listResearchOpportunitiesResponseDiagnosticsReviewedMarketEvidenceMultipleOf = 1;
+
+export const listResearchOpportunitiesResponseDiagnosticsReviewedSecEvidenceMin = 0;
+export const listResearchOpportunitiesResponseDiagnosticsReviewedSecEvidenceMultipleOf = 1;
+
+export const listResearchOpportunitiesResponseDiagnosticsCurrentMarketEvidenceMin = 0;
+export const listResearchOpportunitiesResponseDiagnosticsCurrentMarketEvidenceMultipleOf = 1;
+
+export const listResearchOpportunitiesResponseDiagnosticsCurrentSecEvidenceMin = 0;
+export const listResearchOpportunitiesResponseDiagnosticsCurrentSecEvidenceMultipleOf = 1;
+
+export const listResearchOpportunitiesResponseDiagnosticsDuplicateEvidenceMin = 0;
+export const listResearchOpportunitiesResponseDiagnosticsDuplicateEvidenceMultipleOf = 1;
+
+export const listResearchOpportunitiesResponseDiagnosticsExcludedMissingSourceMin = 0;
+export const listResearchOpportunitiesResponseDiagnosticsExcludedMissingSourceMultipleOf = 1;
+
+export const listResearchOpportunitiesResponseDiagnosticsExcludedUnapprovedMin = 0;
+export const listResearchOpportunitiesResponseDiagnosticsExcludedUnapprovedMultipleOf = 1;
+
+export const listResearchOpportunitiesResponseDiagnosticsExcludedTickerMismatchMin = 0;
+export const listResearchOpportunitiesResponseDiagnosticsExcludedTickerMismatchMultipleOf = 1;
+
+export const listResearchOpportunitiesResponseDiagnosticsExcludedStaleMin = 0;
+export const listResearchOpportunitiesResponseDiagnosticsExcludedStaleMultipleOf = 1;
+
+export const listResearchOpportunitiesResponseLensCountsIncomeMin = 0;
+export const listResearchOpportunitiesResponseLensCountsIncomeMultipleOf = 1;
+
+export const listResearchOpportunitiesResponseLensCountsCompoundersMin = 0;
+export const listResearchOpportunitiesResponseLensCountsCompoundersMultipleOf = 1;
+
+export const listResearchOpportunitiesResponseLensCountsBalancedMin = 0;
+export const listResearchOpportunitiesResponseLensCountsBalancedMultipleOf = 1;
+
 
 
 export const ListResearchOpportunitiesResponse = zod.object({
@@ -4943,7 +4999,12 @@ export const ListResearchOpportunitiesResponse = zod.object({
   "title": zod.string().max(listResearchOpportunitiesResponseOpportunitiesItemEvidenceItemTitleMax),
   "sourceKind": zod.enum(['SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
   "reviewedAt": zod.coerce.date(),
-  "freshness": zod.enum(['CURRENT'])
+  "freshness": zod.enum(['CURRENT']),
+  "canonicalSha256": zod.string().max(listResearchOpportunitiesResponseOpportunitiesItemEvidenceItemCanonicalSha256Max).optional(),
+  "provider": zod.string().max(listResearchOpportunitiesResponseOpportunitiesItemEvidenceItemProviderMax).nullish(),
+  "sourceUrl": zod.string().max(listResearchOpportunitiesResponseOpportunitiesItemEvidenceItemSourceUrlMax).nullish(),
+  "retrievedAt": zod.coerce.date().nullish(),
+  "filingDate": zod.coerce.date().nullish()
 })).max(listResearchOpportunitiesResponseOpportunitiesItemEvidenceMax),
   "factors": zod.object({
   "incomeQuality": zod.number().min(listResearchOpportunitiesResponseOpportunitiesItemFactorsIncomeQualityMin).max(listResearchOpportunitiesResponseOpportunitiesItemFactorsIncomeQualityMax).multipleOf(listResearchOpportunitiesResponseOpportunitiesItemFactorsIncomeQualityMultipleOf),
@@ -4963,11 +5024,501 @@ export const ListResearchOpportunitiesResponse = zod.object({
   "ranking": zod.object({
   "method": zod.string(),
   "factors": zod.array(zod.string()).max(listResearchOpportunitiesResponseRankingFactorsMax),
-  "missingData": zod.string()
+  "missingData": zod.string(),
+  "lens": zod.enum(['Income', 'Compounders', 'Balanced'])
+}),
+  "diagnostics": zod.object({
+  "reviewedMarketEvidence": zod.number().min(listResearchOpportunitiesResponseDiagnosticsReviewedMarketEvidenceMin).multipleOf(listResearchOpportunitiesResponseDiagnosticsReviewedMarketEvidenceMultipleOf),
+  "reviewedSecEvidence": zod.number().min(listResearchOpportunitiesResponseDiagnosticsReviewedSecEvidenceMin).multipleOf(listResearchOpportunitiesResponseDiagnosticsReviewedSecEvidenceMultipleOf),
+  "currentMarketEvidence": zod.number().min(listResearchOpportunitiesResponseDiagnosticsCurrentMarketEvidenceMin).multipleOf(listResearchOpportunitiesResponseDiagnosticsCurrentMarketEvidenceMultipleOf),
+  "currentSecEvidence": zod.number().min(listResearchOpportunitiesResponseDiagnosticsCurrentSecEvidenceMin).multipleOf(listResearchOpportunitiesResponseDiagnosticsCurrentSecEvidenceMultipleOf),
+  "duplicateEvidence": zod.number().min(listResearchOpportunitiesResponseDiagnosticsDuplicateEvidenceMin).multipleOf(listResearchOpportunitiesResponseDiagnosticsDuplicateEvidenceMultipleOf),
+  "excludedMissingSource": zod.number().min(listResearchOpportunitiesResponseDiagnosticsExcludedMissingSourceMin).multipleOf(listResearchOpportunitiesResponseDiagnosticsExcludedMissingSourceMultipleOf),
+  "excludedUnapproved": zod.number().min(listResearchOpportunitiesResponseDiagnosticsExcludedUnapprovedMin).multipleOf(listResearchOpportunitiesResponseDiagnosticsExcludedUnapprovedMultipleOf),
+  "excludedTickerMismatch": zod.number().min(listResearchOpportunitiesResponseDiagnosticsExcludedTickerMismatchMin).multipleOf(listResearchOpportunitiesResponseDiagnosticsExcludedTickerMismatchMultipleOf),
+  "excludedStale": zod.number().min(listResearchOpportunitiesResponseDiagnosticsExcludedStaleMin).multipleOf(listResearchOpportunitiesResponseDiagnosticsExcludedStaleMultipleOf)
+}),
+  "lensCounts": zod.object({
+  "Income": zod.number().min(listResearchOpportunitiesResponseLensCountsIncomeMin).multipleOf(listResearchOpportunitiesResponseLensCountsIncomeMultipleOf),
+  "Compounders": zod.number().min(listResearchOpportunitiesResponseLensCountsCompoundersMin).multipleOf(listResearchOpportunitiesResponseLensCountsCompoundersMultipleOf),
+  "Balanced": zod.number().min(listResearchOpportunitiesResponseLensCountsBalancedMin).multipleOf(listResearchOpportunitiesResponseLensCountsBalancedMultipleOf)
 }),
   "advisoryOnly": zod.literal(true),
   "executionAuthorization": zod.literal(false),
   "householdCapitalIncluded": zod.literal(false),
+  "noTradingOrMoneyMovement": zod.literal(true)
+})
+
+
+/**
+ * @summary List household-scoped advisory decisions with read-only portfolio observation status
+ */
+export const listResearchAdvisoryDecisionsResponseDecisionsItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listResearchAdvisoryDecisionsResponseDecisionsItemTickerMax = 16;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemReasonMax = 500;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemManualHandoffPathMax = 240;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotTickerMax = 16;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotCompanyNameMax = 240;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotPlatinumScoreMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotPlatinumScoreMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotPlatinumScoreMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotThesisMax = 1200;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotWhyNowMax = 1200;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotRedFlagsItemMax = 300;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotRedFlagsMax = 5;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotConcentrationImpactMax = 120;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotMaximumExposureMax = 120;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotBullCaseMax = 1200;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotBaseCaseMax = 1200;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotBearCaseMax = 1200;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotInvalidationConditionsItemMax = 300;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotInvalidationConditionsMax = 3;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotProtectedCapitalStatusMax = 120;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotHumanReviewStatusMax = 120;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresIncomeQualityMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresIncomeQualityMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresIncomeQualityMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresGrowthQualityMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresGrowthQualityMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresGrowthQualityMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresEarningsQualityMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresEarningsQualityMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresEarningsQualityMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresBalanceSheetMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresBalanceSheetMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresBalanceSheetMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresValuationMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresValuationMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresValuationMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresLiquidityMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresLiquidityMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresLiquidityMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresRiskMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresRiskMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresRiskMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresEvidenceFreshnessMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresEvidenceFreshnessMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresEvidenceFreshnessMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresPortfolioFitMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresPortfolioFitMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresPortfolioFitMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotSourceCountMax = 6;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotSourceCountMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotEvidenceItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotEvidenceItemTitleMax = 240;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotEvidenceItemCanonicalSha256Max = 128;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotEvidenceItemProviderMax = 120;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotEvidenceItemSourceUrlMax = 2000;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotEvidenceMax = 6;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsIncomeQualityMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsIncomeQualityMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsIncomeQualityMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsGrowthQualityMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsGrowthQualityMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsGrowthQualityMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsEarningsQualityMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsEarningsQualityMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsEarningsQualityMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsBalanceSheetMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsBalanceSheetMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsBalanceSheetMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsValuationMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsValuationMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsValuationMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsLiquidityMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsLiquidityMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsLiquidityMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsRiskMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsRiskMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsRiskMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsEvidenceFreshnessMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsEvidenceFreshnessMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsEvidenceFreshnessMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsPortfolioFitMin = 0;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsPortfolioFitMax = 100;
+export const listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsPortfolioFitMultipleOf = 1;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemEvidenceSnapshotItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const listResearchAdvisoryDecisionsResponseDecisionsItemEvidenceSnapshotItemTitleMax = 240;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemEvidenceSnapshotItemCanonicalSha256Max = 128;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemEvidenceSnapshotItemProviderMax = 120;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemEvidenceSnapshotItemSourceUrlMax = 2000;
+
+export const listResearchAdvisoryDecisionsResponseDecisionsItemEvidenceSnapshotMax = 6;
+
+
+
+export const ListResearchAdvisoryDecisionsResponse = zod.object({
+  "decisions": zod.array(zod.object({
+  "id": zod.string().regex(listResearchAdvisoryDecisionsResponseDecisionsItemIdRegExp),
+  "ticker": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemTickerMax),
+  "decision": zod.enum(['SKIP', 'WATCH', 'REVIEW', 'SHADOW', 'OPEN_SCHWAB']),
+  "reason": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemReasonMax).nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "observationStatus": zod.enum(['NOT_OBSERVED', 'OBSERVED_IN_PORTFOLIO', 'UNKNOWN']),
+  "observationAsOf": zod.coerce.date().nullable(),
+  "monitoringStatus": zod.enum(['NOT_STARTED', 'MONITORING', 'NEEDS_REVIEW']),
+  "manualHandoffPath": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemManualHandoffPathMax).nullable(),
+  "opportunitySnapshot": zod.object({
+  "ticker": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotTickerMax),
+  "companyName": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotCompanyNameMax),
+  "platinumScore": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotPlatinumScoreMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotPlatinumScoreMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotPlatinumScoreMultipleOf),
+  "category": zod.enum(['Income', 'Compounders', 'Balanced']),
+  "thesis": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotThesisMax),
+  "whyNow": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotWhyNowMax),
+  "redFlags": zod.array(zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotRedFlagsItemMax)).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotRedFlagsMax),
+  "evidenceFreshness": zod.enum(['Current']),
+  "portfolioFit": zod.enum(['Constructive', 'Review', 'Caution']),
+  "concentrationImpact": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotConcentrationImpactMax),
+  "maximumExposure": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotMaximumExposureMax),
+  "bullCase": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotBullCaseMax),
+  "baseCase": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotBaseCaseMax),
+  "bearCase": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotBearCaseMax),
+  "invalidationConditions": zod.array(zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotInvalidationConditionsItemMax)).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotInvalidationConditionsMax),
+  "protectedCapitalStatus": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotProtectedCapitalStatusMax),
+  "humanReviewStatus": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotHumanReviewStatusMax),
+  "factorSubScores": zod.object({
+  "incomeQuality": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresIncomeQualityMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresIncomeQualityMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresIncomeQualityMultipleOf),
+  "growthQuality": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresGrowthQualityMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresGrowthQualityMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresGrowthQualityMultipleOf),
+  "earningsQuality": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresEarningsQualityMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresEarningsQualityMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresEarningsQualityMultipleOf),
+  "balanceSheet": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresBalanceSheetMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresBalanceSheetMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresBalanceSheetMultipleOf),
+  "valuation": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresValuationMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresValuationMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresValuationMultipleOf),
+  "liquidity": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresLiquidityMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresLiquidityMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresLiquidityMultipleOf),
+  "risk": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresRiskMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresRiskMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresRiskMultipleOf),
+  "evidenceFreshness": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresEvidenceFreshnessMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresEvidenceFreshnessMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresEvidenceFreshnessMultipleOf),
+  "portfolioFit": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresPortfolioFitMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresPortfolioFitMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorSubScoresPortfolioFitMultipleOf)
+}),
+  "sourceCount": zod.number().min(1).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotSourceCountMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotSourceCountMultipleOf),
+  "advisoryOnly": zod.literal(true),
+  "noExecution": zod.literal(true),
+  "evidence": zod.array(zod.object({
+  "id": zod.string().regex(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotEvidenceItemIdRegExp),
+  "title": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotEvidenceItemTitleMax),
+  "sourceKind": zod.enum(['SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
+  "reviewedAt": zod.coerce.date(),
+  "freshness": zod.enum(['CURRENT']),
+  "canonicalSha256": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotEvidenceItemCanonicalSha256Max).optional(),
+  "provider": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotEvidenceItemProviderMax).nullish(),
+  "sourceUrl": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotEvidenceItemSourceUrlMax).nullish(),
+  "retrievedAt": zod.coerce.date().nullish(),
+  "filingDate": zod.coerce.date().nullish()
+})).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotEvidenceMax),
+  "factors": zod.object({
+  "incomeQuality": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsIncomeQualityMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsIncomeQualityMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsIncomeQualityMultipleOf),
+  "growthQuality": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsGrowthQualityMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsGrowthQualityMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsGrowthQualityMultipleOf),
+  "earningsQuality": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsEarningsQualityMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsEarningsQualityMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsEarningsQualityMultipleOf),
+  "balanceSheet": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsBalanceSheetMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsBalanceSheetMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsBalanceSheetMultipleOf),
+  "valuation": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsValuationMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsValuationMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsValuationMultipleOf),
+  "liquidity": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsLiquidityMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsLiquidityMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsLiquidityMultipleOf),
+  "risk": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsRiskMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsRiskMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsRiskMultipleOf),
+  "evidenceFreshness": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsEvidenceFreshnessMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsEvidenceFreshnessMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsEvidenceFreshnessMultipleOf),
+  "portfolioFit": zod.number().min(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsPortfolioFitMin).max(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsPortfolioFitMax).multipleOf(listResearchAdvisoryDecisionsResponseDecisionsItemOpportunitySnapshotFactorsPortfolioFitMultipleOf)
+})
+}),
+  "evidenceSnapshot": zod.array(zod.object({
+  "id": zod.string().regex(listResearchAdvisoryDecisionsResponseDecisionsItemEvidenceSnapshotItemIdRegExp),
+  "title": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemEvidenceSnapshotItemTitleMax),
+  "sourceKind": zod.enum(['SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
+  "reviewedAt": zod.coerce.date(),
+  "freshness": zod.enum(['CURRENT']),
+  "canonicalSha256": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemEvidenceSnapshotItemCanonicalSha256Max).optional(),
+  "provider": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemEvidenceSnapshotItemProviderMax).nullish(),
+  "sourceUrl": zod.string().max(listResearchAdvisoryDecisionsResponseDecisionsItemEvidenceSnapshotItemSourceUrlMax).nullish(),
+  "retrievedAt": zod.coerce.date().nullish(),
+  "filingDate": zod.coerce.date().nullish()
+})).max(listResearchAdvisoryDecisionsResponseDecisionsItemEvidenceSnapshotMax),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "noTradingOrMoneyMovement": zod.literal(true)
+})),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "noTradingOrMoneyMovement": zod.literal(true)
+})
+
+
+/**
+ * @summary Persist a manual advisory decision without execution authority
+ */
+export const createResearchAdvisoryDecisionBodyTickerMax = 16;
+
+export const createResearchAdvisoryDecisionBodyReasonMax = 500;
+
+
+
+export const CreateResearchAdvisoryDecisionBody = zod.object({
+  "ticker": zod.string().min(1).max(createResearchAdvisoryDecisionBodyTickerMax),
+  "decision": zod.enum(['SKIP', 'WATCH', 'REVIEW', 'SHADOW', 'OPEN_SCHWAB']),
+  "reason": zod.string().max(createResearchAdvisoryDecisionBodyReasonMax).optional()
+})
+
+export const createResearchAdvisoryDecisionResponseIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchAdvisoryDecisionResponseTickerMax = 16;
+
+export const createResearchAdvisoryDecisionResponseReasonMax = 500;
+
+export const createResearchAdvisoryDecisionResponseManualHandoffPathMax = 240;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotTickerMax = 16;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotCompanyNameMax = 240;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotPlatinumScoreMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotPlatinumScoreMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotPlatinumScoreMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotThesisMax = 1200;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotWhyNowMax = 1200;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotRedFlagsItemMax = 300;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotRedFlagsMax = 5;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotConcentrationImpactMax = 120;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotMaximumExposureMax = 120;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotBullCaseMax = 1200;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotBaseCaseMax = 1200;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotBearCaseMax = 1200;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotInvalidationConditionsItemMax = 300;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotInvalidationConditionsMax = 3;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotProtectedCapitalStatusMax = 120;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotHumanReviewStatusMax = 120;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresIncomeQualityMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresIncomeQualityMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresIncomeQualityMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresGrowthQualityMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresGrowthQualityMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresGrowthQualityMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresEarningsQualityMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresEarningsQualityMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresEarningsQualityMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresBalanceSheetMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresBalanceSheetMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresBalanceSheetMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresValuationMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresValuationMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresValuationMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresLiquidityMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresLiquidityMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresLiquidityMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresRiskMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresRiskMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresRiskMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresEvidenceFreshnessMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresEvidenceFreshnessMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresEvidenceFreshnessMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresPortfolioFitMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresPortfolioFitMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresPortfolioFitMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotSourceCountMax = 6;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotSourceCountMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotEvidenceItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotEvidenceItemTitleMax = 240;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotEvidenceItemCanonicalSha256Max = 128;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotEvidenceItemProviderMax = 120;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotEvidenceItemSourceUrlMax = 2000;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotEvidenceMax = 6;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsIncomeQualityMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsIncomeQualityMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsIncomeQualityMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsGrowthQualityMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsGrowthQualityMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsGrowthQualityMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsEarningsQualityMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsEarningsQualityMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsEarningsQualityMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsBalanceSheetMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsBalanceSheetMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsBalanceSheetMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsValuationMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsValuationMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsValuationMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsLiquidityMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsLiquidityMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsLiquidityMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsRiskMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsRiskMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsRiskMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsEvidenceFreshnessMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsEvidenceFreshnessMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsEvidenceFreshnessMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsPortfolioFitMin = 0;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsPortfolioFitMax = 100;
+export const createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsPortfolioFitMultipleOf = 1;
+
+export const createResearchAdvisoryDecisionResponseEvidenceSnapshotItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const createResearchAdvisoryDecisionResponseEvidenceSnapshotItemTitleMax = 240;
+
+export const createResearchAdvisoryDecisionResponseEvidenceSnapshotItemCanonicalSha256Max = 128;
+
+export const createResearchAdvisoryDecisionResponseEvidenceSnapshotItemProviderMax = 120;
+
+export const createResearchAdvisoryDecisionResponseEvidenceSnapshotItemSourceUrlMax = 2000;
+
+export const createResearchAdvisoryDecisionResponseEvidenceSnapshotMax = 6;
+
+
+
+export const CreateResearchAdvisoryDecisionResponse = zod.object({
+  "id": zod.string().regex(createResearchAdvisoryDecisionResponseIdRegExp),
+  "ticker": zod.string().max(createResearchAdvisoryDecisionResponseTickerMax),
+  "decision": zod.enum(['SKIP', 'WATCH', 'REVIEW', 'SHADOW', 'OPEN_SCHWAB']),
+  "reason": zod.string().max(createResearchAdvisoryDecisionResponseReasonMax).nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "observationStatus": zod.enum(['NOT_OBSERVED', 'OBSERVED_IN_PORTFOLIO', 'UNKNOWN']),
+  "observationAsOf": zod.coerce.date().nullable(),
+  "monitoringStatus": zod.enum(['NOT_STARTED', 'MONITORING', 'NEEDS_REVIEW']),
+  "manualHandoffPath": zod.string().max(createResearchAdvisoryDecisionResponseManualHandoffPathMax).nullable(),
+  "opportunitySnapshot": zod.object({
+  "ticker": zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotTickerMax),
+  "companyName": zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotCompanyNameMax),
+  "platinumScore": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotPlatinumScoreMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotPlatinumScoreMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotPlatinumScoreMultipleOf),
+  "category": zod.enum(['Income', 'Compounders', 'Balanced']),
+  "thesis": zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotThesisMax),
+  "whyNow": zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotWhyNowMax),
+  "redFlags": zod.array(zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotRedFlagsItemMax)).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotRedFlagsMax),
+  "evidenceFreshness": zod.enum(['Current']),
+  "portfolioFit": zod.enum(['Constructive', 'Review', 'Caution']),
+  "concentrationImpact": zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotConcentrationImpactMax),
+  "maximumExposure": zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotMaximumExposureMax),
+  "bullCase": zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotBullCaseMax),
+  "baseCase": zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotBaseCaseMax),
+  "bearCase": zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotBearCaseMax),
+  "invalidationConditions": zod.array(zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotInvalidationConditionsItemMax)).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotInvalidationConditionsMax),
+  "protectedCapitalStatus": zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotProtectedCapitalStatusMax),
+  "humanReviewStatus": zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotHumanReviewStatusMax),
+  "factorSubScores": zod.object({
+  "incomeQuality": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresIncomeQualityMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresIncomeQualityMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresIncomeQualityMultipleOf),
+  "growthQuality": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresGrowthQualityMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresGrowthQualityMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresGrowthQualityMultipleOf),
+  "earningsQuality": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresEarningsQualityMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresEarningsQualityMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresEarningsQualityMultipleOf),
+  "balanceSheet": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresBalanceSheetMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresBalanceSheetMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresBalanceSheetMultipleOf),
+  "valuation": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresValuationMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresValuationMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresValuationMultipleOf),
+  "liquidity": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresLiquidityMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresLiquidityMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresLiquidityMultipleOf),
+  "risk": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresRiskMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresRiskMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresRiskMultipleOf),
+  "evidenceFreshness": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresEvidenceFreshnessMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresEvidenceFreshnessMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresEvidenceFreshnessMultipleOf),
+  "portfolioFit": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresPortfolioFitMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresPortfolioFitMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorSubScoresPortfolioFitMultipleOf)
+}),
+  "sourceCount": zod.number().min(1).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotSourceCountMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotSourceCountMultipleOf),
+  "advisoryOnly": zod.literal(true),
+  "noExecution": zod.literal(true),
+  "evidence": zod.array(zod.object({
+  "id": zod.string().regex(createResearchAdvisoryDecisionResponseOpportunitySnapshotEvidenceItemIdRegExp),
+  "title": zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotEvidenceItemTitleMax),
+  "sourceKind": zod.enum(['SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
+  "reviewedAt": zod.coerce.date(),
+  "freshness": zod.enum(['CURRENT']),
+  "canonicalSha256": zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotEvidenceItemCanonicalSha256Max).optional(),
+  "provider": zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotEvidenceItemProviderMax).nullish(),
+  "sourceUrl": zod.string().max(createResearchAdvisoryDecisionResponseOpportunitySnapshotEvidenceItemSourceUrlMax).nullish(),
+  "retrievedAt": zod.coerce.date().nullish(),
+  "filingDate": zod.coerce.date().nullish()
+})).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotEvidenceMax),
+  "factors": zod.object({
+  "incomeQuality": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsIncomeQualityMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsIncomeQualityMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsIncomeQualityMultipleOf),
+  "growthQuality": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsGrowthQualityMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsGrowthQualityMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsGrowthQualityMultipleOf),
+  "earningsQuality": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsEarningsQualityMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsEarningsQualityMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsEarningsQualityMultipleOf),
+  "balanceSheet": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsBalanceSheetMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsBalanceSheetMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsBalanceSheetMultipleOf),
+  "valuation": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsValuationMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsValuationMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsValuationMultipleOf),
+  "liquidity": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsLiquidityMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsLiquidityMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsLiquidityMultipleOf),
+  "risk": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsRiskMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsRiskMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsRiskMultipleOf),
+  "evidenceFreshness": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsEvidenceFreshnessMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsEvidenceFreshnessMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsEvidenceFreshnessMultipleOf),
+  "portfolioFit": zod.number().min(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsPortfolioFitMin).max(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsPortfolioFitMax).multipleOf(createResearchAdvisoryDecisionResponseOpportunitySnapshotFactorsPortfolioFitMultipleOf)
+})
+}),
+  "evidenceSnapshot": zod.array(zod.object({
+  "id": zod.string().regex(createResearchAdvisoryDecisionResponseEvidenceSnapshotItemIdRegExp),
+  "title": zod.string().max(createResearchAdvisoryDecisionResponseEvidenceSnapshotItemTitleMax),
+  "sourceKind": zod.enum(['SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
+  "reviewedAt": zod.coerce.date(),
+  "freshness": zod.enum(['CURRENT']),
+  "canonicalSha256": zod.string().max(createResearchAdvisoryDecisionResponseEvidenceSnapshotItemCanonicalSha256Max).optional(),
+  "provider": zod.string().max(createResearchAdvisoryDecisionResponseEvidenceSnapshotItemProviderMax).nullish(),
+  "sourceUrl": zod.string().max(createResearchAdvisoryDecisionResponseEvidenceSnapshotItemSourceUrlMax).nullish(),
+  "retrievedAt": zod.coerce.date().nullish(),
+  "filingDate": zod.coerce.date().nullish()
+})).max(createResearchAdvisoryDecisionResponseEvidenceSnapshotMax),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
   "noTradingOrMoneyMovement": zod.literal(true)
 })
 

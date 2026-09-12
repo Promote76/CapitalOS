@@ -11,9 +11,13 @@ import {
   reviewedSecFilingEvidence,
   secFilingSnapshots,
   schwabMarketSnapshots,
+  schwabConnections,
+  schwabObservationSnapshots,
+  researchAdvisoryDecisions,
   users,
 } from "@workspace/db";
 import { listResearchOpportunities } from "../services/research-opportunities";
+import { createResearchAdvisoryDecision, listResearchAdvisoryDecisions } from "../services/research-advisory";
 import type { Actor } from "../services/capital-os";
 
 const enabled = process.env.CAPITAL_OS_RUN_INTEGRATION === "1";
@@ -191,4 +195,71 @@ test("research Top 25 is household-isolated, approved/current-only, duplicate-sa
     db.select({ id: reviewedSecFilingEvidence.id }).from(reviewedSecFilingEvidence).where(eq(reviewedSecFilingEvidence.householdId, f.actor.householdId)),
   ]);
   assert.deepEqual(after, before);
+});
+
+test("research advisory decisions persist provenance and project later Schwab observations without execution authority", { skip: !enabled }, async () => {
+  const f = await fixture();
+  const now = new Date();
+  const retrievedAt = new Date(now.getTime() - 1_000);
+  const [source] = await db.insert(schwabMarketSnapshots).values({
+    householdId: f.actor.householdId,
+    ticker: "ADVR",
+    content: {
+      instrument: { description: "Advisory Holdings", fundamental: { epsTrailingTwelveMonths: 3, peRatio: 16 } },
+      quote: { totalVolume: 125_000 },
+    },
+    provenance: { provider: "fixture", sourceUrl: "https://fixture.invalid/advr" },
+    requestedAt: retrievedAt,
+    retrievedAt,
+    freshness: "CURRENT",
+    reviewStatus: "APPROVED",
+    createdBy: f.actor.userId,
+    reviewedBy: f.actor.userId,
+    reviewedAt: retrievedAt,
+  }).returning();
+  await db.insert(reviewedResearchEvidence).values({
+    householdId: f.actor.householdId,
+    snapshotId: source.id,
+    ticker: "ADVR",
+    canonicalContent: {
+      instrument: { description: "Advisory Holdings", fundamental: { epsTrailingTwelveMonths: 3, peRatio: 16 } },
+      quote: { totalVolume: 125_000 },
+      snapshotContext: { retrievedAt: retrievedAt.toISOString(), freshness: "CURRENT" },
+    },
+    canonicalSha256: "a".repeat(64),
+    provenance: { provider: "fixture", sourceUrl: "https://fixture.invalid/advr" },
+    approvedBy: f.actor.userId,
+  });
+
+  const opportunity = await listResearchOpportunities(f.actor, { search: "ADVR" });
+  assert.equal(opportunity.opportunities[0]?.ticker, "ADVR");
+  const created = await createResearchAdvisoryDecision(f.actor, {
+    ticker: "ADVR",
+    decision: "WATCH",
+    reason: "Keep the thesis under manual review.",
+  });
+  assert.equal(created.ticker, "ADVR");
+  assert.equal(created.decision, "WATCH");
+  assert.equal(created.advisoryOnly, true);
+  assert.equal(created.executionAuthorization, false);
+  assert.equal(created.noTradingOrMoneyMovement, true);
+  assert.equal(created.evidenceSnapshot[0]?.canonicalSha256, "a".repeat(64));
+  assert.equal((await db.select({ id: researchAdvisoryDecisions.id }).from(researchAdvisoryDecisions).where(eq(researchAdvisoryDecisions.householdId, f.actor.householdId))).length, 1);
+
+  const [connection] = await db.insert(schwabConnections).values({
+    householdId: f.actor.householdId,
+    createdByUserId: f.actor.userId,
+    status: "CONNECTED",
+  }).returning();
+  await db.insert(schwabObservationSnapshots).values({
+    householdId: f.actor.householdId,
+    connectionId: connection.id,
+    positions: [{ symbol: "ADVR", quantity: 1 }],
+    freshness: "CURRENT",
+  });
+  const observed = await listResearchAdvisoryDecisions(f.actor);
+  assert.equal(observed.decisions[0]?.observationStatus, "OBSERVED_IN_PORTFOLIO");
+  assert.equal(observed.decisions[0]?.monitoringStatus, "MONITORING");
+  assert.equal(observed.decisions[0]?.executionAuthorization, false);
+  assert.equal((await listResearchAdvisoryDecisions(f.otherActor)).decisions.length, 0);
 });

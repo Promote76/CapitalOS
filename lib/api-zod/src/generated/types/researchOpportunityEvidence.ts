@@ -16,4 +16,20 @@ export interface ResearchOpportunityEvidence {
   sourceKind: ResearchOpportunityEvidenceSourceKind;
   reviewedAt: Date;
   freshness: ResearchOpportunityEvidenceFreshness;
+  /** @maxLength 128 */
+  canonicalSha256?: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  provider?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  sourceUrl?: string | null;
+  /** @nullable */
+  retrievedAt?: Date | null;
+  /** @nullable */
+  filingDate?: Date | null;
 }

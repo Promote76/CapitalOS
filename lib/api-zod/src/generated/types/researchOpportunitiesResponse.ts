@@ -5,6 +5,8 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { ResearchOpportunitiesResponseDiagnostics } from './researchOpportunitiesResponseDiagnostics';
+import type { ResearchOpportunitiesResponseLensCounts } from './researchOpportunitiesResponseLensCounts';
 import type { ResearchOpportunitiesResponseRanking } from './researchOpportunitiesResponseRanking';
 import type { ResearchOpportunity } from './researchOpportunity';
 
@@ -17,6 +19,8 @@ export interface ResearchOpportunitiesResponse {
   excludedStaleOrUnreviewed: number;
   generatedAt: Date;
   ranking: ResearchOpportunitiesResponseRanking;
+  diagnostics: ResearchOpportunitiesResponseDiagnostics;
+  lensCounts: ResearchOpportunitiesResponseLensCounts;
   advisoryOnly: true;
   executionAuthorization: false;
   householdCapitalIncluded: false;

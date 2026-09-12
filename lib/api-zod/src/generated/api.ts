@@ -5052,6 +5052,369 @@ export const ListResearchOpportunitiesResponse = zod.object({
 
 
 /**
+ * @summary Collect permitted read-only provider observations and rerun the household opportunity screen
+ */
+export const discoverResearchOpportunitiesBodySearchMax = 120;
+
+export const discoverResearchOpportunitiesBodyMinScoreMin = 0;
+export const discoverResearchOpportunitiesBodyMinScoreMax = 100;
+export const discoverResearchOpportunitiesBodyMinScoreMultipleOf = 1;
+
+
+
+export const DiscoverResearchOpportunitiesBody = zod.object({
+  "lens": zod.enum(['Income', 'Compounders', 'Balanced']).optional(),
+  "search": zod.string().max(discoverResearchOpportunitiesBodySearchMax).optional(),
+  "minScore": zod.number().min(discoverResearchOpportunitiesBodyMinScoreMin).max(discoverResearchOpportunitiesBodyMinScoreMax).multipleOf(discoverResearchOpportunitiesBodyMinScoreMultipleOf).optional(),
+  "portfolioFit": zod.enum(['Constructive', 'Review', 'Caution']).optional()
+})
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemTickerMax = 16;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemCompanyNameMax = 240;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemPlatinumScoreMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemPlatinumScoreMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemPlatinumScoreMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemThesisMax = 1200;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemWhyNowMax = 1200;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemRedFlagsItemMax = 300;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemRedFlagsMax = 5;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemConcentrationImpactMax = 120;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemMaximumExposureMax = 120;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemBullCaseMax = 1200;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemBaseCaseMax = 1200;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemBearCaseMax = 1200;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemInvalidationConditionsItemMax = 300;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemInvalidationConditionsMax = 3;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemProtectedCapitalStatusMax = 120;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemHumanReviewStatusMax = 120;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresIncomeQualityMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresIncomeQualityMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresIncomeQualityMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresGrowthQualityMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresGrowthQualityMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresGrowthQualityMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresEarningsQualityMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresEarningsQualityMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresEarningsQualityMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresBalanceSheetMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresBalanceSheetMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresBalanceSheetMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresValuationMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresValuationMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresValuationMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresLiquidityMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresLiquidityMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresLiquidityMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresRiskMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresRiskMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresRiskMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresEvidenceFreshnessMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresEvidenceFreshnessMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresEvidenceFreshnessMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresPortfolioFitMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresPortfolioFitMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresPortfolioFitMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemSourceCountMax = 6;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemSourceCountMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemEvidenceItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemEvidenceItemTitleMax = 240;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemEvidenceItemCanonicalSha256Max = 128;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemEvidenceItemProviderMax = 120;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemEvidenceItemSourceUrlMax = 2000;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemEvidenceMax = 6;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsIncomeQualityMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsIncomeQualityMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsIncomeQualityMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsGrowthQualityMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsGrowthQualityMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsGrowthQualityMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsEarningsQualityMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsEarningsQualityMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsEarningsQualityMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsBalanceSheetMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsBalanceSheetMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsBalanceSheetMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsValuationMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsValuationMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsValuationMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsLiquidityMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsLiquidityMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsLiquidityMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsRiskMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsRiskMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsRiskMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsEvidenceFreshnessMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsEvidenceFreshnessMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsEvidenceFreshnessMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsPortfolioFitMin = 0;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsPortfolioFitMax = 100;
+export const discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsPortfolioFitMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneOpportunitiesMax = 25;
+
+export const discoverResearchOpportunitiesResponseOneTotalEligibleMin = 0;
+export const discoverResearchOpportunitiesResponseOneTotalEligibleMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneExcludedStaleOrUnreviewedMin = 0;
+export const discoverResearchOpportunitiesResponseOneExcludedStaleOrUnreviewedMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneRankingFactorsMax = 12;
+
+export const discoverResearchOpportunitiesResponseOneDiagnosticsReviewedMarketEvidenceMin = 0;
+export const discoverResearchOpportunitiesResponseOneDiagnosticsReviewedMarketEvidenceMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneDiagnosticsReviewedSecEvidenceMin = 0;
+export const discoverResearchOpportunitiesResponseOneDiagnosticsReviewedSecEvidenceMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneDiagnosticsCurrentMarketEvidenceMin = 0;
+export const discoverResearchOpportunitiesResponseOneDiagnosticsCurrentMarketEvidenceMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneDiagnosticsCurrentSecEvidenceMin = 0;
+export const discoverResearchOpportunitiesResponseOneDiagnosticsCurrentSecEvidenceMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneDiagnosticsDuplicateEvidenceMin = 0;
+export const discoverResearchOpportunitiesResponseOneDiagnosticsDuplicateEvidenceMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneDiagnosticsExcludedMissingSourceMin = 0;
+export const discoverResearchOpportunitiesResponseOneDiagnosticsExcludedMissingSourceMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneDiagnosticsExcludedUnapprovedMin = 0;
+export const discoverResearchOpportunitiesResponseOneDiagnosticsExcludedUnapprovedMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneDiagnosticsExcludedTickerMismatchMin = 0;
+export const discoverResearchOpportunitiesResponseOneDiagnosticsExcludedTickerMismatchMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneDiagnosticsExcludedStaleMin = 0;
+export const discoverResearchOpportunitiesResponseOneDiagnosticsExcludedStaleMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneLensCountsIncomeMin = 0;
+export const discoverResearchOpportunitiesResponseOneLensCountsIncomeMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneLensCountsCompoundersMin = 0;
+export const discoverResearchOpportunitiesResponseOneLensCountsCompoundersMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseOneLensCountsBalancedMin = 0;
+export const discoverResearchOpportunitiesResponseOneLensCountsBalancedMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryProgressCompletedMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryProgressCompletedMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryProgressTotalMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryProgressTotalMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryProgressMessageMax = 500;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryKnownUniverseCountMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryKnownUniverseCountMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySymbolsSelectedMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySymbolsSelectedMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySymbolsScreenedMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySymbolsScreenedMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySymbolsEligibleMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySymbolsEligibleMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySymbolsExcludedMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySymbolsExcludedMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidateCountMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidateCountMax = 25;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidateCountMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryMarketDraftsCreatedMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryMarketDraftsCreatedMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySecDraftsCreatedMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySecDraftsCreatedMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySecSnapshotsReusedMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoverySecSnapshotsReusedMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryExclusionReasonsItemCodeMax = 80;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryExclusionReasonsItemCountMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryExclusionReasonsItemMessageMax = 500;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryExclusionReasonsMax = 24;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryProviderSymbolLimitMax = 500;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryProviderSymbolLimitMultipleOf = 1;
+
+
+
+export const DiscoverResearchOpportunitiesResponse = zod.object({
+  "opportunities": zod.array(zod.object({
+  "ticker": zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemTickerMax),
+  "companyName": zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemCompanyNameMax),
+  "platinumScore": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemPlatinumScoreMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemPlatinumScoreMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemPlatinumScoreMultipleOf),
+  "category": zod.enum(['Income', 'Compounders', 'Balanced']),
+  "thesis": zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemThesisMax),
+  "whyNow": zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemWhyNowMax),
+  "redFlags": zod.array(zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemRedFlagsItemMax)).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemRedFlagsMax),
+  "evidenceFreshness": zod.enum(['Current']),
+  "portfolioFit": zod.enum(['Constructive', 'Review', 'Caution']),
+  "concentrationImpact": zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemConcentrationImpactMax),
+  "maximumExposure": zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemMaximumExposureMax),
+  "bullCase": zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemBullCaseMax),
+  "baseCase": zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemBaseCaseMax),
+  "bearCase": zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemBearCaseMax),
+  "invalidationConditions": zod.array(zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemInvalidationConditionsItemMax)).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemInvalidationConditionsMax),
+  "protectedCapitalStatus": zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemProtectedCapitalStatusMax),
+  "humanReviewStatus": zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemHumanReviewStatusMax),
+  "factorSubScores": zod.object({
+  "incomeQuality": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresIncomeQualityMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresIncomeQualityMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresIncomeQualityMultipleOf),
+  "growthQuality": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresGrowthQualityMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresGrowthQualityMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresGrowthQualityMultipleOf),
+  "earningsQuality": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresEarningsQualityMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresEarningsQualityMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresEarningsQualityMultipleOf),
+  "balanceSheet": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresBalanceSheetMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresBalanceSheetMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresBalanceSheetMultipleOf),
+  "valuation": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresValuationMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresValuationMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresValuationMultipleOf),
+  "liquidity": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresLiquidityMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresLiquidityMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresLiquidityMultipleOf),
+  "risk": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresRiskMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresRiskMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresRiskMultipleOf),
+  "evidenceFreshness": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresEvidenceFreshnessMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresEvidenceFreshnessMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresEvidenceFreshnessMultipleOf),
+  "portfolioFit": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresPortfolioFitMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresPortfolioFitMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorSubScoresPortfolioFitMultipleOf)
+}),
+  "sourceCount": zod.number().min(1).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemSourceCountMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemSourceCountMultipleOf),
+  "advisoryOnly": zod.literal(true),
+  "noExecution": zod.literal(true),
+  "evidence": zod.array(zod.object({
+  "id": zod.string().regex(discoverResearchOpportunitiesResponseOneOpportunitiesItemEvidenceItemIdRegExp),
+  "title": zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemEvidenceItemTitleMax),
+  "sourceKind": zod.enum(['SCHWAB_MARKET_SNAPSHOT', 'SEC_FILING']),
+  "reviewedAt": zod.coerce.date(),
+  "freshness": zod.enum(['CURRENT']),
+  "reviewStatus": zod.enum(['APPROVED']),
+  "canonicalSha256": zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemEvidenceItemCanonicalSha256Max).optional(),
+  "provider": zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemEvidenceItemProviderMax).nullish(),
+  "sourceUrl": zod.string().max(discoverResearchOpportunitiesResponseOneOpportunitiesItemEvidenceItemSourceUrlMax).nullish(),
+  "retrievedAt": zod.coerce.date().nullish(),
+  "filingDate": zod.coerce.date().nullish()
+})).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemEvidenceMax),
+  "factors": zod.object({
+  "incomeQuality": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsIncomeQualityMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsIncomeQualityMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsIncomeQualityMultipleOf),
+  "growthQuality": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsGrowthQualityMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsGrowthQualityMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsGrowthQualityMultipleOf),
+  "earningsQuality": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsEarningsQualityMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsEarningsQualityMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsEarningsQualityMultipleOf),
+  "balanceSheet": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsBalanceSheetMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsBalanceSheetMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsBalanceSheetMultipleOf),
+  "valuation": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsValuationMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsValuationMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsValuationMultipleOf),
+  "liquidity": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsLiquidityMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsLiquidityMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsLiquidityMultipleOf),
+  "risk": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsRiskMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsRiskMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsRiskMultipleOf),
+  "evidenceFreshness": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsEvidenceFreshnessMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsEvidenceFreshnessMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsEvidenceFreshnessMultipleOf),
+  "portfolioFit": zod.number().min(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsPortfolioFitMin).max(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsPortfolioFitMax).multipleOf(discoverResearchOpportunitiesResponseOneOpportunitiesItemFactorsPortfolioFitMultipleOf)
+})
+})).max(discoverResearchOpportunitiesResponseOneOpportunitiesMax),
+  "totalEligible": zod.number().min(discoverResearchOpportunitiesResponseOneTotalEligibleMin).multipleOf(discoverResearchOpportunitiesResponseOneTotalEligibleMultipleOf),
+  "excludedStaleOrUnreviewed": zod.number().min(discoverResearchOpportunitiesResponseOneExcludedStaleOrUnreviewedMin).multipleOf(discoverResearchOpportunitiesResponseOneExcludedStaleOrUnreviewedMultipleOf),
+  "generatedAt": zod.coerce.date(),
+  "ranking": zod.object({
+  "method": zod.string(),
+  "factors": zod.array(zod.string()).max(discoverResearchOpportunitiesResponseOneRankingFactorsMax),
+  "missingData": zod.string(),
+  "lens": zod.enum(['Income', 'Compounders', 'Balanced'])
+}),
+  "diagnostics": zod.object({
+  "reviewedMarketEvidence": zod.number().min(discoverResearchOpportunitiesResponseOneDiagnosticsReviewedMarketEvidenceMin).multipleOf(discoverResearchOpportunitiesResponseOneDiagnosticsReviewedMarketEvidenceMultipleOf),
+  "reviewedSecEvidence": zod.number().min(discoverResearchOpportunitiesResponseOneDiagnosticsReviewedSecEvidenceMin).multipleOf(discoverResearchOpportunitiesResponseOneDiagnosticsReviewedSecEvidenceMultipleOf),
+  "currentMarketEvidence": zod.number().min(discoverResearchOpportunitiesResponseOneDiagnosticsCurrentMarketEvidenceMin).multipleOf(discoverResearchOpportunitiesResponseOneDiagnosticsCurrentMarketEvidenceMultipleOf),
+  "currentSecEvidence": zod.number().min(discoverResearchOpportunitiesResponseOneDiagnosticsCurrentSecEvidenceMin).multipleOf(discoverResearchOpportunitiesResponseOneDiagnosticsCurrentSecEvidenceMultipleOf),
+  "duplicateEvidence": zod.number().min(discoverResearchOpportunitiesResponseOneDiagnosticsDuplicateEvidenceMin).multipleOf(discoverResearchOpportunitiesResponseOneDiagnosticsDuplicateEvidenceMultipleOf),
+  "excludedMissingSource": zod.number().min(discoverResearchOpportunitiesResponseOneDiagnosticsExcludedMissingSourceMin).multipleOf(discoverResearchOpportunitiesResponseOneDiagnosticsExcludedMissingSourceMultipleOf),
+  "excludedUnapproved": zod.number().min(discoverResearchOpportunitiesResponseOneDiagnosticsExcludedUnapprovedMin).multipleOf(discoverResearchOpportunitiesResponseOneDiagnosticsExcludedUnapprovedMultipleOf),
+  "excludedTickerMismatch": zod.number().min(discoverResearchOpportunitiesResponseOneDiagnosticsExcludedTickerMismatchMin).multipleOf(discoverResearchOpportunitiesResponseOneDiagnosticsExcludedTickerMismatchMultipleOf),
+  "excludedStale": zod.number().min(discoverResearchOpportunitiesResponseOneDiagnosticsExcludedStaleMin).multipleOf(discoverResearchOpportunitiesResponseOneDiagnosticsExcludedStaleMultipleOf)
+}),
+  "lensCounts": zod.object({
+  "Income": zod.number().min(discoverResearchOpportunitiesResponseOneLensCountsIncomeMin).multipleOf(discoverResearchOpportunitiesResponseOneLensCountsIncomeMultipleOf),
+  "Compounders": zod.number().min(discoverResearchOpportunitiesResponseOneLensCountsCompoundersMin).multipleOf(discoverResearchOpportunitiesResponseOneLensCountsCompoundersMultipleOf),
+  "Balanced": zod.number().min(discoverResearchOpportunitiesResponseOneLensCountsBalancedMin).multipleOf(discoverResearchOpportunitiesResponseOneLensCountsBalancedMultipleOf)
+}),
+  "advisoryOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "householdCapitalIncluded": zod.literal(false),
+  "noTradingOrMoneyMovement": zod.literal(true)
+}).and(zod.object({
+  "discovery": zod.object({
+  "status": zod.enum(['COMPLETED', 'LIMITED']),
+  "progress": zod.object({
+  "phase": zod.enum(['COMPLETED']),
+  "completed": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryProgressCompletedMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryProgressCompletedMultipleOf),
+  "total": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryProgressTotalMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryProgressTotalMultipleOf),
+  "message": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoveryProgressMessageMax)
+}),
+  "knownUniverseCount": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryKnownUniverseCountMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryKnownUniverseCountMultipleOf),
+  "symbolsSelected": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsSelectedMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsSelectedMultipleOf),
+  "symbolsScreened": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsScreenedMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsScreenedMultipleOf),
+  "symbolsEligible": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsEligibleMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsEligibleMultipleOf),
+  "symbolsExcluded": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsExcludedMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySymbolsExcludedMultipleOf),
+  "finalCandidateCount": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidateCountMin).max(discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidateCountMax).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryFinalCandidateCountMultipleOf),
+  "marketDraftsCreated": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryMarketDraftsCreatedMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryMarketDraftsCreatedMultipleOf),
+  "secDraftsCreated": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySecDraftsCreatedMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySecDraftsCreatedMultipleOf),
+  "secSnapshotsReused": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoverySecSnapshotsReusedMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoverySecSnapshotsReusedMultipleOf),
+  "exclusionReasons": zod.array(zod.object({
+  "code": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoveryExclusionReasonsItemCodeMax),
+  "count": zod.number().min(1).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryExclusionReasonsItemCountMultipleOf),
+  "message": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoveryExclusionReasonsItemMessageMax)
+})).max(discoverResearchOpportunitiesResponseTwoDiscoveryExclusionReasonsMax),
+  "provider": zod.object({
+  "schwabConnectionStatus": zod.enum(['LIVE_CONNECTED']),
+  "schwabTokenStatus": zod.enum(['CURRENT']),
+  "schwabLastSuccessfulReadAt": zod.coerce.date().nullable(),
+  "schwabFreshness": zod.enum(['REFRESHED', 'NOT_REFRESHED']),
+  "secStatus": zod.enum(['REFRESHED', 'CURRENT', 'LIMITED']),
+  "coverageStatus": zod.enum(['COMPLETE_KNOWN_UNIVERSE', 'LIMITED']),
+  "providerWideDiscovery": zod.literal(false),
+  "symbolLimit": zod.number().min(1).max(discoverResearchOpportunitiesResponseTwoDiscoveryProviderSymbolLimitMax).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryProviderSymbolLimitMultipleOf),
+  "rateLimit": zod.object({
+  "limit": zod.number().nullable(),
+  "remaining": zod.number().nullable(),
+  "resetAt": zod.string().nullable(),
+  "retryAfterSeconds": zod.number().nullable()
+}).nullable()
+})
+})
+}))
+
+
+/**
  * @summary List household-scoped advisory decisions with read-only portfolio observation status
  */
 export const listResearchAdvisoryDecisionsResponseDecisionsItemIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');

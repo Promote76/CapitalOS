@@ -2,7 +2,7 @@
 
 **Evidence date:** 2026-09-10
 **Decision:** **IN-HOUSE ONLY — READY FOR CONTROLLED INTERNAL USE**
-<!-- tenant-route-inventory: 253 -->
+<!-- tenant-route-inventory: 254 -->
 
 This index distinguishes executable evidence from source review and blocked infrastructure evidence. It must not be used to check a release-gate item unless the referenced evidence actually exists.
 The route count marker is checked against the authoritative route inventory during
@@ -27,8 +27,8 @@ API contract certification; stale evidence fails that release check.
 
 ## Current RC1 execution
 
-All 253 route/method pairs are in the authoritative executable inventory. The
-exact-source certification included the 253-route tenant preflight target;
+All 254 route/method pairs are in the authoritative executable inventory. The
+exact-source certification included the 254-route tenant preflight target;
 execution status comes only from the canonical evidence named below.
 
 The sole current RC1 readiness record is

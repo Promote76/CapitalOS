@@ -35,7 +35,7 @@ function source(id: string, title: string, sourceKind: "SCHWAB_MARKET_SNAPSHOT" 
 function dossier(id: string, title: string, createdAt: string, reportStatus: string, sources: ReturnType<typeof source>[], blockDiagnostic: string | null = null) {
   return { id, householdId: "55555555-5555-4555-8555-555555555555", ticker: "BKSC", title, evidenceIds: sources.map((s) => s.id), sources, reviewStatus: "APPROVED", createdAt, reportStatus, blockDiagnostic, proposal: null, advisoryOnly: true, executionAuthority: "none", noCapitalSideEffects: true };
 }
-function opportunity(ticker: string, category: "Income" | "Compounders") {
+function opportunity(ticker: string, category: "Income" | "Compounders" | "Balanced") {
   const evidence = {
     id: randomUUID(),
     title: `${ticker} approved market evidence`,
@@ -92,6 +92,12 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
   const decisionRequests: Array<{ ticker: string; decision: string; reason?: string }> = [];
   const savedDecisions: Array<Record<string, unknown>> = [];
   let readOnlyObservationFixtureReady = false;
+  let discoveryRequests = 0;
+  let discoveryAuthFailure = false;
+  let releaseDiscovery: (() => void) | undefined;
+  const discoveryGate = new Promise<void>((resolve) => {
+    releaseDiscovery = resolve;
+  });
   try {
     const user = await clerkClient.users.createUser({ emailAddress: [`${localPart}+research-${runId}@${domain}`], firstName: "Research", lastName: "browser fixture", skipPasswordRequirement: true });
     userId = user.id;
@@ -117,6 +123,63 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
     await page.route("**/api/research/sec/filings", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ drafts: [], approved: [] }) }));
     await page.route("**/api/research/schwab/certification", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ certification: null }) }));
     await page.route("**/api/research/opportunities**", async (route) => {
+      const requestUrl = new URL(route.request().url());
+      if (route.request().method() === "POST" && requestUrl.pathname.endsWith("/api/research/opportunities/discover")) {
+        discoveryRequests += 1;
+        expect(route.request().postDataJSON()).toEqual({});
+        if (discoveryAuthFailure) {
+          await route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ message: "Sign in is required to access Capital OS financial data." }) });
+          return;
+        }
+        await discoveryGate;
+        const opportunities = [opportunity("FRESH", "Balanced")];
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            opportunities,
+            totalEligible: 1,
+            excludedStaleOrUnreviewed: 1,
+            generatedAt: new Date().toISOString(),
+            ranking: { method: "Browser discovery fixture", factors: ["quality"], missingData: "Missing values remain explicit.", lens: "Balanced" },
+            diagnostics: { reviewedMarketEvidence: 1, reviewedSecEvidence: 1, currentMarketEvidence: 1, currentSecEvidence: 1, duplicateEvidence: 0, excludedMissingSource: 0, excludedUnapproved: 1, excludedTickerMismatch: 0, excludedStale: 0 },
+            lensCounts: { Income: 0, Compounders: 0, Balanced: 1 },
+            advisoryOnly: true,
+            executionAuthorization: false,
+            householdCapitalIncluded: false,
+            noTradingOrMoneyMovement: true,
+            discovery: {
+              status: "LIMITED",
+              progress: { phase: "COMPLETED", completed: 2, total: 2, message: "Discovery completed." },
+              knownUniverseCount: 2,
+              symbolsSelected: 2,
+              symbolsScreened: 2,
+              symbolsEligible: 1,
+              symbolsExcluded: 1,
+              finalCandidateCount: 1,
+              marketDraftsCreated: 2,
+              secDraftsCreated: 1,
+              secSnapshotsReused: 1,
+              exclusionReasons: [
+                { code: "PROVIDER_WIDE_SCREENER_UNAVAILABLE", count: 1, message: "The authorized Schwab API has no provider-wide screener." },
+                { code: "PENDING_HUMAN_REVIEW", count: 1, message: "New evidence remains pending human review." },
+              ],
+              provider: {
+                schwabConnectionStatus: "LIVE_CONNECTED",
+                schwabTokenStatus: "CURRENT",
+                schwabLastSuccessfulReadAt: date,
+                schwabFreshness: "REFRESHED",
+                secStatus: "REFRESHED",
+                coverageStatus: "LIMITED",
+                providerWideDiscovery: false,
+                symbolLimit: 25,
+                rateLimit: { limit: 120, remaining: 100, resetAt: null, retryAfterSeconds: null },
+              },
+            },
+          }),
+        });
+        return;
+      }
       if (opportunityState === "loading") {
         await opportunityLoadingGate;
       }
@@ -124,7 +187,6 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
         await route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ message: "opportunity fixture unavailable" }) });
         return;
       }
-      const requestUrl = new URL(route.request().url());
       const lens = (requestUrl.searchParams.get("lens") ?? "Balanced").toLowerCase();
       const search = (requestUrl.searchParams.get("search") ?? "").toLowerCase();
       const allOpportunities = [opportunity("INCM", "Income"), opportunity("CMPD", "Compounders")];
@@ -142,6 +204,8 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
           excludedStaleOrUnreviewed: opportunityState === "stale" ? 2 : 0,
           generatedAt: date,
           ranking: { method: "Browser fixture", factors: ["quality"], missingData: "Missing values remain explicit." },
+           diagnostics: { reviewedMarketEvidence: 2, reviewedSecEvidence: 0, currentMarketEvidence: 2, currentSecEvidence: 0, duplicateEvidence: 0, excludedMissingSource: 0, excludedUnapproved: 0, excludedTickerMismatch: 0, excludedStale: opportunityState === "stale" ? 2 : 0 },
+           lensCounts: { Income: 1, Compounders: 1, Balanced: 2 },
           advisoryOnly: true,
           executionAuthorization: false,
           householdCapitalIncluded: false,
@@ -264,6 +328,32 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
     await expect(page.getByTestId("status-research-current")).toBeVisible();
     await expect(page.getByTestId("card-opportunity-INCM")).toBeVisible();
     await expect(page.getByTestId("card-opportunity-CMPD")).toBeVisible();
+    const discoveryResponse = page.waitForResponse((response) =>
+      response.request().method() === "POST"
+      && new URL(response.url()).pathname.endsWith("/api/research/opportunities/discover")
+      && response.ok(),
+    );
+    await page.getByTestId("button-find-opportunities").click();
+    await expect.poll(() => discoveryRequests).toBe(1);
+    await expect(page.getByTestId("button-find-opportunities")).toHaveText(/Screening/);
+    await expect(page.getByTestId("status-research-discovery-progress")).toContainText("Running read-only discovery");
+    releaseDiscovery?.();
+    const completedDiscovery = await discoveryResponse;
+    const completedBody = await completedDiscovery.json();
+    expect(completedBody.discovery.status).toBe("LIMITED");
+    expect(completedBody.discovery.exclusionReasons[0].code).toBe("PROVIDER_WIDE_SCREENER_UNAVAILABLE");
+    await Promise.all([
+      expect(page.getByTestId("research-discovery-summary")).toContainText("Discovery summary"),
+      expect(page.getByTestId("card-opportunity-FRESH")).toBeVisible(),
+    ]);
+    expect(discoveryRequests).toBe(1);
+    expect(forbiddenRequests).toEqual([]);
+    await page.reload();
+    await expect(page.getByTestId("card-opportunity-INCM")).toBeVisible();
+    discoveryAuthFailure = true;
+    await page.getByTestId("button-find-opportunities").click();
+    await expect(page.getByTestId("status-research-discovery-error")).toContainText("Sign in is required");
+    discoveryAuthFailure = false;
     const waitForLens = (lens: "Income" | "Compounders") => page.waitForResponse((response) => {
       const url = new URL(response.url());
       return response.ok() && url.pathname.endsWith("/api/research/opportunities") && url.searchParams.get("lens") === lens;

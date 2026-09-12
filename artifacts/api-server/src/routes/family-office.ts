@@ -34,6 +34,8 @@ import {
   ListResearchAdvisoryDecisionsResponse,
   CreateResearchAdvisoryDecisionBody,
   CreateResearchAdvisoryDecisionResponse,
+  DiscoverResearchOpportunitiesBody,
+  DiscoverResearchOpportunitiesResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
@@ -52,6 +54,7 @@ import { ingestPublicResearchUrl } from "../services/public-research-ingestion";
 import { parseResearchDigestion, type NormalizedResearchDigestion } from "../domain/research-digestion";
 import { createInvestmentResearchDossier, listResearchDossiers, registerResearchEvidence, requestResearchEvidenceUpload, reviewResearchEvidence } from "../services/research-dossier";
 import { listResearchOpportunities } from "../services/research-opportunities";
+import { discoverResearchOpportunities } from "../services/research-discovery";
 import { createResearchAdvisoryDecision, listResearchAdvisoryDecisions } from "../services/research-advisory";
 
 const router: IRouter = Router();
@@ -77,6 +80,13 @@ router.get("/research/opportunities", asyncRoute(async (req, res) => {
     minScore: Number.isFinite(minScore) ? minScore : undefined,
     portfolioFit: portfolioFit as "Constructive" | "Review" | "Caution" | undefined,
   })));
+}));
+
+router.post("/research/opportunities/discover", asyncRoute(async (req, res) => {
+  const actor = actorFrom(res);
+  assertPermission(actor.role, "contribute");
+  const body = DiscoverResearchOpportunitiesBody.parse(req.body);
+  res.json(DiscoverResearchOpportunitiesResponse.parse(await discoverResearchOpportunities(actor, body)));
 }));
 
 router.get("/research/advisory-decisions", asyncRoute(async (_req, res) => {

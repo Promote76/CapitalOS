@@ -5326,6 +5326,174 @@ export interface ResearchOpportunitiesResponse {
   noTradingOrMoneyMovement: true;
 }
 
+export type DiscoverResearchOpportunitiesRequestLens = typeof DiscoverResearchOpportunitiesRequestLens[keyof typeof DiscoverResearchOpportunitiesRequestLens];
+
+
+export const DiscoverResearchOpportunitiesRequestLens = {
+  Income: 'Income',
+  Compounders: 'Compounders',
+  Balanced: 'Balanced',
+} as const;
+
+export type DiscoverResearchOpportunitiesRequestPortfolioFit = typeof DiscoverResearchOpportunitiesRequestPortfolioFit[keyof typeof DiscoverResearchOpportunitiesRequestPortfolioFit];
+
+
+export const DiscoverResearchOpportunitiesRequestPortfolioFit = {
+  Constructive: 'Constructive',
+  Review: 'Review',
+  Caution: 'Caution',
+} as const;
+
+export interface DiscoverResearchOpportunitiesRequest {
+  lens?: DiscoverResearchOpportunitiesRequestLens;
+  /** @maxLength 120 */
+  search?: string;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  minScore?: number;
+  portfolioFit?: DiscoverResearchOpportunitiesRequestPortfolioFit;
+}
+
+export interface ResearchDiscoveryIssue {
+  /** @maxLength 80 */
+  code: string;
+  /** @minimum 1 */
+  count: number;
+  /** @maxLength 500 */
+  message: string;
+}
+
+export type ResearchDiscoveryProviderSchwabConnectionStatus = typeof ResearchDiscoveryProviderSchwabConnectionStatus[keyof typeof ResearchDiscoveryProviderSchwabConnectionStatus];
+
+
+export const ResearchDiscoveryProviderSchwabConnectionStatus = {
+  LIVE_CONNECTED: 'LIVE_CONNECTED',
+} as const;
+
+export type ResearchDiscoveryProviderSchwabTokenStatus = typeof ResearchDiscoveryProviderSchwabTokenStatus[keyof typeof ResearchDiscoveryProviderSchwabTokenStatus];
+
+
+export const ResearchDiscoveryProviderSchwabTokenStatus = {
+  CURRENT: 'CURRENT',
+} as const;
+
+export type ResearchDiscoveryProviderSchwabFreshness = typeof ResearchDiscoveryProviderSchwabFreshness[keyof typeof ResearchDiscoveryProviderSchwabFreshness];
+
+
+export const ResearchDiscoveryProviderSchwabFreshness = {
+  REFRESHED: 'REFRESHED',
+  NOT_REFRESHED: 'NOT_REFRESHED',
+} as const;
+
+export type ResearchDiscoveryProviderSecStatus = typeof ResearchDiscoveryProviderSecStatus[keyof typeof ResearchDiscoveryProviderSecStatus];
+
+
+export const ResearchDiscoveryProviderSecStatus = {
+  REFRESHED: 'REFRESHED',
+  CURRENT: 'CURRENT',
+  LIMITED: 'LIMITED',
+} as const;
+
+export type ResearchDiscoveryProviderCoverageStatus = typeof ResearchDiscoveryProviderCoverageStatus[keyof typeof ResearchDiscoveryProviderCoverageStatus];
+
+
+export const ResearchDiscoveryProviderCoverageStatus = {
+  COMPLETE_KNOWN_UNIVERSE: 'COMPLETE_KNOWN_UNIVERSE',
+  LIMITED: 'LIMITED',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ResearchDiscoveryProviderRateLimit = {
+  /** @nullable */
+  limit: number | null;
+  /** @nullable */
+  remaining: number | null;
+  /** @nullable */
+  resetAt: string | null;
+  /** @nullable */
+  retryAfterSeconds: number | null;
+} | null;
+
+export interface ResearchDiscoveryProvider {
+  schwabConnectionStatus: ResearchDiscoveryProviderSchwabConnectionStatus;
+  schwabTokenStatus: ResearchDiscoveryProviderSchwabTokenStatus;
+  /** @nullable */
+  schwabLastSuccessfulReadAt: string | null;
+  schwabFreshness: ResearchDiscoveryProviderSchwabFreshness;
+  secStatus: ResearchDiscoveryProviderSecStatus;
+  coverageStatus: ResearchDiscoveryProviderCoverageStatus;
+  providerWideDiscovery: false;
+  /**
+     * @minimum 1
+     * @maximum 500
+     */
+  symbolLimit: number;
+  /** @nullable */
+  rateLimit: ResearchDiscoveryProviderRateLimit;
+}
+
+export type ResearchDiscoverySummaryStatus = typeof ResearchDiscoverySummaryStatus[keyof typeof ResearchDiscoverySummaryStatus];
+
+
+export const ResearchDiscoverySummaryStatus = {
+  COMPLETED: 'COMPLETED',
+  LIMITED: 'LIMITED',
+} as const;
+
+export type ResearchDiscoverySummaryProgressPhase = typeof ResearchDiscoverySummaryProgressPhase[keyof typeof ResearchDiscoverySummaryProgressPhase];
+
+
+export const ResearchDiscoverySummaryProgressPhase = {
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export type ResearchDiscoverySummaryProgress = {
+  phase: ResearchDiscoverySummaryProgressPhase;
+  /** @minimum 0 */
+  completed: number;
+  /** @minimum 0 */
+  total: number;
+  /** @maxLength 500 */
+  message: string;
+};
+
+export interface ResearchDiscoverySummary {
+  status: ResearchDiscoverySummaryStatus;
+  progress: ResearchDiscoverySummaryProgress;
+  /** @minimum 0 */
+  knownUniverseCount: number;
+  /** @minimum 0 */
+  symbolsSelected: number;
+  /** @minimum 0 */
+  symbolsScreened: number;
+  /** @minimum 0 */
+  symbolsEligible: number;
+  /** @minimum 0 */
+  symbolsExcluded: number;
+  /**
+     * @minimum 0
+     * @maximum 25
+     */
+  finalCandidateCount: number;
+  /** @minimum 0 */
+  marketDraftsCreated: number;
+  /** @minimum 0 */
+  secDraftsCreated: number;
+  /** @minimum 0 */
+  secSnapshotsReused: number;
+  /** @maxItems 24 */
+  exclusionReasons: ResearchDiscoveryIssue[];
+  provider: ResearchDiscoveryProvider;
+}
+
+export type ResearchOpportunityDiscoveryResponse = ResearchOpportunitiesResponse & {
+  discovery: ResearchDiscoverySummary;
+};
+
 export type ResearchAdvisoryDecisionInputDecision = typeof ResearchAdvisoryDecisionInputDecision[keyof typeof ResearchAdvisoryDecisionInputDecision];
 
 

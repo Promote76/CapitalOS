@@ -26,7 +26,9 @@ import {
   useReviewSecFiling,
   getListSecFilingsQueryKey,
   useListResearchOpportunities,
+  useDiscoverResearchOpportunities,
   type ResearchOpportunity as ApiResearchOpportunity,
+  type ResearchDiscoverySummary,
 } from "@workspace/api-client-react";
 import { AlertCircle, AlertTriangle, FilePlus2, X, FileText, CheckCircle2, FlaskConical, Clock, Beaker, FileSearch, Database, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -293,8 +295,11 @@ export default function InvestmentResearchPage() {
       portfolioFit: researchRefine.portfolioFit,
     };
   const opportunitiesQuery = useListResearchOpportunities(opportunityParams);
+  const discoverOpportunities = useDiscoverResearchOpportunities();
   const advisoryDecisionsQuery = useListResearchAdvisoryDecisions();
   const createAdvisoryDecision = useCreateResearchAdvisoryDecision();
+  const [discoverySummary, setDiscoverySummary] = useState<ResearchDiscoverySummary | null>(null);
+  const [discoveryError, setDiscoveryError] = useState<string | null>(null);
 
   const handleSnapshotReasonChange = (id: string, val: string) => setSnapshotReasons(p => ({...p, [id]: val}));
 
@@ -712,6 +717,30 @@ Research Notes:
       : workflowOpportunities.length > 0
         ? (opportunitiesQuery.data?.excludedStaleOrUnreviewed ? "stale" : "ready")
         : "empty";
+  const handleDiscoverOpportunities = async () => {
+    setDiscoveryError(null);
+    try {
+      const result = await discoverOpportunities.mutateAsync({ data: opportunityParams ?? {} });
+      setDiscoverySummary(result.discovery);
+      queryClient.setQueryData(getListResearchOpportunitiesQueryKey(opportunityParams), result);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListMarketSnapshotsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getListSecFilingsQueryKey() }),
+      ]);
+      toast({
+        title: result.discovery.status === "LIMITED" ? "Discovery completed with limits" : "Discovery completed",
+        description: `${result.discovery.symbolsScreened} symbols screened · ${result.discovery.symbolsEligible} eligible · ${result.discovery.finalCandidateCount} candidates. New evidence remains pending human review.`,
+      });
+    } catch (error) {
+      const detail = error instanceof Error
+        ? error.message
+        : error && typeof error === "object" && "message" in error && typeof error.message === "string"
+          ? error.message
+          : "Opportunity discovery could not complete.";
+      setDiscoveryError(detail);
+      toast({ title: "Discovery unavailable", description: detail, variant: "destructive" });
+    }
+  };
   const handleOpportunityAction = async (action: ResearchManualAction, opportunity: WorkflowOpportunity) => {
     const decision = action === "Open in Schwab" ? "OPEN_SCHWAB" : action.toUpperCase() as "SKIP" | "WATCH" | "REVIEW" | "SHADOW";
     try {
@@ -762,8 +791,10 @@ Research Notes:
         onDiscoveryChange={setResearchSearch}
         onRefineChange={setResearchRefine}
         refine={researchRefine}
-        onDiscover={() => { void opportunitiesQuery.refetch(); }}
-        discoverPending={opportunitiesQuery.isFetching || createAdvisoryDecision.isPending}
+        onDiscover={() => { void handleDiscoverOpportunities(); }}
+        discoverPending={discoverOpportunities.isPending}
+        discoverySummary={discoverySummary}
+        discoveryError={discoveryError}
         totalEligible={opportunitiesQuery.data?.totalEligible}
         diagnostics={opportunitiesQuery.data?.diagnostics}
         onSelectCandidate={(ticker, selected) => setSelectedOpportunityTickers((current) =>

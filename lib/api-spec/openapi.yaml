@@ -1332,6 +1332,25 @@ paths:
               schema: { $ref: "#/components/schemas/ResearchOpportunitiesResponse" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+  /research/opportunities/discover:
+    post:
+      operationId: discoverResearchOpportunities
+      tags: [research-dossier]
+      summary: Collect permitted read-only provider observations and rerun the household opportunity screen
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DiscoverResearchOpportunitiesRequest" }
+      responses:
+        "200":
+          description: Completed or explicitly limited read-only discovery with pending-review evidence and deterministic rankings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResearchOpportunityDiscoveryResponse" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /research/advisory-decisions:
     get:
       operationId: listResearchAdvisoryDecisions
@@ -7426,6 +7445,75 @@ components:
         executionAuthorization: { type: boolean, const: false }
         householdCapitalIncluded: { type: boolean, const: false }
         noTradingOrMoneyMovement: { type: boolean, const: true }
+    DiscoverResearchOpportunitiesRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        lens: { type: string, enum: [Income, Compounders, Balanced] }
+        search: { type: string, maxLength: 120 }
+        minScore: { type: number, minimum: 0, maximum: 100, multipleOf: 1 }
+        portfolioFit: { type: string, enum: [Constructive, Review, Caution] }
+    ResearchDiscoveryIssue:
+      type: object
+      required: [code, count, message]
+      properties:
+        code: { type: string, maxLength: 80 }
+        count: { type: number, minimum: 1, multipleOf: 1 }
+        message: { type: string, maxLength: 500 }
+    ResearchDiscoveryProvider:
+      type: object
+      required: [schwabConnectionStatus, schwabTokenStatus, schwabLastSuccessfulReadAt, schwabFreshness, secStatus, coverageStatus, providerWideDiscovery, symbolLimit, rateLimit]
+      properties:
+        schwabConnectionStatus: { type: string, enum: [LIVE_CONNECTED] }
+        schwabTokenStatus: { type: string, enum: [CURRENT] }
+        schwabLastSuccessfulReadAt: { type: ["string", "null"], format: date-time }
+        schwabFreshness: { type: string, enum: [REFRESHED, NOT_REFRESHED] }
+        secStatus: { type: string, enum: [REFRESHED, CURRENT, LIMITED] }
+        coverageStatus: { type: string, enum: [COMPLETE_KNOWN_UNIVERSE, LIMITED] }
+        providerWideDiscovery: { type: boolean, const: false }
+        symbolLimit: { type: number, minimum: 1, maximum: 500, multipleOf: 1 }
+        rateLimit:
+          type: ["object", "null"]
+          required: [limit, remaining, resetAt, retryAfterSeconds]
+          properties:
+            limit: { type: ["number", "null"] }
+            remaining: { type: ["number", "null"] }
+            resetAt: { type: ["string", "null"] }
+            retryAfterSeconds: { type: ["number", "null"] }
+    ResearchDiscoverySummary:
+      type: object
+      required: [status, progress, knownUniverseCount, symbolsSelected, symbolsScreened, symbolsEligible, symbolsExcluded, finalCandidateCount, marketDraftsCreated, secDraftsCreated, secSnapshotsReused, exclusionReasons, provider]
+      properties:
+        status: { type: string, enum: [COMPLETED, LIMITED] }
+        progress:
+          type: object
+          required: [phase, completed, total, message]
+          properties:
+            phase: { type: string, enum: [COMPLETED] }
+            completed: { type: number, minimum: 0, multipleOf: 1 }
+            total: { type: number, minimum: 0, multipleOf: 1 }
+            message: { type: string, maxLength: 500 }
+        knownUniverseCount: { type: number, minimum: 0, multipleOf: 1 }
+        symbolsSelected: { type: number, minimum: 0, multipleOf: 1 }
+        symbolsScreened: { type: number, minimum: 0, multipleOf: 1 }
+        symbolsEligible: { type: number, minimum: 0, multipleOf: 1 }
+        symbolsExcluded: { type: number, minimum: 0, multipleOf: 1 }
+        finalCandidateCount: { type: number, minimum: 0, maximum: 25, multipleOf: 1 }
+        marketDraftsCreated: { type: number, minimum: 0, multipleOf: 1 }
+        secDraftsCreated: { type: number, minimum: 0, multipleOf: 1 }
+        secSnapshotsReused: { type: number, minimum: 0, multipleOf: 1 }
+        exclusionReasons:
+          type: array
+          maxItems: 24
+          items: { $ref: "#/components/schemas/ResearchDiscoveryIssue" }
+        provider: { $ref: "#/components/schemas/ResearchDiscoveryProvider" }
+    ResearchOpportunityDiscoveryResponse:
+      allOf:
+        - { $ref: "#/components/schemas/ResearchOpportunitiesResponse" }
+        - type: object
+          required: [discovery]
+          properties:
+            discovery: { $ref: "#/components/schemas/ResearchDiscoverySummary" }
     ResearchAdvisoryDecisionInput:
       type: object
       required: [ticker, decision]

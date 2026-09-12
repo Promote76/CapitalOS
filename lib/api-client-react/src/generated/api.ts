@@ -113,6 +113,7 @@ import type {
   DailyOpsJournalEntry,
   DailyOpsJournalEntryInput,
   DashboardSnapshot,
+  DiscoverResearchOpportunitiesRequest,
   EmergencyStopInput,
   ErrorResponse,
   ExecutionControlCommandInput,
@@ -257,6 +258,7 @@ import type {
   ResearchEvidenceUploadResponse,
   ResearchJournalEntry,
   ResearchOpportunitiesResponse,
+  ResearchOpportunityDiscoveryResponse,
   ResearchStrategyCreated,
   ReviewMarketSnapshotRequest,
   ReviewResearchEvidenceRequest,
@@ -6305,6 +6307,77 @@ export function useListResearchOpportunities<TData = Awaited<ReturnType<typeof l
 
 
 
+
+export const getDiscoverResearchOpportunitiesUrl = () => {
+
+
+
+
+  return `/api/research/opportunities/discover`
+}
+
+/**
+ * @summary Collect permitted read-only provider observations and rerun the household opportunity screen
+ */
+export const discoverResearchOpportunities = async (discoverResearchOpportunitiesRequest: DiscoverResearchOpportunitiesRequest, options?: Parameters<typeof customFetch>[1]): Promise<ResearchOpportunityDiscoveryResponse> => {
+
+  return customFetch<ResearchOpportunityDiscoveryResponse>(getDiscoverResearchOpportunitiesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(discoverResearchOpportunitiesRequest)
+  }
+);}
+
+
+
+
+
+export const getDiscoverResearchOpportunitiesMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverResearchOpportunities>>, TError,{data: BodyType<DiscoverResearchOpportunitiesRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof discoverResearchOpportunities>>, TError,{data: BodyType<DiscoverResearchOpportunitiesRequest>}, TContext> => {
+
+const mutationKey = ['discoverResearchOpportunities'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof discoverResearchOpportunities>>, {data: BodyType<DiscoverResearchOpportunitiesRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  discoverResearchOpportunities(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DiscoverResearchOpportunitiesMutationResult = NonNullable<Awaited<ReturnType<typeof discoverResearchOpportunities>>>
+    export type DiscoverResearchOpportunitiesMutationBody = BodyType<DiscoverResearchOpportunitiesRequest>
+    export type DiscoverResearchOpportunitiesMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Collect permitted read-only provider observations and rerun the household opportunity screen
+ */
+export const useDiscoverResearchOpportunities = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof discoverResearchOpportunities>>, TError,{data: BodyType<DiscoverResearchOpportunitiesRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof discoverResearchOpportunities>>,
+        TError,
+        {data: BodyType<DiscoverResearchOpportunitiesRequest>},
+        TContext
+      > => {
+      return useMutation(getDiscoverResearchOpportunitiesMutationOptions(options));
+    }
 
 export const getListResearchAdvisoryDecisionsUrl = () => {
 

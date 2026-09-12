@@ -12,12 +12,15 @@ import {
   secFilingSnapshots,
   schwabMarketSnapshots,
   schwabConnections,
+  schwabMarketDataConnections,
   schwabObservationSnapshots,
   researchAdvisoryDecisions,
   users,
 } from "@workspace/db";
 import { listResearchOpportunities } from "../services/research-opportunities";
 import { createResearchAdvisoryDecision, listResearchAdvisoryDecisions } from "../services/research-advisory";
+import { discoverResearchOpportunities } from "../services/research-discovery";
+import { SchwabResearchError } from "../services/schwab-research-adapter";
 import type { Actor } from "../services/capital-os";
 
 const enabled = process.env.CAPITAL_OS_RUN_INTEGRATION === "1";
@@ -262,4 +265,103 @@ test("research advisory decisions persist provenance and project later Schwab ob
   assert.equal(observed.decisions[0]?.monitoringStatus, "MONITORING");
   assert.equal(observed.decisions[0]?.executionAuthorization, false);
   assert.equal((await listResearchAdvisoryDecisions(f.otherActor)).decisions.length, 0);
+});
+
+test("Find Opportunities runs the permitted provider collection pipeline before deterministic ranking", { skip: !enabled }, async () => {
+  const f = await fixture();
+  await db.insert(schwabMarketDataConnections).values({
+    householdId: f.actor.householdId,
+    createdByUserId: f.actor.userId,
+    status: "LIVE_CONNECTED",
+    lifecycleGeneration: randomUUID(),
+    accessTokenCiphertext: "fixture-ciphertext",
+    accessTokenNonce: "fixture-nonce",
+    accessTokenAuthTag: "fixture-tag",
+    accessTokenExpiresAt: new Date(Date.now() + 60_000),
+  });
+  await db.insert(schwabMarketSnapshots).values({
+    householdId: f.actor.householdId,
+    ticker: "KNOWN",
+    content: {},
+    provenance: { provider: "fixture" },
+    requestedAt: new Date(),
+    retrievedAt: new Date(),
+    freshness: "CURRENT",
+    createdBy: f.actor.userId,
+  });
+  const marketReads: string[] = [];
+  const secReads: string[] = [];
+  let refreshed = false;
+  const result = await discoverResearchOpportunities(f.actor, {}, {
+    collectMarket: (async (_actor: Actor, input: { ticker: string }) => {
+      marketReads.push(input.ticker);
+      refreshed = true;
+      return { provenance: {} };
+    }) as never,
+    collectSec: (async (_actor: Actor, input: { ticker: string }) => {
+      secReads.push(input.ticker);
+      return { alreadyCollected: false };
+    }) as never,
+    rank: (async () => {
+      const base = await listResearchOpportunities(f.actor);
+      return refreshed
+        ? {
+            ...base,
+            opportunities: [{
+              ticker: "FRESH",
+              companyName: "Fresh Research Company",
+              platinumScore: 88,
+              category: "Balanced" as const,
+              thesis: "Fresh approved evidence changed the deterministic result.",
+              whyNow: "The refreshed approved evidence now qualifies.",
+              redFlags: [],
+              evidenceFreshness: "Current" as const,
+              portfolioFit: "Constructive" as const,
+              concentrationImpact: "No observed position",
+              maximumExposure: "Review up to 10%",
+              bullCase: "Approved evidence remains constructive.",
+              baseCase: "Approved evidence remains within range.",
+              bearCase: "Approved evidence deteriorates.",
+              invalidationConditions: ["Fresh approved evidence no longer supports the thesis."],
+              protectedCapitalStatus: "Protected-capital screen",
+              humanReviewStatus: "Human review required",
+              factorSubScores: { incomeQuality: 80, growthQuality: 80, earningsQuality: 80, balanceSheet: 80, valuation: 80, liquidity: 80, risk: 80, evidenceFreshness: 80, portfolioFit: 80 },
+              sourceCount: 1,
+              advisoryOnly: true as const,
+              noExecution: true as const,
+              evidence: [],
+              factors: { incomeQuality: 80, growthQuality: 80, earningsQuality: 80, balanceSheet: 80, valuation: 80, liquidity: 80, risk: 80, evidenceFreshness: 80, portfolioFit: 80 },
+            }],
+            totalEligible: 1,
+            lensCounts: { Income: 0, Compounders: 0, Balanced: 1 },
+          }
+        : base;
+    }) as never,
+  });
+  assert.deepEqual(marketReads, ["KNOWN"]);
+  assert.deepEqual(secReads, ["KNOWN"]);
+  assert.equal(result.opportunities[0]?.ticker, "FRESH");
+  assert.equal(result.discovery.symbolsScreened, 1);
+  assert.equal(result.discovery.finalCandidateCount, 1);
+  assert.equal(result.discovery.marketDraftsCreated, 1);
+  assert.equal(result.discovery.secDraftsCreated, 1);
+  assert.equal(result.discovery.provider.providerWideDiscovery, false);
+  assert.equal(result.advisoryOnly, true);
+  assert.equal(result.executionAuthorization, false);
+  assert.equal(result.noTradingOrMoneyMovement, true);
+});
+
+test("Find Opportunities fails explicitly before collection when Schwab Market Data is disconnected", { skip: !enabled }, async () => {
+  const f = await fixture();
+  let collectionTouched = false;
+  await assert.rejects(
+    discoverResearchOpportunities(f.actor, {}, {
+      collectMarket: (async () => {
+        collectionTouched = true;
+        throw new Error("must not run");
+      }) as never,
+    }),
+    (error) => error instanceof SchwabResearchError && error.code === "MARKET_DATA_DISCONNECTED",
+  );
+  assert.equal(collectionTouched, false);
 });

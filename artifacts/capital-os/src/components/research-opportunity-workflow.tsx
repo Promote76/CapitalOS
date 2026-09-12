@@ -83,6 +83,30 @@ export type ResearchRefine = {
   portfolioFit?: "Constructive" | "Review" | "Caution";
 };
 
+export type ResearchDiscoverySummary = {
+  status: "COMPLETED" | "LIMITED";
+  knownUniverseCount: number;
+  symbolsSelected: number;
+  symbolsScreened: number;
+  symbolsEligible: number;
+  symbolsExcluded: number;
+  finalCandidateCount: number;
+  marketDraftsCreated: number;
+  secDraftsCreated: number;
+  secSnapshotsReused: number;
+  exclusionReasons: Array<{ code: string; count: number; message: string }>;
+  provider: {
+    schwabConnectionStatus: "LIVE_CONNECTED";
+    schwabTokenStatus: "CURRENT";
+    schwabLastSuccessfulReadAt: string | null;
+    schwabFreshness: "REFRESHED" | "NOT_REFRESHED";
+    secStatus: "REFRESHED" | "CURRENT" | "LIMITED";
+    coverageStatus: "COMPLETE_KNOWN_UNIVERSE" | "LIMITED";
+    providerWideDiscovery: false;
+    symbolLimit: number;
+  };
+};
+
 export type ResearchOpportunityWorkflowProps = {
   activeView: ResearchView;
   opportunities: ResearchOpportunity[];
@@ -100,6 +124,8 @@ export type ResearchOpportunityWorkflowProps = {
   refine?: ResearchRefine;
   onDiscover?: () => void;
   discoverPending?: boolean;
+  discoverySummary?: ResearchDiscoverySummary | null;
+  discoveryError?: string | null;
   totalEligible?: number;
   diagnostics?: {
     currentMarketEvidence: number;
@@ -410,6 +436,8 @@ export function ResearchOpportunityWorkflow({
   refine,
   onDiscover,
   discoverPending = false,
+  discoverySummary,
+  discoveryError,
   totalEligible,
   diagnostics,
   className = "",
@@ -492,6 +520,60 @@ export function ResearchOpportunityWorkflow({
              </div>
           </div>
         </div>
+
+        {discoverPending && (
+          <div className="border-b border-[#dfe6dd] bg-[#f3f8f3] px-4 py-4 sm:px-6" data-testid="status-research-discovery-progress" role="status">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 h-4 w-4 animate-spin rounded-full border-2 border-[#a8c3b4] border-t-[#236b59]" />
+              <div>
+                <div className="text-[12px] font-semibold text-[#23463e]">Running read-only discovery</div>
+                <p className="mt-1 text-[11px] leading-[1.5] text-[#58716a]">Verifying the household connection, collecting permitted symbol-targeted Schwab observations and SEC sources, staging new evidence for human review, then ranking current approved evidence.</p>
+              </div>
+            </div>
+          </div>
+        )}
+        {discoveryError && !discoverPending && (
+          <div className="border-b border-[#ebd3ce] bg-[#fff7f4] px-4 py-4 sm:px-6" data-testid="status-research-discovery-error" role="alert">
+            <div className="flex items-start gap-3">
+              <AlertCircle size={16} className="mt-0.5 shrink-0 text-[#a14438]" />
+              <div><div className="text-[12px] font-semibold text-[#a14438]">Discovery could not run</div><p className="mt-1 text-[11px] leading-[1.5] text-[#7b625d]">{discoveryError}</p></div>
+            </div>
+          </div>
+        )}
+        {discoverySummary && !discoverPending && (
+          <div className="border-b border-[#dfe6dd] bg-[#fbfcf8] px-4 py-4 sm:px-6" data-testid="research-discovery-summary">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[12px] font-semibold text-[#23463e]">Discovery summary</span>
+                  <StatusPill tone={discoverySummary.status === "LIMITED" ? "caution" : "safe"}>{discoverySummary.status === "LIMITED" ? "Limited coverage" : "Known universe complete"}</StatusPill>
+                  <StatusPill tone="safe">Schwab {discoverySummary.provider.schwabConnectionStatus.replaceAll("_", " ").toLowerCase()}</StatusPill>
+                </div>
+                <p className="mt-2 max-w-2xl text-[10px] leading-[1.5] text-[#71877f]">
+                  Schwab freshness: {discoverySummary.provider.schwabFreshness.toLowerCase().replaceAll("_", " ")} · SEC: {discoverySummary.provider.secStatus.toLowerCase()} · Provider-wide screener: unavailable through the authorized API.
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+                <Metric label="Known" value={String(discoverySummary.knownUniverseCount)} />
+                <Metric label="Screened" value={String(discoverySummary.symbolsScreened)} />
+                <Metric label="Eligible" value={String(discoverySummary.symbolsEligible)} tone="positive" />
+                <Metric label="Excluded" value={String(discoverySummary.symbolsExcluded)} tone={discoverySummary.symbolsExcluded ? "caution" : "quiet"} />
+                <Metric label="Candidates" value={String(discoverySummary.finalCandidateCount)} tone="positive" />
+                <Metric label="Pending review" value={String(discoverySummary.marketDraftsCreated + discoverySummary.secDraftsCreated)} tone={discoverySummary.marketDraftsCreated + discoverySummary.secDraftsCreated ? "caution" : "quiet"} />
+              </div>
+            </div>
+            {discoverySummary.exclusionReasons.length > 0 && (
+              <div className="mt-3 grid gap-2 md:grid-cols-2" data-testid="research-discovery-limitations">
+                {discoverySummary.exclusionReasons.map((issue) => (
+                  <div key={issue.code} className="rounded-lg border border-[#e7dfc8] bg-[#fffaf0] px-3 py-2 text-[10px] leading-[1.45] text-[#7d672f]">
+                    <strong className="font-mono text-[9px] uppercase tracking-[0.08em]">{issue.code.replaceAll("_", " ")}</strong>
+                    <span className="ml-2">{issue.message}{issue.count > 1 ? ` (${issue.count})` : ""}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="border-b border-[#dfe6dd] bg-[#fbfcf8] px-4 py-3 sm:px-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-center">

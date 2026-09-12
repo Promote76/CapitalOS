@@ -5261,6 +5261,12 @@ export const discoverResearchOpportunitiesResponseTwoDiscoveryUniverseLabelMax =
 
 export const discoverResearchOpportunitiesResponseTwoDiscoveryCursorVersionMax = 240;
 
+export const discoverResearchOpportunitiesResponseTwoDiscoveryInstrumentPolicyWithheldTotalMin = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryInstrumentPolicyWithheldTotalMultipleOf = 1;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryInstrumentPolicyWithheldCountsMinOne = 0;
+export const discoverResearchOpportunitiesResponseTwoDiscoveryInstrumentPolicyWithheldCountsMultipleOfOne = 1;
+
 export const discoverResearchOpportunitiesResponseTwoDiscoveryProgressCompletedMin = 0;
 export const discoverResearchOpportunitiesResponseTwoDiscoveryProgressCompletedMultipleOf = 1;
 
@@ -5488,6 +5494,14 @@ export const DiscoverResearchOpportunitiesResponse = zod.object({
   "cursorVersion": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoveryCursorVersionMax).describe('Source'),
   "domesticOnly": zod.literal(true),
   "classificationUnknownExcluded": zod.literal(true),
+  "instrumentPolicy": zod.object({
+  "version": zod.enum(['verified-research-instruments-v1']),
+  "unknownPolicy": zod.enum(['WITHHOLD_PENDING_CLASSIFICATION_REVIEW']),
+  "withheld": zod.object({
+  "total": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryInstrumentPolicyWithheldTotalMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryInstrumentPolicyWithheldTotalMultipleOf),
+  "counts": zod.record(zod.string(), zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryInstrumentPolicyWithheldCountsMinOne).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryInstrumentPolicyWithheldCountsMultipleOfOne))
+})
+}),
   "progress": zod.object({
   "phase": zod.enum(['COMPLETED']),
   "completed": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryProgressCompletedMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryProgressCompletedMultipleOf),

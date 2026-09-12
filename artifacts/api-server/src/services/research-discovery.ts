@@ -11,7 +11,9 @@ import {
   type ResearchOpportunityOptions,
 } from "./research-opportunities";
 import {
+  BROAD_DISCOVERY_INSTRUMENT_POLICY,
   RESEARCH_UNIVERSE_LABELS,
+  broadDiscoveryPolicyExclusions,
   normalizeCustomSymbols,
   researchUniverseSnapshot,
   staticUniverseEntries,
@@ -69,6 +71,7 @@ export async function discoverResearchOpportunities(
   }
 
   const selectedUniverse = options.universe ?? "BROAD_US_MARKET";
+  const instrumentPolicyExclusions = broadDiscoveryPolicyExclusions();
   const customIdentity = normalizeCustomSymbols(options.customSymbols).join(",");
   const cursorVersion = `${researchUniverseSnapshot.source.version}:${selectedUniverse}:${crypto
     .createHash("sha256")
@@ -184,6 +187,11 @@ export async function discoverResearchOpportunities(
       cursorVersion,
       domesticOnly: true as const,
       classificationUnknownExcluded: true as const,
+      instrumentPolicy: {
+        version: BROAD_DISCOVERY_INSTRUMENT_POLICY.version,
+        unknownPolicy: BROAD_DISCOVERY_INSTRUMENT_POLICY.unknownPolicy,
+        withheld: instrumentPolicyExclusions,
+      },
       progress: {
         phase: "COMPLETED" as const,
         completed: screened,
@@ -226,6 +234,7 @@ export async function discoverResearchOpportunities(
       nextOffset,
       limitations: [
         ...researchUniverseSnapshot.source.limitations,
+        "Broad discovery admits only verified common stock, ETF, closed-end fund, and preferred classifications. Warrants, units, rights, other instruments, and unknown classifications are withheld pending classification review.",
         `${RESEARCH_UNIVERSE_LABELS[selectedUniverse]} is a verified-domestic selection. Foreign issuers and unknown domicile classifications are excluded rather than inferred from exchange.`,
         ["INCOME", "GROWTH_COMPOUNDERS", "SMALL_CAP", "MID_CAP", "LARGE_CAP"].includes(selectedUniverse)
           ? "Financial style and capitalization eligibility use only current, human-approved evidence; newly collected provider evidence remains pending."
@@ -268,6 +277,8 @@ export async function discoverResearchOpportunities(
       universeVersion: researchUniverseSnapshot.source.version,
       cursorVersion,
       classificationPolicyVersion: researchUniverseSnapshot.source.classificationPolicyVersion,
+      instrumentPolicyVersion: BROAD_DISCOVERY_INSTRUMENT_POLICY.version,
+      instrumentPolicyWithheld: instrumentPolicyExclusions,
       rawSourceRowCount: researchUniverseSnapshot.source.sourceRowCount,
       availableSymbolCount: universe.length,
       runOffset,

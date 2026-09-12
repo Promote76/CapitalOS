@@ -7528,7 +7528,7 @@ components:
           additionalProperties: { type: number, minimum: 0, multipleOf: 1 }
     ResearchDiscoverySummary:
       type: object
-      required: [status, progress, universe, universeLabel, cursorVersion, domesticOnly, classificationUnknownExcluded, knownUniverseCount, source, rawSourceRowCount, availableSymbolCount, sourceExclusions, runOffset, runCap, selected, screened, symbolsSelected, symbolsScreened, symbolsEligible, symbolsExcluded, successfulSchwabEnrichments, providerFailures, schwabFailures, secFailures, providerOmissions, pendingReview, approvedEligible, finalCandidates, nextOffset, limitations, finalCandidateCount, marketDraftsCreated, secDraftsCreated, secSnapshotsReused, exclusionReasons, provider]
+      required: [status, progress, universe, universeLabel, cursorVersion, domesticOnly, classificationUnknownExcluded, instrumentPolicy, knownUniverseCount, source, rawSourceRowCount, availableSymbolCount, sourceExclusions, runOffset, runCap, selected, screened, symbolsSelected, symbolsScreened, symbolsEligible, symbolsExcluded, successfulSchwabEnrichments, providerFailures, schwabFailures, secFailures, providerOmissions, pendingReview, approvedEligible, finalCandidates, nextOffset, limitations, finalCandidateCount, marketDraftsCreated, secDraftsCreated, secSnapshotsReused, exclusionReasons, provider]
       properties:
         status: { type: string, enum: [COMPLETED, LIMITED] }
         universe:
@@ -7539,6 +7539,20 @@ components:
         cursorVersion: { type: string, maxLength: 240, description: Source, universe, and custom-selection identity for the bounded cursor }
         domesticOnly: { type: boolean, const: true }
         classificationUnknownExcluded: { type: boolean, const: true }
+        instrumentPolicy:
+          type: object
+          required: [version, unknownPolicy, withheld]
+          properties:
+            version: { type: string, enum: [verified-research-instruments-v1] }
+            unknownPolicy: { type: string, enum: [WITHHOLD_PENDING_CLASSIFICATION_REVIEW] }
+            withheld:
+              type: object
+              required: [total, counts]
+              properties:
+                total: { type: number, minimum: 0, multipleOf: 1 }
+                counts:
+                  type: object
+                  additionalProperties: { type: number, minimum: 0, multipleOf: 1 }
         progress:
           type: object
           required: [phase, completed, total, message]

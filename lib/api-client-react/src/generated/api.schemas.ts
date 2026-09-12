@@ -5514,6 +5514,34 @@ export const ResearchDiscoverySummaryStatus = {
   LIMITED: 'LIMITED',
 } as const;
 
+export type ResearchDiscoverySummaryInstrumentPolicyVersion = typeof ResearchDiscoverySummaryInstrumentPolicyVersion[keyof typeof ResearchDiscoverySummaryInstrumentPolicyVersion];
+
+
+export const ResearchDiscoverySummaryInstrumentPolicyVersion = {
+  'verified-research-instruments-v1': 'verified-research-instruments-v1',
+} as const;
+
+export type ResearchDiscoverySummaryInstrumentPolicyUnknownPolicy = typeof ResearchDiscoverySummaryInstrumentPolicyUnknownPolicy[keyof typeof ResearchDiscoverySummaryInstrumentPolicyUnknownPolicy];
+
+
+export const ResearchDiscoverySummaryInstrumentPolicyUnknownPolicy = {
+  WITHHOLD_PENDING_CLASSIFICATION_REVIEW: 'WITHHOLD_PENDING_CLASSIFICATION_REVIEW',
+} as const;
+
+export type ResearchDiscoverySummaryInstrumentPolicyWithheldCounts = {[key: string]: number};
+
+export type ResearchDiscoverySummaryInstrumentPolicyWithheld = {
+  /** @minimum 0 */
+  total: number;
+  counts: ResearchDiscoverySummaryInstrumentPolicyWithheldCounts;
+};
+
+export type ResearchDiscoverySummaryInstrumentPolicy = {
+  version: ResearchDiscoverySummaryInstrumentPolicyVersion;
+  unknownPolicy: ResearchDiscoverySummaryInstrumentPolicyUnknownPolicy;
+  withheld: ResearchDiscoverySummaryInstrumentPolicyWithheld;
+};
+
 export type ResearchDiscoverySummaryProgressPhase = typeof ResearchDiscoverySummaryProgressPhase[keyof typeof ResearchDiscoverySummaryProgressPhase];
 
 
@@ -5544,6 +5572,7 @@ export interface ResearchDiscoverySummary {
   cursorVersion: string;
   domesticOnly: true;
   classificationUnknownExcluded: true;
+  instrumentPolicy: ResearchDiscoverySummaryInstrumentPolicy;
   progress: ResearchDiscoverySummaryProgress;
   /** @minimum 0 */
   knownUniverseCount: number;

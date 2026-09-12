@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   deriveMarketCapMillions,
+  broadDiscoveryPolicyExclusions,
   matchesFinancialUniverse,
   effectiveSecurityType,
+  isBroadDiscoveryInstrumentAllowed,
   normalizeCustomSymbols,
   researchUniverseSnapshot,
   staticUniverseEntries,
@@ -109,7 +111,11 @@ test("static universe options never broaden beyond verified domestic entries", (
   const preferreds = staticUniverseEntries("PREFERRED_INCOME");
   const custom = staticUniverseEntries("CUSTOM", [" csco ", "TD", "not valid!"]);
 
-  assert.equal(broad.length, researchUniverseSnapshot.entries.length);
+  const policyExclusions = broadDiscoveryPolicyExclusions();
+  assert.equal(broad.length + policyExclusions.total, researchUniverseSnapshot.entries.length);
+  assert.ok(policyExclusions.total > 0);
+  assert.equal(policyExclusions.counts.UNKNOWN, researchUniverseSnapshot.counts.instrumentTypes.UNKNOWN);
+  assert.ok(broad.every(isBroadDiscoveryInstrumentAllowed));
   assert.ok(common.length > 0);
   assert.ok(funds.length > 0);
   assert.ok(preferreds.length > 0);
@@ -118,6 +124,30 @@ test("static universe options never broaden beyond verified domestic entries", (
   assert.ok(preferreds.every((entry) => effectiveSecurityType(entry) === "PREFERRED_INCOME"));
   assert.deepEqual(custom.map((entry) => entry.ticker), ["CSCO"]);
   assert.deepEqual(normalizeCustomSymbols([" msft", "MSFT", "bad symbol!"]), ["MSFT"]);
+});
+
+test("broad discovery withholds warrants, units, rights, and unknown debt pending review", () => {
+  const fixtures = [
+    securityFixture("W", "WARRANT"),
+    securityFixture("U", "UNIT"),
+    securityFixture("R", "RIGHT"),
+    {
+      ...securityFixture("NOTE", "UNKNOWN", "UNKNOWN"),
+      name: "Example 7.5% Senior Notes due 2030",
+    },
+  ];
+
+  assert.ok(fixtures.every((entry) => !isBroadDiscoveryInstrumentAllowed(entry)));
+  assert.deepEqual(broadDiscoveryPolicyExclusions(fixtures), {
+    total: 4,
+    counts: { WARRANT: 1, UNIT: 1, RIGHT: 1, UNKNOWN: 1 },
+  });
+
+  const broadTickers = new Set(staticUniverseEntries("BROAD_US_MARKET").map((entry) => entry.ticker));
+  for (const ticker of ["BEATW", "ARCLU", "ARCLR", "UZE"]) {
+    assert.ok(researchUniverseSnapshot.entries.some((entry) => entry.ticker === ticker), `missing frozen fixture ${ticker}`);
+    assert.equal(broadTickers.has(ticker), false, `${ticker} must be withheld from broad discovery`);
+  }
 });
 
 test("financial universe rules use approved-evidence category and market-cap values", () => {

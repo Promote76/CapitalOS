@@ -9,6 +9,7 @@ import type { ResearchDiscoveryIssue } from './researchDiscoveryIssue';
 import type { ResearchDiscoveryProvider } from './researchDiscoveryProvider';
 import type { ResearchDiscoverySource } from './researchDiscoverySource';
 import type { ResearchDiscoverySourceExclusions } from './researchDiscoverySourceExclusions';
+import type { ResearchDiscoverySummaryInstrumentPolicy } from './researchDiscoverySummaryInstrumentPolicy';
 import type { ResearchDiscoverySummaryProgress } from './researchDiscoverySummaryProgress';
 import type { ResearchDiscoverySummaryStatus } from './researchDiscoverySummaryStatus';
 import type { ResearchInvestmentUniverse } from './researchInvestmentUniverse';
@@ -26,6 +27,7 @@ export interface ResearchDiscoverySummary {
   cursorVersion: string;
   domesticOnly: true;
   classificationUnknownExcluded: true;
+  instrumentPolicy: ResearchDiscoverySummaryInstrumentPolicy;
   progress: ResearchDiscoverySummaryProgress;
   /** @minimum 0 */
   knownUniverseCount: number;

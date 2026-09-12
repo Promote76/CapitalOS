@@ -84,6 +84,17 @@ export type ResearchUniverseSnapshot = {
 
 export const researchUniverseSnapshot = secUniverseSnapshot as unknown as ResearchUniverseSnapshot;
 
+export const BROAD_DISCOVERY_INSTRUMENT_POLICY = {
+  version: "verified-research-instruments-v1",
+  allowedInstrumentTypes: ["COMMON_STOCK", "ETF", "CLOSED_END_FUND", "PREFERRED"],
+  unknownPolicy: "WITHHOLD_PENDING_CLASSIFICATION_REVIEW",
+} as const;
+
+export type ResearchUniversePolicyExclusions = {
+  total: number;
+  counts: Partial<Record<ResearchInstrumentType, number>>;
+};
+
 export const RESEARCH_UNIVERSE_LABELS: Record<ResearchInvestmentUniverse, string> = {
   BROAD_US_MARKET: "Broad U.S. Market",
   COMMON_STOCKS: "Common Stocks",
@@ -112,6 +123,30 @@ export function effectiveSecurityType(entry: ResearchUniverseEntry): ResearchSec
   return "OTHER";
 }
 
+export function isBroadDiscoveryInstrumentAllowed(entry: ResearchUniverseEntry) {
+  return entry.securityClassification.status === "VERIFIED"
+    && BROAD_DISCOVERY_INSTRUMENT_POLICY.allowedInstrumentTypes.some(
+      (instrumentType) => instrumentType === entry.securityClassification.instrumentType,
+    );
+}
+
+export function broadDiscoveryPolicyExclusions(
+  entries: ResearchUniverseEntry[] = researchUniverseSnapshot.entries,
+): ResearchUniversePolicyExclusions {
+  const counts: ResearchUniversePolicyExclusions["counts"] = {};
+  for (const entry of entries) {
+    if (entry.issuerClassification.status !== "VERIFIED_DOMESTIC" || isBroadDiscoveryInstrumentAllowed(entry)) continue;
+    const instrumentType = entry.securityClassification.status === "UNKNOWN"
+      ? "UNKNOWN"
+      : entry.securityClassification.instrumentType;
+    counts[instrumentType] = (counts[instrumentType] ?? 0) + 1;
+  }
+  return {
+    total: Object.values(counts).reduce((total, count) => total + (count ?? 0), 0),
+    counts,
+  };
+}
+
 export function staticUniverseEntries(
   universe: ResearchInvestmentUniverse,
   customSymbols?: string[],
@@ -119,7 +154,9 @@ export function staticUniverseEntries(
   const custom = new Set(normalizeCustomSymbols(customSymbols));
   return researchUniverseSnapshot.entries.filter((entry) => {
     if (entry.issuerClassification.status !== "VERIFIED_DOMESTIC") return false;
+    if (entry.securityClassification.status === "UNKNOWN") return false;
     const securityType = effectiveSecurityType(entry);
+    if (universe !== "CUSTOM" && !isBroadDiscoveryInstrumentAllowed(entry)) return false;
     if (universe === "COMMON_STOCKS") return securityType === "COMMON_STOCK";
     if (universe === "ETFS_FUNDS") return securityType === "ETF_FUND";
     if (universe === "PREFERRED_INCOME") return securityType === "PREFERRED_INCOME";

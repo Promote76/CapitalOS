@@ -7,8 +7,15 @@
  */
 import type { ListResearchOpportunitiesLens } from './listResearchOpportunitiesLens';
 import type { ListResearchOpportunitiesPortfolioFit } from './listResearchOpportunitiesPortfolioFit';
+import type { ResearchInvestmentUniverse } from './researchInvestmentUniverse';
 
 export type ListResearchOpportunitiesParams = {
+universe?: ResearchInvestmentUniverse;
+/**
+ * Comma-separated domestic SEC-listed symbols used only when universe is CUSTOM
+ * @maxLength 500
+ */
+customSymbols?: string;
 lens?: ListResearchOpportunitiesLens;
 /**
  * @maxLength 120

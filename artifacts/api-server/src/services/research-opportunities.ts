@@ -9,6 +9,13 @@ import {
   schwabMarketSnapshots,
 } from "@workspace/db";
 import type { Actor } from "./capital-os";
+import {
+  deriveMarketCapMillions,
+  matchesFinancialUniverse,
+  researchUniverseSnapshot,
+  staticUniverseEntries,
+  type ResearchInvestmentUniverse,
+} from "./research-universe";
 
 const dayMs = 24 * 60 * 60 * 1000;
 const maxSchwabAgeDays = 30;
@@ -303,6 +310,8 @@ function buildOpportunity(candidate: Candidate) {
 export type ResearchOpportunityLens = "Income" | "Compounders" | "Balanced";
 export type ResearchOpportunityPortfolioFit = "Constructive" | "Review" | "Caution";
 export type ResearchOpportunityOptions = {
+  universe?: ResearchInvestmentUniverse;
+  customSymbols?: string[];
   lens?: ResearchOpportunityLens;
   search?: string;
   minScore?: number;
@@ -341,6 +350,9 @@ function classifySecExclusion(
 
 export async function listResearchOpportunities(actor: Actor, options: ResearchOpportunityOptions = {}) {
   const now = new Date();
+  const selectedUniverse = options.universe ?? "BROAD_US_MARKET";
+  const allowedUniverseEntries = staticUniverseEntries(selectedUniverse, options.customSymbols);
+  const allowedUniverseByTicker = new Map(allowedUniverseEntries.map((entry) => [entry.ticker, entry]));
   const [snapshotRows, secRows, sourceSnapshotRows, sourceSecRows, portfolioRows, dossierRows] = await Promise.all([
     db.select().from(reviewedResearchEvidence).where(eq(reviewedResearchEvidence.householdId, actor.householdId)).orderBy(desc(reviewedResearchEvidence.approvedAt), desc(reviewedResearchEvidence.id)),
     db.select().from(reviewedSecFilingEvidence).where(eq(reviewedSecFilingEvidence.householdId, actor.householdId)).orderBy(desc(reviewedSecFilingEvidence.approvedAt), desc(reviewedSecFilingEvidence.id)),
@@ -399,6 +411,7 @@ export async function listResearchOpportunities(actor: Actor, options: ResearchO
   }
   const byTicker = new Map<string, Candidate>();
   for (const item of uniqueEvidence) {
+    if (!allowedUniverseByTicker.has(item.ticker)) continue;
     const existing = byTicker.get(item.ticker);
     if (existing) {
       if (!existing.evidence.some((candidate) => candidate.id === item.id)) existing.evidence.push(item);
@@ -426,7 +439,18 @@ export async function listResearchOpportunities(actor: Actor, options: ResearchO
     candidate.secMetrics = getSecMetrics(candidate.evidence);
   }
   const allOpportunities = Array.from(byTicker.values())
-    .map(buildOpportunity)
+    .map((candidate) => ({
+      opportunity: buildOpportunity(candidate),
+      marketCap: deriveMarketCapMillions(
+        numberValue(candidate.fundamental.sharesOutstanding),
+        numberValue(candidate.quote.markPrice)
+          ?? numberValue(candidate.quote.lastPrice)
+          ?? numberValue(candidate.quote.closePrice),
+      ),
+    }))
+    .filter(({ opportunity, marketCap }) =>
+      matchesFinancialUniverse(selectedUniverse, opportunity.category, marketCap))
+    .map(({ opportunity }) => opportunity)
     .sort((a, b) => b.platinumScore - a.platinumScore || a.ticker.localeCompare(b.ticker))
   const normalizedSearch = options.search?.trim().toLowerCase() ?? "";
   const searched = normalizedSearch
@@ -453,6 +477,8 @@ export async function listResearchOpportunities(actor: Actor, options: ResearchO
       factors: ["income quality", "growth quality", "earnings quality", "balance-sheet strength", "valuation", "liquidity", "risk", "evidence freshness", "portfolio fit"],
       missingData: "Missing fields receive bounded neutral scores and remain visible in the evidence record; no values are invented.",
       lens: options.lens ?? "Balanced",
+      universe: selectedUniverse,
+      universeVersion: researchUniverseSnapshot.source.version,
     },
     diagnostics,
     lensCounts,

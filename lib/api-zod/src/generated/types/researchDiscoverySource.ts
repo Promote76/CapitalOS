@@ -21,4 +21,11 @@ export interface ResearchDiscoverySource {
   retrievedAt: Date;
   /** @pattern ^[a-f0-9]{64}$ */
   sourceSha256: string;
+  /** @maxLength 160 */
+  classificationPolicyVersion: string;
+  /**
+     * @maxLength 500
+     * @pattern ^https://data\.sec\.gov/submissions/
+     */
+  issuerClassificationSource: string;
 }

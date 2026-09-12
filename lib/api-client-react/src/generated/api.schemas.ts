@@ -5271,12 +5271,31 @@ export const ResearchOpportunitiesResponseRankingLens = {
   Balanced: 'Balanced',
 } as const;
 
+export type ResearchInvestmentUniverse = typeof ResearchInvestmentUniverse[keyof typeof ResearchInvestmentUniverse];
+
+
+export const ResearchInvestmentUniverse = {
+  BROAD_US_MARKET: 'BROAD_US_MARKET',
+  COMMON_STOCKS: 'COMMON_STOCKS',
+  INCOME: 'INCOME',
+  GROWTH_COMPOUNDERS: 'GROWTH_COMPOUNDERS',
+  ETFS_FUNDS: 'ETFS_FUNDS',
+  PREFERRED_INCOME: 'PREFERRED_INCOME',
+  SMALL_CAP: 'SMALL_CAP',
+  MID_CAP: 'MID_CAP',
+  LARGE_CAP: 'LARGE_CAP',
+  CUSTOM: 'CUSTOM',
+} as const;
+
 export type ResearchOpportunitiesResponseRanking = {
   method: string;
   /** @maxItems 12 */
   factors: string[];
   missingData: string;
   lens: ResearchOpportunitiesResponseRankingLens;
+  universe: ResearchInvestmentUniverse;
+  /** @maxLength 160 */
+  universeVersion: string;
 };
 
 export type ResearchOpportunitiesResponseDiagnostics = {
@@ -5345,6 +5364,13 @@ export const DiscoverResearchOpportunitiesRequestPortfolioFit = {
 } as const;
 
 export interface DiscoverResearchOpportunitiesRequest {
+  /** Selects the verified-domestic instrument set independently of the ranking lens. Income and Growth use approved/current scoring evidence; cap universes derive USD market cap from approved/current shares outstanding times mark, last, or close price and exclude missing inputs. */
+  universe?: ResearchInvestmentUniverse;
+  /**
+     * @maxItems 50
+     * @items.pattern ^[A-Za-z0-9._-]{1,15}$
+     */
+  customSymbols?: string[];
   lens?: DiscoverResearchOpportunitiesRequestLens;
   /** @maxLength 120 */
   search?: string;
@@ -5463,6 +5489,13 @@ export interface ResearchDiscoverySource {
   retrievedAt: string;
   /** @pattern ^[a-f0-9]{64}$ */
   sourceSha256: string;
+  /** @maxLength 160 */
+  classificationPolicyVersion: string;
+  /**
+     * @maxLength 500
+     * @pattern ^https://data\.sec\.gov/submissions/
+     */
+  issuerClassificationSource: string;
 }
 
 export type ResearchDiscoverySourceExclusionsCounts = {[key: string]: number};
@@ -5500,6 +5533,17 @@ export type ResearchDiscoverySummaryProgress = {
 
 export interface ResearchDiscoverySummary {
   status: ResearchDiscoverySummaryStatus;
+  /** Selects the verified-domestic instrument set independently of the ranking lens. Income and Growth use approved/current scoring evidence; cap universes derive USD market cap from approved/current shares outstanding times mark, last, or close price and exclude missing inputs. */
+  universe: ResearchInvestmentUniverse;
+  /** @maxLength 120 */
+  universeLabel: string;
+  /**
+     * Source
+     * @maxLength 240
+     */
+  cursorVersion: string;
+  domesticOnly: true;
+  classificationUnknownExcluded: true;
   progress: ResearchDiscoverySummaryProgress;
   /** @minimum 0 */
   knownUniverseCount: number;
@@ -9512,6 +9556,12 @@ export type ApproveMicroLiveFirstFillResume200 = {
 };
 
 export type ListResearchOpportunitiesParams = {
+universe?: ResearchInvestmentUniverse;
+/**
+ * Comma-separated domestic SEC-listed symbols used only when universe is CUSTOM
+ * @maxLength 500
+ */
+customSymbols?: string;
 lens?: ListResearchOpportunitiesLens;
 /**
  * @maxLength 120

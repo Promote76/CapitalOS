@@ -22,6 +22,7 @@ import { createResearchAdvisoryDecision, listResearchAdvisoryDecisions } from ".
 import { discoverResearchOpportunities } from "../services/research-discovery";
 import { SchwabResearchError } from "../services/schwab-research-adapter";
 import type { Actor } from "../services/capital-os";
+import { staticUniverseEntries } from "../services/research-universe";
 
 const enabled = process.env.CAPITAL_OS_RUN_INTEGRATION === "1";
 
@@ -206,12 +207,12 @@ test("research advisory decisions persist provenance and project later Schwab ob
   const retrievedAt = new Date(now.getTime() - 1_000);
   const [source] = await db.insert(schwabMarketSnapshots).values({
     householdId: f.actor.householdId,
-    ticker: "ADVR",
+    ticker: "CSCO",
     content: {
       instrument: { description: "Advisory Holdings", fundamental: { epsTrailingTwelveMonths: 3, peRatio: 16 } },
       quote: { totalVolume: 125_000 },
     },
-    provenance: { provider: "fixture", sourceUrl: "https://fixture.invalid/advr" },
+    provenance: { provider: "fixture", sourceUrl: "https://fixture.invalid/csco" },
     requestedAt: retrievedAt,
     retrievedAt,
     freshness: "CURRENT",
@@ -223,25 +224,25 @@ test("research advisory decisions persist provenance and project later Schwab ob
   await db.insert(reviewedResearchEvidence).values({
     householdId: f.actor.householdId,
     snapshotId: source.id,
-    ticker: "ADVR",
+    ticker: "CSCO",
     canonicalContent: {
       instrument: { description: "Advisory Holdings", fundamental: { epsTrailingTwelveMonths: 3, peRatio: 16 } },
       quote: { totalVolume: 125_000 },
       snapshotContext: { retrievedAt: retrievedAt.toISOString(), freshness: "CURRENT" },
     },
     canonicalSha256: "a".repeat(64),
-    provenance: { provider: "fixture", sourceUrl: "https://fixture.invalid/advr" },
+    provenance: { provider: "fixture", sourceUrl: "https://fixture.invalid/csco" },
     approvedBy: f.actor.userId,
   });
 
-  const opportunity = await listResearchOpportunities(f.actor, { search: "ADVR" });
-  assert.equal(opportunity.opportunities[0]?.ticker, "ADVR");
+  const opportunity = await listResearchOpportunities(f.actor, { search: "CSCO" });
+  assert.equal(opportunity.opportunities[0]?.ticker, "CSCO");
   const created = await createResearchAdvisoryDecision(f.actor, {
-    ticker: "ADVR",
+    ticker: "CSCO",
     decision: "WATCH",
     reason: "Keep the thesis under manual review.",
   });
-  assert.equal(created.ticker, "ADVR");
+  assert.equal(created.ticker, "CSCO");
   assert.equal(created.decision, "WATCH");
   assert.equal(created.advisoryOnly, true);
   assert.equal(created.executionAuthorization, false);
@@ -257,7 +258,7 @@ test("research advisory decisions persist provenance and project later Schwab ob
   await db.insert(schwabObservationSnapshots).values({
     householdId: f.actor.householdId,
     connectionId: connection.id,
-    positions: [{ symbol: "ADVR", quantity: 1 }],
+    positions: [{ symbol: "CSCO", quantity: 1 }],
     freshness: "CURRENT",
   });
   const observed = await listResearchAdvisoryDecisions(f.actor);
@@ -340,8 +341,7 @@ test("Find Opportunities runs the permitted provider collection pipeline before 
   });
   assert.equal(marketReads.length, 25);
   assert.equal(secReads.length, 25);
-  assert.equal(marketReads[0], "AHT-PF");
-  assert.equal(marketReads[1], "ICL");
+  assert.deepEqual(marketReads.slice(0, 2), staticUniverseEntries("BROAD_US_MARKET").slice(0, 2).map((entry) => entry.ticker));
   assert.equal(result.opportunities[0]?.ticker, "FRESH");
   assert.equal(result.discovery.symbolsScreened, 25);
   assert.equal(result.discovery.finalCandidateCount, 1);
@@ -414,7 +414,7 @@ test("Find Opportunities paginates the SEC universe in deterministic non-overlap
   );
   assert.equal(first.length, 25);
   assert.equal(second.length, 25);
-  assert.deepEqual(first.slice(0, 2), ["AHT-PF", "ICL"]);
+  assert.deepEqual(first.slice(0, 2), staticUniverseEntries("BROAD_US_MARKET").slice(0, 2).map((entry) => entry.ticker));
   assert.equal(new Set([...first, ...second]).size, 50);
   assert.equal(pageOne.discovery.nextOffset, 25);
   assert.equal(pageTwo.discovery.runOffset, 25);

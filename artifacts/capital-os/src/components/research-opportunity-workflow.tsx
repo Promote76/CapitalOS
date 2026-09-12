@@ -85,6 +85,11 @@ export type ResearchRefine = {
 
 export type ResearchDiscoverySummary = {
   status: "COMPLETED" | "LIMITED";
+  universe: string;
+  universeLabel: string;
+  cursorVersion: string;
+  domesticOnly: true;
+  classificationUnknownExcluded: true;
   progress: {
     phase: "COMPLETED";
     completed: number;
@@ -99,6 +104,8 @@ export type ResearchDiscoverySummary = {
     version: string;
     retrievedAt: string;
     sourceSha256: string;
+    classificationPolicyVersion: string;
+    issuerClassificationSource: string;
   };
   rawSourceRowCount: number;
   availableSymbolCount: number;
@@ -150,6 +157,10 @@ export type ResearchDiscoverySummary = {
 };
 
 export type ResearchOpportunityWorkflowProps = {
+  universe: string;
+  customSymbols?: string;
+  onUniverseChange: (universe: string) => void;
+  onCustomSymbolsChange: (symbols: string) => void;
   activeView: ResearchView;
   opportunities: ResearchOpportunity[];
   selectedTickers: string[];
@@ -306,7 +317,7 @@ function OpportunityCard({
 
       <div className="mt-auto grid grid-cols-3 gap-3 border-t border-[#eee9dd] pt-4">
         <Metric label="Portfolio fit" value={opportunity.portfolioFit} tone="positive" />
-        <Metric label="Max exposure" value={opportunity.maximumExposure} />
+        <Metric label="Illustrative review guardrail" value={opportunity.maximumExposure} />
         <Metric label="Evidence" value={opportunity.evidenceFreshness} />
       </div>
       <div className="mt-3 flex items-center justify-between text-[10px] text-[#71877f]">
@@ -359,7 +370,7 @@ function DetailPanel({
           <div className="mt-1 truncate text-[12px] font-semibold text-[#23463e]">{opportunity.portfolioFit}</div>
         </div>
         <div className="rounded-lg bg-[#f5f7f1] p-2.5">
-          <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#71877f]">Max</div>
+          <div className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#71877f]">Guardrail</div>
           <div className="mt-1 truncate text-[12px] font-semibold text-[#23463e]">{opportunity.maximumExposure}</div>
         </div>
       </div>
@@ -462,6 +473,10 @@ function DetailPanel({
 }
 
 export function ResearchOpportunityWorkflow({
+  universe,
+  customSymbols,
+  onUniverseChange,
+  onCustomSymbolsChange,
   activeView,
   opportunities,
   selectedTickers,
@@ -527,8 +542,38 @@ export function ResearchOpportunityWorkflow({
           <div className="relative flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
             <div>
               <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[#b38b3d]"><Sparkles size={13} /> Research committee / 01</div>
-              <h1 className="mt-2 max-w-[700px] font-display text-3xl leading-[1.05] text-[#23463e] sm:text-[40px]">Find the next considered yes.</h1>
-              <p className="mt-3 max-w-[640px] text-[12px] leading-[1.6] text-[#58716a] sm:text-[13px]">A read-only opportunity set for family capital. Transparent evidence, measured exposure, and a human decision at every turn.</p>
+              <h1 className="mt-2 max-w-[700px] font-display text-3xl leading-[1.05] text-[#23463e] sm:text-[40px]">Bounded batch.</h1>
+              <p className="mt-3 max-w-[640px] text-[12px] leading-[1.6] text-[#58716a] sm:text-[13px]">A read-only opportunity set for family capital. Eligible from approved/current evidence, illustrative review guardrail, and a human decision at every turn.</p>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <select
+                  value={universe}
+                  onChange={(e) => onUniverseChange(e.target.value)}
+                  className="rounded-lg border border-[#dfe6dd] bg-[#fbfcf8] px-3 py-1.5 text-[11px] font-semibold text-[#23463e] outline-none"
+                  data-testid="select-research-universe"
+                >
+                  <option value="BROAD_US_MARKET">Broad U.S. Market</option>
+                  <option value="COMMON_STOCKS">Common Stocks</option>
+                  <option value="INCOME">Income</option>
+                  <option value="GROWTH_COMPOUNDERS">Growth / Compounders</option>
+                  <option value="ETFS_FUNDS">ETFs & Funds</option>
+                  <option value="PREFERRED_INCOME">Preferreds &amp; Income Securities</option>
+                  <option value="SMALL_CAP">Small Cap</option>
+                  <option value="MID_CAP">Mid Cap</option>
+                  <option value="LARGE_CAP">Large Cap</option>
+                  <option value="CUSTOM">Custom</option>
+                </select>
+                {universe === "CUSTOM" && (
+                  <input
+                    type="text"
+                    value={customSymbols ?? ""}
+                    onChange={(e) => onCustomSymbolsChange(e.target.value)}
+                    placeholder="AAPL, MSFT, BRK-B"
+                    aria-label="Custom domestic symbols"
+                    className="rounded-lg border border-[#dfe6dd] bg-[#fbfcf8] px-3 py-1.5 text-[11px] font-semibold text-[#23463e] outline-none"
+                    data-testid="input-research-custom-symbols"
+                  />
+                )}
+              </div>
             </div>
             <div className="flex shrink-0 items-center gap-2 rounded-lg border border-[#d9e2d8] bg-[#fbfcf8] px-3 py-2 text-[10px] text-[#58716a]">
               <ShieldCheck size={14} className="text-[#236b59]" />
@@ -587,12 +632,12 @@ export function ResearchOpportunityWorkflow({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[12px] font-semibold text-[#23463e]">Discovery summary</span>
+                  <span className="text-[12px] font-semibold text-[#23463e]">{discoverySummary.universeLabel} bounded-batch summary</span>
                   <StatusPill tone={discoverySummary.status === "LIMITED" ? "caution" : "safe"}>{discoverySummary.status === "LIMITED" ? "Bounded coverage" : "Bounded traversal complete"}</StatusPill>
                   <StatusPill tone="safe">Schwab {discoverySummary.provider.schwabConnectionStatus.replaceAll("_", " ").toLowerCase()}</StatusPill>
                 </div>
                 <p className="mt-2 max-w-2xl text-[10px] leading-[1.5] text-[#71877f]">
-                  SEC supplied the universe; Schwab did not. Schwab was used only for targeted, read-only fundamentals, quotes, and 93-day daily history. Provider-wide screener unavailable through the authorized API. Schwab freshness: {discoverySummary.provider.schwabFreshness.toLowerCase().replaceAll("_", " ")} · SEC status: {discoverySummary.provider.secStatus.toLowerCase()}. New evidence stays pending until human approval.
+                  SEC supplied and classified the verified-domestic directory; Schwab did not. Foreign issuers and unknown domicile classifications are excluded rather than inferred from exchange. Schwab was used only for targeted, read-only fundamentals, quotes, and 93-day daily history. Provider-wide screener unavailable through the authorized API. Schwab freshness: {discoverySummary.provider.schwabFreshness.toLowerCase().replaceAll("_", " ")} · SEC status: {discoverySummary.provider.secStatus.toLowerCase()}. New evidence stays pending until human approval.
                 </p>
                 <div className="mt-3 rounded-lg border border-[#d9e2d8] bg-[#f3f8f3] px-3 py-2 text-[10px] leading-[1.5] text-[#58716a]" data-testid="research-discovery-source">
                   <div className="font-semibold text-[#23463e]">SEC universe source</div>
@@ -614,12 +659,12 @@ export function ResearchOpportunityWorkflow({
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-                <Metric label="Universe symbols" value={String(discoverySummary.availableSymbolCount)} />
+                <Metric label="Selected domestic universe" value={String(discoverySummary.availableSymbolCount)} />
                 <Metric label="Raw SEC rows" value={String(discoverySummary.rawSourceRowCount)} />
-                <Metric label="Available symbols" value={String(discoverySummary.availableSymbolCount)} />
+                <Metric label="Verified domestic symbols" value={String(discoverySummary.availableSymbolCount)} />
                 <Metric label="Run offset / cap" value={`${discoverySummary.runOffset} / ${discoverySummary.runCap}`} />
                 <Metric label="Selected / screened" value={`${discoverySummary.selected} / ${discoverySummary.screened}`} />
-                <Metric label="Approved eligible" value={String(discoverySummary.approvedEligible)} tone="positive" />
+                <Metric label="Eligible from approved evidence" value={String(discoverySummary.approvedEligible)} tone="positive" />
                 <Metric label="Final candidates" value={String(discoverySummary.finalCandidates)} tone="positive" />
               </div>
             </div>
@@ -647,7 +692,7 @@ export function ResearchOpportunityWorkflow({
               <div className="rounded-lg border border-[#d9e2d8] bg-[#f3f8f3] px-3 py-2 text-[10px] leading-[1.45] text-[#58716a]" data-testid="research-discovery-boundary">
                 <strong className="font-semibold text-[#23463e]">Evidence boundary</strong>
                 <div className="mt-1">
-                  Approved eligible: {discoverySummary.approvedEligible} · Final candidates: {discoverySummary.finalCandidates} · Pending review: {discoverySummary.pendingReview}.{" "}
+                  Eligible from approved/current evidence: {discoverySummary.approvedEligible} · Final candidates: {discoverySummary.finalCandidates} · Pending review: {discoverySummary.pendingReview}.{" "}
                   {discoverySummary.pendingReview > 0 && discoverySummary.finalCandidates === 0 && <strong>Pending review only: no approved candidates are shown. </strong>}
                   Evidence remains pending until approval; no execution or account action is available.
                 </div>
@@ -690,7 +735,7 @@ export function ResearchOpportunityWorkflow({
               <SlidersHorizontal size={14} /> Refine <ChevronDown size={13} className={filtersOpen ? "rotate-180" : ""} />
             </button>
             <div className="flex items-center justify-between gap-3 text-[10px] text-[#71877f] md:justify-end">
-               <span className="inline-flex items-center gap-1.5"><Target size={12} className="text-[#b38b3d]" /> Top 25 / {totalEligible ?? filteredOpportunities.length} eligible</span>
+               <span className="inline-flex items-center gap-1.5"><Target size={12} className="text-[#b38b3d]" /> Top 25 / {totalEligible ?? filteredOpportunities.length} eligible from approved/current evidence</span>
               {selectedOpportunities.length > 0 && <button type="button" onClick={() => { onCompare(selectedTickers); setComparisonOpen(true); }} className="inline-flex items-center gap-1.5 rounded-md bg-[#23463e] px-3 py-2 font-semibold text-[#f8fbf7] transition-colors hover:bg-[#1b594a]" data-testid="button-compare-selected"><BarChart3 size={13} /> Compare ({selectedOpportunities.length})</button>}
             </div>
           </div>
@@ -733,7 +778,7 @@ export function ResearchOpportunityWorkflow({
                     <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#eee9dd] pt-3">
                       <Metric label="Portfolio fit" value={opportunity.portfolioFit} />
                       <Metric label="Evidence" value={opportunity.evidenceFreshness} />
-                      <Metric label="Max exposure" value={opportunity.maximumExposure} />
+                      <Metric label="Illustrative review guardrail" value={opportunity.maximumExposure} />
                       <Metric label="Sources" value={String(opportunity.sourceCount)} />
                     </div>
                   </button>

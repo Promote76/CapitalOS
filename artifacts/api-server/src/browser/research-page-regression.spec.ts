@@ -123,8 +123,14 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
       const requestUrl = new URL(route.request().url());
       if (route.request().method() === "POST" && requestUrl.pathname.endsWith("/api/research/opportunities/discover")) {
         discoveryRequests += 1;
-        const requestBody = route.request().postDataJSON() as { offset?: number; universeVersion?: string };
+        const requestBody = route.request().postDataJSON() as {
+          offset?: number;
+          universe?: string;
+          universeVersion?: string;
+          customSymbols?: string[];
+        };
         discoveryOffsets.push(requestBody.offset ?? -1);
+        expect(requestBody.universe).toBeTruthy();
         expect(requestBody.offset).toEqual(expect.any(Number));
         expect(requestBody.offset).toBeGreaterThanOrEqual(0);
         if (discoveryAuthFailure) {
@@ -132,7 +138,7 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
           return;
         }
         if (discoveryRequests === 1) {
-          await new Promise((resolve) => setTimeout(resolve, 750));
+          await new Promise((resolve) => setTimeout(resolve, 1_500));
         }
         const batchHasCandidate = (requestBody.offset ?? 0) === 0;
         const opportunities = batchHasCandidate ? [opportunity("FRESH", "Balanced")] : [];
@@ -144,7 +150,7 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
             totalEligible: 1,
             excludedStaleOrUnreviewed: 1,
             generatedAt: new Date().toISOString(),
-            ranking: { method: "Browser discovery fixture", factors: ["quality"], missingData: "Missing values remain explicit.", lens: "Balanced" },
+            ranking: { method: "Browser discovery fixture", factors: ["quality"], missingData: "Missing values remain explicit.", lens: "Balanced", universe: requestBody.universe, universeVersion: "fixture-source-v1" },
             diagnostics: { reviewedMarketEvidence: 1, reviewedSecEvidence: 1, currentMarketEvidence: 1, currentSecEvidence: 1, duplicateEvidence: 0, excludedMissingSource: 0, excludedUnapproved: 1, excludedTickerMismatch: 0, excludedStale: 0 },
             lensCounts: { Income: 0, Compounders: 0, Balanced: 1 },
             advisoryOnly: true,
@@ -153,6 +159,11 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
             noTradingOrMoneyMovement: true,
             discovery: {
               status: "LIMITED",
+              universe: requestBody.universe,
+              universeLabel: requestBody.universe === "COMMON_STOCKS" ? "Common Stocks" : "Broad U.S. Market",
+              cursorVersion: `fixture-source-v1:${requestBody.universe}:fixture`,
+              domesticOnly: true,
+              classificationUnknownExcluded: true,
               progress: { phase: "COMPLETED", completed: 2, total: 2, message: "Discovery completed." },
               knownUniverseCount: 50,
               source: {
@@ -162,6 +173,8 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
                 version: "2025-01-15",
                 retrievedAt: date,
                 sourceSha256: digest,
+                classificationPolicyVersion: "sec-incorporation-jurisdiction-v1",
+                issuerClassificationSource: "https://data.sec.gov/submissions/CIK##########.json",
               },
               rawSourceRowCount: 50,
               availableSymbolCount: 50,
@@ -358,6 +371,7 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
       return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ...initial, dossiers: created ? [dossier(ids.latest, "BKSC Research Chair", date, "completed", latestSources), blocked] : [blocked] }) });
     });
     await page.goto("/investment-research");
+    await expect(page.getByTestId("select-research-universe")).toHaveValue("BROAD_US_MARKET");
     await expect(page.getByTestId("status-research-current")).toBeVisible();
     await expect(page.getByTestId("card-opportunity-INCM")).toBeVisible();
     await expect(page.getByTestId("card-opportunity-CMPD")).toBeVisible();
@@ -380,10 +394,10 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
     expect(completedBody.discovery.exclusionReasons[0].code).toBe("PROVIDER_WIDE_SCREENER_UNAVAILABLE");
     expect(discoveryOffsets).toEqual([0]);
     await Promise.all([
-      expect(page.getByTestId("research-discovery-summary")).toContainText("Discovery summary"),
+      expect(page.getByTestId("research-discovery-summary")).toContainText("Broad U.S. Market bounded-batch summary"),
       expect(page.getByTestId("card-opportunity-FRESH")).toBeVisible(),
     ]);
-    await expect(page.getByTestId("research-discovery-summary")).toContainText("SEC supplied the universe; Schwab did not");
+    await expect(page.getByTestId("research-discovery-summary")).toContainText("SEC supplied and classified the verified-domestic directory; Schwab did not");
     await expect(page.getByTestId("research-discovery-summary")).toContainText("93-day daily history");
     await expect(page.getByTestId("research-discovery-summary")).toContainText("Evidence remains pending until approval");
     await expect(page.getByTestId("research-discovery-boundary")).toContainText("no execution or account action");
@@ -405,7 +419,12 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
     await page.reload();
     await expect(page.getByTestId("card-opportunity-INCM")).toBeVisible();
     discoveryAuthFailure = true;
+    const discoveryAuthResponse = page.waitForResponse((response) =>
+      response.request().method() === "POST"
+      && new URL(response.url()).pathname.endsWith("/api/research/opportunities/discover"),
+    );
     await page.getByTestId("button-find-opportunities").click();
+    expect((await discoveryAuthResponse).status()).toBe(401);
     await expect(page.getByTestId("status-research-discovery-error")).toContainText("Sign in is required");
     discoveryAuthFailure = false;
     expect(discoveryOffsets).toEqual([0, 25, 0]);
@@ -423,6 +442,19 @@ test("Research page preserves reviewed sources and stays read-only", async ({ pa
     await expect(page.getByTestId("card-opportunity-CMPD")).toBeVisible();
     await page.getByRole("tab", { name: "Balanced" }).click();
     await expect(page.getByTestId("card-opportunity-INCM")).toBeVisible();
+    await page.getByTestId("select-research-universe").selectOption("CUSTOM");
+    await expect(page.getByTestId("input-research-custom-symbols")).toBeVisible();
+    await page.getByTestId("input-research-custom-symbols").fill("CSCO, TD");
+    const customDiscoveryResponse = page.waitForResponse((response) =>
+      response.request().method() === "POST"
+      && new URL(response.url()).pathname.endsWith("/api/research/opportunities/discover")
+      && response.ok(),
+    );
+    await page.getByTestId("button-find-opportunities").click();
+    const customBody = await (await customDiscoveryResponse).json();
+    expect(customBody.discovery.runOffset).toBe(0);
+    expect(customBody.discovery.universe).toBe("CUSTOM");
+    await page.getByTestId("select-research-universe").selectOption("BROAD_US_MARKET");
     await expect(page.getByTestId("card-opportunity-CMPD")).toBeVisible();
     const discoveryInput = page.getByTestId("input-research-discovery");
     await discoveryInput.fill("CMPD");

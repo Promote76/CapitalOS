@@ -55,6 +55,10 @@ import { parseResearchDigestion, type NormalizedResearchDigestion } from "../dom
 import { createInvestmentResearchDossier, listResearchDossiers, registerResearchEvidence, requestResearchEvidenceUpload, reviewResearchEvidence } from "../services/research-dossier";
 import { listResearchOpportunities } from "../services/research-opportunities";
 import { discoverResearchOpportunities } from "../services/research-discovery";
+import {
+  RESEARCH_INVESTMENT_UNIVERSES,
+  type ResearchInvestmentUniverse,
+} from "../services/research-universe";
 import { createResearchAdvisoryDecision, listResearchAdvisoryDecisions } from "../services/research-advisory";
 
 const router: IRouter = Router();
@@ -70,11 +74,20 @@ router.get("/family-office/research-dossiers", asyncRoute(async (_req, res) => {
 }));
 
 router.get("/research/opportunities", asyncRoute(async (req, res) => {
+  const requestedUniverse = typeof req.query.universe === "string" ? req.query.universe : undefined;
+  const universe = requestedUniverse && RESEARCH_INVESTMENT_UNIVERSES.includes(requestedUniverse as ResearchInvestmentUniverse)
+    ? requestedUniverse as ResearchInvestmentUniverse
+    : undefined;
+  const customSymbols = typeof req.query.customSymbols === "string"
+    ? req.query.customSymbols.split(",")
+    : undefined;
   const lens = typeof req.query.lens === "string" ? req.query.lens : undefined;
   const search = typeof req.query.search === "string" ? req.query.search : undefined;
   const minScore = typeof req.query.minScore === "string" && req.query.minScore.trim() ? Number(req.query.minScore) : undefined;
   const portfolioFit = typeof req.query.portfolioFit === "string" ? req.query.portfolioFit : undefined;
   res.json(ListResearchOpportunitiesResponse.parse(await listResearchOpportunities(actorFrom(res), {
+    universe,
+    customSymbols,
     lens: lens as "Income" | "Compounders" | "Balanced" | undefined,
     search,
     minScore: Number.isFinite(minScore) ? minScore : undefined,

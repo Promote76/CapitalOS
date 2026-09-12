@@ -5,6 +5,7 @@
  * Capital OS household capital operating system API
  * OpenAPI spec version: 0.3.0
  */
+import type { ResearchInvestmentUniverse } from './researchInvestmentUniverse';
 import type { ResearchOpportunitiesResponseRankingLens } from './researchOpportunitiesResponseRankingLens';
 
 export type ResearchOpportunitiesResponseRanking = {
@@ -13,4 +14,7 @@ export type ResearchOpportunitiesResponseRanking = {
   factors: string[];
   missingData: string;
   lens: ResearchOpportunitiesResponseRankingLens;
+  universe: ResearchInvestmentUniverse;
+  /** @maxLength 160 */
+  universeVersion: string;
 };

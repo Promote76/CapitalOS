@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
+import crypto from "node:crypto";
 import { db, schwabMarketDataConnections } from "@workspace/db";
-import secUniverseSnapshot from "../data/sec-us-equity-universe.json";
 import type { Actor } from "./capital-os";
 import { appendAuditEvent } from "./audit";
 import { collectSchwabMarketSnapshotDraft } from "./schwab-research-collection";
@@ -10,32 +10,14 @@ import {
   listResearchOpportunities,
   type ResearchOpportunityOptions,
 } from "./research-opportunities";
+import {
+  RESEARCH_UNIVERSE_LABELS,
+  normalizeCustomSymbols,
+  researchUniverseSnapshot,
+  staticUniverseEntries,
+} from "./research-universe";
 
 const MAX_DISCOVERY_SYMBOLS = 25;
-
-type SecUniverseSnapshot = {
-  schemaVersion: number;
-  source: {
-    provider: string;
-    title: string;
-    url: string;
-    retrievedAt: string;
-    sourceSha256: string;
-    version: string;
-    sourceRowCount: number;
-    includedExchanges: string[];
-    selectionMethod: string;
-    limitations: string[];
-  };
-  counts: {
-    available: number;
-    excluded: number;
-    exclusions: Record<string, number>;
-  };
-  entries: Array<{ ticker: string; cik: string; name: string; exchange: string }>;
-};
-
-const secUniverse = secUniverseSnapshot as SecUniverseSnapshot;
 
 type DiscoveryDependencies = {
   collectMarket?: typeof collectSchwabMarketSnapshotDraft;
@@ -86,13 +68,20 @@ export async function discoverResearchOpportunities(
     throw new SchwabResearchError("MARKET_DATA_DISCONNECTED", 409, "Schwab Market Data authorization is unavailable");
   }
 
-  // The SEC snapshot is the authoritative, attributed universe.  Keep its
+  const selectedUniverse = options.universe ?? "BROAD_US_MARKET";
+  const customIdentity = normalizeCustomSymbols(options.customSymbols).join(",");
+  const cursorVersion = `${researchUniverseSnapshot.source.version}:${selectedUniverse}:${crypto
+    .createHash("sha256")
+    .update(customIdentity)
+    .digest("hex")
+    .slice(0, 12)}`;
+  // The SEC snapshot is the authoritative, attributed directory source. Keep its
   // generated order: it is the stable SHA-256(version:ticker) order recorded
   // in the source metadata and therefore makes offset pagination reproducible.
-  const universe = secUniverse.entries
+  const universe = staticUniverseEntries(selectedUniverse, options.customSymbols)
     .map((entry) => symbolFrom(entry.ticker))
     .filter((symbol): symbol is string => symbol !== null);
-  const versionedOffset = options.universeVersion && options.universeVersion !== secUniverse.source.version
+  const versionedOffset = options.universeVersion && options.universeVersion !== cursorVersion
     ? 0
     : options.offset ?? 0;
   const runOffset = Math.min(Math.max(0, Math.floor(versionedOffset)), universe.length);
@@ -164,7 +153,10 @@ export async function discoverResearchOpportunities(
     );
   }
 
-  const ranking = await (dependencies.rank ?? listResearchOpportunities)(actor, options);
+  const ranking = await (dependencies.rank ?? listResearchOpportunities)(actor, {
+    ...options,
+    universe: selectedUniverse,
+  });
   const [updatedConnection] = await db.select().from(schwabMarketDataConnections)
     .where(eq(schwabMarketDataConnections.householdId, actor.householdId))
     .limit(1);
@@ -187,6 +179,11 @@ export async function discoverResearchOpportunities(
     ...ranking,
     discovery: {
       status: coverageStatus === "LIMITED" ? "LIMITED" as const : "COMPLETED" as const,
+      universe: selectedUniverse,
+      universeLabel: RESEARCH_UNIVERSE_LABELS[selectedUniverse],
+      cursorVersion,
+      domesticOnly: true as const,
+      classificationUnknownExcluded: true as const,
       progress: {
         phase: "COMPLETED" as const,
         completed: screened,
@@ -194,19 +191,21 @@ export async function discoverResearchOpportunities(
         message: "Connection verification, permitted provider reads, evidence staging, and deterministic ranking completed.",
       },
       knownUniverseCount: universe.length,
-      rawSourceRowCount: secUniverse.source.sourceRowCount,
-      availableSymbolCount: secUniverse.counts.available,
+      rawSourceRowCount: researchUniverseSnapshot.source.sourceRowCount,
+      availableSymbolCount: universe.length,
       source: {
-        provider: secUniverse.source.provider,
-        title: secUniverse.source.title,
-        url: secUniverse.source.url,
-        version: secUniverse.source.version,
-        retrievedAt: secUniverse.source.retrievedAt,
-        sourceSha256: secUniverse.source.sourceSha256,
+        provider: researchUniverseSnapshot.source.provider,
+        title: researchUniverseSnapshot.source.title,
+        url: researchUniverseSnapshot.source.url,
+        version: researchUniverseSnapshot.source.version,
+        retrievedAt: researchUniverseSnapshot.source.retrievedAt,
+        sourceSha256: researchUniverseSnapshot.source.sourceSha256,
+        classificationPolicyVersion: researchUniverseSnapshot.source.classificationPolicyVersion,
+        issuerClassificationSource: researchUniverseSnapshot.source.issuerClassificationSource,
       },
       sourceExclusions: {
-        total: secUniverse.counts.excluded,
-        counts: secUniverse.counts.exclusions,
+        total: researchUniverseSnapshot.counts.excluded,
+        counts: researchUniverseSnapshot.counts.exclusions,
       },
       runOffset,
       runCap: MAX_DISCOVERY_SYMBOLS,
@@ -226,7 +225,11 @@ export async function discoverResearchOpportunities(
       finalCandidates: finalCandidateCount,
       nextOffset,
       limitations: [
-        ...secUniverse.source.limitations,
+        ...researchUniverseSnapshot.source.limitations,
+        `${RESEARCH_UNIVERSE_LABELS[selectedUniverse]} is a verified-domestic selection. Foreign issuers and unknown domicile classifications are excluded rather than inferred from exchange.`,
+        ["INCOME", "GROWTH_COMPOUNDERS", "SMALL_CAP", "MID_CAP", "LARGE_CAP"].includes(selectedUniverse)
+          ? "Financial style and capitalization eligibility use only current, human-approved evidence; newly collected provider evidence remains pending."
+          : "Directory security classification is applied before symbol-targeted provider enrichment.",
         "Schwab did not supply the universe; it was used only for symbol-targeted read-only enrichments.",
         ...limitations.map((issue) => issue.message),
       ],
@@ -261,8 +264,12 @@ export async function discoverResearchOpportunities(
     reason: "Read-only provider discovery completed; new observations remain pending human review",
     metadata: {
       knownUniverseCount: universe.length,
-      rawSourceRowCount: secUniverse.source.sourceRowCount,
-      availableSymbolCount: secUniverse.counts.available,
+      universe: selectedUniverse,
+      universeVersion: researchUniverseSnapshot.source.version,
+      cursorVersion,
+      classificationPolicyVersion: researchUniverseSnapshot.source.classificationPolicyVersion,
+      rawSourceRowCount: researchUniverseSnapshot.source.sourceRowCount,
+      availableSymbolCount: universe.length,
       runOffset,
       runCap: MAX_DISCOVERY_SYMBOLS,
       symbolsScreened: screened,

@@ -7,8 +7,16 @@
  */
 import type { DiscoverResearchOpportunitiesRequestLens } from './discoverResearchOpportunitiesRequestLens';
 import type { DiscoverResearchOpportunitiesRequestPortfolioFit } from './discoverResearchOpportunitiesRequestPortfolioFit';
+import type { ResearchInvestmentUniverse } from './researchInvestmentUniverse';
 
 export interface DiscoverResearchOpportunitiesRequest {
+  /** Selects the verified-domestic instrument set independently of the ranking lens. Income and Growth use approved/current scoring evidence; cap universes derive USD market cap from approved/current shares outstanding times mark, last, or close price and exclude missing inputs. */
+  universe?: ResearchInvestmentUniverse;
+  /**
+     * @maxItems 50
+     * @items.pattern ^[A-Za-z0-9._-]{1,15}$
+     */
+  customSymbols?: string[];
   lens?: DiscoverResearchOpportunitiesRequestLens;
   /** @maxLength 120 */
   search?: string;

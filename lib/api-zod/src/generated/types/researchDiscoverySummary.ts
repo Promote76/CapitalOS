@@ -11,9 +11,21 @@ import type { ResearchDiscoverySource } from './researchDiscoverySource';
 import type { ResearchDiscoverySourceExclusions } from './researchDiscoverySourceExclusions';
 import type { ResearchDiscoverySummaryProgress } from './researchDiscoverySummaryProgress';
 import type { ResearchDiscoverySummaryStatus } from './researchDiscoverySummaryStatus';
+import type { ResearchInvestmentUniverse } from './researchInvestmentUniverse';
 
 export interface ResearchDiscoverySummary {
   status: ResearchDiscoverySummaryStatus;
+  /** Selects the verified-domestic instrument set independently of the ranking lens. Income and Growth use approved/current scoring evidence; cap universes derive USD market cap from approved/current shares outstanding times mark, last, or close price and exclude missing inputs. */
+  universe: ResearchInvestmentUniverse;
+  /** @maxLength 120 */
+  universeLabel: string;
+  /**
+     * Source
+     * @maxLength 240
+     */
+  cursorVersion: string;
+  domesticOnly: true;
+  classificationUnknownExcluded: true;
   progress: ResearchDiscoverySummaryProgress;
   /** @minimum 0 */
   knownUniverseCount: number;

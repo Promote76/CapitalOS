@@ -623,6 +623,7 @@ export * from './researchEvidenceProvenanceClass';
 export * from './researchEvidenceUploadRequest';
 export * from './researchEvidenceUploadRequestContentType';
 export * from './researchEvidenceUploadResponse';
+export * from './researchInvestmentUniverse';
 export * from './researchJournalEntry';
 export * from './researchOpportunitiesResponse';
 export * from './researchOpportunitiesResponseDiagnostics';

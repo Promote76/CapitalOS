@@ -4779,6 +4779,8 @@ export const CreateResearchDossierResponse = zod.object({
 /**
  * @summary Run the household-scoped read-only Research discovery screen
  */
+export const listResearchOpportunitiesQueryCustomSymbolsMax = 500;
+
 export const listResearchOpportunitiesQuerySearchMax = 120;
 
 export const listResearchOpportunitiesQueryMinScoreMin = 0;
@@ -4787,6 +4789,8 @@ export const listResearchOpportunitiesQueryMinScoreMax = 100;
 
 
 export const ListResearchOpportunitiesQueryParams = zod.object({
+  "universe": zod.enum(['BROAD_US_MARKET', 'COMMON_STOCKS', 'INCOME', 'GROWTH_COMPOUNDERS', 'ETFS_FUNDS', 'PREFERRED_INCOME', 'SMALL_CAP', 'MID_CAP', 'LARGE_CAP', 'CUSTOM']).optional(),
+  "customSymbols": zod.coerce.string().max(listResearchOpportunitiesQueryCustomSymbolsMax).optional(),
   "lens": zod.enum(['Income', 'Compounders', 'Balanced']).optional(),
   "search": zod.coerce.string().max(listResearchOpportunitiesQuerySearchMax).optional(),
   "minScore": zod.coerce.number().int().min(listResearchOpportunitiesQueryMinScoreMin).max(listResearchOpportunitiesQueryMinScoreMax).optional(),
@@ -4923,6 +4927,8 @@ export const listResearchOpportunitiesResponseExcludedStaleOrUnreviewedMultipleO
 
 export const listResearchOpportunitiesResponseRankingFactorsMax = 12;
 
+export const listResearchOpportunitiesResponseRankingUniverseVersionMax = 160;
+
 export const listResearchOpportunitiesResponseDiagnosticsReviewedMarketEvidenceMin = 0;
 export const listResearchOpportunitiesResponseDiagnosticsReviewedMarketEvidenceMultipleOf = 1;
 
@@ -5026,7 +5032,9 @@ export const ListResearchOpportunitiesResponse = zod.object({
   "method": zod.string(),
   "factors": zod.array(zod.string()).max(listResearchOpportunitiesResponseRankingFactorsMax),
   "missingData": zod.string(),
-  "lens": zod.enum(['Income', 'Compounders', 'Balanced'])
+  "lens": zod.enum(['Income', 'Compounders', 'Balanced']),
+  "universe": zod.enum(['BROAD_US_MARKET', 'COMMON_STOCKS', 'INCOME', 'GROWTH_COMPOUNDERS', 'ETFS_FUNDS', 'PREFERRED_INCOME', 'SMALL_CAP', 'MID_CAP', 'LARGE_CAP', 'CUSTOM']),
+  "universeVersion": zod.string().max(listResearchOpportunitiesResponseRankingUniverseVersionMax)
 }),
   "diagnostics": zod.object({
   "reviewedMarketEvidence": zod.number().min(listResearchOpportunitiesResponseDiagnosticsReviewedMarketEvidenceMin).multipleOf(listResearchOpportunitiesResponseDiagnosticsReviewedMarketEvidenceMultipleOf),
@@ -5054,6 +5062,9 @@ export const ListResearchOpportunitiesResponse = zod.object({
 /**
  * @summary Collect permitted read-only provider observations and rerun the household opportunity screen
  */
+export const discoverResearchOpportunitiesBodyCustomSymbolsItemRegExp = new RegExp('^[A-Za-z0-9._-]{1,15}$');
+export const discoverResearchOpportunitiesBodyCustomSymbolsMax = 50;
+
 export const discoverResearchOpportunitiesBodySearchMax = 120;
 
 export const discoverResearchOpportunitiesBodyMinScoreMin = 0;
@@ -5068,6 +5079,8 @@ export const discoverResearchOpportunitiesBodyUniverseVersionMax = 160;
 
 
 export const DiscoverResearchOpportunitiesBody = zod.object({
+  "universe": zod.enum(['BROAD_US_MARKET', 'COMMON_STOCKS', 'INCOME', 'GROWTH_COMPOUNDERS', 'ETFS_FUNDS', 'PREFERRED_INCOME', 'SMALL_CAP', 'MID_CAP', 'LARGE_CAP', 'CUSTOM']).optional().describe('Selects the verified-domestic instrument set independently of the ranking lens. Income and Growth use approved\/current scoring evidence; cap universes derive USD market cap from approved\/current shares outstanding times mark, last, or close price and exclude missing inputs.'),
+  "customSymbols": zod.array(zod.string().regex(discoverResearchOpportunitiesBodyCustomSymbolsItemRegExp)).max(discoverResearchOpportunitiesBodyCustomSymbolsMax).optional(),
   "lens": zod.enum(['Income', 'Compounders', 'Balanced']).optional(),
   "search": zod.string().max(discoverResearchOpportunitiesBodySearchMax).optional(),
   "minScore": zod.number().min(discoverResearchOpportunitiesBodyMinScoreMin).max(discoverResearchOpportunitiesBodyMinScoreMax).multipleOf(discoverResearchOpportunitiesBodyMinScoreMultipleOf).optional(),
@@ -5206,6 +5219,8 @@ export const discoverResearchOpportunitiesResponseOneExcludedStaleOrUnreviewedMu
 
 export const discoverResearchOpportunitiesResponseOneRankingFactorsMax = 12;
 
+export const discoverResearchOpportunitiesResponseOneRankingUniverseVersionMax = 160;
+
 export const discoverResearchOpportunitiesResponseOneDiagnosticsReviewedMarketEvidenceMin = 0;
 export const discoverResearchOpportunitiesResponseOneDiagnosticsReviewedMarketEvidenceMultipleOf = 1;
 
@@ -5242,6 +5257,10 @@ export const discoverResearchOpportunitiesResponseOneLensCountsCompoundersMultip
 export const discoverResearchOpportunitiesResponseOneLensCountsBalancedMin = 0;
 export const discoverResearchOpportunitiesResponseOneLensCountsBalancedMultipleOf = 1;
 
+export const discoverResearchOpportunitiesResponseTwoDiscoveryUniverseLabelMax = 120;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoveryCursorVersionMax = 240;
+
 export const discoverResearchOpportunitiesResponseTwoDiscoveryProgressCompletedMin = 0;
 export const discoverResearchOpportunitiesResponseTwoDiscoveryProgressCompletedMultipleOf = 1;
 
@@ -5264,6 +5283,12 @@ export const discoverResearchOpportunitiesResponseTwoDiscoverySourceUrlRegExp = 
 export const discoverResearchOpportunitiesResponseTwoDiscoverySourceVersionMax = 160;
 
 export const discoverResearchOpportunitiesResponseTwoDiscoverySourceSourceSha256RegExp = new RegExp('^[a-f0-9]{64}$');
+export const discoverResearchOpportunitiesResponseTwoDiscoverySourceClassificationPolicyVersionMax = 160;
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySourceIssuerClassificationSourceMax = 500;
+
+
+export const discoverResearchOpportunitiesResponseTwoDiscoverySourceIssuerClassificationSourceRegExp = new RegExp('^https://data\\.sec\\.gov/submissions');
 export const discoverResearchOpportunitiesResponseTwoDiscoveryRawSourceRowCountMin = 0;
 export const discoverResearchOpportunitiesResponseTwoDiscoveryRawSourceRowCountMultipleOf = 1;
 
@@ -5431,7 +5456,9 @@ export const DiscoverResearchOpportunitiesResponse = zod.object({
   "method": zod.string(),
   "factors": zod.array(zod.string()).max(discoverResearchOpportunitiesResponseOneRankingFactorsMax),
   "missingData": zod.string(),
-  "lens": zod.enum(['Income', 'Compounders', 'Balanced'])
+  "lens": zod.enum(['Income', 'Compounders', 'Balanced']),
+  "universe": zod.enum(['BROAD_US_MARKET', 'COMMON_STOCKS', 'INCOME', 'GROWTH_COMPOUNDERS', 'ETFS_FUNDS', 'PREFERRED_INCOME', 'SMALL_CAP', 'MID_CAP', 'LARGE_CAP', 'CUSTOM']),
+  "universeVersion": zod.string().max(discoverResearchOpportunitiesResponseOneRankingUniverseVersionMax)
 }),
   "diagnostics": zod.object({
   "reviewedMarketEvidence": zod.number().min(discoverResearchOpportunitiesResponseOneDiagnosticsReviewedMarketEvidenceMin).multipleOf(discoverResearchOpportunitiesResponseOneDiagnosticsReviewedMarketEvidenceMultipleOf),
@@ -5456,6 +5483,11 @@ export const DiscoverResearchOpportunitiesResponse = zod.object({
 }).and(zod.object({
   "discovery": zod.object({
   "status": zod.enum(['COMPLETED', 'LIMITED']),
+  "universe": zod.enum(['BROAD_US_MARKET', 'COMMON_STOCKS', 'INCOME', 'GROWTH_COMPOUNDERS', 'ETFS_FUNDS', 'PREFERRED_INCOME', 'SMALL_CAP', 'MID_CAP', 'LARGE_CAP', 'CUSTOM']).describe('Selects the verified-domestic instrument set independently of the ranking lens. Income and Growth use approved\/current scoring evidence; cap universes derive USD market cap from approved\/current shares outstanding times mark, last, or close price and exclude missing inputs.'),
+  "universeLabel": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoveryUniverseLabelMax),
+  "cursorVersion": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoveryCursorVersionMax).describe('Source'),
+  "domesticOnly": zod.literal(true),
+  "classificationUnknownExcluded": zod.literal(true),
   "progress": zod.object({
   "phase": zod.enum(['COMPLETED']),
   "completed": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryProgressCompletedMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryProgressCompletedMultipleOf),
@@ -5469,7 +5501,9 @@ export const DiscoverResearchOpportunitiesResponse = zod.object({
   "url": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoverySourceUrlMax).regex(discoverResearchOpportunitiesResponseTwoDiscoverySourceUrlRegExp),
   "version": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoverySourceVersionMax),
   "retrievedAt": zod.coerce.date(),
-  "sourceSha256": zod.string().regex(discoverResearchOpportunitiesResponseTwoDiscoverySourceSourceSha256RegExp)
+  "sourceSha256": zod.string().regex(discoverResearchOpportunitiesResponseTwoDiscoverySourceSourceSha256RegExp),
+  "classificationPolicyVersion": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoverySourceClassificationPolicyVersionMax),
+  "issuerClassificationSource": zod.string().max(discoverResearchOpportunitiesResponseTwoDiscoverySourceIssuerClassificationSourceMax).regex(discoverResearchOpportunitiesResponseTwoDiscoverySourceIssuerClassificationSourceRegExp)
 }),
   "rawSourceRowCount": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryRawSourceRowCountMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryRawSourceRowCountMultipleOf),
   "availableSymbolCount": zod.number().min(discoverResearchOpportunitiesResponseTwoDiscoveryAvailableSymbolCountMin).multipleOf(discoverResearchOpportunitiesResponseTwoDiscoveryAvailableSymbolCountMultipleOf),

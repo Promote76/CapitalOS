@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "releaseCandidate": "RC1",
   "result": "PASS_WITH_BLOCKER",
-  "generatedAt": "2026-09-12T17:07:43.274Z",
+  "generatedAt": "2026-09-12T17:56:10.290Z",
   "source": {
-    "baseCommit": "387b1a4246733224c1e62c43a73801e6e91099ca",
-    "sourceSha256": "9f183fee7f3eb12fdf2c14dd85501f9ce08ce3bc19f465d622d7af0817dd029e",
-    "inputCount": 1168,
+    "baseCommit": "b301eb841f7e598760a299351eb1a40be477054a",
+    "sourceSha256": "5379a20b4dceae7781d8c69251d971bfd1f13abb00e2482f5aeb02cb19be7990",
+    "inputCount": 1171,
     "inputs": [
       "artifacts/api-server/.replit-artifact/artifact.toml",
       "artifacts/api-server/package.json",
@@ -190,6 +190,8 @@
       "artifacts/api-server/src/services/research-discovery.ts",
       "artifacts/api-server/src/services/research-dossier.ts",
       "artifacts/api-server/src/services/research-opportunities.ts",
+      "artifacts/api-server/src/services/research-universe.test.ts",
+      "artifacts/api-server/src/services/research-universe.ts",
       "artifacts/api-server/src/services/schwab-market-data-oauth.ts",
       "artifacts/api-server/src/services/schwab-oauth.test.ts",
       "artifacts/api-server/src/services/schwab-oauth.ts",
@@ -835,6 +837,7 @@
       "lib/api-zod/src/generated/types/researchEvidenceUploadRequest.ts",
       "lib/api-zod/src/generated/types/researchEvidenceUploadRequestContentType.ts",
       "lib/api-zod/src/generated/types/researchEvidenceUploadResponse.ts",
+      "lib/api-zod/src/generated/types/researchInvestmentUniverse.ts",
       "lib/api-zod/src/generated/types/researchJournalEntry.ts",
       "lib/api-zod/src/generated/types/researchOpportunitiesResponse.ts",
       "lib/api-zod/src/generated/types/researchOpportunitiesResponseDiagnostics.ts",
@@ -1220,5 +1223,5 @@
     "venueExecution": "DISABLED",
     "moneyMovement": "DISABLED"
   },
-  "evidenceLog": "docs/certification/operations-recovery-runs/operations-recovery-2026-09-12T17-06-30Z.log"
+  "evidenceLog": "docs/certification/operations-recovery-runs/operations-recovery-2026-09-12T17-55-04Z.log"
 }

@@ -1,10 +1,10 @@
 ---
-name: Broad research universe
-description: Source, batching, cursor, and authority rules for broad U.S. equity discovery.
+name: Verified-domestic research universes
+description: Domestic classification, selection, batching, cursor, and authority rules for U.S. investment discovery.
 ---
 
-Use a frozen, attributed SEC company-ticker snapshot as the broad U.S. equity universe. Restrict it to the approved exchange scope, record exclusions, order symbols deterministically from the snapshot version, and process only bounded batches. Schwab remains a symbol-targeted, read-only enrichment source and must never be described as supplying or screening the universe.
+Use a frozen, attributed SEC exchange-directory snapshot only after each issuer is classified from its official SEC submissions jurisdiction. U.S. states, DC, and U.S. territories are verified domestic; foreign and unknown jurisdictions are excluded rather than inferred from exchange. Universe selection is independent of the Income / Compounders / Balanced ranking lens. Process deterministic bounded batches only. Schwab remains a symbol-targeted, read-only enrichment source and must never be described as supplying or screening the universe.
 
-**Why:** The authorized Schwab capabilities do not include a provider-wide screener or practical symbol enumeration. Household-known tickers are too narrow for discovery, while live unversioned enumeration would make runs difficult to reproduce and audit.
+**Why:** A U.S. exchange listing does not prove domestic domicile, and the authorized Schwab capabilities do not include a provider-wide screener or practical symbol enumeration. Unknown domicile must never be guessed. Frozen, classified SEC evidence keeps exclusions and runs reproducible.
 
-**How to apply:** Keep new SEC and Schwab observations pending human review, rank only approved/current household evidence, and preserve the response-provided next offset with its universe version. If the version changes, reset to the first batch. During UI query transitions, treat the successful discovery response as the authoritative cursor source rather than an independent local counter.
+**How to apply:** Static type universes use frozen SEC metadata. Income, growth, and cap universes use approved/current household evidence; cap buckets derive USD value from approved shares outstanding times approved price and fail closed on missing inputs. Keep new observations pending review. Bind cursors to source version, universe, and custom allowlist; reset on any identity change.

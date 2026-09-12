@@ -29,6 +29,7 @@ import {
   useDiscoverResearchOpportunities,
   type ResearchOpportunity as ApiResearchOpportunity,
   type ResearchDiscoverySummary,
+  type ResearchInvestmentUniverse,
 } from "@workspace/api-client-react";
 import { AlertCircle, AlertTriangle, FilePlus2, X, FileText, CheckCircle2, FlaskConical, Clock, Beaker, FileSearch, Database, Activity } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -282,32 +283,57 @@ export default function InvestmentResearchPage() {
   const [snapshotTicker, setSnapshotTicker] = useState("");
   const [snapshotReasons, setSnapshotReasons] = useState<Record<string, string>>({});
   const [secTicker, setSecTicker] = useState("");
-  const [researchView, setResearchView] = useState<ResearchView>("Balanced");
-  const [researchSearch, setResearchSearch] = useState("");
-  const [researchRefine, setResearchRefine] = useState<ResearchRefine>({});
-  const [selectedOpportunityTickers, setSelectedOpportunityTickers] = useState<string[]>(() => loadResearchOpportunitySelection());
-  const opportunityParams = researchView === "Balanced" && !researchSearch && !researchRefine.minScore && !researchRefine.portfolioFit
-    ? undefined
-    : {
-      lens: researchView,
-      search: researchSearch || undefined,
-      minScore: researchRefine.minScore,
-      portfolioFit: researchRefine.portfolioFit,
-    };
-  const opportunitiesQuery = useListResearchOpportunities(opportunityParams);
-  const discoverOpportunities = useDiscoverResearchOpportunities();
-  const advisoryDecisionsQuery = useListResearchAdvisoryDecisions();
-  const createAdvisoryDecision = useCreateResearchAdvisoryDecision();
   const storedDiscovery = (() => {
     try {
       const value = window.sessionStorage.getItem("capital-os:research:discovery-session");
-      return value ? JSON.parse(value) as { summary?: ResearchDiscoverySummary; nextOffset?: number } : null;
+      return value ? JSON.parse(value) as {
+        summary?: ResearchDiscoverySummary;
+        nextOffset?: number;
+        universe?: ResearchInvestmentUniverse;
+        customSymbols?: string;
+      } : null;
     } catch {
       return null;
     }
   })();
+  const [researchView, setResearchView] = useState<ResearchView>("Balanced");
+  const [researchSearch, setResearchSearch] = useState("");
+  const [researchRefine, setResearchRefine] = useState<ResearchRefine>({});
+  const [selectedOpportunityTickers, setSelectedOpportunityTickers] = useState<string[]>(() => loadResearchOpportunitySelection());
+  const [researchUniverse, setResearchUniverse] = useState<ResearchInvestmentUniverse>(storedDiscovery?.universe ?? "BROAD_US_MARKET");
+  const [researchCustomSymbols, setResearchCustomSymbols] = useState(storedDiscovery?.customSymbols ?? "");
+
+  const resetDiscoverySession = () => {
+    setDiscoverySummary(null);
+    setDiscoveryOffset(0);
+    window.sessionStorage.removeItem("capital-os:research:discovery-session");
+  };
+
+  const handleUniverseChange = (universe: string) => {
+    setResearchUniverse(universe as ResearchInvestmentUniverse);
+    resetDiscoverySession();
+  };
+
+  const handleCustomSymbolsChange = (symbols: string) => {
+    setResearchCustomSymbols(symbols);
+    resetDiscoverySession();
+  };
+
+  const opportunityParams = {
+    universe: researchUniverse,
+    customSymbols: researchUniverse === "CUSTOM" && researchCustomSymbols.trim() ? researchCustomSymbols : undefined,
+    lens: researchView === "Balanced" ? undefined : researchView,
+    search: researchSearch || undefined,
+    minScore: researchRefine.minScore,
+    portfolioFit: researchRefine.portfolioFit,
+  };
+  const opportunitiesQuery = useListResearchOpportunities(opportunityParams);
+  const discoverOpportunities = useDiscoverResearchOpportunities();
+  const advisoryDecisionsQuery = useListResearchAdvisoryDecisions();
+  const createAdvisoryDecision = useCreateResearchAdvisoryDecision();
   const [discoverySummary, setDiscoverySummary] = useState<ResearchDiscoverySummary | null>(storedDiscovery?.summary ?? null);
   const [discoveryError, setDiscoveryError] = useState<string | null>(null);
+  const [discoveryPending, setDiscoveryPending] = useState(false);
   const [discoveryOffset, setDiscoveryOffset] = useState(storedDiscovery?.nextOffset ?? 0);
   const visibleDiscoverySummary = discoverySummary
     ?? (opportunitiesQuery.data as (typeof opportunitiesQuery.data & { discovery?: ResearchDiscoverySummary }) | undefined)?.discovery
@@ -731,15 +757,17 @@ Research Notes:
         : "empty";
   const handleDiscoverOpportunities = async () => {
     setDiscoveryError(null);
+    setDiscoveryPending(true);
     try {
       const requestedOffset = visibleDiscoverySummary?.nextOffset ?? (visibleDiscoverySummary ? 0 : discoveryOffset);
       // The SEC universe is traversed in deterministic bounded batches. Keep the
       // cursor client-side and explicitly send zero for the first run.
       const result = await discoverOpportunities.mutateAsync({
         data: {
-          ...(opportunityParams ?? {}),
+          ...opportunityParams,
+          customSymbols: opportunityParams.customSymbols ? opportunityParams.customSymbols.split(",").map(s => s.trim()).filter(Boolean) : undefined,
           offset: requestedOffset,
-          ...(visibleDiscoverySummary?.source.version ? { universeVersion: visibleDiscoverySummary.source.version } : {}),
+          ...(visibleDiscoverySummary?.cursorVersion ? { universeVersion: visibleDiscoverySummary.cursorVersion } : {}),
         },
       });
       setDiscoverySummary(result.discovery);
@@ -748,6 +776,8 @@ Research Notes:
       window.sessionStorage.setItem("capital-os:research:discovery-session", JSON.stringify({
         summary: result.discovery,
         nextOffset,
+        universe: researchUniverse,
+        customSymbols: researchCustomSymbols,
       }));
       queryClient.setQueryData(getListResearchOpportunitiesQueryKey(opportunityParams), result);
       await Promise.all([
@@ -755,8 +785,8 @@ Research Notes:
         queryClient.invalidateQueries({ queryKey: getListSecFilingsQueryKey() }),
       ]);
       toast({
-        title: result.discovery.status === "LIMITED" ? "Discovery completed with limits" : "Discovery completed",
-        description: `${result.discovery.symbolsScreened} symbols screened · ${result.discovery.symbolsEligible} eligible · ${result.discovery.finalCandidateCount} candidates. New evidence remains pending human review.`,
+        title: result.discovery.status === "LIMITED" ? "Bounded batch completed with limits" : "Bounded batch completed",
+        description: `${result.discovery.symbolsScreened} symbols screened · ${result.discovery.symbolsEligible} eligible from approved/current evidence · ${result.discovery.finalCandidateCount} candidates. New evidence remains pending human review.`,
       });
     } catch (error) {
       const detail = error instanceof Error
@@ -766,6 +796,8 @@ Research Notes:
           : "Opportunity discovery could not complete.";
       setDiscoveryError(detail);
       toast({ title: "Discovery unavailable", description: detail, variant: "destructive" });
+    } finally {
+      setDiscoveryPending(false);
     }
   };
   const handleOpportunityAction = async (action: ResearchManualAction, opportunity: WorkflowOpportunity) => {
@@ -808,6 +840,10 @@ Research Notes:
       />
 
       <ResearchOpportunityWorkflow
+        universe={researchUniverse}
+        customSymbols={researchCustomSymbols}
+        onUniverseChange={handleUniverseChange}
+        onCustomSymbolsChange={handleCustomSymbolsChange}
         activeView={researchView}
         opportunities={workflowOpportunities}
         selectedTickers={selectedOpportunityTickers}
@@ -819,7 +855,7 @@ Research Notes:
         onRefineChange={setResearchRefine}
         refine={researchRefine}
         onDiscover={() => { void handleDiscoverOpportunities(); }}
-        discoverPending={discoverOpportunities.isPending}
+        discoverPending={discoveryPending}
         discoverySummary={visibleDiscoverySummary}
         discoveryError={discoveryError}
         totalEligible={opportunitiesQuery.data?.totalEligible}

@@ -182,26 +182,32 @@ export async function ingestFinancialDocument(actor: Actor, input: {
         eq(financeCategories.householdId, actor.householdId),
         eq(financeCategories.active, true),
       ));
+      const statementStart = input.statementStart ?? parsed.statementStart;
+      const statementEnd = input.statementEnd ?? parsed.statementEnd;
+      [bankStatement] = await tx.insert(bankStatementDocuments).values({
+        householdId: actor.householdId, documentId: document.id, accountId: input.accountId,
+        institutionName: input.sourceInstitution, accountDisplayName: input.accountDisplayName, accountMask: input.accountMask ?? parsed.accountLastFour,
+        statementStart, statementEnd,
+        openingBalance: parsed.openingBalance ?? "0.00", closingBalance: parsed.closingBalance ?? "0.00",
+        totalDeposits: parsed.totalDeposits ?? "0.00", totalWithdrawals: parsed.totalWithdrawals ?? "0.00",
+        status: "document_evidence_pending_review",
+      }).returning();
       await tx.update(financialDocuments).set({
         parserVersion: BANK_STATEMENT_PARSER_VERSION,
         status: parseable ? "NEEDS_REVIEW" : "NEEDS_REVIEW",
         sourceMetadata: parserMetadata,
+        periodStart: statementStart,
+        periodEnd: statementEnd,
+        sourceRecordType: "bank_statement_document",
+        sourceRecordId: bankStatement.id,
       }).where(eq(financialDocuments.id, document.id));
       await tx.update(financialDocumentParseGenerations).set({
         parserVersion: BANK_STATEMENT_PARSER_VERSION,
         extractionStatus: parseable ? "complete" : "failed",
         sourceRecordType: "bank_statement_document",
-        sourceRecordId: bankStatement?.id,
+        sourceRecordId: bankStatement.id,
         evidence: { authoritative: !detection.conflictsWithSelectedType, parserErrorKind: parsed.errorKind, parserErrors: parsed.errors, extractedAccountLastFour: parsed.accountLastFour, extractedStatementStart: parsed.statementStart, extractedStatementEnd: parsed.statementEnd },
       }).where(eq(financialDocumentParseGenerations.id, initialGeneration.id));
-      [bankStatement] = await tx.insert(bankStatementDocuments).values({
-        householdId: actor.householdId, documentId: document.id, accountId: input.accountId,
-        institutionName: input.sourceInstitution, accountDisplayName: input.accountDisplayName, accountMask: input.accountMask ?? parsed.accountLastFour,
-        statementStart: input.statementStart ?? parsed.statementStart, statementEnd: input.statementEnd ?? parsed.statementEnd,
-        openingBalance: parsed.openingBalance ?? "0.00", closingBalance: parsed.closingBalance ?? "0.00",
-        totalDeposits: parsed.totalDeposits ?? "0.00", totalWithdrawals: parsed.totalWithdrawals ?? "0.00",
-        status: "document_evidence_pending_review",
-      }).returning();
       if (parseable && parsed.rows.length) {
         const inserted = await tx.insert(bankStatementTransactions).values(parsed.rows.map((row) => {
           const suggestion = suggestStatementCategory(row.description, row.direction, categoryCandidates);

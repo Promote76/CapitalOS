@@ -26,6 +26,7 @@
 - [Financial UI loading states](capital-os-financial-ui-states.md) — never render loading or failed financial queries as real zero balances; fail closed with explicit retry states.
 - [Budget allocation snapshots](capital-os-budget-allocation-snapshots.md) — version weekly allocation templates with draft periods; finalized periods preserve the exact reviewed percentages.
 - [Budget hash navigation](capital-os-budget-hash-navigation.md) — same-route Wouter hash links need an explicit post-navigation scroll; hashchange alone is not reliable.
+- [Browser route certification](capital-os-browser-navigation-certification.md) — route-only UI regressions should stay independent from tenant fixtures while the dev auth bypass is active.
 - [xAI provider contract](capital-os-xai-provider-contract.md) — require strict schema, persisted verification evidence, safe failure codes, and atomic advisory finalization.
 - [Schwab read-only boundary](capital-os-schwab-boundary.md) — keep the observation-only contract disabled until an approved connector and real provider evidence exist.
 - [Daily Ops review history boundary](capital-os-daily-ops-history.md) — persist reasoned operator handoffs separately from financial authority and execution state.

@@ -11,6 +11,7 @@
     "check-contract": "node ../../scripts/check-api-contract.mjs",
     "fixture:budget-review-browser": "../../scripts/node_modules/.bin/tsx src/integration/budget-review-browser-fixture.ts",
     "test:budget-review-browser": "playwright test --config playwright.config.ts src/browser/budget-review-recovery.spec.ts",
+    "test:budget-plan-builder-navigation": "playwright test --config playwright.config.ts src/browser/budget-plan-builder-navigation.spec.ts",
     "test:family-office-browser": "playwright test --config playwright.config.ts src/browser/family-office-boundaries.spec.ts",
     "test:research-browser": "playwright test --config playwright.config.ts src/browser/research-page-regression.spec.ts",
     "test:daily-ops-browser": "playwright test --config playwright.config.ts src/browser/daily-ops-certification.spec.ts src/browser/guided-run-journal-certification.spec.ts",

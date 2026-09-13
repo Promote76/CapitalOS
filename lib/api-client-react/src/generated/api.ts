@@ -140,6 +140,7 @@ import type {
   FinancialDocumentIdentityReviewInput,
   FinancialDocumentIngestInput,
   FinancialDocumentList,
+  FinancialDocumentParserRetryInput,
   FinancialDocumentReviewInput,
   FinancialDocumentTypeDecisionInput,
   FinancialDocumentTypeDetectionInput,
@@ -16562,6 +16563,78 @@ export const useRunFinancialDocumentTypeDetection = <TError = ErrorType<Forbidde
         TContext
       > => {
       return useMutation(getRunFinancialDocumentTypeDetectionMutationOptions(options));
+    }
+
+export const getRetryBankStatementParserUrl = (documentId: string,) => {
+
+
+
+
+  return `/api/financial-documents/${documentId}/retry-parser`
+}
+
+/**
+ * @summary Re-run the bank statement parser against preserved source evidence
+ */
+export const retryBankStatementParser = async (documentId: string,
+    financialDocumentParserRetryInput: FinancialDocumentParserRetryInput, options?: Parameters<typeof customFetch>[1]): Promise<FinancialDocument> => {
+
+  return customFetch<FinancialDocument>(getRetryBankStatementParserUrl(documentId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financialDocumentParserRetryInput)
+  }
+);}
+
+
+
+
+
+export const getRetryBankStatementParserMutationOptions = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryBankStatementParser>>, TError,{documentId: string;data: BodyType<FinancialDocumentParserRetryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retryBankStatementParser>>, TError,{documentId: string;data: BodyType<FinancialDocumentParserRetryInput>}, TContext> => {
+
+const mutationKey = ['retryBankStatementParser'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retryBankStatementParser>>, {documentId: string;data: BodyType<FinancialDocumentParserRetryInput>}> = (props) => {
+          const {documentId,data} = props ?? {};
+
+          return  retryBankStatementParser(documentId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetryBankStatementParserMutationResult = NonNullable<Awaited<ReturnType<typeof retryBankStatementParser>>>
+    export type RetryBankStatementParserMutationBody = BodyType<FinancialDocumentParserRetryInput>
+    export type RetryBankStatementParserMutationError = ErrorType<ForbiddenResponse | ConflictResponse>
+
+    /**
+ * @summary Re-run the bank statement parser against preserved source evidence
+ */
+export const useRetryBankStatementParser = <TError = ErrorType<ForbiddenResponse | ConflictResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryBankStatementParser>>, TError,{documentId: string;data: BodyType<FinancialDocumentParserRetryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof retryBankStatementParser>>,
+        TError,
+        {documentId: string;data: BodyType<FinancialDocumentParserRetryInput>},
+        TContext
+      > => {
+      return useMutation(getRetryBankStatementParserMutationOptions(options));
     }
 
 export const getLinkFinancialDocumentBusinessUrl = (documentId: string,) => {

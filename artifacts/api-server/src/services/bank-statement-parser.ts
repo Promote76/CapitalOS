@@ -61,6 +61,11 @@ function date(value: unknown): string | null {
 }
 function shortDate(value: unknown, year: number | null): string | null {
   const raw = String(value ?? "").trim();
+  const full = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  if (full) {
+    const fullYear = full[3].length === 2 ? 2000 + Number(full[3]) : Number(full[3]);
+    return date(`${fullYear}-${full[1]}-${full[2]}`);
+  }
   const match = raw.match(/^(\d{1,2})[/-](\d{1,2})$/);
   if (!match || !year) return null;
   return date(`${year}-${match[1]}-${match[2]}`);
@@ -155,6 +160,40 @@ async function pdfText(bytes: Buffer) {
     child.stdin.end(bytes);
   });
 }
+
+function activityHeaderPositions(lines: string[], start: number) {
+  const window = lines.slice(start, Math.min(lines.length, start + 3));
+  const lower = window.map((line) => line.toLowerCase());
+  const findStart = (patterns: RegExp[], preferLast = false) => {
+    const matches: Array<{ start: number }> = [];
+    lower.forEach((line) => {
+      for (const pattern of patterns) {
+        const match = line.match(pattern);
+        if (match?.index !== undefined) {
+          matches.push({ start: match.index });
+          break;
+        }
+      }
+    });
+    return (preferLast ? matches.at(-1) : matches[0]) ?? null;
+  };
+  const date = findStart([/\bdate\b/i]);
+  const description = findStart([/\bdescription\b/i]);
+  const additions = findStart([/\bdeposits?\s*\/?\s*additions\b/i, /\badditions\b/i]);
+  const subtractions = findStart([/\bwithdrawals?\s*\/?\s*subtractions\b/i, /\bsubtractions\b/i]);
+  const balance = findStart([/\bbalance\b/i], true);
+  const number = findStart([/\bnumber\b/i]);
+  if (!date || !description || !additions || !subtractions || !balance) return null;
+  return {
+    headerIndex: start,
+    descriptionStart: description.start,
+    additionsStart: additions.start,
+    subtractionsStart: subtractions.start,
+    balanceStart: balance.start,
+    numberStart: number?.start ?? -1,
+  };
+}
+
 function parseWellsFargoStatement(text: string): ParsedStatement {
   const result = emptyStatement();
   const pages = text.split("\f");
@@ -173,10 +212,10 @@ function parseWellsFargoStatement(text: string): ParsedStatement {
     const match = text.match(pattern);
     return match ? cents(match[1].replace(/\s+/g, ""))?.replace(/^-/, "") ?? null : null;
   };
-  result.openingBalance = summaryMoney(/^\s*Beginning\s+balance\s+on\s+\d{1,2}[/-]\d{1,2}\s+\$?\s*([\d,]+(?:\.\d{1,2})?)/im);
-  result.totalDeposits = summaryMoney(/^\s*Deposits\/Additions\s+\$?\s*([\d,]+(?:\.\d{1,2})?)/im);
-  result.totalWithdrawals = summaryMoney(/^\s*Withdrawals\/Subtractions\s+-?\s*\$?\s*([\d,]+(?:\.\d{1,2})?)/im);
-  result.closingBalance = summaryMoney(/^\s*Ending\s+balance\s+on\s+\d{1,2}[/-]\d{1,2}\s+\$?\s*([\d,]+(?:\.\d{1,2})?)/im);
+  result.openingBalance = summaryMoney(/^\s*Beginning\s+balance\s+on\s+\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\s+\$?\s*([\d,]+(?:\.\d{1,2})?)/im);
+  result.totalDeposits = summaryMoney(/^\s*Deposits\s*\/\s*Additions\s+\$?\s*([\d,]+(?:\.\d{1,2})?)/im);
+  result.totalWithdrawals = summaryMoney(/^\s*Withdrawals\s*\/\s*Subtractions\s+-?\s*\$?\s*([\d,]+(?:\.\d{1,2})?)/im);
+  result.closingBalance = summaryMoney(/^\s*Ending\s+balance\s+on\s+\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\s+\$?\s*([\d,]+(?:\.\d{1,2})?)/im);
   const totalsMatch = text.match(/^\s*Totals\s+\$?\s*([\d,]+(?:\.\d{1,2})?)\s+\$?\s*([\d,]+(?:\.\d{1,2})?)/im);
   if (totalsMatch) {
     result.totalDeposits ??= cents(totalsMatch[1]);
@@ -186,15 +225,15 @@ function parseWellsFargoStatement(text: string): ParsedStatement {
   let transactionHeaderPages = 0;
   for (let page = 0; page < pages.length; page += 1) {
     const lines = pages[page].split(/\r?\n/);
-    const headerIndex = lines.findIndex((line) => /\bdate\b/i.test(line) && /\bdescription\b/i.test(line) && /\badditions\b/i.test(line) && /\bsubtractions\b/i.test(line) && /\bbalance\b/i.test(line));
-    if (headerIndex < 0) continue;
+    const header = lines.map((_, index) => activityHeaderPositions(lines, index)).find(Boolean);
+    if (!header) continue;
     transactionHeaderPages += 1;
-    const headerLine = lines[headerIndex].toLowerCase();
-    const descriptionStart = headerLine.indexOf("description");
-    const additionsStart = headerLine.indexOf("additions");
-    const subtractionsStart = headerLine.indexOf("subtractions");
-    const balanceStart = headerLine.lastIndexOf("balance");
-    const numberStart = headerLine.indexOf("number");
+    const headerIndex = header.headerIndex;
+    const descriptionStart = header.descriptionStart;
+    const additionsStart = header.additionsStart;
+    const subtractionsStart = header.subtractionsStart;
+    const balanceStart = header.balanceStart;
+    const numberStart = header.numberStart;
     const additionsBoundary = (additionsStart + subtractionsStart) / 2;
     const withdrawalsBoundary = (subtractionsStart + balanceStart) / 2;
     if (descriptionStart < 0 || additionsStart <= descriptionStart || subtractionsStart <= additionsStart || balanceStart <= subtractionsStart) {
@@ -296,7 +335,10 @@ function parseWellsFargoStatement(text: string): ParsedStatement {
   return result;
 }
 function pdfStatement(text: string): ParsedStatement {
-  if (/statement\s+period\s+activity\s+summary/i.test(text) && /deposits\//i.test(text) && /additions/i.test(text) && /withdrawals\//i.test(text) && /subtractions/i.test(text) && /ending\s+daily/i.test(text)) {
+  if (/statement\s+period\s+activity\s+summary/i.test(text) &&
+    /deposits?\s*\/\s*additions?/i.test(text) &&
+    /withdrawals?\s*\/\s*subtractions?/i.test(text) &&
+    /ending\s+daily/i.test(text)) {
     return parseWellsFargoStatement(text);
   }
   const result = emptyStatement();

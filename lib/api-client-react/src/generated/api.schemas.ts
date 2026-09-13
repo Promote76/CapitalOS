@@ -1054,6 +1054,19 @@ export interface FinancialDocumentTypeDetectionInput {
   idempotencyKey: string;
 }
 
+export interface FinancialDocumentParserRetryInput {
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  reason: string;
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
+  idempotencyKey: string;
+}
+
 export type FinancialDocumentIdentityReviewInputClassification = typeof FinancialDocumentIdentityReviewInputClassification[keyof typeof FinancialDocumentIdentityReviewInputClassification];
 
 

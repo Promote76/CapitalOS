@@ -59,6 +59,10 @@ const SIGNALS: Array<{
   { type: "BANK_STATEMENT", label: "bank statement heading", pattern: /\b(?:bank|account)\s+statement\b/i, strength: 3 },
   { type: "BANK_STATEMENT", label: "opening and closing balances", pattern: /\b(?:opening|beginning)\s+balance\b/i, strength: 2 },
   { type: "BANK_STATEMENT", label: "deposits and withdrawals", pattern: /\b(?:deposits?|withdrawals?)\b/i, strength: 2 },
+  { type: "BANK_STATEMENT", label: "Wells Fargo activity summary", pattern: /\bstatement\s+period\s+activity\s+summary\b/i, strength: 3 },
+  { type: "BANK_STATEMENT", label: "Wells Fargo transaction history", pattern: /\btransaction\s+history\b/i, strength: 2 },
+  { type: "BANK_STATEMENT", label: "Wells Fargo additions and subtractions", pattern: /\b(?:deposits?\s*\/\s*additions|withdrawals?\s*\/\s*subtractions)\b/i, strength: 2 },
+  { type: "BANK_STATEMENT", label: "Wells Fargo ending daily balance", pattern: /\bending\s+daily\s+balance\b/i, strength: 2 },
 ];
 
 function filenameSignal(filename: string): { type: SupportedFinancialDocumentType; label: string } | null {

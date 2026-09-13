@@ -337,6 +337,7 @@ export * from './financialDocumentIdentityReviewInput';
 export * from './financialDocumentIdentityReviewInputClassification';
 export * from './financialDocumentIngestInput';
 export * from './financialDocumentList';
+export * from './financialDocumentParserRetryInput';
 export * from './financialDocumentReviewInput';
 export * from './financialDocumentReviewInputDecision';
 export * from './financialDocumentSourceMetadata';

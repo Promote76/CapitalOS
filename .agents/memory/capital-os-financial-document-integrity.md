@@ -20,3 +20,9 @@ Irreversible object deletion must be driven by a durable, retryable operation re
 **Why:** PostgreSQL and object storage cannot commit atomically. A timeout after an applied object DELETE, a process crash before progress persistence, or unrelated household activity during retry can otherwise leave live evidence pointing at missing source files.
 
 **How to apply:** Preflight every source first; archive intent and progress synchronously; make retries use the original fingerprint and source reservation; prove protected IDs were not removed while allowing unrelated additions; create the immutable completion tombstone only after database cleanup verifies.
+
+Failed parsing must be retryable against the preserved source object rather than relying on a duplicate upload. A retry must be role-protected, reasoned, idempotent, append a parser generation, and retain the original source metadata.
+
+**Why:** Hash-based duplicate detection can return the existing failed document, so asking an operator to upload the same file again does not repair the evidence.
+
+**How to apply:** Offer a parser retry only for unverified bank-statement evidence, verify the source hash before recording results, refuse to replace reviewed child rows, and keep retry failures in the same human-review boundary.

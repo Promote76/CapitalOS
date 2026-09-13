@@ -3530,6 +3530,21 @@ paths:
         "200": { description: Persisted detection evidence, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocument" } } } }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
+  /financial-documents/{documentId}/retry-parser:
+    post:
+      operationId: retryBankStatementParser
+      tags: [household-finance]
+      summary: Re-run the bank statement parser against preserved source evidence
+      parameters: [{ $ref: "#/components/parameters/FinancialDocumentId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FinancialDocumentParserRetryInput" }
+      responses:
+        "200": { description: Re-parsed bank statement evidence, content: { application/json: { schema: { $ref: "#/components/schemas/FinancialDocument" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /financial-documents/{documentId}/business-link:
     post:
       operationId: linkFinancialDocumentBusiness
@@ -4477,6 +4492,12 @@ components:
         reason: { type: string, minLength: 1, maxLength: 1000 }
         idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
     FinancialDocumentTypeDetectionInput:
+      type: object
+      required: [reason, idempotencyKey]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+        idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+    FinancialDocumentParserRetryInput:
       type: object
       required: [reason, idempotencyKey]
       properties:

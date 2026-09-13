@@ -24,6 +24,7 @@ const acceptedTypes = new Set([
 ]);
 const reviewableStatuses = new Set(["UPLOADED", "PARSING", "PARSED", "NEEDS_REVIEW", "TYPE_REVIEW_REQUIRED"]);
 const today = () => new Date().toISOString().slice(0, 10);
+const FINANCIAL_DOCUMENT_PARSER_RETRY_OPERATION = "financial_document_parser_retry";
 
 type Correction = typeof bankStatementTransactionCorrections.$inferSelect;
 type StatementTransaction = typeof bankStatementTransactions.$inferSelect & { correctionHistory: Correction[] };
@@ -656,6 +657,159 @@ export async function runFinancialDocumentTypeDetection(actor: Actor, documentId
       householdId: actor.householdId,
       key: input.idempotencyKey,
       operation: FINANCIAL_DOCUMENT_TYPE_DETECTION_OPERATION,
+      responseStatus: 200,
+      responseBody: { response: result, fingerprint },
+    });
+    return result;
+  });
+}
+
+export async function retryBankStatementParser(actor: Actor, documentId: string, input: {
+  reason: string;
+  idempotencyKey: string;
+}) {
+  assertPermission(actor.role, "approve");
+  if (!input.reason.trim()) throw new GovernanceError("INVALID_STATE", "A reason is required to retry bank statement parsing");
+  const existingDocument = await getFinancialDocumentForTypeAction(actor, documentId);
+  if (existingDocument.documentType !== "BANK_STATEMENT") throw new GovernanceError("INVALID_STATE", "Only bank statement evidence can be re-parsed");
+  if (existingDocument.reviewDecision === "VERIFIED") throw new GovernanceError("INVALID_STATE", "Verified bank statement evidence cannot be re-parsed");
+  assertPrivateObjectPath(existingDocument.sourceObjectPath);
+  const declaredSizeBytes = existingDocument.sourceMetadata?.declaredSizeBytes;
+  if (typeof declaredSizeBytes !== "number") throw new GovernanceError("INVALID_STATE", "The original upload size is unavailable; re-upload is required before reprocessing");
+  const { bytes, sha256 } = await downloadBusinessDocument(existingDocument.sourceObjectPath, {
+    maxBytes: 50 * 1024 * 1024,
+    expectedBytes: declaredSizeBytes,
+    expectedContentType: existingDocument.mimeType,
+  });
+  if (sha256 !== existingDocument.documentHash) {
+    throw new GovernanceError("CONFLICT", "The preserved source object no longer matches its recorded hash; no parser result was recorded");
+  }
+  const parsed = await parseBankStatement(bytes, existingDocument.mimeType);
+  const fingerprint = JSON.stringify(input);
+
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`financial-document-parser:${actor.householdId}:${documentId}`}, 0))`);
+    const [prior] = await tx.select().from(idempotencyKeys).where(and(
+      eq(idempotencyKeys.householdId, actor.householdId),
+      eq(idempotencyKeys.key, input.idempotencyKey),
+    )).limit(1);
+    if (prior) {
+      if (prior.operation !== FINANCIAL_DOCUMENT_PARSER_RETRY_OPERATION || !prior.responseBody || prior.responseBody.fingerprint !== fingerprint) {
+        throw new GovernanceError("IDEMPOTENCY_CONFLICT", "Idempotency key was already used for a different parser retry");
+      }
+      return prior.responseBody.response;
+    }
+
+    const [document] = await tx.select().from(financialDocuments).where(and(
+      eq(financialDocuments.id, documentId),
+      eq(financialDocuments.householdId, actor.householdId),
+    )).limit(1);
+    const [statement] = await tx.select().from(bankStatementDocuments).where(and(
+      eq(bankStatementDocuments.documentId, documentId),
+      eq(bankStatementDocuments.householdId, actor.householdId),
+    )).limit(1);
+    if (!document || !statement) throw new GovernanceError("INVALID_STATE", "Bank statement evidence is not available for re-parsing");
+    if (document.documentHash !== sha256 || document.sourceObjectPath !== existingDocument.sourceObjectPath || document.mimeType !== existingDocument.mimeType) {
+      throw new GovernanceError("CONFLICT", "The preserved source metadata changed while parsing was running; no parser result was recorded");
+    }
+    const existingRows = await tx.select({ id: bankStatementTransactions.id }).from(bankStatementTransactions).where(and(
+      eq(bankStatementTransactions.householdId, actor.householdId),
+      eq(bankStatementTransactions.bankStatementDocumentId, statement.id),
+    )).limit(1);
+    if (existingRows.length) throw new GovernanceError("INVALID_STATE", "Bank statement rows already exist; review those rows instead of re-parsing the source");
+
+    await tx.update(financialDocumentParseGenerations).set({ status: "SUPERSEDED_BY_REPARSE" }).where(and(
+      eq(financialDocumentParseGenerations.householdId, actor.householdId),
+      eq(financialDocumentParseGenerations.financialDocumentId, documentId),
+      eq(financialDocumentParseGenerations.status, "CURRENT"),
+    ));
+    const parserMetadata = {
+      declaredSizeBytes,
+      observedSizeBytes: bytes.length,
+      parserVersion: BANK_STATEMENT_PARSER_VERSION,
+      parserErrorKind: parsed.errorKind,
+      parserErrors: parsed.errors,
+      extractedAccountLastFour: parsed.accountLastFour,
+      extractedStatementStart: parsed.statementStart,
+      extractedStatementEnd: parsed.statementEnd,
+      retriedAt: new Date().toISOString(),
+      retryReason: input.reason,
+    };
+    const [generation] = await tx.insert(financialDocumentParseGenerations).values({
+      householdId: actor.householdId,
+      financialDocumentId: documentId,
+      documentType: "BANK_STATEMENT",
+      parserVersion: BANK_STATEMENT_PARSER_VERSION,
+      status: "CURRENT",
+      extractionStatus: parsed.errors.length ? "failed" : "complete",
+      sourceRecordType: "bank_statement_document",
+      sourceRecordId: statement.id,
+      evidence: { authoritative: false, parserErrorKind: parsed.errorKind, parserErrors: parsed.errors, retryReason: input.reason, sha256 },
+      createdBy: actor.userId,
+    }).returning();
+    const persistedStatementStart = existingDocument.sourceMetadata?.extractedStatementStart;
+    const persistedStatementEnd = existingDocument.sourceMetadata?.extractedStatementEnd;
+    await tx.update(bankStatementDocuments).set({
+      statementStart: typeof persistedStatementStart === "string" ? persistedStatementStart : parsed.statementStart ?? statement.statementStart,
+      statementEnd: typeof persistedStatementEnd === "string" ? persistedStatementEnd : parsed.statementEnd ?? statement.statementEnd,
+      openingBalance: parsed.openingBalance ?? statement.openingBalance,
+      closingBalance: parsed.closingBalance ?? statement.closingBalance,
+      totalDeposits: parsed.totalDeposits ?? statement.totalDeposits,
+      totalWithdrawals: parsed.totalWithdrawals ?? statement.totalWithdrawals,
+      status: "document_evidence_pending_review",
+    }).where(and(eq(bankStatementDocuments.id, statement.id), eq(bankStatementDocuments.householdId, actor.householdId)));
+    if (!parsed.errors.length && parsed.rows.length) {
+      const categoryCandidates = await tx.select({
+        id: financeCategories.id,
+        name: financeCategories.name,
+        categoryType: financeCategories.categoryType,
+      }).from(financeCategories).where(and(
+        eq(financeCategories.householdId, actor.householdId),
+        eq(financeCategories.active, true),
+      ));
+      await tx.insert(bankStatementTransactions).values(parsed.rows.map((row) => {
+        const suggestion = suggestStatementCategory(row.description, row.direction, categoryCandidates);
+        return {
+          householdId: actor.householdId, bankStatementDocumentId: statement.id, postedDate: row.postedDate,
+          description: row.description, amount: row.amount, direction: row.direction, runningBalance: row.runningBalance,
+          reference: row.reference, sourcePage: row.sourcePage, confidence: "0.95",
+          sourceLine: row.sourceLine, sourceRegion: row.sourceRegion, parserVersion: BANK_STATEMENT_PARSER_VERSION,
+          evidenceFingerprint: row.evidenceFingerprint, originalValue: row.originalValue,
+          reviewStatus: "document_evidence_pending_review",
+          suggestedCategoryId: suggestion?.categoryId,
+          suggestedCategoryConfidence: suggestion?.confidence,
+          suggestedCategoryReason: suggestion?.reason,
+          suggestedCategorySource: suggestion ? "HOUSEHOLD_CATEGORY_NAME_V1" : undefined,
+          categoryDecisionStatus: suggestion ? "SUGGESTED" as const : "UNCLASSIFIED" as const,
+        };
+      })).onConflictDoNothing({
+        target: [bankStatementTransactions.householdId, bankStatementTransactions.evidenceFingerprint],
+      });
+    }
+    const [updated] = await tx.update(financialDocuments).set({
+      parserVersion: BANK_STATEMENT_PARSER_VERSION,
+      status: "NEEDS_REVIEW",
+      sourceMetadata: { ...(existingDocument.sourceMetadata ?? {}), ...parserMetadata },
+      periodStart: parsed.statementStart ?? statement.statementStart,
+      periodEnd: parsed.statementEnd ?? statement.statementEnd,
+      sourceRecordType: "bank_statement_document",
+      sourceRecordId: statement.id,
+    }).where(and(eq(financialDocuments.id, documentId), eq(financialDocuments.householdId, actor.householdId))).returning();
+    if (!updated || !generation) throw new GovernanceError("INVALID_STATE", "Bank statement parser retry could not be recorded");
+    const result = response(updated, statement, await statementTransactions(tx, statement.id, actor.householdId));
+    await appendAuditEvent({
+      householdId: actor.householdId,
+      eventType: "financial_document_parser_retried",
+      actor: actor.userId,
+      entity: "financial_document",
+      entityId: documentId,
+      reason: input.reason,
+      metadata: { parserGenerationId: generation.id, parserVersion: BANK_STATEMENT_PARSER_VERSION, parserErrorKind: parsed.errorKind, parserErrors: parsed.errors, documentHash: document.documentHash, sourceObjectPreserved: true },
+    }, tx);
+    await tx.insert(idempotencyKeys).values({
+      householdId: actor.householdId,
+      key: input.idempotencyKey,
+      operation: FINANCIAL_DOCUMENT_PARSER_RETRY_OPERATION,
       responseStatus: 200,
       responseBody: { response: result, fingerprint },
     });

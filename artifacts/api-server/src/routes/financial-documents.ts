@@ -14,6 +14,7 @@ import {
   ReconcileBankStatementTransactionInclusionBody, ReconcileBankStatementTransactionInclusionHeader, ReconcileBankStatementTransactionInclusionParams, ReconcileBankStatementTransactionInclusionResponse,
   DecideFinancialDocumentTypeBody, DecideFinancialDocumentTypeParams, DecideFinancialDocumentTypeResponse,
   RunFinancialDocumentTypeDetectionBody, RunFinancialDocumentTypeDetectionParams, RunFinancialDocumentTypeDetectionResponse,
+  RetryBankStatementParserBody, RetryBankStatementParserParams, RetryBankStatementParserResponse,
   ReviewFinancialDocumentIdentityBody, ReviewFinancialDocumentIdentityParams, ReviewFinancialDocumentIdentityResponse,
   LinkFinancialDocumentBusinessBody, LinkFinancialDocumentBusinessParams, LinkFinancialDocumentBusinessResponse,
   DeleteFinancialDocumentEvidenceBody, DeleteFinancialDocumentEvidenceParams, DeleteFinancialDocumentEvidenceResponse,
@@ -22,7 +23,7 @@ import {
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
-import { decideBankStatementTransactionCategory, decideFinancialDocumentType, getBankStatementTransactionInclusion, getFinancialDocument, importBankStatementTransaction, ingestFinancialDocument, linkBankStatementTransaction, linkFinancialDocumentBusiness, listFinancialDocuments, listFinancialReviewQueue, previewBankStatementTransactionMatch, reconcileBankStatementTransactionInclusion, requestFinancialDocumentUploadUrl, reverseBankStatementTransactionImport, reviewBankStatementTransaction, reviewFinancialDocument, reviewFinancialDocumentIdentity, runFinancialDocumentTypeDetection, unlinkBankStatementTransaction } from "../services/financial-documents";
+import { decideBankStatementTransactionCategory, decideFinancialDocumentType, getBankStatementTransactionInclusion, getFinancialDocument, importBankStatementTransaction, ingestFinancialDocument, linkBankStatementTransaction, linkFinancialDocumentBusiness, listFinancialDocuments, listFinancialReviewQueue, previewBankStatementTransactionMatch, reconcileBankStatementTransactionInclusion, requestFinancialDocumentUploadUrl, retryBankStatementParser, reverseBankStatementTransactionImport, reviewBankStatementTransaction, reviewFinancialDocument, reviewFinancialDocumentIdentity, runFinancialDocumentTypeDetection, unlinkBankStatementTransaction } from "../services/financial-documents";
 import { deleteFinancialDocumentEvidence, getFinancialDocumentDeletionPreflight, getFinancialEvidenceResetPreflight, resetFinancialEvidence } from "../services/financial-evidence-deletion";
 
 const router: IRouter = Router();
@@ -49,6 +50,10 @@ router.post("/financial-documents/:documentId/review", asyncRoute(async (req, re
 router.post("/financial-documents/:documentId/detect-type", asyncRoute(async (req, res) => {
   const { documentId } = RunFinancialDocumentTypeDetectionParams.parse(req.params);
   res.json(RunFinancialDocumentTypeDetectionResponse.parse(await runFinancialDocumentTypeDetection(actorFrom(res), documentId, RunFinancialDocumentTypeDetectionBody.parse(req.body))));
+}));
+router.post("/financial-documents/:documentId/retry-parser", asyncRoute(async (req, res) => {
+  const { documentId } = RetryBankStatementParserParams.parse(req.params);
+  res.json(RetryBankStatementParserResponse.parse(await retryBankStatementParser(actorFrom(res), documentId, RetryBankStatementParserBody.parse(req.body))));
 }));
 router.post("/financial-documents/:documentId/type-decision", asyncRoute(async (req, res) => {
   const { documentId } = DecideFinancialDocumentTypeParams.parse(req.params);

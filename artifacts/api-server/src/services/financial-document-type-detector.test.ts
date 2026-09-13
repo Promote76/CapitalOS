@@ -29,3 +29,24 @@ test("settlement-specific content wins over a P&L-looking filename", () => {
   assert.equal(result.confidence, "HIGH");
   assert.equal(result.conflictsWithSelectedType, true);
 });
+
+test("Wells Fargo activity summaries classify as bank statements without a bank statement heading", () => {
+  const result = classifyFinancialDocumentText(
+    [
+      "Wells Fargo Everyday Checking",
+      "Statement period activity summary",
+      "Beginning balance on 8/10 $0.00",
+      "Deposits/Additions $8,705.94",
+      "Withdrawals/Subtractions - $7,374.79",
+      "Ending balance on 9/8 $1,331.15",
+      "Transaction history",
+      "Date Check Number Description",
+      "Deposits/Additions Withdrawals/Subtractions Ending daily balance",
+    ].join("\n"),
+    "090826 WellsFargo.pdf",
+    "OTHER_FINANCIAL_DOCUMENT",
+  );
+  assert.equal(result.detectedType, "BANK_STATEMENT");
+  assert.equal(result.confidence, "HIGH");
+  assert.equal(result.conflictsWithSelectedType, true);
+});

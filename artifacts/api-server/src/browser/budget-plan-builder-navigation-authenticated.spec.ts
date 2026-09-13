@@ -61,7 +61,7 @@ test("authenticated Budget plan builder navigation preserves the planning hash",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: householdName, timezone: "America/Chicago" }),
         });
-        return { status: response.status, body: await response.json().catch(() => ({})) };
+        return { status: response.status, body: await response.json().catch(() => ({})) as { code?: string } };
       }, `Budget plan browser ${runId}`);
       expect(
         onboarded.status === 201 || (onboarded.status === 409 && onboarded.body.code === "HOUSEHOLD_ALREADY_EXISTS"),

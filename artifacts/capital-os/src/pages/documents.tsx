@@ -47,6 +47,7 @@ import {
   queueItemTitle,
   type ReviewQueueItem,
 } from "@/documents-queue";
+import { uploadAndIngestFinancialDocument } from "@/financial-document-upload";
 import { TransactionEvidenceRow } from "./TransactionEvidenceRow";
 
 const label = (value?: string | null) => value ? value.replaceAll("_", " ") : "Not recorded";
@@ -247,7 +248,8 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
       setUploadError("Choose a PDF, CSV, or XLSX file first.");
       return;
     }
-    const contentType = mimeFor(uploadFile);
+    const file = uploadFile;
+    const contentType = mimeFor(file);
     if (!contentType) {
       setUploadError("Only PDF, CSV, and XLSX financial documents can be uploaded.");
       return;
@@ -259,27 +261,26 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
     setUploadError("");
     setUploadMessage("");
     try {
-      const target = await requestUpload.mutateAsync({ data: { name: uploadFile.name, size: uploadFile.size, contentType, documentType: uploadType } });
-      const stored = await fetch(target.uploadURL, { method: "PUT", headers: { "Content-Type": target.contentType }, body: uploadFile });
-      if (!stored.ok) throw new Error("The file could not be uploaded to App Storage.");
       const account = accountsQuery.data?.accounts.find((item) => item.id === uploadAccountId);
-      await ingestDocument.mutateAsync({ data: {
-        documentType: uploadType,
-        sourceFileName: uploadFile.name,
-        sourceObjectPath: target.objectPath,
-        contentType: target.contentType,
-        sourceSizeBytes: uploadFile.size,
-        uploadGrant: target.uploadGrant,
-        sourceInstitution: account?.institution,
-        accountId: uploadType === "BANK_STATEMENT" ? uploadAccountId : undefined,
-        accountDisplayName: account?.nickname,
-      } });
+      await uploadAndIngestFinancialDocument({
+        file,
+        contentType,
+        requestUpload: () => requestUpload.mutateAsync({ data: { name: file.name, size: file.size, contentType, documentType: uploadType } }),
+        ingest: (data) => ingestDocument.mutateAsync({ data }),
+        ingestInput: {
+          documentType: uploadType,
+          sourceFileName: file.name,
+          sourceInstitution: account?.institution,
+          accountId: uploadType === "BANK_STATEMENT" ? uploadAccountId : undefined,
+          accountDisplayName: account?.nickname,
+        },
+      });
       await invalidateEverything();
       setUploadFile(null);
       setUploadAccountId("");
       setUploadMessage("Evidence uploaded. It remains separate from planning totals until reviewed.");
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "The financial document could not be ingested.");
+      setUploadError(error instanceof Error ? error.message : "The financial document could not be uploaded or ingested.");
     }
   };
 

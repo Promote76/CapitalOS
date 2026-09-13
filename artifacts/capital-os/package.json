@@ -10,6 +10,7 @@
     "test:bank-connections": "tsx --test src/bank-connection-access.test.ts",
     "test:dashboard-state": "tsx --test src/dashboard-state.test.ts",
     "test:documents-queue": "tsx --test src/documents-queue.test.ts",
+    "test:financial-document-upload": "tsx --test src/financial-document-upload.test.ts",
     "test:money-input-patterns": "tsx --test src/money-input-patterns.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

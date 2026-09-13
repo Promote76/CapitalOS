@@ -2,10 +2,10 @@
   "schemaVersion": 2,
   "generatedBy": "scripts/generate-production-readiness-manifest.mjs",
   "build": {
-    "id": "dc4a6fb26b61e4ab4338dc082418f63c1305fcef:69695ece926dcc35",
-    "baseCommit": "dc4a6fb26b61e4ab4338dc082418f63c1305fcef",
-    "inputSha256": "69695ece926dcc3510a1e022224e6b9cbe23806bff221a5bccbc69dfb6402f22",
-    "inputCount": 1178,
+    "id": "452228952cdd362b177d76b314efec961179f864:a52a805feb513dd9",
+    "baseCommit": "452228952cdd362b177d76b314efec961179f864",
+    "inputSha256": "a52a805feb513dd9b6cd92fe446de938d094b2aab1ad4e3fdf9fa1c7d3610d02",
+    "inputCount": 1182,
     "inputs": [
       "artifacts/api-server/.replit-artifact/artifact.toml",
       "artifacts/api-server/package.json",
@@ -13,6 +13,8 @@
       "artifacts/api-server/src/adapters/broker-portfolio.ts",
       "artifacts/api-server/src/app.ts",
       "artifacts/api-server/src/browser/approved-research-isolation-certification.spec.ts",
+      "artifacts/api-server/src/browser/budget-plan-builder-navigation-authenticated.spec.ts",
+      "artifacts/api-server/src/browser/budget-plan-builder-navigation.spec.ts",
       "artifacts/api-server/src/browser/budget-review-recovery.spec.ts",
       "artifacts/api-server/src/browser/business-income-certification.spec.ts",
       "artifacts/api-server/src/browser/capital-governor-certification.spec.ts",
@@ -95,6 +97,7 @@
       "artifacts/api-server/src/integration/execution-control.test.ts",
       "artifacts/api-server/src/integration/family-office-browser-fixture.ts",
       "artifacts/api-server/src/integration/financial-document-business-link.test.ts",
+      "artifacts/api-server/src/integration/financial-document-ingest.test.ts",
       "artifacts/api-server/src/integration/financial-evidence-deletion.test.ts",
       "artifacts/api-server/src/integration/market-snapshot-evidence.test.ts",
       "artifacts/api-server/src/integration/observability-certification.test.ts",
@@ -550,6 +553,7 @@
       "lib/api-zod/src/generated/types/financialDocumentIdentityReviewInputClassification.ts",
       "lib/api-zod/src/generated/types/financialDocumentIngestInput.ts",
       "lib/api-zod/src/generated/types/financialDocumentList.ts",
+      "lib/api-zod/src/generated/types/financialDocumentParserRetryInput.ts",
       "lib/api-zod/src/generated/types/financialDocumentReviewInput.ts",
       "lib/api-zod/src/generated/types/financialDocumentReviewInputDecision.ts",
       "lib/api-zod/src/generated/types/financialDocumentSourceMetadata.ts",
@@ -1213,8 +1217,8 @@
     "evidence": "docs/certification/RC1_READINESS_CERTIFICATION.json",
     "result": "PASS_WITH_BLOCKER",
     "routeInventory": {
-      "current": 254,
-      "executed": 254,
+      "current": 255,
+      "executed": 255,
       "result": "PASS"
     },
     "migrationSet": [

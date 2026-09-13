@@ -1,4 +1,4 @@
-import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, type FormEvent, type MouseEvent, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import {
   ClerkProvider,
@@ -2152,6 +2152,7 @@ function BudgetPlanningControlCenter() {
 }
 
 function ActiveBudgetPage() {
+  const [, setLocation] = useLocation();
   const query = useGetBudget();
   const safe = useGetSafeToDeploy();
   const capitalGovernor = useGetCapitalGovernorV2();
@@ -2187,14 +2188,21 @@ function ActiveBudgetPage() {
   const [vehicleScenarioMessage, setVehicleScenarioMessage] = useState('');
   const [vehicleScenarioError, setVehicleScenarioError] = useState('');
   const [governorCalculationOpen, setGovernorCalculationOpen] = useState(false);
+  const scrollToPlanning = useCallback(() => {
+    if (window.location.hash !== '#budget-planning') return;
+    const target = document.getElementById('budget-planning');
+    if (!target) return;
+    const top = target.getBoundingClientRect().top + window.scrollY - 96;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+  }, []);
+  const openPlanBuilder = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    setLocation('/budget#budget-planning');
+    window.setTimeout(scrollToPlanning, 0);
+    window.setTimeout(scrollToPlanning, 100);
+  };
   useLayoutEffect(() => {
-    const scrollToPlanning = () => {
-      if (window.location.hash !== '#budget-planning') return;
-      const target = document.getElementById('budget-planning');
-      if (!target) return;
-      const top = target.getBoundingClientRect().top + window.scrollY - 96;
-      window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
-    };
     const scheduleScroll = () => {
       const timers = [0, 100, 400].map((delay) => window.setTimeout(scrollToPlanning, delay));
       return () => timers.forEach((timer) => window.clearTimeout(timer));
@@ -2209,7 +2217,7 @@ function ActiveBudgetPage() {
       cleanupInitialScroll();
       window.removeEventListener('hashchange', handleHashChange);
     };
-  }, []);
+  }, [scrollToPlanning]);
   useEffect(() => {
     if (!transaction.accountId && accounts.data?.accounts[0]) {
       setTransaction((current) => ({ ...current, accountId: accounts.data.accounts[0].id }));
@@ -2264,7 +2272,7 @@ function ActiveBudgetPage() {
         <div><span className="mono-label">Current household cash</span><strong>{variableBudget.data ? displayMoney(variableBudget.data.cash.current, 'Not available') : 'Not available'}</strong><small>Account balances are separate from period income.</small></div>
         <div><span className="mono-label">Current plan state</span><strong>{hasBudgetData ? 'Plan in progress' : 'Not established'}</strong><small>{hasBudgetData ? 'Targets are available for this period.' : 'Create a plan after evidence and obligations are reviewed.'}</small></div>
       </div>
-      <div className="foundation-actions"><Link className="btn btn-primary" href="/documents?type=STEVENS_SETTLEMENT">Upload Stevens settlement</Link><Link className="btn" href="/documents?type=BUSINESS_PROFIT_AND_LOSS">Upload P&amp;L</Link><Link className="btn" href="/documents?type=BANK_STATEMENT">Upload bank statement</Link><Link className="btn" href="/budget#budget-planning">Open plan builder</Link><Link className="btn" href="/bills">Set obligations &amp; reserves</Link></div>
+      <div className="foundation-actions"><Link className="btn btn-primary" href="/documents?type=STEVENS_SETTLEMENT">Upload Stevens settlement</Link><Link className="btn" href="/documents?type=BUSINESS_PROFIT_AND_LOSS">Upload P&amp;L</Link><Link className="btn" href="/documents?type=BANK_STATEMENT">Upload bank statement</Link><Link className="btn" href="/budget#budget-planning" onClick={openPlanBuilder} data-testid="link-open-plan-builder">Open plan builder</Link><Link className="btn" href="/bills">Set obligations &amp; reserves</Link></div>
     </section>
     <section className="card card-pad page-section animate-in">
       <CardTitle title="Record a transaction" subtitle="Enter it once, then review it before it reaches your budget or Safe-to-Deploy." />

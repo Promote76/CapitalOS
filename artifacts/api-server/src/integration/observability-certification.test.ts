@@ -198,7 +198,9 @@ test(
       const rules = await db.select().from(observabilityAlertRules);
       assert.ok(rules.length >= 13);
       const previousTarget = process.env.CAPITAL_OS_ALERT_SLACK_CHANNEL_ID;
-      process.env.CAPITAL_OS_ALERT_SLACK_CHANNEL_ID = "C-certified-operator";
+      // Use the connected workspace's operator DM so the certification records
+      // a real Slack provider receipt instead of a synthetic channel name.
+      process.env.CAPITAL_OS_ALERT_SLACK_CHANNEL_ID = "D0BUQAUMUPR";
       try {
         const first = await ensureObservabilityDefaults();
         const second = await ensureObservabilityDefaults();

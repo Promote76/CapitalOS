@@ -59,7 +59,7 @@ test("authenticated Family Office route shows fail-closed and Shadow-only browse
     const providerState = providerCard.locator(".card-title-row .status");
     await expect(providerState).toHaveText(/^(disabled|configured|verified|unavailable)$/);
     const providerStateText = (await providerState.textContent())?.trim();
-    const researchButton = page.getByRole("button", { name: /run advisory research/i });
+    const researchButton = page.getByRole("button", { name: /fetch & analyze|analyze digestion|run advisory research/i });
     if (providerStateText === "disabled") {
       await expect(page.getByText("Provider is disabled or not configured.")).toBeVisible();
       await expect(researchButton).toBeDisabled();
@@ -71,11 +71,12 @@ test("authenticated Family Office route shows fail-closed and Shadow-only browse
     await expect(page.getByText("Money moved", { exact: true }).locator("..")).toContainText("0¢");
 
     await expect(page.getByText("Analyst proposals")).toBeVisible();
-    await expect(page.getByRole("heading", { name: `Browser Shadow proposal ${runId}` })).toBeVisible();
+    const analystProposals = page.locator("section.card").filter({ hasText: "Analyst proposals" });
+    await expect(analystProposals.getByRole("heading", { name: `Browser Shadow proposal ${runId}` })).toBeVisible();
     await expect(page.getByText("Human review required", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Approve Shadow review" })).toBeVisible();
+    await expect(analystProposals.getByRole("button", { name: /approve for shadow|approve shadow review/i })).toBeVisible();
     await expect(page.locator(".card-title").filter({ hasText: /^Shadow portfolio$/ })).toBeVisible();
-    await expect(page.locator(".review-row strong").filter({ hasText: `Browser Shadow portfolio ${runId}` })).toBeVisible();
+    await expect(page.locator("section.card").filter({ hasText: "Shadow portfolio" }).locator(".review-row strong").filter({ hasText: `Browser Shadow portfolio ${runId}` })).toBeVisible();
     await expect(page.getByText("Hypothetical intent", { exact: true })).toBeVisible();
     await expect(page.getByText("Records a research scenario; it is never transmitted.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Record Shadow intent" })).toBeEnabled();

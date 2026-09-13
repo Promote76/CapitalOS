@@ -1,2 +1,4 @@
+ALTER TABLE "family_office_research_digestions" DROP CONSTRAINT "family_office_research_digestions_run_household_fk";--> statement-breakpoint
 DROP INDEX "family_office_runs_id_household_unique";--> statement-breakpoint
-ALTER TABLE "family_office_runs" ADD CONSTRAINT "family_office_runs_id_household_unique" UNIQUE("id","household_id");
+ALTER TABLE "family_office_runs" ADD CONSTRAINT "family_office_runs_id_household_unique" UNIQUE("id","household_id");--> statement-breakpoint
+ALTER TABLE "family_office_research_digestions" ADD CONSTRAINT "family_office_research_digestions_run_household_fk" FOREIGN KEY ("run_id","household_id") REFERENCES "public"."family_office_runs"("id","household_id") ON DELETE cascade ON UPDATE no action;

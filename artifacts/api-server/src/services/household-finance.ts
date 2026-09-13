@@ -1516,7 +1516,7 @@ export async function importFinanceCsv(actor: Actor, accountId: string, csv: str
         updatedAt: refreshedAt,
       }).where(and(eq(bankConnections.id, account[0].bankConnectionId!), eq(bankConnections.householdId, id)));
     }
-    const [audit] = fresh.length
+    const audit = fresh.length
       ? await appendAuditEvent({
         householdId: actor.householdId,
         eventType: "finance_csv_imported",
@@ -1526,7 +1526,7 @@ export async function importFinanceCsv(actor: Actor, accountId: string, csv: str
         reason: "Imported rows require household review before planning use",
         metadata: { source: "csv_import", imported: fresh.length, skippedDuplicates: deduplicated.skippedDuplicates, readOnlyExternal: true },
       }, tx)
-      : [];
+      : null;
     void audit;
     return { imported: fresh.length, skippedDuplicates: deduplicated.skippedDuplicates, readOnly: true };
   });

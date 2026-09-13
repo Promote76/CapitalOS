@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "releaseCandidate": "RC1",
   "result": "PASS_WITH_BLOCKER",
-  "generatedAt": "2026-09-12T17:56:10.290Z",
+  "generatedAt": "2026-09-13T00:17:15.130Z",
   "source": {
-    "baseCommit": "b301eb841f7e598760a299351eb1a40be477054a",
-    "sourceSha256": "5379a20b4dceae7781d8c69251d971bfd1f13abb00e2482f5aeb02cb19be7990",
-    "inputCount": 1171,
+    "baseCommit": "dc4a6fb26b61e4ab4338dc082418f63c1305fcef",
+    "sourceSha256": "69695ece926dcc3510a1e022224e6b9cbe23806bff221a5bccbc69dfb6402f22",
+    "inputCount": 1178,
     "inputs": [
       "artifacts/api-server/.replit-artifact/artifact.toml",
       "artifacts/api-server/package.json",
@@ -190,6 +190,7 @@
       "artifacts/api-server/src/services/research-discovery.ts",
       "artifacts/api-server/src/services/research-dossier.ts",
       "artifacts/api-server/src/services/research-opportunities.ts",
+      "artifacts/api-server/src/services/research-opportunity-query.test.ts",
       "artifacts/api-server/src/services/research-universe.test.ts",
       "artifacts/api-server/src/services/research-universe.ts",
       "artifacts/api-server/src/services/schwab-market-data-oauth.ts",
@@ -807,6 +808,11 @@
       "lib/api-zod/src/generated/types/researchDiscoverySourceExclusions.ts",
       "lib/api-zod/src/generated/types/researchDiscoverySourceExclusionsCounts.ts",
       "lib/api-zod/src/generated/types/researchDiscoverySummary.ts",
+      "lib/api-zod/src/generated/types/researchDiscoverySummaryInstrumentPolicy.ts",
+      "lib/api-zod/src/generated/types/researchDiscoverySummaryInstrumentPolicyUnknownPolicy.ts",
+      "lib/api-zod/src/generated/types/researchDiscoverySummaryInstrumentPolicyVersion.ts",
+      "lib/api-zod/src/generated/types/researchDiscoverySummaryInstrumentPolicyWithheld.ts",
+      "lib/api-zod/src/generated/types/researchDiscoverySummaryInstrumentPolicyWithheldCounts.ts",
       "lib/api-zod/src/generated/types/researchDiscoverySummaryProgress.ts",
       "lib/api-zod/src/generated/types/researchDiscoverySummaryProgressPhase.ts",
       "lib/api-zod/src/generated/types/researchDiscoverySummaryStatus.ts",
@@ -1112,6 +1118,7 @@
       "lib/db/migrations/0054_useful_earthquake.sql",
       "lib/db/migrations/0055_brief_zemo.sql",
       "lib/db/migrations/0056_thankful_xavin.sql",
+      "lib/db/migrations/0057_remove_legacy_archive_insert_guard.sql",
       "lib/db/migrations/meta/0000_snapshot.json",
       "lib/db/migrations/meta/0001_snapshot.json",
       "lib/db/migrations/meta/0002_snapshot.json",
@@ -1223,5 +1230,5 @@
     "venueExecution": "DISABLED",
     "moneyMovement": "DISABLED"
   },
-  "evidenceLog": "docs/certification/operations-recovery-runs/operations-recovery-2026-09-12T17-55-04Z.log"
+  "evidenceLog": "docs/certification/operations-recovery-runs/operations-recovery-2026-09-13T00-16-09Z.log"
 }

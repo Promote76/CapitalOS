@@ -3,14 +3,9 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const appSource = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8');
-const budgetPageSource = readFileSync(new URL('./pages/budget.tsx', import.meta.url), 'utf8');
 
 test('refetched vehicle scenarios render their explanation and missing inputs', () => {
   assert.match(appSource, /\{scenario\.explanation\}/);
   assert.match(appSource, /scenario\.missingInputs\.length > 0/);
   assert.match(appSource, /Missing inputs: \{scenario\.missingInputs\.join/);
-});
-
-test('secondary vehicle result has one impact analysis heading', () => {
-  assert.equal(budgetPageSource.match(/>Impact Analysis</g)?.length, 1);
 });

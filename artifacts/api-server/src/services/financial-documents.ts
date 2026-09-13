@@ -164,6 +164,16 @@ export async function ingestFinancialDocument(actor: Actor, input: {
     if (input.documentType === "BANK_STATEMENT") {
       const parsed = await parseBankStatement(bytes, input.contentType);
       const parseable = parsed.errors.length === 0;
+      const parserMetadata = {
+        declaredSizeBytes: input.sourceSizeBytes,
+        observedSizeBytes: bytes.length,
+        parserVersion: BANK_STATEMENT_PARSER_VERSION,
+        parserErrorKind: parsed.errorKind,
+        parserErrors: parsed.errors,
+        extractedAccountLastFour: parsed.accountLastFour,
+        extractedStatementStart: parsed.statementStart,
+        extractedStatementEnd: parsed.statementEnd,
+      };
       const categoryCandidates = await tx.select({
         id: financeCategories.id,
         name: financeCategories.name,
@@ -175,19 +185,19 @@ export async function ingestFinancialDocument(actor: Actor, input: {
       await tx.update(financialDocuments).set({
         parserVersion: BANK_STATEMENT_PARSER_VERSION,
         status: parseable ? "NEEDS_REVIEW" : "NEEDS_REVIEW",
-        sourceMetadata: { declaredSizeBytes: input.sourceSizeBytes, observedSizeBytes: bytes.length, parserVersion: BANK_STATEMENT_PARSER_VERSION, parserErrors: parsed.errors },
+        sourceMetadata: parserMetadata,
       }).where(eq(financialDocuments.id, document.id));
       await tx.update(financialDocumentParseGenerations).set({
         parserVersion: BANK_STATEMENT_PARSER_VERSION,
         extractionStatus: parseable ? "complete" : "failed",
         sourceRecordType: "bank_statement_document",
         sourceRecordId: bankStatement?.id,
-        evidence: { authoritative: !detection.conflictsWithSelectedType, parserErrors: parsed.errors },
+        evidence: { authoritative: !detection.conflictsWithSelectedType, parserErrorKind: parsed.errorKind, parserErrors: parsed.errors, extractedAccountLastFour: parsed.accountLastFour, extractedStatementStart: parsed.statementStart, extractedStatementEnd: parsed.statementEnd },
       }).where(eq(financialDocumentParseGenerations.id, initialGeneration.id));
       [bankStatement] = await tx.insert(bankStatementDocuments).values({
         householdId: actor.householdId, documentId: document.id, accountId: input.accountId,
-        institutionName: input.sourceInstitution, accountDisplayName: input.accountDisplayName, accountMask: input.accountMask,
-        statementStart: input.statementStart, statementEnd: input.statementEnd,
+        institutionName: input.sourceInstitution, accountDisplayName: input.accountDisplayName, accountMask: input.accountMask ?? parsed.accountLastFour,
+        statementStart: input.statementStart ?? parsed.statementStart, statementEnd: input.statementEnd ?? parsed.statementEnd,
         openingBalance: parsed.openingBalance ?? "0.00", closingBalance: parsed.closingBalance ?? "0.00",
         totalDeposits: parsed.totalDeposits ?? "0.00", totalWithdrawals: parsed.totalWithdrawals ?? "0.00",
         status: "document_evidence_pending_review",

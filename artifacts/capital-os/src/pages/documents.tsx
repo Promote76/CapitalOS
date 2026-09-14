@@ -676,7 +676,7 @@ function documentVerificationGate(document: FinancialDocument): DocumentVerifica
     !["CORRECTED", "OVERRIDDEN"].includes(document.typeMismatchStatus ?? ""));
   const blockers: string[] = [];
   if (parserErrors.length) {
-    blockers.push(`Parser issue: ${parserErrors[0]} Re-upload a text-based PDF or CSV after confirming the source is readable; this upload cannot be verified while parsing errors remain.`);
+    blockers.push(`Parser issue: ${parserErrors[0]} Use Retry parser to re-read the preserved source, or upload a different readable source; this upload cannot be verified while parsing errors remain.`);
   }
   if (unresolvedRows) {
     blockers.push(`${unresolvedRows} bank statement row${unresolvedRows === 1 ? "" : "s"} still need a terminal review decision. Open the Review Queue to approve, correct, transfer, or reject them.`);

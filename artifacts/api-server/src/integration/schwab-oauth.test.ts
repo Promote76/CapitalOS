@@ -167,6 +167,7 @@ test("Schwab route and OpenAPI inventories expose only the read-only connector s
     "/integrations/schwab/oauth/callback",
     "/integrations/schwab/refresh",
     "/integrations/schwab/sync",
+    "/integrations/schwab/observations/latest",
     "/integrations/schwab/market-data",
     "/integrations/schwab/market-data/status",
     "/integrations/schwab/market-data/connect",

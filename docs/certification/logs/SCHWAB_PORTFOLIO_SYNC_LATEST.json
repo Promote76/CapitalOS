@@ -1,0 +1,75 @@
+{
+  "runner": "certify-schwab-read-only",
+  "version": "2026-09-22.portfolio-sync.v1",
+  "observedAt": "2026-09-22T04:03:32.656Z",
+  "today": "2026-09-22",
+  "publishedOrigin": "[missing]",
+  "sessionProvided": true,
+  "targetHouseholdConfigured": false,
+  "authentication": {},
+  "before": {},
+  "sync": {},
+  "after": {},
+  "browser": {},
+  "cleanup": {
+    "status": "NOT_REQUESTED",
+    "householdPurged": false,
+    "reason": "Set CAPITAL_OS_SCHWAB_CLEANUP=1 with a disposable household UUID to enable cleanup."
+  },
+  "checks": [
+    {
+      "id": "SW-LOCAL-domain-tests",
+      "status": "PASS",
+      "detail": "Read-only broker domain tests pass."
+    },
+    {
+      "id": "SW-LOCAL-domain-test-file",
+      "status": "PASS",
+      "detail": "The broker domain test file exists."
+    },
+    {
+      "id": "SW-LOCAL-feature-flag",
+      "status": "PASS",
+      "detail": "The read-only provider feature flag is present."
+    },
+    {
+      "id": "SW-LOCAL-trading-disabled",
+      "status": "PASS",
+      "detail": "The Schwab adapter keeps trading disabled."
+    },
+    {
+      "id": "SW-LOCAL-portfolio-projection",
+      "status": "PASS",
+      "detail": "Portfolio renders observed holdings and trades with an explicit no-ledger-mutation message."
+    },
+    {
+      "id": "SW-LOCAL-route-inventory",
+      "status": "PASS",
+      "detail": "The Schwab route inventory contains no order, execution, or money-movement endpoint."
+    },
+    {
+      "id": "SW-00-published-origin",
+      "status": "BLOCKED",
+      "detail": "A published HTTPS origin is required for provider-backed evidence."
+    },
+    {
+      "id": "SW-00-session",
+      "status": "PASS",
+      "detail": "A pre-approved Clerk operator session cookie is required; its value is never printed or persisted."
+    },
+    {
+      "id": "SW-00-household",
+      "status": "BLOCKED",
+      "detail": "The authenticated target household UUID is required."
+    },
+    {
+      "id": "SW-LIVE-provider-evidence",
+      "status": "BLOCKED",
+      "detail": "Live provider evidence was not collected because origin, authenticated session, or target household configuration is missing."
+    }
+  ],
+  "containsCredentials": false,
+  "executionAuthority": "none",
+  "moneyMovement": "none",
+  "result": "BLOCKED"
+}

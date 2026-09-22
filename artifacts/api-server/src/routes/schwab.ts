@@ -1,7 +1,7 @@
 import { appendAuditEvent, appendAuditEvents } from "../services/audit";
 import { Router, type IRouter } from "express";
 import { randomBytes, randomUUID } from "node:crypto";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { auditEvents, db, schwabConnections, schwabOAuthStates, schwabObservationSnapshots } from "@workspace/db";
 import { normalizeSchwabAccounts, normalizeSchwabBalances, normalizeSchwabMarketClock, normalizeSchwabOrders, normalizeSchwabPositions, normalizeSchwabQuotes, normalizeSchwabTransactions } from "../adapters/broker-portfolio";
 import { assertPermission } from "../domain/governance";
@@ -212,6 +212,78 @@ router.post("/integrations/schwab/sync", asyncRoute(async (_req, res) => {
     return;
   }
   await audit(actor.householdId, actor.userId, "schwab_sync_succeeded", connection.id); res.json({ status: "SYNCED", dataMode: "LIVE_CONNECTED" });
+}));
+
+router.get("/integrations/schwab/observations/latest", asyncRoute(async (_req, res) => {
+  const actor = actorFrom(res);
+  const [connection] = await db.select().from(schwabConnections).where(eq(schwabConnections.householdId, actor.householdId)).limit(1);
+  const [snapshot] = await db.select().from(schwabObservationSnapshots)
+    .where(eq(schwabObservationSnapshots.householdId, actor.householdId))
+    .orderBy(desc(schwabObservationSnapshots.createdAt), desc(schwabObservationSnapshots.id))
+    .limit(1);
+  const healthy = !!connection && connection.status === "LIVE_CONNECTED" && !!connection.accessTokenExpiresAt && connection.accessTokenExpiresAt > new Date();
+  const status = !configured()
+    ? "CONFIGURATION_REQUIRED"
+    : connection?.status === "ERROR"
+      ? "ERROR"
+      : healthy
+        ? "LIVE_CONNECTED"
+        : "DISCONNECTED";
+  const redactPosition = (position: Record<string, unknown>) => ({
+    symbol: String(position.symbol ?? "UNKNOWN"),
+    assetType: String(position.assetType ?? "UNKNOWN"),
+    quantity: String(position.quantity ?? "UNKNOWN"),
+    averageCost: String(position.averageCost ?? "UNKNOWN"),
+    costBasis: String(position.costBasis ?? "UNKNOWN"),
+    marketPrice: String(position.marketPrice ?? "UNKNOWN"),
+    marketValue: String(position.marketValue ?? "UNKNOWN"),
+    unrealizedGainLoss: String(position.unrealizedGainLoss ?? "UNKNOWN"),
+    realizedGainLoss: String(position.realizedGainLoss ?? "UNKNOWN"),
+    portfolioWeight: String(position.portfolioWeight ?? "UNKNOWN"),
+    providerTimestamp: typeof position.providerTimestamp === "string" ? position.providerTimestamp : null,
+    receivedAt: String(position.receivedAt ?? snapshot?.createdAt.toISOString() ?? new Date().toISOString()),
+    dataFreshness: String(position.dataFreshness ?? snapshot?.freshness ?? "UNKNOWN"),
+  });
+  const redactOrder = (order: Record<string, unknown>) => ({
+    symbol: String(order.symbol ?? "UNKNOWN"),
+    side: String(order.side ?? "UNKNOWN"),
+    orderType: String(order.orderType ?? "UNKNOWN"),
+    quantity: String(order.quantity ?? "UNKNOWN"),
+    status: String(order.status ?? "UNKNOWN"),
+    submittedAt: typeof order.submittedAt === "string" ? order.submittedAt : null,
+    filledAt: typeof order.filledAt === "string" ? order.filledAt : null,
+    filledQuantity: String(order.filledQuantity ?? "UNKNOWN"),
+    averageFillPrice: String(order.averageFillPrice ?? "UNKNOWN"),
+    providerTimestamp: typeof order.providerTimestamp === "string" ? order.providerTimestamp : null,
+    receivedAt: String(order.receivedAt ?? snapshot?.createdAt.toISOString() ?? new Date().toISOString()),
+    dataFreshness: String(order.dataFreshness ?? snapshot?.freshness ?? "UNKNOWN"),
+  });
+  const redactTransaction = (transaction: Record<string, unknown>) => ({
+    symbol: typeof transaction.symbol === "string" ? transaction.symbol : null,
+    transactionClass: String(transaction.transactionClass ?? "unknown"),
+    amount: String(transaction.amount ?? "UNKNOWN"),
+    quantity: String(transaction.quantity ?? "UNKNOWN"),
+    description: String(transaction.description ?? "No description supplied"),
+    transactionTimestamp: typeof transaction.transactionTimestamp === "string" ? transaction.transactionTimestamp : null,
+    providerTimestamp: typeof transaction.providerTimestamp === "string" ? transaction.providerTimestamp : null,
+    receivedAt: String(transaction.receivedAt ?? snapshot?.createdAt.toISOString() ?? new Date().toISOString()),
+    dataFreshness: String(transaction.dataFreshness ?? snapshot?.freshness ?? "UNKNOWN"),
+  });
+  res.json({
+    status,
+    dataMode: healthy ? "LIVE_CONNECTED" : "DISCONNECTED",
+    readOnly: true,
+    tradingEnabled: false,
+    lastSuccessfulSyncAt: connection?.lastSuccessfulSyncAt?.toISOString() ?? null,
+    snapshot: snapshot ? {
+      capturedAt: snapshot.createdAt.toISOString(),
+      freshness: snapshot.freshness,
+      counts: snapshot.counts ?? {},
+      positions: (snapshot.positions ?? []).slice(0, 500).map((position) => redactPosition(position)),
+      orders: (snapshot.orders ?? []).slice(0, 300).map((order) => redactOrder(order)),
+      transactions: (snapshot.transactions ?? []).slice(0, 300).map((transaction) => redactTransaction(transaction)),
+    } : null,
+  });
 }));
 
 router.post("/integrations/schwab/disconnect", asyncRoute(async (_req, res) => {

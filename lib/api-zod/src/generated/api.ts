@@ -13641,6 +13641,71 @@ export const SyncSchwabObservationsResponse = zod.object({
 
 
 /**
+ * @summary Get the latest redacted household-scoped Schwab positions and transactions
+ */
+export const getLatestSchwabObservationsResponseSnapshotOnePositionsMax = 500;
+
+export const getLatestSchwabObservationsResponseSnapshotOneOrdersMax = 300;
+
+export const getLatestSchwabObservationsResponseSnapshotOneTransactionsMax = 300;
+
+
+
+export const GetLatestSchwabObservationsResponse = zod.object({
+  "status": zod.enum(['LIVE_CONNECTED', 'DISCONNECTED', 'CONFIGURATION_REQUIRED', 'ERROR']),
+  "dataMode": zod.enum(['LIVE_CONNECTED', 'DISCONNECTED']),
+  "readOnly": zod.literal(true),
+  "tradingEnabled": zod.literal(false),
+  "lastSuccessfulSyncAt": zod.coerce.date().nullable(),
+  "snapshot": zod.union([zod.object({
+  "capturedAt": zod.coerce.date(),
+  "freshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN']),
+  "counts": zod.record(zod.string(), zod.number()),
+  "positions": zod.array(zod.object({
+  "symbol": zod.string(),
+  "assetType": zod.string(),
+  "quantity": zod.string(),
+  "averageCost": zod.string(),
+  "costBasis": zod.string(),
+  "marketPrice": zod.string(),
+  "marketValue": zod.string(),
+  "unrealizedGainLoss": zod.string(),
+  "realizedGainLoss": zod.string(),
+  "portfolioWeight": zod.string(),
+  "providerTimestamp": zod.coerce.date().nullable(),
+  "receivedAt": zod.coerce.date(),
+  "dataFreshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN'])
+})).max(getLatestSchwabObservationsResponseSnapshotOnePositionsMax),
+  "orders": zod.array(zod.object({
+  "symbol": zod.string(),
+  "side": zod.string(),
+  "orderType": zod.string(),
+  "quantity": zod.string(),
+  "status": zod.string(),
+  "submittedAt": zod.coerce.date().nullable(),
+  "filledAt": zod.coerce.date().nullable(),
+  "filledQuantity": zod.string(),
+  "averageFillPrice": zod.string(),
+  "providerTimestamp": zod.coerce.date().nullable(),
+  "receivedAt": zod.coerce.date(),
+  "dataFreshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN'])
+})).max(getLatestSchwabObservationsResponseSnapshotOneOrdersMax),
+  "transactions": zod.array(zod.object({
+  "symbol": zod.string().nullable(),
+  "transactionClass": zod.enum(['trade', 'income', 'fee', 'transfer', 'corporate_action', 'unknown']),
+  "amount": zod.string(),
+  "quantity": zod.string(),
+  "description": zod.string(),
+  "transactionTimestamp": zod.coerce.date().nullable(),
+  "providerTimestamp": zod.coerce.date().nullable(),
+  "receivedAt": zod.coerce.date(),
+  "dataFreshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN'])
+})).max(getLatestSchwabObservationsResponseSnapshotOneTransactionsMax)
+}),zod.null()])
+})
+
+
+/**
  * @summary Read normalized quotes and equity market status from the separate Market Data Production app
  */
 export const getSchwabMarketDataQuerySymbolsMax = 15499;

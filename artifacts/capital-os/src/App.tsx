@@ -69,6 +69,9 @@ import {
   type BudgetPlanningCategoryInputEssentialStatus,
   useGetHousehold,
   useGetPortfolio,
+  useGetLatestSchwabObservations,
+  useSyncSchwabObservations,
+  getGetLatestSchwabObservationsQueryKey,
   useGetRisk,
   useGetPropertyUnderwriting,
   useUpdateBuyBox,
@@ -572,6 +575,18 @@ function displayDate(value: string | undefined, fallback: string) {
   return Number.isNaN(date.getTime()) ? fallback : date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
+function displayObservationValue(value: string | null | undefined, prefix = '') {
+  if (!value || value === 'UNKNOWN') return '—';
+  const amount = Number(value);
+  return Number.isFinite(amount) ? `${prefix}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : value;
+}
+
+function displayObservationTimestamp(value: string | null | undefined) {
+  if (!value) return 'Time unavailable';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Time unavailable' : date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
 const primaryNav = [
   { href: '/', label: 'Overview', icon: LayoutDashboard },
   { href: '/budget', label: 'Budget', icon: ClipboardList },
@@ -1029,10 +1044,27 @@ function ResearchContextPanel({ context, title = "Approved research context" }: 
 
 function PortfolioPage() {
   const query = useGetPortfolio();
+  const observationQuery = useGetLatestSchwabObservations();
+  const syncObservation = useSyncSchwabObservations();
+  const portfolioQueryClient = useQueryClient();
+  const [observationMessage, setObservationMessage] = useState('');
   const state = researchContextUiState(query);
   if (state === "loading") return <main className="content"><div className="card card-pad">Loading portfolio…</div></main>;
   if (state === "error" || !query.data) return <main className="content"><div className="card card-pad" role="alert">Portfolio data is temporarily unavailable. Try again in a moment.</div></main>;
   const data = query.data;
+  const observation = observationQuery.data;
+  const snapshot = observation?.snapshot;
+  const observedTrades = (snapshot?.transactions ?? []).filter((transaction) => transaction.transactionClass === 'trade').slice(0, 8);
+  const refreshObservation = async () => {
+    setObservationMessage('');
+    try {
+      await syncObservation.mutateAsync();
+      await portfolioQueryClient.invalidateQueries({ queryKey: getGetLatestSchwabObservationsQueryKey() });
+      setObservationMessage('Schwab observation refreshed. No ledger transactions were created.');
+    } catch (error) {
+      setObservationMessage(error instanceof Error ? error.message : 'The Schwab observation could not be refreshed.');
+    }
+  };
   const total = data.totalCapital;
   return <main className="content">
     <PageHeading eyebrow="Plan / portfolio" title={<>Know what is<br /><em>carrying the load.</em></>} description="A composed view of where your family capital sits today—not a screen that asks you to react." actions={<button className="btn feedback-only-control" data-testid="button-portfolio-export" title="Export is coming soon" disabled><ArrowDownLeft size={15} /> Export snapshot <span className="feedback-only-label">coming soon</span></button>} />
@@ -1041,6 +1073,32 @@ function PortfolioPage() {
       <section className="card card-pad animate-in delay-1"><CardTitle title="Resilience check" subtitle="How the plan behaves in three ordinary scenarios." /><div className="activity-list">{[['Protected capital', displayMoney(data.protectedCapital, '$0'), 'Ring-fenced', 'var(--ink)'], ['Active capital', displayMoney(data.activeCapital, '$0'), 'Tracked', 'var(--marigold)'], ['Cash reserve', displayMoney(data.cashReserve, '$0'), 'Available', 'var(--clay)']].map(([label, desc, status, color]) => <div className="activity-item" key={label}><div className="activity-icon" style={{ background: 'var(--secondary)', color }}><ShieldCheck size={14} /></div><div className="activity-copy"><strong>{label}</strong><span>{desc}</span></div><span className="status" style={{ color, background: 'var(--secondary)' }}>{status}</span></div>)}</div></section>
     </div>
     <section className="card card-pad page-section"><CardTitle title="Accounts & sleeves" subtitle={data.ledgerBalanced ? 'Ledger reconciled · household-scoped balances' : 'Ledger reconciliation needs review'} /><div className="table-wrap"><table className="table"><thead><tr><th>Sleeve</th><th>Share</th><th>Balance</th></tr></thead><tbody>{data.composition.map((holding) => <tr key={holding.label}><td><strong>{holding.label}</strong></td><td>{holding.percent}%</td><td className="font-mono">{displayMoney(holding.amount, '$0')}</td></tr>)}</tbody></table></div></section>
+     <section className="card card-pad page-section">
+       <CardTitle
+         title="Schwab observed holdings"
+         subtitle={snapshot ? `Read-only snapshot · ${displayObservationTimestamp(snapshot.capturedAt)}` : 'Read-only broker data is not connected'}
+         action={<div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Link href="/integrations/schwab" className="text-link">Connection settings</Link><button className="btn btn-secondary btn-sm" onClick={() => void refreshObservation()} disabled={syncObservation.isPending || observation?.status !== 'LIVE_CONNECTED'}><RotateCcw size={13} /> {syncObservation.isPending ? 'Refreshing…' : 'Refresh'}</button></div>}
+       />
+       <div className="business-setup-disclaimer" style={{ marginTop: 0 }}>
+         <ShieldCheck size={16} />
+         <div><strong>{observation?.status === 'LIVE_CONNECTED' ? 'Live observation connected' : observation?.status === 'CONFIGURATION_REQUIRED' ? 'Schwab connection needs configuration' : 'No current Schwab observation'}</strong><span>Positions and trades are displayed from the latest Schwab read. They remain separate from household capital, and Capital OS cannot place orders or post broker activity to the ledger.</span></div>
+       </div>
+       {observationMessage && <div className="form-feedback" role="status" style={{ marginTop: 12 }}>{observationMessage}</div>}
+       {observationQuery.isLoading && <div className="finance-empty-state">Loading the latest Schwab observation…</div>}
+       {observationQuery.isError && <div className="finance-empty-state" role="alert">The Schwab observation could not be loaded. Open Connection settings to check authorization.</div>}
+       {!observationQuery.isLoading && !observationQuery.isError && !snapshot && <div className="finance-empty-state">Connect Schwab and run a read-only sync to show today’s positions and trades here.</div>}
+       {snapshot && <div className="table-wrap">
+         <table className="table">
+           <thead><tr><th>Symbol</th><th>Qty</th><th>Market value</th><th>Unrealized P/L</th><th>Freshness</th></tr></thead>
+           <tbody>{snapshot.positions.length === 0 ? <tr><td colSpan={5}>No positions were returned by Schwab.</td></tr> : snapshot.positions.map((position) => <tr key={`${position.symbol}-${position.assetType}`}><td><strong>{position.symbol}</strong><small style={{ display: 'block', color: 'var(--ink-soft)' }}>{position.assetType}</small></td><td>{displayObservationValue(position.quantity)}</td><td className="font-mono">{displayObservationValue(position.marketValue, '$')}</td><td className="font-mono">{displayObservationValue(position.unrealizedGainLoss, '$')}</td><td><span className="status">{position.dataFreshness}</span></td></tr>)}</tbody>
+         </table>
+       </div>}
+       {snapshot && <div style={{ marginTop: 18 }}>
+         <div className="card-title">Recent Schwab trades</div>
+         <div className="card-subtitle">Provider transactions observed during the last sync window.</div>
+         {observedTrades.length === 0 ? <div className="finance-empty-state">No trade transactions were returned in the latest observation.</div> : <div className="activity-list">{observedTrades.map((trade, index) => <div className="activity-item" key={`${trade.symbol ?? 'unknown'}-${trade.transactionTimestamp ?? index}-${index}`}><div className="activity-icon"><ArrowRightLeft size={14} /></div><div className="activity-copy"><strong>{trade.symbol ?? 'Unidentified security'} · {trade.description}</strong><span>{displayObservationTimestamp(trade.transactionTimestamp)} · {trade.quantity === 'UNKNOWN' ? 'Quantity unavailable' : `${trade.quantity} units`} · {trade.dataFreshness}</span></div><div className="activity-amount">{displayObservationValue(trade.amount, '$')}</div></div>)}</div>}
+       </div>}
+     </section>
     <ResearchContextPanel context={data.researchContext} />
   </main>;
 }

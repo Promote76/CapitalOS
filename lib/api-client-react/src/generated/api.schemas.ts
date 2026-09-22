@@ -50,6 +50,150 @@ export interface SchwabSyncResult {
   dataMode: SchwabSyncResultDataMode;
 }
 
+export type SchwabObservedPositionDataFreshness = typeof SchwabObservedPositionDataFreshness[keyof typeof SchwabObservedPositionDataFreshness];
+
+
+export const SchwabObservedPositionDataFreshness = {
+  CURRENT: 'CURRENT',
+  AGING: 'AGING',
+  STALE: 'STALE',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export interface SchwabObservedPosition {
+  symbol: string;
+  assetType: string;
+  quantity: string;
+  averageCost: string;
+  costBasis: string;
+  marketPrice: string;
+  marketValue: string;
+  unrealizedGainLoss: string;
+  realizedGainLoss: string;
+  portfolioWeight: string;
+  /** @nullable */
+  providerTimestamp: string | null;
+  receivedAt: string;
+  dataFreshness: SchwabObservedPositionDataFreshness;
+}
+
+export type SchwabObservedTransactionTransactionClass = typeof SchwabObservedTransactionTransactionClass[keyof typeof SchwabObservedTransactionTransactionClass];
+
+
+export const SchwabObservedTransactionTransactionClass = {
+  trade: 'trade',
+  income: 'income',
+  fee: 'fee',
+  transfer: 'transfer',
+  corporate_action: 'corporate_action',
+  unknown: 'unknown',
+} as const;
+
+export type SchwabObservedTransactionDataFreshness = typeof SchwabObservedTransactionDataFreshness[keyof typeof SchwabObservedTransactionDataFreshness];
+
+
+export const SchwabObservedTransactionDataFreshness = {
+  CURRENT: 'CURRENT',
+  AGING: 'AGING',
+  STALE: 'STALE',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export interface SchwabObservedTransaction {
+  /** @nullable */
+  symbol: string | null;
+  transactionClass: SchwabObservedTransactionTransactionClass;
+  amount: string;
+  quantity: string;
+  description: string;
+  /** @nullable */
+  transactionTimestamp: string | null;
+  /** @nullable */
+  providerTimestamp: string | null;
+  receivedAt: string;
+  dataFreshness: SchwabObservedTransactionDataFreshness;
+}
+
+export type SchwabObservedOrderDataFreshness = typeof SchwabObservedOrderDataFreshness[keyof typeof SchwabObservedOrderDataFreshness];
+
+
+export const SchwabObservedOrderDataFreshness = {
+  CURRENT: 'CURRENT',
+  AGING: 'AGING',
+  STALE: 'STALE',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export interface SchwabObservedOrder {
+  symbol: string;
+  side: string;
+  orderType: string;
+  quantity: string;
+  status: string;
+  /** @nullable */
+  submittedAt: string | null;
+  /** @nullable */
+  filledAt: string | null;
+  filledQuantity: string;
+  averageFillPrice: string;
+  /** @nullable */
+  providerTimestamp: string | null;
+  receivedAt: string;
+  dataFreshness: SchwabObservedOrderDataFreshness;
+}
+
+export type SchwabObservationSnapshotFreshness = typeof SchwabObservationSnapshotFreshness[keyof typeof SchwabObservationSnapshotFreshness];
+
+
+export const SchwabObservationSnapshotFreshness = {
+  CURRENT: 'CURRENT',
+  AGING: 'AGING',
+  STALE: 'STALE',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type SchwabObservationSnapshotCounts = {[key: string]: number};
+
+export interface SchwabObservationSnapshot {
+  capturedAt: string;
+  freshness: SchwabObservationSnapshotFreshness;
+  counts: SchwabObservationSnapshotCounts;
+  /** @maxItems 500 */
+  positions: SchwabObservedPosition[];
+  /** @maxItems 300 */
+  orders: SchwabObservedOrder[];
+  /** @maxItems 300 */
+  transactions: SchwabObservedTransaction[];
+}
+
+export type SchwabObservationResultStatus = typeof SchwabObservationResultStatus[keyof typeof SchwabObservationResultStatus];
+
+
+export const SchwabObservationResultStatus = {
+  LIVE_CONNECTED: 'LIVE_CONNECTED',
+  DISCONNECTED: 'DISCONNECTED',
+  CONFIGURATION_REQUIRED: 'CONFIGURATION_REQUIRED',
+  ERROR: 'ERROR',
+} as const;
+
+export type SchwabObservationResultDataMode = typeof SchwabObservationResultDataMode[keyof typeof SchwabObservationResultDataMode];
+
+
+export const SchwabObservationResultDataMode = {
+  LIVE_CONNECTED: 'LIVE_CONNECTED',
+  DISCONNECTED: 'DISCONNECTED',
+} as const;
+
+export interface SchwabObservationResult {
+  status: SchwabObservationResultStatus;
+  dataMode: SchwabObservationResultDataMode;
+  readOnly: true;
+  tradingEnabled: false;
+  /** @nullable */
+  lastSuccessfulSyncAt: string | null;
+  snapshot: SchwabObservationSnapshot | null;
+}
+
 export type SchwabMarketDataResultProvider = typeof SchwabMarketDataResultProvider[keyof typeof SchwabMarketDataResultProvider];
 
 

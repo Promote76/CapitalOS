@@ -274,6 +274,7 @@ import type {
   SchwabMarketDataResult,
   SchwabMarketDataStatus,
   SchwabOAuthCallbackParams,
+  SchwabObservationResult,
   SchwabRefreshResult,
   SchwabResearchCertification,
   SchwabResearchCertificationResponse,
@@ -17878,6 +17879,83 @@ export const useSyncSchwabObservations = <TError = ErrorType<ForbiddenResponse |
       > => {
       return useMutation(getSyncSchwabObservationsMutationOptions(options));
     }
+
+export const getGetLatestSchwabObservationsUrl = () => {
+
+
+
+
+  return `/api/integrations/schwab/observations/latest`
+}
+
+/**
+ * @summary Get the latest redacted household-scoped Schwab positions and transactions
+ */
+export const getLatestSchwabObservations = async ( options?: Parameters<typeof customFetch>[1]): Promise<SchwabObservationResult> => {
+
+  return customFetch<SchwabObservationResult>(getGetLatestSchwabObservationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLatestSchwabObservationsQueryKey = () => {
+    return [
+    `/api/integrations/schwab/observations/latest`
+    ] as const;
+    }
+
+
+export const getGetLatestSchwabObservationsQueryOptions = <TData = Awaited<ReturnType<typeof getLatestSchwabObservations>>, TError = ErrorType<ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLatestSchwabObservations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLatestSchwabObservationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLatestSchwabObservations>>> = ({ signal }) => getLatestSchwabObservations({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLatestSchwabObservations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLatestSchwabObservationsQueryResult = NonNullable<Awaited<ReturnType<typeof getLatestSchwabObservations>>>
+export type GetLatestSchwabObservationsQueryError = ErrorType<ForbiddenResponse>
+
+
+/**
+ * @summary Get the latest redacted household-scoped Schwab positions and transactions
+ */
+
+export function useGetLatestSchwabObservations<TData = Awaited<ReturnType<typeof getLatestSchwabObservations>>, TError = ErrorType<ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLatestSchwabObservations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLatestSchwabObservationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetSchwabMarketDataUrl = (params?: GetSchwabMarketDataParams,) => {
   const normalizedParams = new URLSearchParams();

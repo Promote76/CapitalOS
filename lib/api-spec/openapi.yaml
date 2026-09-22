@@ -3745,6 +3745,14 @@ paths:
         "200": { description: Observation sync status, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabSyncResult" } } } }
         "403": { $ref: "#/components/responses/Forbidden" }
         "409": { $ref: "#/components/responses/Conflict" }
+  /integrations/schwab/observations/latest:
+    get:
+      operationId: getLatestSchwabObservations
+      tags: [schwab]
+      summary: Get the latest redacted household-scoped Schwab positions and transactions
+      responses:
+        "200": { description: Latest read-only broker observation, content: { application/json: { schema: { $ref: "#/components/schemas/SchwabObservationResult" } } } }
+        "403": { $ref: "#/components/responses/Forbidden" }
   /integrations/schwab/market-data:
     get:
       operationId: getSchwabMarketData
@@ -4062,6 +4070,75 @@ components:
       type: object
       required: [status, dataMode]
       properties: { status: { type: string, enum: [SYNCED] }, dataMode: { type: string, enum: [LIVE_CONNECTED] } }
+    SchwabObservedPosition:
+      type: object
+      required: [symbol, assetType, quantity, averageCost, costBasis, marketPrice, marketValue, unrealizedGainLoss, realizedGainLoss, portfolioWeight, providerTimestamp, receivedAt, dataFreshness]
+      properties:
+        symbol: { type: string }
+        assetType: { type: string }
+        quantity: { type: string }
+        averageCost: { type: string }
+        costBasis: { type: string }
+        marketPrice: { type: string }
+        marketValue: { type: string }
+        unrealizedGainLoss: { type: string }
+        realizedGainLoss: { type: string }
+        portfolioWeight: { type: string }
+        providerTimestamp: { type: ["string", "null"], format: date-time }
+        receivedAt: { type: string, format: date-time }
+        dataFreshness: { type: string, enum: [CURRENT, AGING, STALE, UNKNOWN] }
+    SchwabObservedTransaction:
+      type: object
+      required: [symbol, transactionClass, amount, quantity, description, transactionTimestamp, providerTimestamp, receivedAt, dataFreshness]
+      properties:
+        symbol: { type: ["string", "null"] }
+        transactionClass: { type: string, enum: [trade, income, fee, transfer, corporate_action, unknown] }
+        amount: { type: string }
+        quantity: { type: string }
+        description: { type: string }
+        transactionTimestamp: { type: ["string", "null"], format: date-time }
+        providerTimestamp: { type: ["string", "null"], format: date-time }
+        receivedAt: { type: string, format: date-time }
+        dataFreshness: { type: string, enum: [CURRENT, AGING, STALE, UNKNOWN] }
+    SchwabObservedOrder:
+      type: object
+      required: [symbol, side, orderType, quantity, status, submittedAt, filledAt, filledQuantity, averageFillPrice, providerTimestamp, receivedAt, dataFreshness]
+      properties:
+        symbol: { type: string }
+        side: { type: string }
+        orderType: { type: string }
+        quantity: { type: string }
+        status: { type: string }
+        submittedAt: { type: ["string", "null"], format: date-time }
+        filledAt: { type: ["string", "null"], format: date-time }
+        filledQuantity: { type: string }
+        averageFillPrice: { type: string }
+        providerTimestamp: { type: ["string", "null"], format: date-time }
+        receivedAt: { type: string, format: date-time }
+        dataFreshness: { type: string, enum: [CURRENT, AGING, STALE, UNKNOWN] }
+    SchwabObservationSnapshot:
+      type: object
+      required: [capturedAt, freshness, counts, positions, orders, transactions]
+      properties:
+        capturedAt: { type: string, format: date-time }
+        freshness: { type: string, enum: [CURRENT, AGING, STALE, UNKNOWN] }
+        counts: { type: object, additionalProperties: { type: number } }
+        positions: { type: array, maxItems: 500, items: { $ref: "#/components/schemas/SchwabObservedPosition" } }
+        orders: { type: array, maxItems: 300, items: { $ref: "#/components/schemas/SchwabObservedOrder" } }
+        transactions: { type: array, maxItems: 300, items: { $ref: "#/components/schemas/SchwabObservedTransaction" } }
+    SchwabObservationResult:
+      type: object
+      required: [status, dataMode, readOnly, tradingEnabled, lastSuccessfulSyncAt, snapshot]
+      properties:
+        status: { type: string, enum: [LIVE_CONNECTED, DISCONNECTED, CONFIGURATION_REQUIRED, ERROR] }
+        dataMode: { type: string, enum: [LIVE_CONNECTED, DISCONNECTED] }
+        readOnly: { type: boolean, const: true }
+        tradingEnabled: { type: boolean, const: false }
+        lastSuccessfulSyncAt: { type: ["string", "null"], format: date-time }
+        snapshot:
+          oneOf:
+            - { $ref: "#/components/schemas/SchwabObservationSnapshot" }
+            - type: "null"
     SchwabMarketDataResult:
       type: object
       required: [provider, product, readOnly, tradingEnabled, dataMode, quotes, marketClock]

@@ -7,6 +7,7 @@ import { normalizeSchwabAccounts, normalizeSchwabBalances, normalizeSchwabMarket
 import { assertPermission } from "../domain/governance";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
+import { logger } from "../lib/logger";
 import {
   consumeSchwabOAuthState, createSchwabOAuthState, decryptSchwabOAuthValue,
   encryptSchwabOAuthValue, exchangeSchwabToken, SchwabOAuthConfigurationError,
@@ -164,28 +165,40 @@ router.post("/integrations/schwab/sync", asyncRoute(async (_req, res) => {
   const actor = actorFrom(res); assertPermission(actor.role, "approve");
   const [connection] = await db.select().from(schwabConnections).where(eq(schwabConnections.householdId, actor.householdId)).limit(1);
   if (!connection?.accessTokenExpiresAt || connection.accessTokenExpiresAt <= new Date() || connection.status !== "LIVE_CONNECTED") { res.status(409).json({ code: "DISCONNECTED_OR_EXPIRED" }); return; }
+  let syncStage = "prepare";
   try {
     const window = observationWindow();
     const orderQuery = new URLSearchParams({ maxResults: "300", fromEnteredTime: window.from, toEnteredTime: window.to }).toString();
     const transactionQuery = new URLSearchParams({
       startDate: window.from,
       endDate: window.to,
-      types: "TRADE,RECEIVE_AND_DELIVER,DIVIDEND_OR_INTEREST,ACH_RECEIPT,ACH_DISBURSEMENT,CASH_RECEIPT,CASH_DISBURSEMENT,ELECTRONIC_FUND,WIRE,ADVISOR_FEE,JOURNAL,MEMORANDUM,MARGIN_CALL,MONEY_MARKET,SMA_ADJUSTMENT",
+      types: "TRADE,RECEIVE_AND_DELIVER,DIVIDEND_OR_INTEREST,ACH_RECEIPT,ACH_DISBURSEMENT,CASH_RECEIPT,CASH_DISBURSEMENT,ELECTRONIC_FUND,WIRE_OUT,WIRE_IN,JOURNAL,MEMORANDUM,MARGIN_CALL,MONEY_MARKET,SMA_ADJUSTMENT",
     }).toString();
     const token = decryptSchwabOAuthValue({
       ciphertext: connection.accessTokenCiphertext!, nonce: connection.accessTokenNonce!, authTag: connection.accessTokenAuthTag!,
     });
+    syncStage = "account_references";
     const references = await fetchSchwabObservation("/trader/v1/accounts/accountNumbers", token);
     const hashes = Array.isArray(references) ? references.filter((r): r is Record<string, unknown> => !!r && typeof r === "object" && typeof r.hashValue === "string").map((r) => r.hashValue as string) : [];
+    syncStage = "positions";
     const accountPayloads = await Promise.all(hashes.map((hash) => fetchSchwabObservation(`/trader/v1/accounts/${encodeURIComponent(hash)}?fields=positions`, token)));
     const accounts = accountPayloads.flatMap((payload, index) => normalizeSchwabAccounts(actor.householdId, { ...((payload as Record<string, unknown>).securitiesAccount as Record<string, unknown>), hashValue: hashes[index] }));
     const positions = accountPayloads.flatMap((payload, index) => normalizeSchwabPositions(actor.householdId, hashes[index], (payload as Record<string, unknown>)?.securitiesAccount && ((payload as Record<string, unknown>).securitiesAccount as Record<string, unknown>).positions));
     const balances = accountPayloads.flatMap((payload, index) => normalizeSchwabBalances(hashes[index], ((payload as Record<string, unknown>)?.securitiesAccount as Record<string, unknown> | undefined)?.currentBalances));
-    const orders = (await Promise.all(hashes.map((hash) => fetchSchwabObservation(`/trader/v1/accounts/${encodeURIComponent(hash)}/orders?${orderQuery}`, token)))).flatMap((payload, index) => normalizeSchwabOrders(hashes[index], payload));
-    const transactions = (await Promise.all(hashes.map((hash) => fetchSchwabObservation(`/trader/v1/accounts/${encodeURIComponent(hash)}/transactions?${transactionQuery}`, token)))).flatMap((payload, index) => normalizeSchwabTransactions(hashes[index], payload));
+    const orderPayloads = await Promise.allSettled(hashes.map((hash) => fetchSchwabObservation(`/trader/v1/accounts/${encodeURIComponent(hash)}/orders?${orderQuery}`, token)));
+    const orders = orderPayloads.flatMap((result, index) => result.status === "fulfilled" ? normalizeSchwabOrders(hashes[index], result.value) : []);
+    const transactionPayloads = await Promise.allSettled(hashes.map((hash) => fetchSchwabObservation(`/trader/v1/accounts/${encodeURIComponent(hash)}/transactions?${transactionQuery}`, token)));
+    const transactions = transactionPayloads.flatMap((result, index) => result.status === "fulfilled" ? normalizeSchwabTransactions(hashes[index], result.value) : []);
     const symbols = [...new Set(positions.map((p) => p.symbol).filter((s) => s !== "UNKNOWN"))].slice(0, 500);
-    const quotes = symbols.length ? normalizeSchwabQuotes(await fetchSchwabObservation(`/marketdata/v1/quotes?symbols=${encodeURIComponent(symbols.join(","))}`, token)) : [];
-    const marketClock = normalizeSchwabMarketClock(await fetchSchwabObservation(`/marketdata/v1/markets?markets=equity&date=${window.date}`, token));
+    const [quoteResult, marketClockResult] = await Promise.allSettled([
+      symbols.length ? fetchSchwabObservation(`/marketdata/v1/quotes?symbols=${encodeURIComponent(symbols.join(","))}`, token) : Promise.resolve([]),
+      fetchSchwabObservation(`/marketdata/v1/markets?markets=equity&date=${window.date}`, token),
+    ]);
+    const quotes = quoteResult.status === "fulfilled" ? normalizeSchwabQuotes(quoteResult.value) : [];
+    const marketClock = marketClockResult.status === "fulfilled"
+      ? normalizeSchwabMarketClock(marketClockResult.value)
+      : { dataFreshness: "UNKNOWN" as const };
+    syncStage = "persist";
     const committed = await db.transaction(async (tx) => {
       await tx.execute(lifecycleLock(actor.householdId));
       const [current] = await tx.select().from(schwabConnections).where(eq(schwabConnections.householdId, actor.householdId)).limit(1);
@@ -195,7 +208,11 @@ router.post("/integrations/schwab/sync", asyncRoute(async (_req, res) => {
       return true;
     });
     if (!committed) { res.status(409).json({ code: "CONNECTION_CHANGED" }); return; }
-  } catch {
+  } catch (error) {
+    logger.warn({
+      syncStage,
+      errorType: error instanceof Error ? error.name : "UnknownError",
+    }, "Schwab observation sync failed");
     const markedFailed = await db.transaction(async (tx) => {
       await tx.execute(lifecycleLock(actor.householdId));
       const [current] = await tx.select().from(schwabConnections).where(eq(schwabConnections.householdId, actor.householdId)).limit(1);

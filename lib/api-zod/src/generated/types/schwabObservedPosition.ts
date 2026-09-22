@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { SchwabObservedPositionDataFreshness } from './schwabObservedPositionDataFreshness';
+import type { SchwabObservedPositionFreshnessBasis } from './schwabObservedPositionFreshnessBasis';
 
 export interface SchwabObservedPosition {
   symbol: string;
@@ -15,6 +16,8 @@ export interface SchwabObservedPosition {
   costBasis: string;
   marketPrice: string;
   marketValue: string;
+  dayChange: string;
+  dayChangePercent: string;
   unrealizedGainLoss: string;
   realizedGainLoss: string;
   portfolioWeight: string;
@@ -22,4 +25,5 @@ export interface SchwabObservedPosition {
   providerTimestamp: Date | null;
   receivedAt: Date;
   dataFreshness: SchwabObservedPositionDataFreshness;
+  freshnessBasis: SchwabObservedPositionFreshnessBasis;
 }

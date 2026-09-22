@@ -7,6 +7,8 @@
  */
 import type { SchwabObservationSnapshotCounts } from './schwabObservationSnapshotCounts';
 import type { SchwabObservationSnapshotFreshness } from './schwabObservationSnapshotFreshness';
+import type { SchwabObservationSnapshotFreshnessBasis } from './schwabObservationSnapshotFreshnessBasis';
+import type { SchwabObservationSnapshotSummary } from './schwabObservationSnapshotSummary';
 import type { SchwabObservedOrder } from './schwabObservedOrder';
 import type { SchwabObservedPosition } from './schwabObservedPosition';
 import type { SchwabObservedTransaction } from './schwabObservedTransaction';
@@ -14,6 +16,8 @@ import type { SchwabObservedTransaction } from './schwabObservedTransaction';
 export interface SchwabObservationSnapshot {
   capturedAt: Date;
   freshness: SchwabObservationSnapshotFreshness;
+  freshnessBasis: SchwabObservationSnapshotFreshnessBasis;
+  summary: SchwabObservationSnapshotSummary;
   counts: SchwabObservationSnapshotCounts;
   /** @maxItems 500 */
   positions: SchwabObservedPosition[];

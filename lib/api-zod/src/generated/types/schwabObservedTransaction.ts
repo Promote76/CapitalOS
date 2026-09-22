@@ -6,12 +6,16 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { SchwabObservedTransactionDataFreshness } from './schwabObservedTransactionDataFreshness';
+import type { SchwabObservedTransactionFreshnessBasis } from './schwabObservedTransactionFreshnessBasis';
 import type { SchwabObservedTransactionTransactionClass } from './schwabObservedTransactionTransactionClass';
 
 export interface SchwabObservedTransaction {
   /** @nullable */
   symbol: string | null;
   transactionClass: SchwabObservedTransactionTransactionClass;
+  eventType: string;
+  /** @nullable */
+  currency: string | null;
   amount: string;
   quantity: string;
   description: string;
@@ -21,4 +25,5 @@ export interface SchwabObservedTransaction {
   providerTimestamp: Date | null;
   receivedAt: Date;
   dataFreshness: SchwabObservedTransactionDataFreshness;
+  freshnessBasis: SchwabObservedTransactionFreshnessBasis;
 }

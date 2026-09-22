@@ -54,6 +54,7 @@ export type BrokerAccount = {
   displayName: string;
   status: string;
   currency: string;
+  totalValue?: UnknownValue;
   cashBalance: UnknownValue;
   buyingPower: UnknownValue;
   marginEnabled: boolean | "UNKNOWN";
@@ -80,6 +81,8 @@ export type BrokerPosition = {
   costBasis: UnknownValue;
   marketPrice: UnknownValue;
   marketValue: UnknownValue;
+  dayChange?: UnknownValue;
+  dayChangePercent?: UnknownValue;
   unrealizedGainLoss: UnknownValue;
   realizedGainLoss: UnknownValue;
   portfolioWeight: UnknownValue;
@@ -112,6 +115,8 @@ export type BrokerTransaction = {
   transactionIdReference: string;
   symbol: string | null;
   transactionClass: BrokerTransactionClass;
+  eventType?: string;
+  currency?: string | null;
   amount: UnknownValue;
   quantity: UnknownValue;
   description: string;
@@ -317,10 +322,19 @@ const timestampValue = (input: unknown): string | null => {
   }
   return typeof input === "string" && !Number.isNaN(Date.parse(input)) ? input : null;
 };
-const nestedSymbol = (items: unknown): string | null => {
-  const first = Array.isArray(items) && items[0] && typeof items[0] === "object" ? items[0] as Record<string, unknown> : null;
-  const instrument = first?.instrument && typeof first.instrument === "object" ? first.instrument as Record<string, unknown> : null;
-  return typeof instrument?.symbol === "string" ? instrument.symbol : null;
+const associatedTransactionItem = (...collections: unknown[]): Record<string, unknown> | null => {
+  const items = collections.flatMap((collection) => Array.isArray(collection) ? collection : collection && typeof collection === "object" ? [collection] : []);
+  const records = items.filter((item): item is Record<string, unknown> => !!item && typeof item === "object");
+  return records.find((item) => {
+    const instrument = item.instrument && typeof item.instrument === "object" ? item.instrument as Record<string, unknown> : null;
+    return typeof instrument?.symbol === "string" && !/^CURRENCY_[A-Z]{3}$/i.test(instrument.symbol);
+  }) ?? records[0] ?? null;
+};
+const nestedSymbol = (...collections: unknown[]): string | null => {
+  const item = associatedTransactionItem(...collections);
+  const instrument = item?.instrument && typeof item.instrument === "object" ? item.instrument as Record<string, unknown> : null;
+  const symbol = typeof instrument?.symbol === "string" ? instrument.symbol : null;
+  return symbol && !/^CURRENCY_[A-Z]{3}$/i.test(symbol) ? symbol : null;
 };
 
 export function normalizeSchwabAccounts(householdId: string, raw: unknown): BrokerAccount[] {
@@ -336,6 +350,7 @@ export function normalizeSchwabAccounts(householdId: string, raw: unknown): Brok
       householdId, provider: "schwab", providerAccountReference: cryptoSafeReference(item.hashValue),
       accountType: typeof item.type === "string" ? item.type : "UNKNOWN", displayName: typeof item.nickname === "string" ? item.nickname : "Schwab account",
       status: typeof item.status === "string" ? item.status : "UNKNOWN", currency: "USD",
+      totalValue: value((item.currentBalances as Record<string, unknown> | undefined)?.liquidationValue),
       cashBalance: value((item.currentBalances as Record<string, unknown> | undefined)?.cashBalance),
       buyingPower: value((item.currentBalances as Record<string, unknown> | undefined)?.buyingPower),
       marginEnabled: typeof item.isMarginEnabled === "boolean" ? item.isMarginEnabled : "UNKNOWN" as const,
@@ -365,8 +380,9 @@ export function normalizeSchwabPositions(householdId: string, accountId: string,
     const openProfitLoss = typeof p.longOpenProfitLoss === "number" || typeof p.shortOpenProfitLoss === "number"
       ? (typeof p.longOpenProfitLoss === "number" ? p.longOpenProfitLoss : 0) + (typeof p.shortOpenProfitLoss === "number" ? p.shortOpenProfitLoss : 0)
       : null;
+    const costBasis = typeof p.marketValue === "number" && openProfitLoss !== null ? p.marketValue - openProfitLoss : null;
     return { accountId, householdId, symbol: typeof instrument?.symbol === "string" ? instrument.symbol : "UNKNOWN", assetType,
-      quantity: String(netQuantity), averageCost: value(p.averagePrice), costBasis: "UNKNOWN", marketPrice: typeof p.marketValue === "number" && netQuantity !== 0 && multiplier !== null ? String(p.marketValue / (netQuantity * multiplier)) : "UNKNOWN", marketValue: value(p.marketValue), unrealizedGainLoss: openProfitLoss === null ? "UNKNOWN" : String(openProfitLoss), realizedGainLoss: "UNKNOWN", portfolioWeight: "UNKNOWN", providerTimestamp: timestamp, receivedAt: now, dataFreshness: brokerFreshness(timestamp, now) };
+      quantity: String(netQuantity), averageCost: value(p.averagePrice), costBasis: costBasis === null ? "UNKNOWN" : String(costBasis), marketPrice: typeof p.marketValue === "number" && netQuantity !== 0 && multiplier !== null ? String(p.marketValue / (netQuantity * multiplier)) : "UNKNOWN", marketValue: value(p.marketValue), dayChange: value(p.currentDayProfitLoss), dayChangePercent: value(p.currentDayProfitLossPercentage), unrealizedGainLoss: openProfitLoss === null ? "UNKNOWN" : String(openProfitLoss), realizedGainLoss: "UNKNOWN", portfolioWeight: "UNKNOWN", providerTimestamp: timestamp, receivedAt: now, dataFreshness: brokerFreshness(timestamp, now) };
   });
 }
 export function normalizeSchwabBalances(accountId: string, raw: unknown): BrokerBalance[] {
@@ -377,7 +393,41 @@ export function normalizeSchwabOrders(accountId: string, raw: unknown): BrokerOr
   return (Array.isArray(raw) ? raw : []).filter((x): x is Record<string, unknown> => !!x && typeof x === "object").map((x) => { const now = observed(); const stamp = timestampValue(x.closeTime ?? x.enteredTime); const firstLeg = Array.isArray(x.orderLegCollection) && x.orderLegCollection[0] && typeof x.orderLegCollection[0] === "object" ? x.orderLegCollection[0] as Record<string, unknown> : null; return { accountId, orderIdReference: cryptoSafeReference(x.orderId), symbol: nestedSymbol(x.orderLegCollection) ?? "UNKNOWN", side: typeof firstLeg?.instruction === "string" ? firstLeg.instruction : "UNKNOWN", orderType: typeof x.orderType === "string" ? x.orderType : "UNKNOWN", quantity: value(x.quantity), limitPrice: value(x.price), stopPrice: value(x.stopPrice), status: typeof x.status === "string" ? x.status : "UNKNOWN", submittedAt: timestampValue(x.enteredTime), filledAt: timestampValue(x.closeTime), filledQuantity: value(x.filledQuantity), averageFillPrice: value(x.price), providerTimestamp: stamp, receivedAt: now, dataFreshness: brokerFreshness(stamp, now) }; });
 }
 export function normalizeSchwabTransactions(accountId: string, raw: unknown): BrokerTransaction[] {
-  return (Array.isArray(raw) ? raw : []).filter((x): x is Record<string, unknown> => !!x && typeof x === "object").map((x) => { const now = observed(); const stamp = timestampValue(x.time); const type = typeof x.type === "string" ? x.type.toLowerCase() : ""; const transactionClass: BrokerTransactionClass = type.includes("trade") ? "trade" : type.includes("fee") ? "fee" : type.includes("dividend") ? "income" : type.includes("transfer") ? "transfer" : "unknown"; return { accountId, transactionIdReference: cryptoSafeReference(x.activityId ?? x.transactionId), symbol: nestedSymbol(x.transferItems), transactionClass, amount: value(x.netAmount), quantity: value((x.transferItems as Array<Record<string, unknown>> | undefined)?.[0]?.amount), description: typeof x.description === "string" ? x.description : "UNKNOWN", transactionTimestamp: stamp, providerTimestamp: stamp, receivedAt: now, dataFreshness: brokerFreshness(stamp, now) }; });
+  return (Array.isArray(raw) ? raw : []).filter((x): x is Record<string, unknown> => !!x && typeof x === "object").map((x) => {
+    const now = observed();
+    const stamp = timestampValue(x.time);
+    const providerType = typeof x.type === "string" ? x.type.toUpperCase() : "UNKNOWN";
+    const transactionClass: BrokerTransactionClass = providerType.includes("TRADE")
+      ? "trade"
+      : providerType.includes("FEE")
+        ? "fee"
+        : providerType.includes("DIVIDEND") || providerType.includes("INTEREST")
+          ? "income"
+          : /ACH|CASH_|ELECTRONIC_FUND|WIRE_|JOURNAL|RECEIVE_AND_DELIVER|TRANSFER/.test(providerType)
+            ? "transfer"
+            : "unknown";
+    const associatedItem = associatedTransactionItem(x.transactionItem, x.transactionItems, x.transferItems);
+    const explicitCurrency = typeof x.currency === "string"
+      ? x.currency
+      : typeof x.currencyType === "string"
+        ? x.currencyType
+        : null;
+    return {
+      accountId,
+      transactionIdReference: cryptoSafeReference(x.activityId ?? x.transactionId),
+      symbol: nestedSymbol(x.transactionItem, x.transactionItems, x.transferItems),
+      transactionClass,
+      eventType: providerType,
+      currency: explicitCurrency,
+      amount: value(x.netAmount),
+      quantity: value(associatedItem?.quantity ?? associatedItem?.amount),
+      description: typeof x.description === "string" ? x.description : providerType === "UNKNOWN" ? "Unclassified broker event" : providerType.replaceAll("_", " ").toLowerCase(),
+      transactionTimestamp: stamp,
+      providerTimestamp: stamp,
+      receivedAt: now,
+      dataFreshness: brokerFreshness(stamp, now),
+    };
+  });
 }
 export function normalizeSchwabInvestmentTransactions(accountId: string, raw: unknown): BrokerInvestmentTransaction[] {
   return normalizeSchwabTransactions(accountId, raw).filter((item): item is BrokerInvestmentTransaction => item.transactionClass !== "transfer");

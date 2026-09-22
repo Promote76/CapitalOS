@@ -60,6 +60,15 @@ export const SchwabObservedPositionDataFreshness = {
   UNKNOWN: 'UNKNOWN',
 } as const;
 
+export type SchwabObservedPositionFreshnessBasis = typeof SchwabObservedPositionFreshnessBasis[keyof typeof SchwabObservedPositionFreshnessBasis];
+
+
+export const SchwabObservedPositionFreshnessBasis = {
+  PROVIDER_TIMESTAMP: 'PROVIDER_TIMESTAMP',
+  SNAPSHOT_RECEIVED: 'SNAPSHOT_RECEIVED',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
 export interface SchwabObservedPosition {
   symbol: string;
   assetType: string;
@@ -68,6 +77,8 @@ export interface SchwabObservedPosition {
   costBasis: string;
   marketPrice: string;
   marketValue: string;
+  dayChange: string;
+  dayChangePercent: string;
   unrealizedGainLoss: string;
   realizedGainLoss: string;
   portfolioWeight: string;
@@ -75,6 +86,7 @@ export interface SchwabObservedPosition {
   providerTimestamp: string | null;
   receivedAt: string;
   dataFreshness: SchwabObservedPositionDataFreshness;
+  freshnessBasis: SchwabObservedPositionFreshnessBasis;
 }
 
 export type SchwabObservedTransactionTransactionClass = typeof SchwabObservedTransactionTransactionClass[keyof typeof SchwabObservedTransactionTransactionClass];
@@ -99,10 +111,22 @@ export const SchwabObservedTransactionDataFreshness = {
   UNKNOWN: 'UNKNOWN',
 } as const;
 
+export type SchwabObservedTransactionFreshnessBasis = typeof SchwabObservedTransactionFreshnessBasis[keyof typeof SchwabObservedTransactionFreshnessBasis];
+
+
+export const SchwabObservedTransactionFreshnessBasis = {
+  PROVIDER_TIMESTAMP: 'PROVIDER_TIMESTAMP',
+  SNAPSHOT_RECEIVED: 'SNAPSHOT_RECEIVED',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
 export interface SchwabObservedTransaction {
   /** @nullable */
   symbol: string | null;
   transactionClass: SchwabObservedTransactionTransactionClass;
+  eventType: string;
+  /** @nullable */
+  currency: string | null;
   amount: string;
   quantity: string;
   description: string;
@@ -112,6 +136,7 @@ export interface SchwabObservedTransaction {
   providerTimestamp: string | null;
   receivedAt: string;
   dataFreshness: SchwabObservedTransactionDataFreshness;
+  freshnessBasis: SchwabObservedTransactionFreshnessBasis;
 }
 
 export type SchwabObservedOrderDataFreshness = typeof SchwabObservedOrderDataFreshness[keyof typeof SchwabObservedOrderDataFreshness];
@@ -152,11 +177,31 @@ export const SchwabObservationSnapshotFreshness = {
   UNKNOWN: 'UNKNOWN',
 } as const;
 
+export type SchwabObservationSnapshotFreshnessBasis = typeof SchwabObservationSnapshotFreshnessBasis[keyof typeof SchwabObservationSnapshotFreshnessBasis];
+
+
+export const SchwabObservationSnapshotFreshnessBasis = {
+  SNAPSHOT_RECEIVED: 'SNAPSHOT_RECEIVED',
+} as const;
+
+export type SchwabObservationSnapshotSummary = {
+  totalAccountValue: string;
+  investedMarketValue: string;
+  brokerageCash: string;
+  costBasis: string;
+  unrealizedGainLoss: string;
+  dayChange: string;
+  reconciliationDelta: string;
+  reconciled: boolean;
+};
+
 export type SchwabObservationSnapshotCounts = {[key: string]: number};
 
 export interface SchwabObservationSnapshot {
   capturedAt: string;
   freshness: SchwabObservationSnapshotFreshness;
+  freshnessBasis: SchwabObservationSnapshotFreshnessBasis;
+  summary: SchwabObservationSnapshotSummary;
   counts: SchwabObservationSnapshotCounts;
   /** @maxItems 500 */
   positions: SchwabObservedPosition[];
@@ -3568,6 +3613,59 @@ export interface FamilyOfficeResearchInput {
      * @maxLength 102400
      */
   digestionPayload?: string;
+}
+
+export interface PortfolioAgentInput {
+  /**
+     * @minLength 2
+     * @maxLength 1000
+     */
+  question: string;
+}
+
+export type PortfolioAgentResponseSnapshotFreshness = typeof PortfolioAgentResponseSnapshotFreshness[keyof typeof PortfolioAgentResponseSnapshotFreshness];
+
+
+export const PortfolioAgentResponseSnapshotFreshness = {
+  CURRENT: 'CURRENT',
+  AGING: 'AGING',
+  STALE: 'STALE',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type PortfolioAgentResponseResearchContextStatus = typeof PortfolioAgentResponseResearchContextStatus[keyof typeof PortfolioAgentResponseResearchContextStatus];
+
+
+export const PortfolioAgentResponseResearchContextStatus = {
+  available: 'available',
+  empty: 'empty',
+} as const;
+
+export type PortfolioAgentResponseProviderStatus = typeof PortfolioAgentResponseProviderStatus[keyof typeof PortfolioAgentResponseProviderStatus];
+
+
+export const PortfolioAgentResponseProviderStatus = {
+  available: 'available',
+} as const;
+
+export interface PortfolioAgentResponse {
+  answer: string;
+  /** @maxItems 12 */
+  facts: string[];
+  /** @maxItems 8 */
+  recommendations: string[];
+  /** @maxItems 8 */
+  risks: string[];
+  /** @maxItems 8 */
+  uncertainties: string[];
+  snapshotAsOf: string;
+  snapshotFreshness: PortfolioAgentResponseSnapshotFreshness;
+  researchContextStatus: PortfolioAgentResponseResearchContextStatus;
+  advisoryOnly: true;
+  educationalOnly: true;
+  executionAuthorization: false;
+  moneyMovementEnabled: false;
+  providerStatus: PortfolioAgentResponseProviderStatus;
 }
 
 export interface FamilyOfficeResearchDigestionPreviewInput {

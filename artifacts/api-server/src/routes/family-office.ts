@@ -37,6 +37,8 @@ import {
   CreateResearchAdvisoryDecisionResponse,
   DiscoverResearchOpportunitiesBody,
   DiscoverResearchOpportunitiesResponse,
+  AskPortfolioAgentBody,
+  AskPortfolioAgentResponse,
 } from "@workspace/api-zod";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
@@ -57,6 +59,7 @@ import { createInvestmentResearchDossier, listResearchDossiers, registerResearch
 import { listResearchOpportunities } from "../services/research-opportunities";
 import { discoverResearchOpportunities } from "../services/research-discovery";
 import { createResearchAdvisoryDecision, listResearchAdvisoryDecisions } from "../services/research-advisory";
+import { askGroundedPortfolioAgent } from "../services/portfolio-agent";
 
 const router: IRouter = Router();
 
@@ -223,6 +226,11 @@ router.post("/family-office/research", asyncRoute(async (req, res) => {
     ...result,
     sourceRetrieval,
   }));
+}));
+
+router.post("/family-office/portfolio-agent", asyncRoute(async (req, res) => {
+  const body = AskPortfolioAgentBody.parse(req.body);
+  res.json(AskPortfolioAgentResponse.parse(await askGroundedPortfolioAgent(actorFrom(res), body.question)));
 }));
 
 router.post("/family-office/research/digestion/preview", asyncRoute(async (req, res) => {

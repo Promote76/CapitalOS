@@ -32,13 +32,17 @@ test("Schwab provider-shaped observations normalize without account numbers or t
   assert.deepEqual(normalizeSchwabAccounts("household-a", { accountNumber }), []);
 
   const positions = normalizeSchwabPositions("household-a", accountHash, [{
-    longQuantity: 4,
+    longQuantity: 4.12345678,
     averagePrice: 10,
     averageLongPrice: 40,
     marketValue: 60,
+    longOpenProfitLoss: 8,
+    currentDayProfitLoss: 1.25,
     instrument: { symbol: "ABC", assetType: "EQUITY" },
   }]);
-  assert.equal(positions[0]?.marketPrice, "15");
+  assert.equal(positions[0]?.quantity, "4.12345678");
+  assert.equal(positions[0]?.costBasis, "52");
+  assert.equal(positions[0]?.dayChange, "1.25");
   assert.equal(normalizeSchwabBalances(accountHash, { cashBalance: 1000 })[0]?.cashBalance, "1000");
 
   const orders = normalizeSchwabOrders(accountHash, [{
@@ -53,6 +57,17 @@ test("Schwab provider-shaped observations normalize without account numbers or t
   const transaction = normalizeSchwabTransactions(accountHash, [{ activityId: 9, type: "DIVIDEND", netAmount: 4 }])[0];
   assert.equal(transaction?.transactionClass, "income");
   assert.equal(transaction?.transactionIdReference, "9");
+  const associatedTrade = normalizeSchwabTransactions(accountHash, [{
+    activityId: 10,
+    type: "TRADE",
+    netAmount: -20,
+    transferItems: [
+      { amount: -20, instrument: { symbol: "CURRENCY_USD" } },
+      { amount: 0.51234567, instrument: { symbol: "XDTE" } },
+    ],
+  }])[0];
+  assert.equal(associatedTrade?.symbol, "XDTE");
+  assert.equal(associatedTrade?.quantity, "0.51234567");
   assert.equal(normalizeSchwabQuotes({ ABC: { symbol: "ABC", assetMainType: "EQUITY", quote: { lastPrice: 15, quoteTime: 1788900000000 } } })[0]?.providerTimestamp, "2026-09-08T20:40:00.000Z");
   assert.equal(normalizeSchwabMarketClock({ equity: { EQ: { isOpen: true, sessionHours: { regularMarket: [{ start: "2026-09-08T13:30:00.000Z" }] } } } }).marketOpen, true);
   const short = normalizeSchwabPositions("household-a", accountHash, [{

@@ -3784,6 +3784,45 @@ export const CreateFamilyOfficeResearchResponse = zod.object({
 })
 
 
+/**
+ * @summary Ask the grounded read-only Portfolio AI Agent for an educational advisory explanation
+ */
+export const askPortfolioAgentBodyQuestionMin = 2;
+export const askPortfolioAgentBodyQuestionMax = 1000;
+
+
+
+export const AskPortfolioAgentBody = zod.object({
+  "question": zod.string().min(askPortfolioAgentBodyQuestionMin).max(askPortfolioAgentBodyQuestionMax)
+})
+
+export const askPortfolioAgentResponseFactsMax = 12;
+
+export const askPortfolioAgentResponseRecommendationsMax = 8;
+
+export const askPortfolioAgentResponseRisksMax = 8;
+
+export const askPortfolioAgentResponseUncertaintiesMax = 8;
+
+
+
+export const AskPortfolioAgentResponse = zod.object({
+  "answer": zod.string(),
+  "facts": zod.array(zod.string()).max(askPortfolioAgentResponseFactsMax),
+  "recommendations": zod.array(zod.string()).max(askPortfolioAgentResponseRecommendationsMax),
+  "risks": zod.array(zod.string()).max(askPortfolioAgentResponseRisksMax),
+  "uncertainties": zod.array(zod.string()).max(askPortfolioAgentResponseUncertaintiesMax),
+  "snapshotAsOf": zod.coerce.date(),
+  "snapshotFreshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN']),
+  "researchContextStatus": zod.enum(['available', 'empty']),
+  "advisoryOnly": zod.literal(true),
+  "educationalOnly": zod.literal(true),
+  "executionAuthorization": zod.literal(false),
+  "moneyMovementEnabled": zod.literal(false),
+  "providerStatus": zod.enum(['available'])
+})
+
+
 export const requestResearchEvidenceUploadBodySizeMax = 10485760;
 export const requestResearchEvidenceUploadBodySizeMultipleOf = 1;
 
@@ -13660,6 +13699,17 @@ export const GetLatestSchwabObservationsResponse = zod.object({
   "snapshot": zod.union([zod.object({
   "capturedAt": zod.coerce.date(),
   "freshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN']),
+  "freshnessBasis": zod.enum(['SNAPSHOT_RECEIVED']),
+  "summary": zod.object({
+  "totalAccountValue": zod.string(),
+  "investedMarketValue": zod.string(),
+  "brokerageCash": zod.string(),
+  "costBasis": zod.string(),
+  "unrealizedGainLoss": zod.string(),
+  "dayChange": zod.string(),
+  "reconciliationDelta": zod.string(),
+  "reconciled": zod.boolean()
+}),
   "counts": zod.record(zod.string(), zod.number()),
   "positions": zod.array(zod.object({
   "symbol": zod.string(),
@@ -13669,12 +13719,15 @@ export const GetLatestSchwabObservationsResponse = zod.object({
   "costBasis": zod.string(),
   "marketPrice": zod.string(),
   "marketValue": zod.string(),
+  "dayChange": zod.string(),
+  "dayChangePercent": zod.string(),
   "unrealizedGainLoss": zod.string(),
   "realizedGainLoss": zod.string(),
   "portfolioWeight": zod.string(),
   "providerTimestamp": zod.coerce.date().nullable(),
   "receivedAt": zod.coerce.date(),
-  "dataFreshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN'])
+  "dataFreshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN']),
+  "freshnessBasis": zod.enum(['PROVIDER_TIMESTAMP', 'SNAPSHOT_RECEIVED', 'UNKNOWN'])
 })).max(getLatestSchwabObservationsResponseSnapshotOnePositionsMax),
   "orders": zod.array(zod.object({
   "symbol": zod.string(),
@@ -13693,13 +13746,16 @@ export const GetLatestSchwabObservationsResponse = zod.object({
   "transactions": zod.array(zod.object({
   "symbol": zod.string().nullable(),
   "transactionClass": zod.enum(['trade', 'income', 'fee', 'transfer', 'corporate_action', 'unknown']),
+  "eventType": zod.string(),
+  "currency": zod.string().nullable(),
   "amount": zod.string(),
   "quantity": zod.string(),
   "description": zod.string(),
   "transactionTimestamp": zod.coerce.date().nullable(),
   "providerTimestamp": zod.coerce.date().nullable(),
   "receivedAt": zod.coerce.date(),
-  "dataFreshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN'])
+  "dataFreshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN']),
+  "freshnessBasis": zod.enum(['PROVIDER_TIMESTAMP', 'SNAPSHOT_RECEIVED', 'UNKNOWN'])
 })).max(getLatestSchwabObservationsResponseSnapshotOneTransactionsMax)
 }),zod.null()])
 })

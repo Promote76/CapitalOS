@@ -3,7 +3,7 @@ import { Router, type IRouter } from "express";
 import { randomBytes, randomUUID } from "node:crypto";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { auditEvents, db, schwabConnections, schwabOAuthStates, schwabObservationSnapshots } from "@workspace/db";
-import { normalizeSchwabAccounts, normalizeSchwabBalances, normalizeSchwabMarketClock, normalizeSchwabOrders, normalizeSchwabPositions, normalizeSchwabQuotes, normalizeSchwabTransactions } from "../adapters/broker-portfolio";
+import { brokerFreshness, normalizeSchwabAccounts, normalizeSchwabBalances, normalizeSchwabMarketClock, normalizeSchwabOrders, normalizeSchwabPositions, normalizeSchwabQuotes, normalizeSchwabTransactions } from "../adapters/broker-portfolio";
 import { assertPermission } from "../domain/governance";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
@@ -203,7 +203,7 @@ router.post("/integrations/schwab/sync", asyncRoute(async (_req, res) => {
       await tx.execute(lifecycleLock(actor.householdId));
       const [current] = await tx.select().from(schwabConnections).where(eq(schwabConnections.householdId, actor.householdId)).limit(1);
       if (current?.id !== connection.id || current.status !== "LIVE_CONNECTED" || current.accessTokenCiphertext !== connection.accessTokenCiphertext || !current.accessTokenExpiresAt || current.accessTokenExpiresAt <= new Date()) return false;
-      await tx.insert(schwabObservationSnapshots).values({ householdId: actor.householdId, connectionId: connection.id, accounts, balances, positions, orders, transactions, quotes, marketClock, counts: { accounts: accounts.length, balances: balances.length, positions: positions.length, orders: orders.length, transactions: transactions.length, quotes: quotes.length }, freshness: marketClock.dataFreshness });
+      await tx.insert(schwabObservationSnapshots).values({ householdId: actor.householdId, connectionId: connection.id, accounts, balances, positions, orders, transactions, quotes, marketClock, counts: { accounts: accounts.length, balances: balances.length, positions: positions.length, orders: orders.length, transactions: transactions.length, quotes: quotes.length }, freshness: "CURRENT" });
       await tx.update(schwabConnections).set({ lastSuccessfulSyncAt: new Date(), updatedAt: new Date() }).where(eq(schwabConnections.id, connection.id));
       return true;
     });
@@ -246,6 +246,24 @@ router.get("/integrations/schwab/observations/latest", asyncRoute(async (_req, r
       : healthy
         ? "LIVE_CONNECTED"
         : "DISCONNECTED";
+  const numberOrNull = (value: unknown) => {
+    const parsed = typeof value === "string" || typeof value === "number" ? Number(value) : Number.NaN;
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const snapshotFreshness = snapshot
+    ? brokerFreshness(snapshot.createdAt.toISOString(), snapshot.createdAt.toISOString())
+    : "UNKNOWN";
+  const accountRecords = (snapshot?.accounts ?? []).filter((account): account is Record<string, unknown> => !!account && typeof account === "object");
+  const balanceRecords = (snapshot?.balances ?? []).filter((balance): balance is Record<string, unknown> => !!balance && typeof balance === "object");
+  const positionRecords = (snapshot?.positions ?? []).filter((position): position is Record<string, unknown> => !!position && typeof position === "object");
+  const investedMarketValue = positionRecords.reduce((total, position) => total + (numberOrNull(position.marketValue) ?? 0), 0);
+  const brokerageCash = balanceRecords.reduce((total, balance) => total + (numberOrNull(balance.cashBalance) ?? 0), 0);
+  const providerAccountValue = accountRecords.reduce((total, account) => total + (numberOrNull(account.totalValue) ?? 0), 0);
+  const calculatedAccountValue = investedMarketValue + brokerageCash;
+  const totalAccountValue = providerAccountValue > 0 ? providerAccountValue : calculatedAccountValue;
+  const unrealizedGainLoss = positionRecords.reduce((total, position) => total + (numberOrNull(position.unrealizedGainLoss) ?? 0), 0);
+  const dayChange = positionRecords.reduce((total, position) => total + (numberOrNull(position.dayChange) ?? 0), 0);
+  const costBasis = positionRecords.reduce((total, position) => total + (numberOrNull(position.costBasis) ?? 0), 0);
   const redactPosition = (position: Record<string, unknown>) => ({
     symbol: String(position.symbol ?? "UNKNOWN"),
     assetType: String(position.assetType ?? "UNKNOWN"),
@@ -254,12 +272,15 @@ router.get("/integrations/schwab/observations/latest", asyncRoute(async (_req, r
     costBasis: String(position.costBasis ?? "UNKNOWN"),
     marketPrice: String(position.marketPrice ?? "UNKNOWN"),
     marketValue: String(position.marketValue ?? "UNKNOWN"),
+    dayChange: String(position.dayChange ?? "UNKNOWN"),
+    dayChangePercent: String(position.dayChangePercent ?? "UNKNOWN"),
     unrealizedGainLoss: String(position.unrealizedGainLoss ?? "UNKNOWN"),
     realizedGainLoss: String(position.realizedGainLoss ?? "UNKNOWN"),
     portfolioWeight: String(position.portfolioWeight ?? "UNKNOWN"),
     providerTimestamp: typeof position.providerTimestamp === "string" ? position.providerTimestamp : null,
     receivedAt: String(position.receivedAt ?? snapshot?.createdAt.toISOString() ?? new Date().toISOString()),
-    dataFreshness: String(position.dataFreshness ?? snapshot?.freshness ?? "UNKNOWN"),
+    dataFreshness: position.dataFreshness === "UNKNOWN" ? snapshotFreshness : String(position.dataFreshness ?? snapshotFreshness),
+    freshnessBasis: position.providerTimestamp ? "PROVIDER_TIMESTAMP" : snapshot ? "SNAPSHOT_RECEIVED" : "UNKNOWN",
   });
   const redactOrder = (order: Record<string, unknown>) => ({
     symbol: String(order.symbol ?? "UNKNOWN"),
@@ -278,13 +299,16 @@ router.get("/integrations/schwab/observations/latest", asyncRoute(async (_req, r
   const redactTransaction = (transaction: Record<string, unknown>) => ({
     symbol: typeof transaction.symbol === "string" ? transaction.symbol : null,
     transactionClass: String(transaction.transactionClass ?? "unknown"),
+    eventType: String(transaction.eventType ?? "UNKNOWN"),
+    currency: typeof transaction.currency === "string" ? transaction.currency : null,
     amount: String(transaction.amount ?? "UNKNOWN"),
     quantity: String(transaction.quantity ?? "UNKNOWN"),
     description: String(transaction.description ?? "No description supplied"),
     transactionTimestamp: typeof transaction.transactionTimestamp === "string" ? transaction.transactionTimestamp : null,
     providerTimestamp: typeof transaction.providerTimestamp === "string" ? transaction.providerTimestamp : null,
     receivedAt: String(transaction.receivedAt ?? snapshot?.createdAt.toISOString() ?? new Date().toISOString()),
-    dataFreshness: String(transaction.dataFreshness ?? snapshot?.freshness ?? "UNKNOWN"),
+    dataFreshness: transaction.dataFreshness === "UNKNOWN" ? snapshotFreshness : String(transaction.dataFreshness ?? snapshotFreshness),
+    freshnessBasis: transaction.providerTimestamp ? "PROVIDER_TIMESTAMP" : snapshot ? "SNAPSHOT_RECEIVED" : "UNKNOWN",
   });
   res.json({
     status,
@@ -294,7 +318,18 @@ router.get("/integrations/schwab/observations/latest", asyncRoute(async (_req, r
     lastSuccessfulSyncAt: connection?.lastSuccessfulSyncAt?.toISOString() ?? null,
     snapshot: snapshot ? {
       capturedAt: snapshot.createdAt.toISOString(),
-      freshness: snapshot.freshness,
+      freshness: snapshotFreshness,
+      freshnessBasis: "SNAPSHOT_RECEIVED",
+      summary: {
+        totalAccountValue: totalAccountValue.toFixed(8),
+        investedMarketValue: investedMarketValue.toFixed(8),
+        brokerageCash: brokerageCash.toFixed(8),
+        costBasis: costBasis.toFixed(8),
+        unrealizedGainLoss: unrealizedGainLoss.toFixed(8),
+        dayChange: dayChange.toFixed(8),
+        reconciliationDelta: (totalAccountValue - calculatedAccountValue).toFixed(8),
+        reconciled: Math.abs(totalAccountValue - calculatedAccountValue) < 0.01,
+      },
       counts: snapshot.counts ?? {},
       positions: (snapshot.positions ?? []).slice(0, 500).map((position) => redactPosition(position)),
       orders: (snapshot.orders ?? []).slice(0, 300).map((order) => redactOrder(order)),

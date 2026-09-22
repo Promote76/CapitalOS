@@ -71,6 +71,7 @@ import {
   useGetPortfolio,
   useGetLatestSchwabObservations,
   useSyncSchwabObservations,
+  useAskPortfolioAgent,
   getGetLatestSchwabObservationsQueryKey,
   useGetRisk,
   useGetPropertyUnderwriting,
@@ -587,6 +588,12 @@ function displayObservationTimestamp(value: string | null | undefined) {
   return Number.isNaN(date.getTime()) ? 'Time unavailable' : date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+function displayObservationQuantity(value: string | null | undefined) {
+  if (!value || value === 'UNKNOWN') return '—';
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 8 }) : value;
+}
+
 function donutGradient(items: Array<{ percent: number; color?: string }>) {
   const colors = ['var(--ink)', 'var(--marigold)', 'var(--clay)', '#9fbdb1', '#6d7fe8'];
   let start = 0;
@@ -1058,15 +1065,19 @@ function PortfolioPage() {
   const query = useGetPortfolio();
   const observationQuery = useGetLatestSchwabObservations();
   const syncObservation = useSyncSchwabObservations();
+  const portfolioAgent = useAskPortfolioAgent();
   const portfolioQueryClient = useQueryClient();
   const [observationMessage, setObservationMessage] = useState('');
+  const [agentQuestion, setAgentQuestion] = useState('');
+  const [agentAnswer, setAgentAnswer] = useState<Awaited<ReturnType<typeof portfolioAgent.mutateAsync>> | null>(null);
   const state = researchContextUiState(query);
   if (state === "loading") return <main className="content"><div className="card card-pad">Loading portfolio…</div></main>;
   if (state === "error" || !query.data) return <main className="content"><div className="card card-pad" role="alert">Portfolio data is temporarily unavailable. Try again in a moment.</div></main>;
   const data = query.data;
   const observation = observationQuery.data;
   const snapshot = observation?.snapshot;
-  const observedTrades = (snapshot?.transactions ?? []).filter((transaction) => transaction.transactionClass === 'trade').slice(0, 8);
+  const summary = snapshot?.summary;
+  const observedActivity = (snapshot?.transactions ?? []).slice(0, 12);
   const observedValues = new Map<string, number>();
   for (const position of snapshot?.positions ?? []) {
     const value = Number(position.marketValue);
@@ -1093,6 +1104,14 @@ function PortfolioPage() {
     ? (largestObservedHolding[1] / observedTotal) * 100
     : 0;
   const observedDonutGradient = donutGradient(observedComposition);
+  const askAgent = async (question: string) => {
+    setAgentQuestion(question);
+    try {
+      setAgentAnswer(await portfolioAgent.mutateAsync({ data: { question } }));
+    } catch (error) {
+      setObservationMessage(error instanceof Error ? error.message : 'The Portfolio AI Agent is temporarily unavailable.');
+    }
+  };
   const refreshObservation = async () => {
     setObservationMessage('');
     try {
@@ -1113,10 +1132,14 @@ function PortfolioPage() {
        <CardTitle title="Schwab observed portfolio" subtitle={snapshot ? `Provider market values · ${displayObservationTimestamp(snapshot.capturedAt)}` : 'No synced Schwab market values'} action={<Link href="/integrations/schwab" className="text-link">Open Schwab connection</Link>} />
         {observedTotal > 0 ? <>
           <div className="observed-summary-grid">
-            <div><span>Observed value</span><strong>{displayObservationValue(observedTotal.toFixed(2), '$')}</strong><small>Latest provider snapshot</small></div>
-            <div><span>Unrealized P/L</span><strong className={observedUnrealizedGainLoss >= 0 ? 'observed-positive' : 'observed-negative'}>{displayObservationValue(observedUnrealizedGainLoss.toFixed(2), '$')}</strong><small>Across visible positions</small></div>
-            <div><span>Positions</span><strong>{snapshot?.positions.length ?? 0}</strong><small>{observedEntries.length} with market value</small></div>
-            <div><span>Largest allocation</span><strong>{largestObservedHolding?.[0] ?? '—'}</strong><small>{largestObservedPercent.toFixed(1)}% of observed value</small></div>
+            <div><span>Total account value</span><strong>{displayObservationValue(summary?.totalAccountValue, '$')}</strong><small>Investments plus brokerage cash</small></div>
+            <div><span>Invested market value</span><strong>{displayObservationValue(summary?.investedMarketValue, '$')}</strong><small>{snapshot?.positions.length ?? 0} current positions</small></div>
+            <div><span>Brokerage cash</span><strong>{displayObservationValue(summary?.brokerageCash, '$')}</strong><small>Observed cash, not household capital</small></div>
+            <div><span>Unrealized P/L</span><strong className={Number(summary?.unrealizedGainLoss ?? observedUnrealizedGainLoss) >= 0 ? 'observed-positive' : 'observed-negative'}>{displayObservationValue(summary?.unrealizedGainLoss, '$')}</strong><small>Same-snapshot position total</small></div>
+            <div><span>Day change</span><strong className={Number(summary?.dayChange ?? 0) >= 0 ? 'observed-positive' : 'observed-negative'}>{displayObservationValue(summary?.dayChange, '$')}</strong><small>Provider value when supplied</small></div>
+            <div><span>Cost basis</span><strong>{displayObservationValue(summary?.costBasis, '$')}</strong><small>Reconciled from this snapshot</small></div>
+            <div><span>Largest allocation</span><strong>{largestObservedHolding?.[0] ?? '—'}</strong><small>{largestObservedPercent.toFixed(1)}% of invested value</small></div>
+            <div><span>Reconciliation</span><strong className={summary?.reconciled ? 'observed-positive' : 'observed-negative'}>{summary?.reconciled ? 'Matched' : 'Review'}</strong><small>Difference {displayObservationValue(summary?.reconciliationDelta, '$')}</small></div>
           </div>
           <div className="donut-wrap">
             <div className="donut" style={{ background: observedDonutGradient }}><div className="donut-center"><strong>{displayObservationValue(observedTotal.toFixed(2), '$')}</strong><span>observed market value</span></div></div>
@@ -1141,17 +1164,24 @@ function PortfolioPage() {
        {!observationQuery.isLoading && !observationQuery.isError && !snapshot && <div className="finance-empty-state">Connect Schwab and run a read-only sync to show today’s positions and trades here.</div>}
        {snapshot && <div className="table-wrap">
          <table className="table">
-           <thead><tr><th>Symbol</th><th>Qty</th><th>Market value</th><th>Unrealized P/L</th><th>Freshness</th></tr></thead>
-           <tbody>{snapshot.positions.length === 0 ? <tr><td colSpan={5}>No positions were returned by Schwab.</td></tr> : snapshot.positions.map((position) => <tr key={`${position.symbol}-${position.assetType}`}><td><strong>{position.symbol}</strong><small style={{ display: 'block', color: 'var(--ink-soft)' }}>{position.assetType}</small></td><td>{displayObservationValue(position.quantity)}</td><td className="font-mono">{displayObservationValue(position.marketValue, '$')}</td><td className="font-mono">{displayObservationValue(position.unrealizedGainLoss, '$')}</td><td><span className="status">{position.dataFreshness}</span></td></tr>)}</tbody>
+            <thead><tr><th>Symbol</th><th>Qty</th><th>Market value</th><th>Cost basis</th><th>Day change</th><th>Unrealized P/L</th><th>Freshness</th></tr></thead>
+            <tbody>{snapshot.positions.length === 0 ? <tr><td colSpan={7}>No positions were returned by Schwab.</td></tr> : snapshot.positions.map((position) => <tr key={`${position.symbol}-${position.assetType}`}><td><strong>{position.symbol}</strong><small style={{ display: 'block', color: 'var(--ink-soft)' }}>{position.assetType}</small></td><td className="font-mono">{displayObservationQuantity(position.quantity)}</td><td className="font-mono">{displayObservationValue(position.marketValue, '$')}</td><td className="font-mono">{displayObservationValue(position.costBasis, '$')}</td><td className="font-mono">{displayObservationValue(position.dayChange, '$')}</td><td className="font-mono">{displayObservationValue(position.unrealizedGainLoss, '$')}</td><td><span className="status">{position.dataFreshness}</span><small className="freshness-basis">{position.freshnessBasis === 'SNAPSHOT_RECEIVED' ? 'snapshot time' : 'provider time'}</small></td></tr>)}</tbody>
          </table>
        </div>}
        {snapshot && <div style={{ marginTop: 18 }}>
-         <div className="card-title">Recent Schwab trades</div>
-         <div className="card-subtitle">Provider transactions observed during the last sync window.</div>
-         {observedTrades.length === 0 ? <div className="finance-empty-state">No trade transactions were returned in the latest observation.</div> : <div className="activity-list">{observedTrades.map((trade, index) => <div className="activity-item" key={`${trade.symbol ?? 'unknown'}-${trade.transactionTimestamp ?? index}-${index}`}><div className="activity-icon"><ArrowRightLeft size={14} /></div><div className="activity-copy"><strong>{trade.symbol ?? 'Unidentified security'} · {trade.description}</strong><span>{displayObservationTimestamp(trade.transactionTimestamp)} · {trade.quantity === 'UNKNOWN' ? 'Quantity unavailable' : `${trade.quantity} units`} · {trade.dataFreshness}</span></div><div className="activity-amount">{displayObservationValue(trade.amount, '$')}</div></div>)}</div>}
+          <div className="card-title">Recent observed activity</div>
+          <div className="card-subtitle">Purchases, sales, dividends, fees, and cash movements reported in the latest sync window.</div>
+          {observedActivity.length === 0 ? <div className="finance-empty-state">No recent portfolio activity was returned in the latest observation.</div> : <div className="activity-list">{observedActivity.map((trade, index) => <div className="activity-item" key={`${trade.symbol ?? 'unknown'}-${trade.transactionTimestamp ?? index}-${index}`}><div className="activity-icon"><ArrowRightLeft size={14} /></div><div className="activity-copy"><strong>{trade.symbol ?? (trade.transactionClass === 'transfer' ? 'Brokerage cash movement' : 'Security association unavailable')} · {trade.description}</strong><span>{trade.eventType.replaceAll('_', ' ').toLowerCase()} · {displayObservationTimestamp(trade.transactionTimestamp)} · {trade.quantity === 'UNKNOWN' ? 'Quantity unavailable' : `${displayObservationQuantity(trade.quantity)} units`} · {trade.dataFreshness}</span></div><div className="activity-amount">{displayObservationValue(trade.amount, '$')}</div></div>)}</div>}
        </div>}
      </section>
-    <ResearchContextPanel context={data.researchContext} />
+      <section className="card card-pad page-section portfolio-agent-card">
+        <CardTitle title="Portfolio AI Agent" subtitle={snapshot ? `Grounded in the read-only snapshot from ${displayObservationTimestamp(snapshot.capturedAt)}` : 'A current Schwab snapshot is required'} />
+        <div className="portfolio-agent-boundary"><ShieldCheck size={16} /><span>Educational, informational, and advisory only. The agent cannot trade, move money, change broker settings, or use protected household/property capital.</span></div>
+        <div className="portfolio-agent-prompts">{['Explain my portfolio', 'What changed today?', 'Where am I concentrated?', 'What does this gain/loss mean?', 'What should I review next?', 'Explain this like I am new to investing.'].map((prompt) => <button key={prompt} className="btn btn-secondary btn-sm" disabled={!snapshot || portfolioAgent.isPending} onClick={() => void askAgent(prompt)}>{prompt}</button>)}</div>
+        <form className="portfolio-agent-form" onSubmit={(event) => { event.preventDefault(); if (agentQuestion.trim()) void askAgent(agentQuestion.trim()); }}><input value={agentQuestion} onChange={(event) => setAgentQuestion(event.target.value)} maxLength={1000} placeholder="Ask about allocation, risk, cash, gains, or recent activity…" /><button className="btn btn-primary" disabled={!snapshot || portfolioAgent.isPending || agentQuestion.trim().length < 2}>{portfolioAgent.isPending ? 'Explaining…' : 'Ask agent'}</button></form>
+        {agentAnswer && <div className="portfolio-agent-answer"><span className="mono-label">Plain-English explanation</span><p>{agentAnswer.answer}</p>{agentAnswer.recommendations.length > 0 && <details><summary>Recommendations and supporting context</summary><ul>{agentAnswer.recommendations.map((item) => <li key={item}>{item}</li>)}</ul></details>}{agentAnswer.risks.length > 0 && <details><summary>Risks and uncertainties</summary><ul>{[...agentAnswer.risks, ...agentAnswer.uncertainties].map((item) => <li key={item}>{item}</li>)}</ul></details>}<small>Advisory only · snapshot {displayObservationTimestamp(String(agentAnswer.snapshotAsOf))} · {agentAnswer.snapshotFreshness.toLowerCase()}</small></div>}
+      </section>
+     <ResearchContextPanel context={data.researchContext} title="Research candidates — not current holdings" />
   </main>;
 }
 

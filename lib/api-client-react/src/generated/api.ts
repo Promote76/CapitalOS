@@ -229,6 +229,8 @@ import type {
   OperationsTaskInput,
   OperationsTaskUpdate,
   OperationsWorker,
+  PortfolioAgentInput,
+  PortfolioAgentResponse,
   PortfolioSummary,
   PrivacySettingsInput,
   ProfitLossDocumentInput,
@@ -5886,6 +5888,77 @@ export const useCreateFamilyOfficeResearch = <TError = ErrorType<ErrorResponse |
         TContext
       > => {
       return useMutation(getCreateFamilyOfficeResearchMutationOptions(options));
+    }
+
+export const getAskPortfolioAgentUrl = () => {
+
+
+
+
+  return `/api/family-office/portfolio-agent`
+}
+
+/**
+ * @summary Ask the grounded read-only Portfolio AI Agent for an educational advisory explanation
+ */
+export const askPortfolioAgent = async (portfolioAgentInput: PortfolioAgentInput, options?: Parameters<typeof customFetch>[1]): Promise<PortfolioAgentResponse> => {
+
+  return customFetch<PortfolioAgentResponse>(getAskPortfolioAgentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(portfolioAgentInput)
+  }
+);}
+
+
+
+
+
+export const getAskPortfolioAgentMutationOptions = <TError = ErrorType<ConflictResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof askPortfolioAgent>>, TError,{data: BodyType<PortfolioAgentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof askPortfolioAgent>>, TError,{data: BodyType<PortfolioAgentInput>}, TContext> => {
+
+const mutationKey = ['askPortfolioAgent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof askPortfolioAgent>>, {data: BodyType<PortfolioAgentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  askPortfolioAgent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AskPortfolioAgentMutationResult = NonNullable<Awaited<ReturnType<typeof askPortfolioAgent>>>
+    export type AskPortfolioAgentMutationBody = BodyType<PortfolioAgentInput>
+    export type AskPortfolioAgentMutationError = ErrorType<ConflictResponse | ErrorResponse>
+
+    /**
+ * @summary Ask the grounded read-only Portfolio AI Agent for an educational advisory explanation
+ */
+export const useAskPortfolioAgent = <TError = ErrorType<ConflictResponse | ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof askPortfolioAgent>>, TError,{data: BodyType<PortfolioAgentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof askPortfolioAgent>>,
+        TError,
+        {data: BodyType<PortfolioAgentInput>},
+        TContext
+      > => {
+      return useMutation(getAskPortfolioAgentMutationOptions(options));
     }
 
 export const getRequestResearchEvidenceUploadUrl = () => {

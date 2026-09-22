@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "releaseCandidate": "RC1",
   "result": "PASS_WITH_BLOCKER",
-  "generatedAt": "2026-09-13T19:27:26.784Z",
+  "generatedAt": "2026-09-22T04:09:59.877Z",
   "source": {
-    "baseCommit": "452228952cdd362b177d76b314efec961179f864",
-    "sourceSha256": "a52a805feb513dd9b6cd92fe446de938d094b2aab1ad4e3fdf9fa1c7d3610d02",
-    "inputCount": 1182,
+    "baseCommit": "320eb1bebc6ed12cff8d550ea425baf7938bd714",
+    "sourceSha256": "b00e998539b2fa3c19d675397fd52702b7622eca75f747aecc9cd5594819e053",
+    "inputCount": 1195,
     "inputs": [
       "artifacts/api-server/.replit-artifact/artifact.toml",
       "artifacts/api-server/package.json",
@@ -897,6 +897,19 @@
       "lib/api-zod/src/generated/types/schwabMarketQuote.ts",
       "lib/api-zod/src/generated/types/schwabMarketQuoteDataFreshness.ts",
       "lib/api-zod/src/generated/types/schwabOAuthCallbackParams.ts",
+      "lib/api-zod/src/generated/types/schwabObservationResult.ts",
+      "lib/api-zod/src/generated/types/schwabObservationResultDataMode.ts",
+      "lib/api-zod/src/generated/types/schwabObservationResultStatus.ts",
+      "lib/api-zod/src/generated/types/schwabObservationSnapshot.ts",
+      "lib/api-zod/src/generated/types/schwabObservationSnapshotCounts.ts",
+      "lib/api-zod/src/generated/types/schwabObservationSnapshotFreshness.ts",
+      "lib/api-zod/src/generated/types/schwabObservedOrder.ts",
+      "lib/api-zod/src/generated/types/schwabObservedOrderDataFreshness.ts",
+      "lib/api-zod/src/generated/types/schwabObservedPosition.ts",
+      "lib/api-zod/src/generated/types/schwabObservedPositionDataFreshness.ts",
+      "lib/api-zod/src/generated/types/schwabObservedTransaction.ts",
+      "lib/api-zod/src/generated/types/schwabObservedTransactionDataFreshness.ts",
+      "lib/api-zod/src/generated/types/schwabObservedTransactionTransactionClass.ts",
       "lib/api-zod/src/generated/types/schwabRefreshResult.ts",
       "lib/api-zod/src/generated/types/schwabRefreshResultStatus.ts",
       "lib/api-zod/src/generated/types/schwabRefreshResultTokenHealth.ts",
@@ -1193,8 +1206,8 @@
     ]
   },
   "routeInventory": {
-    "current": 255,
-    "executed": 255,
+    "current": 256,
+    "executed": 256,
     "result": "PASS"
   },
   "databaseTarget": "DISPOSABLE_LOCAL_POSTGRESQL",
@@ -1234,5 +1247,5 @@
     "venueExecution": "DISABLED",
     "moneyMovement": "DISABLED"
   },
-  "evidenceLog": "docs/certification/operations-recovery-runs/operations-recovery-2026-09-13T19-26-12Z.log"
+  "evidenceLog": "docs/certification/operations-recovery-runs/operations-recovery-2026-09-22T04-08-45Z.log"
 }

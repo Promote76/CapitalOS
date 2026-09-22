@@ -1,9 +1,9 @@
 # Capital OS tenant-isolation route matrix
 
-**Inventory date:** 2026-09-10
+**Inventory date:** 2026-09-22
 **Source:** `artifacts/api-server/src/integration/tenant-route-inventory.mjs` (authoritative), `artifacts/api-server/src/routes`, and `artifacts/api-server/src/integration/p0-http.test.ts`
-<!-- tenant-route-inventory: 255 -->
-**Inventory result:** 255 Express route/method pairs match the executable route inventory.
+<!-- tenant-route-inventory: 256 -->
+**Inventory result:** 256 Express route/method pairs match the executable route inventory.
 
 The machine-readable count above is checked by the route parity release check; adding
 an endpoint without refreshing this evidence fails certification with a stale-count
@@ -11,7 +11,7 @@ error.
 
 This is an evidence index, not a source-review substitute. `PASS` means the isolated
 database-backed fixture exercised the applicable route and identifier/body boundary.
-The full 255-route preflight target is the authoritative inventory. RC1 acceptance
+The full 256-route preflight target is the authoritative inventory. RC1 acceptance
 uses the exact-source certification recorded in
 `docs/certification/RC1_READINESS_CERTIFICATION.json`; historical 170-route and
 246-route runs are retained only as historical evidence and do not certify the
@@ -39,7 +39,7 @@ public/identity boundaries rather than household-scoped object routes.
 | GET /strategy-lab; POST strategies; strategy versions; experiments; graduation; journal | strategyId and parent evidence IDs | Strategy Lab service scopes records and keeps capital inaccessible | PASS | PASS | PASS |
 | GET /treasury; POST /treasury/requests; POST /treasury/requests/:requestId/decision | requestId, bucket and account IDs | Treasury service resolves current household and persisted lock state | PASS | PASS | PASS | PASS |
 | GET /family-office; GET /family-office/real-estate; POST /family-office/refresh; POST /family-office/research; POST /family-office/research/digestion/preview; POST /family-office/proposals/:proposalId/decision; POST /family-office/shadow/portfolios; POST /family-office/shadow/intents; POST /family-office/tax-liens | proposalId, shadowPortfolioId, householdId mass-assignment field, research/provider/refresh body | Request-scoped household predicates; role and recent-auth middleware; provider fail-closed handling; bounded refresh ledger; Shadow-only persistence | PASS | PASS | PASS | PASS |
-| Existing Schwab portfolio routes plus GET /integrations/schwab/market-data and /market-data/status; POST /market-data/connect, /refresh, /disconnect; shared GET /integrations/schwab/oauth/callback | OAuth callback state only; market-data accepts a bounded symbol list; no household or actor query/body fields | Authenticated actor household; both apps share the registered callback URL but use separate credentials, state, browser cookies, lifecycle generations, encrypted tokens, and disconnect boundaries | PASS | PASS | PASS | PASS |
+| Existing Schwab portfolio routes plus GET /integrations/schwab/observations/latest, /integrations/schwab/market-data and /market-data/status; POST /market-data/connect, /refresh, /disconnect; shared GET /integrations/schwab/oauth/callback | OAuth callback state only; market-data accepts a bounded symbol list; no household or actor query/body fields | Authenticated actor household; both apps share the registered callback URL but use separate credentials, state, browser cookies, lifecycle generations, encrypted tokens, and disconnect boundaries | PASS | PASS | PASS | PASS |
 | GET /research/schwab/instruments; /quotes/:symbol; /price-history | One normalized symbol; fixed fundamental projection; bounded daily date range; no household, connection, account, or provider-path input | Active authenticated actor household resolves its own encrypted Market Data connection; foreign household fixture receives `MARKET_DATA_DISCONNECTED` without a provider call | PASS | PASS | PASS | PASS |
 | GET /research/schwab/certification; POST /research/schwab/certification | No caller-controlled household, connection, account, provider-path, trading, transfer, or execution fields | Authenticated actor household resolves its own encrypted Market Data connection; the POST runs exactly three fixed read-only GETs and persists only redacted provider evidence | PASS | PASS | PASS | PASS |
 | GET/POST /research/sec/filings; POST /research/sec/filings/:filingId/review | ticker and filingId only; no caller-controlled household or authority fields | Drafts and immutable reviewed evidence are household-scoped; cross-household review is rejected and only approved normalized SEC facts enter dossier selection | PASS | PASS | PASS | PASS |
@@ -51,6 +51,6 @@ public/identity boundaries rather than household-scoped object routes.
 - The two-household fixture proves a foreign goal ID is rejected before a contribution is created.
 - The same fixture provisions Owner, Partner, Advisor, and Viewer memberships in both households and passes the role-header regression, partner contribution allow, advisor/viewer contribution denial, and contribution mass-assignment assertions on isolated Neon PostgreSQL.
 - The same fixture passes recent-auth denial, parallel transfer overdraft prevention, 100-request contention, transfer replay, persisted household/actor attribution, and ledger debit/credit reconciliation on isolated Neon PostgreSQL.
-- The route inventory gate discovers and asserts exactly 255 route/method pairs and requires the exact-source RC1 certification to record that same count as executed. Historical route replays are not promoted to current evidence.
+- The route inventory gate discovers and asserts exactly 256 route/method pairs and requires the exact-source RC1 certification to record that same count as executed. Historical route replays are not promoted to current evidence.
 - Parameterized routes require non-error same-household behavior, reject foreign identifiers without a successful write/read response, and reject malformed identifiers with a 4xx response. Parameterless writes must not return another household's identifiers after body tampering.
-- The 2026-09-07 guarded replay remains historical evidence for its earlier surface. It is not evidence for the current 255-route inventory.
+- The 2026-09-07 guarded replay remains historical evidence for its earlier surface. It is not evidence for the current 256-route inventory.

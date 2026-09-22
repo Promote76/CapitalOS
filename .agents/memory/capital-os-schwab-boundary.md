@@ -41,3 +41,17 @@ freshness, or rate limits.
 **How to apply:** Record the route HTTP outcome and zero provider requests,
 keep all live research claims open, and rerun the three BKSC routes only after
 the approved production Clerk session is verified by `/api/auth/me`.
+
+The Portfolio UI and advisory agent must bind to an explicit persisted snapshot
+identifier. Selecting "latest" independently in each request is not sufficient
+because a concurrent user-driven sync can make the UI and explanation refer to
+different broker observations.
+
+**Why:** A matching timestamp is evidence, but it is not an ownership or
+concurrency boundary. The snapshot ID lets the server enforce household
+ownership and lets the browser reject an answer that does not describe the
+observation it displayed.
+
+**How to apply:** Return the snapshot ID from sync and observation reads, send
+that ID with agent questions, select it with a household predicate, and expose
+the returned ID/as-of/freshness/reconciliation status in certification evidence.

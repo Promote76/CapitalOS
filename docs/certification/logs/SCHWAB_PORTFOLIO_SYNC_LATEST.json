@@ -1,7 +1,7 @@
 {
   "runner": "certify-schwab-read-only",
-  "version": "2026-09-22.portfolio-sync.v1",
-  "observedAt": "2026-09-22T04:03:32.656Z",
+  "version": "2026-09-22.portfolio-sync.v2",
+  "observedAt": "2026-09-22T20:42:40.599Z",
   "today": "2026-09-22",
   "publishedOrigin": "[missing]",
   "sessionProvided": true,
@@ -36,6 +36,26 @@
       "id": "SW-LOCAL-trading-disabled",
       "status": "PASS",
       "detail": "The Schwab adapter keeps trading disabled."
+    },
+    {
+      "id": "SW-LOCAL-snapshot-contract",
+      "status": "PASS",
+      "detail": "The UI, sync response, and agent request are tied to one explicit observation snapshot."
+    },
+    {
+      "id": "SW-LOCAL-unknown-fails-closed",
+      "status": "PASS",
+      "detail": "Unknown broker values and partial endpoint failures remain visibly unresolved."
+    },
+    {
+      "id": "SW-LOCAL-agent-boundary",
+      "status": "PASS",
+      "detail": "Portfolio explanations and research candidates remain advisory and separate from current holdings."
+    },
+    {
+      "id": "SW-LOCAL-agent-refusal-guard",
+      "status": "PASS",
+      "detail": "The agent has explicit server-side refusal guards for trade and money-movement prompts."
     },
     {
       "id": "SW-LOCAL-portfolio-projection",

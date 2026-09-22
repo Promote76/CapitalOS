@@ -6,9 +6,14 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { SchwabSyncResultDataMode } from './schwabSyncResultDataMode';
+import type { SchwabSyncResultSnapshotFreshness } from './schwabSyncResultSnapshotFreshness';
 import type { SchwabSyncResultStatus } from './schwabSyncResultStatus';
 
 export interface SchwabSyncResult {
   status: SchwabSyncResultStatus;
   dataMode: SchwabSyncResultDataMode;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  snapshotId: string;
+  snapshotCapturedAt: Date;
+  snapshotFreshness: SchwabSyncResultSnapshotFreshness;
 }

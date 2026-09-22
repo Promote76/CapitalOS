@@ -3,7 +3,7 @@ import { Router, type IRouter } from "express";
 import { randomBytes, randomUUID } from "node:crypto";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { auditEvents, db, schwabConnections, schwabOAuthStates, schwabObservationSnapshots } from "@workspace/db";
-import { brokerFreshness, normalizeSchwabAccounts, normalizeSchwabBalances, normalizeSchwabMarketClock, normalizeSchwabOrders, normalizeSchwabPositions, normalizeSchwabQuotes, normalizeSchwabTransactions } from "../adapters/broker-portfolio";
+import { leastFreshness, normalizeSchwabAccounts, normalizeSchwabBalances, normalizeSchwabMarketClock, normalizeSchwabOrders, normalizeSchwabPositions, normalizeSchwabQuotes, normalizeSchwabTransactions, summarizeBrokerPortfolio, type BrokerFreshness } from "../adapters/broker-portfolio";
 import { assertPermission } from "../domain/governance";
 import { asyncRoute } from "../middleware/errors";
 import { actorFrom } from "../middleware/request-context";
@@ -166,6 +166,8 @@ router.post("/integrations/schwab/sync", asyncRoute(async (_req, res) => {
   const [connection] = await db.select().from(schwabConnections).where(eq(schwabConnections.householdId, actor.householdId)).limit(1);
   if (!connection?.accessTokenExpiresAt || connection.accessTokenExpiresAt <= new Date() || connection.status !== "LIVE_CONNECTED") { res.status(409).json({ code: "DISCONNECTED_OR_EXPIRED" }); return; }
   let syncStage = "prepare";
+  let committed: { id: string; createdAt: Date } | null = null;
+  let snapshotFreshness: BrokerFreshness = "UNKNOWN";
   try {
     const window = observationWindow();
     const orderQuery = new URLSearchParams({ maxResults: "300", fromEnteredTime: window.from, toEnteredTime: window.to }).toString();
@@ -198,14 +200,31 @@ router.post("/integrations/schwab/sync", asyncRoute(async (_req, res) => {
     const marketClock = marketClockResult.status === "fulfilled"
       ? normalizeSchwabMarketClock(marketClockResult.value)
       : { dataFreshness: "UNKNOWN" as const };
+    const endpointFailures = [
+      ...orderPayloads,
+      ...transactionPayloads,
+      quoteResult,
+      marketClockResult,
+    ].some((result) => result.status === "rejected");
+    snapshotFreshness = endpointFailures
+      ? "UNKNOWN"
+      : leastFreshness([
+        ...accounts.map((account) => account.dataFreshness),
+        ...balances.map((balance) => balance.dataFreshness),
+        ...positions.map((position) => position.dataFreshness),
+        ...orders.map((order) => order.dataFreshness),
+        ...transactions.map((transaction) => transaction.dataFreshness),
+        ...quotes.map((quote) => quote.dataFreshness),
+        marketClock.dataFreshness,
+      ]);
     syncStage = "persist";
-    const committed = await db.transaction(async (tx) => {
+    committed = await db.transaction(async (tx) => {
       await tx.execute(lifecycleLock(actor.householdId));
       const [current] = await tx.select().from(schwabConnections).where(eq(schwabConnections.householdId, actor.householdId)).limit(1);
-      if (current?.id !== connection.id || current.status !== "LIVE_CONNECTED" || current.accessTokenCiphertext !== connection.accessTokenCiphertext || !current.accessTokenExpiresAt || current.accessTokenExpiresAt <= new Date()) return false;
-      await tx.insert(schwabObservationSnapshots).values({ householdId: actor.householdId, connectionId: connection.id, accounts, balances, positions, orders, transactions, quotes, marketClock, counts: { accounts: accounts.length, balances: balances.length, positions: positions.length, orders: orders.length, transactions: transactions.length, quotes: quotes.length }, freshness: "CURRENT" });
+      if (current?.id !== connection.id || current.status !== "LIVE_CONNECTED" || current.accessTokenCiphertext !== connection.accessTokenCiphertext || !current.accessTokenExpiresAt || current.accessTokenExpiresAt <= new Date()) return null;
+      const [inserted] = await tx.insert(schwabObservationSnapshots).values({ householdId: actor.householdId, connectionId: connection.id, accounts, balances, positions, orders, transactions, quotes, marketClock, counts: { accounts: accounts.length, balances: balances.length, positions: positions.length, orders: orders.length, transactions: transactions.length, quotes: quotes.length }, freshness: snapshotFreshness }).returning({ id: schwabObservationSnapshots.id, createdAt: schwabObservationSnapshots.createdAt });
       await tx.update(schwabConnections).set({ lastSuccessfulSyncAt: new Date(), updatedAt: new Date() }).where(eq(schwabConnections.id, connection.id));
-      return true;
+      return inserted ?? null;
     });
     if (!committed) { res.status(409).json({ code: "CONNECTION_CHANGED" }); return; }
   } catch (error) {
@@ -228,7 +247,7 @@ router.post("/integrations/schwab/sync", asyncRoute(async (_req, res) => {
     }
     return;
   }
-  await audit(actor.householdId, actor.userId, "schwab_sync_succeeded", connection.id); res.json({ status: "SYNCED", dataMode: "LIVE_CONNECTED" });
+  await audit(actor.householdId, actor.userId, "schwab_sync_succeeded", connection.id); res.json({ status: "SYNCED", dataMode: "LIVE_CONNECTED", snapshotId: committed.id, snapshotCapturedAt: committed.createdAt.toISOString(), snapshotFreshness });
 }));
 
 router.get("/integrations/schwab/observations/latest", asyncRoute(async (_req, res) => {
@@ -246,24 +265,21 @@ router.get("/integrations/schwab/observations/latest", asyncRoute(async (_req, r
       : healthy
         ? "LIVE_CONNECTED"
         : "DISCONNECTED";
-  const numberOrNull = (value: unknown) => {
-    const parsed = typeof value === "string" || typeof value === "number" ? Number(value) : Number.NaN;
-    return Number.isFinite(parsed) ? parsed : null;
-  };
   const snapshotFreshness = snapshot
-    ? brokerFreshness(snapshot.createdAt.toISOString(), snapshot.createdAt.toISOString())
+    ? snapshot.freshness === "CURRENT" || snapshot.freshness === "AGING" || snapshot.freshness === "STALE"
+      ? snapshot.freshness
+      : "UNKNOWN"
     : "UNKNOWN";
   const accountRecords = (snapshot?.accounts ?? []).filter((account): account is Record<string, unknown> => !!account && typeof account === "object");
   const balanceRecords = (snapshot?.balances ?? []).filter((balance): balance is Record<string, unknown> => !!balance && typeof balance === "object");
   const positionRecords = (snapshot?.positions ?? []).filter((position): position is Record<string, unknown> => !!position && typeof position === "object");
-  const investedMarketValue = positionRecords.reduce((total, position) => total + (numberOrNull(position.marketValue) ?? 0), 0);
-  const brokerageCash = balanceRecords.reduce((total, balance) => total + (numberOrNull(balance.cashBalance) ?? 0), 0);
-  const providerAccountValue = accountRecords.reduce((total, account) => total + (numberOrNull(account.totalValue) ?? 0), 0);
-  const calculatedAccountValue = investedMarketValue + brokerageCash;
-  const totalAccountValue = providerAccountValue > 0 ? providerAccountValue : calculatedAccountValue;
-  const unrealizedGainLoss = positionRecords.reduce((total, position) => total + (numberOrNull(position.unrealizedGainLoss) ?? 0), 0);
-  const dayChange = positionRecords.reduce((total, position) => total + (numberOrNull(position.dayChange) ?? 0), 0);
-  const costBasis = positionRecords.reduce((total, position) => total + (numberOrNull(position.costBasis) ?? 0), 0);
+  const reconciliation = snapshot
+    ? summarizeBrokerPortfolio({
+      accounts: accountRecords as never,
+      balances: balanceRecords as never,
+      positions: positionRecords as never,
+    })
+    : null;
   const redactPosition = (position: Record<string, unknown>) => ({
     symbol: String(position.symbol ?? "UNKNOWN"),
     assetType: String(position.assetType ?? "UNKNOWN"),
@@ -317,20 +333,22 @@ router.get("/integrations/schwab/observations/latest", asyncRoute(async (_req, r
     tradingEnabled: false,
     lastSuccessfulSyncAt: connection?.lastSuccessfulSyncAt?.toISOString() ?? null,
     snapshot: snapshot ? {
+      id: snapshot.id,
       capturedAt: snapshot.createdAt.toISOString(),
       freshness: snapshotFreshness,
       freshnessBasis: "SNAPSHOT_RECEIVED",
       summary: {
-        totalAccountValue: totalAccountValue.toFixed(8),
-        investedMarketValue: investedMarketValue.toFixed(8),
-        brokerageCash: brokerageCash.toFixed(8),
-        costBasis: costBasis.toFixed(8),
-        unrealizedGainLoss: unrealizedGainLoss.toFixed(8),
-        dayChange: dayChange.toFixed(8),
-        reconciliationDelta: (totalAccountValue - calculatedAccountValue).toFixed(8),
-        reconciled: Math.abs(totalAccountValue - calculatedAccountValue) < 0.01,
+        totalAccountValue: reconciliation!.totalAccountValue,
+        investedMarketValue: reconciliation!.investedMarketValue,
+        brokerageCash: reconciliation!.brokerageCash,
+        costBasis: reconciliation!.costBasis,
+        unrealizedGainLoss: reconciliation!.unrealizedGainLoss,
+        dayChange: reconciliation!.dayChange,
+        reconciliationDelta: reconciliation!.reconciliationDelta,
+        reconciled: reconciliation!.reconciled,
       },
       counts: snapshot.counts ?? {},
+      reconciliationStatus: reconciliation!.status,
       positions: (snapshot.positions ?? []).slice(0, 500).map((position) => redactPosition(position)),
       orders: (snapshot.orders ?? []).slice(0, 300).map((order) => redactOrder(order)),
       transactions: (snapshot.transactions ?? []).slice(0, 300).map((transaction) => redactTransaction(transaction)),

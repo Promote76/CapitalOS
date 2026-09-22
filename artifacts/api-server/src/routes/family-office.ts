@@ -230,7 +230,7 @@ router.post("/family-office/research", asyncRoute(async (req, res) => {
 
 router.post("/family-office/portfolio-agent", asyncRoute(async (req, res) => {
   const body = AskPortfolioAgentBody.parse(req.body);
-  res.json(AskPortfolioAgentResponse.parse(await askGroundedPortfolioAgent(actorFrom(res), body.question)));
+  res.json(AskPortfolioAgentResponse.parse(await askGroundedPortfolioAgent(actorFrom(res), body.question, body.snapshotId)));
 }));
 
 router.post("/family-office/research/digestion/preview", asyncRoute(async (req, res) => {

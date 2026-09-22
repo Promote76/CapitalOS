@@ -3790,10 +3790,12 @@ export const CreateFamilyOfficeResearchResponse = zod.object({
 export const askPortfolioAgentBodyQuestionMin = 2;
 export const askPortfolioAgentBodyQuestionMax = 1000;
 
+export const askPortfolioAgentBodySnapshotIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 
 
 export const AskPortfolioAgentBody = zod.object({
-  "question": zod.string().min(askPortfolioAgentBodyQuestionMin).max(askPortfolioAgentBodyQuestionMax)
+  "question": zod.string().min(askPortfolioAgentBodyQuestionMin).max(askPortfolioAgentBodyQuestionMax),
+  "snapshotId": zod.string().regex(askPortfolioAgentBodySnapshotIdRegExp)
 })
 
 export const askPortfolioAgentResponseFactsMax = 12;
@@ -3804,6 +3806,7 @@ export const askPortfolioAgentResponseRisksMax = 8;
 
 export const askPortfolioAgentResponseUncertaintiesMax = 8;
 
+export const askPortfolioAgentResponseSnapshotIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 
 
 export const AskPortfolioAgentResponse = zod.object({
@@ -3812,8 +3815,10 @@ export const AskPortfolioAgentResponse = zod.object({
   "recommendations": zod.array(zod.string()).max(askPortfolioAgentResponseRecommendationsMax),
   "risks": zod.array(zod.string()).max(askPortfolioAgentResponseRisksMax),
   "uncertainties": zod.array(zod.string()).max(askPortfolioAgentResponseUncertaintiesMax),
+  "snapshotId": zod.string().regex(askPortfolioAgentResponseSnapshotIdRegExp),
   "snapshotAsOf": zod.coerce.date(),
   "snapshotFreshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN']),
+  "reconciliationStatus": zod.enum(['MATCHED', 'MINOR_VARIANCE', 'UNRESOLVED', 'CRITICAL_MISMATCH']),
   "researchContextStatus": zod.enum(['available', 'empty']),
   "advisoryOnly": zod.literal(true),
   "educationalOnly": zod.literal(true),
@@ -13673,15 +13678,22 @@ export const RefreshSchwabConnectionResponse = zod.object({
 /**
  * @summary Record a successful read-only Schwab observation sync
  */
+export const syncSchwabObservationsResponseSnapshotIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
+
+
 export const SyncSchwabObservationsResponse = zod.object({
   "status": zod.enum(['SYNCED']),
-  "dataMode": zod.enum(['LIVE_CONNECTED'])
+  "dataMode": zod.enum(['LIVE_CONNECTED']),
+  "snapshotId": zod.string().regex(syncSchwabObservationsResponseSnapshotIdRegExp),
+  "snapshotCapturedAt": zod.coerce.date(),
+  "snapshotFreshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN'])
 })
 
 
 /**
  * @summary Get the latest redacted household-scoped Schwab positions and transactions
  */
+export const getLatestSchwabObservationsResponseSnapshotOneIdRegExp = new RegExp('^[0-9a-fA-F-]{36}$');
 export const getLatestSchwabObservationsResponseSnapshotOnePositionsMax = 500;
 
 export const getLatestSchwabObservationsResponseSnapshotOneOrdersMax = 300;
@@ -13697,9 +13709,11 @@ export const GetLatestSchwabObservationsResponse = zod.object({
   "tradingEnabled": zod.literal(false),
   "lastSuccessfulSyncAt": zod.coerce.date().nullable(),
   "snapshot": zod.union([zod.object({
+  "id": zod.string().regex(getLatestSchwabObservationsResponseSnapshotOneIdRegExp),
   "capturedAt": zod.coerce.date(),
   "freshness": zod.enum(['CURRENT', 'AGING', 'STALE', 'UNKNOWN']),
   "freshnessBasis": zod.enum(['SNAPSHOT_RECEIVED']),
+  "reconciliationStatus": zod.enum(['MATCHED', 'MINOR_VARIANCE', 'UNRESOLVED', 'CRITICAL_MISMATCH']),
   "summary": zod.object({
   "totalAccountValue": zod.string(),
   "investedMarketValue": zod.string(),

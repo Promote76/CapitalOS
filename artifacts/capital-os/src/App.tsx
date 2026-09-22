@@ -1106,8 +1106,18 @@ function PortfolioPage() {
   const observedDonutGradient = donutGradient(observedComposition);
   const askAgent = async (question: string) => {
     setAgentQuestion(question);
+    if (!snapshot?.id) {
+      setObservationMessage('A current Schwab snapshot is required before asking the agent.');
+      return;
+    }
     try {
-      setAgentAnswer(await portfolioAgent.mutateAsync({ data: { question } }));
+      const answer = await portfolioAgent.mutateAsync({ data: { question, snapshotId: snapshot.id } });
+      if (answer.snapshotId !== snapshot.id) {
+        setAgentAnswer(null);
+        setObservationMessage('The agent answer used a different Schwab snapshot. Refresh the Portfolio page and try again.');
+        return;
+      }
+      setAgentAnswer(answer);
     } catch (error) {
       setObservationMessage(error instanceof Error ? error.message : 'The Portfolio AI Agent is temporarily unavailable.');
     }
@@ -1179,7 +1189,7 @@ function PortfolioPage() {
         <div className="portfolio-agent-boundary"><ShieldCheck size={16} /><span>Educational, informational, and advisory only. The agent cannot trade, move money, change broker settings, or use protected household/property capital.</span></div>
         <div className="portfolio-agent-prompts">{['Explain my portfolio', 'What changed today?', 'Where am I concentrated?', 'What does this gain/loss mean?', 'What should I review next?', 'Explain this like I am new to investing.'].map((prompt) => <button key={prompt} className="btn btn-secondary btn-sm" disabled={!snapshot || portfolioAgent.isPending} onClick={() => void askAgent(prompt)}>{prompt}</button>)}</div>
         <form className="portfolio-agent-form" onSubmit={(event) => { event.preventDefault(); if (agentQuestion.trim()) void askAgent(agentQuestion.trim()); }}><input value={agentQuestion} onChange={(event) => setAgentQuestion(event.target.value)} maxLength={1000} placeholder="Ask about allocation, risk, cash, gains, or recent activity…" /><button className="btn btn-primary" disabled={!snapshot || portfolioAgent.isPending || agentQuestion.trim().length < 2}>{portfolioAgent.isPending ? 'Explaining…' : 'Ask agent'}</button></form>
-        {agentAnswer && <div className="portfolio-agent-answer"><span className="mono-label">Plain-English explanation</span><p>{agentAnswer.answer}</p>{agentAnswer.recommendations.length > 0 && <details><summary>Recommendations and supporting context</summary><ul>{agentAnswer.recommendations.map((item) => <li key={item}>{item}</li>)}</ul></details>}{agentAnswer.risks.length > 0 && <details><summary>Risks and uncertainties</summary><ul>{[...agentAnswer.risks, ...agentAnswer.uncertainties].map((item) => <li key={item}>{item}</li>)}</ul></details>}<small>Advisory only · snapshot {displayObservationTimestamp(String(agentAnswer.snapshotAsOf))} · {agentAnswer.snapshotFreshness.toLowerCase()}</small></div>}
+        {agentAnswer && <div className="portfolio-agent-answer"><span className="mono-label">Plain-English explanation</span><p>{agentAnswer.answer}</p>{agentAnswer.recommendations.length > 0 && <details><summary>Recommendations and supporting context</summary><ul>{agentAnswer.recommendations.map((item) => <li key={item}>{item}</li>)}</ul></details>}{agentAnswer.risks.length > 0 && <details><summary>Risks and uncertainties</summary><ul>{[...agentAnswer.risks, ...agentAnswer.uncertainties].map((item) => <li key={item}>{item}</li>)}</ul></details>}<small>Advisory only · snapshot {displayObservationTimestamp(String(agentAnswer.snapshotAsOf))} · {agentAnswer.snapshotFreshness.toLowerCase()} · reconciliation {agentAnswer.reconciliationStatus.toLowerCase().replaceAll('_', ' ')}</small></div>}
       </section>
      <ResearchContextPanel context={data.researchContext} title="Research candidates — not current holdings" />
   </main>;

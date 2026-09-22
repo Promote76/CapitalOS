@@ -12,4 +12,6 @@ export interface PortfolioAgentInput {
      * @maxLength 1000
      */
   question: string;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  snapshotId: string;
 }

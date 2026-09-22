@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { PortfolioAgentResponseProviderStatus } from './portfolioAgentResponseProviderStatus';
+import type { PortfolioAgentResponseReconciliationStatus } from './portfolioAgentResponseReconciliationStatus';
 import type { PortfolioAgentResponseResearchContextStatus } from './portfolioAgentResponseResearchContextStatus';
 import type { PortfolioAgentResponseSnapshotFreshness } from './portfolioAgentResponseSnapshotFreshness';
 
@@ -19,8 +20,11 @@ export interface PortfolioAgentResponse {
   risks: string[];
   /** @maxItems 8 */
   uncertainties: string[];
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  snapshotId: string;
   snapshotAsOf: Date;
   snapshotFreshness: PortfolioAgentResponseSnapshotFreshness;
+  reconciliationStatus: PortfolioAgentResponseReconciliationStatus;
   researchContextStatus: PortfolioAgentResponseResearchContextStatus;
   advisoryOnly: true;
   educationalOnly: true;

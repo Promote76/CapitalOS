@@ -8,15 +8,19 @@
 import type { SchwabObservationSnapshotCounts } from './schwabObservationSnapshotCounts';
 import type { SchwabObservationSnapshotFreshness } from './schwabObservationSnapshotFreshness';
 import type { SchwabObservationSnapshotFreshnessBasis } from './schwabObservationSnapshotFreshnessBasis';
+import type { SchwabObservationSnapshotReconciliationStatus } from './schwabObservationSnapshotReconciliationStatus';
 import type { SchwabObservationSnapshotSummary } from './schwabObservationSnapshotSummary';
 import type { SchwabObservedOrder } from './schwabObservedOrder';
 import type { SchwabObservedPosition } from './schwabObservedPosition';
 import type { SchwabObservedTransaction } from './schwabObservedTransaction';
 
 export interface SchwabObservationSnapshot {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
   capturedAt: Date;
   freshness: SchwabObservationSnapshotFreshness;
   freshnessBasis: SchwabObservationSnapshotFreshnessBasis;
+  reconciliationStatus: SchwabObservationSnapshotReconciliationStatus;
   summary: SchwabObservationSnapshotSummary;
   counts: SchwabObservationSnapshotCounts;
   /** @maxItems 500 */

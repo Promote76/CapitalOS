@@ -4082,8 +4082,13 @@ components:
       properties: { status: { type: string, enum: [LIVE_CONNECTED] }, tokenHealth: { type: string, enum: [HEALTHY] } }
     SchwabSyncResult:
       type: object
-      required: [status, dataMode]
-      properties: { status: { type: string, enum: [SYNCED] }, dataMode: { type: string, enum: [LIVE_CONNECTED] } }
+      required: [status, dataMode, snapshotId, snapshotCapturedAt, snapshotFreshness]
+      properties:
+        status: { type: string, enum: [SYNCED] }
+        dataMode: { type: string, enum: [LIVE_CONNECTED] }
+        snapshotId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
+        snapshotCapturedAt: { type: string, format: date-time }
+        snapshotFreshness: { type: string, enum: [CURRENT, AGING, STALE, UNKNOWN] }
     SchwabObservedPosition:
       type: object
       required: [symbol, assetType, quantity, averageCost, costBasis, marketPrice, marketValue, dayChange, dayChangePercent, unrealizedGainLoss, realizedGainLoss, portfolioWeight, providerTimestamp, receivedAt, dataFreshness, freshnessBasis]
@@ -4138,11 +4143,13 @@ components:
         dataFreshness: { type: string, enum: [CURRENT, AGING, STALE, UNKNOWN] }
     SchwabObservationSnapshot:
       type: object
-      required: [capturedAt, freshness, freshnessBasis, summary, counts, positions, orders, transactions]
+      required: [id, capturedAt, freshness, freshnessBasis, summary, reconciliationStatus, counts, positions, orders, transactions]
       properties:
+        id: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
         capturedAt: { type: string, format: date-time }
         freshness: { type: string, enum: [CURRENT, AGING, STALE, UNKNOWN] }
         freshnessBasis: { type: string, enum: [SNAPSHOT_RECEIVED] }
+        reconciliationStatus: { type: string, enum: [MATCHED, MINOR_VARIANCE, UNRESOLVED, CRITICAL_MISMATCH] }
         summary:
           type: object
           required: [totalAccountValue, investedMarketValue, brokerageCash, costBasis, unrealizedGainLoss, dayChange, reconciliationDelta, reconciled]
@@ -6426,20 +6433,23 @@ components:
           description: Bounded plain-text investment research or compatible structured JSON. Plain text is normalized into source-linked facts and advisory observations before analysis.
     PortfolioAgentInput:
       type: object
-      required: [question]
+      required: [question, snapshotId]
       properties:
         question: { type: string, minLength: 2, maxLength: 1000 }
+        snapshotId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
     PortfolioAgentResponse:
       type: object
-      required: [answer, facts, recommendations, risks, uncertainties, snapshotAsOf, snapshotFreshness, researchContextStatus, advisoryOnly, educationalOnly, executionAuthorization, moneyMovementEnabled, providerStatus]
+      required: [answer, facts, recommendations, risks, uncertainties, snapshotId, snapshotAsOf, snapshotFreshness, reconciliationStatus, researchContextStatus, advisoryOnly, educationalOnly, executionAuthorization, moneyMovementEnabled, providerStatus]
       properties:
         answer: { type: string }
         facts: { type: array, maxItems: 12, items: { type: string } }
         recommendations: { type: array, maxItems: 8, items: { type: string } }
         risks: { type: array, maxItems: 8, items: { type: string } }
         uncertainties: { type: array, maxItems: 8, items: { type: string } }
+        snapshotId: { type: string, pattern: "^[0-9a-fA-F-]{36}$" }
         snapshotAsOf: { type: string, format: date-time }
         snapshotFreshness: { type: string, enum: [CURRENT, AGING, STALE, UNKNOWN] }
+        reconciliationStatus: { type: string, enum: [MATCHED, MINOR_VARIANCE, UNRESOLVED, CRITICAL_MISMATCH] }
         researchContextStatus: { type: string, enum: [available, empty] }
         advisoryOnly: { type: boolean, const: true }
         educationalOnly: { type: boolean, const: true }

@@ -477,6 +477,17 @@ export type BrokerPortfolioSnapshot = {
   reconciliationStatus: BrokerReconciliationStatus;
 };
 
+export type BrokerPortfolioReconciliation = {
+  totalAccountValue: string;
+  investedMarketValue: string;
+  brokerageCash: string;
+  costBasis: string;
+  unrealizedGainLoss: string;
+  dayChange: string;
+  reconciliationDelta: string;
+  status: BrokerReconciliationStatus;
+  reconciled: boolean;
+};
 export type BrokerReconciliationResult = {
   status: BrokerReconciliationStatus;
   requiresReview: boolean;
@@ -584,7 +595,7 @@ export type GrokPortfolioResearchSnapshot = {
   executionDisabled: true;
 };
 
-function leastFreshness(values: BrokerFreshness[]): BrokerFreshness {
+export function leastFreshness(values: BrokerFreshness[]): BrokerFreshness {
   if (values.includes("UNKNOWN")) return "UNKNOWN";
   if (values.includes("STALE")) return "STALE";
   if (values.includes("AGING")) return "AGING";
@@ -655,3 +666,48 @@ export function initializeShadowBrokerBaseline(snapshot: BrokerPortfolioSnapshot
     humanReviewRequired: true,
   };
 }
+
+const sumKnown = (values: unknown[]): number | null => {
+  const parsed = values.map(parseKnownNumber);
+  return parsed.some((value) => value === null)
+    ? null
+    : parsed.reduce<number>((total, value) => total + (value ?? 0), 0);
+};
+
+const parseKnownNumber = (value: unknown): number | null => {
+  if (value === "UNKNOWN" || value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+export function summarizeBrokerPortfolio(
+  snapshot: Pick<BrokerPortfolioSnapshot, "accounts" | "balances" | "positions">,
+): BrokerPortfolioReconciliation {
+  const totalAccountValue = sumKnown(snapshot.accounts.map((account) => account.totalValue));
+  const investedMarketValue = sumKnown(snapshot.positions.map((position) => position.marketValue));
+  const brokerageCash = sumKnown(snapshot.balances.map((balance) => balance.cashBalance));
+  const costBasis = sumKnown(snapshot.positions.map((position) => position.costBasis));
+  const unrealizedGainLoss = sumKnown(snapshot.positions.map((position) => position.unrealizedGainLoss));
+  const dayChange = sumKnown(snapshot.positions.map((position) => position.dayChange ?? "UNKNOWN"));
+  const calculatedAccountValue = investedMarketValue === null || brokerageCash === null
+    ? null
+    : investedMarketValue + brokerageCash;
+  const observedTotal = totalAccountValue ?? calculatedAccountValue;
+  const reconciliationDelta = observedTotal === null || calculatedAccountValue === null
+    ? null
+    : observedTotal - calculatedAccountValue;
+  const reconciled = reconciliationDelta !== null && Math.abs(reconciliationDelta) <= 0.01;
+  return {
+    totalAccountValue: formatObservedNumber(observedTotal),
+    investedMarketValue: formatObservedNumber(investedMarketValue),
+    brokerageCash: formatObservedNumber(brokerageCash),
+    costBasis: formatObservedNumber(costBasis),
+    unrealizedGainLoss: formatObservedNumber(unrealizedGainLoss),
+    dayChange: formatObservedNumber(dayChange),
+    reconciliationDelta: formatObservedNumber(reconciliationDelta),
+    status: reconciliationDelta === null ? "UNRESOLVED" : reconciled ? "MATCHED" : "CRITICAL_MISMATCH",
+    reconciled,
+  };
+}
+
+const formatObservedNumber = (value: number | null): string => value === null ? "UNKNOWN" : value.toFixed(8);

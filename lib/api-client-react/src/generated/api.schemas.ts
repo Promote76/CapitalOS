@@ -45,9 +45,23 @@ export const SchwabSyncResultDataMode = {
   LIVE_CONNECTED: 'LIVE_CONNECTED',
 } as const;
 
+export type SchwabSyncResultSnapshotFreshness = typeof SchwabSyncResultSnapshotFreshness[keyof typeof SchwabSyncResultSnapshotFreshness];
+
+
+export const SchwabSyncResultSnapshotFreshness = {
+  CURRENT: 'CURRENT',
+  AGING: 'AGING',
+  STALE: 'STALE',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
 export interface SchwabSyncResult {
   status: SchwabSyncResultStatus;
   dataMode: SchwabSyncResultDataMode;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  snapshotId: string;
+  snapshotCapturedAt: string;
+  snapshotFreshness: SchwabSyncResultSnapshotFreshness;
 }
 
 export type SchwabObservedPositionDataFreshness = typeof SchwabObservedPositionDataFreshness[keyof typeof SchwabObservedPositionDataFreshness];
@@ -184,6 +198,16 @@ export const SchwabObservationSnapshotFreshnessBasis = {
   SNAPSHOT_RECEIVED: 'SNAPSHOT_RECEIVED',
 } as const;
 
+export type SchwabObservationSnapshotReconciliationStatus = typeof SchwabObservationSnapshotReconciliationStatus[keyof typeof SchwabObservationSnapshotReconciliationStatus];
+
+
+export const SchwabObservationSnapshotReconciliationStatus = {
+  MATCHED: 'MATCHED',
+  MINOR_VARIANCE: 'MINOR_VARIANCE',
+  UNRESOLVED: 'UNRESOLVED',
+  CRITICAL_MISMATCH: 'CRITICAL_MISMATCH',
+} as const;
+
 export type SchwabObservationSnapshotSummary = {
   totalAccountValue: string;
   investedMarketValue: string;
@@ -198,9 +222,12 @@ export type SchwabObservationSnapshotSummary = {
 export type SchwabObservationSnapshotCounts = {[key: string]: number};
 
 export interface SchwabObservationSnapshot {
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  id: string;
   capturedAt: string;
   freshness: SchwabObservationSnapshotFreshness;
   freshnessBasis: SchwabObservationSnapshotFreshnessBasis;
+  reconciliationStatus: SchwabObservationSnapshotReconciliationStatus;
   summary: SchwabObservationSnapshotSummary;
   counts: SchwabObservationSnapshotCounts;
   /** @maxItems 500 */
@@ -3621,6 +3648,8 @@ export interface PortfolioAgentInput {
      * @maxLength 1000
      */
   question: string;
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  snapshotId: string;
 }
 
 export type PortfolioAgentResponseSnapshotFreshness = typeof PortfolioAgentResponseSnapshotFreshness[keyof typeof PortfolioAgentResponseSnapshotFreshness];
@@ -3631,6 +3660,16 @@ export const PortfolioAgentResponseSnapshotFreshness = {
   AGING: 'AGING',
   STALE: 'STALE',
   UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type PortfolioAgentResponseReconciliationStatus = typeof PortfolioAgentResponseReconciliationStatus[keyof typeof PortfolioAgentResponseReconciliationStatus];
+
+
+export const PortfolioAgentResponseReconciliationStatus = {
+  MATCHED: 'MATCHED',
+  MINOR_VARIANCE: 'MINOR_VARIANCE',
+  UNRESOLVED: 'UNRESOLVED',
+  CRITICAL_MISMATCH: 'CRITICAL_MISMATCH',
 } as const;
 
 export type PortfolioAgentResponseResearchContextStatus = typeof PortfolioAgentResponseResearchContextStatus[keyof typeof PortfolioAgentResponseResearchContextStatus];
@@ -3658,8 +3697,11 @@ export interface PortfolioAgentResponse {
   risks: string[];
   /** @maxItems 8 */
   uncertainties: string[];
+  /** @pattern ^[0-9a-fA-F-]{36}$ */
+  snapshotId: string;
   snapshotAsOf: string;
   snapshotFreshness: PortfolioAgentResponseSnapshotFreshness;
+  reconciliationStatus: PortfolioAgentResponseReconciliationStatus;
   researchContextStatus: PortfolioAgentResponseResearchContextStatus;
   advisoryOnly: true;
   educationalOnly: true;

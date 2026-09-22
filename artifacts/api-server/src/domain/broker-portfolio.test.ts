@@ -15,6 +15,7 @@ import {
   normalizeSchwabTransactions,
   reconcileBrokerPortfolio,
   schwabFeatureStatus,
+  summarizeBrokerPortfolio,
   type BrokerPortfolioSnapshot,
 } from "../adapters/broker-portfolio.ts";
 
@@ -93,7 +94,7 @@ test("Schwab provider-shaped observations normalize without account numbers or t
     { SCHWAB_READ_ONLY_ENABLED: "true" },
     async (path) => {
       calls.push(path);
-      return path.includes("markets/equity") ? { equity: { isOpen: false } } : [];
+      return [];
     },
   );
   await provider.getOrders({ householdId: "household-a", credentialRef: accountHash });
@@ -122,7 +123,14 @@ const baseSnapshot = (): BrokerPortfolioSnapshot => ({
     lastSyncedAt: "2026-09-07T12:00:00.000Z",
     dataFreshness: "CURRENT",
   }],
-  balances: [],
+  balances: [{
+    accountId: "account-internal-1",
+    cashBalance: "5000.00",
+    buyingPower: "5000.00",
+    providerTimestamp: "2026-09-07T12:00:00.000Z",
+    receivedAt: "2026-09-07T12:01:00.000Z",
+    dataFreshness: "CURRENT",
+  }],
   positions: [{
     accountId: "account-internal-1",
     householdId: "household-a",
@@ -161,7 +169,7 @@ test("Schwab trading is always disabled, even if a conflicting environment flag 
 });
 
 test("disabled Schwab provider fails closed without making a provider request", async () => {
-  const provider = new SchwabReadOnlyProvider({});
+  const provider = new SchwabReadOnlyProvider({ SCHWAB_READ_ONLY_ENABLED: "false" });
   const health = await provider.getProviderHealth();
   assert.equal(health.state, "disabled");
   assert.equal(health.tradingEnabled, false);
@@ -192,11 +200,35 @@ test("freshness is explicit and unavailable provider timestamps remain UNKNOWN",
 });
 
 test("matching broker state reconciles without overwriting stored state", () => {
-  const snapshot = baseSnapshot();
-  const result = reconcileBrokerPortfolio(snapshot, structuredClone(snapshot));
+  const providerSnapshot = baseSnapshot();
+  const storedSnapshot = structuredClone(providerSnapshot);
+  const result = reconcileBrokerPortfolio(providerSnapshot, storedSnapshot);
   assert.equal(result.status, "MATCHED");
   assert.equal(result.requiresReview, false);
   assert.equal(result.mismatchCount, 0);
+});
+
+test("brokerage totals reconcile from invested value plus cash within displayed tolerance", () => {
+  const snapshot = baseSnapshot();
+  snapshot.accounts[0].totalValue = "6200.005";
+  const summary = summarizeBrokerPortfolio(snapshot);
+  assert.equal(summary.totalAccountValue, "6200.00500000");
+  assert.equal(summary.investedMarketValue, "1200.00000000");
+  assert.equal(summary.brokerageCash, "5000.00000000");
+  assert.equal(summary.reconciliationDelta, "0.00500000");
+  assert.equal(summary.status, "MATCHED");
+  assert.equal(summary.reconciled, true);
+});
+
+test("unknown reconciliation inputs remain unresolved instead of becoming zero", () => {
+  const snapshot = baseSnapshot();
+  snapshot.balances = [{ ...snapshot.balances[0], cashBalance: "UNKNOWN" }];
+  const summary = summarizeBrokerPortfolio(snapshot);
+  assert.equal(summary.brokerageCash, "UNKNOWN");
+  assert.equal(summary.totalAccountValue, "UNKNOWN");
+  assert.equal(summary.reconciliationDelta, "UNKNOWN");
+  assert.equal(summary.status, "UNRESOLVED");
+  assert.equal(summary.reconciled, false);
 });
 
 test("quantity and cash mismatches become critical review states", () => {

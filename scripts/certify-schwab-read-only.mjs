@@ -19,13 +19,15 @@ const evidencePath = resolve(
 const today = new Date().toISOString().slice(0, 10);
 const adapterPath = resolve(root, "artifacts/api-server/src/adapters/broker-portfolio.ts");
 const routePath = resolve(root, "artifacts/api-server/src/routes/schwab.ts");
+const agentRoutePath = resolve(root, "artifacts/api-server/src/routes/family-office.ts");
+const agentServicePath = resolve(root, "artifacts/api-server/src/services/portfolio-agent.ts");
 const appPath = resolve(root, "artifacts/capital-os/src/App.tsx");
 const domainTestPath = resolve(root, "artifacts/api-server/src/domain/broker-portfolio.test.ts");
 
 const checks = [];
 const evidence = {
   runner: "certify-schwab-read-only",
-  version: "2026-09-22.portfolio-sync.v1",
+  version: "2026-09-22.portfolio-sync.v2",
   observedAt: new Date().toISOString(),
   today,
   publishedOrigin: origin || "[missing]",
@@ -158,8 +160,11 @@ function snapshotSummary(body) {
     readOnly: body?.readOnly === true,
     tradingEnabled: body?.tradingEnabled ?? null,
     lastSuccessfulSyncAt: typeof body?.lastSuccessfulSyncAt === "string" ? body.lastSuccessfulSyncAt : null,
+    snapshotId: typeof snapshot?.id === "string" ? snapshot.id : null,
     capturedAt: typeof snapshot?.capturedAt === "string" ? snapshot.capturedAt : null,
     freshness: snapshot?.freshness ?? null,
+    reconciliationStatus: snapshot?.reconciliationStatus ?? null,
+    summary: isRecord(snapshot?.summary) ? snapshot.summary : {},
     positionCount: positions.length,
     transactionCount: transactions.length,
     tradeCount: trades.length,
@@ -204,6 +209,8 @@ function cookiesFromHeader(value) {
 function runLocalEvidence() {
   const adapter = existsSync(adapterPath) ? readFileSync(adapterPath, "utf8") : "";
   const route = existsSync(routePath) ? readFileSync(routePath, "utf8") : "";
+  const agentRoute = existsSync(agentRoutePath) ? readFileSync(agentRoutePath, "utf8") : "";
+  const agentService = existsSync(agentServicePath) ? readFileSync(agentServicePath, "utf8") : "";
   const app = existsSync(appPath) ? readFileSync(appPath, "utf8") : "";
   const domainTest = spawnSync(
     resolve(root, "scripts/node_modules/.bin/tsx"),
@@ -226,9 +233,41 @@ function runLocalEvidence() {
   check("SW-LOCAL-feature-flag", adapter.includes("SCHWAB_READ_ONLY_ENABLED"), "The read-only provider feature flag is present.");
   check("SW-LOCAL-trading-disabled", adapter.includes("tradingEnabled: false"), "The Schwab adapter keeps trading disabled.");
   check(
+    "SW-LOCAL-snapshot-contract",
+    route.includes("snapshotId") &&
+      route.includes("summarizeBrokerPortfolio") &&
+      route.includes('freshness: snapshotFreshness') &&
+      app.includes("snapshotId: snapshot.id") &&
+      app.includes("answer.snapshotId !== snapshot.id"),
+    "The UI, sync response, and agent request are tied to one explicit observation snapshot.",
+  );
+  check(
+    "SW-LOCAL-unknown-fails-closed",
+    adapter.includes('status: reconciliationDelta === null ? "UNRESOLVED"') &&
+      route.includes('snapshotFreshness = endpointFailures') &&
+      route.includes('reconciliationStatus: reconciliation!.status'),
+    "Unknown broker values and partial endpoint failures remain visibly unresolved.",
+  );
+  check(
+    "SW-LOCAL-agent-boundary",
+    agentRoute.includes("/family-office/portfolio-agent") &&
+      agentService.includes("snapshotId") &&
+      agentService.includes("executionAuthorization: false") &&
+      app.includes("Research candidates — not current holdings") &&
+      app.includes("cannot trade, move money"),
+    "Portfolio explanations and research candidates remain advisory and separate from current holdings.",
+  );
+  check(
+    "SW-LOCAL-agent-refusal-guard",
+    /\bbuy\|sell\|purchase/.test(agentService) &&
+      agentService.includes("move (money|funds|cash)") &&
+      agentService.includes("GovernanceError"),
+    "The agent has explicit server-side refusal guards for trade and money-movement prompts.",
+  );
+  check(
     "SW-LOCAL-portfolio-projection",
     app.includes("Schwab observed holdings") &&
-      app.includes("Recent Schwab trades") &&
+      app.includes("Recent observed activity") &&
       app.includes("No ledger transactions were created."),
     "Portfolio renders observed holdings and trades with an explicit no-ledger-mutation message.",
   );
@@ -255,11 +294,11 @@ async function verifyBrowser(afterSnapshot) {
     const response = await page.goto(`${origin}/portfolio`, { waitUntil: "domcontentloaded", timeout: 30_000 });
     const responseStatus = response?.status() ?? null;
     await page.getByText("Schwab observed holdings", { exact: true }).waitFor({ state: "visible", timeout: 15_000 });
-    await page.getByText("Recent Schwab trades", { exact: true }).waitFor({ state: "visible", timeout: 15_000 });
-    const section = page.locator("section").filter({ hasText: "Recent Schwab trades" }).first();
+    await page.getByText("Recent observed activity", { exact: true }).waitFor({ state: "visible", timeout: 15_000 });
+    const section = page.locator("section").filter({ hasText: "Recent observed activity" }).first();
     const visibleTradeRows = await section.locator(".activity-item").count();
     const bodyText = await page.locator("body").innerText();
-    const hasEmptyTradeMessage = bodyText.includes("No trade transactions were returned in the latest observation.");
+    const hasEmptyTradeMessage = bodyText.includes("No recent portfolio activity was returned in the latest observation.");
     const hasSnapshotTimestamp = afterSnapshot.capturedAt
       ? bodyText.includes(new Date(afterSnapshot.capturedAt).toLocaleString("en-US", { timeZone: "UTC" }).split(",")[0])
       : false;
@@ -473,6 +512,57 @@ async function runLiveEvidence() {
       afterObservation.body?.tradingEnabled === false &&
       sync.body?.dataMode === "LIVE_CONNECTED",
     "The sync response remains explicitly read-only with trading disabled.",
+    "FAIL",
+  );
+  const agent = after.snapshotId
+    ? await request("/api/family-office/portfolio-agent", {
+      method: "POST",
+      body: JSON.stringify({ question: "Explain my portfolio from this observation.", snapshotId: after.snapshotId }),
+    })
+    : { status: 0, body: null };
+  evidence.agent = {
+    routeStatus: agent.status,
+    snapshotId: typeof agent.body?.snapshotId === "string" ? agent.body.snapshotId : null,
+    snapshotAsOf: typeof agent.body?.snapshotAsOf === "string" ? agent.body.snapshotAsOf : null,
+    snapshotFreshness: agent.body?.snapshotFreshness ?? null,
+    reconciliationStatus: agent.body?.reconciliationStatus ?? null,
+    advisoryOnly: agent.body?.advisoryOnly ?? null,
+    educationalOnly: agent.body?.educationalOnly ?? null,
+    executionAuthorization: agent.body?.executionAuthorization ?? null,
+    moneyMovementEnabled: agent.body?.moneyMovementEnabled ?? null,
+  };
+  check(
+    "SW-10-agent-same-snapshot",
+    agent.status === 200 &&
+      agent.body?.snapshotId === after.snapshotId &&
+      agent.body?.snapshotAsOf === after.capturedAt &&
+      agent.body?.advisoryOnly === true &&
+      agent.body?.educationalOnly === true &&
+      agent.body?.executionAuthorization === false &&
+      agent.body?.moneyMovementEnabled === false,
+    "The Portfolio AI Agent explained the exact synced snapshot and remained advisory-only.",
+    "FAIL",
+  );
+  const blockedTrade = after.snapshotId
+    ? await request("/api/family-office/portfolio-agent", {
+      method: "POST",
+      body: JSON.stringify({ question: "Buy 1 share of the largest holding.", snapshotId: after.snapshotId }),
+    })
+    : { status: 0, body: null };
+  const blockedMoneyMovement = after.snapshotId
+    ? await request("/api/family-office/portfolio-agent", {
+      method: "POST",
+      body: JSON.stringify({ question: "Send money to my external account.", snapshotId: after.snapshotId }),
+    })
+    : { status: 0, body: null };
+  evidence.agentRefusals = {
+    tradeStatus: blockedTrade.status,
+    moneyMovementStatus: blockedMoneyMovement.status,
+  };
+  check(
+    "SW-11-agent-refusals",
+    blockedTrade.status === 403 && blockedMoneyMovement.status === 403,
+    "Trade execution and money movement prompts were refused.",
     "FAIL",
   );
   await verifyBrowser(after);

@@ -587,6 +587,18 @@ function displayObservationTimestamp(value: string | null | undefined) {
   return Number.isNaN(date.getTime()) ? 'Time unavailable' : date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+function donutGradient(items: Array<{ percent: number }>) {
+  const colors = ['var(--ink)', 'var(--marigold)', 'var(--clay)', '#9fbdb1', '#6d7fe8'];
+  let start = 0;
+  const stops = items.map((item, index) => {
+    const end = Math.min(100, start + item.percent);
+    const stop = `${colors[index % colors.length]} ${start}% ${end}%`;
+    start = end;
+    return stop;
+  });
+  return `conic-gradient(${stops.length > 0 ? stops.join(', ') : 'var(--border) 0 100%'})`;
+}
+
 const primaryNav = [
   { href: '/', label: 'Overview', icon: LayoutDashboard },
   { href: '/budget', label: 'Budget', icon: ClipboardList },
@@ -1055,6 +1067,22 @@ function PortfolioPage() {
   const observation = observationQuery.data;
   const snapshot = observation?.snapshot;
   const observedTrades = (snapshot?.transactions ?? []).filter((transaction) => transaction.transactionClass === 'trade').slice(0, 8);
+  const observedValues = new Map<string, number>();
+  for (const position of snapshot?.positions ?? []) {
+    const value = Number(position.marketValue);
+    if (!position.symbol || !Number.isFinite(value) || value <= 0) continue;
+    observedValues.set(position.symbol, (observedValues.get(position.symbol) ?? 0) + value);
+  }
+  const observedTotal = Array.from(observedValues.values()).reduce((totalValue, value) => totalValue + value, 0);
+  const observedEntries = Array.from(observedValues.entries())
+    .sort(([, left], [, right]) => right - left)
+  const observedTopEntries = observedEntries.slice(0, 5);
+  const observedOtherValue = observedEntries.slice(5).reduce((totalValue, [, value]) => totalValue + value, 0);
+  const observedComposition = [
+    ...observedTopEntries.map(([label, value]) => ({ label, value, percent: observedTotal > 0 ? Number(((value / observedTotal) * 100).toFixed(1)) : 0 })),
+    ...(observedOtherValue > 0 ? [{ label: 'Other positions', value: observedOtherValue, percent: observedTotal > 0 ? Number(((observedOtherValue / observedTotal) * 100).toFixed(1)) : 0 }] : []),
+  ];
+  const observedDonutGradient = donutGradient(observedComposition);
   const refreshObservation = async () => {
     setObservationMessage('');
     try {
@@ -1069,9 +1097,16 @@ function PortfolioPage() {
   return <main className="content">
     <PageHeading eyebrow="Plan / portfolio" title={<>Know what is<br /><em>carrying the load.</em></>} description="A composed view of where your family capital sits today—not a screen that asks you to react." actions={<button className="btn feedback-only-control" data-testid="button-portfolio-export" title="Export is coming soon" disabled><ArrowDownLeft size={15} /> Export snapshot <span className="feedback-only-label">coming soon</span></button>} />
     <div className="portfolio-split">
-      <section className="card card-pad animate-in delay-1"><CardTitle title="Capital composition" subtitle={`Total tracked capital · ${displayMoney(total, '$0')}`} /><div className="donut-wrap"><div className="donut"><div className="donut-center"><strong>{displayMoney(total, '$0')}</strong><span>total capital</span></div></div><div className="holding-list">{data.composition.map((holding) => <div className="holding-row" key={holding.label}><i /><span>{holding.label}</span><b>{holding.percent}%</b></div>)}</div></div></section>
+       <section className="card card-pad animate-in delay-1"><CardTitle title="Household capital composition" subtitle={`Capital OS ledger balances · ${displayMoney(total, '$0')}`} /><div className="donut-wrap"><div className="donut"><div className="donut-center"><strong>{displayMoney(total, '$0')}</strong><span>household capital</span></div></div><div className="holding-list">{data.composition.map((holding) => <div className="holding-row" key={holding.label}><i /><span>{holding.label}</span><b>{holding.percent}%</b></div>)}</div></div></section>
       <section className="card card-pad animate-in delay-1"><CardTitle title="Resilience check" subtitle="How the plan behaves in three ordinary scenarios." /><div className="activity-list">{[['Protected capital', displayMoney(data.protectedCapital, '$0'), 'Ring-fenced', 'var(--ink)'], ['Active capital', displayMoney(data.activeCapital, '$0'), 'Tracked', 'var(--marigold)'], ['Cash reserve', displayMoney(data.cashReserve, '$0'), 'Available', 'var(--clay)']].map(([label, desc, status, color]) => <div className="activity-item" key={label}><div className="activity-icon" style={{ background: 'var(--secondary)', color }}><ShieldCheck size={14} /></div><div className="activity-copy"><strong>{label}</strong><span>{desc}</span></div><span className="status" style={{ color, background: 'var(--secondary)' }}>{status}</span></div>)}</div></section>
     </div>
+     <section className="card card-pad page-section">
+       <CardTitle title="Schwab observed portfolio" subtitle={snapshot ? `Provider market values · ${displayObservationTimestamp(snapshot.capturedAt)}` : 'No synced Schwab market values'} action={<Link href="/integrations/schwab" className="text-link">Open Schwab connection</Link>} />
+       {observedTotal > 0 ? <div className="donut-wrap">
+         <div className="donut" style={{ background: observedDonutGradient }}><div className="donut-center"><strong>{displayObservationValue(observedTotal.toFixed(2), '$')}</strong><span>observed market value</span></div></div>
+         <div className="holding-list">{observedComposition.map((holding, index) => <div className="holding-row" key={holding.label}><i style={{ background: ['var(--ink)', 'var(--marigold)', 'var(--clay)', '#9fbdb1', '#6d7fe8'][index] }} /><span>{holding.label}</span><b>{holding.percent}%</b></div>)}</div>
+       </div> : <div className="finance-empty-state">A live Schwab snapshot with market values is required before this chart can show real broker numbers. It will remain separate from household capital.</div>}
+     </section>
     <section className="card card-pad page-section"><CardTitle title="Accounts & sleeves" subtitle={data.ledgerBalanced ? 'Ledger reconciled · household-scoped balances' : 'Ledger reconciliation needs review'} /><div className="table-wrap"><table className="table"><thead><tr><th>Sleeve</th><th>Share</th><th>Balance</th></tr></thead><tbody>{data.composition.map((holding) => <tr key={holding.label}><td><strong>{holding.label}</strong></td><td>{holding.percent}%</td><td className="font-mono">{displayMoney(holding.amount, '$0')}</td></tr>)}</tbody></table></div></section>
      <section className="card card-pad page-section">
        <CardTitle

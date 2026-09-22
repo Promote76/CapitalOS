@@ -587,12 +587,12 @@ function displayObservationTimestamp(value: string | null | undefined) {
   return Number.isNaN(date.getTime()) ? 'Time unavailable' : date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-function donutGradient(items: Array<{ percent: number }>) {
+function donutGradient(items: Array<{ percent: number; color?: string }>) {
   const colors = ['var(--ink)', 'var(--marigold)', 'var(--clay)', '#9fbdb1', '#6d7fe8'];
   let start = 0;
   const stops = items.map((item, index) => {
     const end = Math.min(100, start + item.percent);
-    const stop = `${colors[index % colors.length]} ${start}% ${end}%`;
+    const stop = `${item.color ?? colors[index % colors.length]} ${start}% ${end}%`;
     start = end;
     return stop;
   });
@@ -1078,10 +1078,20 @@ function PortfolioPage() {
     .sort(([, left], [, right]) => right - left)
   const observedTopEntries = observedEntries.slice(0, 5);
   const observedOtherValue = observedEntries.slice(5).reduce((totalValue, [, value]) => totalValue + value, 0);
+  const observedPalette = ['var(--ink)', 'var(--marigold)', 'var(--clay)', '#9fbdb1', '#6d7fe8'];
+  const observedHoldingColor = (label: string, index: number) => label === 'XDTE' ? '#2f9e62' : observedPalette[index % observedPalette.length];
   const observedComposition = [
-    ...observedTopEntries.map(([label, value]) => ({ label, value, percent: observedTotal > 0 ? Number(((value / observedTotal) * 100).toFixed(1)) : 0 })),
-    ...(observedOtherValue > 0 ? [{ label: 'Other positions', value: observedOtherValue, percent: observedTotal > 0 ? Number(((observedOtherValue / observedTotal) * 100).toFixed(1)) : 0 }] : []),
+    ...observedTopEntries.map(([label, value], index) => ({ label, value, percent: observedTotal > 0 ? Number(((value / observedTotal) * 100).toFixed(1)) : 0, color: observedHoldingColor(label, index) })),
+    ...(observedOtherValue > 0 ? [{ label: 'Other positions', value: observedOtherValue, percent: observedTotal > 0 ? Number(((observedOtherValue / observedTotal) * 100).toFixed(1)) : 0, color: '#8b93a7' }] : []),
   ];
+  const observedUnrealizedGainLoss = (snapshot?.positions ?? []).reduce((totalValue, position) => {
+    const value = Number(position.unrealizedGainLoss);
+    return Number.isFinite(value) ? totalValue + value : totalValue;
+  }, 0);
+  const largestObservedHolding = observedEntries[0];
+  const largestObservedPercent = largestObservedHolding && observedTotal > 0
+    ? (largestObservedHolding[1] / observedTotal) * 100
+    : 0;
   const observedDonutGradient = donutGradient(observedComposition);
   const refreshObservation = async () => {
     setObservationMessage('');
@@ -1101,10 +1111,18 @@ function PortfolioPage() {
     </div>
      <section className="card card-pad page-section">
        <CardTitle title="Schwab observed portfolio" subtitle={snapshot ? `Provider market values · ${displayObservationTimestamp(snapshot.capturedAt)}` : 'No synced Schwab market values'} action={<Link href="/integrations/schwab" className="text-link">Open Schwab connection</Link>} />
-       {observedTotal > 0 ? <div className="donut-wrap">
-         <div className="donut" style={{ background: observedDonutGradient }}><div className="donut-center"><strong>{displayObservationValue(observedTotal.toFixed(2), '$')}</strong><span>observed market value</span></div></div>
-         <div className="holding-list">{observedComposition.map((holding, index) => <div className="holding-row" key={holding.label}><i style={{ background: ['var(--ink)', 'var(--marigold)', 'var(--clay)', '#9fbdb1', '#6d7fe8'][index] }} /><span>{holding.label}</span><b>{holding.percent}%</b></div>)}</div>
-       </div> : <div className="finance-empty-state">A live Schwab snapshot with market values is required before this chart can show real broker numbers. It will remain separate from household capital.</div>}
+        {observedTotal > 0 ? <>
+          <div className="observed-summary-grid">
+            <div><span>Observed value</span><strong>{displayObservationValue(observedTotal.toFixed(2), '$')}</strong><small>Latest provider snapshot</small></div>
+            <div><span>Unrealized P/L</span><strong className={observedUnrealizedGainLoss >= 0 ? 'observed-positive' : 'observed-negative'}>{displayObservationValue(observedUnrealizedGainLoss.toFixed(2), '$')}</strong><small>Across visible positions</small></div>
+            <div><span>Positions</span><strong>{snapshot?.positions.length ?? 0}</strong><small>{observedEntries.length} with market value</small></div>
+            <div><span>Largest allocation</span><strong>{largestObservedHolding?.[0] ?? '—'}</strong><small>{largestObservedPercent.toFixed(1)}% of observed value</small></div>
+          </div>
+          <div className="donut-wrap">
+            <div className="donut" style={{ background: observedDonutGradient }}><div className="donut-center"><strong>{displayObservationValue(observedTotal.toFixed(2), '$')}</strong><span>observed market value</span></div></div>
+            <div className="holding-list">{observedComposition.map((holding) => <div className="holding-row" key={holding.label}><i style={{ background: holding.color }} /><span>{holding.label}</span><b>{holding.percent}%</b></div>)}</div>
+          </div>
+        </> : <div className="finance-empty-state">A live Schwab snapshot with market values is required before this chart can show real broker numbers. It will remain separate from household capital.</div>}
      </section>
      <section className="card card-pad page-section"><CardTitle title="Accounts & sleeves" subtitle="Seeded household balances hidden" /><div className="finance-empty-state"><strong>No verified household balances to show</strong><span>The existing development household contains demo values, so they are intentionally excluded from this Portfolio view.</span></div></section>
      <section className="card card-pad page-section">

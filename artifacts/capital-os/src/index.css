@@ -1720,6 +1720,41 @@ button {
   align-items: center;
   gap: 24px;
 }
+.observed-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.observed-summary-grid > div {
+  padding: 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card) 76%, var(--app-bg));
+}
+.observed-summary-grid span,
+.observed-summary-grid small {
+  display: block;
+  color: var(--ink-soft);
+}
+.observed-summary-grid span {
+  margin-bottom: 7px;
+  font: 9px var(--app-font-mono);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.observed-summary-grid strong {
+  display: block;
+  margin-bottom: 4px;
+  font: 400 21px var(--app-font-serif);
+  letter-spacing: -.025em;
+}
+.observed-summary-grid small {
+  font-size: 9px;
+  line-height: 1.35;
+}
+.observed-summary-grid .observed-positive { color: #237a4b; }
+.observed-summary-grid .observed-negative { color: #b04a3f; }
 .donut {
   width: 156px;
   height: 156px;
@@ -1777,6 +1812,11 @@ button {
 .holding-row b {
   font: 11px var(--app-font-mono);
   font-weight: 400;
+}
+@media (max-width: 760px) {
+  .observed-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .property-card {
   padding: 0;

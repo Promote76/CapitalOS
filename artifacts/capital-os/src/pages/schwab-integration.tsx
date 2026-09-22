@@ -1,4 +1,4 @@
-import { FormEvent, useState, ReactNode, useEffect } from "react";
+import { FormEvent, useState, ReactNode, useEffect, useRef } from "react";
 import { ArrowUpRight, CheckCircle2, ChevronLeft, LockKeyhole, AlertTriangle, ShieldCheck, RefreshCw, Unplug, Database, ShieldAlert, Check } from "lucide-react";
 import { 
   useGetSchwabIntegrationStatus, 
@@ -47,6 +47,7 @@ export default function SchwabIntegrationPage({ onFeedback }: { onFeedback: (mes
   const marketDataDisconnect = useDisconnectSchwabMarketDataConnection();
 
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const automaticSyncStarted = useRef(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -55,6 +56,19 @@ export default function SchwabIntegrationPage({ onFeedback }: { onFeedback: (mes
     if (oauthStatus) {
       if (oauthStatus === 'connected') {
         onFeedback('Schwab integration authorized successfully.');
+        if (!automaticSyncStarted.current) {
+          automaticSyncStarted.current = true;
+          void sync.mutateAsync()
+            .then(() => {
+              invalidate();
+              onFeedback('Schwab authorized and the first read-only observation sync completed.');
+            })
+            .catch((error) => {
+              onFeedback(error instanceof Error
+                ? `Schwab authorized, but the first observation sync failed: ${error.message}`
+                : 'Schwab authorized, but the first observation sync failed. Use Sync now to retry.');
+            });
+        }
       } else if (oauthStatus === 'failed') {
         onFeedback('Schwab authorization failed. Please try again.');
       } else if (oauthStatus === 'configuration_required') {
@@ -75,7 +89,7 @@ export default function SchwabIntegrationPage({ onFeedback }: { onFeedback: (mes
       url.searchParams.delete('market_data_oauth');
       window.history.replaceState({}, document.title, url.toString());
     }
-  }, [onFeedback]);
+  }, [onFeedback, sync]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getGetSchwabIntegrationStatusQueryKey() });
   const invalidateMarketData = () => queryClient.invalidateQueries({ queryKey: getGetSchwabMarketDataStatusQueryKey() });

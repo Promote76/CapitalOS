@@ -77,7 +77,7 @@ jobs:
         run: pnpm run certify:portfolio-ai
 
       - name: Run broker portfolio domain tests
-        run: pnpm --filter @workspace/api-server exec tsx --test src/domain/broker-portfolio.test.ts
+        run: pnpm --filter @workspace/api-server run test:broker-portfolio
 
       - name: Run API test suite
         run: pnpm --filter @workspace/api-server run test

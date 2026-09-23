@@ -20,7 +20,8 @@
     "certify:document-budget-bridge": "playwright test --config playwright.config.ts src/browser/document-budget-bridge-certification.spec.ts",
     "certify:production-document-remediation-browser": "playwright test --config playwright.config.ts src/browser/production-document-remediation-certification.spec.ts",
     "test": "../../scripts/node_modules/.bin/tsx --test src/domain/*.test.ts src/middleware/*.test.ts src/integration/*.test.ts src/services/*.test.ts",
-    "test:broker-portfolio": "../../scripts/node_modules/.bin/tsx --test src/domain/broker-portfolio.test.ts"
+    "test:broker-portfolio": "../../scripts/node_modules/.bin/tsx --test src/domain/broker-portfolio.test.ts",
+    "test:ci": "node ../../scripts/run-api-ci-tests.mjs"
   },
   "dependencies": {
     "@clerk/express": "^2.1.64",

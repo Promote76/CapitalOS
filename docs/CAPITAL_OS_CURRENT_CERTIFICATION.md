@@ -1,257 +1,111 @@
 # Capital OS current certification
 
-**Certification date:** 2026-09-08
-**Certification source base HEAD:** `297bc91`
-**Previous certification:** **NOT READY** (`docs/PRODUCTION_CANDIDATE_CERTIFICATION_2026-09-02.md`)  
-**Current decision:** **READY FOR CONTROLLED INTERNAL USE ONLY — PUBLIC PRODUCTION NOT CERTIFIED**
+**Status date:** 2026-09-23  
+**Source HEAD reviewed:** `b5eda1003aa4f18dd464b5a37dfe5ee1b033659a`  
+**Current source decision:** **CONTROLLED INTERNAL USE / SOURCE IMPLEMENTATION REVIEWED — PUBLIC PRODUCTION CERTIFICATION NOT RERUN**
 
-This is the single current certification document. The Financial Planning
-Completion replay passed all 40 FPC gates, and the Document-to-Budget Bridge
-passed all 30 DBB gates with an executed PostgreSQL fixture and authenticated
-browser journey. Generated artifact freshness passes, and source-derived and
-certified route inventories both contain 209 route/method pairs. See
-`docs/certification/FINANCIAL_PLANNING_COMPLETION_2026-09-08.md`,
-`docs/certification/DOCUMENT_BUDGET_BRIDGE_CERTIFICATION_2026-09-08.md`,
-`docs/certification/CURRENT_SURFACE_CERTIFICATION_2026-09-07.md`, and
-`docs/PRODUCTION_CANDIDATE_EVIDENCE_INDEX.md`.
+The previous 2026-09-08 certification is preserved at
+`docs/certification/CAPITAL_OS_CERTIFICATION_2026-09-08_HISTORICAL.md`.
+That document remains valid only for the source/runtime evidence it explicitly
+recorded at that time.
 
-The 2026-09-08 financial-planning completion work and this report are working-tree
-changes after the base HEAD. Their local checks are recorded below; they are not
-represented as published-production certification.
+This living status file intentionally separates current source implementation
+from runtime production certification. A source commit, a deployment commit, or
+a provider connection by itself is not equivalent to complete release
+certification.
 
-## Scope and non-goals
+## Current implementation state
 
-Capital OS remains an internal, family-capital-only, advisory and non-executing
-planning system.
+### Portfolio / Schwab observation
 
-The following remain disabled:
+Current source includes:
 
-- Real bank-provider enablement
-- Money movement and ACH
-- Brokerage or live-trading orders
-- External investor capital
-- Autonomous AI execution
-- Micro-Live execution
+- server-side Schwab OAuth lifecycle and read-only observations;
+- persisted household-scoped observation snapshots;
+- exact snapshot IDs returned by sync/read surfaces;
+- Portfolio totals derived from one snapshot rather than independently selected
+  "latest" records;
+- reconciliation of total brokerage value, invested market value, and brokerage
+  cash with unresolved values preserved as `UNKNOWN`;
+- fractional-position precision in normalized observations;
+- transaction normalization that associates a security symbol when the provider
+  payload supports it and preserves uncertainty otherwise;
+- freshness and reconciliation state exposed to Portfolio consumers.
 
-No real order was sent, no live venue was enabled, and no production credential was
-introduced during this certification.
+Runtime connection state and credential health are external runtime facts and
+must not be inferred from source control. See
+`docs/SCHWAB_READ_ONLY_ARCHITECTURE.md`.
 
-## Changes since the previous certification
+### Portfolio AI Agent
 
-- Authenticated Capital, Business, Property, Treasury, Strategy Lab, Operations,
-  Financing, Micro-Live, and Intelligence paths use actor-scoped tenant
-  initialization rather than the shared demo household.
-- Manual household finance now has PostgreSQL-backed create, review, approval,
-  rejection, fresh-read, budget, cash-flow, and Safe-to-Deploy coverage.
-- Treasury reads and decisions have an actor boundary, advisor protected-balance
-  redaction, request-linked planning reservations, transaction locking, replay
-  conflict handling, and decision audit events.
-- Read-only banking lifecycle behavior is implemented with fixture-provider
-  recovery coverage; no real provider is registered.
-- Generated finance artifact freshness now checks OpenAPI clients, Zod validators,
-  database declarations, migration SQL, and migration metadata.
-- The production-candidate check fails closed when generated finance artifacts are
-  stale.
-- Hermetic regression coverage verifies the generated-artifact checker restores
-  committed files after both successful and intentionally failing regeneration.
-- Schema-drift detection has been hardened for generator upgrades.
-- A household-scoped server execution-control plane now persists a fail-closed
-  state machine, records successful and denied transition attempts, reconciles
-  the legacy emergency-stop path, and blocks OMS order-intent creation unless
-  the control state, Guardian, and risk governor all permit execution.
-- The execution-control plane passed EC-01 through EC-17 against a dedicated
-  disposable PostgreSQL target, including a fresh API process restart probe.
-- Risk and Micro-Live pages now read the authoritative server state; the browser
-  Emergency Stop sends a confirmed, idempotent server command rather than
-  changing local React state only.
-- Durable operations now persist leases, attempts, workers, schedules, leadership,
-  retries, dead letters, audit lifecycle events, runtime queue/scheduler metrics,
-  and safe response projections; the Operations page exposes queue state and
-  authorized reprocessing without exposing raw payloads.
-- Authenticated OpenMetrics telemetry now exports low-cardinality API, database,
-  financial-integrity, operations, execution-safety, provider-neutral, and
-  read-only banking health without private identifiers or raw financial values.
-- Deterministic critical alerts now persist incidents, deduplicate occurrences,
-  retry through the durable queue, dead-letter after bounded attempts, support
-  authorized replay and recovery notices, and deliver to a named Slack destination.
-- Financial-integrity closure now has an isolated disposable PostgreSQL
-  certification covering the current route inventory, tenant/IDOR, Treasury,
-  Accounting, Safe-to-Deploy, and combined adversarial scenarios.
-- Accounting no longer presents unavailable property, withdrawal, realized-gain,
-  fee, tax, or return-on-capital values as authoritative zeroes.
-- Published Operations task completion now requires strict Clerk reverification
-  and persists the authenticated completer, server timestamp, and matching
-  before/after audit evidence atomically.
-- Redacted production evidence closes RV-01 for a successful provider challenge
-  and exact protected-action retry, and RV-02 for a cancelled challenge with no
-  task mutation or audit side effect.
-- Clerk reverification remains enabled as a defense-in-depth application control,
-  but it is no longer a release-certification requirement. Historical RV evidence
-  remains retained and is not represented as complete certification.
-- Budget planning now provides advisory weekly guidance from reviewed, posted,
-  household-tagged transactions only. Verified income, eligible money out,
-  excluded-row counts, calculation date, and a recommendation fingerprint remain
-  visible at the decision boundary.
-- Weekly recommendations use exact integer-cent and basis-point calculations.
-  Missing verified income, incomplete allocation templates, stale fingerprints,
-  stale period versions, unknown categories, and immutable periods fail closed.
-- Owners can accept one or more current recommendations into a mutable draft
-  through a locked, idempotent, actor-attributed write. Acceptance changes neither
-  source transactions nor official Budget totals; separate period approval remains
-  required.
-- Reviewed bank-statement rows now appear in Budget as household-scoped advisory
-  evidence. Corrected amounts are cent-exact; transfers, settlement-linked deposits,
-  rejected parents, and pending rows are excluded. Uploaded evidence cannot change
-  forecast math, verified income, balances, ledger entries, or deployable capital.
-- Reviewed statement evidence now has a separate, explicit financial-inclusion
-  workflow. A human category decision and deterministic match preview precede
-  import or provenance-only linking; ambiguous matches and excluded economic
-  classifications fail closed. Imports are tenant-scoped, idempotent, atomic,
-  auditable, reversible, and populate official Budget actuals without changing
-  approved targets or creating verified-income events.
-- Weekly allocation templates are versioned with each planning period, must cover
-  every active allocating category, and must total exactly 100.00% before approval.
-  Approved and closed periods preserve the exact reviewed percentages.
-- Budget exclusion counts now link to a household-scoped transaction review queue
-  so owners can resolve blocked accounting evidence without weakening pending,
-  transfer, business/property, excluded, or unreviewed-row safeguards.
-- Family Office provider research now fails with HTTP 503, persists blocked-run
-  evidence and audit records atomically, distinguishes configured from verified
-  provider state, exposes only safe runtime failure classifications, and supports
-  exact-match multiple-origin allowlists.
-- A normal authenticated production session completed one advisory-only Grok
-  research run with retained output and no execution authority. This is provider
-  runtime evidence, not complete Clerk reverification certification.
-- Schwab read-only portfolio scaffolding now has an observation-only provider
-  contract, disabled-by-default feature boundary, unknown-preserving
-  normalization, freshness states, fail-closed reconciliation, sanitized Grok
-  projection, and independent Shadow baseline semantics. The approved Schwab
-  connector was not attached, so live Schwab remains blocked and no provider
-  data is claimed.
-- A production transaction-review request exposed a raw HTTP 403 with no Clerk
-  dialog. The published origin policy and household owner role were confirmed
-  correct, and the server's strict recent-authentication boundary remains intact.
-  The client adapter now extracts Clerk's exact `forbidden` /
-  `reverification-error` hint from generated-client and known middleware error
-  envelopes while refusing unrelated 403 responses.
-- The 403 remediation passed three focused extractor regressions and the Capital
-  OS TypeScript check. The web workflow restarted cleanly and the signed-out
-  application surface rendered without runtime errors. A republished production
-  build and a fresh authenticated 403 → provider challenge → identical-request
-  retry remain required before this remediation is browser-certified.
+Current source includes a household-scoped Portfolio AI Agent bound to the exact
+snapshot displayed by the Portfolio experience.
 
-## Evidence summary
+The response contract explicitly carries:
 
-| Evidence                                       | Result                                                                                                                                                  | Runtime reference                                                                                                                                                             |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Generated finance artifacts                    | PASS                                                                                                                                                    | `pnpm run check:generated-finance-artifacts`                                                                                                                                  |
-| Document-to-Budget Bridge                      | PASS — DBB-01 through DBB-30, including executed database and authenticated browser fixtures                                                            | `pnpm run certify:document-budget-bridge`; `docs/certification/DOCUMENT_BUDGET_BRIDGE_CERTIFICATION_2026-09-08.md`                                                           |
-| Generated-artifact failure/recovery regression | PASS                                                                                                                                                    | `pnpm run test:generated-finance-artifacts`                                                                                                                                   |
-| Workspace/API typechecks                       | PASS                                                                                                                                                    | `pnpm run typecheck`, API typecheck                                                                                                                                           |
-| OpenAPI route/method parity                    | PASS                                                                                                                                                    | `scripts/check-api-contract.mjs`; 170 route/method combinations                                                                                                               |
-| PostgreSQL-backed API suite                    | PASS for current-surface household replay | 170 routes, 393 probes, 12 passed, 0 failed/skipped; 58 scoped reads, 58 foreign rejections, and 58 malformed rejections |
-| Weekly Budget guidance                        | PASS server/database; contribution-specific browser evidence BLOCKED | 14 added planning pairs passed current replay; no browser-visible 80/10/10 sleeve configuration/verification |
-| Execution-control focused fixture              | PASS against the dedicated isolated certification target; 3 passed, 0 failed, 0 skipped                                                                 | `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/integration/execution-control.test.ts`                                          |
-| Execution-control certification command        | PASS — EC-01 through EC-17 collected                                                                                                                    | `pnpm run certify:execution-control`; `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md`                                                                      |
-| Historical P0 evidence                         | PASS for the documented internal scope                                                                                                                  | `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`                                                                                                                       |
-| Current production-candidate command           | PASS for the restricted in-house candidate                                                                                                              | The 16-row gate-count invariant passed at 13 PASS / 0 PARTIAL / 3 BLOCKED / 0 FAIL, and all seven retained P0 mappings are green; public production remains blocked by the three current gates below |
-| Internal reliability command                   | FAIL-CLOSED                                                                                                                                             | Implementation checks pass; broader authenticated-browser evidence remains open. Clerk reverification remains enabled but is tracked outside release certification.              |
-| Micro-Live command                             | BLOCKED                                                                                                                                                 | Internal safety core passes; provider, restart, credential, automation, and browser gates remain blocked                                                                      |
-| Durable operations recovery certification      | PASS — 29 tests passed, 0 failed, 0 skipped; OR-01 through OR-24 all passed against a fresh disposable PostgreSQL target                                | `docs/certification/OPERATIONS_RECOVERY_CERTIFICATION_2026-09-04.md`; `pnpm run certify:operations-recovery`                                                                  |
-| Observability certification                    | PASS — 26 assertions passed, 0 failed, 0 skipped; OB-01 through OB-25 all passed against a fresh disposable PostgreSQL target with a real Slack receipt | `docs/certification/OBSERVABILITY_CERTIFICATION_2026-09-04.md`; `pnpm run certify:observability`                                                                              |
-| Financial-integrity certification              | PASS — TI 15/15, TR 12/12, AC 14/14, SD 20/20 on a fresh disposable PostgreSQL target | `docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md`; `pnpm run certify:financial-integrity`                                                                  |
-| Clerk reverification certification             | RETIRED AS RELEASE REQUIREMENT — strict application protection remains enabled; historical RV-01/RV-02 evidence is retained, while the 2026-09-07 transaction-review envelope remediation is implementation-verified but awaits republished authenticated browser evidence | `docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md`; `docs/certification/CLERK_REVERIFICATION_PRODUCTION_EVIDENCE_2026-09-05.json`; `artifacts/capital-os/src/lib/reverification.test.ts` |
-| Schwab read-only portfolio                   | BLOCKED — provider not configured; 14/20 implementation gates collected, 1 partial, and 5 live/persistence gates blocked | `docs/certification/SCHWAB_READ_ONLY_CERTIFICATION_2026-09-07.md`; `docs/SCHWAB_READ_ONLY_ARCHITECTURE.md`; `pnpm run certify:schwab-read-only` |
+- `snapshotId` and snapshot as-of time;
+- snapshot freshness;
+- reconciliation status;
+- facts, recommendations, risks, and uncertainties;
+- `advisoryOnly: true`;
+- `educationalOnly: true`;
+- `executionAuthorization: false`;
+- `moneyMovementEnabled: false`.
 
-## Current gate matrix
+The agent prompt requires observed facts to come from the selected portfolio
+snapshot and keeps approved research separate from current holdings. Stale,
+unknown, unresolved, or mismatched evidence must be disclosed rather than
+silently converted into current/confirmed data.
 
-| Gate                      | Previous result | Current implementation                                                                                                                                                                                                                                                                 | Runtime test/evidence                                                                                                                                                                                                      | Current result | Evidence                                                                                                                                                                                                                                                                                                          |
-| ------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tenant / IDOR             | PARTIAL PASS    | Actor-scoped initialization and the current 170-route inventory are implemented | Current disposable replay covered all 170 routes: 393 probes, 58 scoped reads, 58 foreign and 58 malformed rejections; 12 passed, none failed/skipped | **PASS** | `docs/certification/CURRENT_SURFACE_CERTIFICATION_2026-09-07.md`; `docs/PRODUCTION_CANDIDATE_EVIDENCE_INDEX.md` |
-| Treasury                  | Not closed      | Actor-scoped reads, advisor redaction, locked decisions, linked planning reservations, replay handling, concurrency protection, and decision audit are implemented                                                                                                                   | Isolated disposable PostgreSQL certification passed actor boundary, redaction, owner approval, reservation, concurrency, double-reservation protection, replay, conflict, cross-household isolation, and audit cases | **PASS** | `docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md`; `artifacts/api-server/src/services/treasury.ts`; `scripts/certify-financial-integrity.mjs` |
-| Manual finance            | Not closed      | Manual review lifecycle and downstream recalculation are implemented                                                                                                                                                                                                                   | PostgreSQL suite passed create → review → approve/reject → fresh read → budget/cash-flow/Safe-to-Deploy recalculation                                                                                                      | **PASS**       | `artifacts/api-server/src/integration/p0-http.test.ts`; current 99/99 run                                                                                                                                                                                                                                         |
-| Authenticated browser E2E | BLOCKED         | Clerk onboarding, saved-write reload, sign-out, repeat sign-in, and second-household isolation are implemented                                                                                                                                                                           | Published origin and live Clerk sign-in route preflight passed; real sign-in, onboarding, saved-write reload, role, second-household, session, multi-tab, Emergency Stop, Treasury, and Safe-to-Deploy browser evidence remains incomplete | **BLOCKED** | `docs/certification/AUTHENTICATED_BROWSER_CERTIFICATION_2026-09-05.md`; `docs/certification/auth-sign-in-published-origin.png` |
-| Migration upgrade         | BLOCKED         | Historical schema artifact and additive upgrade path are committed                                                                                                                                                                                                                     | Disposable branch upgrade preserved representative data, constraints, ownership, balances, and audit actor; current rerun is blocked because no disposable certification DB URL is configured                              | **PASS**       | `docs/certification/EXECUTED_P0_EVIDENCE_2026-09-02.md`; `scripts/certify-migrations.mjs`                                                                                                                                                                                                                         |
-| Worker / scheduler        | BLOCKED         | Durable job schema, lease-owner fencing, retry/dead-letter lifecycle, scheduler leadership, opt-in runtime loops, lifecycle audit events, and runtime metrics exist                                                                                                                    | OR-01 through OR-24 all passed on a fresh disposable PostgreSQL target; child-process graceful shutdown, hard crash recovery, contention, scheduler recovery, audit attribution, and metrics evidence retained             | **PASS**       | `docs/certification/OPERATIONS_RECOVERY_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/services/operations.ts`; `artifacts/api-server/src/services/operations-scheduler.ts`; `artifacts/api-server/src/integration/operations-recovery-certification.test.ts`; `scripts/certify-operations-recovery.mjs` |
-| Observability             | PARTIAL         | Authenticated OpenMetrics export, safe low-cardinality API/database/financial/operations/execution/provider/banking metrics, deterministic persisted alert rules, durable retry/dead-letter/replay, recovery notices, actor attribution, and a named Slack destination are implemented | OB-01 through OB-25 passed on a fresh disposable PostgreSQL target; a controlled synthetic critical alert, replay, and recovery notice received real Slack provider receipts                                               | **PASS**       | `docs/certification/OBSERVABILITY_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/integration/observability-certification.test.ts`; `scripts/certify-observability.mjs`                                                                                                                                   |
-| Accounting                | PARTIAL         | Exact-cent arithmetic, ledger balance checks, cross-view separation, and explicit unavailable-value handling are implemented                                                                                                                                                            | Isolated disposable PostgreSQL certification passed exact-cent, ledger, cross-view, source-boundary, unknown-value, and API regression checks | **PASS** | `docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md`; `artifacts/api-server/src/services/accounting.ts`; `scripts/certify-financial-integrity.mjs` |
-| Budget planning guidance  | Not certified   | Exact-cent weekly guidance and owner-scoped planning controls are implemented | Current guarded replay passed all 14 added planning pairs; planning remains advisory and cannot unlock protected capital | **PASS** | `docs/certification/CURRENT_SURFACE_CERTIFICATION_2026-09-06.md` |
-| Safe-to-Deploy            | PARTIAL         | Conservative server-side calculation and manual-review exclusions exist                                                                                                                                                                                                               | Isolated disposable PostgreSQL certification passed protected-reserve, business-cash, paper/unrealized P&L, property candidate, Treasury reservation, stale-data, unknown-funds, and concurrent-reservation checks | **PASS** | `docs/certification/FINANCIAL_INTEGRITY_CERTIFICATION_2026-09-05.md`; `artifacts/api-server/src/services/household-finance.ts`; `scripts/certify-financial-integrity.mjs` |
-| Server Emergency Stop     | BLOCKED         | PostgreSQL-backed household control state, deterministic STOP transition, audit/idempotency records, legacy risk reconciliation, and OMS enforcement are implemented                                                                                                                   | Dedicated isolated target passed EC-01 through EC-17; STOP remained household-scoped and persisted through a fresh API process restart; audit attribution, replay, denied transition, and OMS pre-intent evidence retained | **PASS**       | `docs/certification/EXECUTION_CONTROL_CERTIFICATION_2026-09-04.md`; `artifacts/api-server/src/services/execution-control.ts`; `scripts/certify-execution-control.mjs`                                                                                                                                             |
-| Guardian                  | PASS            | Missing/stale health defaults to STOP and disagreement locks the boundary                                                                                                                                                                                                              | Domain and Micro-Live certification tests pass                                                                                                                                                                             | **PASS**       | `artifacts/api-server/src/domain/execution-*.test.ts`; `scripts/certify-micro-live.mjs`                                                                                                                                                                                                                           |
-| OMS                       | PASS            | Durable order-intent/event relationships and fail-closed state transitions exist                                                                                                                                                                                                       | Domain and Micro-Live certification tests pass; no real venue order was sent                                                                                                                                               | **PASS**       | `artifacts/api-server/src/domain/execution-oms.test.ts`; `scripts/certify-micro-live.mjs`                                                                                                                                                                                                                         |
-| Reconciliation            | PASS            | Rehearsal reconciliation persists failures and stops exposure                                                                                                                                                                                                                          | Domain and Micro-Live certification tests pass; production worker restart evidence remains separate                                                                                                                        | **PASS**       | `artifacts/api-server/src/domain/execution-*.test.ts`; `scripts/certify-micro-live.mjs`                                                                                                                                                                                                                           |
-| Micro-Live foundation     | Not ready       | Internal safety core is present and execution is disabled                                                                                                                                                                                                                              | Certification correctly reports the internal core as PASS but keeps Micro-Live BLOCKED because credential, venue, restart, automation, browser, and real-money labeling evidence is absent                                 | **BLOCKED**    | `scripts/certify-micro-live.mjs`                                                                                                                                                                                                                                                                                  |
-| Schwab read-only          | Not enabled     | No approved Schwab provider or credential boundary is registered                                                                                                                                                                                                                       | No read-only provider security, tenant, audit, or credential certification exists                                                                                                                                          | **BLOCKED**    | `artifacts/api-server/src/adapters/banking.ts`; readiness audit                                                                                                                                                                                                                                                   |
+Requests to execute or automate trades, place/cancel/replace orders, move money,
+withdraw, transfer, borrow, or add leverage remain outside the agent's
+authority.
 
-## Release status counts
+### Execution boundary
 
-There are **16 critical gates** in the matrix:
+The following remain outside the certified authority of the Portfolio/Research
+AI surfaces:
 
-- **PASS:** 13
-- **PARTIAL:** 0
-- **BLOCKED:** 3
-- **FAIL:** 0
+- autonomous brokerage trading;
+- order placement, cancellation, replacement, or automatic trade preparation;
+- transfers and withdrawals;
+- leverage or borrowing;
+- conversion of protected household/property capital into investable capital;
+- conversion of approved research into execution authorization.
 
-Any PARTIAL, BLOCKED, or FAIL critical gate keeps the production candidate
-unreleased.
+## Repository verification
 
-## Security and financial-integrity status
+The repository now defines a GitHub CI workflow intended to run on pull requests
+and pushes to `main`. Its baseline checks include:
 
-- Tenant boundaries are actor-scoped. The current 170-route identifier matrix
-  passed isolated adversarial certification; route-inventory drift is resolved.
-- Treasury approvals remain planning reservations only. They do not debit executable
-  capital or move money.
-- Accounting exposes unavailable values explicitly rather than presenting
-  unsupported zeros as authoritative financial data.
-- Safe-to-Deploy excludes protected reserves, business cash, planning balances,
-  projected income, paper/unrealized results, property candidates, stale data,
-  unknown funds, and duplicate concurrent reservations.
-- Protected reserves, business cash, planning balances, projected income, and
-  unrealized results remain outside executable household capital.
-- AI and automation cannot move money, unlock reserves, enable Micro-Live, or submit
-  external actions.
-- Clerk reverification remains enabled as a defense-in-depth control. Its retained
-  RV 2/12 evidence is historical operational evidence, not a release requirement
-  and not a claim of complete reverification certification.
-- The transaction-review 403 remediation does not weaken strict reverification
-  and is not counted as production browser evidence until a republished build
-  visibly opens the provider challenge and successfully retries the original
-  protected request.
-- Banking remains consent-gated, read-only, credential-reference based, and
-  provider-disabled.
-- Exact-cent domain logic and PostgreSQL `numeric(18,2)` storage remain in force.
-- Weekly Budget guidance is advisory and cannot become official through acceptance
-  alone. It requires reviewed verified income, an exact-100% period allocation,
-  current recommendation evidence, owner authority, and a mutable draft.
+- workspace typecheck;
+- generated finance-artifact verification;
+- API contract parity;
+- dedicated Portfolio AI / snapshot source certification;
+- broker-portfolio domain tests;
+- API test suite;
+- selected Capital OS web unit tests.
 
-## Operational status
+CI execution results are runtime evidence and should be evaluated on the pull
+request/commit where they ran. The existence of this workflow is not itself a
+PASS result.
 
-The API has liveness/readiness separation, structured logs, correlation IDs, and
-fail-closed database-backed safety checks. Provider-backed banking delivery
-remains outside the current internal scope.
+## Current known release limitations
 
-## Banking and execution status
+Public production certification remains open until the current build receives
+fresh, dated evidence for the relevant runtime gates, including authenticated
+browser behavior, current provider/runtime observations, and any other release
+criteria required by the production-candidate process.
 
-**REAL BANK PROVIDER:** Not registered; fixture-provider lifecycle only  
-**MONEY MOVEMENT:** DISABLED  
-**MICRO-LIVE:** Foundation safety core present; certification BLOCKED  
-**LIVE TRADING:** DISABLED  
-**AI EXECUTION:** DISABLED  
-**SCHWAB READ-ONLY:** BLOCKED  
-**SCHWAB TRADING:** DISABLED  
-**MICRO-LIVE EXECUTION:** DISABLED
+GitHub server-side branch protection is also not currently enforced from this
+repository environment. PR + green CI is the documented merge policy until
+ruleset/branch-protection support is available.
 
-## Final release decision
+## Decision
 
-**PRODUCTION CANDIDATE: NOT READY**
+Capital OS source contains substantial financial-integrity, tenant-safety,
+read-only Schwab, Portfolio reconciliation, and advisory-AI controls.
 
-Capital OS is approved only for controlled internal evaluation within the
-non-executing family-capital scope. The unresolved blockers are listed in the
-gate matrix above.
-
-The exact three current critical blockers are:
-
-1. Authenticated Browser E2E
-2. Micro-Live Foundation
-3. Schwab Read-Only
+**Do not label the current HEAD as fully production-certified solely from this
+document.** Production certification requires fresh execution of the applicable
+release gates and retained evidence against the exact release candidate.

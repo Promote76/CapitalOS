@@ -61,6 +61,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install PDF extraction dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y poppler-utils
+
       - name: Prepare disposable database
         run: pnpm --filter @workspace/db run push-force
 
@@ -77,10 +82,10 @@ jobs:
         run: pnpm run certify:portfolio-ai
 
       - name: Run broker portfolio domain tests
-        run: pnpm --filter @workspace/api-server exec tsx --test src/domain/broker-portfolio.test.ts
+        run: pnpm --filter @workspace/api-server run test:broker-portfolio
 
-      - name: Run API test suite
-        run: pnpm --filter @workspace/api-server run test
+      - name: Run hermetic API CI suite
+        run: pnpm --filter @workspace/api-server run test:ci
 
       - name: Run Capital OS UI unit tests
         run: |

@@ -8,11 +8,12 @@ const familyOfficeRoute = read("artifacts/api-server/src/routes/family-office.ts
 const inputType = read("lib/api-zod/src/generated/types/portfolioAgentInput.ts");
 const responseType = read("lib/api-zod/src/generated/types/portfolioAgentResponse.ts");
 const openapi = read("lib/api-spec/openapi.yaml");
+const normalizedFamilyOfficeRoute = familyOfficeRoute.replace(/\\s+/g, " ");
 
 const checks = [
   ["agent requires a snapshot id", /question:\s*string,\s*snapshotId:\s*string/.test(agent)],
   ["snapshot lookup is household scoped", /schwabObservationSnapshots\.householdId[\s\S]*actor\.householdId[\s\S]*schwabObservationSnapshots\.id[\s\S]*snapshotId/.test(agent)],
-  ["route passes the requested snapshot id", /askGroundedPortfolioAgent\([^)]*body\.question,\s*body\.snapshotId\)/.test(familyOfficeRoute)],
+  ["route passes the requested snapshot id", normalizedFamilyOfficeRoute.includes("askGroundedPortfolioAgent(actorFrom(res), body.question, body.snapshotId)")],
   ["generated request requires snapshotId", /snapshotId:\s*string/.test(inputType)],
   ["response returns the snapshot id", /snapshotId:\s*string/.test(responseType)],
   ["agent is advisory only", /advisoryOnly:\s*true\s+as const/.test(agent) && /advisoryOnly:\s*true/.test(responseType)],

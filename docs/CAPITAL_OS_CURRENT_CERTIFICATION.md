@@ -1,7 +1,7 @@
 # Capital OS current certification
 
 **Status date:** 2026-09-23  
-**Source HEAD reviewed:** `b5eda1003aa4f18dd464b5a37dfe5ee1b033659a`  
+**Source baseline reviewed:** `d4891d3834a52d5dd13bb753bfeea4478fee0a07` plus this certification-only PR  
 **Current source decision:** **CONTROLLED INTERNAL USE / SOURCE IMPLEMENTATION REVIEWED — PUBLIC PRODUCTION CERTIFICATION NOT RERUN**
 
 The previous 2026-09-08 certification is preserved at
@@ -92,14 +92,9 @@ PASS result.
 
 ## Current known release limitations
 
-Public production certification remains open until the current build receives
-fresh, dated evidence for the relevant runtime gates, including authenticated
-browser behavior, current provider/runtime observations, and any other release
-criteria required by the production-candidate process.
+Public production certification remains open until the current build receives fresh, dated evidence for the relevant runtime gates, including authenticated browser behavior, current provider/runtime observations, and any other release criteria required by the production-candidate process. GitHub now contains a manual `Capital OS Runtime Certification` workflow and `docs/RUNTIME_CERTIFICATION.md` runbook for collecting that evidence without granting execution authority.
 
-GitHub server-side branch protection is also not currently enforced from this
-repository environment. PR + green CI is the documented merge policy until
-ruleset/branch-protection support is available.
+GitHub server-side protection is now enforced on `main` by the active `Protect Main` ruleset. Pull requests are required, the `Verify financial and safety contracts` check is required with strict up-to-date enforcement, stale approvals are dismissed on new pushes, force pushes are blocked, branch deletion is blocked, and no bypass actor is configured.
 
 ## Decision
 

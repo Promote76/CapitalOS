@@ -281,8 +281,9 @@ function runLocalEvidence() {
 async function verifyBrowser(afterSnapshot) {
   const requireFromApiServer = createRequire(resolve(root, "artifacts/api-server/package.json"));
   const { chromium } = requireFromApiServer("@playwright/test");
+  const configuredExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim();
   const browser = await chromium.launch({
-    executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ?? "/repl/tools/bin/chromium",
+    ...(configuredExecutablePath ? { executablePath: configuredExecutablePath } : {}),
     headless: true,
   });
   try {

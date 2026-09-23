@@ -1,15 +1,20 @@
 # Schwab read-only architecture
 
-**Status:** OAuth observation foundation implemented; provider credentials not configured
+**Status:** OAuth observation foundation implemented; runtime connection state is external to source control
 **Boundary:** internal family-capital planning, advisory only, no execution
 
 ## Current decision
 
-Capital OS now contains a server-side Schwab OAuth and read-only observation
-foundation. It is not a certified or currently connected provider integration:
-the required credentials and production callback registration are absent, and
-no fixture or local test is real Schwab evidence. The existing certification
-result remains **BLOCKED / NOT CONFIGURED**.
+Capital OS contains a server-side Schwab OAuth and read-only observation
+foundation and current source includes persisted snapshot identifiers,
+reconciled brokerage summaries, freshness propagation, normalized transactions,
+and a snapshot-bound Portfolio AI Agent.
+
+Source control does not prove whether provider credentials are currently
+configured, connected, expired, or healthy in a deployed runtime. Those are
+runtime facts and must be established through authenticated status/sync evidence.
+Historical documents that said Schwab was "not configured" describe the state
+at their certification date, not an immutable architectural constraint.
 
 ## Data flow
 
@@ -117,18 +122,39 @@ classification. Shadow remains independent and human-reviewed. Trading,
 Guardian, and Micro-Live controls and authority are unchanged;
 `tradingEnabled` remains false.
 
-## Production activation
+## Portfolio snapshot and AI explanation boundary
 
-Production still requires:
+A successful read-only sync persists an immutable household-scoped observation
+snapshot and returns its snapshot identifier. Portfolio totals and the Portfolio
+AI Agent bind to that identifier rather than independently selecting "latest"
+data.
 
-1. provision the server secrets/configuration above while keeping
-   `SCHWAB_TRADING_ENABLED=false`;
-2. publish the API/UI and apply the Schwab schema migrations;
-3. register the exact derived callback URL in the Schwab developer portal;
-4. collect real OAuth and read-only provider evidence for account isolation,
-   token lifecycle, observations, sanitization, freshness, reconciliation, and
-   audit behavior; and
-5. rerun `pnpm run certify:schwab-read-only`.
+The server verifies both household ownership and snapshot ID before generating
+an AI explanation. The agent receives a sanitized observation projection and
+approved research context as separate inputs. Its response contract is
+educational/advisory and explicitly carries no execution or money-movement
+authority.
 
-Do not claim provider certification or change the certification result to PASS
-until approved real Schwab evidence closes the blocked gates.
+Reconciliation compares provider account value with invested market value plus
+brokerage cash. Missing components remain UNKNOWN; they are not silently
+converted to zero. Material mismatches remain review states.
+
+## Runtime certification
+
+Current runtime connection state must be demonstrated, not inferred from this
+document. A release claiming Schwab read-only certification should retain dated
+evidence for:
+
+1. authenticated OAuth/status and token lifecycle;
+2. household isolation and snapshot ownership;
+3. successful bounded read-only observations;
+4. sanitization and absence of account-number/credential leakage;
+5. provider/snapshot freshness;
+6. brokerage total reconciliation;
+7. transaction normalization and explicit unknown handling;
+8. Portfolio UI binding to the same snapshot used for AI explanations;
+9. rejection of stale/foreign-household snapshot IDs;
+10. continued absence of order/transfer/withdrawal methods and routes.
+
+Keep `SCHWAB_TRADING_ENABLED=false`. A read-only connection never grants
+Micro-Live, OMS, Guardian, transfer, withdrawal, or AI execution authority.

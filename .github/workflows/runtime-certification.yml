@@ -1,0 +1,98 @@
+name: Capital OS Runtime Certification
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_authenticated_runtime:
+        description: "Run authenticated production Portfolio/Schwab certification"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: capital-os-runtime-certification
+  cancel-in-progress: false
+
+jobs:
+  source-contracts:
+    name: Source Portfolio and AI certification
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Certify Portfolio AI source boundary
+        run: pnpm run certify:portfolio-ai
+
+      - name: Run broker portfolio domain tests
+        run: pnpm --filter @workspace/api-server run test:broker-portfolio
+
+  authenticated-runtime:
+    name: Authenticated Portfolio and Schwab runtime certification
+    if: ${{ inputs.run_authenticated_runtime }}
+    needs: source-contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production-certification
+
+    env:
+      NODE_ENV: test
+      CAPITAL_OS_PUBLISHED_ORIGIN: ${{ vars.CAPITAL_OS_PUBLISHED_ORIGIN }}
+      CAPITAL_OS_PRODUCTION_OPERATOR_SESSION_COOKIE: ${{ secrets.CAPITAL_OS_PRODUCTION_OPERATOR_SESSION_COOKIE }}
+      CAPITAL_OS_PRODUCTION_HOUSEHOLD_ID: ${{ secrets.CAPITAL_OS_PRODUCTION_HOUSEHOLD_ID }}
+      CAPITAL_OS_SCHWAB_CLEANUP: "0"
+      SCHWAB_TRADING_ENABLED: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.1
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm --filter @workspace/api-server exec playwright install --with-deps chromium
+
+      - name: Run authenticated read-only Portfolio/Schwab certification
+        run: pnpm run certify:schwab-read-only
+
+      - name: Upload redacted certification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schwab-portfolio-runtime-certification
+          path: docs/certification/logs/SCHWAB_PORTFOLIO_SYNC_LATEST.json
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,7 +1,7 @@
 # Capital OS current certification
 
-**Status date:** 2026-09-23  
-**Source baseline reviewed:** `d4891d3834a52d5dd13bb753bfeea4478fee0a07` plus this certification-only PR  
+**Status date:** 2026-09-24  
+**Source baseline reviewed:** `6ad4874911fe01242155a69d4a5532e6e99bf65e` plus the current GitHub-governance hardening PR  
 **Current source decision:** **CONTROLLED INTERNAL USE / SOURCE IMPLEMENTATION REVIEWED — PUBLIC PRODUCTION CERTIFICATION NOT RERUN**
 
 The previous 2026-09-08 certification is preserved at
@@ -94,7 +94,7 @@ PASS result.
 
 Public production certification remains open until the current build receives fresh, dated evidence for the relevant runtime gates, including authenticated browser behavior, current provider/runtime observations, and any other release criteria required by the production-candidate process. GitHub now contains a manual `Capital OS Runtime Certification` workflow and `docs/RUNTIME_CERTIFICATION.md` runbook for collecting that evidence without granting execution authority.
 
-GitHub server-side protection is now enforced on `main` by the active `Protect Main` ruleset. Pull requests are required, the `Verify financial and safety contracts` check is required with strict up-to-date enforcement, stale approvals are dismissed on new pushes, force pushes are blocked, branch deletion is blocked, and no bypass actor is configured.
+GitHub server-side protection is enforced on `main` by the active `Protect Main` ruleset. Pull requests are required, the `Verify financial and safety contracts` check is required with strict up-to-date enforcement, stale approvals are dismissed on new pushes, force pushes are blocked, branch deletion is blocked, and no bypass actor is configured. The authenticated runtime-certification workflow is separately guarded so environment-backed production certification can run only from `refs/heads/main`. Repository visibility is an operational governance setting and is not evidence of production certification.
 
 ## Decision
 

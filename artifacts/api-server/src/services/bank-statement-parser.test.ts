@@ -52,7 +52,7 @@ test("parses Wells Fargo Everyday Checking activity tables with wrapped descript
     [
       "Wells Fargo Everyday Checking",
       "September 8, 2026 Page 1 of 4",
-      "Statement period activity summary                                      Account number: 8974191259 (primary account)",
+      "Statement period activity summary                                      Account number: XXXX1259 (primary account)",
       "Beginning balance on 8/10                                                  $0.00",
       "Deposits/Additions                                                      8,705.94",
       "Withdrawals/Subtractions                                              - 7,374.79",

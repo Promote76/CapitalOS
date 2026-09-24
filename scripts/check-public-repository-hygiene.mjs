@@ -60,6 +60,9 @@ for (const path of [...walk(resolve(root, "docs/certification")), ...walk(resolv
   if (/CAPITAL_OS_PRODUCTION_DOCUMENT_IDS\s*=\s*[0-9a-f-]{36}/i.test(content)) {
     failures.push(`${path.slice(root.length + 1)} exposes production document identifiers`);
   }
+  if (/FUQC\s+P&L/i.test(content)) {
+    failures.push(`${path.slice(root.length + 1)} exposes a production financial-document filename`);
+  }
 }
 
 if (failures.length) {

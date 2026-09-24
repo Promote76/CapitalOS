@@ -12,8 +12,10 @@ import {
 } from "@workspace/db";
 import {
   createSupersedingBudgetPlanningPeriod,
+  findBudgetPlanningPeriod,
   getBudget,
   getBudgetPlanningComparison,
+  getBudgetPlanningHistory,
 } from "../services/household-finance.ts";
 import { getVariableBudgetIntelligence } from "../services/variable-income.ts";
 
@@ -59,13 +61,15 @@ test("canonical same-month correction is used by downstream budget consumers", a
     const [corrected] = await db.insert(budgetPlanningPeriods).values({
       householdId: household.id,
       month: monthDate,
-      status: "approved",
-      version: 2,
+      status: "closed",
+      version: 3,
       supersedesPeriodId: original.id,
       copiedFromPeriodId: original.id,
       createdBy: user.id,
       approvedBy: user.id,
-      approvedAt: new Date(),
+      approvedAt: new Date(Date.now() - 1_000),
+      closedBy: user.id,
+      closedAt: new Date(),
       createdAt: new Date(),
     }).returning();
 
@@ -99,6 +103,13 @@ test("canonical same-month correction is used by downstream budget consumers", a
         updatedBy: user.id,
       },
     ]);
+
+    const planningView = await findBudgetPlanningPeriod(actor, month);
+    assert.equal(planningView?.id, corrected.id);
+    assert.equal(planningView?.status, "closed");
+
+    const history = await getBudgetPlanningHistory(actor);
+    assert.equal(history.filter((period) => period.month === month)[0]?.id, corrected.id);
 
     const comparison = await getBudgetPlanningComparison(actor, month);
     assert.equal(comparison.monthBudgeted, "200.00");

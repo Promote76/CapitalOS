@@ -19,7 +19,7 @@ This certification covers the deterministic type-integrity and audited correctio
 
 ## Production safety note
 
-The known `FUQC P&L (2).pdf` and `FUQC P&L (3).pdf` records remain source evidence until an approver verifies their hashes, content, downstream links, and parser result. No source object is deleted and no filename-based canonical choice is made.
+The known production P&L record C and production P&L record D records remain source evidence until an approver verifies their hashes, content, downstream links, and parser result. No source object is deleted and no filename-based canonical choice is made.
 
 ## FDI gate mapping
 

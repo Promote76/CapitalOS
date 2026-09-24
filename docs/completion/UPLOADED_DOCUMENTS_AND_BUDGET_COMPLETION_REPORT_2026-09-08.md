@@ -79,23 +79,23 @@ The historical workspace attachment directory was inspected during the original 
 
 | Uploaded filename | Persisted private object path | Recorded document type | Status | Audit finding |
 | --- | --- | --- | --- | --- |
-| `000001-9.pdf` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; likely another copy/version of the settlement document. |
+| `settlement evidence [REDACTED].pdf` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; likely another copy/version of the settlement document. |
 | `production P&L D.pdf` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | **Wrong intake classification.** The filename indicates P&L, but the record was created as a Stevens Settlement document. |
 | `production P&L C.pdf` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | **Wrong intake classification.** The filename indicates P&L, but the record was created as a Stevens Settlement document. |
 | `production P&L B.pdf` | `/objects/uploads/[REDACTED]` | `BUSINESS_PROFIT_AND_LOSS` | `VERIFIED` | Correct private storage namespace and document type. |
 | `production P&L A.pdf` | `/objects/uploads/[REDACTED]` | `BUSINESS_PROFIT_AND_LOSS` | `VERIFIED` | Correct private storage namespace and document type. |
-| `000001 (5).PDF` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
-| `000001 (3).PDF` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
-| `000001 (2).PDF` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
-| `000001 (1).PDF` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
-| `000001.PDF` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be the first settlement upload in this group. |
+| `settlement evidence [REDACTED].pdf` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
+| `settlement evidence [REDACTED].pdf` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
+| `settlement evidence [REDACTED].pdf` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
+| `settlement evidence [REDACTED].pdf` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
+| `settlement evidence [REDACTED].pdf` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be the first settlement upload in this group. |
 
 ##### Conclusion and corrective guidance
 
 - **Storage location:** Correct. All ten production records use private App Storage.
 - **Wrong-location concern:** Not confirmed. No real financial PDFs were found in the workspace upload folder or public object namespace.
 - **Wrong intake/type confirmed:** `production P&L C.pdf` and `production P&L D.pdf` were recorded as `STEVENS_SETTLEMENT`, most likely because **Upload Stevens Settlement** was selected instead of **Upload P&L**.
-- **Possible duplicate/version groups:** Six filenames begin with `000001`, and four begin with `FUQC P&L`. Filename similarity alone is not enough to delete or merge them; document hashes and intended business purpose must be reviewed first.
+- **Possible duplicate/version groups:** Multiple settlement-evidence filenames and multiple production P&L filenames form possible duplicate/version groups. Filename similarity alone is not enough to delete or merge them; document hashes and intended business purpose must be reviewed first.
 - **Safe next step:** Keep the original objects and audit history. The explicit correction workflow is now available, but the two records must first be reviewed by an authorized operator using hashes, content detection evidence, parser generations, and downstream links. Do not delete private objects directly from App Storage or claim the records are corrected until managed-production certification is complete.
 
 ### 2. Statement transaction review

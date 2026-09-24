@@ -709,7 +709,7 @@ export async function findBudgetPlanningPeriod(actor: Actor, month = nowMonth())
   const monthDate = planningMonth(month);
   const [period] = await db.select().from(budgetPlanningPeriods)
     .where(and(eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.month, monthDate)))
-    .orderBy(sql`case when ${budgetPlanningPeriods.status} = 'draft' then 0 when ${budgetPlanningPeriods.status} = 'approved' then 1 else 2 end`, desc(budgetPlanningPeriods.createdAt)).limit(1);
+    .orderBy(sql`case when ${budgetPlanningPeriods.status} = 'draft' then 0 else 1 end`, desc(budgetPlanningPeriods.createdAt)).limit(1);
   if (!period) return null;
   const categories = await db.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, period.id)).orderBy(budgetPlanningCategorySnapshots.sortOrder);
   const transactions = await db.select().from(financeTransactions).where(and(eq(financeTransactions.householdId, actor.householdId), sql`${financeTransactions.transactionDate} >= ${period.month} and ${financeTransactions.transactionDate} < (${period.month}::date + interval '1 month')::date`));
@@ -878,7 +878,7 @@ export async function closeBudgetPlanningPeriod(actor: Actor, periodId: string, 
 }
 
 export async function getBudgetPlanningHistory(actor: Actor) {
-  const rows = await db.select().from(budgetPlanningPeriods).where(eq(budgetPlanningPeriods.householdId, actor.householdId)).orderBy(desc(budgetPlanningPeriods.month));
+  const rows = await db.select().from(budgetPlanningPeriods).where(eq(budgetPlanningPeriods.householdId, actor.householdId)).orderBy(desc(budgetPlanningPeriods.month), desc(budgetPlanningPeriods.createdAt));
   return rows.map((period) => ({ id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, copiedFromPeriodId: period.copiedFromPeriodId, supersedesPeriodId: period.supersedesPeriodId, createdBy: period.createdBy, createdAt: period.createdAt, updatedAt: period.updatedAt, approvedAt: period.approvedAt, approvedBy: period.approvedBy, closedAt: period.closedAt, closedBy: period.closedBy }));
 }
 

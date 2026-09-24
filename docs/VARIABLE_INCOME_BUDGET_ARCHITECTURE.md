@@ -26,3 +26,7 @@ unreviewed transaction rows do not silently become household spending capacity.
 The engine reports `INCOMPLETE_DATA`, `INSUFFICIENT_HISTORY`, `TIGHT`, or
 `SHORTFALL_RISK` instead of inventing a zero or promoting a strong month into a
 recurring obligation.
+
+## Planning target invariant
+
+Monthly planning targets are nonnegative allocations. Negative targets are rejected by the API contract and service write boundary, and approval revalidates persisted snapshots so malformed legacy or direct database data cannot be promoted into an approved plan. Transaction signs remain separate from plan allocations: outflows may be represented as negative transaction activity, but the budget target assigned to an expense, reserve, debt, savings, investment, or income category is always zero or positive.

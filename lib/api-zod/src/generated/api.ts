@@ -7677,6 +7677,7 @@ export const CreateBudgetPlanningCategoryParams = zod.object({
 
 export const createBudgetPlanningCategoryBodyNameMax = 160;
 
+export const createBudgetPlanningCategoryBodyMonthlyTargetRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const createBudgetPlanningCategoryBodyNotesMax = 2000;
 
 
@@ -7686,7 +7687,7 @@ export const CreateBudgetPlanningCategoryBody = zod.object({
   "name": zod.string().min(1).max(createBudgetPlanningCategoryBodyNameMax),
   "categoryType": zod.enum(['fixed_expense', 'variable_essential', 'variable_discretionary', 'savings', 'investment', 'debt_payment', 'transfer', 'income', 'one_time_expense']),
   "essentialStatus": zod.enum(['essential', 'discretionary', 'mixed']),
-  "monthlyTarget": zod.string(),
+  "monthlyTarget": zod.string().regex(createBudgetPlanningCategoryBodyMonthlyTargetRegExp),
   "warningThreshold": zod.string().optional(),
   "notes": zod.string().max(createBudgetPlanningCategoryBodyNotesMax).nullish()
 })
@@ -7764,6 +7765,7 @@ export const UpdateBudgetPlanningCategoryParams = zod.object({
 
 export const updateBudgetPlanningCategoryBodyNameMax = 160;
 
+export const updateBudgetPlanningCategoryBodyMonthlyTargetRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const updateBudgetPlanningCategoryBodyNotesMax = 2000;
 
 
@@ -7773,7 +7775,7 @@ export const UpdateBudgetPlanningCategoryBody = zod.object({
   "name": zod.string().min(1).max(updateBudgetPlanningCategoryBodyNameMax).optional(),
   "categoryType": zod.enum(['fixed_expense', 'variable_essential', 'variable_discretionary', 'savings', 'investment', 'debt_payment', 'transfer', 'income', 'one_time_expense']).optional(),
   "essentialStatus": zod.enum(['essential', 'discretionary', 'mixed']).optional(),
-  "monthlyTarget": zod.string().optional(),
+  "monthlyTarget": zod.string().regex(updateBudgetPlanningCategoryBodyMonthlyTargetRegExp).optional(),
   "warningThreshold": zod.string().optional(),
   "notes": zod.string().max(updateBudgetPlanningCategoryBodyNotesMax).nullish(),
   "archived": zod.boolean().optional()

@@ -928,7 +928,9 @@ export async function getBudgetPlanningCategoryContributionDetail(actor: Actor, 
   const relevant = transactions.filter((t) => t.categoryId === snapshot.sourceCategoryId);
   const included = relevant.filter((t) => t.reviewStatus === "approved" && !t.pending && t.businessTag === "household" && !isExcludedFromHouseholdSpending(t, snapshot.categoryType));
   const excluded = relevant.filter((t) => !included.includes(t));
-  return { category: planningSnapshot(snapshot), includedReviewedHouseholdTransactions: included, includedActual: Math.max(0, -included.reduce((sum, t) => sum + numeric(t.amount), 0)).toFixed(2), exclusions: {
+  const includedNet = included.reduce((sum, t) => sum + numeric(t.amount), 0);
+  const includedActual = Math.max(0, snapshot.categoryType === "income" ? includedNet : -includedNet).toFixed(2);
+  return { category: planningSnapshot(snapshot), includedReviewedHouseholdTransactions: included, includedActual, exclusions: {
     uncategorized: transactions.filter((t) => !t.categoryId).length,
     excluded: excluded.filter((t) => t.excludedFromBudget || t.reviewStatus === "excluded").length,
     business: excluded.filter((t) => t.businessTag !== "household").length,

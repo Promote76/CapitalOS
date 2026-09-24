@@ -4,6 +4,7 @@ import test from "node:test";
 import { eq } from "drizzle-orm";
 import { CreateBudgetPlanningCategoryBody, UpdateBudgetPlanningCategoryBody } from "@workspace/api-zod";
 import {
+  auditEvents,
   budgetPlanningCategorySnapshots,
   db,
   households,
@@ -80,6 +81,7 @@ test("budget monthly targets are nonnegative at contract, service, and approval 
       (error: unknown) => error instanceof Error && "code" in error && error.code === "INVALID_STATE" && /cannot be negative/i.test(error.message),
     );
   } finally {
+    await db.delete(auditEvents).where(eq(auditEvents.householdId, household.id));
     await db.delete(households).where(eq(households.id, household.id));
     await db.delete(users).where(eq(users.id, user.id));
   }

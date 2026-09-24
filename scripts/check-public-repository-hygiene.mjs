@@ -65,6 +65,15 @@ for (const path of [...walk(resolve(root, "docs/certification")), ...walk(resolv
   }
 }
 
+
+for (const path of walk(resolve(root, "artifacts"))) {
+  if (!/\.(?:test|spec)\.[cm]?[jt]sx?$/i.test(path)) continue;
+  const content = readFileSync(path, "utf8");
+  if (/account\s+number\s*:\s*\d{8,}/i.test(content)) {
+    failures.push(`${path.slice(root.length + 1)} contains an unmasked account-number-like test fixture; use an explicitly synthetic masked value`);
+  }
+}
+
 if (failures.length) {
   console.error("Public repository hygiene check failed:");
   for (const failure of failures) console.error(`- ${failure}`);

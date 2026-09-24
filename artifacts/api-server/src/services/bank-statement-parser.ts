@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 
-export const BANK_STATEMENT_PARSER_VERSION = "bank-statement-v2";
+export const BANK_STATEMENT_PARSER_VERSION = "bank-statement-v3";
 // Structured statement parsing is limited to CSV for RC1. XLSX remains accepted
 // as review evidence by the upload boundary, but is not opened by the API until
 // a maintained parser can replace the vulnerable SheetJS npm release.
@@ -70,6 +70,56 @@ function shortDate(value: unknown, year: number | null): string | null {
   if (!match || !year) return null;
   return date(`${year}-${match[1]}-${match[2]}`);
 }
+function shortDateWithinStatement(value: unknown, statementStart: string | null, statementEnd: string | null, fallbackYear: number | null): string | null {
+  const raw = String(value ?? "").trim();
+  const match = raw.match(/^(\d{1,2})[/-](\d{1,2})$/);
+  if (!match) return shortDate(value, fallbackYear);
+  if (!statementStart || !statementEnd) return shortDate(value, fallbackYear);
+  const month = Number(match[1]);
+  const startYear = Number(statementStart.slice(0, 4));
+  const endYear = Number(statementEnd.slice(0, 4));
+  const startMonth = Number(statementStart.slice(5, 7));
+  const endMonth = Number(statementEnd.slice(5, 7));
+  const year = startYear !== endYear && startMonth > endMonth
+    ? (month >= startMonth ? startYear : endYear)
+    : endYear;
+  return date(`${year}-${match[1]}-${match[2]}`);
+}
+
+function moneyToMinorUnits(value: string | null): bigint | null {
+  if (value === null) return null;
+  const match = value.match(/^(-?)(\d+)\.(\d{2})$/);
+  if (!match) return null;
+  const magnitude = BigInt(match[2]) * 100n + BigInt(match[3]);
+  return match[1] ? -magnitude : magnitude;
+}
+
+function reconcileStatementSummary(result: ParsedStatement) {
+  const deposits = result.rows
+    .filter((row) => row.direction === "deposit")
+    .reduce((sum, row) => sum + (moneyToMinorUnits(row.amount) ?? 0n), 0n);
+  const withdrawals = result.rows
+    .filter((row) => row.direction === "withdrawal")
+    .reduce((sum, row) => sum + (moneyToMinorUnits(row.amount) ?? 0n), 0n);
+  const expectedDeposits = moneyToMinorUnits(result.totalDeposits);
+  const expectedWithdrawals = moneyToMinorUnits(result.totalWithdrawals);
+  if (expectedDeposits !== null && deposits !== expectedDeposits) {
+    result.errors.push(`Parsed deposits do not reconcile to the statement summary: rows=${deposits} cents summary=${expectedDeposits} cents.`);
+  }
+  if (expectedWithdrawals !== null && withdrawals !== expectedWithdrawals) {
+    result.errors.push(`Parsed withdrawals do not reconcile to the statement summary: rows=${withdrawals} cents summary=${expectedWithdrawals} cents.`);
+  }
+  const opening = moneyToMinorUnits(result.openingBalance);
+  const closing = moneyToMinorUnits(result.closingBalance);
+  if (opening !== null && expectedDeposits !== null && expectedWithdrawals !== null && closing !== null) {
+    const calculatedClosing = opening + expectedDeposits - expectedWithdrawals;
+    if (calculatedClosing !== closing) {
+      result.errors.push(`Statement summary does not reconcile: opening + deposits - withdrawals = ${calculatedClosing} cents, closing = ${closing} cents.`);
+    }
+  }
+  if (result.errors.length) result.errorKind = "row_parsing";
+}
+
 function emptyStatement(): ParsedStatement {
   return {
     rows: [],
@@ -205,7 +255,10 @@ function parseWellsFargoStatement(text: string): ParsedStatement {
   result.accountLastFour = accountMatch ? accountMatch[1].slice(-4) : null;
   const startMatch = text.match(/beginning\s+balance\s+on\s+(\d{1,2}[/-]\d{1,2})/i);
   const endMatch = text.match(/ending\s+balance\s+on\s+(\d{1,2}[/-]\d{1,2})/i);
-  result.statementStart = shortDate(startMatch?.[1], statementYear);
+  const startMonth = Number(startMatch?.[1]?.split(/[/-]/)[0] ?? 0);
+  const endMonth = Number(endMatch?.[1]?.split(/[/-]/)[0] ?? 0);
+  const startYear = statementYear && startMonth && endMonth && startMonth > endMonth ? statementYear - 1 : statementYear;
+  result.statementStart = shortDate(startMatch?.[1], startYear);
   result.statementEnd = shortDate(endMatch?.[1], statementYear);
 
   const summaryMoney = (pattern: RegExp) => {
@@ -291,7 +344,7 @@ function parseWellsFargoStatement(text: string): ParsedStatement {
         continue;
       }
       flush();
-      const postedDate = shortDate(dateMatch[1], statementYear);
+      const postedDate = shortDateWithinStatement(dateMatch[1], result.statementStart, result.statementEnd, statementYear);
       const moneyMatches = [...sourceLine.matchAll(/\$?[\d,]+\.\d{1,2}/g)].map((match) => ({
         value: cents(match[0]),
         start: match.index ?? -1,
@@ -327,6 +380,7 @@ function parseWellsFargoStatement(text: string): ParsedStatement {
     result.errors.push("PDF is missing an unambiguous Wells Fargo transaction history header; manual review is required.");
     result.errorKind = "format";
   }
+  if (!result.errors.length) reconcileStatementSummary(result);
   if (result.errors.length) result.rows = [];
   if (!result.rows.length && !result.errors.length) {
     result.errors.push("No unambiguous transaction rows were found in the PDF.");

@@ -52,35 +52,35 @@ test("parses Wells Fargo Everyday Checking activity tables with wrapped descript
     [
       "Wells Fargo Everyday Checking",
       "September 8, 2026 Page 1 of 4",
-      "Statement period activity summary                                      Account number: 8974191259 (primary account)",
+      "Statement period activity summary                                      Account number: XXXX1259 (primary account)",
       "Beginning balance on 8/10                                                  $0.00",
-      "Deposits/Additions                                                      8,705.94",
-      "Withdrawals/Subtractions                                              - 7,374.79",
-      "Ending balance on 9/8                                                 $1,331.15",
+      "Deposits/Additions                                                      1,865.00",
+      "Withdrawals/Subtractions                                                 -29.65",
+      "Ending balance on 9/8                                                 $1,835.35",
     ].join("\n"),
     [
       "Transaction history",
       activityHeader,
-      "       8/12                    Stevens Transpor Comchek DD 260811 2219919089 Wells                               200.00                                 200.00",
-      "                               Fargo Bank, NA",
-      "       8/14                    Stevens Transpor Comchek DD 260813 2219919089 Wells                              1,340.00                              1,540.00",
-      "                               Fargo Bank, NA",
-      "       8/17                    Purchase authorized on 08/14 Rouses Market #86 Baton Rouge                                               23.17",
-      "                               LA S306227049802082 Card 8843",
+      "       8/12                    Synthetic payroll deposit                                                         200.00                                 200.00",
+      "                               synthetic memo continuation",
+      "       8/14                    Synthetic second deposit                                                        1,340.00                              1,540.00",
+      "                               synthetic memo continuation",
+      "       8/17                    Synthetic purchase A                                                                                 23.17",
+      "                               synthetic continuation A",
     ].join("\n"),
     [
       "Transaction History (continued)",
       activityHeader,
       "       8/18                    Promotion Bonus                                                                    325.00",
-      "       8/18                    Purchase authorized on 08/17 Wal-Mart #0839 Baton Rouge LA                                                1.94         1,682.22",
-      "                               S356229843299692 Card 8843",
+      "       8/18                    Synthetic purchase B                                                                                  1.94         1,839.89",
+      "                               synthetic continuation B",
     ].join("\n"),
     [
       "Transaction History (continued)",
       activityHeader,
-      "       9/8                     Purchase authorized on 09/07 Pilot #0035 S Bend IN                                                       4.54          1,331.15",
-      "                               P000000147271234 Card 8895",
-      "      Totals                                                                                                $8,705.94           $7,374.79",
+      "       9/8                     Synthetic purchase C                                                                                  4.54          1,835.35",
+      "                               synthetic continuation C",
+      "      Totals                                                                                                $1,865.00              $29.65",
     ].join("\n"),
   ]), "application/pdf");
   assert.deepEqual(parsed.errors, []);
@@ -91,12 +91,12 @@ test("parses Wells Fargo Everyday Checking activity tables with wrapped descript
     ["2026-08-14", "1340.00", "deposit", "1540.00"],
     ["2026-08-17", "23.17", "withdrawal", null],
   ]);
-  assert.match(parsed.rows[0].description, /Fargo Bank, NA/);
-  assert.equal(parsed.rows.at(-1)?.runningBalance, "1331.15");
+  assert.match(parsed.rows[0].description, /synthetic memo continuation/);
+  assert.equal(parsed.rows.at(-1)?.runningBalance, "1835.35");
   assert.equal(parsed.openingBalance, "0.00");
-  assert.equal(parsed.closingBalance, "1331.15");
-  assert.equal(parsed.totalDeposits, "8705.94");
-  assert.equal(parsed.totalWithdrawals, "7374.79");
+  assert.equal(parsed.closingBalance, "1835.35");
+  assert.equal(parsed.totalDeposits, "1865.00");
+  assert.equal(parsed.totalWithdrawals, "29.65");
   assert.equal(parsed.accountLastFour, "1259");
   assert.equal(parsed.statementStart, "2026-08-10");
   assert.equal(parsed.statementEnd, "2026-09-08");
@@ -154,4 +154,51 @@ test("keeps vulnerable XLSX parsing disabled for RC1", async () => {
   );
   assert.deepEqual(parsed.rows, []);
   assert.match(parsed.errors[0], /XLSX parsing is disabled for RC1/i);
+});
+
+test("assigns Wells Fargo short dates across a December to January statement rollover", async () => {
+  const parsed = await parseBankStatement(representativePdf([
+    [
+      "Wells Fargo Everyday Checking",
+      "January 8, 2026 Page 1 of 1",
+      "Statement period activity summary                                      Account number: XXXX1259",
+      "Beginning balance on 12/10                                                $100.00",
+      "Deposits/Additions                                                       25.00",
+      "Withdrawals/Subtractions                                              - 10.00",
+      "Ending balance on 1/8                                                    $115.00",
+      "Transaction history",
+      "                         Check                                                                                 Deposits/        Withdrawals/       Ending daily",
+      "       Date             Number Description                                                                     Additions         Subtractions          balance",
+      "      12/20                    Synthetic deposit                                                                  25.00                                 125.00",
+      "        1/3                    Synthetic purchase                                                                                 10.00           115.00",
+      "      Totals                                                                                                  $25.00              $10.00",
+    ].join("\n"),
+  ]), "application/pdf");
+  assert.deepEqual(parsed.errors, []);
+  assert.equal(parsed.statementStart, "2025-12-10");
+  assert.equal(parsed.statementEnd, "2026-01-08");
+  assert.deepEqual(parsed.rows.map((row) => row.postedDate), ["2025-12-20", "2026-01-03"]);
+});
+
+test("fails closed when Wells Fargo row totals do not reconcile to the statement summary", async () => {
+  const parsed = await parseBankStatement(representativePdf([
+    [
+      "Wells Fargo Everyday Checking",
+      "September 8, 2026 Page 1 of 1",
+      "Statement period activity summary                                      Account number: XXXX1259",
+      "Beginning balance on 8/10                                                 $0.00",
+      "Deposits/Additions                                                      200.00",
+      "Withdrawals/Subtractions                                               -23.17",
+      "Ending balance on 9/8                                                   $176.83",
+      "Transaction history",
+      "                         Check                                                                                 Deposits/        Withdrawals/       Ending daily",
+      "       Date             Number Description                                                                     Additions         Subtractions          balance",
+      "       8/12                    Synthetic deposit                                                                  199.99                                 199.99",
+      "       8/17                    Synthetic purchase                                                                                 23.17           176.82",
+      "      Totals                                                                                                 $200.00              $23.17",
+    ].join("\n"),
+  ]), "application/pdf");
+  assert.equal(parsed.errorKind, "row_parsing");
+  assert.match(parsed.errors.join(" "), /do not reconcile/i);
+  assert.deepEqual(parsed.rows, []);
 });

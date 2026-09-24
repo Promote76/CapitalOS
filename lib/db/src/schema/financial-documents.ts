@@ -10,6 +10,7 @@ import {
 } from "./enums.ts";
 
 const money = (name: string) => numeric(name, { precision: 18, scale: 2 }).notNull().default("0");
+const nullableMoney = (name: string) => numeric(name, { precision: 18, scale: 2 });
 
 /**
  * The immutable source-evidence envelope.  Existing settlement and P&L rows
@@ -169,10 +170,10 @@ export const bankStatementDocuments = pgTable("bank_statement_documents", {
   accountMask: text("account_mask"),
   statementStart: date("statement_start", { mode: "string" }),
   statementEnd: date("statement_end", { mode: "string" }),
-  openingBalance: money("opening_balance"),
-  closingBalance: money("closing_balance"),
-  totalDeposits: money("total_deposits"),
-  totalWithdrawals: money("total_withdrawals"),
+  openingBalance: nullableMoney("opening_balance"),
+  closingBalance: nullableMoney("closing_balance"),
+  totalDeposits: nullableMoney("total_deposits"),
+  totalWithdrawals: nullableMoney("total_withdrawals"),
   status: text("status").notNull().default("document_evidence_pending_review"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({

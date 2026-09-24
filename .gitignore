@@ -63,3 +63,10 @@ credentials*.json
 secrets*.json
 *.secret
 .local-secrets/
+
+
+# public-repository operational artifacts
+/attached_assets/
+/screenshots/
+/.agents/memory/
+/docs/certification/logs/

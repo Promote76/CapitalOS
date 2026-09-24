@@ -30,7 +30,6 @@ Capital OS is a light-theme family-capital workspace for disciplined saving, pro
 - `artifacts/api-server/src/services/` — seed data, Treasury summaries and guarded requests, and transactional household-capital services
 - `lib/db/src/schema/` — PostgreSQL/Drizzle household, capital, Treasury, property, strategy, risk, AI, and audit tables
 - `docs/capital-os-architecture.md` — backend boundaries, data model, permissions, idempotency, and verification
-- `attached_assets/Pasted-Capital-OS-Design-System-Specification-1-Design-Princip_1788226967597.txt` — product design-system specification
 
 ## Architecture decisions
 

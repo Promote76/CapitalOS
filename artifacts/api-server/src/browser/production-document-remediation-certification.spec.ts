@@ -5,9 +5,8 @@ import { dirname, resolve } from "node:path";
 
 const origin = (process.env.CAPITAL_OS_BROWSER_ORIGIN ?? "").replace(/\/$/, "");
 const workspaceRoot = resolve(import.meta.dirname, "../../../..");
-const householdId = process.env.CAPITAL_OS_PRODUCTION_HOUSEHOLD_ID ?? "d6672e8d-c193-4182-bd76-4170329e529a";
-const documentIds = (process.env.CAPITAL_OS_PRODUCTION_DOCUMENT_IDS ??
-  "c9e3f924-6977-4430-a66b-0089d66b3427,da39387c-7a42-4e9e-966b-54974bf27b76")
+const householdId = process.env.CAPITAL_OS_PRODUCTION_HOUSEHOLD_ID ?? "";
+const documentIds = (process.env.CAPITAL_OS_PRODUCTION_DOCUMENT_IDS ?? "")
   .split(",")
   .map((value) => value.trim())
   .filter(Boolean);
@@ -162,6 +161,9 @@ async function signIn(page: import("@playwright/test").Page) {
   const email = process.env.CAPITAL_OS_PRODUCTION_OPERATOR_EMAIL ?? process.env.BROWSER_TEST_EMAIL;
   const password = process.env.CAPITAL_OS_PRODUCTION_OPERATOR_PASSWORD ?? process.env.BROWSER_TEST_PASSWORD;
   if (!origin || !/^https:\/\//.test(origin)) throw new Error("PRODUCTION_PUBLISHED_HTTPS_ORIGIN_REQUIRED");
+  if (!/^[0-9a-f-]{36}$/i.test(householdId) || documentIds.length !== 2 || !documentIds.every((id) => /^[0-9a-f-]{36}$/i.test(id))) {
+    throw new Error("PRODUCTION_TARGET_CONFIGURATION_REQUIRED");
+  }
   if (!email || !password) throw new Error("PRODUCTION_OPERATOR_CREDENTIALS_REQUIRED");
 
   await page.goto(`${origin}/sign-in`, { waitUntil: "domcontentloaded" });

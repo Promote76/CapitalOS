@@ -14,7 +14,7 @@ test("content signals detect a P&L even when the filename is misleading", () => 
 });
 
 test("a filename alone never creates a high-confidence type mismatch", () => {
-  const result = classifyFinancialDocumentText("", "FUQC P&L.pdf", "STEVENS_SETTLEMENT");
+  const result = classifyFinancialDocumentText("", "example-business-pnl.pdf", "STEVENS_SETTLEMENT");
   assert.notEqual(result.confidence, "HIGH");
   assert.equal(result.conflictsWithSelectedType, false);
 });
@@ -22,7 +22,7 @@ test("a filename alone never creates a high-confidence type mismatch", () => {
 test("settlement-specific content wins over a P&L-looking filename", () => {
   const result = classifyFinancialDocumentText(
     "Settlement. Driver ID 41. Load #99. Mileage Pay. Fuel Protection. Net Settlement.",
-    "FUQC P&L.pdf",
+    "example-business-pnl.pdf",
     "BUSINESS_PROFIT_AND_LOSS",
   );
   assert.equal(result.detectedType, "STEVENS_SETTLEMENT");

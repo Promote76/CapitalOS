@@ -10,7 +10,7 @@
 
 > **Financial document integrity update (2026-09-08):** The type-integrity sprint is now implemented. New uploads are classified from PDF content and structural signals rather than filenames alone; high-confidence mismatches enter an audited, role-protected review flow; parser generations and source evidence are preserved; exact-hash duplicates are idempotent; and explicit duplicate/version reviews prevent automatic merging or deletion. The two known production P&L records have **not** been mutated. They remain pending authorized review and managed-production certification.
 
-> **Authorized production remediation update (2026-09-08):** Both known P&L objects were found, their stored SHA-256 hashes matched, and current content detection classified both as high-confidence `BUSINESS_PROFIT_AND_LOSS`. Managed Publish has applied migration `0037_zippy_plazm.sql` and production schema parity now passes. The correction remains **BLOCKED**, not simulated, because this household has no existing `BusinessEntity`; the server-authorized P&L correction requires a valid existing business before downstream authority can be rebuilt. The observed `$1,735` remains two reviewed manual household transactions, not verified household income.
+> **Authorized production remediation update (2026-09-08):** Both known P&L objects were found, their stored SHA-256 hashes matched, and current content detection classified both as high-confidence `BUSINESS_PROFIT_AND_LOSS`. Managed Publish has applied migration `0037_zippy_plazm.sql` and production schema parity now passes. The correction remains **BLOCKED**, not simulated, because this household has no existing `BusinessEntity`; the server-authorized P&L correction requires a valid existing business before downstream authority can be rebuilt. The observed `[REDACTED_PRODUCTION_AMOUNT]` remains two reviewed manual household transactions, not verified household income.
 
 ## Executive conclusion
 
@@ -73,28 +73,28 @@ A read-only production database inspection found ten real PDF document records. 
 
 This is the normalized application path stored in `financial_documents.source_object_path`. The file bytes are held in the project's private App Storage bucket; the path is not a local directory under the Replit project and is not the public `/storage/public-objects/` area.
 
-The workspace `attached_assets/` directory was also inspected. It contains conversation prompts and screenshots, but no PDF, CSV, XLS, or XLSX family financial documents. Therefore, the real documents were uploaded through the running Capital OS application rather than accidentally placed in the workspace attachment folder.
+The historical workspace attachment directory was inspected during the original review and did not contain the family financial source documents. Operational attachment and screenshot directories are no longer retained in the public repository.
 
 ##### Located production records
 
 | Uploaded filename | Persisted private object path | Recorded document type | Status | Audit finding |
 | --- | --- | --- | --- | --- |
-| `000001-9.pdf` | `/objects/uploads/f4407420-b333-4bea-8d13-3ace593d9357` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; likely another copy/version of the settlement document. |
-| `FUQC P&L (3).pdf` | `/objects/uploads/736fc9a6-bdb3-4dea-ab7f-92d04b3b2d11` | `STEVENS_SETTLEMENT` | `VERIFIED` | **Wrong intake classification.** The filename indicates P&L, but the record was created as a Stevens Settlement document. |
-| `FUQC P&L (2).pdf` | `/objects/uploads/bf778455-3f21-4f5d-9b7d-7b25a274c5a5` | `STEVENS_SETTLEMENT` | `VERIFIED` | **Wrong intake classification.** The filename indicates P&L, but the record was created as a Stevens Settlement document. |
-| `FUQC P&L (1).pdf` | `/objects/uploads/d93301dc-6d9e-479a-88be-b77ec5b4c66b` | `BUSINESS_PROFIT_AND_LOSS` | `VERIFIED` | Correct private storage namespace and document type. |
-| `FUQC P&L.pdf` | `/objects/uploads/03d4c196-80ee-4abf-b119-05863b961f22` | `BUSINESS_PROFIT_AND_LOSS` | `VERIFIED` | Correct private storage namespace and document type. |
-| `000001 (5).PDF` | `/objects/uploads/c5b5f238-fd27-49da-8618-e0db91216375` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
-| `000001 (3).PDF` | `/objects/uploads/c7d6eee0-d96e-4493-857a-c5e123b563df` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
-| `000001 (2).PDF` | `/objects/uploads/af5adb23-03d7-41f2-a94b-0de2941ce82a` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
-| `000001 (1).PDF` | `/objects/uploads/61386ef7-b7fb-423f-a7cf-c3a6ec660d80` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
-| `000001.PDF` | `/objects/uploads/290794bf-bcb1-4f87-9f0a-3292a92fcfe0` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be the first settlement upload in this group. |
+| `000001-9.pdf` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; likely another copy/version of the settlement document. |
+| `production P&L D.pdf` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | **Wrong intake classification.** The filename indicates P&L, but the record was created as a Stevens Settlement document. |
+| `production P&L C.pdf` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | **Wrong intake classification.** The filename indicates P&L, but the record was created as a Stevens Settlement document. |
+| `production P&L B.pdf` | `/objects/uploads/[REDACTED]` | `BUSINESS_PROFIT_AND_LOSS` | `VERIFIED` | Correct private storage namespace and document type. |
+| `production P&L A.pdf` | `/objects/uploads/[REDACTED]` | `BUSINESS_PROFIT_AND_LOSS` | `VERIFIED` | Correct private storage namespace and document type. |
+| `000001 (5).PDF` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
+| `000001 (3).PDF` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
+| `000001 (2).PDF` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
+| `000001 (1).PDF` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be one of several uploaded copies/versions. |
+| `000001.PDF` | `/objects/uploads/[REDACTED]` | `STEVENS_SETTLEMENT` | `VERIFIED` | Correct private storage namespace; appears to be the first settlement upload in this group. |
 
 ##### Conclusion and corrective guidance
 
 - **Storage location:** Correct. All ten production records use private App Storage.
 - **Wrong-location concern:** Not confirmed. No real financial PDFs were found in the workspace upload folder or public object namespace.
-- **Wrong intake/type confirmed:** `FUQC P&L (2).pdf` and `FUQC P&L (3).pdf` were recorded as `STEVENS_SETTLEMENT`, most likely because **Upload Stevens Settlement** was selected instead of **Upload P&L**.
+- **Wrong intake/type confirmed:** `production P&L C.pdf` and `production P&L D.pdf` were recorded as `STEVENS_SETTLEMENT`, most likely because **Upload Stevens Settlement** was selected instead of **Upload P&L**.
 - **Possible duplicate/version groups:** Six filenames begin with `000001`, and four begin with `FUQC P&L`. Filename similarity alone is not enough to delete or merge them; document hashes and intended business purpose must be reviewed first.
 - **Safe next step:** Keep the original objects and audit history. The explicit correction workflow is now available, but the two records must first be reviewed by an authorized operator using hashes, content detection evidence, parser generations, and downstream links. Do not delete private objects directly from App Storage or claim the records are corrected until managed-production certification is complete.
 
@@ -335,7 +335,7 @@ The command requires focused domain tests, API and web typechecks, API-contract 
 The 2026-09-08 execution passed **DBB-01 through DBB-30 (30/30)**, including the database-backed integration fixture and authenticated upload/category/import/Budget/Accounting browser journey. Evidence is stored in:
 
 - `docs/certification/DOCUMENT_BUDGET_BRIDGE_CERTIFICATION_2026-09-08.md`
-- `docs/certification/logs/DOCUMENT_BUDGET_BRIDGE_CERTIFICATION_2026-09-08.log`
+- `retained CI certification artifact`
 
 ## Final decision
 

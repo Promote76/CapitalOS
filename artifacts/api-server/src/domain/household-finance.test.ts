@@ -13,7 +13,7 @@ import {
   isExcludedFromHouseholdSpending,
   reviewedTransactionBudgetExclusion,
 } from "./household-finance.ts";
-import { allocateWeeklyGuidanceCents, latestFinalizedPlanningPeriod, remainingWeeklyGuidanceCents, weeklyGuidanceCents, weeklyGuidanceExclusionDecision } from "../services/household-finance.ts";
+import { allocateWeeklyGuidanceCents, canonicalFinalizedPlanningPeriods, latestFinalizedPlanningPeriod, remainingWeeklyGuidanceCents, weeklyGuidanceCents, weeklyGuidanceExclusionDecision } from "../services/household-finance.ts";
 import { csvImportBankingAdapter, normalizeImportedAmount } from "../adapters/banking.ts";
 
 test("manual entries canonicalize inflows and outflows regardless of entered sign", () => {
@@ -255,6 +255,17 @@ test("copy-forward selects the latest finalized plan, including a newer closed p
     { month: "2026-03-01", status: "draft", id: "draft" },
   ], "2026-04-01");
   assert.equal(source?.id, "closed-newer");
+});
+
+test("same-month superseding corrections become the only canonical finalized budget version", () => {
+  const periods = [
+    { month: "2026-08-01", status: "approved", id: "aug-original", createdAt: "2026-08-01T10:00:00.000Z" },
+    { month: "2026-08-01", status: "closed", id: "aug-corrected", createdAt: "2026-08-15T10:00:00.000Z" },
+    { month: "2026-09-01", status: "approved", id: "sep-current", createdAt: "2026-09-01T10:00:00.000Z" },
+    { month: "2026-09-01", status: "draft", id: "sep-draft", createdAt: "2026-09-20T10:00:00.000Z" },
+  ];
+  assert.deepEqual(canonicalFinalizedPlanningPeriods(periods).map((period) => period.id), ["aug-corrected", "sep-current"]);
+  assert.equal(latestFinalizedPlanningPeriod(periods, "2026-09-01")?.id, "aug-corrected");
 });
 
 test("weekly guidance template balances exact cents across the approved catalog", () => {

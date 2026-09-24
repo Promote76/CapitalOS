@@ -70,7 +70,7 @@ export async function buildCapitalGovernorInput(actor: Actor, asOf = today()): P
     db.select().from(upcomingExpenses).where(and(eq(upcomingExpenses.householdId, ids.householdId), eq(upcomingExpenses.active, true))),
     db.select().from(emergencyReserves).where(eq(emergencyReserves.householdId, ids.householdId)).limit(1),
     db.select().from(goals).where(eq(goals.householdId, ids.householdId)),
-    db.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.householdId, ids.householdId), eq(budgetPlanningPeriods.month, monthStart), sql`${budgetPlanningPeriods.status} in ('approved', 'closed')`)).limit(1),
+    db.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.householdId, ids.householdId), eq(budgetPlanningPeriods.month, monthStart), sql`${budgetPlanningPeriods.status} in ('approved', 'closed')`)).orderBy(desc(budgetPlanningPeriods.createdAt)).limit(1),
     db.select().from(verifiedHouseholdIncomeEvents).where(and(eq(verifiedHouseholdIncomeEvents.householdId, ids.householdId), eq(verifiedHouseholdIncomeEvents.verificationStatus, "verified"))).orderBy(desc(verifiedHouseholdIncomeEvents.incomeDate)),
     db.select().from(financeTransactions).where(eq(financeTransactions.householdId, ids.householdId)),
     db.select().from(treasuryBuckets).where(eq(treasuryBuckets.householdId, ids.householdId)).orderBy(asc(treasuryBuckets.priority)),

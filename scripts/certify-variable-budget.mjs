@@ -15,6 +15,8 @@ const run = (command, args, cwd = root) => {
 
 const domain = "artifacts/api-server/src/domain/variable-income.ts";
 const service = "artifacts/api-server/src/services/variable-income.ts";
+const financeService = "artifacts/api-server/src/services/household-finance.ts";
+const capitalGovernorService = "artifacts/api-server/src/services/capital-governor.ts";
 const schema = "lib/db/src/schema/variable-income.ts";
 const routes = "artifacts/api-server/src/routes/variable-income.ts";
 const ui = "artifacts/capital-os/src/App.tsx";
@@ -49,9 +51,11 @@ add("VB-27", "Safe-to-Deploy Interface", has(ui, /useGetSafeToDeploy/) && has(ui
 add("VB-28", "Tenant/Role/Audit", has(service, /assertPermission/) && has(service, /auditEvents/), "Writes are role-gated, household-scoped, and audited.");
 add("VB-29", "Grok Advisory Boundary", !has(service, /grok|xai/i) && !has(routes, /grok|xai/i), "This engine has no AI write path or classification authority.");
 add("VB-30", "No Money Movement", !has(service, /\b(transfer|ach|withdraw)\b/i) && !has(routes, /\b(transfer|ach|withdraw)\b/i), "Routes create planning records only.");
+add("VB-31", "Canonical Corrected Budget Version", has(financeService, /canonicalFinalizedPlanningPeriods/) && has(service, /orderBy\(desc\(budgetPlanningPeriods\.createdAt\)\)/) && has(capitalGovernorService, /orderBy\(desc\(budgetPlanningPeriods\.createdAt\)\)/), "Same-month superseding corrections resolve to the newest finalized plan and historical versions are not double-counted.");
 
 const checks = [
   ["domain tests", path.join(root, "scripts", "node_modules", ".bin", "tsx"), ["--test", "src/domain/variable-income.test.ts"], apiDir],
+  ["budget version domain tests", path.join(root, "scripts", "node_modules", ".bin", "tsx"), ["--test", "src/domain/household-finance.test.ts"], apiDir],
   ["api typecheck", "pnpm", ["--filter", "@workspace/api-server", "run", "typecheck"]],
   ["web typecheck", "pnpm", ["--filter", "@workspace/capital-os", "run", "typecheck"]],
   ["contract parity", "pnpm", ["--filter", "@workspace/api-server", "run", "check-contract"]],

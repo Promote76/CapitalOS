@@ -21,6 +21,7 @@
     "certify:production-document-remediation-browser": "playwright test --config playwright.config.ts src/browser/production-document-remediation-certification.spec.ts",
     "test": "../../scripts/node_modules/.bin/tsx --test src/domain/*.test.ts src/middleware/*.test.ts src/integration/*.test.ts src/services/*.test.ts",
     "test:broker-portfolio": "../../scripts/node_modules/.bin/tsx --test src/domain/broker-portfolio.test.ts",
+    "test:financial-document-ingest": "CAPITAL_OS_RUN_INTEGRATION=1 ../../scripts/node_modules/.bin/tsx --test src/integration/financial-document-ingest.test.ts",
     "test:ci": "node ../../scripts/run-api-ci-tests.mjs"
   },
   "dependencies": {

@@ -189,8 +189,8 @@ export async function ingestFinancialDocument(actor: Actor, input: {
         householdId: actor.householdId, documentId: document.id, accountId: input.accountId,
         institutionName: input.sourceInstitution, accountDisplayName: input.accountDisplayName, accountMask: input.accountMask ?? parsed.accountLastFour,
         statementStart, statementEnd,
-        openingBalance: parsed.openingBalance, closingBalance: parsed.closingBalance,
-        totalDeposits: parsed.totalDeposits, totalWithdrawals: parsed.totalWithdrawals,
+        openingBalance: parsed.openingBalance ?? undefined, closingBalance: parsed.closingBalance ?? undefined,
+        totalDeposits: parsed.totalDeposits ?? undefined, totalWithdrawals: parsed.totalWithdrawals ?? undefined,
         status: "document_evidence_pending_review",
       }).returning();
       await tx.update(financialDocuments).set({

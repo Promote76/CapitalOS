@@ -90,6 +90,9 @@ jobs:
       - name: Run hermetic API CI suite
         run: pnpm --filter @workspace/api-server run test:ci
 
+      - name: Run Wells Fargo Financial Inbox integration
+        run: pnpm --filter @workspace/api-server run test:financial-document-ingest
+
       - name: Run Capital OS UI unit tests
         run: |
           pnpm --filter @workspace/capital-os run test:bank-connections

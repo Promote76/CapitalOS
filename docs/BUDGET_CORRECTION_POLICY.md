@@ -7,8 +7,9 @@ available for history and is not rewritten.
 
 When more than one approved or closed record exists for the same household month,
 Capital OS treats the **newest-created finalized version** as the canonical plan
-for downstream budget intelligence, Capital Governor inputs, copy-forward
-selection, and budget comparison totals. Older same-month finalized versions are
+for planning reads, the official Budget view, downstream budget intelligence,
+Capital Governor inputs, copy-forward selection, and budget comparison totals.
+Older same-month finalized versions are
 historical evidence only and must not be double-counted. A new correction may
 only supersede the current canonical finalized version; stale historical
 versions cannot be used to fork a new correction chain.

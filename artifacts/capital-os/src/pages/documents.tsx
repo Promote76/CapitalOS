@@ -548,7 +548,10 @@ function FinancialEvidenceActions({ document, documents, businesses, selectedBus
       <div className="financial-action-title"><ShieldCheck size={14} /><strong>Document decision</strong><span>{document.reviewDecision ? `Persisted: ${label(document.reviewDecision)}` : "No approver decision recorded"}</span></div>
       <label>Decision reason<input value={reviewReason} onChange={(event) => setReviewReason(event.target.value)} placeholder="Explain why this evidence is verified or rejected" maxLength={1000} disabled={!canReview} /></label>
        {verificationGate.blockers.length > 0 && <small className="document-pending-note">{verificationGate.blockers[0]}</small>}
-       <div className="document-actions"><button className="btn btn-primary" onClick={() => void onReview(document.id, "VERIFIED", reviewReason)} disabled={!canReview || !reviewReason.trim() || !verificationGate.canVerify} title={verificationGate.canVerify ? undefined : verificationGate.blockers.join(" ")}><Check size={13} /> Verify</button><button className="btn btn-danger" onClick={() => void onReview(document.id, "REJECTED", reviewReason)} disabled={!canReview || !reviewReason.trim()}><X size={13} /> Reject</button></div>
+       <div className="document-actions">{verificationGate.canVerify
+        ? <button className="btn btn-primary" onClick={() => void onReview(document.id, "VERIFIED", reviewReason)} disabled={!canReview || !reviewReason.trim()}><Check size={13} /> Verify document</button>
+        : <button className="btn" disabled title={verificationGate.blockers.join(" ")}>{parserErrors.length ? <RefreshCw size={13} /> : <ShieldCheck size={13} />} {parserErrors.length ? "Retry parser first" : "Verification blocked"}</button>}
+        <button className="btn btn-danger" onClick={() => void onReview(document.id, "REJECTED", reviewReason)} disabled={!canReview || !reviewReason.trim()}><X size={13} /> Reject</button></div>
     </div>
     <div className="financial-action-block financial-delete-action">
       <div className="financial-action-title"><Trash2 size={14} /><strong>Delete uploaded evidence</strong><span>Irreversible. Derived document records are removed; ledger and business state are preserved.</span></div>
@@ -765,7 +768,14 @@ function QueueItemActions({
     const verificationGate = document
       ? documentVerificationGate(document)
       : { canVerify: false, blockers: ["Open the document details to load its verification prerequisites."] };
-    return <div className="queue-action-form"><input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Decision reason required" maxLength={1000} />{!verificationGate.canVerify && <span className="document-pending-note">{verificationGate.blockers[0]} <a href={`#financial-document-${item.id}`} className="underline">Open document details</a></span>}<button className="btn btn-primary" onClick={() => void handleDocReview(item.id, "VERIFIED", reason)} disabled={!reason.trim() || !verificationGate.canVerify} title={verificationGate.canVerify ? undefined : verificationGate.blockers.join(" ")}><Check size={14} /> Verify</button><button className="btn" onClick={() => void handleDocReview(item.id, "REJECTED", reason)} disabled={!reason.trim()}><X size={14} /> Reject</button></div>;
+    const parserErrors = document ? documentParserErrors(document) : [];
+    if (parserErrors.length) {
+      return <div className="queue-action-form"><span className="document-pending-note">Parser recovery is required before any document verification decision.</span><a href={`#financial-document-${item.id}`} className="btn btn-primary"><RefreshCw size={14} /> Retry parser</a></div>;
+    }
+    return <div className="queue-action-form"><input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Decision reason required" maxLength={1000} />{!verificationGate.canVerify && <span className="document-pending-note">{verificationGate.blockers[0]} <a href={`#financial-document-${item.id}`} className="underline">Open document details</a></span>}{verificationGate.canVerify
+      ? <button className="btn btn-primary" onClick={() => void handleDocReview(item.id, "VERIFIED", reason)} disabled={!reason.trim()}><Check size={14} /> Verify document</button>
+      : <button className="btn" disabled title={verificationGate.blockers.join(" ")}><ShieldCheck size={14} /> Verification blocked</button>}
+      <button className="btn" onClick={() => void handleDocReview(item.id, "REJECTED", reason)} disabled={!reason.trim()}><X size={14} /> Reject</button></div>;
   }
   if (item.type === "bank_statement_transaction") return <div className="queue-action-form">
     <input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Review reason required" maxLength={1000} />

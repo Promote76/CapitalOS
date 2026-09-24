@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 
-export const BANK_STATEMENT_PARSER_VERSION = "bank-statement-v3";
+export const BANK_STATEMENT_PARSER_VERSION = "bank-statement-v4";
 // Structured statement parsing is limited to CSV for RC1. XLSX remains accepted
 // as review evidence by the upload boundary, but is not opened by the API until
 // a maintained parser can replace the vulnerable SheetJS npm release.
@@ -184,28 +184,87 @@ function distinguishRepeatedRows(parsed: ParsedStatement): ParsedStatement {
     }),
   };
 }
+type PdfExtractionFailureCode = "encrypted" | "corrupt" | "no_text_layer" | "runtime" | "resource_limit" | "unknown";
+
+class PdfExtractionError extends Error {
+  constructor(public readonly code: PdfExtractionFailureCode) {
+    super(code);
+    this.name = "PdfExtractionError";
+  }
+}
+
+function classifyPdfExtractionFailure(stderr: string, error?: Error): PdfExtractionError {
+  const detail = `${stderr}\n${error?.message ?? ""}`.toLowerCase();
+  if (/incorrect password|password required|encrypted/.test(detail)) return new PdfExtractionError("encrypted");
+  if (/document stream is empty|xref|trailer|damaged|syntax error|not a pdf|pdf error|couldn't find|could not find/.test(detail)) return new PdfExtractionError("corrupt");
+  if (/enoent|spawn pdftotext|not found|permission denied/.test(detail)) return new PdfExtractionError("runtime");
+  return new PdfExtractionError("unknown");
+}
+
+function pdfExtractionMessage(error: unknown) {
+  const code = error instanceof PdfExtractionError ? error.code : "unknown";
+  return {
+    encrypted: "PDF extraction failed: the statement is encrypted or password-protected. Upload an unlocked copy before verification.",
+    corrupt: "PDF extraction failed: the PDF structure is malformed, incomplete, or corrupt. Retry the preserved source only if the original file is known to be readable; otherwise upload a fresh copy.",
+    no_text_layer: "PDF extraction produced no text layer. This appears to be an image-only statement; upload a text-searchable PDF or CSV for verification.",
+    runtime: "PDF extraction failed because the PDF extraction runtime is unavailable. Retry after the runtime is restored; the preserved source remains unchanged.",
+    resource_limit: "PDF extraction exceeded the safe parser resource limit. Use a smaller statement or split the source before retrying.",
+    unknown: "PDF extraction failed in the PDF engine. The preserved source can be retried, but this statement cannot be verified until extraction succeeds.",
+  }[code];
+}
+
 async function pdfText(bytes: Buffer) {
   return new Promise<string>((resolve, reject) => {
-    const child = spawn("pdftotext", ["-layout", "-", "-"]); const output: Buffer[] = []; const errors: Buffer[] = [];
+    const child = spawn("pdftotext", ["-layout", "-", "-"]);
+    const output: Buffer[] = [];
+    const errors: Buffer[] = [];
     let outputBytes = 0;
+    let stderrBytes = 0;
+    let settled = false;
+    const finishReject = (error: PdfExtractionError) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    };
     const timeout = setTimeout(() => {
       child.kill("SIGKILL");
-      reject(new Error("PDF text extraction exceeded the resource limit"));
+      finishReject(new PdfExtractionError("resource_limit"));
     }, BANK_STATEMENT_PARSER_LIMITS.pdfTimeoutMs);
-    const append = (target: Buffer[], chunk: Buffer) => {
+    const appendOutput = (chunk: Buffer) => {
       outputBytes += chunk.length;
       if (outputBytes > BANK_STATEMENT_PARSER_LIMITS.maxPdfOutputBytes) {
         child.kill("SIGKILL");
-        reject(new Error("PDF text extraction exceeded the resource limit"));
+        finishReject(new PdfExtractionError("resource_limit"));
         return;
       }
-      target.push(chunk);
+      output.push(chunk);
     };
-    child.stdout.on("data", (chunk: Buffer) => append(output, chunk)); child.stderr.on("data", (chunk: Buffer) => errors.push(chunk));
-    child.on("error", (error) => { clearTimeout(timeout); reject(error); });
+    child.stdout.on("data", appendOutput);
+    child.stderr.on("data", (chunk: Buffer) => {
+      if (stderrBytes >= 64 * 1024) return;
+      const remaining = 64 * 1024 - stderrBytes;
+      const bounded = chunk.subarray(0, remaining);
+      stderrBytes += bounded.length;
+      errors.push(bounded);
+    });
+    child.on("error", (error) => {
+      clearTimeout(timeout);
+      finishReject(classifyPdfExtractionFailure(Buffer.concat(errors).toString("utf8"), error));
+    });
     child.on("close", (code) => {
       clearTimeout(timeout);
-      code === 0 ? resolve(Buffer.concat(output).toString("utf8")) : reject(new Error(Buffer.concat(errors).toString("utf8")));
+      if (settled) return;
+      if (code !== 0) {
+        finishReject(classifyPdfExtractionFailure(Buffer.concat(errors).toString("utf8")));
+        return;
+      }
+      const text = Buffer.concat(output).toString("utf8");
+      if (!text.trim()) {
+        finishReject(new PdfExtractionError("no_text_layer"));
+        return;
+      }
+      settled = true;
+      resolve(text);
     });
     child.stdin.end(bytes);
   });
@@ -478,7 +537,7 @@ export async function parseBankStatement(bytes: Buffer, contentType: string): Pr
   if (bytes.length > BANK_STATEMENT_PARSER_LIMITS.maxInputBytes) return { ...emptyStatement(), errors: ["Statement exceeds the safe parser size limit."], errorKind: "format" };
   if (contentType === "application/pdf") {
     if (bytes.subarray(0, 5).toString("ascii") !== "%PDF-") return { ...emptyStatement(), errors: ["File is not a valid PDF bank statement."], errorKind: "extraction" };
-    try { return distinguishRepeatedRows(pdfStatement(await pdfText(bytes))); } catch { return { ...emptyStatement(), errors: ["PDF text extraction failed; encrypted, image-only, or corrupt statements require manual review."], errorKind: "extraction" }; }
+    try { return distinguishRepeatedRows(pdfStatement(await pdfText(bytes))); } catch (error) { return { ...emptyStatement(), errors: [pdfExtractionMessage(error)], errorKind: "extraction" }; }
   }
   if (contentType !== "text/csv") {
     return {

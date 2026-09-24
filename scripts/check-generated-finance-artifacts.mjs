@@ -121,6 +121,15 @@ function printStaleArtifacts() {
     return true;
   }
 
+  const generatedApiBefore = path.join(snapshotDir, "lib/api-zod/src/generated/api.ts");
+  const generatedApiAfter = path.join(rootDir, "lib/api-zod/src/generated/api.ts");
+  if (fs.existsSync(generatedApiBefore) && fs.existsSync(generatedApiAfter) && (staleArtifacts.get("lib/api-zod/src/generated") ?? []).includes("api.ts")) {
+    const diff = spawnSync("diff", ["-u", generatedApiBefore, generatedApiAfter], { encoding: "utf8" });
+    console.error("\n=== GENERATED_API_DIFF ===");
+    console.error((diff.stdout ?? "").slice(0, 12000));
+    console.error("=== END_GENERATED_API_DIFF ===\n");
+  }
+
   console.error("\nGenerated finance artifacts are stale:");
   for (const [relativePath, files] of staleArtifacts) {
     for (const file of files) console.error(`  - ${relativePath}/${file}`);

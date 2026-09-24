@@ -127,6 +127,7 @@ test("budget approval compares full-precision schema money in exact cents", asyn
       .where(eq(budgetPlanningCategorySnapshots.id, housing.id));
 
     const approved = await approveBudgetPlanningPeriod(actor, period.id, 1, `exact-${randomUUID()}`);
+    assert.ok(approved);
     assert.equal(approved.status, "approved");
   } finally {
     await db.delete(auditEvents).where(eq(auditEvents.householdId, household.id));

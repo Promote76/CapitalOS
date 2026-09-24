@@ -4837,7 +4837,7 @@ components:
         name: { type: string, minLength: 1, maxLength: 160 }
         categoryType: { type: string, enum: [fixed_expense, variable_essential, variable_discretionary, savings, investment, debt_payment, transfer, income, one_time_expense] }
         essentialStatus: { type: string, enum: [essential, discretionary, mixed] }
-        monthlyTarget: { type: string }
+        monthlyTarget: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
         warningThreshold: { type: string }
         notes: { type: [string, "null"], maxLength: 2000 }
     BudgetPlanningCategoryUpdateInput:
@@ -4848,7 +4848,7 @@ components:
         name: { type: string, minLength: 1, maxLength: 160 }
         categoryType: { type: string, enum: [fixed_expense, variable_essential, variable_discretionary, savings, investment, debt_payment, transfer, income, one_time_expense] }
         essentialStatus: { type: string, enum: [essential, discretionary, mixed] }
-        monthlyTarget: { type: string }
+        monthlyTarget: { type: string, pattern: "^[0-9]+(\\.[0-9]{1,2})?$" }
         warningThreshold: { type: string }
         notes: { type: [string, "null"], maxLength: 2000 }
         archived: { type: boolean }

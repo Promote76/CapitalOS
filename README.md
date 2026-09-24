@@ -79,7 +79,7 @@ See:
 
 Changes should be proposed through pull requests and pass `.github/workflows/ci.yml` before merge. The workflow uses a disposable PostgreSQL service and does not require production provider credentials.
 
-Branch-protection enforcement depends on repository-plan support. Until GitHub protection/rulesets are available for this private repository, PR review and green CI are the documented merge policy rather than a technically enforced server-side restriction.
+The active `Protect Main` repository ruleset enforces pull requests into `main`, the required `Verify financial and safety contracts` CI check, strict up-to-date status checks, stale-review dismissal, force-push prevention, branch-deletion prevention, and no configured bypass actor. Repository visibility is managed separately from these controls and does not establish runtime production certification.
 
 ## License
 

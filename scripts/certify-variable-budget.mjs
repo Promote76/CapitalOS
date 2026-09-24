@@ -55,6 +55,7 @@ add("VB-31", "Canonical Corrected Budget Version", has(financeService, /canonica
 
 const checks = [
   ["domain tests", path.join(root, "scripts", "node_modules", ".bin", "tsx"), ["--test", "src/domain/variable-income.test.ts"], apiDir],
+  ["budget version domain tests", path.join(root, "scripts", "node_modules", ".bin", "tsx"), ["--test", "src/domain/household-finance.test.ts"], apiDir],
   ["api typecheck", "pnpm", ["--filter", "@workspace/api-server", "run", "typecheck"]],
   ["web typecheck", "pnpm", ["--filter", "@workspace/capital-os", "run", "typecheck"]],
   ["contract parity", "pnpm", ["--filter", "@workspace/api-server", "run", "check-contract"]],

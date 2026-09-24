@@ -252,6 +252,39 @@ test("Financial Inbox ingest persists Wells Fargo parser outcomes without creati
     assert.equal(successfulGeneration.evidence.extractedStatementStart, "2026-08-10");
     assert.equal(successfulGeneration.evidence.extractedStatementEnd, "2026-09-08");
 
+    // Simulate a stale parent rejection from an earlier parser generation while
+    // preserving the valid source bytes. A parser retry creates a new evidence
+    // generation, so the obsolete parent review decision must be invalidated.
+    await db.delete(bankStatementTransactions).where(eq(bankStatementTransactions.bankStatementDocumentId, successfulStatement.id));
+    await db.update(financialDocuments).set({
+      status: "REJECTED",
+      reviewDecision: "REJECTED",
+      reviewReason: "Rejected while the previous parser generation was unavailable.",
+      reviewedBy: user.id,
+      reviewedAt: new Date(),
+      sourceMetadata: {
+        ...(successfulDocument.sourceMetadata ?? {}),
+        parserErrorKind: "extraction",
+        parserErrors: ["Previous parser generation could not extract this preserved source."],
+      },
+    }).where(eq(financialDocuments.id, successfulDocumentId));
+    await db.update(bankStatementDocuments).set({ status: "document_evidence_rejected" }).where(eq(bankStatementDocuments.id, successfulStatement.id));
+
+    const retryResult = await (await import("../services/financial-documents.ts")).retryBankStatementParser(actor, successfulDocumentId, {
+      reason: "Re-read preserved source after parser recovery.",
+      idempotencyKey: randomUUID(),
+    });
+    assert.equal(retryResult.reviewDecision, null);
+    assert.equal(retryResult.reviewReason, null);
+    assert.equal(retryResult.status, "NEEDS_REVIEW");
+    assert.deepEqual(retryResult.sourceMetadata.parserErrors, []);
+    assert.equal(retryResult.transactions?.length, 2);
+    const [retriedDocument] = await db.select().from(financialDocuments).where(eq(financialDocuments.id, successfulDocumentId));
+    assert.equal(retriedDocument.reviewDecision, null);
+    assert.equal(retriedDocument.reviewReason, null);
+    assert.equal(retriedDocument.reviewedBy, null);
+    assert.equal(retriedDocument.reviewedAt, null);
+
     const rowParsingFailure = await (await import("../services/financial-documents.ts")).ingestFinancialDocument(actor, await upload(rowParsingFailurePdf, "wells-fargo-row-parsing-failure.pdf"));
     const [rowParsingDocument] = await db.select().from(financialDocuments).where(eq(financialDocuments.id, rowParsingFailure.id));
     const [rowParsingGeneration] = await db.select().from(financialDocumentParseGenerations).where(and(

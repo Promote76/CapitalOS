@@ -75,6 +75,9 @@ jobs:
       - name: Verify generated finance artifacts
         run: pnpm run check:generated-finance-artifacts
 
+      - name: Verify public repository hygiene
+        run: pnpm run check:public-repository-hygiene
+
       - name: Verify API route contract
         run: pnpm --filter @workspace/api-server run check-contract
 

@@ -26,7 +26,7 @@ Capital OS remains advisory and non-executing.
 - Financial Document Inbox with desktop drag/drop and mobile file selection.
 - Settlement, P&L, and bank-statement evidence ingestion with household-scoped
   content-hash idempotency.
-- CSV, XLSX, and fail-closed layout-aware PDF bank-statement parsing.
+- CSV and fail-closed layout-aware PDF bank-statement parsing. **Correction (2026-09-23): structured XLSX parsing is disabled; XLSX is accepted only as review evidence until a maintained parser is available.**
 - Immutable original values, source page/line/region, parser version,
   confidence, corrections, reviewer attribution, and audit evidence.
 - Explicit settlement normalized categories and economic treatments; unknown

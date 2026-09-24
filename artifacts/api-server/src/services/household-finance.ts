@@ -244,6 +244,13 @@ function assertMoney(value: string | undefined, label: string, { required = fals
   }
 }
 
+function assertNonNegativeMoney(value: string | undefined, label: string, { required = false } = {}) {
+  assertMoney(value, label, { required });
+  if (value !== undefined && value.startsWith("-")) {
+    throw new GovernanceError("INVALID_STATE", `${label} cannot be negative`);
+  }
+}
+
 function assertDate(value: string, label: string) {
   if (!datePattern.test(value)) throw new GovernanceError("INVALID_STATE", `${label} must use YYYY-MM-DD format`);
   const parsed = new Date(`${value}T00:00:00.000Z`);
@@ -757,7 +764,7 @@ async function requireDraftVersion(actor: Actor, periodId: string, version: numb
 }
 
 export async function createBudgetPlanningCategory(actor: Actor, periodId: string, version: number, input: PlanningCategoryInput) {
-  assertPermission(actor.role, "contribute"); assertMoney(input.monthlyTarget, "Monthly target", { required: true });
+  assertPermission(actor.role, "contribute"); assertNonNegativeMoney(input.monthlyTarget, "Monthly target", { required: true });
   const [category] = await db.transaction(async (tx) => {
     const [period] = await tx.update(budgetPlanningPeriods).set({ version: version + 1, updatedAt: new Date() })
       .where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.status, "draft"), eq(budgetPlanningPeriods.version, version))).returning();
@@ -771,7 +778,7 @@ export async function createBudgetPlanningCategory(actor: Actor, periodId: strin
 }
 
 export async function updateBudgetPlanningCategory(actor: Actor, periodId: string, categoryId: string, version: number, input: Partial<PlanningCategoryInput> & { archived?: boolean }) {
-  assertPermission(actor.role, "contribute"); if (input.monthlyTarget !== undefined) assertMoney(input.monthlyTarget, "Monthly target", { required: true });
+  assertPermission(actor.role, "contribute"); if (input.monthlyTarget !== undefined) assertNonNegativeMoney(input.monthlyTarget, "Monthly target", { required: true });
   const [category] = await db.transaction(async (tx) => {
     const [period] = await tx.update(budgetPlanningPeriods).set({ version: version + 1, updatedAt: new Date() })
       .where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.status, "draft"), eq(budgetPlanningPeriods.version, version))).returning();
@@ -797,6 +804,10 @@ export async function approveBudgetPlanningPeriod(actor: Actor, periodId: string
     if (currentPeriod.version !== version) throw new GovernanceError("CONFLICT", "Planning period version is stale; refresh and retry");
     const categories = await tx.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, periodId));
     const active = categories.filter((category) => !category.archived);
+    const negativeTargets = active.filter((category) => numeric(category.monthlyTarget) < 0);
+    if (negativeTargets.length) {
+      throw new GovernanceError("INVALID_STATE", "Monthly targets cannot be negative");
+    }
     const requiredLayers = {
       income: active.some((category) => category.categoryType === "income" && numeric(category.monthlyTarget) > 0),
       mandatory: active.some((category) => ["fixed_expense", "debt_payment"].includes(category.categoryType) && category.essentialStatus !== "discretionary" && numeric(category.monthlyTarget) > 0),

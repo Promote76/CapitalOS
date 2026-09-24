@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
-import { createServer, type Server } from "node:http";
+import { createServer, type IncomingMessage, type Server } from "node:http";
 import test from "node:test";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import {
@@ -30,7 +30,7 @@ async function startHermeticObjectStorageSidecar() {
   const objects = new Map<string, { bytes: Buffer; contentType: string }>();
   let server: Server | null = null;
 
-  const readBody = async (request: Parameters<Parameters<typeof createServer>[0]>[0]) => {
+  const readBody = async (request: IncomingMessage) => {
     const chunks: Buffer[] = [];
     for await (const chunk of request) chunks.push(Buffer.from(chunk));
     return Buffer.concat(chunks);

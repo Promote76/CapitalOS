@@ -7676,8 +7676,8 @@ export const CreateBudgetPlanningCategoryParams = zod.object({
 
 
 export const createBudgetPlanningCategoryBodyNameMax = 160;
-export const createBudgetPlanningCategoryBodyMonthlyTargetRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 
+export const createBudgetPlanningCategoryBodyMonthlyTargetRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const createBudgetPlanningCategoryBodyNotesMax = 2000;
 
 
@@ -7764,8 +7764,8 @@ export const UpdateBudgetPlanningCategoryParams = zod.object({
 
 
 export const updateBudgetPlanningCategoryBodyNameMax = 160;
-export const updateBudgetPlanningCategoryBodyMonthlyTargetRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 
+export const updateBudgetPlanningCategoryBodyMonthlyTargetRegExp = new RegExp('^[0-9]+(\\.[0-9]{1,2})?$');
 export const updateBudgetPlanningCategoryBodyNotesMax = 2000;
 
 

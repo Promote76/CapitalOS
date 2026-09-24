@@ -2651,6 +2651,11 @@ test("weekly budget guidance is advisory, exact, and owner-accepted only", { ski
   assert.notEqual(correction.id, period.id);
   const [stillApproved] = await db.select().from(database.budgetPlanningPeriods).where(eq(database.budgetPlanningPeriods.id, period.id));
   assert.equal(stillApproved.status, "approved");
+  const correctionApproval = await service.approveBudgetPlanningPeriod(owner, correction.id, correction.version, `approve-correction-${randomUUID()}`) as { version: number };
+  assert.ok(correctionApproval.version > correction.version);
+  await assert.rejects(() => service.createSupersedingBudgetPlanningPeriod(owner, period.id, `stale-supersede-${randomUUID()}`), (error: unknown) => error instanceof Error && "code" in error && error.code === "CONFLICT");
+  const comparison = await service.getBudgetPlanningComparison(owner, month);
+  assert.equal(comparison.monthBudgeted, "0.30");
   const approvedGuidance = await service.getWeeklyBudgetGuidance(owner, period.id);
   await assert.rejects(() => service.acceptWeeklyBudgetGuidance(owner, period.id, { version: accepted.version + 1, categoryIds: [housingSnapshot.id], recommendationFingerprint: approvedGuidance.fingerprint }, `approved-${randomUUID()}`), (error: unknown) => error instanceof Error && "code" in error && error.code === "CONFLICT");
   const closed = await service.closeBudgetPlanningPeriod(owner, period.id, approval.version, `close-${randomUUID()}`);

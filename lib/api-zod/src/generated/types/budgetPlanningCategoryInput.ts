@@ -18,6 +18,7 @@ export interface BudgetPlanningCategoryInput {
   name: string;
   categoryType: BudgetPlanningCategoryInputCategoryType;
   essentialStatus: BudgetPlanningCategoryInputEssentialStatus;
+  /** @pattern ^[0-9]+(\.[0-9]{1,2})?$ */
   monthlyTarget: string;
   warningThreshold?: string;
   /**

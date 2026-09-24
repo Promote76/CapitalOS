@@ -944,7 +944,7 @@ async function currentApprovedPlanningCategories(household: string, asOf = calen
     eq(budgetPlanningPeriods.householdId, household),
     eq(budgetPlanningPeriods.month, month),
     inArray(budgetPlanningPeriods.status, ["approved", "closed"]),
-  ));
+  )).orderBy(desc(budgetPlanningPeriods.createdAt)).limit(1);
   if (!period) return null;
   const categories = await db.select().from(budgetPlanningCategorySnapshots)
     .where(and(eq(budgetPlanningCategorySnapshots.periodId, period.id), eq(budgetPlanningCategorySnapshots.archived, false)))

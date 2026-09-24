@@ -272,7 +272,7 @@ test("Financial Inbox ingest persists Wells Fargo parser outcomes without creati
       eq(financialDocumentParseGenerations.status, "CURRENT"),
     ));
     assert.equal(extractionDocument.sourceMetadata.parserErrorKind, "extraction");
-    assert.deepEqual(extractionDocument.sourceMetadata.parserErrors, ["PDF text extraction failed; encrypted, image-only, or corrupt statements require manual review."]);
+    assert.deepEqual(extractionDocument.sourceMetadata.parserErrors, ["PDF extraction failed: the PDF structure is malformed, incomplete, or corrupt. Retry the preserved source only if the original file is known to be readable; otherwise upload a fresh copy."]);
     assert.equal(extractionGeneration.evidence.parserErrorKind, "extraction");
     assert.notDeepEqual(extractionGeneration.evidence.parserErrors, rowParsingGeneration.evidence.parserErrors);
 

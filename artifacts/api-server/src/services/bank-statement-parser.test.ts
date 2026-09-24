@@ -116,6 +116,13 @@ test("rejects ambiguous amount rows and marks PDF extraction for review", async 
   assert.deepEqual(ambiguousPdf.rows, []);
 });
 
+test("classifies a PDF with no text layer as image-only extraction evidence", async () => {
+  const parsed = await parseBankStatement(representativePdf([""]), "application/pdf");
+  assert.equal(parsed.errorKind, "extraction");
+  assert.match(parsed.errors[0], /no text layer|image-only/i);
+  assert.deepEqual(parsed.rows, []);
+});
+
 test("parses aligned PDF debit and credit columns without confusing the running balance", async () => {
   const header = `${"Date".padEnd(11)}${"Description".padEnd(20)}${"Debit".padEnd(12)}${"Credit".padEnd(12)}Balance`;
   const row = (date: string, description: string, debit: string, credit: string, balance: string) =>

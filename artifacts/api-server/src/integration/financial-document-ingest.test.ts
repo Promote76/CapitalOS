@@ -45,8 +45,8 @@ function representativePdf(page: string) {
 const wellsFargoPdf = representativePdf([
   "Wells Fargo Everyday Checking",
   "September 8, 2026 Page 1 of 1",
-  "Statement period activity summary                                      Account number: 8974191259",
-  "Beginning balance on 8/10                                                  $0.00",
+  "Statement period activity summary                                      Account number: XXXX1259",
+  "Beginning balance on 8/10",
   "Deposits/Additions                                                      200.00",
   "Withdrawals/Subtractions                                              - 23.17",
   "Ending balance on 9/8                                                   $176.83",
@@ -60,7 +60,7 @@ const wellsFargoPdf = representativePdf([
 
 const rowParsingFailurePdf = representativePdf([
   "Wells Fargo Everyday Checking",
-  "Statement period activity summary                                      Account number: 8974191259",
+  "Statement period activity summary                                      Account number: XXXX1259",
   "Beginning balance on 8/10                                                  $0.00",
   "Deposits/Additions                                                      200.00",
   "Withdrawals/Subtractions                                              - 23.17",
@@ -133,6 +133,10 @@ test("Financial Inbox ingest persists Wells Fargo parser outcomes without creati
     assert.equal(successfulStatement.accountMask, "1259");
     assert.equal(successfulStatement.statementStart, "2026-08-10");
     assert.equal(successfulStatement.statementEnd, "2026-09-08");
+    assert.equal(successfulStatement.openingBalance, null);
+    assert.equal(successfulStatement.totalDeposits, "200.00");
+    assert.equal(successfulStatement.totalWithdrawals, "23.17");
+    assert.equal(successfulStatement.closingBalance, "176.83");
     assert.equal(successfulRows.length, 2);
     assert.deepEqual(successfulRows.map((row) => [row.postedDate, row.amount, row.direction]), [
       ["2026-08-12", "200.00", "deposit"],

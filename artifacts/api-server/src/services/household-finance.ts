@@ -736,9 +736,13 @@ export async function createBudgetPlanningPeriod(actor: Actor, month: string) {
 export async function createSupersedingBudgetPlanningPeriod(actor: Actor, periodId: string, idempotencyKey: string) {
   assertPermission(actor.role, "contribute");
   return planningIdempotency(actor, idempotencyKey, "budget_plan_supersede", async (tx) => {
-    const [approved] = await tx.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId)));
-    if (!approved) return planningNotFound("Budget planning period");
-    const { period } = await bootstrapPlanningPeriodInTransaction(tx, actor, actor.householdId, approved.month, approved.id);
+    const [requested] = await tx.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId)));
+    if (!requested) return planningNotFound("Budget planning period");
+    const [canonical] = await tx.select({ id: budgetPlanningPeriods.id }).from(budgetPlanningPeriods)
+      .where(and(eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.month, requested.month), inArray(budgetPlanningPeriods.status, ["approved", "closed"])))
+      .orderBy(desc(budgetPlanningPeriods.createdAt)).limit(1);
+    if (!canonical || canonical.id !== requested.id) throw new GovernanceError("CONFLICT", "Only the current canonical finalized plan can be superseded");
+    const { period } = await bootstrapPlanningPeriodInTransaction(tx, actor, actor.householdId, requested.month, requested.id);
     const categories = await tx.select().from(budgetPlanningCategorySnapshots).where(eq(budgetPlanningCategorySnapshots.periodId, period.id)).orderBy(budgetPlanningCategorySnapshots.sortOrder);
     return { id: period.id, month: period.month.slice(0, 7), status: period.status, version: period.version, copiedFromPeriodId: period.copiedFromPeriodId, supersedesPeriodId: period.supersedesPeriodId, createdBy: period.createdBy, createdAt: period.createdAt, updatedAt: period.updatedAt, approvedAt: period.approvedAt, approvedBy: period.approvedBy, closedAt: period.closedAt, closedBy: period.closedBy, categories: categories.map(planningSnapshot) };
   });

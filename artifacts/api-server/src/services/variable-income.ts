@@ -122,7 +122,7 @@ export async function getVariableBudgetIntelligence(actor: Actor, asOf = today()
     db.select().from(financialAccounts).where(and(eq(financialAccounts.householdId, actor.householdId), eq(financialAccounts.includedInBudget, true))),
     db.select().from(emergencyReserves).where(eq(emergencyReserves.householdId, actor.householdId)).limit(1),
     db.select().from(goals).where(eq(goals.householdId, actor.householdId)),
-    db.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.month, monthStart), sql`${budgetPlanningPeriods.status} in ('approved', 'closed')`)).limit(1),
+    db.select().from(budgetPlanningPeriods).where(and(eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.month, monthStart), sql`${budgetPlanningPeriods.status} in ('approved', 'closed')`)).orderBy(desc(budgetPlanningPeriods.createdAt)).limit(1),
     db.select().from(householdVehicleScenarios).where(and(eq(householdVehicleScenarios.householdId, actor.householdId), eq(householdVehicleScenarios.active, true))).orderBy(desc(householdVehicleScenarios.createdAt)),
     db.select({ id: financialDocuments.id, status: financialDocuments.status }).from(financialDocuments).where(eq(financialDocuments.householdId, actor.householdId)),
     db.select({ id: bankStatementDocuments.id, documentId: bankStatementDocuments.documentId, status: bankStatementDocuments.status, statementStart: bankStatementDocuments.statementStart, statementEnd: bankStatementDocuments.statementEnd, createdAt: bankStatementDocuments.createdAt })

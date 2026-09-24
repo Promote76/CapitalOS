@@ -5,9 +5,8 @@ const root = resolve(import.meta.dirname, "..");
 const defaultEvidencePath = resolve(root, "docs/certification/logs/PRODUCTION_DOCUMENT_REMEDIATION_LATEST.json");
 const origin = (process.env.CAPITAL_OS_PUBLISHED_ORIGIN ?? "").replace(/\/$/, "");
 const sessionCookie = process.env.CAPITAL_OS_PRODUCTION_OPERATOR_SESSION_COOKIE ?? "";
-const householdId = process.env.CAPITAL_OS_PRODUCTION_HOUSEHOLD_ID ?? "d6672e8d-c193-4182-bd76-4170329e529a";
-const documentIds = (process.env.CAPITAL_OS_PRODUCTION_DOCUMENT_IDS ??
-  "c9e3f924-6977-4430-a66b-0089d66b3427,da39387c-7a42-4e9e-966b-54974bf27b76")
+const householdId = process.env.CAPITAL_OS_PRODUCTION_HOUSEHOLD_ID ?? "";
+const documentIds = (process.env.CAPITAL_OS_PRODUCTION_DOCUMENT_IDS ?? "")
   .split(",")
   .map((value) => value.trim())
   .filter(Boolean);

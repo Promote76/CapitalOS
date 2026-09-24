@@ -6,7 +6,7 @@ A bank statement creates a `bank_statement_documents` record and any extracted r
 
 ## Parser and provenance boundary
 
-`bank-statement-v3` accepts structured CSV with recognizable date, description, and amount (or debit/credit) headers. PDF extraction uses the runtime `pdftotext -layout` dependency supplied by Poppler. Wells Fargo activity-summary / transaction-history layouts receive a dedicated parser that supports wrapped descriptions, account last-four extraction, statement periods, deposits, withdrawals, balances, and December-to-January year rollover.
+`bank-statement-v4` accepts structured CSV with recognizable date, description, and amount (or debit/credit) headers. PDF extraction uses the runtime `pdftotext -layout` dependency supplied by Poppler. Wells Fargo activity-summary / transaction-history layouts receive a dedicated parser that supports wrapped descriptions, account last-four extraction, statement periods, deposits, withdrawals, balances, and December-to-January year rollover.
 
 Money is parsed as exact two-decimal values. Missing statement-level financial values remain `null` / UNKNOWN; they are never converted to `0.00`. Zero is treated as a factual source value only when the statement actually reports zero.
 
@@ -18,7 +18,7 @@ A reconciliation mismatch fails closed to `NEEDS_REVIEW`; no partial transaction
 
 Malformed or ambiguous rows are never guessed. Each accepted row stores its immutable `originalValue`, source page/line/region, fingerprint, parser version, and review state. Corrections are separate `correctedValue` evidence with an actor-attributed reason and audit event.
 
-PDF statements fail closed when extraction fails, the activity layout is ambiguous, transaction-like text lacks an unambiguous heading, a row cannot be parsed, or statement reconciliation fails. Encrypted, image-only, and corrupt PDFs therefore remain review evidence instead of producing fabricated transactions.
+PDF statements fail closed when extraction fails, the activity layout is ambiguous, transaction-like text lacks an unambiguous heading, a row cannot be parsed, or statement reconciliation fails. Extraction failures are classified without exposing statement contents as encrypted/password-protected, malformed/corrupt, no-text-layer/image-only, runtime unavailable, resource-limit, or unknown engine failure. Encrypted, image-only, and corrupt PDFs therefore remain review evidence instead of producing fabricated transactions.
 
 ## Runtime and CI contract
 

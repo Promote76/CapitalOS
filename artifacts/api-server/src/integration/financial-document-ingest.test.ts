@@ -273,7 +273,13 @@ test("Financial Inbox ingest persists Wells Fargo parser outcomes without creati
     const retryResult = await (await import("../services/financial-documents.ts")).retryBankStatementParser(actor, successfulDocumentId, {
       reason: "Re-read preserved source after parser recovery.",
       idempotencyKey: randomUUID(),
-    });
+    }) as {
+      reviewDecision: string | null;
+      reviewReason: string | null;
+      status: string;
+      sourceMetadata: { parserErrors?: unknown[] };
+      transactions?: unknown[];
+    };
     assert.equal(retryResult.reviewDecision, null);
     assert.equal(retryResult.reviewReason, null);
     assert.equal(retryResult.status, "NEEDS_REVIEW");

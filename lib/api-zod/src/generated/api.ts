@@ -7510,7 +7510,7 @@ export const GetBudgetPlanningPeriodResponse = zod.union([zod.object({
   "name": zod.string(),
   "categoryType": zod.string(),
   "essentialStatus": zod.string(),
-  "monthlyTarget": zod.string().regex(createBudgetPlanningCategoryBodyMonthlyTargetRegExp),
+  "monthlyTarget": zod.string(),
   "allocationBasisPoints": zod.number().min(getBudgetPlanningPeriodResponseOneCategoriesItemAllocationBasisPointsMin).max(getBudgetPlanningPeriodResponseOneCategoriesItemAllocationBasisPointsMax).multipleOf(getBudgetPlanningPeriodResponseOneCategoriesItemAllocationBasisPointsMultipleOf).nullable(),
   "warningThreshold": zod.string(),
   "notes": zod.string().nullish(),
@@ -7687,7 +7687,7 @@ export const CreateBudgetPlanningCategoryBody = zod.object({
   "name": zod.string().min(1).max(createBudgetPlanningCategoryBodyNameMax),
   "categoryType": zod.enum(['fixed_expense', 'variable_essential', 'variable_discretionary', 'savings', 'investment', 'debt_payment', 'transfer', 'income', 'one_time_expense']),
   "essentialStatus": zod.enum(['essential', 'discretionary', 'mixed']),
-  "monthlyTarget": zod.string(),
+  "monthlyTarget": zod.string().regex(createBudgetPlanningCategoryBodyMonthlyTargetRegExp),
   "warningThreshold": zod.string().optional(),
   "notes": zod.string().max(createBudgetPlanningCategoryBodyNotesMax).nullish()
 })

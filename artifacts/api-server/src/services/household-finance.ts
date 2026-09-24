@@ -818,9 +818,9 @@ export async function approveBudgetPlanningPeriod(actor: Actor, periodId: string
     };
     const missingLayers = Object.entries(requiredLayers).filter(([, present]) => !present).map(([layer]) => layer);
     if (missingLayers.length) throw new GovernanceError("INVALID_STATE", `Complete every plan layer before approval. Missing: ${missingLayers.join(", ")}`);
-    const incomeTarget = active.filter((category) => category.categoryType === "income").reduce((sum, category) => sum + cents(category.monthlyTarget), 0);
-    const plannedOutflow = active.filter((category) => !["income", "transfer"].includes(category.categoryType)).reduce((sum, category) => sum + cents(category.monthlyTarget), 0);
-    if (plannedOutflow !== incomeTarget) throw new GovernanceError("INVALID_STATE", "Assign all planned income across obligations, essentials, reserves, discretionary spending, and capital goals before approval");
+    const incomeTargetCents = active.filter((category) => category.categoryType === "income").reduce((sum, category) => sum + decimalCents(category.monthlyTarget), 0n);
+    const plannedOutflowCents = active.filter((category) => !["income", "transfer"].includes(category.categoryType)).reduce((sum, category) => sum + decimalCents(category.monthlyTarget), 0n);
+    if (plannedOutflowCents !== incomeTargetCents) throw new GovernanceError("INVALID_STATE", "Assign all planned income across obligations, essentials, reserves, discretionary spending, and capital goals before approval");
     requireCompleteWeeklyAllocationTemplate(categories);
     const [period] = await tx.update(budgetPlanningPeriods).set({ status: "approved", approvedAt: new Date(), approvedBy: actor.userId, version: version + 1, updatedAt: new Date() })
       .where(and(eq(budgetPlanningPeriods.id, periodId), eq(budgetPlanningPeriods.householdId, actor.householdId), eq(budgetPlanningPeriods.status, "draft"), eq(budgetPlanningPeriods.version, version))).returning();

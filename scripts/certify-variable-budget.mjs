@@ -18,6 +18,7 @@ const service = "artifacts/api-server/src/services/variable-income.ts";
 const financeService = "artifacts/api-server/src/services/household-finance.ts";
 const capitalGovernorService = "artifacts/api-server/src/services/capital-governor.ts";
 const schema = "lib/db/src/schema/variable-income.ts";
+const apiSpec = "lib/api-spec/openapi.yaml";
 const routes = "artifacts/api-server/src/routes/variable-income.ts";
 const ui = "artifacts/capital-os/src/App.tsx";
 
@@ -52,6 +53,7 @@ add("VB-28", "Tenant/Role/Audit", has(service, /assertPermission/) && has(servic
 add("VB-29", "Grok Advisory Boundary", !has(service, /grok|xai/i) && !has(routes, /grok|xai/i), "This engine has no AI write path or classification authority.");
 add("VB-30", "No Money Movement", !has(service, /\b(transfer|ach|withdraw)\b/i) && !has(routes, /\b(transfer|ach|withdraw)\b/i), "Routes create planning records only.");
 add("VB-31", "Canonical Corrected Budget Version", has(financeService, /canonicalFinalizedPlanningPeriods/) && has(service, /orderBy\(desc\(budgetPlanningPeriods\.createdAt\)\)/) && has(capitalGovernorService, /orderBy\(desc\(budgetPlanningPeriods\.createdAt\)\)/), "Same-month superseding corrections resolve to the newest finalized plan and historical versions are not double-counted.");
+add("VB-32", "Nonnegative Planning Targets", has(financeService, /assertNonNegativeMoney\(input\.monthlyTarget/) && (read(apiSpec).match(/monthlyTarget: \{ type: string, pattern: "\^\[0-9\]\+/g)?.length ?? 0) >= 2, "Budget write inputs reject negative monthly targets before they can distort approval arithmetic.");
 
 const checks = [
   ["domain tests", path.join(root, "scripts", "node_modules", ".bin", "tsx"), ["--test", "src/domain/variable-income.test.ts"], apiDir],

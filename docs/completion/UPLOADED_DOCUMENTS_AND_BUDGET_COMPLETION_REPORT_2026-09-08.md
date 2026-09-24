@@ -53,7 +53,7 @@ The Documents workflow:
 - issues a private upload grant;
 - validates file ownership, path, content type, size, and hash;
 - deduplicates documents within the household;
-- parses supported bank-statement PDF, CSV, and XLSX files;
+- parses supported bank-statement PDF and CSV files; XLSX uploads remain review evidence and structured XLSX parsing is disabled;
 - creates a parent financial-document record;
 - creates a bank-statement header;
 - creates reviewable statement transaction rows; and

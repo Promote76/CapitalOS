@@ -155,3 +155,50 @@ test("keeps vulnerable XLSX parsing disabled for RC1", async () => {
   assert.deepEqual(parsed.rows, []);
   assert.match(parsed.errors[0], /XLSX parsing is disabled for RC1/i);
 });
+
+test("assigns Wells Fargo short dates across a December to January statement rollover", async () => {
+  const parsed = await parseBankStatement(representativePdf([
+    [
+      "Wells Fargo Everyday Checking",
+      "January 8, 2026 Page 1 of 1",
+      "Statement period activity summary                                      Account number: XXXX1259",
+      "Beginning balance on 12/10                                                $100.00",
+      "Deposits/Additions                                                       25.00",
+      "Withdrawals/Subtractions                                              - 10.00",
+      "Ending balance on 1/8                                                    $115.00",
+      "Transaction history",
+      "                         Check                                                                                 Deposits/        Withdrawals/       Ending daily",
+      "       Date             Number Description                                                                     Additions         Subtractions          balance",
+      "      12/20                    Synthetic deposit                                                                  25.00                                 125.00",
+      "        1/3                    Synthetic purchase                                                                                 10.00           115.00",
+      "      Totals                                                                                                  $25.00              $10.00",
+    ].join("\n"),
+  ]), "application/pdf");
+  assert.deepEqual(parsed.errors, []);
+  assert.equal(parsed.statementStart, "2025-12-10");
+  assert.equal(parsed.statementEnd, "2026-01-08");
+  assert.deepEqual(parsed.rows.map((row) => row.postedDate), ["2025-12-20", "2026-01-03"]);
+});
+
+test("fails closed when Wells Fargo row totals do not reconcile to the statement summary", async () => {
+  const parsed = await parseBankStatement(representativePdf([
+    [
+      "Wells Fargo Everyday Checking",
+      "September 8, 2026 Page 1 of 1",
+      "Statement period activity summary                                      Account number: XXXX1259",
+      "Beginning balance on 8/10                                                 $0.00",
+      "Deposits/Additions                                                      200.00",
+      "Withdrawals/Subtractions                                               -23.17",
+      "Ending balance on 9/8                                                   $176.83",
+      "Transaction history",
+      "                         Check                                                                                 Deposits/        Withdrawals/       Ending daily",
+      "       Date             Number Description                                                                     Additions         Subtractions          balance",
+      "       8/12                    Synthetic deposit                                                                  199.99                                 199.99",
+      "       8/17                    Synthetic purchase                                                                                 23.17           176.82",
+      "      Totals                                                                                                 $200.00              $23.17",
+    ].join("\n"),
+  ]), "application/pdf");
+  assert.equal(parsed.errorKind, "row_parsing");
+  assert.match(parsed.errors.join(" "), /do not reconcile/i);
+  assert.deepEqual(parsed.rows, []);
+});

@@ -1,0 +1,9 @@
+# Default repository ownership
+* @Promote76
+
+# Financial, security, and release-sensitive surfaces
+/.github/ @Promote76
+/artifacts/api-server/ @Promote76
+/lib/db/ @Promote76
+/scripts/ @Promote76
+/docs/certification/ @Promote76

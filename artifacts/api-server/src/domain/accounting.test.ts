@@ -20,13 +20,52 @@ test("cross-view reconciliation keeps non-accounting scopes separate", () => {
     accountingNetWorthCents: 100_000,
     planningCapitalCents: 90_000,
     treasuryCapitalCents: 12_000,
+    internalPortfolioCapitalCents: 75_000,
     businessEquityCents: 50_000,
     propertyEquityCents: 300_000,
   });
   assert.equal(result.status, "RECONCILED");
-  assert.deepEqual(result.separateScopes.map((scope) => scope.scope), ["planning", "treasury", "business", "property"]);
-  assert.equal(result.separateScopes.reduce((sum, scope) => sum + scope.amountCents, 0), 452_000);
+  assert.deepEqual(
+    result.separateScopes.map((scope) => scope.scope),
+    ["planning", "treasury", "internal_portfolio", "business", "property"],
+  );
+  assert.equal(
+    result.separateScopes.reduce((sum, scope) => sum + (scope.amountCents ?? 0), 0),
+    527_000,
+  );
+  assert.ok(result.separateScopes.every((scope) => scope.status === "separate_scope"));
   assert.equal(result.accounting.netWorthCents, 100_000);
+});
+
+test("cross-view reconciliation never turns missing scopes into zero", () => {
+  const result = reconcileCrossViewTotals({
+    accountingAssetsCents: 10_000,
+    accountingLiabilitiesCents: 0,
+    accountingNetWorthCents: 10_000,
+    treasuryCapitalCents: 0,
+  });
+  const treasury = result.separateScopes.find((scope) => scope.scope === "treasury");
+  const portfolio = result.separateScopes.find((scope) => scope.scope === "internal_portfolio");
+  assert.deepEqual(treasury, { scope: "treasury", amountCents: 0, status: "separate_scope" });
+  assert.deepEqual(portfolio, { scope: "internal_portfolio", amountCents: null, status: "not_available" });
+});
+
+test("cross-view reconciliation can mark protected scopes restricted without leaking an amount", () => {
+  const result = reconcileCrossViewTotals({
+    accountingAssetsCents: 10_000,
+    accountingLiabilitiesCents: 0,
+    accountingNetWorthCents: 10_000,
+    treasuryCapitalCents: 7_500,
+    internalPortfolioCapitalCents: 8_500,
+    restrictedScopes: ["treasury", "internal_portfolio"],
+  });
+  assert.deepEqual(
+    result.separateScopes.filter((scope) => scope.status === "restricted"),
+    [
+      { scope: "treasury", amountCents: null, status: "restricted" },
+      { scope: "internal_portfolio", amountCents: null, status: "restricted" },
+    ],
+  );
 });
 
 test("cross-view reconciliation requires review when accounting arithmetic is wrong", () => {

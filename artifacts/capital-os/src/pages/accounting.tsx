@@ -26,6 +26,7 @@ import { Link } from "wouter";
 
 function money(value: string | null | undefined, fallback = "$0") {
   if (value === null || value === undefined || value === "") return fallback;
+  if (value === "REDACTED") return "Restricted";
   if (value === "NOT_AVAILABLE" || value === "UNKNOWN") return "Not available";
   const amount = Number(value);
   return Number.isFinite(amount)
@@ -344,7 +345,7 @@ function AccountingOverviewContent({
           <SectionHeading eyebrow="Reconciliation" title={reconciliation.ledgerBalanced ? "Ledger is balanced" : "Review needed"} detail="A balanced ledger connects account activity to the reported view." action={<span className={`status ${reconciliation.ledgerBalanced ? "" : "review"}`}>{reconciliation.ledgerBalanced ? <Check size={12} /> : <AlertTriangle size={12} />} {titleCase(reconciliation.status)}</span>} />
           <div className="reconciliation-facts"><div><strong>{reconciliation.accountsIncluded}</strong><span>accounts included</span></div><div><strong>{reconciliation.uncategorizedTransactions}</strong><span>uncategorized</span></div><div><strong>{reconciliation.staleAccounts}</strong><span>stale accounts</span></div></div>
           <div className="accounting-callout"><Scale size={14} /><span>{reconciliation.crossView.note}</span></div>
-          <div className="reconciliation-facts">{reconciliation.crossView.separateScopes.map((scope) => <div key={scope.scope}><strong>{scope.status === "separate_scope" ? "Separate" : money(scope.amount)}</strong><span>{titleCase(scope.scope)} scope</span></div>)}</div>
+          <div className="reconciliation-facts">{reconciliation.crossView.separateScopes.map((scope) => <div key={scope.scope}><strong>{money(scope.amount)}</strong><span>{titleCase(scope.scope)} · {titleCase(scope.status)}</span></div>)}</div>
           <Link href="/transactions" className="text-link accounting-inline-link">Review transactions <ArrowUpRight size={12} /></Link>
         </article>
       </section>

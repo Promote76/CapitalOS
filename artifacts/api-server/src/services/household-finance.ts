@@ -955,18 +955,27 @@ function currentPeriodTransactions(data: Awaited<ReturnType<typeof loadFinanceDa
   );
 }
 
-async function currentApprovedPlanningCategories(household: string, asOf = calendarToday()) {
-  const month = `${asOf.slice(0, 7)}-01`;
-  const [period] = await db.select().from(budgetPlanningPeriods).where(and(
+async function approvedPlanningCategoriesForMonth(
+  household: string,
+  targetMonth: string,
+  options: { allowPriorFinalized?: boolean } = {},
+) {
+  const finalizedPeriods = await db.select().from(budgetPlanningPeriods).where(and(
     eq(budgetPlanningPeriods.householdId, household),
-    eq(budgetPlanningPeriods.month, month),
     inArray(budgetPlanningPeriods.status, ["approved", "closed"]),
-  )).orderBy(desc(budgetPlanningPeriods.createdAt)).limit(1);
+  ));
+  const canonical = canonicalFinalizedPlanningPeriods(finalizedPeriods);
+  const period = canonical.find((candidate) => candidate.month === targetMonth)
+    ?? (options.allowPriorFinalized ? latestFinalizedPlanningPeriod(canonical, targetMonth) : undefined);
   if (!period) return null;
   const categories = await db.select().from(budgetPlanningCategorySnapshots)
     .where(and(eq(budgetPlanningCategorySnapshots.periodId, period.id), eq(budgetPlanningCategorySnapshots.archived, false)))
     .orderBy(budgetPlanningCategorySnapshots.sortOrder);
   return { period, categories };
+}
+
+async function currentApprovedPlanningCategories(household: string, asOf = calendarToday()) {
+  return approvedPlanningCategoriesForMonth(household, `${asOf.slice(0, 7)}-01`);
 }
 
 function financeDataConfidence(data: Awaited<ReturnType<typeof loadFinanceData>>) {
@@ -1130,9 +1139,14 @@ export async function getCashFlow(actor?: Actor) {
       .filter((source) => source.active && hasPayDateInPeriod(source, nextMonth.start, nextMonth.end, asOf))
       .reduce((sum, source) => sum + numeric(source.expectedMonthly), 0)
     : 0;
-  const nextMonthEssentialOutflow = data.categories
-    .filter((category) => category.essentialStatus === "essential" && category.categoryType !== "income")
-    .reduce((sum, category) => sum + numeric(category.monthlyTarget), 0);
+  const nextMonthPlan = nextMonth
+    ? await approvedPlanningCategoriesForMonth(data.id, nextMonth.start, { allowPriorFinalized: true })
+    : null;
+  const nextMonthEssentialOutflow = nextMonthPlan
+    ? nextMonthPlan.categories
+      .filter((category) => category.essentialStatus === "essential" && category.categoryType !== "income")
+      .reduce((sum, category) => sum + numeric(category.monthlyTarget), 0)
+    : 0;
   return {
     month: currentPeriod().label,
     metrics: cashFlow,

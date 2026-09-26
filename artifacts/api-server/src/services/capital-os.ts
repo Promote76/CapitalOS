@@ -249,18 +249,29 @@ export async function getPortfolio(actor: Actor) {
     current.credit += numeric(row.credit);
     ledgerTotals.set(row.transactionId, current);
   }
-  const ledgerBalanced = Array.from(ledgerTotals.values()).every((value) => value.debit === value.credit);
+  const ledgerBalanced = ledgerTotals.size > 0
+    && Array.from(ledgerTotals.values()).every((value) => value.debit > 0 && value.credit > 0 && value.debit === value.credit);
   const researchContext = await getApprovedFamilyOfficeResearchProjection(actor);
+  const advisorRestricted = actor.role === "advisor";
+  const advisorVisibleTotal = rows
+    .filter((row) => !row.protected)
+    .reduce((sum, row) => sum + numeric(row.balance), 0);
   return {
-    totalCapital: centsToMoney(totals.total),
-    protectedCapital: centsToMoney(totals.protected),
-    activeCapital: centsToMoney(totals.active),
-    cashReserve: centsToMoney(totals.cash),
+    totalCapital: advisorRestricted ? "REDACTED" : centsToMoney(totals.total),
+    protectedCapital: advisorRestricted ? "REDACTED" : centsToMoney(totals.protected),
+    activeCapital: advisorRestricted ? "REDACTED" : centsToMoney(totals.active),
+    cashReserve: advisorRestricted ? "REDACTED" : centsToMoney(totals.cash),
     ledgerBalanced,
     composition: rows.map((row) => ({
       label: row.name,
-      amount: row.balance,
-      percent: totals.total === 0 ? 0 : Number(((numeric(row.balance) / totals.total) * 100).toFixed(1)),
+      amount: advisorRestricted && row.protected ? "REDACTED" : row.balance,
+      percent: advisorRestricted
+        ? row.protected || advisorVisibleTotal === 0
+          ? 0
+          : Number(((numeric(row.balance) / advisorVisibleTotal) * 100).toFixed(1))
+        : totals.total === 0
+          ? 0
+          : Number(((numeric(row.balance) / totals.total) * 100).toFixed(1)),
     })),
     researchContext,
   };

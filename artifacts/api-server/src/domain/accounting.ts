@@ -19,24 +19,43 @@ export function calculateNetWorth(assetCents: number, liabilityCents: number) {
   return assetCents - liabilityCents;
 }
 
-export type CrossViewScope = "accounting" | "planning" | "treasury" | "business" | "property";
+export type CrossViewScope = "planning" | "treasury" | "internal_portfolio" | "business" | "property";
+export type CrossViewScopeStatus = "separate_scope" | "not_available" | "restricted";
+
+function externalScope(
+  scope: CrossViewScope,
+  amountCents: number | null | undefined,
+  restrictedScopes: ReadonlySet<CrossViewScope>,
+) {
+  if (restrictedScopes.has(scope)) {
+    return { scope, amountCents: null, status: "restricted" as const };
+  }
+  if (amountCents === null || amountCents === undefined) {
+    return { scope, amountCents: null, status: "not_available" as const };
+  }
+  return { scope, amountCents, status: "separate_scope" as const };
+}
 
 export function reconcileCrossViewTotals(input: {
   accountingNetWorthCents: number;
   accountingAssetsCents: number;
   accountingLiabilitiesCents: number;
-  planningCapitalCents?: number;
-  treasuryCapitalCents?: number;
-  businessEquityCents?: number;
-  propertyEquityCents?: number;
+  planningCapitalCents?: number | null;
+  treasuryCapitalCents?: number | null;
+  internalPortfolioCapitalCents?: number | null;
+  businessEquityCents?: number | null;
+  propertyEquityCents?: number | null;
+  restrictedScopes?: CrossViewScope[];
 }) {
   const accountingBalances = input.accountingAssetsCents - input.accountingLiabilitiesCents;
   const accountingReconciles = accountingBalances === input.accountingNetWorthCents;
-  const separateScopes: Array<{ scope: CrossViewScope; amountCents: number; status: "separate_scope" }> = [
-    { scope: "planning", amountCents: input.planningCapitalCents ?? 0, status: "separate_scope" },
-    { scope: "treasury", amountCents: input.treasuryCapitalCents ?? 0, status: "separate_scope" },
-    { scope: "business", amountCents: input.businessEquityCents ?? 0, status: "separate_scope" },
-    { scope: "property", amountCents: input.propertyEquityCents ?? 0, status: "separate_scope" },
+  const restrictedScopes = new Set(input.restrictedScopes ?? []);
+  const separateScopes = [
+    externalScope("planning", input.planningCapitalCents, restrictedScopes),
+    externalScope("treasury", input.treasuryCapitalCents, restrictedScopes),
+    externalScope("internal_portfolio", input.internalPortfolioCapitalCents, restrictedScopes),
+    externalScope("business", input.businessEquityCents, restrictedScopes),
+    externalScope("property", input.propertyEquityCents, restrictedScopes),
   ];
   return {
     status: accountingReconciles ? "RECONCILED" as const : "REVIEW_REQUIRED" as const,
@@ -47,7 +66,7 @@ export function reconcileCrossViewTotals(input: {
       reconciles: accountingReconciles,
     },
     separateScopes,
-    note: "Planning, Treasury, business, and property values are intentionally not aggregated into household accounting net worth.",
+    note: "Treasury and internal Portfolio are separate allocation scopes. Missing or restricted scopes remain explicit and are never treated as zero or added to household accounting net worth.",
   };
 }
 

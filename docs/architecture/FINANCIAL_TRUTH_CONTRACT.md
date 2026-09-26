@@ -44,6 +44,12 @@ display related values only when their source and scope are explicit.
    equity, and property equity are separate scopes unless a reconciliation layer
    explicitly proves how they consolidate.
 
+7. Accounting cross-view reconciliation may observe Treasury allocation totals and
+   internal Portfolio allocation totals, but must label them as separate scopes and
+   must not add them to household net worth. Missing scope data is `not_available`,
+   not zero. Protected scope observations are `restricted` for roles that cannot
+   view the underlying protected capital.
+
 ## Reconciliation requirements
 
 A cross-route reconciliation response must identify both value and scope. Missing

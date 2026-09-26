@@ -963,15 +963,10 @@ async function approvedPlanningCategoriesForMonth(
   const finalizedPeriods = await db.select().from(budgetPlanningPeriods).where(and(
     eq(budgetPlanningPeriods.householdId, household),
     inArray(budgetPlanningPeriods.status, ["approved", "closed"]),
-    options.allowPriorFinalized
-      ? sql`${budgetPlanningPeriods.month} <= ${targetMonth}`
-      : eq(budgetPlanningPeriods.month, targetMonth),
   ));
   const canonical = canonicalFinalizedPlanningPeriods(finalizedPeriods);
   const period = canonical.find((candidate) => candidate.month === targetMonth)
-    ?? (options.allowPriorFinalized
-      ? canonical.filter((candidate) => candidate.month < targetMonth).sort((left, right) => right.month.localeCompare(left.month))[0]
-      : undefined);
+    ?? (options.allowPriorFinalized ? latestFinalizedPlanningPeriod(canonical, targetMonth) : undefined);
   if (!period) return null;
   const categories = await db.select().from(budgetPlanningCategorySnapshots)
     .where(and(eq(budgetPlanningCategorySnapshots.periodId, period.id), eq(budgetPlanningCategorySnapshots.archived, false)))

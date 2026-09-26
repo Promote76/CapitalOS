@@ -1,5 +1,5 @@
 import { and, desc, eq, sql } from "drizzle-orm";
-import { db, financeCategories, financeSnapshots, financeTransactions, financialAccounts, financialDocuments, ledgerEntries, ledgerTransactions } from "@workspace/db";
+import { accounts, db, financeCategories, financeSnapshots, financeTransactions, financialAccounts, financialDocuments, ledgerEntries, ledgerTransactions, treasuryBuckets } from "@workspace/db";
 import { canViewFinancialBalance } from "../domain/household-finance";
 import { calculateNetWorth, calculateNetWorthAttribution, ledgerDebitsEqualCredits, reconcileCrossViewTotals, summarizeReviewedCashFlow } from "../domain/accounting";
 import type { Actor } from "./capital-os";
@@ -23,7 +23,7 @@ function categoryName(category: { id: string; name: string } | undefined) {
 
 export async function getAccountingOverview(actor: Actor) {
   const householdId = actor.householdId;
-  const [accountRows, transactions, categories, snapshots, ledgerRows, reviewedDocuments] = await Promise.all([
+  const [accountRows, transactions, categories, snapshots, ledgerRows, reviewedDocuments, internalCapitalRows, treasuryRows] = await Promise.all([
     db.select().from(financialAccounts).where(eq(financialAccounts.householdId, householdId)),
     db.select().from(financeTransactions).where(eq(financeTransactions.householdId, householdId)),
     db.select({ id: financeCategories.id, name: financeCategories.name, categoryType: financeCategories.categoryType }).from(financeCategories).where(eq(financeCategories.householdId, householdId)),
@@ -39,6 +39,18 @@ export async function getAccountingOverview(actor: Actor) {
       eq(financialDocuments.householdId, householdId),
       sql`upper(${financialDocuments.status}) = 'VERIFIED'`,
     )),
+    db.select({
+      balance: accounts.balance,
+      accountType: accounts.accountType,
+      protected: accounts.protected,
+    }).from(accounts).where(and(
+      eq(accounts.householdId, householdId),
+      eq(accounts.executionOnly, false),
+    )),
+    db.select({
+      currentBalance: treasuryBuckets.currentBalance,
+      protected: treasuryBuckets.protected,
+    }).from(treasuryBuckets).where(eq(treasuryBuckets.householdId, householdId)),
   ]);
 
   const visibleRows = accountRows.filter((account) => account.includedInNetWorth && canViewFinancialBalance(actor.role, account.protected));
@@ -128,10 +140,20 @@ export async function getAccountingOverview(actor: Actor) {
   const ledgerBalanced = ledgerDebitsEqualCredits(
     Array.from(ledgerTotals.values()).map((total) => ({ debitCents: total.debit, creditCents: total.credit })),
   );
+  const internalPortfolioCapital = internalCapitalRows
+    .filter((account) => account.accountType !== "treasury")
+    .reduce((sum, account) => sum + cents(account.balance), 0);
+  const treasuryCapital = treasuryRows.reduce((sum, bucket) => sum + cents(bucket.currentBalance), 0);
+  const restrictedCrossViewScopes = actor.role === "advisor"
+    ? ["treasury", "internal_portfolio"] as const
+    : [];
   const crossView = reconcileCrossViewTotals({
     accountingAssetsCents: totalAssets,
     accountingLiabilitiesCents: totalLiabilities,
     accountingNetWorthCents: netWorth,
+    treasuryCapitalCents: treasuryCapital,
+    internalPortfolioCapitalCents: internalPortfolioCapital,
+    restrictedScopes: [...restrictedCrossViewScopes],
   });
   const dataConfidence = Math.max(0, Math.min(100, 94 - uncategorized * 3 - staleAccounts * 4 - (ledgerBalanced ? 0 : 20)));
   const previousSnapshot = snapshots.find((row) => row.snapshotDate < period);
@@ -225,7 +247,11 @@ export async function getAccountingOverview(actor: Actor) {
         accountingNetWorth: money(crossView.accounting.netWorthCents),
         separateScopes: crossView.separateScopes.map((scope) => ({
           scope: scope.scope,
-          amount: money(scope.amountCents),
+          amount: scope.status === "restricted"
+            ? "REDACTED"
+            : scope.amountCents === null
+              ? NOT_AVAILABLE
+              : money(scope.amountCents),
           status: scope.status,
         })),
         note: crossView.note,

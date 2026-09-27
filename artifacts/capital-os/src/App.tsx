@@ -1078,8 +1078,10 @@ function PortfolioPage() {
   const [agentAnswer, setAgentAnswer] = useState<Awaited<ReturnType<typeof portfolioAgent.mutateAsync>> | null>(null);
   const state = researchContextUiState(query);
   if (state === "loading") return <main className="content"><div className="card card-pad">Loading portfolio…</div></main>;
-  if (state === "error" || !query.data) return <main className="content"><div className="card card-pad" role="alert">Portfolio data is temporarily unavailable. Try again in a moment.</div></main>;
+  if (state === "error" || !query.data) return <main className="content"><PageHeading eyebrow="Plan / portfolio" title={<>Know what is<br /><em>carrying the load.</em></>} description="Internal capital allocation and read-only brokerage observations remain separate by design." /><section className="card card-pad page-section finance-route-error" role="alert"><AlertTriangle size={16} /><div><strong>Portfolio data is temporarily unavailable</strong><span>No internal-capital totals are inferred while the Portfolio service is unavailable.</span></div><button className="btn btn-secondary" onClick={() => { void query.refetch(); }}>Try again</button></section></main>;
   const data = query.data;
+  const internalRestricted = data.totalCapital === 'REDACTED';
+  const internalComposition = data.composition ?? [];
   const observation = observationQuery.data;
   const snapshot = observation?.snapshot;
   const summary = snapshot?.summary;
@@ -1138,11 +1140,41 @@ function PortfolioPage() {
       setObservationMessage(error instanceof Error ? error.message : 'The Schwab observation could not be refreshed.');
     }
   };
+  const exportPortfolioSnapshot = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      scope: 'capital-os-read-only-portfolio',
+      internalCapital: data,
+      schwabObservation: observation ?? null,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `capital-os-portfolio-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
   return <main className="content">
-    <PageHeading eyebrow="Plan / portfolio" title={<>Know what is<br /><em>carrying the load.</em></>} description="A composed view of where your family capital sits today—not a screen that asks you to react." actions={<button className="btn feedback-only-control" data-testid="button-portfolio-export" title="Export is coming soon" disabled><ArrowDownLeft size={15} /> Export snapshot <span className="feedback-only-label">coming soon</span></button>} />
+    <PageHeading eyebrow="Plan / portfolio" title={<>Know what is<br /><em>carrying the load.</em></>} description="Internal strategic capital and read-only brokerage observations are shown as separate scopes so neither is mistaken for household bank-account authority." actions={<button className="btn" data-testid="button-portfolio-export" type="button" onClick={exportPortfolioSnapshot}><ArrowDownLeft size={15} /> Export snapshot</button>} />
     <div className="portfolio-split">
-       <section className="card card-pad animate-in delay-1"><CardTitle title="Household capital composition" subtitle="Real household balances required" /><div className="finance-empty-state"><strong>Demo balances hidden</strong><span>Capital OS is not showing seeded household amounts here. Add a real household balance source to populate this view.</span></div></section>
-       <section className="card card-pad animate-in delay-1"><CardTitle title="Resilience check" subtitle="Real household balances required before planning totals are shown." /><div className="finance-empty-state"><strong>Awaiting verified household balances</strong><span>Protected capital, active capital, and cash reserve totals are hidden until they come from a real household source.</span></div></section>
+       <section className="card card-pad animate-in delay-1">
+         <CardTitle title="Internal capital allocation" subtitle="Strategic allocation scope · separate from household financial accounts" />
+         <div className="observed-summary-grid">
+           <div><span>Total internal capital</span><strong>{displayScopedMoney(data.totalCapital)}</strong><small>Core allocation accounts only</small></div>
+           <div><span>Protected capital</span><strong>{displayScopedMoney(data.protectedCapital)}</strong><small>Ring-fenced internal allocation</small></div>
+           <div><span>Active capital</span><strong>{displayScopedMoney(data.activeCapital)}</strong><small>Active and strategy sleeves</small></div>
+           <div><span>Cash reserve</span><strong>{displayScopedMoney(data.cashReserve)}</strong><small>Internal reserve sleeves</small></div>
+         </div>
+         <div className="finance-note"><ShieldCheck size={16} /><span>These values come from Capital OS internal allocation accounts. They are not silently added to Accounting net worth and are not Schwab balances.</span></div>
+       </section>
+       <section className="card card-pad animate-in delay-1">
+         <CardTitle title="Internal ledger integrity" subtitle="A balanced result requires actual non-empty debit/credit evidence." />
+         <div className="reserve-figure"><strong>{data.ledgerBalanced ? 'Balanced' : 'Review'}</strong><span>capital ledger</span></div>
+         <div className="finance-note">{data.ledgerBalanced ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}<span>{data.ledgerBalanced ? 'Internal capital movements reconcile.' : 'No valid balanced ledger evidence is currently established; review before relying on movement history.'}</span></div>
+       </section>
     </div>
      <section className="card card-pad page-section">
        <CardTitle title="Schwab observed portfolio" subtitle={snapshot ? `Provider market values · ${displayObservationTimestamp(snapshot.capturedAt)}` : 'No synced Schwab market values'} action={<Link href="/integrations/schwab" className="text-link">Open Schwab connection</Link>} />
@@ -1163,7 +1195,10 @@ function PortfolioPage() {
           </div>
         </> : <div className="finance-empty-state">A live Schwab snapshot with market values is required before this chart can show real broker numbers. It will remain separate from household capital.</div>}
      </section>
-     <section className="card card-pad page-section"><CardTitle title="Accounts & sleeves" subtitle="Seeded household balances hidden" /><div className="finance-empty-state"><strong>No verified household balances to show</strong><span>The existing development household contains demo values, so they are intentionally excluded from this Portfolio view.</span></div></section>
+     <section className="card card-pad page-section">
+       <CardTitle title="Internal accounts & sleeves" subtitle="Same governed allocation scope returned by the Portfolio backend" />
+       {internalRestricted ? <div className="finance-empty-state"><strong>Restricted</strong><span>Your role cannot view protected aggregate capital in this scope.</span></div> : internalComposition.length === 0 ? <div className="finance-empty-state"><strong>No internal allocation rows</strong><span>No non-Treasury internal capital accounts are currently available to display.</span></div> : <div className="holding-list">{internalComposition.map((holding) => <div className="holding-row" key={holding.label}><span>{holding.label}</span><strong>{displayScopedMoney(holding.amount)}</strong><b>{holding.percent}%</b></div>)}</div>}
+     </section>
      <section className="card card-pad page-section">
        <CardTitle
          title="Schwab observed holdings"

@@ -15,9 +15,11 @@ import { researchContextUiState } from './research-context-state';
 import {
   createContribution,
   useGetCashFlow,
+  getGetCashFlowQueryKey,
   useGetFinanceInsights,
   useGetSafeToDeploy,
   useGetCapitalGovernorV2,
+  getGetCapitalGovernorV2QueryKey,
   useListFinancialAccounts,
   useCreateManualFinancialAccount,
   useCreateManualFinanceTransaction,
@@ -36,7 +38,9 @@ import {
   useReviewFinancialTransaction,
   getListTransactionReviewQueueQueryKey,
   useGetBudget,
+  getGetBudgetQueryKey,
   useGetVariableBudgetIntelligence,
+  getGetVariableBudgetIntelligenceQueryKey,
   useCreateVehicleScenario,
   useGetBudgetPlanningPeriod,
   useCreateBudgetPlanningPeriod,
@@ -149,7 +153,9 @@ import {
   type TransactionReviewInput,
   type BankConnection,
   type FinancialAccount,
+  getGetAccountingOverviewQueryKey,
   useGetTreasury,
+  getGetTreasuryQueryKey,
   useGetFamilyOffice,
   useCreateFamilyOfficeResearch,
   useDecideFamilyOfficeProposal,
@@ -1178,7 +1184,7 @@ function PortfolioPage() {
     </div>
      <section className="card card-pad page-section">
        <CardTitle title="Schwab observed portfolio" subtitle={snapshot ? `Provider market values · ${displayObservationTimestamp(snapshot.capturedAt)}` : 'No synced Schwab market values'} action={<Link href="/integrations/schwab" className="text-link">Open Schwab connection</Link>} />
-        {observedTotal > 0 ? <>
+        {observationQuery.isLoading ? <div className="finance-empty-state" role="status">Loading the latest Schwab market-value snapshot…</div> : observationQuery.isError ? <div className="finance-empty-state" role="alert"><strong>Schwab summary unavailable</strong><span>The internal Portfolio above remains valid; broker observations could not be loaded.</span><button className="btn btn-secondary btn-sm" onClick={() => { void observationQuery.refetch(); }}>Retry Schwab read</button></div> : observedTotal > 0 ? <>
           <div className="observed-summary-grid">
             <div><span>Total account value</span><strong>{displayObservationValue(summary?.totalAccountValue, '$')}</strong><small>Investments plus brokerage cash</small></div>
             <div><span>Invested market value</span><strong>{displayObservationValue(summary?.investedMarketValue, '$')}</strong><small>{snapshot?.positions.length ?? 0} current positions</small></div>
@@ -1612,6 +1618,10 @@ function ContributionDetailView({ periodId, categoryId, onClose }: { periodId: s
 function BudgetPlanningControlCenter() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const household = useGetHousehold();
+  const permissions = household.data?.permissions ?? [];
+  const canContribute = permissions.includes('contribute');
+  const canApprove = permissions.includes('approve');
 
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const requestedMonth = new URLSearchParams(window.location.search).get('month');
@@ -1734,6 +1744,10 @@ function BudgetPlanningControlCenter() {
   };
 
   const handleApprove = async (period: BudgetPlanningPeriod) => {
+    if (!canApprove) {
+      toast({ variant: 'destructive', title: 'Approver permission required' });
+      return;
+    }
     if (!builderLayersComplete || plannedOutflowCents !== plannedIncomeCents) {
       toast({ variant: 'destructive', title: 'Plan layers incomplete', description: plannedOutflowCents !== plannedIncomeCents ? 'Assign all planned income before approval.' : 'Complete income, obligations, essentials, reserves, discretionary spending, and a named capital goal before approval.' });
       return;
@@ -1750,9 +1764,13 @@ function BudgetPlanningControlCenter() {
       queryClient.invalidateQueries({ queryKey: getListBudgetPlanningHistoryQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningComparisonQueryKey(selectedMonth) });
       queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningChangeHistoryQueryKey(period.id) });
-      queryClient.invalidateQueries({ queryKey: ['/api/budget'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/safe-to-deploy'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/cash-flow'] });
+      queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetSafeToDeployQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetCashFlowQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetVariableBudgetIntelligenceQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetCapitalGovernorV2QueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetAccountingOverviewQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetTreasuryQueryKey() });
       toast({ title: 'Plan approved' });
     } catch (err: unknown) {
       handleMutationError(err, 'Approval');
@@ -1760,6 +1778,10 @@ function BudgetPlanningControlCenter() {
   };
 
   const handleCreatePlan = async () => {
+    if (!canContribute) {
+      toast({ variant: 'destructive', title: 'Contributor permission required' });
+      return;
+    }
     try {
       await createPeriod.mutateAsync({ month: selectedMonth });
       await Promise.all([
@@ -1774,6 +1796,10 @@ function BudgetPlanningControlCenter() {
   };
 
   const handleCreateCorrection = async (periodId: string) => {
+    if (!canContribute) {
+      toast({ variant: 'destructive', title: 'Contributor permission required' });
+      return;
+    }
     try {
       await createSupersedingPeriod.mutateAsync({ periodId });
       idempotencyKeys.current.supersede = crypto.randomUUID();
@@ -1789,6 +1815,10 @@ function BudgetPlanningControlCenter() {
   };
 
   const handleClose = async (period: BudgetPlanningPeriod) => {
+    if (!canApprove) {
+      toast({ variant: 'destructive', title: 'Approver permission required' });
+      return;
+    }
     if (!confirm('Close this plan?')) return;
     try {
       await submitClose(period.id, period.version);
@@ -1804,7 +1834,7 @@ function BudgetPlanningControlCenter() {
   };
 
   const handleMove = async (index: number, direction: 'up' | 'down') => {
-    if (!periodQuery.data) return;
+    if (!canContribute || !periodQuery.data) return;
     const period = periodQuery.data;
     const categories = [...activeCategories];
 
@@ -1826,6 +1856,7 @@ function BudgetPlanningControlCenter() {
       queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningPeriodQueryKey(selectedMonth) });
       if (period.id) {
          queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningChangeHistoryQueryKey(period.id) });
+         queryClient.invalidateQueries({ queryKey: getGetWeeklyBudgetGuidanceQueryKey(period.id) });
       }
     } catch (err: unknown) {
       handleMutationError(err, 'Reorder');
@@ -1833,6 +1864,10 @@ function BudgetPlanningControlCenter() {
   };
 
   const handleAcceptGuidance = async (periodId: string, version: number, categoryIds: string[], fingerprint: string) => {
+    if (!canApprove) {
+      toast({ variant: 'destructive', title: 'Approver permission required' });
+      return;
+    }
     try {
       await acceptGuidance.mutateAsync({
         periodId,
@@ -1849,6 +1884,10 @@ function BudgetPlanningControlCenter() {
   };
 
   const handleSaveAllocations = async () => {
+    if (!canApprove) {
+      setAllocationError('Approver permission is required to save the allocation template.');
+      return;
+    }
     const period = periodQuery.data;
     if (!period || period.status !== 'draft') return;
     if (!allocationTemplateValid) {
@@ -1903,6 +1942,12 @@ function BudgetPlanningControlCenter() {
         </div>
       </div>
 
+      {household.isLoading && <div className="finance-data-banner" role="status"><div className="finance-data-banner-icon"><Activity size={16} /></div><div><strong>Loading Budget permissions</strong><span>Mutation controls remain disabled until household permissions are confirmed.</span></div></div>}
+      {household.isError && <div className="finance-empty-state" role="alert"><strong>Budget permissions are unavailable</strong><span>Planning data remains readable, but mutation controls are disabled until permissions can be confirmed.</span><button className="btn btn-secondary" onClick={() => { void household.refetch(); }}>Retry permissions</button></div>}
+      {!household.isLoading && !household.isError && !canContribute && !canApprove && <div className="business-review-permission-note"><ShieldCheck size={14} /> Read-only planning view. Contributor or approver permission is required to change this plan.</div>}
+
+      {comparisonQuery.isLoading && <div className="budget-skeleton" role="status"><div className="skeleton" style={{ minHeight: '72px' }} /></div>}
+      {comparisonQuery.isError && <div className="finance-empty-state" role="alert"><strong>Budget comparison unavailable</strong><span>Monthly planning remains available, but quarter/year comparisons could not be loaded.</span><button className="btn btn-secondary" onClick={() => { void comparisonQuery.refetch(); }}>Retry comparison</button></div>}
       {comparisonQuery.isSuccess && comparisonQuery.data && (
         <div className="finance-grid planning-comparison-grid">
           <div className="metric-card blue">
@@ -1937,9 +1982,9 @@ function BudgetPlanningControlCenter() {
           <ClipboardList size={28} />
           <strong>No plan for {formatMonth(selectedMonth)}</strong>
           <span>Create a draft and work through income, obligations, essentials, reserves, discretionary spending, capital surplus, review, and approval.</span>
-          <button className="btn btn-primary" data-testid="button-create-budget-plan" disabled={createPeriod.isPending} onClick={() => void handleCreatePlan()}>
+          {canContribute ? <button className="btn btn-primary" data-testid="button-create-budget-plan" disabled={createPeriod.isPending} onClick={() => void handleCreatePlan()}>
             <Plus size={14} /> {createPeriod.isPending ? 'Creating…' : 'Create Plan'}
-          </button>
+          </button> : <span className="document-pending-note">Contributor permission is required to create a plan.</span>}
         </div>
       ) : periodQuery.data && (
         <div className="planning-period-content">
@@ -1952,14 +1997,14 @@ function BudgetPlanningControlCenter() {
              <div className="planning-actions">
                 {periodQuery.data.status === 'draft' && (
                   <>
-                    <button onClick={() => setEditingCategory('new')} className="btn btn-secondary btn-sm"><Plus size={14} /> Category</button>
-                     <button onClick={() => handleApprove(periodQuery.data!)} disabled={approvePeriod.isPending || !persistedAllocationTemplateValid} title={persistedAllocationTemplateValid ? 'Approve this plan' : 'Save a complete 100.00% allocation template before approval'} className="btn btn-primary btn-sm"><Check size={14} /> Approve</button>
+                    {canContribute && <button onClick={() => setEditingCategory('new')} className="btn btn-secondary btn-sm"><Plus size={14} /> Category</button>}
+                     {canApprove && <button onClick={() => handleApprove(periodQuery.data!)} disabled={approvePeriod.isPending || !persistedAllocationTemplateValid} title={persistedAllocationTemplateValid ? 'Approve this plan' : 'Save a complete 100.00% allocation template before approval'} className="btn btn-primary btn-sm"><Check size={14} /> Approve</button>}
                   </>
                 )}
                 {periodQuery.data.status === 'approved' && (
                   <>
-                    <button onClick={() => void handleCreateCorrection(periodQuery.data!.id)} disabled={createSupersedingPeriod.isPending} className="btn btn-primary btn-sm"><Pencil size={14} /> Create correction draft</button>
-                    <button onClick={() => handleClose(periodQuery.data!)} disabled={closePeriod.isPending} className="btn btn-secondary btn-sm"><Lock size={14} /> Close Period</button>
+                    {canContribute && <button onClick={() => void handleCreateCorrection(periodQuery.data!.id)} disabled={createSupersedingPeriod.isPending} className="btn btn-primary btn-sm"><Pencil size={14} /> Create correction draft</button>}
+                    {canApprove && <button onClick={() => handleClose(periodQuery.data!)} disabled={closePeriod.isPending} className="btn btn-secondary btn-sm"><Lock size={14} /> Close Period</button>}
                   </>
                 )}
              </div>
@@ -1995,7 +2040,7 @@ function BudgetPlanningControlCenter() {
                 {builderStep < 6 && (
                   <>
                     <p>Add or edit categories below for this layer. Category type and essential status determine where each target belongs; a single rent or category target never counts as the whole plan.</p>
-                    {periodQuery.data.status === 'draft' && <button className="btn btn-secondary btn-sm" onClick={() => setEditingCategory('new')}><Plus size={14} /> Add {builderSteps[builderStep].title.toLowerCase()} category</button>}
+                    {periodQuery.data.status === 'draft' && canContribute && <button className="btn btn-secondary btn-sm" onClick={() => setEditingCategory('new')}><Plus size={14} /> Add {builderSteps[builderStep].title.toLowerCase()} category</button>}
                   </>
                 )}
                 {builderStep === 6 && (
@@ -2006,7 +2051,7 @@ function BudgetPlanningControlCenter() {
                     <div><span>Weekly allocation</span><strong>{(persistedAllocationTotal / 100).toFixed(2)}%</strong></div>
                   </div>
                 )}
-                {builderStep === 7 && periodQuery.data.status === 'draft' && (
+                {builderStep === 7 && periodQuery.data.status === 'draft' && canApprove && (
                   <button className="btn btn-primary" disabled={approvePeriod.isPending || !builderLayersComplete || plannedOutflowCents !== plannedIncomeCents || !persistedAllocationTemplateValid} onClick={() => void handleApprove(periodQuery.data!)}>
                     <Check size={14} /> Approve immutable plan
                   </button>
@@ -2094,7 +2139,7 @@ function BudgetPlanningControlCenter() {
                                  max="100"
                                  step="0.01"
                                  value={allocationPercentages[category.id] ?? ''}
-                                 disabled={periodQuery.data!.status !== 'draft' || updateAllocations.isPending}
+                                 disabled={periodQuery.data!.status !== 'draft' || !canApprove || updateAllocations.isPending}
                                  onChange={event => {
                                    setAllocationPercentages(current => ({ ...current, [category.id]: event.target.value }));
                                    setAllocationError(null);
@@ -2107,7 +2152,7 @@ function BudgetPlanningControlCenter() {
                        </div>
                        {allocationError && <div role="alert" style={{ marginTop: '10px', color: 'var(--color-critical)' }}>{allocationError}</div>}
                        {periodQuery.data.status === 'draft' ? (
-                         <button className="btn btn-secondary btn-sm" style={{ marginTop: '12px' }} disabled={!allocationTemplateValid || updateAllocations.isPending} onClick={() => void handleSaveAllocations()}>
+                         <button className="btn btn-secondary btn-sm" style={{ marginTop: '12px' }} disabled={!canApprove || !allocationTemplateValid || updateAllocations.isPending} onClick={() => void handleSaveAllocations()}>
                            {updateAllocations.isPending ? 'Saving…' : 'Save 100% allocation'}
                          </button>
                        ) : (
@@ -2115,7 +2160,7 @@ function BudgetPlanningControlCenter() {
                        )}
                      </div>
 
-                    {periodQuery.data.status === 'draft' && (
+                    {periodQuery.data.status === 'draft' && canApprove && (
                       <div style={{ marginTop: '4px' }}>
                          <button
                            className="btn btn-primary"
@@ -2155,7 +2200,7 @@ function BudgetPlanningControlCenter() {
                         </div>
                         <div className="planning-row-actions">
                            <button className="btn btn-secondary btn-sm" onClick={() => setDetailCategory(cat)} aria-label={`View Contributions`} title="View Contributions"><BarChart3 size={14} /></button>
-                           {periodQuery.data && periodQuery.data.status === 'draft' && (
+                           {periodQuery.data && periodQuery.data.status === 'draft' && canContribute && (
                              <>
                                <button className="btn btn-secondary btn-sm" onClick={() => setEditingCategory(cat)} aria-label={`Edit`} title="Edit Category"><Pencil size={14} /></button>
                                <button className="btn btn-secondary btn-sm" onClick={() => handleMove(i, 'up')} disabled={i === 0 || reorderCategories.isPending} aria-label={`Move Up`} title="Move Up">↑</button>
@@ -2193,7 +2238,7 @@ function BudgetPlanningControlCenter() {
                                 </div>
                              </div>
 
-                              {periodQuery.data && periodQuery.data.status === 'draft' && gCat.eligible && gCat.recommendedMonthly !== null && (
+                              {periodQuery.data && periodQuery.data.status === 'draft' && canApprove && gCat.eligible && gCat.recommendedMonthly !== null && (
                                <div className="planning-guidance-metric" style={{ justifyContent: 'center', alignItems: 'flex-end' }}>
                                   <button
                                     className="btn btn-secondary btn-sm"
@@ -2251,7 +2296,7 @@ function BudgetPlanningControlCenter() {
                             </div>
                             <div className="planning-row-actions">
                                <button className="btn btn-secondary btn-sm" onClick={() => setDetailCategory(cat)} aria-label={`View Contributions for ${cat.name}`} title="View Contributions"><BarChart3 size={14} /></button>
-                               {periodQuery.data!.status === 'draft' && (
+                               {periodQuery.data!.status === 'draft' && canContribute && (
                                  <button className="btn btn-secondary btn-sm" onClick={() => setEditingCategory(cat)} aria-label={`Edit ${cat.name}`} title="Edit Category"><Pencil size={14} /></button>
                                )}
                             </div>
@@ -2311,7 +2356,7 @@ function BudgetPlanningControlCenter() {
         </div>
       )}
 
-      {editingCategory && periodQuery.data && (
+      {editingCategory && periodQuery.data && canContribute && (
         <div className="planning-modal-overlay" role="dialog" aria-labelledby="category-modal-title" aria-modal="true">
           <div className="planning-modal-content">
             <div className="card-pad" style={{ borderBottom: '1px solid var(--border-default)' }} id="category-modal-title"><CardTitle title={editingCategory === 'new' ? 'New Category' : 'Edit Category'} /></div>
@@ -2323,6 +2368,9 @@ function BudgetPlanningControlCenter() {
                  setEditingCategory(null);
                  queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningPeriodQueryKey(selectedMonth) });
                  queryClient.invalidateQueries({ queryKey: getGetBudgetPlanningChangeHistoryQueryKey(periodQuery.data!.id) });
+                 queryClient.invalidateQueries({ queryKey: getGetWeeklyBudgetGuidanceQueryKey(periodQuery.data!.id) });
+                 queryClient.invalidateQueries({ queryKey: getGetVariableBudgetIntelligenceQueryKey() });
+                 queryClient.invalidateQueries({ queryKey: getGetCapitalGovernorV2QueryKey() });
               }}
               onError={(err) => handleMutationError(err, 'Save Category')}
             />
@@ -2344,6 +2392,9 @@ function BudgetPlanningControlCenter() {
 
 function ActiveBudgetPage() {
   const [, setLocation] = useLocation();
+  const household = useGetHousehold();
+  const permissions = household.data?.permissions ?? [];
+  const canContribute = permissions.includes('contribute');
   const query = useGetBudget();
   const safe = useGetSafeToDeploy();
   const capitalGovernor = useGetCapitalGovernorV2();
@@ -2434,9 +2485,14 @@ function ActiveBudgetPage() {
         },
       });
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['/api/budget'] }),
-        queryClient.invalidateQueries({ queryKey: ['/api/cash-flow'] }),
-        queryClient.invalidateQueries({ queryKey: ['/api/safe-to-deploy'] }),
+        queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetCashFlowQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetSafeToDeployQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetVariableBudgetIntelligenceQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetCapitalGovernorV2QueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetAccountingOverviewQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetTreasuryQueryKey() }),
+        queryClient.invalidateQueries({ predicate: (query) => String(query.queryKey[0] ?? '').includes('/weekly-guidance') }),
         queryClient.invalidateQueries({ queryKey: getListTransactionReviewQueueQueryKey() }),
       ]);
       setTransaction((current) => ({ ...current, amount: '', description: '', merchant: '' }));
@@ -2467,7 +2523,7 @@ function ActiveBudgetPage() {
     </section>
     <section className="card card-pad page-section animate-in">
       <CardTitle title="Record a transaction" subtitle="Enter it once, then review it before it reaches your budget or Safe-to-Deploy." />
-      {accounts.isLoading ? <div className="finance-empty-state" role="status"><strong>Loading household accounts</strong><span>The transaction form will be ready when account ownership is confirmed.</span></div> : accounts.isError ? <div className="finance-empty-state" role="alert"><strong>Accounts are temporarily unavailable</strong><span>A transaction cannot be attributed safely until accounts load.</span><button className="btn btn-secondary" onClick={() => { void accounts.refetch(); }} data-testid="button-retry-budget-accounts">Try again</button></div> : !accountsAvailable ? <div className="finance-empty-state"><strong>Add an account first</strong><span>Transactions need a household account so balances and history stay attributable.</span><Link className="btn btn-secondary" href="/accounts">Open accounts</Link></div> : <form className="account-form transaction-form" onSubmit={submitTransaction}>
+      {household.isLoading ? <div className="finance-empty-state" role="status"><strong>Loading household permissions</strong><span>The transaction form will be available after permissions are confirmed.</span></div> : household.isError ? <div className="finance-empty-state" role="alert"><strong>Household permissions are unavailable</strong><span>Transaction entry is disabled until permissions can be confirmed.</span><button className="btn btn-secondary" onClick={() => { void household.refetch(); }}>Retry permissions</button></div> : !canContribute ? <div className="finance-empty-state"><strong>Read-only transaction view</strong><span>Contributor permission is required to add a manual transaction.</span></div> : accounts.isLoading ? <div className="finance-empty-state" role="status"><strong>Loading household accounts</strong><span>The transaction form will be ready when account ownership is confirmed.</span></div> : accounts.isError ? <div className="finance-empty-state" role="alert"><strong>Accounts are temporarily unavailable</strong><span>A transaction cannot be attributed safely until accounts load.</span><button className="btn btn-secondary" onClick={() => { void accounts.refetch(); }} data-testid="button-retry-budget-accounts">Try again</button></div> : !accountsAvailable ? <div className="finance-empty-state"><strong>Add an account first</strong><span>Transactions need a household account so balances and history stay attributable.</span><Link className="btn btn-secondary" href="/accounts">Open accounts</Link></div> : <form className="account-form transaction-form" onSubmit={submitTransaction}>
         <div className="field"><label htmlFor="budget-transaction-account">Account</label><select id="budget-transaction-account" required value={transaction.accountId} onChange={(event) => setTransaction({ ...transaction, accountId: event.target.value })}><option value="" disabled>Select an account</option>{(accounts.data?.accounts ?? []).map((account) => <option value={account.id} key={account.id}>{account.nickname} · {account.institution}</option>)}</select></div>
         <div className="field"><label htmlFor="budget-transaction-date">Date</label><input id="budget-transaction-date" required type="date" value={transaction.transactionDate} onChange={(event) => setTransaction({ ...transaction, transactionDate: event.target.value })} /></div>
         <div className="field"><label htmlFor="budget-transaction-direction">Type</label><select id="budget-transaction-direction" value={transaction.direction} onChange={(event) => setTransaction({ ...transaction, direction: event.target.value as 'inflow' | 'outflow' })}><option value="outflow">Money out</option><option value="inflow">Money in</option></select></div>
@@ -2554,7 +2610,7 @@ function ActiveBudgetPage() {
             <div className="forecast-strip">{[7, 14, 30, 60, 90].map((days) => <div className="forecast-card" key={days}><span>{days} days</span>{variableBudget.data.forecast.filter((row) => row.days === days).map((row) => <details key={`${days}-${row.scenario}`}><summary><small>{row.scenario}</small><strong>{displayMoney(row.endingProjectedCash, 'NOT CALCULATED')}</strong><em className={row.status !== 'HEALTHY' ? 'warning' : ''}>{row.status.replaceAll('_', ' ').toLowerCase()}</em></summary><div>{row.calculationRows.length ? row.calculationRows.map((item) => <small key={item.key}>{item.operation === 'SUBTRACT' ? '−' : '+'} {item.label}: {displayMoney(item.amount, 'NOT CALCULATED')} · {item.source}</small>) : <small>{row.explanation}</small>}<small>Buffer shortfall: {displayMoney(row.bufferShortfall, 'NOT CALCULATED')}</small></div></details>)}</div>)}</div>
           </div>
           <div className="variable-budget-vehicle"><div className="variable-budget-section-heading"><div><span className="eyebrow">Vehicle affordability</span><strong>Model the full monthly cost before it becomes a commitment.</strong></div></div>
-            <form className="account-form transaction-form" onSubmit={async (event) => {
+            {!canContribute ? <div className="finance-empty-state"><strong>Read-only scenario view</strong><span>Contributor permission is required to save a vehicle scenario.</span></div> : <form className="account-form transaction-form" onSubmit={async (event) => {
               event.preventDefault();
               setVehicleScenarioMessage('');
               setVehicleScenarioError('');
@@ -2599,7 +2655,7 @@ function ActiveBudgetPage() {
               <div className="field"><label htmlFor="variable-vehicle-parking">Parking &amp; tolls</label><input id="variable-vehicle-parking" required inputMode="decimal" value={vehicleScenario.parkingTolls} onChange={(event) => setVehicleScenario({ ...vehicleScenario, parkingTolls: event.target.value })} placeholder="0.00" /></div>
               <div className="field"><label htmlFor="variable-vehicle-other">Other monthly cost</label><input id="variable-vehicle-other" required inputMode="decimal" value={vehicleScenario.otherMonthlyCost} onChange={(event) => setVehicleScenario({ ...vehicleScenario, otherMonthlyCost: event.target.value })} placeholder="0.00" /></div>
               <div className="modal-actions"><button className="btn btn-primary" type="submit" disabled={createVehicleScenario.isPending}>{createVehicleScenario.isPending ? 'Modeling…' : 'Save scenario'}</button></div>
-            </form>
+            </form>}
             {vehicleScenarioMessage && <div className="form-feedback" role="status">{vehicleScenarioMessage}</div>}
             {vehicleScenarioError && <div className="form-feedback error" role="alert">{vehicleScenarioError}</div>}
             {variableBudget.data.vehicleScenarios.length > 0 && <div className="finance-table">{variableBudget.data.vehicleScenarios.map((scenario) => <div className="finance-row" key={scenario.id}><div><strong>{scenario.name}</strong><span>{scenario.status.replaceAll('_', ' ').toLowerCase()} · Payment {displayMoney(scenario.monthlyPayment, 'NOT CALCULATED')} ({scenario.paymentSource.replaceAll('_', ' ').toLowerCase()}) · Insurance {displayMoney(scenario.insurance, 'NOT CALCULATED')} · Fuel {displayMoney(scenario.fuel, 'NOT CALCULATED')} · Maintenance {displayMoney(scenario.maintenanceReserve, 'NOT CALCULATED')} · Registration {displayMoney(scenario.registrationReserve, 'NOT CALCULATED')} · Parking/tolls {displayMoney(scenario.parkingTolls, 'NOT CALCULATED')} · Other {displayMoney(scenario.otherMonthlyCost, 'NOT CALCULATED')}</span><small>Cash buffer impact {displayMoney(scenario.cashBufferImpact, 'NOT CALCULATED')} · Emergency reserve impact {displayMoney(scenario.emergencyReserveImpact, 'NOT CALCULATED')} · Duplex contribution impact {displayMoney(scenario.duplexContributionImpact, 'NOT CALCULATED')}</small><small>{scenario.explanation}</small>{scenario.missingInputs.length > 0 && <small>Missing inputs: {scenario.missingInputs.join(' · ')}</small>}</div><div className="finance-amount"><strong>{displayMoney(scenario.totalMonthlyCost, 'NOT CALCULATED')}</strong><span>monthly total · 90 days {displayMoney(scenario.horizonImpact.days90, 'NOT CALCULATED')}</span></div></div>)}</div>}

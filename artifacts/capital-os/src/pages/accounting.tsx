@@ -216,8 +216,8 @@ function AccountingOverviewContent({
           <Scale size={16} />
           <span>Net worth is the balance-sheet view. Liquidity is the operating view.</span>
         </div>
-        <button className="btn feedback-only-control" type="button" disabled title="Review preparation is coming soon">
-          <FileText size={14} /> Prepare review <span className="feedback-only-label">coming soon</span>
+        <button className="btn" type="button" onClick={() => window.print()} data-testid="button-print-accounting-review">
+          <FileText size={14} /> Print review
         </button>
       </section>
 
@@ -269,7 +269,7 @@ function AccountingOverviewContent({
           eyebrow="Balance sheet"
           title="Assets minus liabilities"
           detail="The accounting foundation underneath every plan, goal, and capital decision."
-          action={<span className="accounting-date-note">Compared with {dateLabel(comparison.previousPeriod, "prior period")}</span>}
+          action={<span className="accounting-date-note">Previous period {money(comparison.previousPeriod, "Not available")}</span>}
         />
         <div className="balance-sheet-grid">
           <div className="statement-column">
@@ -293,7 +293,7 @@ function AccountingOverviewContent({
             ))}
           </div>
         </div>
-        <div className="balance-sheet-total"><span>Net worth</span><strong>{money(balanceSheet.netWorth)}</strong><span>Quarter end {dateLabel(comparison.quarterEnd)}</span></div>
+        <div className="balance-sheet-total"><span>Net worth</span><strong>{money(balanceSheet.netWorth)}</strong><span>Quarter end {money(comparison.quarterEnd, "Not available")} · Year end {money(comparison.yearEnd, "Not available")}</span></div>
       </section>
 
       <section className="accounting-review-grid page-section animate-in delay-3">

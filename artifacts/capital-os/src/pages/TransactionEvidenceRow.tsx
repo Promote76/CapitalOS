@@ -27,7 +27,7 @@ import {
 import { Check, ArrowRightLeft, Search, Link as LinkIcon, RotateCcw, Plus, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-export function TransactionEvidenceRow({ transaction }: { transaction: BankStatementTransactionEvidence }) {
+export function TransactionEvidenceRow({ transaction, canReview }: { transaction: BankStatementTransactionEvidence; canReview: boolean }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: inclusion, refetch: refetchInclusion } = useGetBankStatementTransactionInclusion(transaction.id, {
@@ -37,7 +37,8 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
       retry: false,
     }
   });
-  const { data: budget } = useGetBudget();
+  const budgetQuery = useGetBudget();
+  const budget = budgetQuery.data;
 
   const { refetch: refetchDocs } = useListFinancialDocuments();
   const { refetch: refetchQueue } = useListFinancialReviewQueue();
@@ -73,9 +74,11 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
     queryClient.invalidateQueries({ queryKey: getListTransactionReviewQueueQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetAccountingOverviewQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetCapitalGovernorV2QueryKey() });
+    queryClient.invalidateQueries({ predicate: (query) => String(query.queryKey[0] ?? '').includes('/weekly-guidance') });
   };
 
   const onDecideCategory = async (economicClassification: 'HOUSEHOLD' | 'BUSINESS' | 'TRANSFER' | 'SETTLEMENT_LINK' | 'UNKNOWN') => {
+    if (!canReview) return;
     try {
       const selectedCategoryIsVisible = (budget?.categories ?? []).some(
         (category) => category.id === selectedCategoryId && category.categoryType !== 'transfer',
@@ -113,6 +116,7 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
   };
 
   const onPreviewMatch = async () => {
+    if (!canReview) return;
     try {
       const res = await previewMatch.mutateAsync({ transactionId: transaction.id });
       setMatchPreviewData(res);
@@ -122,6 +126,7 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
   };
 
   const onImportNew = async () => {
+    if (!canReview) return;
     try {
       await importTx.mutateAsync({
         transactionId: transaction.id,
@@ -140,6 +145,7 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
   };
 
   const onLink = async (financeTransactionId: string) => {
+    if (!canReview) return;
     try {
       await linkTx.mutateAsync({
         transactionId: transaction.id,
@@ -158,6 +164,7 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
   };
 
   const onReverse = async () => {
+    if (!canReview) return;
     try {
       await reverseTx.mutateAsync({
         transactionId: transaction.id,
@@ -175,6 +182,7 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
   };
 
   const onUnlink = async () => {
+    if (!canReview) return;
     try {
       await unlinkTx.mutateAsync({
         transactionId: transaction.id,
@@ -189,6 +197,7 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
   };
 
   const onReconcile = async () => {
+    if (!canReview) return;
     try {
       await reconcileTx.mutateAsync({
         transactionId: transaction.id,
@@ -232,15 +241,17 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
       </div>
 
       <div className="mt-3 border-t border-[var(--line)] bg-[var(--paper)] -mx-3 -mb-3 p-3 rounded-b-md">
-        {!evidenceApproved && !activeInclusion && (
+        {!canReview && <div className="flex items-center gap-2 text-[var(--ink-soft)]"><AlertTriangle size={13} /> Read-only evidence. Approver permission is required to classify or include this row.</div>}
+
+        {canReview && !evidenceApproved && !activeInclusion && (
           <div className="flex items-center gap-2 text-[var(--ink-soft)]">
             <AlertTriangle size={13} /> Approve or reclassify this evidence row before financial inclusion.
           </div>
         )}
 
-        {evidenceApproved && !activeInclusion && (
+        {canReview && evidenceApproved && !activeInclusion && (
           <div className="flex flex-col gap-3">
-            <div className="grid gap-2 sm:grid-cols-[minmax(12rem,1fr)_auto]">
+            {budgetQuery.isLoading ? <div className="flex items-center gap-2 text-[var(--ink-soft)]"><Search size={13} /> Loading Budget categories…</div> : budgetQuery.isError ? <div className="flex items-center gap-2 text-[#9b6b18]" role="alert"><AlertTriangle size={13} /> Budget categories are unavailable. <button className="btn !h-8 !text-[11px]" onClick={() => { void budgetQuery.refetch(); }}>Retry</button></div> : <div className="grid gap-2 sm:grid-cols-[minmax(12rem,1fr)_auto]">
               <select
                 value={selectedCategoryIsVisible ? selectedCategoryId : ''}
                 onChange={(event) => setSelectedCategoryId(event.target.value)}
@@ -261,7 +272,7 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
               >
                 <Check size={12}/> Confirm household category
               </button>
-            </div>
+            </div>}
             {transaction.suggestedCategoryId && (
               <p className="text-[var(--ink-soft)]" data-testid={`statement-category-suggestion-${transaction.id}`}>
                 Suggested with {transaction.suggestedCategoryConfidence?.toLowerCase() ?? 'unknown'} confidence
@@ -340,7 +351,7 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
           </div>
         )}
 
-        {activeInclusion && (
+        {canReview && activeInclusion && (
           <div className="flex flex-col gap-2">
             {activeInclusion.reviewRequired && (
               <div className="flex flex-col gap-2 rounded border border-[#e3c987] bg-[#fff8e9] p-2 sm:flex-row sm:items-center sm:justify-between">
@@ -366,6 +377,8 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
             </div>
           </div>
         )}
+
+        {!canReview && activeInclusion && <div className="text-[var(--ink-soft)]">Financial inclusion is {activeInclusion.status.replace(/_/g, ' ').toLowerCase()}; read-only users cannot alter it.</div>}
 
         {inclusion?.status === 'REVERSED' && (
           <div className="text-[var(--ink-soft)]">Financial inclusion was reversed. Source evidence and audit history are preserved.</div>

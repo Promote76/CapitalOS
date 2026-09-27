@@ -268,12 +268,14 @@ function CapitalRequestPanel({
   onFeedback,
   canSubmit,
   canApprove,
+  permissionsReady,
   onRefresh,
 }: {
   snapshot: TreasurySnapshot;
   onFeedback: (message: string) => void;
   canSubmit: boolean;
   canApprove: boolean;
+  permissionsReady: boolean;
   onRefresh: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
@@ -311,8 +313,8 @@ function CapitalRequestPanel({
   };
   return (
     <section className="card card-pad page-section">
-      <div className="card-title-row"><div><div className="card-title">Capital requests</div><div className="card-subtitle">Modules request capital; they never pull it directly. Approval remains human and Governor-bound.</div></div>{canSubmit ? <button className="btn btn-primary" onClick={() => setOpen((value) => !value)}><Plus size={14} /> New request</button> : <span className="status review">Read only</span>}</div>
-      {open && canSubmit && <div className="treasury-request-form">
+      <div className="card-title-row"><div><div className="card-title">Capital requests</div><div className="card-subtitle">Modules request capital; they never pull it directly. Approval remains human and Governor-bound.</div></div>{!permissionsReady ? <span className="status pending">Permissions pending</span> : canSubmit ? <button className="btn btn-primary" onClick={() => setOpen((value) => !value)}><Plus size={14} /> New request</button> : <span className="status review">Read only</span>}</div>
+      {open && permissionsReady && canSubmit && <div className="treasury-request-form">
         <div className="field"><label htmlFor="treasury-request-amount">Requested amount</label><input id="treasury-request-amount" inputMode="decimal" pattern="[0-9]+([.][0-9]{1,2})?" required value={amount} onChange={(event) => setAmount(event.target.value)} /></div>
         <div className="field"><label htmlFor="treasury-request-risk">Risk class</label><select id="treasury-request-risk" value={riskClass} onChange={(event) => setRiskClass(event.target.value as CapitalRequestInput["riskClass"])}><option value="conservative">Conservative</option><option value="moderate">Moderate</option><option value="experimental">Experimental</option></select></div>
         <div className="field"><label htmlFor="treasury-request-liquidity">Liquidity requirement</label><input id="treasury-request-liquidity" value={liquidity} onChange={(event) => setLiquidity(event.target.value)} /></div>
@@ -326,7 +328,7 @@ function CapitalRequestPanel({
           <div><strong>{request.requestingModule}</strong><span>{request.purpose}</span>{request.decisionReason && <small>Decision: {request.decisionReason}</small>}</div>
           <strong>{money(request.requestedAmount)}</strong>
           <span className={`status ${request.status === "REJECTED" ? "critical" : pendingDecision ? "pending" : ""}`}>{label(request.status)}</span>
-          {pendingDecision && canApprove && <CapitalRequestDecision request={request} onRefresh={onRefresh} onFeedback={onFeedback} />}
+          {pendingDecision && permissionsReady && canApprove && <CapitalRequestDecision request={request} onRefresh={onRefresh} onFeedback={onFeedback} />}
         </div>;
       })}</div>}
     </section>
@@ -341,6 +343,7 @@ export default function TreasuryPage({ onFeedback }: { onFeedback: (message: str
   const permissions = household.data?.permissions ?? [];
   const canSubmit = permissions.includes("contribute");
   const canApprove = permissions.includes("approve");
+  const permissionsReady = household.isSuccess;
   const refreshTreasury = async () => {
     await Promise.all([
       query.refetch(),
@@ -357,9 +360,11 @@ export default function TreasuryPage({ onFeedback }: { onFeedback: (message: str
       </div>
       {query.isLoading && <section className="card card-pad treasury-inline-state">Loading the household Treasury…</section>}
       {query.isError && <section className="card card-pad treasury-inline-state treasury-inline-error"><AlertTriangle size={16} /> Treasury data is temporarily unavailable. No allocation action was taken. <button className="text-link" onClick={() => { void query.refetch(); }}>Try again</button></section>}
+      {household.isLoading && <section className="card card-pad treasury-inline-state" role="status"><ShieldCheck size={16} /> Confirming Treasury action permissions…</section>}
+      {household.isError && <section className="card card-pad treasury-inline-state treasury-inline-error" role="alert"><AlertTriangle size={16} /> Treasury data remains readable, but request and decision controls are disabled until household permissions can be confirmed. <button className="text-link" onClick={() => { void household.refetch(); }}>Retry permissions</button></section>}
       {snapshot && <TreasuryOverview snapshot={snapshot} />}
       {snapshot && sortedAlerts.length > 1 && <section className="treasury-alert-list page-section">{sortedAlerts.slice(1).map((alert) => <span key={alert}><AlertTriangle size={13} />{alert}</span>)}</section>}
-      {snapshot && <CapitalRequestPanel snapshot={snapshot} onFeedback={onFeedback} canSubmit={canSubmit} canApprove={canApprove} onRefresh={refreshTreasury} />}
+      {snapshot && <CapitalRequestPanel snapshot={snapshot} onFeedback={onFeedback} canSubmit={canSubmit} canApprove={canApprove} permissionsReady={permissionsReady} onRefresh={refreshTreasury} />}
     </main>
   );
 }

@@ -561,7 +561,13 @@ type Transaction = { id: number; date: string; name: string; category: string; a
 function displayMoney(value: string | undefined, fallback: string) {
   if (!value) return fallback;
   const amount = Number(value);
-  return Number.isFinite(amount) ? `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : fallback;
+  return Number.isFinite(amount) ? `${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : fallback;
+}
+
+function displayScopedMoney(value: string | null | undefined, fallback = 'Not available') {
+  if (value === 'REDACTED') return 'Restricted';
+  if (!value || value === 'UNKNOWN' || value === 'NOT_AVAILABLE') return fallback;
+  return displayMoney(value, fallback);
 }
 
 function moneyCents(value: string) {
@@ -2840,19 +2846,28 @@ function CashFlowPage() {
   const query = useGetCashFlow();
   const safe = useGetSafeToDeploy();
   const data = query.data;
+  if (query.isLoading) {
+    return <main className="content"><PageHeading eyebrow="Household finance / cash flow" title={<>See the current<br /><em>room to breathe.</em></>} description="Cash flow connects everyday household choices to the protected capital plan—without asking you to predict markets." actions={<Link className="btn" href="/budget"><ClipboardList size={15} /> Open budget</Link>} /><section className="card card-pad page-section finance-route-error" role="status"><Activity size={16} /><div><strong>Loading household cash flow</strong><span>Confirming approved activity and finalized planning targets before showing totals.</span></div></section></main>;
+  }
+  if (query.isError || !data) {
+    return <main className="content"><PageHeading eyebrow="Household finance / cash flow" title={<>See the current<br /><em>room to breathe.</em></>} description="Cash flow connects everyday household choices to the protected capital plan—without asking you to predict markets." actions={<Link className="btn" href="/budget"><ClipboardList size={15} /> Open budget</Link>} /><section className="card card-pad page-section finance-route-error" role="alert"><AlertTriangle size={16} /><div><strong>Cash-flow data is temporarily unavailable</strong><span>No zero-value placeholders are substituted while the household cash-flow service is unavailable.</span></div><button className="btn btn-secondary" onClick={() => { void query.refetch(); }}>Try again</button></section></main>;
+  }
+  const safeValue = safe.isLoading ? 'Calculating…' : safe.isError ? 'Unavailable' : displayMoney(safe.data?.safeToDeploy, 'Not calculated');
+  const safeDetail = safe.isError ? 'Safe-to-Deploy could not be refreshed' : `${safe.data?.confidence ?? 'low'} confidence`;
   return <main className="content">
-    <PageHeading eyebrow="Household finance / cash flow" title={<>See the current<br /><em>room to breathe.</em></>} description="Cash flow connects everyday household choices to the protected capital plan—without asking you to predict markets." actions={<Link className="btn" href="/budget"><ClipboardList size={15} /> Open budget</Link>} />
+    <PageHeading eyebrow="Household finance / cash flow" title={<>See the current<br /><em>room to breathe.</em></>} description="Cash flow connects everyday household choices to the protected capital plan—without asking you to predict markets." actions={<div className="heading-actions"><Link className="btn" href="/budget"><ClipboardList size={15} /> Open budget</Link><button className="btn btn-secondary" onClick={() => { void query.refetch(); void safe.refetch(); }} disabled={query.isFetching || safe.isFetching}><RotateCcw size={14} /> {query.isFetching || safe.isFetching ? 'Refreshing…' : 'Refresh'}</button></div>} />
+    {safe.isError && <div className="finance-data-banner" role="alert"><div className="finance-data-banner-icon"><AlertTriangle size={16} /></div><div><strong>Safe-to-Deploy unavailable</strong><span>Cash-flow totals remain visible, but deployable capital is not inferred while its safety calculation is unavailable.</span></div></div>}
     <div className="finance-grid animate-in delay-1">
-      <FinanceMetric label="Net cash flow" value={displayMoney(data?.metrics.netCashFlow, '$0')} detail="current month" tone="green" />
-      <FinanceMetric label="Free cash flow" value={displayMoney(data?.metrics.freeCashFlow, '$0')} detail="after planned savings" tone="blue" />
-      <FinanceMetric label="Savings rate" value={`${data?.metrics.savingsRate ?? 0}%`} detail="steady is the goal" tone="lavender" />
-      <FinanceMetric label="Safe to deploy" value={displayMoney(safe.data?.safeToDeploy, '$0')} detail={`${safe.data?.confidence ?? 'low'} confidence`} tone="amber" />
+      <FinanceMetric label="Net cash flow" value={displayMoney(data.metrics.netCashFlow, '$0')} detail="current month" tone="green" />
+      <FinanceMetric label="Free cash flow" value={displayMoney(data.metrics.freeCashFlow, '$0')} detail="after planned savings" tone="blue" />
+      <FinanceMetric label="Savings rate" value={`${data.metrics.savingsRate}%`} detail="steady is the goal" tone="lavender" />
+      <FinanceMetric label="Safe to deploy" value={safeValue} detail={safeDetail} tone="amber" />
     </div>
     <div className="section-grid page-section">
-      <section className="card card-pad animate-in delay-2"><CardTitle title="Where the month went" subtitle="Outflows are grouped by job, not by noise." /><div className="flow-list">{[['Essential costs', data?.metrics.essentialOutflow, 'var(--color-primary)'], ['Flexible costs', data?.metrics.discretionaryOutflow, 'var(--color-opportunity)'], ['Debt service', data?.metrics.debtService, 'var(--color-critical)'], ['Protected savings', data?.metrics.savingsContributions, 'var(--color-protected)']].map(([label, value, color]) => <div className="flow-row" key={label as string}><span><i style={{ background: color as string }} />{label as string}</span><strong>{displayMoney(value as string, '$0')}</strong></div>)}</div><div className="finance-note"><PiggyBank size={16} /><span>Protected savings are counted as an intentional outflow so the household plan stays honest.</span></div></section>
-      <section className="card card-pad animate-in delay-2"><CardTitle title="Reserve health" subtitle="Your emergency reserve is a household boundary, not idle cash." /><div className="reserve-figure"><strong>{data?.reserve.monthsCovered ?? 0}</strong><span>months covered</span></div><Progress value={data ? (data.reserve.monthsCovered / data.reserve.targetMonths) * 100 : 0} /><div className="reserve-meta"><span>{displayMoney(data?.reserve.current, '$0')} current</span><span>{displayMoney(data?.reserve.target, '$0')} target</span></div><div className="finance-note"><ShieldCheck size={16} /><span>{data?.reserve.gap === '0.00' ? 'Your target reserve is funded.' : `${displayMoney(data?.reserve.gap, '$0')} still to target.`}</span></div></section>
+      <section className="card card-pad animate-in delay-2"><CardTitle title="Where the month went" subtitle="Outflows are grouped by job, not by noise." /><div className="flow-list">{[['Essential costs', data.metrics.essentialOutflow, 'var(--color-primary)'], ['Flexible costs', data.metrics.discretionaryOutflow, 'var(--color-opportunity)'], ['Debt service', data.metrics.debtService, 'var(--color-critical)'], ['Protected savings', data.metrics.savingsContributions, 'var(--color-protected)']].map(([label, value, color]) => <div className="flow-row" key={label as string}><span><i style={{ background: color as string }} />{label as string}</span><strong>{displayMoney(value as string, '$0')}</strong></div>)}</div><div className="finance-note"><PiggyBank size={16} /><span>Protected savings are counted as an intentional outflow so the household plan stays honest.</span></div></section>
+      <section className="card card-pad animate-in delay-2"><CardTitle title="Reserve health" subtitle="Your emergency reserve is a household boundary, not idle cash." /><div className="reserve-figure"><strong>{data.reserve.monthsCovered}</strong><span>months covered</span></div><Progress value={data.reserve.targetMonths > 0 ? (data.reserve.monthsCovered / data.reserve.targetMonths) * 100 : 0} /><div className="reserve-meta"><span>{displayMoney(data.reserve.current, '$0')} current</span><span>{displayMoney(data.reserve.target, '$0')} target</span></div><div className="finance-note"><ShieldCheck size={16} /><span>{data.reserve.gap === '0.00' ? 'Your target reserve is funded.' : `${displayMoney(data.reserve.gap, '$0')} still to target.`}</span></div></section>
     </div>
-     <section className="card card-pad page-section"><CardTitle title="Next month forecast" subtitle={`Confidence ${data?.forecast.confidence ?? 0} · next income ${formatPlanningDate(data?.forecast.nextIncomeDate ?? undefined, 'not scheduled')}`} /><div className="forecast-grid"><FinanceMetric label="Expected inflow" value={displayMoney(data?.forecast.nextMonthInflow, '$0')} detail="dated active income" tone="green" /><FinanceMetric label="Essential outflow" value={displayMoney(data?.forecast.nextMonthEssentialOutflow, '$0')} detail="expected commitments" tone="amber" /><FinanceMetric label="Expected net" value={displayMoney(data?.forecast.nextMonthNet, '$0')} detail="before new choices" tone="blue" /></div></section>
+    <section className="card card-pad page-section"><CardTitle title="Next month forecast" subtitle={`Confidence ${data.forecast.confidence} · next income ${formatPlanningDate(data.forecast.nextIncomeDate ?? undefined, 'not scheduled')}`} /><div className="forecast-grid"><FinanceMetric label="Expected inflow" value={displayMoney(data.forecast.nextMonthInflow, '$0')} detail="dated active income" tone="green" /><FinanceMetric label="Essential outflow" value={displayMoney(data.forecast.nextMonthEssentialOutflow, '$0')} detail="finalized Budget target or latest finalized carry-forward" tone="amber" /><FinanceMetric label="Expected net" value={displayMoney(data.forecast.nextMonthNet, '$0')} detail="before new choices" tone="blue" /></div></section>
   </main>;
 }
 

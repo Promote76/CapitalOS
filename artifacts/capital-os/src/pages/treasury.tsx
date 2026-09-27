@@ -40,6 +40,9 @@ function percent(value: number) {
   return `${Math.round(value)}%`;
 }
 
+const moneyInputPattern = /^[0-9]+(?:\.[0-9]{1,2})?$/;
+const validPositiveMoney = (value: string) => moneyInputPattern.test(value) && Number(value) > 0;
+
 function label(value: string) {
   return value
     .replaceAll("_", " ")
@@ -213,7 +216,7 @@ function CapitalRequestDecision({
   const requestedAmount = Number(request.requestedAmount);
   const partialAmount = Number(approvedAmount);
   const partialInvalid = decision === "PARTIALLY_APPROVED"
-    && (!Number.isFinite(partialAmount) || partialAmount <= 0 || partialAmount >= requestedAmount);
+    && (!validPositiveMoney(approvedAmount) || !Number.isFinite(partialAmount) || partialAmount >= requestedAmount);
   const canSubmit = reason.trim().length >= 3 && !partialInvalid && !decide.isPending;
 
   const submitDecision = async () => {
@@ -247,7 +250,7 @@ function CapitalRequestDecision({
     </div>
     {decision === "PARTIALLY_APPROVED" && <div className="field">
       <label htmlFor={`treasury-approved-amount-${request.id}`}>Approved amount</label>
-      <input id={`treasury-approved-amount-${request.id}`} inputMode="decimal" value={approvedAmount} onChange={(event) => setApprovedAmount(event.target.value)} placeholder="0.00" />
+      <input id={`treasury-approved-amount-${request.id}`} inputMode="decimal" pattern="[0-9]+([.][0-9]{1,2})?" value={approvedAmount} onChange={(event) => setApprovedAmount(event.target.value)} placeholder="0.00" />
       {partialInvalid && approvedAmount && <small className="form-feedback error">Enter an amount above $0 and below the requested amount.</small>}
     </div>}
     <div className="field treasury-request-purpose">
@@ -310,11 +313,11 @@ function CapitalRequestPanel({
     <section className="card card-pad page-section">
       <div className="card-title-row"><div><div className="card-title">Capital requests</div><div className="card-subtitle">Modules request capital; they never pull it directly. Approval remains human and Governor-bound.</div></div>{canSubmit ? <button className="btn btn-primary" onClick={() => setOpen((value) => !value)}><Plus size={14} /> New request</button> : <span className="status review">Read only</span>}</div>
       {open && canSubmit && <div className="treasury-request-form">
-        <div className="field"><label htmlFor="treasury-request-amount">Requested amount</label><input id="treasury-request-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} /></div>
+        <div className="field"><label htmlFor="treasury-request-amount">Requested amount</label><input id="treasury-request-amount" inputMode="decimal" pattern="[0-9]+([.][0-9]{1,2})?" required value={amount} onChange={(event) => setAmount(event.target.value)} /></div>
         <div className="field"><label htmlFor="treasury-request-risk">Risk class</label><select id="treasury-request-risk" value={riskClass} onChange={(event) => setRiskClass(event.target.value as CapitalRequestInput["riskClass"])}><option value="conservative">Conservative</option><option value="moderate">Moderate</option><option value="experimental">Experimental</option></select></div>
         <div className="field"><label htmlFor="treasury-request-liquidity">Liquidity requirement</label><input id="treasury-request-liquidity" value={liquidity} onChange={(event) => setLiquidity(event.target.value)} /></div>
         <div className="field treasury-request-purpose"><label htmlFor="treasury-request-purpose">Purpose</label><textarea id="treasury-request-purpose" value={purpose} onChange={(event) => setPurpose(event.target.value)} /></div>
-        <div className="treasury-request-actions"><button className="btn" onClick={() => setOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={() => { void submit(); }} disabled={submitting || !amount || Number(amount) <= 0}>{submitting ? "Submitting…" : "Submit for review"}</button></div>
+        <div className="treasury-request-actions"><button className="btn" onClick={() => setOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={() => { void submit(); }} disabled={submitting || !validPositiveMoney(amount)}>{submitting ? "Submitting…" : "Submit for review"}</button></div>
       </div>}
       {snapshot.requests.length === 0 && !open && <div className="empty-state treasury-empty"><Sparkles size={20} /><h3>No capital requests</h3><p>When a strategy needs funding, it will appear here for a governed review.</p></div>}
       {snapshot.requests.length > 0 && <div className="treasury-request-list">{snapshot.requests.map((request) => {

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArrowDown,
@@ -14,14 +15,20 @@ import {
 } from "lucide-react";
 import {
   createCapitalRequest,
+  getGetCapitalGovernorV2QueryKey,
+  getGetTreasuryQueryKey,
+  useDecideCapitalRequest,
   useGetCapitalGovernorV2,
+  useGetHousehold,
   useGetTreasury,
+  type CapitalRequest,
   type CapitalRequestInput,
   type CapitalGovernorV2,
   type TreasurySnapshot,
 } from "@workspace/api-client-react";
 
 function money(value: string | null) {
+  if (value === "REDACTED") return "Restricted";
   if (value === null || value === "NOT_CALCULATED") return "NOT CALCULATED";
   const amount = Number(value);
   return Number.isFinite(amount)
@@ -32,6 +39,9 @@ function money(value: string | null) {
 function percent(value: number) {
   return `${Math.round(value)}%`;
 }
+
+const moneyInputPattern = /^[0-9]+(?:\.[0-9]{1,2})?$/;
+const validPositiveMoney = (value: string) => moneyInputPattern.test(value) && Number(value) > 0;
 
 function label(value: string) {
   return value
@@ -190,11 +200,86 @@ function TreasuryOverview({ snapshot }: { snapshot: TreasurySnapshot }) {
   );
 }
 
-function CapitalRequestPanel({ snapshot, onFeedback }: { snapshot: TreasurySnapshot; onFeedback: (message: string) => void }) {
+function CapitalRequestDecision({
+  request,
+  onRefresh,
+  onFeedback,
+}: {
+  request: CapitalRequest;
+  onRefresh: () => Promise<void>;
+  onFeedback: (message: string) => void;
+}) {
+  const decide = useDecideCapitalRequest();
+  const [decision, setDecision] = useState<"APPROVED" | "PARTIALLY_APPROVED" | "REJECTED">("APPROVED");
+  const [approvedAmount, setApprovedAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const requestedAmount = Number(request.requestedAmount);
+  const partialAmount = Number(approvedAmount);
+  const partialInvalid = decision === "PARTIALLY_APPROVED"
+    && (!validPositiveMoney(approvedAmount) || !Number.isFinite(partialAmount) || partialAmount >= requestedAmount);
+  const canSubmit = reason.trim().length >= 3 && !partialInvalid && !decide.isPending;
+
+  const submitDecision = async () => {
+    if (!canSubmit) return;
+    try {
+      await decide.mutateAsync({
+        requestId: request.id,
+        data: {
+          decision,
+          reason: reason.trim(),
+          ...(decision === "PARTIALLY_APPROVED" ? { approvedAmount } : {}),
+        },
+      });
+      await onRefresh();
+      setReason("");
+      setApprovedAmount("");
+      onFeedback(`Capital request ${decision.toLowerCase().replaceAll("_", " ")}.`);
+    } catch (error) {
+      onFeedback(error instanceof Error ? error.message : "The Treasury decision could not be saved.");
+    }
+  };
+
+  return <div className="treasury-request-decision">
+    <div className="field">
+      <label htmlFor={`treasury-decision-${request.id}`}>Decision</label>
+      <select id={`treasury-decision-${request.id}`} value={decision} onChange={(event) => setDecision(event.target.value as typeof decision)}>
+        <option value="APPROVED">Approve full amount</option>
+        <option value="PARTIALLY_APPROVED">Partially approve</option>
+        <option value="REJECTED">Reject</option>
+      </select>
+    </div>
+    {decision === "PARTIALLY_APPROVED" && <div className="field">
+      <label htmlFor={`treasury-approved-amount-${request.id}`}>Approved amount</label>
+      <input id={`treasury-approved-amount-${request.id}`} inputMode="decimal" pattern="[0-9]+([.][0-9]{1,2})?" value={approvedAmount} onChange={(event) => setApprovedAmount(event.target.value)} placeholder="0.00" />
+      {partialInvalid && approvedAmount && <small className="form-feedback error">Enter an amount above $0 and below the requested amount.</small>}
+    </div>}
+    <div className="field treasury-request-purpose">
+      <label htmlFor={`treasury-decision-reason-${request.id}`}>Decision reason</label>
+      <textarea id={`treasury-decision-reason-${request.id}`} value={reason} onChange={(event) => setReason(event.target.value)} maxLength={1000} placeholder="Record the human review rationale" />
+    </div>
+    <button className="btn btn-primary" type="button" onClick={() => void submitDecision()} disabled={!canSubmit}>
+      {decide.isPending ? "Saving decision…" : "Record decision"}
+    </button>
+  </div>;
+}
+
+function CapitalRequestPanel({
+  snapshot,
+  onFeedback,
+  canSubmit,
+  canApprove,
+  onRefresh,
+}: {
+  snapshot: TreasurySnapshot;
+  onFeedback: (message: string) => void;
+  canSubmit: boolean;
+  canApprove: boolean;
+  onRefresh: () => Promise<void>;
+}) {
   const [open, setOpen] = useState(false);
-  const [amount, setAmount] = useState("50.00");
-  const [purpose, setPurpose] = useState("Review additional allocation for a validated strategy.");
+  const [amount, setAmount] = useState("");
   const [riskClass, setRiskClass] = useState<CapitalRequestInput["riskClass"]>("conservative");
+  const [purpose, setPurpose] = useState("Fund reviewed strategy");
   const [liquidity, setLiquidity] = useState("Immediate");
   const [submitting, setSubmitting] = useState(false);
   const submit = async () => {
@@ -214,7 +299,9 @@ function CapitalRequestPanel({ snapshot, onFeedback }: { snapshot: TreasurySnaps
         }, {
           headers: { "Idempotency-Key": crypto.randomUUID() },
       });
+      await onRefresh();
       setOpen(false);
+      setAmount("");
       onFeedback("Capital request submitted for Treasury review.");
     } catch (error) {
       onFeedback(error instanceof Error ? error.message : "Capital request could not be submitted.");
@@ -224,23 +311,43 @@ function CapitalRequestPanel({ snapshot, onFeedback }: { snapshot: TreasurySnaps
   };
   return (
     <section className="card card-pad page-section">
-      <div className="card-title-row"><div><div className="card-title">Capital requests</div><div className="card-subtitle">Modules request capital; they never pull it directly. Approval remains human and Governor-bound.</div></div><button className="btn btn-primary" onClick={() => setOpen((value) => !value)}><Plus size={14} /> New request</button></div>
-      {open && <div className="treasury-request-form">
-        <div className="field"><label htmlFor="treasury-request-amount">Requested amount</label><input id="treasury-request-amount" inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} /></div>
+      <div className="card-title-row"><div><div className="card-title">Capital requests</div><div className="card-subtitle">Modules request capital; they never pull it directly. Approval remains human and Governor-bound.</div></div>{canSubmit ? <button className="btn btn-primary" onClick={() => setOpen((value) => !value)}><Plus size={14} /> New request</button> : <span className="status review">Read only</span>}</div>
+      {open && canSubmit && <div className="treasury-request-form">
+        <div className="field"><label htmlFor="treasury-request-amount">Requested amount</label><input id="treasury-request-amount" inputMode="decimal" pattern="[0-9]+([.][0-9]{1,2})?" required value={amount} onChange={(event) => setAmount(event.target.value)} /></div>
         <div className="field"><label htmlFor="treasury-request-risk">Risk class</label><select id="treasury-request-risk" value={riskClass} onChange={(event) => setRiskClass(event.target.value as CapitalRequestInput["riskClass"])}><option value="conservative">Conservative</option><option value="moderate">Moderate</option><option value="experimental">Experimental</option></select></div>
         <div className="field"><label htmlFor="treasury-request-liquidity">Liquidity requirement</label><input id="treasury-request-liquidity" value={liquidity} onChange={(event) => setLiquidity(event.target.value)} /></div>
         <div className="field treasury-request-purpose"><label htmlFor="treasury-request-purpose">Purpose</label><textarea id="treasury-request-purpose" value={purpose} onChange={(event) => setPurpose(event.target.value)} /></div>
-        <div className="treasury-request-actions"><button className="btn" onClick={() => setOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={() => { void submit(); }} disabled={submitting || !amount || Number(amount) <= 0}>{submitting ? "Submitting…" : "Submit for review"}</button></div>
+        <div className="treasury-request-actions"><button className="btn" onClick={() => setOpen(false)}>Cancel</button><button className="btn btn-primary" onClick={() => { void submit(); }} disabled={submitting || !validPositiveMoney(amount)}>{submitting ? "Submitting…" : "Submit for review"}</button></div>
       </div>}
       {snapshot.requests.length === 0 && !open && <div className="empty-state treasury-empty"><Sparkles size={20} /><h3>No capital requests</h3><p>When a strategy needs funding, it will appear here for a governed review.</p></div>}
-      {snapshot.requests.length > 0 && <div className="treasury-request-list">{snapshot.requests.map((request) => <div className="treasury-request-row" key={request.id}><div><strong>{request.requestingModule}</strong><span>{request.purpose}</span></div><strong>{money(request.requestedAmount)}</strong><span className={`status ${request.status === "REJECTED" ? "critical" : "pending"}`}>{label(request.status)}</span></div>)}</div>}
+      {snapshot.requests.length > 0 && <div className="treasury-request-list">{snapshot.requests.map((request) => {
+        const pendingDecision = request.status === "SUBMITTED" || request.status === "UNDER_REVIEW";
+        return <div className="treasury-request-row" key={request.id}>
+          <div><strong>{request.requestingModule}</strong><span>{request.purpose}</span>{request.decisionReason && <small>Decision: {request.decisionReason}</small>}</div>
+          <strong>{money(request.requestedAmount)}</strong>
+          <span className={`status ${request.status === "REJECTED" ? "critical" : pendingDecision ? "pending" : ""}`}>{label(request.status)}</span>
+          {pendingDecision && canApprove && <CapitalRequestDecision request={request} onRefresh={onRefresh} onFeedback={onFeedback} />}
+        </div>;
+      })}</div>}
     </section>
   );
 }
 
 export default function TreasuryPage({ onFeedback }: { onFeedback: (message: string) => void }) {
+  const queryClient = useQueryClient();
   const query = useGetTreasury();
+  const household = useGetHousehold();
   const snapshot = query.data as TreasurySnapshot | undefined;
+  const permissions = household.data?.permissions ?? [];
+  const canSubmit = permissions.includes("contribute");
+  const canApprove = permissions.includes("approve");
+  const refreshTreasury = async () => {
+    await Promise.all([
+      query.refetch(),
+      queryClient.invalidateQueries({ queryKey: getGetTreasuryQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetCapitalGovernorV2QueryKey() }),
+    ]);
+  };
   const sortedAlerts = useMemo(() => snapshot?.alerts ?? [], [snapshot?.alerts]);
   return (
     <main className="main-content">
@@ -252,7 +359,7 @@ export default function TreasuryPage({ onFeedback }: { onFeedback: (message: str
       {query.isError && <section className="card card-pad treasury-inline-state treasury-inline-error"><AlertTriangle size={16} /> Treasury data is temporarily unavailable. No allocation action was taken. <button className="text-link" onClick={() => { void query.refetch(); }}>Try again</button></section>}
       {snapshot && <TreasuryOverview snapshot={snapshot} />}
       {snapshot && sortedAlerts.length > 1 && <section className="treasury-alert-list page-section">{sortedAlerts.slice(1).map((alert) => <span key={alert}><AlertTriangle size={13} />{alert}</span>)}</section>}
-      {snapshot && <CapitalRequestPanel snapshot={snapshot} onFeedback={onFeedback} />}
+      {snapshot && <CapitalRequestPanel snapshot={snapshot} onFeedback={onFeedback} canSubmit={canSubmit} canApprove={canApprove} onRefresh={refreshTreasury} />}
     </main>
   );
 }

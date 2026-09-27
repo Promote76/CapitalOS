@@ -100,3 +100,4 @@ jobs:
           pnpm --filter @workspace/capital-os run test:documents-queue
           pnpm --filter @workspace/capital-os run test:financial-document-upload
           pnpm --filter @workspace/capital-os run test:money-input-patterns
+          pnpm --filter @workspace/capital-os run test:financial-route-contract

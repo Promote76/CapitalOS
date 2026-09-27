@@ -12,7 +12,8 @@
     "test:documents-queue": "../../scripts/node_modules/.bin/tsx --test src/documents-queue.test.ts",
     "test:financial-document-upload": "../../scripts/node_modules/.bin/tsx --test src/financial-document-upload.test.ts",
     "test:money-input-patterns": "../../scripts/node_modules/.bin/tsx --test src/money-input-patterns.test.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:financial-route-contract": "../../scripts/node_modules/.bin/tsx --test src/financial-route-ui-contract.test.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",

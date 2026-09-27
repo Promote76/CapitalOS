@@ -40,7 +40,7 @@ import {
 } from "@workspace/api-client-react";
 import { AlertCircle, ArrowRightLeft, Check, CheckCircle2, ClipboardList, FilePlus2, FileText, Info, Link2, RefreshCw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   normalizeReviewQueueItem,
   queueItemDestination,
@@ -85,6 +85,7 @@ const CardTitle = ({ title, subtitle }: { title: string; subtitle?: string }) =>
 
 export default function DocumentsPage({ embedded = false }: { embedded?: boolean }) {
   const { toast } = useToast();
+  const [location] = useLocation();
   const queryClient = useQueryClient();
   const docsQuery = useListFinancialDocuments();
   const queueQuery = useListFinancialReviewQueue();
@@ -120,6 +121,15 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
   const [uploadMessage, setUploadMessage] = useState("");
   const [uploadError, setUploadError] = useState("");
   const uploadInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (embedded) return;
+    const queryText = location.includes("?") ? location.slice(location.indexOf("?") + 1) : window.location.search.replace(/^\?/, "");
+    const requestedType = new URLSearchParams(queryText).get("type");
+    if (financialDocumentTypes.some((item) => item.type === requestedType)) {
+      setUploadType(requestedType as FinancialDocumentUploadInputDocumentType);
+    }
+  }, [embedded, location]);
 
   useEffect(() => {
     if (TEMPORARY_DEV_AUTH_BYPASS) return;

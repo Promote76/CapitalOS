@@ -561,7 +561,13 @@ type Transaction = { id: number; date: string; name: string; category: string; a
 function displayMoney(value: string | undefined, fallback: string) {
   if (!value) return fallback;
   const amount = Number(value);
-  return Number.isFinite(amount) ? `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : fallback;
+  return Number.isFinite(amount) ? `${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : fallback;
+}
+
+function displayScopedMoney(value: string | null | undefined, fallback = 'Not available') {
+  if (value === 'REDACTED') return 'Restricted';
+  if (!value || value === 'UNKNOWN' || value === 'NOT_AVAILABLE') return fallback;
+  return displayMoney(value, fallback);
 }
 
 function moneyCents(value: string) {
@@ -1072,8 +1078,10 @@ function PortfolioPage() {
   const [agentAnswer, setAgentAnswer] = useState<Awaited<ReturnType<typeof portfolioAgent.mutateAsync>> | null>(null);
   const state = researchContextUiState(query);
   if (state === "loading") return <main className="content"><div className="card card-pad">Loading portfolio…</div></main>;
-  if (state === "error" || !query.data) return <main className="content"><div className="card card-pad" role="alert">Portfolio data is temporarily unavailable. Try again in a moment.</div></main>;
+  if (state === "error" || !query.data) return <main className="content"><PageHeading eyebrow="Plan / portfolio" title={<>Know what is<br /><em>carrying the load.</em></>} description="Internal capital allocation and read-only brokerage observations remain separate by design." /><section className="card card-pad page-section finance-route-error" role="alert"><AlertTriangle size={16} /><div><strong>Portfolio data is temporarily unavailable</strong><span>No internal-capital totals are inferred while the Portfolio service is unavailable.</span></div><button className="btn btn-secondary" onClick={() => { void query.refetch(); }}>Try again</button></section></main>;
   const data = query.data;
+  const internalRestricted = data.totalCapital === 'REDACTED';
+  const internalComposition = data.composition ?? [];
   const observation = observationQuery.data;
   const snapshot = observation?.snapshot;
   const summary = snapshot?.summary;
@@ -1132,11 +1140,41 @@ function PortfolioPage() {
       setObservationMessage(error instanceof Error ? error.message : 'The Schwab observation could not be refreshed.');
     }
   };
+  const exportPortfolioSnapshot = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      scope: 'capital-os-read-only-portfolio',
+      internalCapital: data,
+      schwabObservation: observation ?? null,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `capital-os-portfolio-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
   return <main className="content">
-    <PageHeading eyebrow="Plan / portfolio" title={<>Know what is<br /><em>carrying the load.</em></>} description="A composed view of where your family capital sits today—not a screen that asks you to react." actions={<button className="btn feedback-only-control" data-testid="button-portfolio-export" title="Export is coming soon" disabled><ArrowDownLeft size={15} /> Export snapshot <span className="feedback-only-label">coming soon</span></button>} />
+    <PageHeading eyebrow="Plan / portfolio" title={<>Know what is<br /><em>carrying the load.</em></>} description="Internal strategic capital and read-only brokerage observations are shown as separate scopes so neither is mistaken for household bank-account authority." actions={<button className="btn" data-testid="button-portfolio-export" type="button" onClick={exportPortfolioSnapshot}><ArrowDownLeft size={15} /> Export snapshot</button>} />
     <div className="portfolio-split">
-       <section className="card card-pad animate-in delay-1"><CardTitle title="Household capital composition" subtitle="Real household balances required" /><div className="finance-empty-state"><strong>Demo balances hidden</strong><span>Capital OS is not showing seeded household amounts here. Add a real household balance source to populate this view.</span></div></section>
-       <section className="card card-pad animate-in delay-1"><CardTitle title="Resilience check" subtitle="Real household balances required before planning totals are shown." /><div className="finance-empty-state"><strong>Awaiting verified household balances</strong><span>Protected capital, active capital, and cash reserve totals are hidden until they come from a real household source.</span></div></section>
+       <section className="card card-pad animate-in delay-1">
+         <CardTitle title="Internal capital allocation" subtitle="Strategic allocation scope · separate from household financial accounts" />
+         <div className="observed-summary-grid">
+           <div><span>Total internal capital</span><strong>{displayScopedMoney(data.totalCapital)}</strong><small>Core allocation accounts only</small></div>
+           <div><span>Protected capital</span><strong>{displayScopedMoney(data.protectedCapital)}</strong><small>Ring-fenced internal allocation</small></div>
+           <div><span>Active capital</span><strong>{displayScopedMoney(data.activeCapital)}</strong><small>Active and strategy sleeves</small></div>
+           <div><span>Cash reserve</span><strong>{displayScopedMoney(data.cashReserve)}</strong><small>Internal reserve sleeves</small></div>
+         </div>
+         <div className="finance-note"><ShieldCheck size={16} /><span>These values come from Capital OS internal allocation accounts. They are not silently added to Accounting net worth and are not Schwab balances.</span></div>
+       </section>
+       <section className="card card-pad animate-in delay-1">
+         <CardTitle title="Internal ledger integrity" subtitle="A balanced result requires actual non-empty debit/credit evidence." />
+         <div className="reserve-figure"><strong>{data.ledgerBalanced ? 'Balanced' : 'Review'}</strong><span>capital ledger</span></div>
+         <div className="finance-note">{data.ledgerBalanced ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}<span>{data.ledgerBalanced ? 'Internal capital movements reconcile.' : 'No valid balanced ledger evidence is currently established; review before relying on movement history.'}</span></div>
+       </section>
     </div>
      <section className="card card-pad page-section">
        <CardTitle title="Schwab observed portfolio" subtitle={snapshot ? `Provider market values · ${displayObservationTimestamp(snapshot.capturedAt)}` : 'No synced Schwab market values'} action={<Link href="/integrations/schwab" className="text-link">Open Schwab connection</Link>} />
@@ -1157,7 +1195,10 @@ function PortfolioPage() {
           </div>
         </> : <div className="finance-empty-state">A live Schwab snapshot with market values is required before this chart can show real broker numbers. It will remain separate from household capital.</div>}
      </section>
-     <section className="card card-pad page-section"><CardTitle title="Accounts & sleeves" subtitle="Seeded household balances hidden" /><div className="finance-empty-state"><strong>No verified household balances to show</strong><span>The existing development household contains demo values, so they are intentionally excluded from this Portfolio view.</span></div></section>
+     <section className="card card-pad page-section">
+       <CardTitle title="Internal accounts & sleeves" subtitle="Same governed allocation scope returned by the Portfolio backend" />
+       {internalRestricted ? <div className="finance-empty-state"><strong>Restricted</strong><span>Your role cannot view protected aggregate capital in this scope.</span></div> : internalComposition.length === 0 ? <div className="finance-empty-state"><strong>No internal allocation rows</strong><span>No non-Treasury internal capital accounts are currently available to display.</span></div> : <div className="holding-list">{internalComposition.map((holding) => <div className="holding-row" key={holding.label}><span>{holding.label}</span><strong>{displayScopedMoney(holding.amount)}</strong><b>{holding.percent}%</b></div>)}</div>}
+     </section>
      <section className="card card-pad page-section">
        <CardTitle
          title="Schwab observed holdings"
@@ -2840,19 +2881,28 @@ function CashFlowPage() {
   const query = useGetCashFlow();
   const safe = useGetSafeToDeploy();
   const data = query.data;
+  if (query.isLoading) {
+    return <main className="content"><PageHeading eyebrow="Household finance / cash flow" title={<>See the current<br /><em>room to breathe.</em></>} description="Cash flow connects everyday household choices to the protected capital plan—without asking you to predict markets." actions={<Link className="btn" href="/budget"><ClipboardList size={15} /> Open budget</Link>} /><section className="card card-pad page-section finance-route-error" role="status"><Activity size={16} /><div><strong>Loading household cash flow</strong><span>Confirming approved activity and finalized planning targets before showing totals.</span></div></section></main>;
+  }
+  if (query.isError || !data) {
+    return <main className="content"><PageHeading eyebrow="Household finance / cash flow" title={<>See the current<br /><em>room to breathe.</em></>} description="Cash flow connects everyday household choices to the protected capital plan—without asking you to predict markets." actions={<Link className="btn" href="/budget"><ClipboardList size={15} /> Open budget</Link>} /><section className="card card-pad page-section finance-route-error" role="alert"><AlertTriangle size={16} /><div><strong>Cash-flow data is temporarily unavailable</strong><span>No zero-value placeholders are substituted while the household cash-flow service is unavailable.</span></div><button className="btn btn-secondary" onClick={() => { void query.refetch(); }}>Try again</button></section></main>;
+  }
+  const safeValue = safe.isLoading ? 'Calculating…' : safe.isError ? 'Unavailable' : displayMoney(safe.data?.safeToDeploy, 'Not calculated');
+  const safeDetail = safe.isError ? 'Safe-to-Deploy could not be refreshed' : `${safe.data?.confidence ?? 'low'} confidence`;
   return <main className="content">
-    <PageHeading eyebrow="Household finance / cash flow" title={<>See the current<br /><em>room to breathe.</em></>} description="Cash flow connects everyday household choices to the protected capital plan—without asking you to predict markets." actions={<Link className="btn" href="/budget"><ClipboardList size={15} /> Open budget</Link>} />
+    <PageHeading eyebrow="Household finance / cash flow" title={<>See the current<br /><em>room to breathe.</em></>} description="Cash flow connects everyday household choices to the protected capital plan—without asking you to predict markets." actions={<div className="heading-actions"><Link className="btn" href="/budget"><ClipboardList size={15} /> Open budget</Link><button className="btn btn-secondary" onClick={() => { void query.refetch(); void safe.refetch(); }} disabled={query.isFetching || safe.isFetching}><RotateCcw size={14} /> {query.isFetching || safe.isFetching ? 'Refreshing…' : 'Refresh'}</button></div>} />
+    {safe.isError && <div className="finance-data-banner" role="alert"><div className="finance-data-banner-icon"><AlertTriangle size={16} /></div><div><strong>Safe-to-Deploy unavailable</strong><span>Cash-flow totals remain visible, but deployable capital is not inferred while its safety calculation is unavailable.</span></div></div>}
     <div className="finance-grid animate-in delay-1">
-      <FinanceMetric label="Net cash flow" value={displayMoney(data?.metrics.netCashFlow, '$0')} detail="current month" tone="green" />
-      <FinanceMetric label="Free cash flow" value={displayMoney(data?.metrics.freeCashFlow, '$0')} detail="after planned savings" tone="blue" />
-      <FinanceMetric label="Savings rate" value={`${data?.metrics.savingsRate ?? 0}%`} detail="steady is the goal" tone="lavender" />
-      <FinanceMetric label="Safe to deploy" value={displayMoney(safe.data?.safeToDeploy, '$0')} detail={`${safe.data?.confidence ?? 'low'} confidence`} tone="amber" />
+      <FinanceMetric label="Net cash flow" value={displayMoney(data.metrics.netCashFlow, '$0')} detail="current month" tone="green" />
+      <FinanceMetric label="Free cash flow" value={displayMoney(data.metrics.freeCashFlow, '$0')} detail="after planned savings" tone="blue" />
+      <FinanceMetric label="Savings rate" value={`${data.metrics.savingsRate}%`} detail="steady is the goal" tone="lavender" />
+      <FinanceMetric label="Safe to deploy" value={safeValue} detail={safeDetail} tone="amber" />
     </div>
     <div className="section-grid page-section">
-      <section className="card card-pad animate-in delay-2"><CardTitle title="Where the month went" subtitle="Outflows are grouped by job, not by noise." /><div className="flow-list">{[['Essential costs', data?.metrics.essentialOutflow, 'var(--color-primary)'], ['Flexible costs', data?.metrics.discretionaryOutflow, 'var(--color-opportunity)'], ['Debt service', data?.metrics.debtService, 'var(--color-critical)'], ['Protected savings', data?.metrics.savingsContributions, 'var(--color-protected)']].map(([label, value, color]) => <div className="flow-row" key={label as string}><span><i style={{ background: color as string }} />{label as string}</span><strong>{displayMoney(value as string, '$0')}</strong></div>)}</div><div className="finance-note"><PiggyBank size={16} /><span>Protected savings are counted as an intentional outflow so the household plan stays honest.</span></div></section>
-      <section className="card card-pad animate-in delay-2"><CardTitle title="Reserve health" subtitle="Your emergency reserve is a household boundary, not idle cash." /><div className="reserve-figure"><strong>{data?.reserve.monthsCovered ?? 0}</strong><span>months covered</span></div><Progress value={data ? (data.reserve.monthsCovered / data.reserve.targetMonths) * 100 : 0} /><div className="reserve-meta"><span>{displayMoney(data?.reserve.current, '$0')} current</span><span>{displayMoney(data?.reserve.target, '$0')} target</span></div><div className="finance-note"><ShieldCheck size={16} /><span>{data?.reserve.gap === '0.00' ? 'Your target reserve is funded.' : `${displayMoney(data?.reserve.gap, '$0')} still to target.`}</span></div></section>
+      <section className="card card-pad animate-in delay-2"><CardTitle title="Where the month went" subtitle="Outflows are grouped by job, not by noise." /><div className="flow-list">{[['Essential costs', data.metrics.essentialOutflow, 'var(--color-primary)'], ['Flexible costs', data.metrics.discretionaryOutflow, 'var(--color-opportunity)'], ['Debt service', data.metrics.debtService, 'var(--color-critical)'], ['Protected savings', data.metrics.savingsContributions, 'var(--color-protected)']].map(([label, value, color]) => <div className="flow-row" key={label as string}><span><i style={{ background: color as string }} />{label as string}</span><strong>{displayMoney(value as string, '$0')}</strong></div>)}</div><div className="finance-note"><PiggyBank size={16} /><span>Protected savings are counted as an intentional outflow so the household plan stays honest.</span></div></section>
+      <section className="card card-pad animate-in delay-2"><CardTitle title="Reserve health" subtitle="Your emergency reserve is a household boundary, not idle cash." /><div className="reserve-figure"><strong>{data.reserve.monthsCovered}</strong><span>months covered</span></div><Progress value={data.reserve.targetMonths > 0 ? (data.reserve.monthsCovered / data.reserve.targetMonths) * 100 : 0} /><div className="reserve-meta"><span>{displayMoney(data.reserve.current, '$0')} current</span><span>{displayMoney(data.reserve.target, '$0')} target</span></div><div className="finance-note"><ShieldCheck size={16} /><span>{data.reserve.gap === '0.00' ? 'Your target reserve is funded.' : `${displayMoney(data.reserve.gap, '$0')} still to target.`}</span></div></section>
     </div>
-     <section className="card card-pad page-section"><CardTitle title="Next month forecast" subtitle={`Confidence ${data?.forecast.confidence ?? 0} · next income ${formatPlanningDate(data?.forecast.nextIncomeDate ?? undefined, 'not scheduled')}`} /><div className="forecast-grid"><FinanceMetric label="Expected inflow" value={displayMoney(data?.forecast.nextMonthInflow, '$0')} detail="dated active income" tone="green" /><FinanceMetric label="Essential outflow" value={displayMoney(data?.forecast.nextMonthEssentialOutflow, '$0')} detail="expected commitments" tone="amber" /><FinanceMetric label="Expected net" value={displayMoney(data?.forecast.nextMonthNet, '$0')} detail="before new choices" tone="blue" /></div></section>
+    <section className="card card-pad page-section"><CardTitle title="Next month forecast" subtitle={`Confidence ${data.forecast.confidence} · next income ${formatPlanningDate(data.forecast.nextIncomeDate ?? undefined, 'not scheduled')}`} /><div className="forecast-grid"><FinanceMetric label="Expected inflow" value={displayMoney(data.forecast.nextMonthInflow, '$0')} detail="dated active income" tone="green" /><FinanceMetric label="Essential outflow" value={displayMoney(data.forecast.nextMonthEssentialOutflow, '$0')} detail="finalized Budget target or latest finalized carry-forward" tone="amber" /><FinanceMetric label="Expected net" value={displayMoney(data.forecast.nextMonthNet, '$0')} detail="before new choices" tone="blue" /></div></section>
   </main>;
 }
 

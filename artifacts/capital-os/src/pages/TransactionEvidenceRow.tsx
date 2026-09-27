@@ -13,6 +13,9 @@ import {
   getGetBankStatementTransactionInclusionQueryKey,
   getGetVariableBudgetIntelligenceQueryKey,
   getGetBudgetQueryKey,
+  getGetCashFlowQueryKey,
+  getGetSafeToDeployQueryKey,
+  getGetTreasuryQueryKey,
   getListTransactionReviewQueueQueryKey,
   getGetAccountingOverviewQueryKey,
   getGetCapitalGovernorV2QueryKey,
@@ -64,6 +67,9 @@ export function TransactionEvidenceRow({ transaction }: { transaction: BankState
     refetchQueue();
     queryClient.invalidateQueries({ queryKey: getGetVariableBudgetIntelligenceQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetCashFlowQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetSafeToDeployQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetTreasuryQueryKey() });
     queryClient.invalidateQueries({ queryKey: getListTransactionReviewQueueQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetAccountingOverviewQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetCapitalGovernorV2QueryKey() });

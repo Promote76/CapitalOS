@@ -3,6 +3,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { computeRc1ReleaseIdentity } from "./lib/rc1-release-identity.mjs";
+import { assertRc1ObservabilityReadiness } from "./lib/rc1-observability-readiness.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const manifestPath = path.join(root, "docs/production-readiness-manifest.json");
@@ -75,12 +76,7 @@ for (const result of Object.values(evidence.archive ?? {})) {
 for (const result of Object.values(evidence.operations ?? {})) {
   if (result !== "PASS") throw new Error("Operations runtime certification is incomplete.");
 }
-if (
-  evidence.observability?.approvedDestinationConfigured !== false ||
-  evidence.observability?.externalDelivery !== "BLOCKED_NO_APPROVED_DESTINATION"
-) {
-  throw new Error("Missing approved observability destination must remain an explicit blocker.");
-}
+assertRc1ObservabilityReadiness(manifest, evidence);
 if (manifest.parserBoundaries.bankStatements.maxInputBytes !== 20971520 ||
     manifest.parserBoundaries.bankStatements.maxRows !== 100000 ||
     manifest.parserBoundaries.businessPdf.maxInputBytes !== 52428800) {

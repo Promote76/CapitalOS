@@ -18,8 +18,10 @@ const includedPrefixes = [
   "scripts/check-api-artifact-config.mjs",
   "scripts/check-api-contract.mjs",
   "scripts/check-production-readiness-manifest.mjs",
+  "scripts/check-production-readiness-observability.test.mjs",
   "scripts/certify-operations-recovery.mjs",
   "scripts/generate-production-readiness-manifest.mjs",
+  "scripts/lib/rc1-observability-readiness.mjs",
   "scripts/lib/rc1-release-identity.mjs",
   "scripts/post-merge.sh",
 ];

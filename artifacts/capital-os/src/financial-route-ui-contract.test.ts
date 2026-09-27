@@ -72,3 +72,68 @@ test("Portfolio renders the backend internal allocation scope and supports expor
     assert.ok(!app.includes("Demo balances hidden"));
     assert.ok(app.includes("They are not silently added to Accounting net worth"));
 });
+
+
+test("Financial Inbox expands parser recovery targets and gates statement inclusion by approver permission", () => {
+  assert.ok(documents.includes("focusFinancialDocument"));
+  assert.ok(documents.includes("canReview={canReview}"));
+  assert.ok(documents.includes("Household accounts are unavailable"));
+  assert.ok(documents.includes("Business entities are unavailable"));
+  assert.ok(evidenceRow.includes("canReview: boolean"));
+  assert.ok(evidenceRow.includes("Read-only evidence. Approver permission is required"));
+  assert.ok(evidenceRow.includes("Budget categories are unavailable"));
+});
+
+test("Financial Inbox refreshes planning guidance and every downstream financial surface", () => {
+  assert.ok(documents.includes('includes("/weekly-guidance")'));
+  assert.ok(evidenceRow.includes("includes('/weekly-guidance')"));
+  for (const key of [
+    "getGetCashFlowQueryKey",
+    "getGetSafeToDeployQueryKey",
+    "getGetAccountingOverviewQueryKey",
+    "getGetCapitalGovernorV2QueryKey",
+    "getGetTreasuryQueryKey",
+  ]) {
+    assert.ok(documents.includes(key), key);
+    assert.ok(evidenceRow.includes(key), key);
+  }
+});
+
+test("Budget mutations are permission-aware and expose comparison failures", () => {
+  assert.ok(app.includes("Loading Budget permissions"));
+  assert.ok(app.includes("Budget permissions are unavailable"));
+  assert.ok(app.includes("Budget comparison unavailable"));
+  assert.ok(app.includes("Contributor permission is required to create a plan"));
+  assert.ok(app.includes("Approver permission required"));
+  assert.ok(app.includes("Read-only transaction view"));
+  assert.ok(app.includes("Read-only scenario view"));
+});
+
+test("Budget mutations refresh all financial consumers that can become stale", () => {
+  for (const key of [
+    "getGetBudgetQueryKey",
+    "getGetCashFlowQueryKey",
+    "getGetSafeToDeployQueryKey",
+    "getGetVariableBudgetIntelligenceQueryKey",
+    "getGetCapitalGovernorV2QueryKey",
+    "getGetAccountingOverviewQueryKey",
+    "getGetTreasuryQueryKey",
+  ]) {
+    assert.ok(app.includes(key), key);
+  }
+  assert.ok(app.includes("getGetWeeklyBudgetGuidanceQueryKey"));
+  assert.ok(app.includes("includes('/weekly-guidance')"));
+});
+
+test("Treasury distinguishes permission-query failure from genuine read-only access", () => {
+  assert.ok(treasury.includes("permissionsReady"));
+  assert.ok(treasury.includes("Confirming Treasury action permissions"));
+  assert.ok(treasury.includes("Retry permissions"));
+  assert.ok(treasury.includes("Permissions pending"));
+});
+
+test("Portfolio distinguishes Schwab read failure from an empty external observation", () => {
+  assert.ok(app.includes("Schwab summary unavailable"));
+  assert.ok(app.includes("The internal Portfolio above remains valid"));
+  assert.ok(app.includes("Retry Schwab read"));
+});

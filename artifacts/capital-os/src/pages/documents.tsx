@@ -3,6 +3,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   getGetAccountingOverviewQueryKey,
   getGetBudgetQueryKey,
+  getGetCashFlowQueryKey,
+  getGetSafeToDeployQueryKey,
+  getGetTreasuryQueryKey,
   getGetBusinessIncomeIntelligenceQueryKey,
   getGetBusinessOverviewQueryKey,
   getGetCapitalGovernorV2QueryKey,
@@ -163,6 +166,10 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
       queryClient.invalidateQueries({ queryKey: getGetBusinessIncomeIntelligenceQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGetVariableBudgetIntelligenceQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGetBudgetQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetCashFlowQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetSafeToDeployQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetTreasuryQueryKey() }),
+      queryClient.invalidateQueries({ predicate: (query) => String(query.queryKey[0] ?? "").includes("/weekly-guidance") }),
       queryClient.invalidateQueries({ queryKey: getListTransactionReviewQueueQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGetAccountingOverviewQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGetCapitalGovernorV2QueryKey() }),
@@ -302,11 +309,11 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
         <CardTitle title="Upload financial evidence" subtitle="PDF, CSV, or XLSX · up to 50 MB. The original source object and hash are preserved." />
         <div className="financial-upload-grid">
           <label>Recorded type<select value={uploadType} onChange={(event) => setUploadType(event.target.value as FinancialDocumentUploadInputDocumentType)}>{financialDocumentTypes.map((item) => <option key={item.type} value={item.type}>{item.label}</option>)}</select></label>
-          {uploadType === "BANK_STATEMENT" && <label>Statement account<select value={uploadAccountId} onChange={(event) => setUploadAccountId(event.target.value)}><option value="">Choose a household account</option>{accountsQuery.data?.accounts.map((account) => <option key={account.id} value={account.id}>{account.nickname} · {account.institution}</option>)}</select></label>}
+          {uploadType === "BANK_STATEMENT" && <div className="field"><label htmlFor="financial-upload-account">Statement account</label>{accountsQuery.isLoading ? <span className="document-pending-note">Loading household accounts…</span> : accountsQuery.isError ? <div className="operations-inline-error" role="alert"><AlertCircle size={14} /><span>Household accounts are unavailable.</span><button className="btn" type="button" onClick={() => { void accountsQuery.refetch(); }}>Retry</button></div> : <select id="financial-upload-account" value={uploadAccountId} onChange={(event) => setUploadAccountId(event.target.value)}><option value="">Choose a household account</option>{accountsQuery.data?.accounts.map((account) => <option key={account.id} value={account.id}>{account.nickname} · {account.institution}</option>)}</select>}</div>}
           <label>Source file<input ref={uploadInputRef} type="file" accept=".pdf,.csv,.xlsx,application/pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => { setUploadFile(event.target.files?.[0] ?? null); setUploadError(""); }} /></label>
         </div>
         {uploadFile && <div className="text-sm text-[var(--ink-soft)]">{uploadFile.name} · {(uploadFile.size / 1024 / 1024).toFixed(2)} MB</div>}
-        <div className="modal-actions"><button className="btn btn-primary" type="button" onClick={() => void upload()} disabled={!uploadFile || requestUpload.isPending || ingestDocument.isPending}>{requestUpload.isPending || ingestDocument.isPending ? "Uploading…" : "Upload and ingest"}</button></div>
+        <div className="modal-actions"><button className="btn btn-primary" type="button" onClick={() => void upload()} disabled={!uploadFile || requestUpload.isPending || ingestDocument.isPending || (uploadType === "BANK_STATEMENT" && (!accountsQuery.isSuccess || !uploadAccountId))}>{requestUpload.isPending || ingestDocument.isPending ? "Uploading…" : "Upload and ingest"}</button></div>
         {uploadMessage && <div className="form-feedback success" role="status">{uploadMessage}</div>}
         {uploadError && <div className="form-feedback error" role="alert">{uploadError}</div>}
       </section>}
@@ -327,12 +334,12 @@ export default function DocumentsPage({ embedded = false }: { embedded?: boolean
           <div className="card card-pad animate-in delay-1">
             <CardTitle title="Business evidence boundary" subtitle="Link only after an approver confirms the business context." />
             <div className="document-business-selector">
-              <label>Selected business
+              {businessesQuery.isLoading ? <div className="document-pending-note">Loading business entities…</div> : businessesQuery.isError ? <div className="operations-inline-error" role="alert"><AlertCircle size={14} /><span>Business entities are unavailable.</span><button className="btn" type="button" onClick={() => { void businessesQuery.refetch(); }}>Retry</button></div> : <label>Selected business
                 <select value={selectedBusinessId} onChange={(event) => setSelectedBusinessId(event.target.value)} disabled={!businesses.length}>
                   <option value="">Choose a business</option>
                   {businesses.map((business) => <option key={business.id} value={business.id}>{business.displayName}</option>)}
                 </select>
-              </label>
+              </label>}
               <p><ShieldCheck size={14} /> Linking evidence keeps business books separate from household income. It does not infer legal, tax, or ownership status.</p>
             </div>
           </div>
@@ -389,7 +396,15 @@ function FinancialEvidenceCard({ document, documents, businesses, selectedBusine
   onReview: (id: string, decision: "VERIFIED" | "REJECTED", reason: string) => Promise<void>;
   onDelete: () => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(() => window.location.hash === `#financial-document-${document.id}`);
+  useEffect(() => {
+    const syncFromHash = () => {
+      if (window.location.hash === `#financial-document-${document.id}`) setExpanded(true);
+    };
+    syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
+  }, [document.id]);
    const verificationGate = documentVerificationGate(document);
    return <article id={`financial-document-${document.id}`} className={`financial-evidence-card ${expanded ? "is-expanded" : ""}`}>
     <button className="financial-evidence-summary" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>
@@ -410,7 +425,7 @@ function FinancialEvidenceCard({ document, documents, businesses, selectedBusine
       <div className="financial-evidence-signals"><span className="eyebrow">Detection signals</span>{document.detectionSignals?.length ? document.detectionSignals.map((signal) => <span key={signal} className="evidence-signal"><Tag size={12} /> {signal}</span>) : <span className="text-sm text-[var(--ink-soft)]">No detection signals recorded.</span>}</div>
        {verificationGate.blockers.length > 0 && <div className="operations-inline-error financial-review-gate" role="status"><AlertCircle size={15} /><div><strong>Verification is blocked until review is complete.</strong>{verificationGate.blockers.map((blocker) => <span key={blocker}>{blocker}</span>)}</div></div>}
        {document.bankStatement && <div className="mt-3 text-xs text-[var(--ink-soft)] bg-white/50 p-2 rounded border border-[var(--line)]"><Info size={12} className="inline mr-1 -mt-0.5" /> Parsed rows require individual review. Parent verification is only available when all rows are terminal. <a href="#review-queue" className="underline">Open the Review Queue</a>.</div>}
-      {document.transactions?.map((transaction) => <TransactionEvidenceRow key={transaction.id} transaction={transaction} />)}
+      {document.transactions?.map((transaction) => <TransactionEvidenceRow key={transaction.id} transaction={transaction} canReview={canReview} />)}
         <FinancialEvidenceActions document={document} documents={documents} businesses={businesses} selectedBusinessId={selectedBusinessId} canReview={canReview} verificationGate={verificationGate} onRefresh={onRefresh} onReview={onReview} onDelete={onDelete} />
     </div>}
   </article>;
@@ -750,6 +765,15 @@ function DocumentSkeleton() {
   return <div className="queue-skeleton"><div /><div /><div /></div>;
 }
 
+function focusFinancialDocument(documentId: string) {
+  const hash = `#financial-document-${documentId}`;
+  if (window.location.hash !== hash) window.history.replaceState(null, "", hash);
+  const card = window.document.getElementById(`financial-document-${documentId}`);
+  const summary = card?.querySelector<HTMLButtonElement>(".financial-evidence-summary");
+  if (summary?.getAttribute("aria-expanded") !== "true") summary?.click();
+  card?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function QueueItemActions({
   item,
   document,
@@ -780,9 +804,9 @@ function QueueItemActions({
       : { canVerify: false, blockers: ["Open the document details to load its verification prerequisites."] };
     const parserErrors = document ? documentParserErrors(document) : [];
     if (parserErrors.length) {
-      return <div className="queue-action-form"><span className="document-pending-note">Parser recovery is required before any document verification decision.</span><a href={`#financial-document-${item.id}`} className="btn btn-primary"><RefreshCw size={14} /> Retry parser</a></div>;
+      return <div className="queue-action-form"><span className="document-pending-note">Parser recovery is required before any document verification decision.</span><a href={`#financial-document-${item.id}`} className="btn btn-primary" onClick={(event) => { event.preventDefault(); focusFinancialDocument(item.id); }}><RefreshCw size={14} /> Retry parser</a></div>;
     }
-    return <div className="queue-action-form"><input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Decision reason required" maxLength={1000} />{!verificationGate.canVerify && <span className="document-pending-note">{verificationGate.blockers[0]} <a href={`#financial-document-${item.id}`} className="underline">Open document details</a></span>}{verificationGate.canVerify
+    return <div className="queue-action-form"><input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Decision reason required" maxLength={1000} />{!verificationGate.canVerify && <span className="document-pending-note">{verificationGate.blockers[0]} <a href={`#financial-document-${item.id}`} className="underline" onClick={(event) => { event.preventDefault(); focusFinancialDocument(item.id); }}>Open document details</a></span>}{verificationGate.canVerify
       ? <button className="btn btn-primary" onClick={() => void handleDocReview(item.id, "VERIFIED", reason)} disabled={!reason.trim()}><Check size={14} /> Verify document</button>
       : <button className="btn" disabled title={verificationGate.blockers.join(" ")}><ShieldCheck size={14} /> Verification blocked</button>}
       <button className="btn" onClick={() => void handleDocReview(item.id, "REJECTED", reason)} disabled={!reason.trim()}><X size={14} /> Reject</button></div>;
